@@ -1,6 +1,6 @@
 # Jeopardy Builder "Brainrot": Product & Technical Spec
 
-Status: **Draft v1** · Last updated: 2026-09-28
+Status: **Draft v1.1** · Last updated: 2026-09-28
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
@@ -32,7 +32,7 @@ decides who gets points, and controls media.
 |---|---|---|
 | `jeopardy-builder.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
 | Game pack `*.jbr` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
-| Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Warn when it is over ~50 MB. | **P1** |
+| Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB. | **P1** |
 | Desktop `.exe` / `.app` | Tauri wrapper around the same build. Adds native file dialogs and large-file handling. | **P2** |
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.
@@ -46,7 +46,7 @@ Everything must work from a `file://` URL: no server, and no network requests at
 |---|---|---|
 | UI framework | **Svelte 5 + TypeScript** | Small bundle, simple reactivity |
 | Build | **Vite** + `vite-plugin-singlefile` | Outputs one `.html` |
-| Slide canvas / element editing | **Konva.js** (via `svelte-konva`) or plain DOM with `moveable` | Drag, resize, rotate handles. Decide in the spike (§14). |
+| Slide canvas / element editing | **Konva.js** (via `svelte-konva`) or plain DOM with `moveable` | Drag, resize, rotate handles. Decide in the spike (§15). |
 | Image editor | Canvas 2D API + **Cropper.js** for crop | Filters via canvas `filter`; brush/annotate on an overlay canvas |
 | Zip packs | **JSZip** | Read and write `.jbr` |
 | Local persistence | **IndexedDB** via `idb-keyval` | Autosave, crash recovery, media blobs |
@@ -87,7 +87,7 @@ GameSettings {
   currencySymbol: string            // "$", "", "pts", "🧠", ...
 }
 
-PlayerTemplate { id, name, color /* hex, unique */, avatar?: MediaRef }
+PlayerTemplate { id, name, color /* hex, unique */ }   // no avatars: name + color only
 
 Round {
   id, name,                         // "Jeopardy!", "Double Jeopardy", "Brainrot Round"
@@ -130,9 +130,22 @@ VideoEl { media: MediaRef, autoplay, loop, muted, startAt?, endAt?, volume, show
 AudioEl { media: MediaRef, autoplay, loop, startAt?, endAt?, volume, visible /* icon on slide or hidden */ }
 ShapeEl { shape: 'rect'|'ellipse'|'line'|'arrow', fill, stroke }
 
-WheelPreset { id, name, segments: { label, color, weight /* proportion */, media?: MediaRef }[],
+WheelPreset { id, name, segments: { label, color, weight /* proportion */, media?: MediaRef, action?: Action }[],
               spinDurationMs, removeAfterLanding: boolean }
-DicePreset  { id, name, dice: { sides: number /* 2..1000 */, count: number, customFaces?: string[] }[] }
+DicePreset  { id, name, dice: { sides: number /* 2..1000 */, count: number,
+              customFaces?: { label: string, action?: Action }[] }[],
+              totalAction?: Action /* applied using the roll total, e.g. "+ total×100" */ }
+
+// Optional effect attached to a wheel segment / die face. Never applied automatically:
+// the host sees a proposed change and clicks Confirm (or Skip).
+Action =
+  | { kind: 'addPoints',   amount: number }            // + / − to selected player(s)
+  | { kind: 'addRollTimes', multiplier: number }       // dice: + (roll total × multiplier)
+  | { kind: 'multiplyScore', factor: number }          // e.g. double, halve
+  | { kind: 'setScore',    amount: number }            // e.g. bankrupt → 0
+  | { kind: 'steal',       amount: number | 'all' }    // from a chosen player to selected player(s)
+  | { kind: 'swapScores' }                             // between two chosen players
+  | { kind: 'setClueValue', amount: number }           // changes the current clue's prefilled value
 
 // Runtime (not part of the authored game)
 Session {
@@ -150,7 +163,7 @@ ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" 
 ### 5.1 Game setup
 - New game wizard: title, theme preset, number of rounds, and for each round the number of categories, rows, and default values.
 - **Values**: edit per round (row defaults), with per-clue overrides. A "×2 for this round" helper. Any integer is allowed, including negatives and 0.
-- **Players (default roster)**: add/remove, name, unique color. The color picker prevents duplicates and suggests a distinct palette. Optional avatar image.
+- **Players (default roster)**: add/remove, name, unique color. The color picker prevents duplicates and suggests a distinct palette. No avatars; the score bar shows name plates in each player's color.
 - Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default timer.
 
 ### 5.2 Board editor
@@ -190,6 +203,8 @@ ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" 
   to the weight). A live preview shows the percentages. Optional image per segment. Spin duration. "Remove segment after it lands" option.
 - **Dice**: any number of dice with any number of sides (d2–d1000), and custom face labels (e.g. `["Steal","Double","Nothing",...]`).
   Default quick presets: d4, d6, d8, d10, d12, d20, d100, 2d6.
+- **Optional actions** (see `Action` in §4) can be attached to any wheel segment or custom die face,
+  e.g. "+500", "Bankrupt", "Double your score", "Steal 300", "Swap scores". Segments without an action are display-only.
 - Presets are saved with the game. Clue types `wheel` and `dice` link to a preset.
 
 ### 5.7 Theme
@@ -260,6 +275,10 @@ ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" 
 - **Dice roller**: quick d4–d100, a custom "NdS", or any saved preset. The result animates on the audience view.
 - **Wheel**: any saved preset, or a quick ad-hoc wheel from a text list. Weighted random.
   Uses `crypto.getRandomValues`, and the spin animation lands on the pre-selected result.
+- **Result actions**: if the landed segment or face has an `Action`, the host view shows an action card
+  ("Bankrupt → set score to 0"). The host picks the target player(s) (and a source player for steal/swap), previews the
+  score change, then clicks **Confirm** or **Skip**. Confirmed actions are written to the score log with a reason
+  ("Wheel: Punishment Wheel → Bankrupt"), so they can be undone like any other score change.
 - **Timer**: start, pause, reset, and set a custom duration.
 - **Scoreboard overlay**: toggle a large standings view on the audience window.
 
@@ -320,8 +339,9 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 ---
 
 ## 10. Non-Functional Requirements
-- **Performance**: board interactions < 100 ms. Slide transitions at 60 fps on a mid-range laptop. Games with
-  ~500 MB of media should load in under 10 s from a `.jbr` (media loaded lazily as blob URLs).
+- **Performance**: board interactions < 100 ms. Slide transitions at 60 fps on a mid-range laptop. The target game size is
+  < 100 MB of media (mostly images + short clips). Such a game loads in under 5 s from a `.jbr` or standalone HTML.
+  Larger games must still work (media loaded lazily as blob URLs) but aren't optimized for.
 - **Reliability**: no data loss on crash (autosave). Undo for scores.
 - **Offline**: no runtime network calls.
 - **Accessibility**: keyboard-operable host controls, adequate contrast in default themes, and player colors
@@ -356,6 +376,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 - [ ] mp4/webm/mp3/wav/ogg files play with full controls. Autoplay works when enabled.
 - [ ] A wheel with weights 1/1/8 lands on the heavy segment ~80% of the time over 1,000 simulated spins.
 - [ ] A d37 and a custom-face die can be created, saved, and rolled.
+- [ ] A wheel segment with a "Bankrupt" action proposes the change, applies it only after Confirm, and can be undone from the score log.
 - [ ] Refreshing the browser mid-game offers to resume, with scores and used tiles intact.
 - [ ] Exported standalone HTML plays the game without the editor.
 
@@ -368,10 +389,25 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 ---
 
-## 14. Open Questions
+## 14. Decisions Log
+| Topic | Decision |
+|---|---|
+| Delivery | Single HTML first, Tauri `.exe` later |
+| Save format | `.jbr` zip + standalone HTML export |
+| Display | Dual-window and single-window, toggleable live |
+| Rounds | Any number of rounds + optional Final |
+| Mechanics | Daily Doubles, negative scores/deductions, Final wagers, timers |
+| Daily Double cap | TV rules (max(score, highest board value)), host can override |
+| Wheel/dice results | Display, plus optional per-segment/face actions confirmed by the host |
+| Score bar | Name + color only (no avatars) |
+| Slides | Freeform 16:9 elements |
+| Image editing | Crop/rotate/flip/resize, filters, text/sticker overlays, brush |
+| Theming | Presets + full override |
+| Extras | Score undo + log, autosave/resume, host keyboard shortcuts. No built-in SFX. |
+| Players | Editable mid-game |
+| Stack | Svelte 5 + Vite, built to a single-file HTML |
+| Expected size | Small (< 100 MB media) |
+
+## 15. Open Questions
 1. **Slide rendering engine**: Konva (canvas; easy transforms, harder rich text/video) or DOM + `moveable`
-   (native text/video, CSS effects). Leaning **DOM + moveable**. Decide in M0.
-2. Daily Double wager cap rules: use the TV default or always free-form?
-3. Should wheel landings be able to *apply* effects automatically (e.g. "+500 to selected player"), or only display them?
-4. Max realistic game size / video lengths, to size the standalone-HTML export warning.
-5. Do players need avatars or photos on the score bar, or just names and colors?
+   (native text/video, CSS effects). Leaning **DOM + moveable**. Decide in the M0 spike.
