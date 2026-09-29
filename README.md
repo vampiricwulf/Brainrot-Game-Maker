@@ -64,6 +64,8 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
 
 - Work **autosaves** in the browser. If the browser blocks storage for files opened from disk, the header warns you to use
   Save.
+- Every file in a game has its own name: adding a file whose name is already taken (every pasted screenshot is
+  `image.png`) gives it a random suffix, like `image-k3f9x2.png`, so files are easy to tell apart.
 - **Save** downloads a **`.jbr` game pack** (a zip with the game plus all its media). **Open…** loads `.jbr` or `.json`.
 - **⬇ Export HTML** makes a **single player-only HTML file** with everything inside. Send it to anyone; they double-click it
   and press ▶ Play. You're warned above ~100 MB. For big games, share the `.jbr` instead.

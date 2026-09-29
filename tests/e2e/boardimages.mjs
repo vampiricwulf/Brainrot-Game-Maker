@@ -163,6 +163,16 @@ try {
   await page.getByRole('button', { name: '🖼 Media' }).click();
   assert(/\(0\)/.test(await page.getByRole('button', { name: /Remove unused/ }).innerText()), 'category, tile, board and banner images all count as used');
 
+  // Two different files with the same name (like pasted screenshots, all "image.png") get distinct names.
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Add files…' }).click()]);
+  await chooser.setFiles([
+    { name: 'pasted.png', mimeType: 'image/png', buffer: Buffer.from(png(1, 2, 3), 'base64') },
+    { name: 'pasted.png', mimeType: 'image/png', buffer: Buffer.from(png(4, 5, 6), 'base64') },
+  ]);
+  await page.locator('.card .nm', { hasText: /^pasted-[a-z0-9]{6}\.png$/ }).waitFor();
+  const pasted = await page.locator('.card .nm', { hasText: /^pasted/ }).allInnerTexts();
+  assert(pasted.length === 2 && pasted.includes('pasted.png'), `a second file named pasted.png gets a randomized name (${pasted})`);
+
   // ---------- In the game ----------
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();

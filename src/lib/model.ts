@@ -1,6 +1,7 @@
 // Core data model. See docs/SPEC.md §4.
 // Authored content (Game) is kept separate from runtime state (Session).
 
+import { dedupeMediaNames } from './medianame';
 import { presetTheme, type Theme } from './theme';
 
 export type Id = string;
@@ -606,6 +607,7 @@ export function migrateGame(data: Game): Game {
   g.settings = { ...d.settings, ...(data.settings ?? {}) };
   g.final = { ...d.final, ...(data.final ?? {}) };
   g.media ??= [];
+  dedupeMediaNames(g.media);
   g.audio ??= {};
   g.wheels ??= [];
   g.dice ??= [];

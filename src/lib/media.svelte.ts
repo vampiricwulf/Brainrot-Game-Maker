@@ -3,6 +3,7 @@
 // so autosaved drafts keep their media. The .jbr pack is the portable copy.
 import { del, get, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
+import { uniqueMediaName } from './medianame';
 
 const blobs = new Map<string, Blob>();
 /** id → object URL, reactive so components re-render when media arrives. */
@@ -110,7 +111,8 @@ export async function addMediaFile(game: Game, file: File | Blob, name = (file a
   if (!kind) throw new Error(`"${name}" isn't a supported image, video, audio or font file.`);
   let blob: Blob = file;
   if (mime === 'image/svg+xml') blob = new Blob([sanitizeSvg(await file.text())], { type: mime });
-  const ref: MediaRef = { id: newId(), name, mime, size: blob.size, kind };
+  // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.
+  const ref: MediaRef = { id: newId(), name: uniqueMediaName(game.media.map((m) => m.name), name), mime, size: blob.size, kind };
   await putMedia(ref.id, blob.type ? blob : new Blob([blob], { type: mime }));
   game.media.push(ref);
   return ref;
