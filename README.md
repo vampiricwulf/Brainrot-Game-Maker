@@ -80,8 +80,8 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
      full-screen, and **click it once** so it's allowed to play sound. The host window shows the answer, notes, standings and
      all controls. Allow popups for the file if the browser asks.
 
-   The pre-game screen also lists **things to check** (blank clues, a missing Daily Double with **🎲 Place now**, missing
-   media…). They're only warnings: **Start game** works as soon as there's a player.
+   The pre-game screen also lists **things to check** (blank clues, a missing Daily Double with **🎲 Place now**, which
+   adds only the missing ones, missing media…). They're only warnings: **Start game** works as soon as there's a player.
 2. The round intro plays: title card → tiles fill in → press `N` to reveal each category (or **Skip intro**).
 3. Click a tile. The question zooms in, and the answer is never on screen until you reveal it: **click the slide**, press
    `R`, or use **👁 Reveal answer**. Showed it by accident? Press `R` again or **🙈 Hide answer**. Click the answer
@@ -93,11 +93,12 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
 4. **Scoring**: toggle any players (`1`–`9`; zero, one or many), set any amount (prefilled with the clue value), then
    **Award** (`Enter`) or **Deduct** (`Shift+Enter`). The per-player **✔ +value** / **✘ −value** buttons score one player
    in one click. Click a score to type an exact value (`Esc` cancels). Every change is logged and undoable (`Ctrl+Z`, 📜 Log);
-   undo takes back a whole award at once (all the players it touched), and the toast says what it undid, with **↷ Redo**.
+   undo takes back a whole award at once (all the players it touched), and the toast says what it undid (**↷ Redo** or
+   `Ctrl+Shift+Z` puts it back).
 5. **▦ Done ▶ board** (`Esc`) marks the tile used. Right after a correct answer, that player becomes the picker (★).
    Opened the wrong tile? **↩ Cancel (keep tile)** (`Shift+Esc`) goes back without using it up (so does `Esc` on the Daily
-   Double splash). A used tile can be put back with **right-click** on the host's board, **↶ Reopen** in the host panel or
-   the toast, or **Reopen tile** in the 📜 Log.
+   Double splash); once points were given for the clue, undo them first. A used tile of the current round can be put back
+   with **right-click** on the host's board, **↶ Reopen** in the host panel, or **Reopen tile** in the 📜 Log.
 6. **Next round ▶** / **Final Jeopardy! ▶** / **End game ▶** sit on the right of the host panel. With tiles left they ask inline first
    ("12 clues left · go on? Yes"). **◀ Prev round**, or going back to a round later, never replays its intro.
 
@@ -123,14 +124,15 @@ everyone is judged a second `N` finishes (finishing earlier asks first). **◀ B
 during the category and wager steps (wagers are kept). **Ties** offer a roll-off, the tiebreaker clue, or co-winners.
 
 **Game over**: fix any score by clicking it, go **◀ Back to final reveals** to change a judgment, **📋 Copy results** (one line
-for chat), or **🔁 Rematch** with the same players at 0.
+for chat; tied players share a medal), or **🔁 Rematch** with the same players at 0 (until it starts, the editor still offers
+**View results** for the finished game).
 
 **Players mid-game**: 👥 Players can add, rename or recolor players. Removing one asks first, and they can be restored
-with their score from the same dialog.
+with their score (and their Final wager) from the same dialog.
 
 **Leaving and resuming**: **Exit** keeps the game. The editor then shows **Resume game** (also after a reload or a
 crash), plus **Resume with my edits** to carry on with the editor's current version of the game (fixed typos, new
-slides). Starting a new game while one is saved asks first. Scores, used tiles and logs are autosaved after every change.
+slides, even deleted or reordered rounds). Starting a new game while one is saved asks first. Scores, used tiles and logs are autosaved after every change.
 
 ### Host keyboard shortcuts
 
@@ -140,7 +142,7 @@ slides). Starting a new game while one is saved asks first. Scores, used tiles a
 | `Enter` / `Shift+Enter` | Award / deduct the amount |
 | `R` | Reveal the answer (press again to hide it) |
 | `Esc` / `B` | Close the tool overlay, or go back to the board (the tile is used) |
-| `Shift+Esc` | Cancel the clue: back to the board, the tile stays playable |
+| `Shift+Esc` | Cancel the clue: back to the board, the tile stays playable (not once points were given for it) |
 | Right-click a used tile | Put it back on the board |
 | `N` | Next step (round intro, Final Jeopardy; in the reveals: show the wager, then the next player) |
 | `C` / `X` | Final reveals: mark the spotlit player right / wrong |
