@@ -12,7 +12,6 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
   - `jeopardy-builder.html`: the whole app in one file. Double-click it to open it in **Chrome, Edge or Firefox**.
     Everything works from a file opened from disk.
   - `jeopardy-builder-portable.exe`: the Windows desktop app, no install needed.
-  - `jeopardy-builder-setup.exe`: an installer for the Windows desktop app.
 - Or build it yourself (see [Development](#development)). It lands in `dist/index.html`.
 
 ## Building a game (Editor)

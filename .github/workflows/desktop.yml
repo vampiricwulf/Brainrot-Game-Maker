@@ -33,6 +33,4 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: jeopardy-builder-windows
-          path: |
-            src-tauri/target/release/jeopardy-builder.exe
-            src-tauri/target/release/bundle/nsis/*.exe
+          path: src-tauri/target/release/jeopardy-builder.exe

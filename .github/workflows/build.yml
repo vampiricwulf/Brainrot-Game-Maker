@@ -72,8 +72,6 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/jeopardy-builder.exe out/jeopardy-builder-portable.exe
-          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
-          Copy-Item $setup.FullName out/jeopardy-builder-setup.exe
           Get-ChildItem out
       - uses: actions/upload-artifact@v6
         with:
@@ -108,7 +106,6 @@ jobs:
           **Downloads**
           - \`jeopardy-builder.html\`: the whole app in one file. Download it and double-click to open it in Chrome, Edge or Firefox.
           - \`jeopardy-builder-portable.exe\`: Windows desktop app, no install needed (uses the WebView2 runtime that Windows 10/11 already have).
-          - \`jeopardy-builder-setup.exe\`: Windows installer for the desktop app.
 
           This release is replaced automatically on every push to \`main\`.
           NOTES
