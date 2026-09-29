@@ -67,6 +67,19 @@
   // Pointer capture sends click/dblclick to the layer itself, so remember what the press was on.
   let lastDown: SlideElement | null = null;
 
+  /**
+   * Every press on the canvas: no text selection and no native drag-and-drop. Without this a drag
+   * could leave a text selection on the page, and the next press started the browser's own drag of it
+   * (a 'no' cursor, and the move or resize stopped after a few pixels). Blocking the default also
+   * stops the press from taking focus, so move it off any text field by hand as a click would.
+   */
+  function claim(e: PointerEvent): void {
+    e.preventDefault();
+    getSelection()?.removeAllRanges();
+    const a = document.activeElement;
+    if (a instanceof HTMLElement && a !== document.body && !layerEl.contains(a)) a.blur();
+  }
+
   function begin(d: Drag, e: PointerEvent): void {
     drag = d;
     onstart?.();
@@ -76,6 +89,7 @@
   function down(e: PointerEvent, el: SlideElement | null): void {
     if (e.button !== 0) return;
     e.stopPropagation();
+    claim(e);
     const p = toStage(e, layerEl);
     // Alt+click: the next item down the stack under the pointer (locked ones too); repeat to keep going.
     if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -118,6 +132,7 @@
   function handleDown(e: PointerEvent, hx: number, hy: number): void {
     if (!single || single.locked) return;
     e.stopPropagation();
+    claim(e);
     const p = toStage(e, layerEl);
     const keepByDefault = single.kind === 'image' || single.kind === 'video' || (single.kind === 'embed' && single.embedKind !== 'remoteAudio');
     begin({ kind: 'resize', sx: p.x, sy: p.y, hx, hy, o: { x: single.x, y: single.y, w: single.w, h: single.h }, keep: keepByDefault }, e);
@@ -128,6 +143,7 @@
   function rotateDown(e: PointerEvent): void {
     if (!single || single.locked) return;
     e.stopPropagation();
+    claim(e);
     const cx = single.x + single.w / 2;
     const cy = single.y + single.h / 2;
     // Relative to where the handle was grabbed, so it works wherever the handle is drawn.
@@ -278,6 +294,7 @@
   onpointerup={up}
   onpointercancel={up}
   oncontextmenu={context}
+  ondragstart={(e) => e.preventDefault()}
   ondblclick={() => lastDown && ondblclick?.(lastDown)}
   role="presentation"
 >
@@ -350,6 +367,7 @@
     inset: 0;
     z-index: 1000;
     touch-action: none;
+    user-select: none;
   }
   .hit {
     position: absolute;

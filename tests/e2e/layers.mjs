@@ -219,6 +219,43 @@ try {
   await page.locator('.canvas .hit').first().click();
   assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue got the new text color');
 
+  // Resize a picture, then drag it straight away. The resize used to leave a text selection on the page,
+  // and the next press started the browser's own drag of it: a 'no' cursor and the move stopped early.
+  {
+    const dt2 = await page.evaluateHandle((b64) => {
+      const d = new DataTransfer();
+      d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'resize.png', { type: 'image/png' }));
+      return d;
+    }, PNG);
+    await canvas.dispatchEvent('drop', { dataTransfer: dt2 });
+    await page.locator('.insp h4', { hasText: 'Image' }).waitFor();
+    for (const [k, v] of [['X', 300], ['Y', 200], ['W', 600], ['H', 400]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    await page.evaluate(() => {
+      window.__nativeDrag = [];
+      for (const t of ['dragstart', 'pointercancel']) document.addEventListener(t, () => window.__nativeDrag.push(t), true);
+    });
+    const corner = await at(900, 600); // bottom-right handle
+    await page.mouse.move(corner.x, corner.y);
+    await page.mouse.down();
+    await page.mouse.move(corner.x + 60, corner.y + 40, { steps: 8 });
+    await page.mouse.up();
+    const w = Number(await pos.getByLabel('W', { exact: true }).inputValue());
+    assert(w > 600, `the corner handle resizes the picture (W ${w})`);
+    assert((await page.evaluate(() => String(getSelection()))) === '', 'resizing leaves no text selected on the page');
+    const x0 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
+    const mid = await at(600, 400);
+    await page.mouse.move(mid.x, mid.y);
+    await page.mouse.down();
+    await page.mouse.move(mid.x + 150, mid.y + 10, { steps: 12 });
+    await page.mouse.up();
+    const x1 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
+    const moved = await at(0, 0).then(async (o) => ((mid.x + 150 - o.x) - (mid.x - o.x)) / ((await at(1920, 0)).x - o.x) * 1920);
+    assert(Math.abs(x1 - x0 - moved) < 20, `right after resizing, dragging moves the picture the whole way (${x0} → ${x1}, expected about +${Math.round(moved)})`);
+    assert((await page.evaluate(() => window.__nativeDrag)).length === 0, "no browser drag-and-drop takes over (no 'no' cursor)");
+    await page.keyboard.press('Delete'); // leave the slide as the next checks expect: just its text, selected
+    await page.locator('.canvas .hit').first().click();
+  }
+
   // Clicks go through a locked item, so a slide whose only item is locked still lists it to unlock it.
   assert((await page.locator('.layers-box').count()) === 0, 'a slide with one item has no Layers list');
   await page.locator('.insp').getByLabel('Lock', { exact: true }).check();
