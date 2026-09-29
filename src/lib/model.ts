@@ -428,8 +428,8 @@ export interface ClueRef {
 export interface Session {
   gameId: Id;
   players: Player[];
-  /** Players taken out mid-game, kept (with their log entries) so the host can restore them. */
-  removedPlayers?: Player[];
+  /** Players taken out mid-game, kept (with their log entries) so the host can restore them (`inFinal`: into the final round too). */
+  removedPlayers?: (Player & { inFinal?: boolean })[];
   /** Clue ids that have been played. */
   used: Record<Id, true>;
   /** The clue most recently closed (and marked used), for "Reopen last tile". */

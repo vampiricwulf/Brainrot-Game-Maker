@@ -156,25 +156,34 @@ export function addPlayer(session: Session, p: Omit<Player, 'startScore'>, start
 export function removePlayer(session: Session, playerId: string): void {
   const p = session.players.find((x) => x.id === playerId);
   if (!p) return;
+  const f = session.final;
+  const inFinal = !!f?.players.includes(playerId);
   session.players = session.players.filter((x) => x.id !== playerId);
-  session.removedPlayers = [...(session.removedPlayers ?? []), p];
+  session.removedPlayers = [...(session.removedPlayers ?? []), inFinal ? { ...p, inFinal } : p];
   if (session.currentPickerId === playerId) session.currentPickerId = undefined;
   if (session.dd?.playerId === playerId) session.dd.playerId = undefined;
-  const f = session.final;
   if (f) {
+    // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
     f.players = f.players.filter((x) => x !== playerId);
     f.order = f.order.filter((x) => x !== playerId);
-    delete f.wagers[playerId];
     if (f.current === playerId) f.current = f.order.find((id) => !f.results[id]);
   }
 }
 
-/** Bring a removed player back (at the end of the list), score and all. */
+/** Bring a removed player back (at the end of the list), score and all, and into the final round if they were in it. */
 export function restorePlayer(session: Session, playerId: string): void {
-  const p = session.removedPlayers?.find((x) => x.id === playerId);
-  if (!p) return;
+  const removed = session.removedPlayers?.find((x) => x.id === playerId);
+  if (!removed) return;
+  const { inFinal, ...p } = removed;
   session.removedPlayers = session.removedPlayers!.filter((x) => x.id !== playerId);
   session.players = [...session.players, p];
+  const f = session.final;
+  if (inFinal && f && !f.players.includes(playerId)) {
+    f.players = [...f.players, playerId];
+    // Reveal order: lowest score first until the reveals start (as startFinal does), then at the end.
+    const order = [...f.order, playerId];
+    f.order = session.finalStep === 'reveal' ? order : order.sort((x, y) => score(session, x) - score(session, y));
+  }
 }
 
 // ---------- Flow ----------
@@ -212,6 +221,17 @@ export function answerShowing(session: Session): boolean {
 export function toggleReveal(session: Session): void {
   if (answerShowing(session)) unreveal(session);
   else reveal(session);
+}
+
+/** The host panel's award row is up: not on a Daily Double splash, the final reveals or the end screen. */
+export function awardOpen(session: Session): boolean {
+  if (session.phase === 'clue') return session.dd?.stage !== 'splash';
+  return session.phase === 'board' || session.phase === 'tiebreaker' || (session.phase === 'final' && session.finalStep !== 'reveal');
+}
+
+/** Points were given (and not undone) for this clue. */
+export function clueScored(session: Session, clueId: string): boolean {
+  return session.scoreLog.some((e) => !e.undone && e.clueId === clueId);
 }
 
 /**
@@ -342,9 +362,26 @@ export function ddShowQuestion(session: Session, playerId: string, wager: number
 /**
  * Scatter `count` Daily Doubles over a round, weighted toward the lower (higher-value) rows like on TV,
  * at most one per category. Empty tiles and wheel/dice tiles are never picked. Returns how many were placed.
+ * `keepExisting` leaves the Daily Doubles already on the board alone and only adds the missing ones.
  */
-export function randomizeDailyDoubles(round: Game['rounds'][number], count: number, rand = Math.random): number {
-  for (const c of round.categories) for (const cl of c.clues) if (cl.type === 'dailyDouble') cl.type = 'standard';
+export function randomizeDailyDoubles(
+  round: Game['rounds'][number],
+  count: number,
+  rand = Math.random,
+  { keepExisting = false }: { keepExisting?: boolean } = {},
+): number {
+  const usedCats = new Set<number>();
+  let have = 0;
+  round.categories.forEach((c, ci) =>
+    c.clues.forEach((cl) => {
+      if (cl.type !== 'dailyDouble') return;
+      if (!keepExisting) cl.type = 'standard';
+      else if (!cl.empty) {
+        usedCats.add(ci);
+        have++;
+      }
+    }),
+  );
   const rows = round.values.length;
   const candidates: { cat: number; row: number; w: number }[] = [];
   round.categories.forEach((c, ci) =>
@@ -355,8 +392,7 @@ export function randomizeDailyDoubles(round: Game['rounds'][number], count: numb
     }),
   );
   let placed = 0;
-  const usedCats = new Set<number>();
-  while (placed < count) {
+  while (have + placed < count) {
     const pool = candidates.filter((c) => !usedCats.has(c.cat));
     if (!pool.length) break;
     const total = pool.reduce((a, c) => a + c.w, 0);
@@ -541,7 +577,14 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     session.dd = null;
     if (session.phase === 'clue') session.phase = 'board';
   }
-  session.currentRound = Math.min(session.currentRound, Math.max(0, to.rounds.length - 1));
+  // Rounds are matched by id, so deleting or reordering rounds in the editor keeps the host on the same one.
+  const roundAt = (i: number) => {
+    const j = to.rounds.findIndex((r) => r.id === from.rounds[i]?.id);
+    return j >= 0 ? j : null;
+  };
+  session.currentRound = ref?.round ?? roundAt(session.currentRound) ?? Math.min(session.currentRound, Math.max(0, to.rounds.length - 1));
+  if (session.introducedRounds)
+    session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);
   if (session.phase === 'tiebreaker' && !to.tiebreaker) session.phase = 'end';
   session.gameId = to.id;
 }
@@ -551,4 +594,10 @@ export function standings(session: Session): { player: Player; score: number }[]
   return session.players
     .map((player) => ({ player, score: score(session, player.id) }))
     .sort((a, b) => b.score - a.score);
+}
+
+/** Standings with each player's place, equal scores sharing one ("1, 1, 3"). */
+export function places(session: Session): { player: Player; score: number; place: number }[] {
+  const ranked = standings(session);
+  return ranked.map((r) => ({ ...r, place: ranked.findIndex((x) => x.score === r.score) + 1 }));
 }

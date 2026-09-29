@@ -4,7 +4,7 @@ import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToFinalReveal, backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
-  toggleUsed, usedTiles, describeStep,
+  toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName,
 } from './session';
 import { applyAction } from './tools';
 
@@ -131,6 +131,22 @@ describe('flow', () => {
     expect(dds[0]).toBe(0);
     expect(dds.every((n) => n <= 1)).toBe(true);
     expect(dds.reduce((x, y) => x + y)).toBe(3);
+  });
+
+  it('only adds the missing Daily Doubles when keeping the ones placed by hand', () => {
+    const { game } = setup();
+    const round = game.rounds[0];
+    const byHand = round.categories[1].clues[0];
+    byHand.type = 'dailyDouble';
+    expect(randomizeDailyDoubles(round, 3, () => 0.5, { keepExisting: true })).toBe(2);
+    expect(byHand.type).toBe('dailyDouble');
+    const dds = round.categories.map((c) => c.clues.filter((cl) => cl.type === 'dailyDouble').length);
+    expect(dds.reduce((x, y) => x + y)).toBe(3);
+    expect(dds[1]).toBe(1);
+    // Nothing missing: nothing moves.
+    const before = JSON.stringify(round);
+    expect(randomizeDailyDoubles(round, 3, () => 0.5, { keepExisting: true })).toBe(0);
+    expect(JSON.stringify(round)).toBe(before);
   });
 
   it('runs the round intro steps and detects tied leaders', () => {
@@ -292,13 +308,87 @@ describe('players mid-game', () => {
     expect(session.players.map((p) => p.id)).toEqual([a, b]);
     expect(session.final!.players).not.toContain(c);
     expect(session.final!.order).not.toContain(c);
-    expect(session.final!.wagers[c]).toBeUndefined();
     expect(session.currentPickerId).toBeUndefined();
     expect(score(session, c)).toBe(400);
     restorePlayer(session, c);
     expect(session.players.map((p) => p.id)).toEqual([a, b, c]);
+    expect(session.players[2]).not.toHaveProperty('inFinal');
     expect(session.removedPlayers).toEqual([]);
     expect(score(session, c)).toBe(400);
+    // Back in the final round, wager and all.
+    expect(session.final!.players).toContain(c);
+    expect(session.final!.order).toContain(c);
+    expect(session.final!.wagers[c]).toBe(100);
+  });
+
+  it('restores a player removed during the reveals at the end of the order, result kept', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    goToRound(session, game, 1);
+    for (let i = 0; i < 4; i++) finalNext(session);
+    const f = session.final!;
+    const first = f.order[0];
+    finalJudge(session, game, first, true);
+    removePlayer(session, first);
+    restorePlayer(session, first);
+    expect(f.order[f.order.length - 1]).toBe(first);
+    expect(f.results[first]).toBe('right');
+  });
+
+  it('leaves the final round alone when restoring a player who was never in it', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b], 400, 'x');
+    goToRound(session, game, 1);
+    expect(session.final!.players).toEqual([a, b]);
+    removePlayer(session, c);
+    restorePlayer(session, c);
+    expect(session.final!.players).toEqual([a, b]);
+  });
+});
+
+describe('host panel rules', () => {
+  it('opens the award row everywhere but the Daily Double splash, the final reveals and the end screen', () => {
+    const { game, session } = setup();
+    expect(awardOpen(session)).toBe(true);
+    const ref = { round: 0, cat: 0, row: 0 };
+    game.rounds[0].categories[0].clues[0].type = 'dailyDouble';
+    openClue(session, ref, game);
+    expect(awardOpen(session)).toBe(false);
+    session.dd!.stage = 'question';
+    expect(awardOpen(session)).toBe(true);
+    session.phase = 'final';
+    session.finalStep = 'wagers';
+    expect(awardOpen(session)).toBe(true);
+    session.finalStep = 'reveal';
+    expect(awardOpen(session)).toBe(false);
+    session.phase = 'end';
+    expect(awardOpen(session)).toBe(false);
+  });
+
+  it('knows when points were given for a clue', () => {
+    const { game, session, a } = setup();
+    const id = game.rounds[0].categories[0].clues[0].id;
+    expect(clueScored(session, id)).toBe(false);
+    applyScore(session, game, [a], 200, 'x', id);
+    expect(clueScored(session, id)).toBe(true);
+    undo(session);
+    expect(clueScored(session, id)).toBe(false);
+  });
+
+  it('gives tied players the same place', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b], 850, 'x');
+    expect(places(session).map((r) => r.place)).toEqual([1, 1, 3]);
+    applyScore(session, game, [c], 900, 'x');
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[c, 1], [a, 2], [b, 2]]);
+  });
+
+  it('names image-only categories for the host', () => {
+    const { game } = setup();
+    const cat = game.rounds[0].categories[0];
+    cat.title = '';
+    cat.image = 'img1';
+    expect(clueName(game, { round: 0, cat: 0, row: 1 })).toBe('🖼 Image category $400');
   });
 });
 
@@ -414,4 +504,32 @@ describe('resume with edits', () => {
     rebaseSession(session, edited, moreEdits);
     expect([session.currentClue, session.phase]).toEqual([null, 'board']);
   });
+
+  it('follows rounds by id when rounds are deleted or reordered', () => {
+    const { game, session } = setup();
+    game.rounds.push(newRound('Double', 2, [400, 800]), newRound('Triple', 2, [600, 1200]));
+    const played = clone(game);
+    session.introducedRounds = [0, 1];
+    goToRound(session, played, 1);
+    openClue(session, { round: 1, cat: 1, row: 0 }, played);
+    const openId = played.rounds[1].categories[1].clues[0].id;
+    // Round 1 deleted: "Double" is now round 0.
+    const edited = clone(played);
+    edited.rounds.splice(0, 1);
+    rebaseSession(session, played, edited);
+    expect(session.currentRound).toBe(0);
+    expect(session.currentClue).toEqual({ round: 0, cat: 1, row: 0 });
+    expect(getClueId(edited, session.currentClue!)).toBe(openId);
+    expect(session.introducedRounds).toEqual([0]);
+    // On the board (no clue open), the round is still followed by id.
+    backToBoard(session, edited);
+    const reordered = clone(edited);
+    reordered.rounds.reverse();
+    rebaseSession(session, edited, reordered);
+    expect(reordered.rounds[session.currentRound].name).toBe('Double');
+  });
 });
+
+function getClueId(game: ReturnType<typeof newGame>, ref: { round: number; cat: number; row: number }): string {
+  return game.rounds[ref.round].categories[ref.cat].clues[ref.row].id;
+}
