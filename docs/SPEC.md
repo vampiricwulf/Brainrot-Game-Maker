@@ -1,6 +1,6 @@
 # Jeopardy Builder "Brainrot": Product & Technical Spec
 
-Status: **Draft v1.2** · Last updated: 2026-09-28
+Status: **Draft v1.3** · Last updated: 2026-09-28
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
@@ -36,7 +36,8 @@ decides who gets points, and controls media.
 | Desktop `.exe` / `.app` | Tauri wrapper around the same build. Adds native file dialogs and large-file handling. | **P2** |
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.
-Everything must work from a `file://` URL: no server, and no network requests at runtime (fonts and libraries are bundled).
+Everything must work from a `file://` URL with no server. The app itself makes no network requests (fonts and libraries are
+bundled). The only exception is **online media embeds** (YouTube / media URLs, §5.5) that the author chooses to use.
 
 ---
 
@@ -76,6 +77,7 @@ Game {
   dicePresets: DicePreset[],
   media: MediaRef[],                // index of files in media/
   fonts: FontRef[],
+  tiebreaker?: Tiebreaker,
 }
 
 GameSettings {
@@ -84,6 +86,9 @@ GameSettings {
   deductOnWrong: boolean            // default true (enables quick "-value" buttons)
   defaultTimerSeconds?: number      // null = no timer
   finalTimerSeconds: number         // default 30
+  roundIntro: { titleCard: boolean, tileFill: boolean, categoryReveal: 'click' | 'auto' | 'off' }  // all on/'click' by default
+  timesUpAudio?: MediaRef           // optional user sound when a timer hits 0
+  maxPlayers: 8
   displayMode: 'dual' | 'single'    // default for this game; toggleable live
   currencySymbol: string            // "$", "", "pts", "🧠", ...
 }
@@ -91,7 +96,8 @@ GameSettings {
 PlayerTemplate { id, name, color /* hex, unique */ }   // no avatars: name + color only
 
 Round {
-  id, name,                         // "Jeopardy!", "Double Jeopardy", "Brainrot Round"
+  id, name,
+  dailyDoubleCount?: number,        // used by the "Randomize Daily Doubles" button                         // "Jeopardy!", "Double Jeopardy", "Brainrot Round"
   categories: Category[],           // columns: 1..10
   rowCount: number,                 // questions per category: 1..10
   values: number[],                 // default value per row, e.g. [200,400,600,800,1000]
@@ -109,17 +115,19 @@ Clue {
   answerSlide: Slide,               // the "response" (hidden from audience until revealed)
   hostNotes?: string,               // shown only in host view
   timerSeconds?: number | null,     // override
+  tileFace?: { text?: RichText, image?: MediaRef },  // optional custom tile face instead of the value ("???", emoji, meme)
   empty?: boolean                   // blank tile (not playable)
 }
 
 FinalRound { category: RichText, categorySlide: Slide, questionSlide: Slide, answerSlide: Slide, timerSeconds, music?: MediaRef }
+Tiebreaker { questionSlide: Slide, answerSlide: Slide, hostNotes? }   // optional, stored as Game.tiebreaker?
 
 Slide {
   background: { color?, gradient?, image?: MediaRef, fit: 'cover'|'contain' },
   elements: SlideElement[]          // z-ordered
 }
 
-SlideElement = TextEl | ImageEl | VideoEl | AudioEl | ShapeEl
+SlideElement = TextEl | ImageEl | VideoEl | AudioEl | ShapeEl | EmbedEl
   common: { id, x, y, w, h, rotation, opacity, zIndex, entrance?: Animation, locked? }
   // coordinates are in a fixed 1920x1080 logical space, scaled to fit
 
@@ -128,6 +136,8 @@ TextEl  { text: RichText, font, size, weight, italic, underline, color, align, v
           glow?:{color,blur}, background?:{color,padding,radius}, autoFit: boolean }
 ImageEl { media: MediaRef, edits: ImageEdits /* non-destructive */ , fit }
 VideoEl { media: MediaRef, autoplay, loop, muted, startAt?, endAt?, volume, showControls }
+EmbedEl { url: string, kind: 'youtube' | 'remoteVideo' | 'remoteAudio' | 'remoteImage',
+          autoplay, loop, muted, startAt?, endAt?, volume }   // online media; needs internet at game time
 AudioEl { media: MediaRef, autoplay, loop, startAt?, endAt?, volume, visible /* icon on slide or hidden */ }
 ShapeEl { shape: 'rect'|'ellipse'|'line'|'arrow', fill, stroke }
 
@@ -183,13 +193,18 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ### 5.1 Game setup
 - New game wizard: title, theme preset, number of rounds, and for each round the number of categories, rows, and default values.
 - **Values**: edit per round (row defaults), with per-clue overrides. A "×2 for this round" helper. Any integer is allowed, including negatives and 0.
-- **Players (default roster)**: add/remove, name, unique color. The color picker prevents duplicates and suggests a distinct palette. No avatars; the score bar shows name plates in each player's color.
+- **Players (default roster)**: add/remove (1–8 players), name, unique color. The color picker prevents duplicates and suggests a distinct palette. No avatars; the score bar shows name plates in each player's color.
 - Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default timer.
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.
 - Add/remove/reorder categories and rows (drag and drop). Duplicate a category. Mark a tile **empty**.
 - Tile badges show the clue type (DD, wheel, dice), whether media is attached, and whether the answer is missing.
+- **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
+  of them at random. Placement is weighted toward the lower (higher-value) rows like on TV, and it never picks empty or wheel/dice tiles.
+  Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
+- **Tile face**: by default a tile shows its value. Optionally, show custom text or an image instead ("???", an emoji,
+  a meme face). The value still drives the prefilled score.
 - Validation panel: empty clues, missing answers, broken media, and duplicate player colors.
 
 ### 5.3 Slide editor (question / answer / category header / Final)
@@ -217,6 +232,14 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   if the file won't play (e.g. HEVC `.mov`).
 - A media library panel lists everything in the game with its size and usage count. "Remove unused" is available.
 - Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
+- **Online media (optional)**: paste a YouTube link or a direct image/video/audio URL to create an `EmbedEl`.
+  The editor labels it "🌐 needs internet". The validation panel lists all online media, with a "check links" button, and
+  offers "download to file" guidance. Caveats shown to the author: the video may be removed or region-blocked, and ads may
+  appear. The YouTube IFrame player may refuse to play from a `file://` page (YouTube now requires a referrer), so the
+  M0 spike must verify this. Fallbacks: a tiny bundled local server mode (`http://localhost`) in the Tauri build, or
+  "open link in a popup window" for the audience capture.
+- YouTube embeds use the IFrame Player API so the standard controls (play/pause, seek, volume, start/end) work the same as for local media.
+  Standalone HTML export keeps them as links (not embedded).
 
 ### 5.6 Wheel & dice preset editor
 - **Wheel**: segments with label, color, and **weight** (the slice size and landing probability are proportional
@@ -266,14 +289,18 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
     rendered until the host clicks Reveal. A "hide all controls" key is available.
 
 ### 6.3 Game flow
-1. **Board**: category headers + value tiles. Used tiles are dimmed or blank. The score bar shows each player's name, color, and score.
+0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in
+   randomly with a cascading animation → categories are revealed one at a time on each host click (or automatically).
+1. **Board**: category headers + tiles (value or custom face). Used tiles are dimmed or blank. The score bar shows each
+   player's name, color, and score (up to 8 players, one row).
 2. Host clicks a tile. It zoom-transitions to the **Question slide**.
    - *Daily Double*: DD splash, then a wager input for the chosen player (limited to max(score, highest round value) by default; the host can override), then the question.
    - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
      so a tile can be purely "spin the punishment wheel" with no question at all.
    - *Dice clue*: the dice roll animation, then the outcome. The question slide is optional too.
    - For wheel/dice tiles with no question, the scoring panel stays available but is collapsed by default.
-3. Optional timer starts automatically or manually. Time's-up visual (no built-in SFX; a user audio file can be attached).
+3. Optional timer starts automatically or manually. At 0: flash/shake + "TIME'S UP" banner, plus the optional user
+   audio `timesUpAudio`. Nothing else happens automatically: no auto-reveal and no auto-scoring.
 4. **Scoring panel** (always available while a clue is open):
    - One toggle per player (colored chip). **Select zero, one, or many.**
    - Amount field, prefilled with the clue value (or the DD wager). Editable to any number.
@@ -290,7 +317,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 3. Question slide + timer (default 30 s) + optional music file.
 4. Answer reveal.
 5. **Per-player reveal**, one at a time in an order the host chooses: show the wager, then mark ✔ / ✘, and the score animates.
-6. Winner screen: final standings with player colors. Confetti.
+6. **Tie check**: if two or more players are tied for first, the host is offered:
+   - **Tiebreaker roll-off** between only the tied players (§6.6), or
+   - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored). Scored with the normal scoring panel, or
+   - **Declare co-winners**.
+   The same tie check runs at the end of the game when Final Jeopardy is off.
+7. Winner screen: final standings with player colors. Confetti.
 
 ### 6.5 Scores & players
 - Edit any player's score directly at any time (click the score, then type).
@@ -391,7 +423,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   < 100 MB of media (mostly images + short clips). Such a game loads in under 5 s from a `.jbr` or standalone HTML.
   Larger games must still work (media loaded lazily as blob URLs) but aren't optimized for.
 - **Reliability**: no data loss on crash (autosave). Undo for scores.
-- **Offline**: no runtime network calls.
+- **Offline**: no runtime network calls, except online media embeds the author opted into. A game with no embeds works fully offline.
 - **Accessibility**: keyboard-operable host controls, adequate contrast in default themes, and player colors
   paired with names (never color alone).
 - **Security**: all content is local. Uploaded SVG is sanitized, and rich text is escaped/sanitized.
@@ -402,12 +434,12 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 | # | Milestone | Scope |
 |---|---|---|
-| M0 | Spike | Vite + Svelte single-file build. Verify on `file://` that the two-window `postMessage`, IndexedDB, and video autoplay work in Chrome, Edge, and Firefox. Pick Konva vs DOM for slides. |
+| M0 | Spike | Vite + Svelte single-file build. Verify on `file://` that the two-window `postMessage`, IndexedDB, video autoplay, and YouTube embeds work in Chrome, Edge, and Firefox. Pick Konva vs DOM for slides. |
 | M1 | Core game | Data model, basic editor (rounds/categories/values/text clues), play mode single-window, scoring panel (multi/none/custom), used tiles, score log + undo, autosave. |
 | M2 | Streaming | Dual-window mode, audience view, reveal gating, keyboard shortcuts, `.jbr` save/load. |
-| M3 | Rich slides | Freeform slide editor, text styling/effects/animations, image/video/audio elements, playback controls, fonts. |
-| M4 | Game mechanics | Daily Double, timers, Final Jeopardy with wagers + per-player reveal, winner screen, mid-game player edits. |
-| M5 | Tools | Dice (custom sides, custom faces, presets), weighted wheel, wheel/dice clue types, global toolbar. |
+| M3 | Rich slides | Freeform slide editor, text styling/effects/animations, image/video/audio elements, online embeds (YouTube/URL), playback controls, fonts, custom tile faces. |
+| M4 | Game mechanics | Daily Double (manual + randomize), round intro animations, timers, Final Jeopardy with wagers + per-player reveal, tie handling (roll-off / tiebreaker clue / co-winners), winner screen, mid-game player edits. |
+| M5 | Tools | Dice (custom sides, custom faces, presets), weighted wheel, wheel/dice clue types, roll-off + current picker, roll log, global toolbar. |
 | M6 | Image editor & themes | Crop/rotate/flip/resize, filters, overlays, stickers, brush. Theme presets + overrides. |
 | M7 | Export & polish | Standalone HTML export, validation panel, JSON import/export, E2E tests, docs. |
 | M8 | Desktop (optional) | Tauri `.exe` packaging. |
@@ -435,7 +467,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 ---
 
 ## 13. Future Ideas (post-v1)
-- Built-in SFX pack; OBS browser-source mode via a local WebSocket; spreadsheet (CSV) import of clues;
+- Built-in SFX pack; OBS browser-source mode via a local WebSocket; spreadsheet (CSV) import of clues (not needed for v1);
   AI-assisted clue generation; a player "buzz order" helper where the host clicks names in the order heard;
   a statistics screen; game templates gallery.
 
@@ -462,7 +494,17 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | Players | Editable mid-game |
 | Stack | Svelte 5 + Vite, built to a single-file HTML |
 | Expected size | Small (< 100 MB media) |
+| Online media | Allowed (YouTube / URLs) as an opt-in, flagged "needs internet". Local files remain the default. |
+| Daily Double placement | Manual toggle + "Randomize" button (weighted to lower rows) |
+| Bulk clue entry | Not needed for v1 (editor + JSON import only) |
+| End-game ties | Offer a tiebreaker roll-off, a tiebreaker clue, or co-winners |
+| Max players | 8 (single-row score bar) |
+| Round intro | TV-style: title card, tile fill, click-to-reveal categories. Each step can be turned off. |
+| Tile face | Value by default; optional custom text/image |
+| Timer end | Visual + optional user sound. No auto-reveal. |
 
 ## 15. Open Questions
 1. **Slide rendering engine**: Konva (canvas; easy transforms, harder rich text/video) or DOM + `moveable`
    (native text/video, CSS effects). Leaning **DOM + moveable**. Decide in the M0 spike.
+2. **YouTube from `file://`**: confirm whether the IFrame embed plays when the page is opened from disk. If not, choose
+   between the Tauri/localhost fallback and a popup-window fallback.
