@@ -111,6 +111,30 @@ function wav(seconds) {
   for (let i = 0; i < n; i++) b[44 + i] = 128 + Math.round(40 * Math.sin((i / rate) * 2 * Math.PI * 440));
   return b;
 }
+/** A one-second WebM clip, recorded in the page (node has no video encoder). */
+async function webm() {
+  const b64 = await page.evaluate(async () => {
+    const c = Object.assign(document.createElement('canvas'), { width: 160, height: 90 });
+    const g = c.getContext('2d');
+    const rec = new MediaRecorder(c.captureStream(30), { mimeType: 'video/webm' });
+    const chunks = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    const stopped = new Promise((r) => (rec.onstop = r));
+    rec.start();
+    for (let i = 0; i < 30; i++) {
+      g.fillStyle = `hsl(${i * 12} 80% 50%)`;
+      g.fillRect(0, 0, 160, 90);
+      await new Promise((r) => setTimeout(r, 33));
+    }
+    rec.stop();
+    await stopped;
+    const bytes = new Uint8Array(await new Blob(chunks).arrayBuffer());
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin);
+  });
+  return Buffer.from(b64, 'base64');
+}
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 const scoreOf = (i) => page.locator('.panel .p').nth(i).locator('.score').innerText();
 
@@ -242,6 +266,16 @@ await page.mouse.move(c1.x + c1.width + 900, c1.y + c1.height + 40, { steps: 4 }
 await page.mouse.up();
 const c2 = await cropBox();
 assert(Math.abs(c2.width / c2.height - 1) < 0.03, `1:1 crop stays square when dragged past the image edge (${Math.round(c2.width)}×${Math.round(c2.height)})`);
+const seAt = center(await ie.locator('.ch.se').boundingBox());
+await page.mouse.move(...seAt);
+await page.mouse.down();
+await page.mouse.move(seAt[0] - 80, seAt[1], { steps: 4 });
+await page.mouse.up();
+const c3 = await cropBox();
+assert(
+  c3.width < c2.width - 40 && Math.abs(c3.width / c3.height - 1) < 0.03 && Math.abs(c3.x - c2.x) < 2 && Math.abs(c3.y - c2.y) < 2,
+  `1:1 crop: a corner dragged straight in shrinks the box, square, from the opposite corner (${Math.round(c2.width)} → ${Math.round(c3.width)}×${Math.round(c3.height)})`,
+);
 // Cancel asks before throwing the edits away, and the slide keeps the earlier result.
 await ie.getByRole('button', { name: 'Cancel' }).click();
 await ie.waitFor({ state: 'detached' });
@@ -310,6 +344,31 @@ await page.locator('.quick textarea').first().fill('Typed');
 // Undo: pressed at once, it never skips the latest change, and it survives switching slides.
 await page.getByRole('button', { name: '🅣 Text' }).click();
 assert((await hits()) === 2, 'added a second text box');
+// Shift pressed during a drag keeps the move on one axis. Held from the press, it only takes that
+// item out of the selection: the rest of the selection doesn't move.
+const secondBox = page.locator('.canvas .hit').last();
+const [sx0, sy0] = [await num('X'), await num('Y')];
+let from = center(await secondBox.boundingBox());
+await page.mouse.move(...from);
+await page.mouse.down();
+await page.mouse.move(from[0] + 30, from[1] + 5, { steps: 2 });
+await page.keyboard.down('Shift');
+await page.mouse.move(from[0] + 90, from[1] + 25, { steps: 3 });
+await page.mouse.up();
+await page.keyboard.up('Shift');
+assert((await num('X')) > sx0 + 20 && (await num('Y')) === sy0, 'Shift pressed during a drag keeps the move on one axis');
+await page.keyboard.down('Shift');
+await page.locator('.canvas .hit').first().click({ position: { x: 20, y: 20 } });
+from = center(await secondBox.boundingBox());
+await page.mouse.move(...from);
+await page.mouse.down();
+await page.mouse.move(from[0] + 80, from[1] + 40, { steps: 3 });
+await page.mouse.up();
+await page.keyboard.up('Shift');
+assert(
+  (await page.locator('.canvas .layer > .frame').count()) === 1 && (await num('X')) === 120 && (await num('Y')) === 90,
+  'Shift+press on a selected item deselects it without dragging the rest',
+);
 await page.locator('.canvas .hit').last().click();
 await page.keyboard.press('Delete');
 await page.keyboard.press('Control+z');
@@ -333,21 +392,29 @@ assert((await insp.count()) === 0, 'the inspector hides while previewing');
 await page.keyboard.press('Escape');
 assert((await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 && (await hits()) === 2, 'Esc stops the preview, and Backspace during it deleted nothing');
 
-// Preview plays sound: the audio clip plays unmuted, and stops with the preview.
+// Preview plays sound: the audio clip and the video play unmuted, and stop with the preview.
 await page.getByRole('button', { name: '🔊 Audio' }).click();
 await page.locator('.picker .item', { hasText: 'beep.wav' }).click();
+await page.getByRole('button', { name: '🎬 Video' }).click();
+[fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
+await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: await webm() });
+await page.locator('.canvas video').waitFor();
+const media = () => page.locator('.canvas audio, .canvas video');
 await page.getByRole('button', { name: '▶ Preview' }).click();
-await page.waitForFunction(() => { const a = document.querySelector('.canvas audio'); return a && !a.paused && a.currentTime > 0; });
-assert(await page.locator('.canvas audio').evaluate((a) => !a.muted), 'preview plays audio with sound');
+await page.waitForFunction(() => [...document.querySelectorAll('.canvas audio, .canvas video')].every((m) => !m.paused && m.currentTime > 0));
+assert((await media().evaluateAll((els) => els.map((m) => m.muted).join())) === 'false,false', 'preview plays the audio and the video with sound');
 await page.getByRole('button', { name: '■ Stop preview' }).click();
-assert(await page.locator('.canvas audio').evaluateAll((els) => els.every((a) => a.paused)), 'stopping the preview stops the audio');
+assert(await media().evaluateAll((els) => els.every((m) => m.paused)), 'stopping the preview stops them');
 await page.getByRole('button', { name: 'Preview sound is on' }).click();
 await page.getByRole('button', { name: '▶ Preview' }).click();
-assert(await page.locator('.canvas audio').evaluate((a) => a.muted), 'the preview sound toggle mutes it');
+assert((await media().evaluateAll((els) => els.map((m) => m.muted).join())) === 'true,true', 'the preview sound toggle mutes them');
 await page.getByRole('button', { name: '■ Stop preview' }).click();
 await page.getByRole('button', { name: 'Preview sound is off' }).click();
-await page.locator('.canvas .hit').last().click();
-await page.keyboard.press('Delete');
+for (let i = 0; i < 2; i++) {
+  await page.locator('.canvas .hit').last().click();
+  await page.keyboard.press('Delete');
+}
+assert((await hits()) === 2, 'removed the audio and the video again');
 
 // A full-bleed image: its rotate handle stays on screen; locked, it can't be deleted; Alt+click reaches what's under it.
 await page.getByRole('button', { name: '🖼 Image' }).click();
@@ -356,6 +423,33 @@ for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await posBo
 const cvBox = await rect(page.locator('.canvas'));
 const rot = await rect(page.locator('.frame .rot'));
 assert(rot.top >= cvBox.top && rot.bottom <= cvBox.bottom && rot.left >= cvBox.left && rot.right <= cvBox.right, 'a full-bleed image keeps its rotate handle inside the canvas');
+// The handles are drawn above the image's own hit box, so each one (the knob inside the image, the
+// inner half of a resize handle) is what the pointer gets, even just off the slide on the pasteboard.
+const onTopAt = (sel, dx, dy) =>
+  page.locator(sel).evaluateAll(
+    (els, [ox, oy]) =>
+      els.every((el) => {
+        const b = el.getBoundingClientRect();
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        const layer = el.closest('.layer').getBoundingClientRect();
+        // Towards the element's centre by (dx, dy), or away from it when negative.
+        const x = cx + Math.sign(layer.x + layer.width / 2 - cx) * ox;
+        const y = cy + Math.sign(layer.y + layer.height / 2 - cy) * oy;
+        return document.elementFromPoint(x, y) === el;
+      }),
+    [dx, dy],
+  );
+assert(await onTopAt('.frame .rot', 0, 0), "the rotate handle inside a full-bleed image isn't covered by the image");
+assert(await onTopAt('.frame .handle', 4, 4), 'every resize handle can be grabbed on its inner half');
+assert(await onTopAt('.frame .handle', -2, -2), 'and just off the slide (handles spill onto the pasteboard)');
+const knobAt = center(await page.locator('.frame .rot').boundingBox());
+await page.mouse.move(...knobAt);
+await page.mouse.down();
+await page.mouse.move(knobAt[0] + 150, knobAt[1] + 60, { steps: 5 });
+await page.mouse.up();
+assert((await num('Rotation°')) !== 0 && (await num('X')) === 0 && (await num('Y')) === 0, `dragging that handle rotates the image in place (${await num('Rotation°')}°)`);
+await posBox.getByLabel('Rotation°').fill('0');
 await posBox.getByLabel('Lock').check();
 await page.locator('.canvas .hit').last().click();
 await page.keyboard.press('Delete');
@@ -382,7 +476,7 @@ await page.keyboard.press('Control+c');
 await page.keyboard.press('Control+v');
 assert((await hits()) === 4 && (await xNow()) === xCopied + 30, 'a pasted copy lands 30px down-right of the original');
 await page.keyboard.press('Control+x');
-assert((await hits()) === 3, 'Ctrl+X cuts the selected item');
+assert((await hits()) === 3 && (await page.locator('.notice').innerText()).startsWith('Cut '), 'Ctrl+X cuts the selected item (and says so)');
 const pasteText = (text, type = 'text/plain') =>
   page.evaluate(([t, ty]) => {
     const dt = new DataTransfer();
@@ -401,6 +495,19 @@ await page.locator('.canvas').evaluate((c) => {
   c.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: r.x + 100, clientY: r.y + 100, bubbles: true, cancelable: true }));
 });
 assert((await hits()) === 6, 'a link dropped from another tab adds online media');
+// Preview is look-only (the add buttons are off), a YouTube embed keeps its own clicks, and a click
+// anywhere else on the slide goes back to editing.
+await page.getByRole('button', { name: '▶ Preview' }).click();
+assert(await page.getByRole('button', { name: '🅣 Text' }).isDisabled(), "the toolbar can't add items while previewing");
+const ytFrame = await rect(page.locator('.canvas iframe'));
+const ytHit = await page.evaluate(([x, y]) => {
+  const e = document.elementFromPoint(x, y);
+  return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : 'nothing';
+}, [ytFrame.x + ytFrame.width * 0.75, ytFrame.y + ytFrame.height * 0.75]); // clear of the dropped image
+assert(ytHit.startsWith('iframe'), `the YouTube embed can be clicked in the preview (${ytHit})`);
+const cvNow = await rect(page.locator('.canvas'));
+await page.mouse.click(cvNow.right - 4, cvNow.bottom - 4);
+assert((await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 && (await hits()) === 6, 'a click on the slide stops the preview');
 await page.getByRole('button', { name: 'Done' }).click();
 
 // ---------- Keyboard-first clue entry: type, Tab, type, Ctrl+Enter (category 6) ----------
@@ -410,7 +517,16 @@ for (const n of [1, 2, 3]) {
   await page.keyboard.type(`Q${n} question`);
   await page.keyboard.press('Tab');
   await page.keyboard.type(`A${n} answer`);
-  if (n === 3) break;
+  if (n === 3) {
+    // Clue 3's answer slide was never opened, yet the answer typed for it is an undo step there.
+    await page.getByRole('tab', { name: /Answer/ }).click();
+    const answerField = page.locator('.quick textarea').nth(1);
+    await page.keyboard.press('Control+z');
+    assert((await answerField.inputValue()) === '', 'Ctrl+Z on the answer slide undoes the answer typed while it was hidden');
+    await page.keyboard.press('Control+y');
+    assert((await answerField.inputValue()) === 'A3 answer', 'and Ctrl+Y puts it back');
+    break;
+  }
   await page.getByRole('tab', { name: /Answer/ }).click();
   await page.keyboard.press('Control+Enter');
   assert((await page.getByRole('tab', { name: /Question/ }).getAttribute('aria-selected')) === 'true', `Ctrl+Enter moves to the next clue on its Question slide`);
@@ -460,6 +576,13 @@ await page.keyboard.press('Delete');
 assert((await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 0 && (await counts()) === '3,1', 'Delete in an image editor opened from the Final only removes the sticker');
 await ie.getByRole('button', { name: 'Cancel' }).click();
 await ie.waitFor({ state: 'detached' });
+// Working on the tiebreaker, then switching the Final's Question/Answer tab: the shortcuts follow to the Final.
+await tbSe.locator('.canvas .hit').first().click();
+await page.getByRole('tab', { name: 'Answer', exact: true }).click();
+await page.keyboard.press('Control+a');
+const picked = async (se) => se.locator('.layer > .frame').count();
+assert((await picked(finSe)) === 1 && (await picked(tbSe)) === 0, "after switching the Final's tab, Ctrl+A selects on the Final, not the tiebreaker");
+await page.getByRole('tab', { name: 'Question', exact: true }).click();
 await page.getByLabel('Include a tiebreaker clue').uncheck();
 
 // Theme: Brainrot Neon with the score bar on top.
@@ -745,8 +868,9 @@ await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: 
 await page.locator('.cat textarea').first().waitFor();
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Memes');
 assert(true, 'reopened .jbr restores the game');
-assert((await page.getByRole('button', { name: /Media \(3\)/ }).count()) === 1, 'reopened .jbr includes its media files');
-await page.getByRole('button', { name: /Media \(3\)/ }).click();
+// pepe.png, its edited copy, beep.wav and clip.webm (unused files stay in the library until removed).
+assert((await page.getByRole('button', { name: /Media \(4\)/ }).count()) === 1, 'reopened .jbr includes its media files');
+await page.getByRole('button', { name: /Media \(4\)/ }).click();
 await page.locator('.card img').first().waitFor();
 assert((await page.locator('.card .missing').count()) === 0, 'media from the pack is loaded (no missing files)');
 
