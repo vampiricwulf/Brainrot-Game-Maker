@@ -733,9 +733,13 @@
           />
         {/if}
       </div>
-      {#if slide.background.image || slide.background.color}
-        <button class="ghost small" onclick={() => edit(() => (slide.background = {}))} title="Reset background">✕ BG</button>
-      {/if}
+      <!-- Always there (disabled when there's nothing to reset): a button appearing on the first colour
+           change shifted the toolbar, which closed the browser's colour picker mid-typing. -->
+      <button
+        class="ghost small"
+        onclick={() => edit(() => (slide.background = {}))}
+        disabled={!slide.background.image && !slide.background.color}
+        title="Reset background">✕ BG</button>
     </fieldset>
     <span class="spacer"></span>
     <button class="ghost small" onclick={copySlide}>Copy slide</button>

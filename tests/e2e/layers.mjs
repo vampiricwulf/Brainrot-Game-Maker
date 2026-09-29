@@ -46,6 +46,11 @@ try {
   const inspectorKind = async () =>
     (await page.locator('.insp textarea').count()) ? 'text' : (await page.locator('.insp h4', { hasText: 'Image' }).count()) ? 'image' : 'none';
 
+  // The Reset background button is always in the toolbar (disabled until there's a background): it used to
+  // appear on the first colour change, and that shift closed the browser's colour picker mid-typing.
+  const resetBg = page.getByRole('button', { name: '✕ BG' });
+  assert((await resetBg.count()) === 1 && (await resetBg.isDisabled()), 'the ✕ BG button is already there (disabled) before any background is set');
+
   // Write the question, then cover the whole slide with a picture.
   await page.locator('.canvas .hit').first().click();
   await page.locator('.insp textarea').fill('Under the picture');
