@@ -79,6 +79,7 @@ Game {
 }
 
 GameSettings {
+  rollOffDie: number                // sides of the die used for "who goes first" roll-offs; default 20
   allowNegativeScores: boolean      // default true
   deductOnWrong: boolean            // default true (enables quick "-value" buttons)
   defaultTimerSeconds?: number      // null = no timer
@@ -166,6 +167,7 @@ ScoreAction =
 Session {
   gameId, players: Player[] /* {id,name,color,score} */,
   used: Record<clueId, true>, currentRound, scoreLog: ScoreEvent[],
+  currentPickerId?: string,         // who picks the next clue (set by roll-off or by the host)
   finalWagers?: Record<playerId, number>
 }
 ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" */, clueId? , undone? }
@@ -249,7 +251,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 1. Open a game (`.jbr` or the embedded game in a standalone HTML).
 2. **Pre-game screen**: confirm or edit players (names, colors, starting scores), choose **Dual** or **Single**
    display mode, and choose "Resume previous session" if a saved session exists.
-3. Start. The board is shown.
+3. Start. The board is shown. The host can immediately run a **roll-off** (§6.6) to decide who picks first, or
+   set the current picker by hand.
 
 ### 6.2 Display modes (toggleable live)
 - **Dual window (default for streaming)**
@@ -299,6 +302,16 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ### 6.6 Global tools (available anytime from the toolbar)
 - **Dice roller**: quick d4–d100, a custom "NdS", or any saved preset. The result animates on the audience view.
   It is usable anytime, for anything (who goes first, how many seconds, punishment severity...).
+- **Roll-off ("who goes first")**: one click rolls one die per player, each die in that player's color, all
+  animating together on the full-screen overlay. The result is a ranked list. If players tie for the top spot, only
+  the tied players re-roll automatically until there is a single winner. The die size comes from
+  `settings.rollOffDie` (d20 default) and can be changed in the dialog. The host can include or exclude players
+  before rolling (e.g. only the tied players at Final, or a tiebreaker between two). The roll-off is written to the roll log.
+  - **Result**: the winner becomes the **current picker**.
+- **Current picker marker**: the score bar highlights the player who picks the next clue (a glowing outline or arrow in
+  their color). The host can move it anytime by clicking a player's name plate, or with `P` then the player's number. Optional
+  setting: after an award, move the marker automatically to the player who was awarded (TV-style control of the board).
+  The marker is display-only and never blocks the host from picking any tile.
 - **Wheel**: any saved preset, or a quick ad-hoc wheel from a text list. Weighted random.
   Uses `crypto.getRandomValues`, and the spin animation lands on the pre-selected result.
 - **Placement**: the wheel and dice always appear as a **full-screen overlay** on the audience view while spinning
@@ -331,6 +344,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 | `Esc` / `B` | Back to board (marks tile used) |
 | `T` | Start/pause timer |
 | `D` | Dice roller · `W` wheel · `S` scoreboard overlay |
+| `O` | Roll-off (who goes first) |
+| `P`, then `1`–`9` | Set current picker to player N |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo score change |
 | `H` | Hide host controls (single-window mode) |
 | `F` | Full-screen |
@@ -409,6 +424,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 - [ ] mp4/webm/mp3/wav/ogg files play with full controls. Autoplay works when enabled.
 - [ ] A wheel with weights 1/1/8 lands on the heavy segment ~80% of the time over 1,000 simulated spins.
 - [ ] A d37 and a custom-face die can be created, saved, and rolled.
+- [ ] A 4-player roll-off with a forced tie re-rolls only the tied players, then sets the winner as the current picker.
 - [ ] A punishment wheel with free-text outcomes (no score actions) spins, reveals the details text/GIF on the audience view,
       can be tagged with a player, and appears in the roll log with no score change.
 - [ ] A die with 6 custom text faces and a "2d6" range mapping both roll and reveal the correct outcome.
@@ -435,6 +451,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | Mechanics | Daily Doubles, negative scores/deductions, Final wagers, timers |
 | Daily Double cap | TV rules (max(score, highest board value)), host can override |
 | Wheel/dice results | General-purpose outcomes (punishments, dares, prompts, numbers) with optional details/media/timer. Score actions are a rare, optional extra, always host-confirmed. |
+| Who goes first | One-click roll-off (a die per player, in their color; ties re-roll). The winner becomes the current picker. |
 | Punishment tracking | Roll log only (optional player tag). No on-stream tally or active-effect badges. |
 | Wheel/dice placement | Full-screen overlay on the audience view |
 | Score bar | Name + color only (no avatars) |
