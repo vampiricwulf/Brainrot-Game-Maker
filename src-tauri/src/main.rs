@@ -17,9 +17,11 @@
 //   process, a direct child of this exe, which is what Discord needs to capture it (tested on Windows).
 //
 // The fix must never keep the app from working:
-// - a start that WebView2 refuses with one set of switches falls back to the other (start_main);
+// - a start that WebView2 keeps refusing with one set of switches alternates with the other
+//   (start_main, Plan::attempt);
 // - if WebView2's browser process crashes with the fix on, the app restarts without it and the
-//   host page offers to try it again (watch_for_crash);
+//   host page offers to try it again (watch_for_crash). Until then the fix's switches aren't used,
+//   not even as a fallback, so a crash can't become a restart loop;
 // - it can be switched off from outside the app: an empty `discord-audio-fix-off` file in the
 //   settings folder, or starting the app with --no-audio-fix (see README.md).
 
@@ -34,7 +36,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
-use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 /// Unique labels for windows opened by the page (matches the "popup-*" capability).
 static POPUPS: AtomicUsize = AtomicUsize::new(0);
@@ -65,14 +67,26 @@ const FIX_OFF_FILES: [&str; 2] = ["discord-audio-fix-off", "discord-audio-fix-of
 const LEGACY_FIX_ON_FILE: &str = "discord-audio-fix";
 
 /// Written when WebView2's browser process dies with the fix on. Until the host tries the fix
-/// again, the app starts without it; the saved setting itself is left alone.
+/// again, the app starts without it (and never falls back to it); the saved setting itself is
+/// left alone.
 const FIX_CRASHED_FILE: &str = "discord-audio-fix-crashed";
 
 /// Attempts at starting the host window with the wanted switches before trying the other ones,
 /// RETRY_DELAY apart (about 4 s): right after a restart, the old copy's WebView2 processes can
 /// still hold the data folder with the old switches.
 const START_TRIES: u32 = 17;
+/// Further attempts, alternating between the other switches and the wanted ones (about 3 s more),
+/// before giving up: either set may work once the old processes are gone.
+const MORE_TRIES: u32 = 12;
 const RETRY_DELAY: Duration = Duration::from_millis(250);
+
+/// How long the page's autosave may lag behind an edit, plus a margin: a restart the page didn't
+/// ask for waits this long first (the page's own restartApp waits the same).
+const AUTOSAVE_WAIT: Duration = Duration::from_millis(800);
+
+/// Event for the host page: a second launch with --no-audio-fix switched the fix off. Payload: whether
+/// the app restarts without it (see src/lib/desktop.svelte.ts).
+const FIX_OFF_EVENT: &str = "audio-fix-off";
 
 fn is_audience(url: &Url) -> bool {
     url.fragment() == Some("audience")
@@ -144,14 +158,66 @@ fn has_no_fix_switch<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> boo
 struct Plan {
     /// The fix is switched on (saved).
     fix_saved: bool,
-    /// It's switched on, but WebView2 crashed with it: this run starts without it.
+    /// WebView2 crashed with the fix's switches and the host hasn't tried them again since. This run
+    /// doesn't use them at all, not even as a fallback, so no crash can turn into a restart loop.
+    crash_noted: bool,
+}
+
+/// One way to start the host window: its WebView2 switches, and what the page is told about them.
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct Start {
+    /// The switches (None: wry's defaults).
+    args: Option<&'static str>,
+    /// The fix is switched on, but WebView2 wouldn't start with it this time.
+    failed: bool,
+    /// The fix is switched on, but this run is without it because WebView2 crashed with it.
     crashed: bool,
 }
 
 impl Plan {
-    /// The switches to start with (None: wry's defaults).
-    fn args(&self) -> Option<&'static str> {
-        (self.fix_saved && !self.crashed).then_some(AUDIO_FIX_ARGS)
+    /// The start this run asks for.
+    fn wanted(&self) -> Start {
+        let crashed = self.fix_saved && self.crash_noted;
+        Start {
+            args: (self.fix_saved && !crashed).then_some(AUDIO_FIX_ARGS),
+            failed: false,
+            crashed,
+        }
+    }
+
+    /// The other set of switches, for when WebView2 keeps refusing the wanted ones (the previous
+    /// copy's processes can hold the data folder with the other set for a few seconds). None:
+    /// there's nothing else to try.
+    fn fallback(&self) -> Option<Start> {
+        if self.wanted().args.is_some() {
+            // Switched on but started without it: the page says so and offers a restart.
+            Some(Start {
+                args: None,
+                failed: true,
+                crashed: false,
+            })
+        } else if self.crash_noted {
+            // Those switches just crashed WebView2: never again until the host asks for them.
+            None
+        } else {
+            // Switched off but started with it: the page offers the restart that turns it off.
+            Some(Start {
+                args: Some(AUDIO_FIX_ARGS),
+                failed: false,
+                crashed: false,
+            })
+        }
+    }
+
+    /// Attempt `n` (from 0): START_TRIES with the wanted switches, then MORE_TRIES alternating
+    /// between the fallback (first) and the wanted ones. None: give up.
+    fn attempt(&self, n: u32) -> Option<Start> {
+        if n >= START_TRIES + MORE_TRIES {
+            return None;
+        }
+        let other = n >= START_TRIES && (n - START_TRIES).is_multiple_of(2);
+        let fallback = if other { self.fallback() } else { None };
+        Some(fallback.unwrap_or_else(|| self.wanted()))
     }
 }
 
@@ -161,7 +227,7 @@ fn plan_start(dir: Option<&Path>, no_fix_switch: bool) -> Plan {
     let Some(dir) = dir else {
         return Plan {
             fix_saved: !no_fix_switch,
-            crashed: false,
+            crash_noted: false,
         };
     };
     drop_legacy_flag_in(dir);
@@ -170,10 +236,9 @@ fn plan_start(dir: Option<&Path>, no_fix_switch: bool) -> Plan {
             eprintln!("couldn't save the Discord audio fix as off: {err}");
         }
     }
-    let fix_saved = !no_fix_switch && fix_wanted_in(dir);
     Plan {
-        fix_saved,
-        crashed: fix_saved && crashed_in(dir),
+        fix_saved: !no_fix_switch && fix_wanted_in(dir),
+        crash_noted: crashed_in(dir),
     }
 }
 
@@ -248,21 +313,20 @@ fn capture_problem() -> Option<serde_json::Value> {
     None
 }
 
-/// Facts the host page reads at startup (see src/lib/desktop.svelte.ts). `args`: the switches this
-/// run uses. `fix_saved`: the fix is switched on. `fix_failed`: it's switched on, but WebView2
-/// wouldn't start with it this time (usually the previous copy's WebView2 processes were still
-/// closing), so this run is without it and a restart should bring it back. `fix_crashed`: it's
-/// switched on, but this run is without it because WebView2 crashed with it last time.
-/// Switched off while `args` are the fix's: WebView2 wouldn't start without them this time.
-fn page_flags(args: Option<&str>, fix_saved: bool, fix_failed: bool, fix_crashed: bool) -> String {
+/// Facts the host page reads at startup (see src/lib/desktop.svelte.ts). `start`: how this run
+/// started: its switches, and whether the fix is off for this run because WebView2 wouldn't start
+/// with it this time (usually the previous copy's WebView2 processes were still closing; a restart
+/// should bring it back) or because it crashed with it. `fix_saved`: the fix is switched on.
+/// Switched off while the switches are the fix's: WebView2 wouldn't start without them this time.
+fn page_flags(start: Start, fix_saved: bool) -> String {
     let mut js = format!("window.__JB_AUDIO_FIX = {fix_saved};");
-    if fix_failed {
+    if start.failed {
         js.push_str("window.__JB_AUDIO_FIX_FAILED = true;");
     }
-    if fix_crashed {
+    if start.crashed {
         js.push_str("window.__JB_AUDIO_FIX_CRASHED = true;");
     }
-    if let Some(args) = args {
+    if let Some(args) = start.args {
         js.push_str(&format!(
             "window.__JB_BROWSER_ARGS = {};",
             serde_json::Value::from(args)
@@ -325,6 +389,42 @@ fn open_popup(
     }
 }
 
+/// A native message box, for what a windowed app can't otherwise say (its console output goes
+/// nowhere). Blocks until it's closed.
+#[cfg(windows)]
+fn message_box(text: &str) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
+    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let (text, title) = (wide(text), wide("Jeopardy Builder"));
+    // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            text.as_ptr(),
+            title.as_ptr(),
+            MB_OK | MB_ICONERROR,
+        );
+    }
+}
+
+/// A message box on its own thread, for callers on the UI thread: its modal loop must not run
+/// inside their event handler. `then` runs once it's closed.
+#[cfg(windows)]
+fn message_box_later(text: String, then: impl FnOnce() + Send + 'static) {
+    std::thread::spawn(move || {
+        message_box(&text);
+        then();
+    });
+}
+
+/// Windows is shutting down or signing out, which can end WebView2's processes before this exe.
+#[cfg(windows)]
+fn windows_shutting_down() -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_SHUTTINGDOWN};
+    // SAFETY: reads one system metric; no pointers involved.
+    unsafe { GetSystemMetrics(SM_SHUTTINGDOWN) != 0 }
+}
+
 /// With the fix on, the sound (and any audio software that hooks into it) runs inside WebView2's
 /// browser process, so a crash there takes every window down: they go blank. Then note the crash
 /// and restart: the next start leaves the fix off (plan_start) and the host page offers to try it
@@ -349,12 +449,34 @@ fn watch_for_crash(window: &tauri::WebviewWindow) {
             if kind != COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED {
                 return Ok(());
             }
+            // Not a crash: Windows ends WebView2 along with everything else.
+            if windows_shutting_down() {
+                return Ok(());
+            }
             eprintln!("WebView2's browser process exited with the Discord audio fix on");
-            // Without the note, the next start would use the fix again and could crash the same way.
-            match settings_dir(&app).map(|dir| mark_crashed_in(&dir)) {
-                Some(Ok(())) => app.request_restart(),
-                Some(Err(err)) => eprintln!("couldn't note the crash: {err}"),
-                None => eprintln!("couldn't note the crash: no settings folder"),
+            // Without the note, the next start would use the fix again and could crash the same way,
+            // over and over: so no restart without it.
+            let noted = settings_dir(&app)
+                .ok_or_else(|| "no settings folder".to_string())
+                .and_then(|dir| mark_crashed_in(&dir).map_err(|err| err.to_string()));
+            match noted {
+                Ok(()) => app.request_restart(),
+                Err(why) => {
+                    eprintln!("couldn't note the crash: {why}");
+                    let app = app.clone();
+                    message_box_later(
+                        format!(
+                            "Jeopardy Builder's windows went blank: Microsoft Edge WebView2 stopped while the \
+                             Discord audio fix was on, and Jeopardy Builder couldn't note that to start without \
+                             the fix next time.\n\n\
+                             Jeopardy Builder closes now. Open it again with --no-audio-fix at the end of a \
+                             shortcut's Target, e.g. \"C:\\Users\\you\\Downloads\\jeopardy-builder-portable.exe\" \
+                             --no-audio-fix\n\n\
+                             Details: {why}"
+                        ),
+                        move || app.exit(0),
+                    );
+                }
             }
             Ok(())
         }));
@@ -405,64 +527,88 @@ fn build_main(app: &AppHandle, args: Option<&'static str>, page_script: &str) ->
 
 /// Open the host window. WebView2 only starts with other switches than the ones its running
 /// processes use once those have quit, and right after a restart the old copy's may still hold the
-/// data folder. So each start is retried, then falls back to the other set of switches: neither the
-/// fix nor turning it off may keep the app from starting.
+/// data folder. So each start is retried, then alternates with the other set of switches
+/// (Plan::attempt): neither the fix nor turning it off may keep the app from starting.
 fn start_main(app: &AppHandle, plan: &Plan) -> tauri::Result<()> {
-    let first = plan.args();
-    let script = page_flags(first, plan.fix_saved, false, plan.crashed);
+    // The page is always told about the switches the attempt that worked used.
+    let build = |start: Start| build_main(app, start.args, &page_flags(start, plan.fix_saved));
     // Without the WebView2 runtime every attempt fails, and Tauri says so in a message box each
     // time: one attempt, so there's one message.
     if tauri::webview_version().is_err() {
-        return build_main(app, first, &script);
+        return build(plan.wanted());
     }
     // Every error is retried, not only the data-folder conflict: its error code isn't documented
     // for every WebView2 version, and nothing else shows a message on the way.
-    let mut attempt = 1;
-    let err = loop {
-        match build_main(app, first, &script) {
-            Ok(()) => return Ok(()),
-            Err(err) if attempt < START_TRIES => {
-                eprintln!("main window didn't start ({err}), trying again");
-                attempt += 1;
-                std::thread::sleep(RETRY_DELAY);
-            }
-            Err(err) => break err,
+    let (mut start, mut n) = (plan.wanted(), 0);
+    loop {
+        let Err(err) = build(start) else {
+            return Ok(());
+        };
+        n += 1;
+        let Some(next) = plan.attempt(n) else {
+            tell_start_failed(&err);
+            return Err(err);
+        };
+        if next.args == start.args {
+            eprintln!("main window didn't start ({err}), trying again");
+        } else {
+            let with = if next.args.is_some() {
+                "with"
+            } else {
+                "without"
+            };
+            eprintln!("main window didn't start ({err}), trying {with} the Discord audio fix");
         }
-    };
-    let other = match first {
-        Some(_) => None,
-        None => Some(AUDIO_FIX_ARGS),
-    };
-    let with = if other.is_some() { "with" } else { "without" };
-    eprintln!("starting {with} the Discord audio fix: {err}");
-    // Switched on but started without it: the page says so and offers a restart. Switched off but
-    // started with it: the page offers the restart that turns it off.
-    let script = page_flags(other, plan.fix_saved, first.is_some(), false);
-    build_main(app, other, &script).inspect_err(tell_start_failed)
+        start = next;
+        std::thread::sleep(RETRY_DELAY);
+    }
 }
 
 /// Last resort when the host window won't open at all: a windowed app's error is otherwise silent.
 fn tell_start_failed(err: &tauri::Error) {
     eprintln!("the main window didn't start: {err}");
     #[cfg(windows)]
-    {
-        use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
-        let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
-        let text = wide(&format!(
-            "Jeopardy Builder couldn't open its window: Microsoft Edge WebView2 didn't start.\n\n\
-             Wait a few seconds and open Jeopardy Builder again. If it still won't open, restart your PC.\n\n\
-             Details: {err}"
-        ));
-        let title = wide("Jeopardy Builder");
-        // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
-        unsafe {
-            MessageBoxW(
-                std::ptr::null_mut(),
-                text.as_ptr(),
-                title.as_ptr(),
-                MB_OK | MB_ICONERROR,
-            );
-        }
+    message_box(&format!(
+        "Jeopardy Builder couldn't open its window: Microsoft Edge WebView2 didn't start.\n\n\
+         Wait a few seconds and open Jeopardy Builder again. If it still won't open, restart your PC.\n\n\
+         Details: {err}"
+    ));
+}
+
+/// A second launch with --no-audio-fix, e.g. because this copy's windows are blank: save the fix as
+/// off, tell the host page, and if this copy runs with the fix's switches, restart it without them.
+fn fix_off_from_second_launch(app: &AppHandle) {
+    let saved = settings_dir(app)
+        .ok_or_else(|| "no settings folder".to_string())
+        .and_then(|dir| save_fix_in(&dir, false).map_err(|err| err.to_string()));
+    if let Err(why) = saved {
+        eprintln!("couldn't save the Discord audio fix as off: {why}");
+        // A restart would start with the fix again. A copy started with the switch runs without it.
+        #[cfg(windows)]
+        message_box_later(
+            format!(
+                "Jeopardy Builder couldn't switch the Discord audio fix off.\n\n\
+                 Close Jeopardy Builder (end it in Task Manager if its window is blank), then open it \
+                 again with --no-audio-fix.\n\n\
+                 Details: {why}"
+            ),
+            || {},
+        );
+        return;
+    }
+    let restart = ACTIVE_ARGS.get().is_some();
+    // So the page's Sound help and warnings match the saved setting.
+    if let Err(err) = app.emit_to("main", FIX_OFF_EVENT, restart) {
+        eprintln!("couldn't tell the page the Discord audio fix is off: {err}");
+    }
+    if restart {
+        let app = app.clone();
+        // Its own thread: this runs on the UI thread, which must keep going meanwhile.
+        std::thread::spawn(move || {
+            // Like the page's own restart: the last autosave gets written first.
+            std::thread::sleep(AUTOSAVE_WAIT);
+            app.request_restart();
+        });
     }
 }
 
@@ -475,22 +621,8 @@ fn main() {
     tauri::Builder::default()
         // First, so a second launch hands over to the running app before anything else starts.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            // Started again with --no-audio-fix, e.g. because the running copy's windows are blank:
-            // turn the fix off and restart that copy without it.
             if has_no_fix_switch(&args) {
-                match settings_dir(app).map(|dir| save_fix_in(&dir, false)) {
-                    Some(Ok(())) if ACTIVE_ARGS.get().is_some() => {
-                        app.request_restart();
-                        return;
-                    }
-                    Some(Ok(())) => {}
-                    Some(Err(err)) => {
-                        eprintln!("couldn't save the Discord audio fix as off: {err}")
-                    }
-                    None => {
-                        eprintln!("couldn't save the Discord audio fix as off: no settings folder")
-                    }
-                }
+                fix_off_from_second_launch(app);
             }
             if let Some(main) = app.get_webview_window("main") {
                 let _ = main.unminimize();
@@ -628,24 +760,48 @@ mod tests {
         clear_crashed_in(&folder).expect("clearing twice is fine");
     }
 
+    /// The fix switched on (the default), switched off, and switched on or off after a crash with it.
+    const FIX_ON: Plan = Plan {
+        fix_saved: true,
+        crash_noted: false,
+    };
+    const FIX_OFF: Plan = Plan {
+        fix_saved: false,
+        crash_noted: false,
+    };
+    const CRASHED: Plan = Plan {
+        fix_saved: true,
+        crash_noted: true,
+    };
+    const OFF_AFTER_A_CRASH: Plan = Plan {
+        fix_saved: false,
+        crash_noted: true,
+    };
+
+    /// Starting with the fix's switches, or with wry's defaults.
+    const WITH: Start = Start {
+        args: Some(AUDIO_FIX_ARGS),
+        failed: false,
+        crashed: false,
+    };
+    const WITHOUT: Start = Start {
+        args: None,
+        failed: false,
+        crashed: false,
+    };
+
     #[test]
     fn plan_by_default() {
         let dir = TempDir::new("plan-default");
         dir.touch("discord-audio-fix");
         let plan = plan_start(Some(&dir.0), false);
-        assert_eq!(
-            plan,
-            Plan {
-                fix_saved: true,
-                crashed: false
-            }
-        );
-        assert_eq!(plan.args(), Some(AUDIO_FIX_ARGS));
+        assert_eq!(plan, FIX_ON);
+        assert_eq!(plan.wanted(), WITH);
         assert!(
             !dir.has("discord-audio-fix"),
             "the old opt-in file is removed"
         );
-        assert_eq!(plan_start(None, false).args(), Some(AUDIO_FIX_ARGS));
+        assert_eq!(plan_start(None, false), FIX_ON);
     }
 
     #[test]
@@ -653,41 +809,104 @@ mod tests {
         let dir = TempDir::new("plan-crash");
         dir.touch("discord-audio-fix-crashed");
         let plan = plan_start(Some(&dir.0), false);
+        assert_eq!(plan, CRASHED);
         assert_eq!(
-            plan,
-            Plan {
-                fix_saved: true,
-                crashed: true
-            }
+            plan.wanted(),
+            Start {
+                crashed: true,
+                ..WITHOUT
+            },
+            "starts without the fix, and the page is told why"
         );
-        assert_eq!(plan.args(), None, "starts without the fix");
         assert!(
             dir.has("discord-audio-fix-crashed"),
             "until the host tries again"
         );
-        // Switched off, the crash doesn't matter.
+        // Switched off, the page isn't told about the crash, but the note still counts.
         dir.touch("discord-audio-fix-off");
-        assert_eq!(
-            plan_start(Some(&dir.0), false),
-            Plan {
-                fix_saved: false,
-                crashed: false
-            }
-        );
+        let plan = plan_start(Some(&dir.0), false);
+        assert_eq!(plan, OFF_AFTER_A_CRASH);
+        assert_eq!(plan.wanted(), WITHOUT);
     }
 
     #[test]
     fn plan_with_the_no_fix_switch() {
         let dir = TempDir::new("plan-switch");
-        let plan = plan_start(Some(&dir.0), true);
-        assert_eq!(plan.args(), None);
-        assert!(!plan.fix_saved && !plan.crashed);
+        assert_eq!(plan_start(Some(&dir.0), true), FIX_OFF);
         assert!(
             dir.has("discord-audio-fix-off"),
             "it's saved, so the next normal start is without it too"
         );
-        assert_eq!(plan_start(Some(&dir.0), false).args(), None);
-        assert_eq!(plan_start(None, true).args(), None);
+        assert_eq!(plan_start(Some(&dir.0), false), FIX_OFF);
+        assert_eq!(plan_start(None, true), FIX_OFF);
+    }
+
+    #[test]
+    fn fallback_with_the_fix_on() {
+        // Switched on but started without it: the page says it didn't start this time.
+        assert_eq!(
+            FIX_ON.fallback(),
+            Some(Start {
+                failed: true,
+                ..WITHOUT
+            })
+        );
+    }
+
+    #[test]
+    fn fallback_with_the_fix_off() {
+        // Switched off but started with it: the page offers the restart that turns it off.
+        assert_eq!(FIX_OFF.fallback(), Some(WITH));
+    }
+
+    #[test]
+    fn no_fallback_to_switches_that_crashed() {
+        // They'd watch for crashes again: another crash, another restart, over and over.
+        assert_eq!(CRASHED.fallback(), None);
+        assert_eq!(OFF_AFTER_A_CRASH.fallback(), None);
+    }
+
+    #[test]
+    fn attempts() {
+        for plan in [FIX_ON, FIX_OFF, CRASHED, OFF_AFTER_A_CRASH] {
+            let starts: Vec<Start> = (0..).map_while(|n| plan.attempt(n)).collect();
+            assert_eq!(
+                starts.len(),
+                (START_TRIES + MORE_TRIES) as usize,
+                "{plan:?}"
+            );
+            let (first, more) = starts.split_at(START_TRIES as usize);
+            assert!(
+                first.iter().all(|start| *start == plan.wanted()),
+                "{plan:?}: the wanted switches first"
+            );
+            match plan.fallback() {
+                Some(other) => {
+                    assert_ne!(other.args, plan.wanted().args, "{plan:?}");
+                    // Then both sets in turn, the other one first.
+                    for (i, start) in more.iter().enumerate() {
+                        let expected = if i % 2 == 0 { other } else { plan.wanted() };
+                        assert_eq!(*start, expected, "{plan:?}: attempt {}", first.len() + i);
+                    }
+                }
+                None => assert!(
+                    more.iter().all(|start| *start == plan.wanted()),
+                    "{plan:?}: only the wanted switches"
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn no_attempt_uses_switches_that_crashed() {
+        for plan in [CRASHED, OFF_AFTER_A_CRASH] {
+            assert!(
+                (0..)
+                    .map_while(|n| plan.attempt(n))
+                    .all(|start| start.args.is_none()),
+                "{plan:?}"
+            );
+        }
     }
 
     #[test]
@@ -705,7 +924,7 @@ mod tests {
 
     #[test]
     fn page_flags_without_the_fix() {
-        let js = page_flags(None, false, false, false);
+        let js = page_flags(FIX_OFF.wanted(), false);
         assert!(js.contains("window.__JB_AUDIO_FIX = false;"));
         assert!(!js.contains("__JB_AUDIO_FIX_FAILED"));
         assert!(!js.contains("__JB_AUDIO_FIX_CRASHED"));
@@ -716,7 +935,7 @@ mod tests {
     #[test]
     fn page_flags_with_the_fix() {
         // The default.
-        let js = page_flags(Some(AUDIO_FIX_ARGS), true, false, false);
+        let js = page_flags(FIX_ON.wanted(), true);
         assert!(js.contains("window.__JB_AUDIO_FIX = true;"));
         assert!(js.contains(&format!("window.__JB_BROWSER_ARGS = \"{AUDIO_FIX_ARGS}\";")));
         assert!(!js.contains("__JB_AUDIO_FIX_FAILED"));
@@ -726,16 +945,17 @@ mod tests {
     #[test]
     fn page_flags_switched_off_but_started_with_the_fix() {
         // WebView2 wouldn't start without the switches this time: the page offers the restart that turns it off.
-        let js = page_flags(Some(AUDIO_FIX_ARGS), false, false, false);
+        let js = page_flags(FIX_OFF.fallback().expect("a fallback"), false);
         assert!(js.contains("window.__JB_AUDIO_FIX = false;"));
         assert!(js.contains(&format!("window.__JB_BROWSER_ARGS = \"{AUDIO_FIX_ARGS}\";")));
         assert!(!js.contains("__JB_AUDIO_FIX_FAILED"));
+        assert!(!js.contains("__JB_AUDIO_FIX_CRASHED"));
     }
 
     #[test]
     fn page_flags_when_the_fix_did_not_start() {
         // Switched on, but this run started without the switches: the page says so and offers a restart.
-        let js = page_flags(None, true, true, false);
+        let js = page_flags(FIX_ON.fallback().expect("a fallback"), true);
         assert!(js.contains("window.__JB_AUDIO_FIX = true;"));
         assert!(js.contains("window.__JB_AUDIO_FIX_FAILED = true;"));
         assert!(!js.contains("__JB_AUDIO_FIX_CRASHED"));
@@ -745,11 +965,15 @@ mod tests {
     #[test]
     fn page_flags_after_a_crash() {
         // Switched on, but WebView2 crashed with it: this run is without it, and the page offers to try again.
-        let js = page_flags(None, true, false, true);
+        let js = page_flags(CRASHED.wanted(), true);
         assert!(js.contains("window.__JB_AUDIO_FIX = true;"));
         assert!(js.contains("window.__JB_AUDIO_FIX_CRASHED = true;"));
         assert!(!js.contains("__JB_AUDIO_FIX_FAILED"));
         assert!(!js.contains("__JB_BROWSER_ARGS"));
+        // Switched off after the crash: nothing to report.
+        let js = page_flags(OFF_AFTER_A_CRASH.wanted(), false);
+        assert!(js.contains("window.__JB_AUDIO_FIX = false;"));
+        assert!(!js.contains("__JB_AUDIO_FIX_CRASHED"));
     }
 
     #[test]
@@ -758,8 +982,13 @@ mod tests {
             for saved in [false, true] {
                 for failed in [false, true] {
                     for crashed in [false, true] {
-                        let js = page_flags(args, saved, failed, crashed);
-                        let case = format!("{args:?} {saved} {failed} {crashed}: {js}");
+                        let start = Start {
+                            args,
+                            failed,
+                            crashed,
+                        };
+                        let js = page_flags(start, saved);
+                        let case = format!("{start:?} {saved}: {js}");
                         assert!(
                             js.contains(&format!("window.__JB_AUDIO_FIX = {saved};")),
                             "{case}"

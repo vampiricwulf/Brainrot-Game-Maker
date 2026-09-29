@@ -35,6 +35,22 @@ export const desktop = $state({
   restarting: false,
 });
 
+/**
+ * The app was opened again with --no-audio-fix, which saves the fix as off (see src-tauri/src/main.rs). `restart`: the
+ * app runs with the fix, so it restarts without it in a moment.
+ */
+function fixSwitchedOff(restart: boolean): void {
+  desktop.fixSaved = false;
+  if (restart) desktop.restarting = true;
+}
+
+// Only the host window gets the native side's flags, and only it is told when the fix is switched off from outside.
+if (inTauri() && w?.__JB_AUDIO_FIX !== undefined) {
+  import('@tauri-apps/api/event')
+    .then(({ listen }) => listen<boolean>('audio-fix-off', (e) => fixSwitchedOff(!!e.payload)))
+    .catch((err) => console.warn('Not listening for the Discord audio fix being switched off', err));
+}
+
 /** The switches every new app window must be created with (undefined: the defaults). */
 export function browserArgs(): string | undefined {
   return w?.__JB_BROWSER_ARGS || undefined;

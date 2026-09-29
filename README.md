@@ -261,8 +261,8 @@ help:
   Windows with Discord). Turning it off or on needs a restart (**↻ Restart now**). Switching it off is saved as the empty
   file `discord-audio-fix-off` in `%APPDATA%\com.jeopardybuilder.brainrot\` (delete it to turn the fix back on).
 - The fix never keeps the app from starting. Right after a restart, WebView2 can refuse a changed setting for a few
-  seconds while the previous copy's WebView2 processes close, so the app keeps trying for about 4 seconds, then starts
-  with the other setting for that run:
+  seconds while the previous copy's WebView2 processes close, so the app keeps trying for about 4 seconds, then tries
+  both settings in turn for about 3 more seconds and runs with the first one that starts:
   - fix on but started without it: the host panel and the Sound help say so, and **↻ Restart now** tries again. If it
     keeps happening, share your whole screen with sound, or run the show in Chrome or Edge;
   - fix switched off but started with it: the Sound help offers the restart that turns it off.
@@ -270,8 +270,11 @@ help:
   If WebView2 won't start either way, a message box says so.
 - If WebView2 crashes with the fix on (both windows go blank: with the fix, the sound and any audio software that hooks
   into it run inside WebView2's main process), the app restarts without the fix. The host panel and the Sound help say "The
-  Discord audio fix was turned off for this run because WebView2 crashed with it", and it stays off until you press
-  **↻ Try it again**. Your setting itself isn't changed.
+  Discord audio fix was turned off for this run because WebView2 crashed with it", and it stays off (not even tried when
+  a start fails) until you press **↻ Try it again**, or untick and tick the fix again. Your setting itself isn't
+  changed. Windows shutting down or signing out with the app open doesn't count as a crash. If the app can't note the
+  crash (its settings folder can't be written), a message box says so and the app closes: open it with
+  `--no-audio-fix` (see below).
 
 **Trying the audio fix on an older build** (before it was built in): close Jeopardy Builder, open a Command Prompt
 and run the two lines below; for the second one, drag the `.exe` into the Command Prompt window to paste its path, then
@@ -289,21 +292,29 @@ listed as "*game name* · Audience") with Sound on and check that a viewer hears
 
 ### If the app won't open or its window stays blank
 
-Turn the Discord audio fix off from outside the app, in either of these ways, then open Jeopardy Builder normally:
+Turn the Discord audio fix off from outside the app, in either of these ways:
 
-- **Command Prompt**: press Win+R, type `cmd` and press Enter, then paste this line and press Enter. It creates the
-  settings folder (if it isn't there yet) with the empty `discord-audio-fix-off` file in it:
+- **Command Prompt**: first close the blank window, or end **Jeopardy Builder** in Task Manager if it won't close. The
+  file is only read when the app starts, and opening the app while a copy is still running just brings that copy to the
+  front. Then press Win+R, type `cmd` and press Enter, paste this line and press Enter. It creates the settings folder
+  (if it isn't there yet) with the empty `discord-audio-fix-off` file in it:
 
   ```bat
   mkdir "%APPDATA%\com.jeopardybuilder.brainrot" 2>nul & type nul > "%APPDATA%\com.jeopardybuilder.brainrot\discord-audio-fix-off"
   ```
 
-  A `discord-audio-fix-off.txt` made with Explorer's **New › Text Document** in that folder works too.
-- **Shortcut**: right-click the `.exe` › **Create shortcut** (on Windows 11, under **Show more options**), then
-  right-click the shortcut › **Properties** and add ` --no-audio-fix` at the very end of **Target**, after the closing
-  quote if there is one, e.g. `"C:\Users\you\Downloads\jeopardy-builder-portable.exe" --no-audio-fix`. Open Jeopardy
-  Builder once with this shortcut: it saves the fix as off, and if a blank copy is still open, restarts that copy
-  without the fix. A Command Prompt works the same way: `"C:\path\to\jeopardy-builder-portable.exe" --no-audio-fix`.
+  A `discord-audio-fix-off.txt` made with Explorer's **New › Text Document** in that folder works too. Then open
+  Jeopardy Builder normally.
+- **Shortcut** (works with a blank copy still open): right-click the `.exe` › **Create shortcut** (on Windows 11, under
+  **Show more options**), then right-click the shortcut › **Properties** and add ` --no-audio-fix` at the very end of
+  **Target**, after the closing quote if there is one, e.g.
+  `"C:\Users\you\Downloads\jeopardy-builder-portable.exe" --no-audio-fix`. Open Jeopardy Builder once with this
+  shortcut: it saves the fix as off, and if a blank copy is still open, restarts that copy without the fix a moment
+  later. A Command Prompt works the same way: `"C:\path\to\jeopardy-builder-portable.exe" --no-audio-fix`.
+
+If the window is still blank, a WebView2 process of the blank copy may be stuck: in Task Manager, end **Jeopardy
+Builder** and any **Microsoft Edge WebView2** entries (other apps that use WebView2 may need restarting afterwards), or
+restart the PC. Then open Jeopardy Builder again.
 
 To turn the fix back on later, tick it in the 🔊 Sound help (or delete the file).
 

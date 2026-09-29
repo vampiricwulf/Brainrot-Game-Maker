@@ -215,8 +215,8 @@
         {#if fixError}<p class="bad small">{fixError}</p>{/if}
         <p class="muted small">
           If Jeopardy Builder ever won't open or its window stays blank, start it once with <code>--no-audio-fix</code> (e.g. at the
-          end of a shortcut's Target), or put an empty file named <code>discord-audio-fix-off</code> in
-          <code>%APPDATA%\com.jeopardybuilder.brainrot</code>. Either one turns the fix off.
+          end of a shortcut's Target; this also restarts a blank copy that's still open), or close it and put an empty file named
+          <code>discord-audio-fix-off</code> in <code>%APPDATA%\com.jeopardybuilder.brainrot</code>. Either one turns the fix off.
         </p>
       </section>
     {/if}

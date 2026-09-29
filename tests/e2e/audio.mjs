@@ -284,6 +284,8 @@ try {
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
     await context.addInitScript((o) => {
       window.__calls = [];
+      // Callbacks the page handed over (event listeners among them), by id.
+      window.__callbacks = {};
       const windows = ['main'];
       window.__TAURI_INTERNALS__ = {
         invoke: async (cmd, args) => {
@@ -292,7 +294,11 @@ try {
           if (cmd === 'plugin:window|get_all_windows') return windows;
           return null;
         },
-        transformCallback: () => Math.floor(Math.random() * 1e9),
+        transformCallback: (callback) => {
+          const id = Math.floor(Math.random() * 1e9);
+          window.__callbacks[id] = callback;
+          return id;
+        },
         metadata: { currentWindow: { label: 'main' }, currentWebview: { windowLabel: 'main', label: 'main' } },
       };
       if (location.hash === '#audience') return;
@@ -328,6 +334,16 @@ try {
       },
       [cmd, message],
     );
+  /** An event from the native side, to the page's listeners for it. */
+  const emit = (page, event, payload) =>
+    page.evaluate(
+      ([e, p]) => {
+        const listeners = window.__calls.filter(([c, a]) => c === 'plugin:event|listen' && a.event === e);
+        for (const [, a] of listeners) window.__callbacks[a.handler]({ event: e, id: 1, payload: p });
+        return listeners.length;
+      },
+      [event, payload],
+    );
   const fixWarning = (page, text) => page.getByRole('alert').filter({ hasText: text });
   const FAILED_WARNING = "The Discord audio fix didn't start this time";
   const CRASHED_WARNING = 'The Discord audio fix was turned off for this run because WebView2 crashed with it';
@@ -354,6 +370,11 @@ try {
     await page.waitForTimeout(300);
     assert((await aud.locator('.activate').count()) === 0, 'desktop app: no "click once" banner in the audience window');
     assert((await page.getByText('Click the audience window once').count()) === 0, 'desktop app: the host gets no "click the audience window" warning');
+    const fixOffListeners = async (p) => (await calls(p, 'plugin:event|listen')).filter((a) => a.event === 'audio-fix-off').length;
+    assert(
+      (await fixOffListeners(page)) === 1 && (await fixOffListeners(aud)) === 0,
+      'only the host window listens for the fix being switched off from outside',
+    );
 
     await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
     const help = dialog(page);
@@ -499,6 +520,43 @@ try {
     await warning.getByRole('button', { name: '↻ Try it again' }).click();
     await called(page, 'retry_audio_fix');
     assert(true, "the host warning's Try it again restarts with the fix (retry_audio_fix)");
+    await context.close();
+  }
+
+  {
+    // Opened again with --no-audio-fix while this run is without the fix (here: after a crash). The native side saved it
+    // as off and needs no restart: the page's warnings and Sound help follow the saved setting.
+    const context = await desktopContext({ fix: true, crashed: true });
+    const page = watch(await context.newPage(), 'desktop (switched off from outside)');
+    await toPregame(page, httpUrl);
+    await fixWarning(page, CRASHED_WARNING).waitFor();
+    assert((await emit(page, 'audio-fix-off', false)) === 1, 'the host page listens for the fix being switched off from outside');
+    await fixWarning(page, CRASHED_WARNING).waitFor({ state: 'detached' });
+    assert(true, 'the crash warning goes away');
+    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    const help = dialog(page);
+    assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows it as off');
+    assert(
+      (await help.getByText(/crashed|Restart Jeopardy Builder to turn it/).count()) === 0 &&
+        (await help.getByRole('button', { name: /Try it again|Restart now|Restarting/ }).count()) === 0,
+      'no Try it again (it would start without the fix), and no restart needed',
+    );
+    assert((await calls(page, 'set_audio_fix')).length === 0 && (await calls(page, 'retry_audio_fix')).length === 0, 'the page saves nothing itself');
+    await context.close();
+  }
+  {
+    // The same while this run uses the fix: the native side restarts the app without it after a moment.
+    const context = await desktopContext({ fix: true, active: true });
+    const page = watch(await context.newPage(), 'desktop (switched off from outside, restarting)');
+    await toPregame(page, httpUrl);
+    await emit(page, 'audio-fix-off', true);
+    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    const help = dialog(page);
+    await help.getByText('Restart Jeopardy Builder to turn it off.').waitFor();
+    assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows it as off');
+    const restarting = help.getByRole('button', { name: 'Restarting…' });
+    assert((await restarting.count()) === 1 && (await restarting.isDisabled()), 'the page shows the restart under way');
+    assert((await calls(page, 'restart_app')).length === 0, 'the native side restarts by itself (the page may be blank)');
     await context.close();
   }
 
