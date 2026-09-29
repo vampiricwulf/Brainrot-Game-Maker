@@ -193,7 +193,8 @@
         {#key `${clue.id}-${side}`}
           <SlideEditor
             slide={side === 'q' ? clue.questionSlide : clue.answerSlide}
-            styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope)}
+            styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
+            stylecategory
             placeholder={side === 'q' ? 'Click to type the question' : 'Click to type the answer'}
             badge={side === 'a' ? 'ANSWER' : undefined}
             fill

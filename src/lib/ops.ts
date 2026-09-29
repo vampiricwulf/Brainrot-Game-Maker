@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { newCategory, newClue, newId, type Game, type Round, type Slide, type TextEl } from './model';
+import { newCategory, newClue, newId, type Category, type Game, type Round, type Slide, type TextEl } from './model';
 
 export function setRowCount(round: Round, rows: number): void {
   rows = Math.max(1, Math.min(10, Math.floor(rows)));
@@ -65,18 +65,18 @@ export function copyTextStyle(from: TextEl, to: TextEl): void {
 
 /**
  * The main text elements that "Use this style elsewhere" would restyle (never `from` itself).
- * scope: `${'round' | 'game'}-${'q' | 'a' | 'qa'}`.
+ * scope: `${'cat' | 'round' | 'game'}-${'q' | 'a' | 'qa'}`; 'cat' needs the category (or finds nothing).
  */
-export function textStyleTargets(game: Game, round: Round | null, from: TextEl, scope: string): TextEl[] {
+export function textStyleTargets(game: Game, round: Round | null, from: TextEl, scope: string, category?: Category | null): TextEl[] {
   const [where, which] = scope.split('-');
-  const rounds = where === 'game' || !round ? game.rounds : [round];
+  const cats =
+    where === 'cat' ? (category ? [category] : []) : (where === 'game' || !round ? game.rounds : [round]).flatMap((r) => r.categories);
   const slides: Slide[] = [];
-  for (const r of rounds)
-    for (const c of r.categories)
-      for (const cl of c.clues) {
-        if (which.includes('q')) slides.push(cl.questionSlide);
-        if (which.includes('a')) slides.push(cl.answerSlide);
-      }
+  for (const c of cats)
+    for (const cl of c.clues) {
+      if (which.includes('q')) slides.push(cl.questionSlide);
+      if (which.includes('a')) slides.push(cl.answerSlide);
+    }
   if (where === 'game') {
     if (which.includes('q')) slides.push(game.final.questionSlide);
     if (which.includes('a')) slides.push(game.final.answerSlide);

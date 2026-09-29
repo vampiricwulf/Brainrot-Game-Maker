@@ -73,6 +73,7 @@
   let {
     slide,
     styletargets,
+    stylecategory = false,
     placeholder,
     badge,
     fill = false,
@@ -80,6 +81,8 @@
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
     styletargets?: (el: TextEl, scope: string) => TextEl[];
+    /** Offer "this category" in "Use this style elsewhere" (a clue's slides, not the Final's). */
+    stylecategory?: boolean;
     /** Shown in the slide's main text box while it's empty. */
     placeholder?: string;
     /** A ribbon in the canvas corner, e.g. "ANSWER". */
@@ -855,6 +858,7 @@
             }
           }}
           onapplystyle={styletargets ? applyStyle : undefined}
+          {stylecategory}
           onuploadfont={() => {
             replacing = null;
             picker = 'font';

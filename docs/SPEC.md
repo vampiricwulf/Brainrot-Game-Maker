@@ -489,7 +489,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 ### Implementation notes (differences from the original plan)
 - **Slide templates** became *Copy slide / Paste slide* plus *Use this style elsewhere* (copies a text look to every question
-  and/or answer in a round or the game).
+  and/or answer in a category, a round or the game; a clue starts on its own category).
 - **Wheel/dice outcomes** support a label, details text, media (image/GIF/video/audio), a countdown and an optional score
   effect. A fully custom reveal *slide* per outcome (`revealSlide`) is not implemented.
 - **Category header slides** (`Category.headerSlide`) are not implemented. Category names are styled by the theme.

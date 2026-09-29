@@ -15,6 +15,14 @@ describe('use this style elsewhere', () => {
     // Whole game: both rounds plus the final.
     expect(textStyleTargets(game, round, from, 'game-a')).toHaveLength(30 + 4 + 1);
     expect(textStyleTargets(game, null, from, 'game-q')).toHaveLength(30 + 4 + 1 - 1);
+    // This category: its 5 clues (another category's clues are left alone).
+    const cat = round.categories[0];
+    expect(textStyleTargets(game, round, from, 'cat-q', cat)).toHaveLength(5 - 1);
+    expect(textStyleTargets(game, round, from, 'cat-a', cat)).toHaveLength(5);
+    const both = textStyleTargets(game, round, from, 'cat-qa', cat);
+    expect(both).toHaveLength(5 * 2 - 1);
+    expect(both).not.toContain(mainText(round.categories[1].clues[0].questionSlide));
+    expect(textStyleTargets(game, round, from, 'cat-q', null)).toHaveLength(0);
   });
 
   it('restyles the targets and can put their old styles back, keeping the words', () => {

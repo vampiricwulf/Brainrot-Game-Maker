@@ -17,6 +17,7 @@
     ondelete,
     onreplace,
     onapplystyle,
+    stylecategory = false,
     onuploadfont,
     oneditimage,
     onedit,
@@ -32,6 +33,8 @@
     onreplace: () => void;
     /** "Use this style elsewhere" (not offered when missing). */
     onapplystyle?: (el: TextEl, scope: string) => void;
+    /** Offer "this category" scopes for it. */
+    stylecategory?: boolean;
     onuploadfont: () => void;
     oneditimage?: () => void;
     /** Makes a discrete change (locking) by calling `change`, so an undo history can record it as one step. */
@@ -65,7 +68,8 @@
     el.entrance = type ? { type: type as EntranceType, delay: el.entrance?.delay ?? 0, duration: el.entrance?.duration ?? 0.6 } : undefined;
   }
 
-  let applyScope = $state('round-q');
+  // svelte-ignore state_referenced_locally
+  let applyScope = $state(stylecategory ? 'cat-q' : 'round-q');
   const num = (v: string, fallback = 0) => (v === '' || isNaN(+v) ? fallback : +v);
 </script>
 
@@ -183,6 +187,11 @@
         <h4>Use this style elsewhere</h4>
         <div class="row">
           <select bind:value={applyScope} aria-label="Which slides get this style">
+            {#if stylecategory}
+              <option value="cat-q">Questions in this category</option>
+              <option value="cat-a">Answers in this category</option>
+              <option value="cat-qa">Questions + answers in this category</option>
+            {/if}
             <option value="round-q">Questions in this round</option>
             <option value="round-a">Answers in this round</option>
             <option value="round-qa">Questions + answers in this round</option>

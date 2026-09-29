@@ -213,16 +213,16 @@ try {
   await page.keyboard.press('Control+z');
   assert(!(await lockBox.isChecked()) && (await rowIndex()) === 0, 'a second Ctrl+Z undoes ticking it (and nothing before it)');
 
-  // "Use this style elsewhere" copies the text look to the other questions in the round (it used to crash
-  // on text without an outline or glow).
+  // "Use this style elsewhere" copies the text look to the other questions in the category, the default
+  // (it used to crash on text without an outline or glow).
   await layers.filter({ hasText: 'Under the picture' }).locator('.name').click();
   await page.locator('.insp input[type=color]').first().fill('#ff00aa');
   await page.locator('.insp').getByRole('button', { name: 'Apply', exact: true }).click();
-  await page.getByText(/Style applied to 29 slides/).waitFor();
-  assert(true, '"Use this style elsewhere" restyles the other 29 questions');
+  await page.getByText(/Style applied to 4 slides/).waitFor();
+  assert(true, '"Use this style elsewhere" restyles the other 4 questions in the category');
   await page.getByRole('button', { name: 'Next ▶' }).click();
   await page.locator('.canvas .hit').first().click();
-  assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue got the new text color');
+  assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue (down the category) got the new text color');
 
   // Resize a picture, then drag it straight away. The resize used to leave a text selection on the page,
   // and the next press started the browser's own drag of it: a 'no' cursor and the move stopped early.

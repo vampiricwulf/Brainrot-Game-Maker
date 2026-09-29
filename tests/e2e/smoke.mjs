@@ -492,7 +492,13 @@ assert((await insp.getByText('Locked — unlock to delete').count()) === 1, 'Alt
 await page.mouse.click(...mid);
 await page.keyboard.up('Alt');
 assert((await insp.getByLabel('Text', { exact: true }).count()) === 1, 'Alt+click selects the text box under the image');
-// "Use this style elsewhere" asks first and can be undone.
+// "Use this style elsewhere" asks first and can be undone. A clue offers its category first (5 clues each).
+const scopeBox = page.getByRole('combobox', { name: 'Which slides get this style' });
+assert((await scopeBox.inputValue()) === 'cat-q', 'Use this style elsewhere starts on "Questions in this category"');
+await scopeBox.selectOption('cat-qa');
+await insp.getByRole('button', { name: 'Apply' }).click();
+assert(/^Restyle the main text on (9|10) slides\?/.test(confirms.at(-1)), `"Questions + answers in this category" restyles that category's slides (${confirms.at(-1)})`);
+await page.locator('.notice').getByRole('button', { name: 'Undo' }).click();
 await page.getByRole('combobox', { name: 'Which slides get this style' }).selectOption('round-q');
 await insp.getByRole('button', { name: 'Apply' }).click();
 assert(/^Restyle the main text on \d+ slides\?/.test(confirms.at(-1)) && (await page.locator('.notice').innerText()).includes('Style applied'), 'Use this style elsewhere confirms, then offers Undo');
