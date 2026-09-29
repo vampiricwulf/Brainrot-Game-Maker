@@ -268,6 +268,83 @@ async fn retry_audio_fix(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// The folders the app writes to, so the host page can say where its data is (nothing is hidden):
+/// `data` is WebView2's data folder, which holds the autosave, stored media and the page's settings
+/// (Tauri's default for the webview: %LOCALAPPDATA%\com.jeopardybuilder.brainrot on Windows);
+/// `settings` holds the Discord audio fix's files (%APPDATA%\com.jeopardybuilder.brainrot), and only
+/// exists once one was written.
+fn data_folder(app: &AppHandle, which: &str) -> Option<PathBuf> {
+    match which {
+        "data" => app.path().app_local_data_dir().ok(),
+        "settings" => settings_dir(app),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+fn data_folders(app: AppHandle) -> serde_json::Value {
+    let describe = |which: &str| {
+        let path = data_folder(&app, which);
+        serde_json::json!({
+            "path": path.as_ref().map(|p| p.display().to_string()),
+            "exists": path.as_ref().is_some_and(|p| p.is_dir()),
+        })
+    };
+    serde_json::json!({ "data": describe("data"), "settings": describe("settings") })
+}
+
+/// Show one of the app's own folders (see data_folder) in the file manager. Only those: the page
+/// can't have any other path opened.
+#[tauri::command]
+fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
+    let dir = data_folder(&app, &which).ok_or("That folder wasn't found.")?;
+    if !dir.is_dir() {
+        return Err(format!("{} doesn't exist yet.", dir.display()));
+    }
+    #[cfg(windows)]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let program = "xdg-open";
+    // Explorer's exit code says nothing about whether the window opened, so only a failed start counts.
+    std::process::Command::new(program)
+        .arg(&dir)
+        .spawn()
+        .map(|_| ())
+        .map_err(|err| format!("Couldn't open {}: {err}", dir.display()))
+}
+
+/// The project's own pages (ℹ About's links); `open_link` opens nothing else.
+const REPO_URL: &str = "https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot";
+
+fn is_repo_link(url: &str) -> bool {
+    url == REPO_URL
+        || url
+            .strip_prefix(REPO_URL)
+            .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// Open one of the project's pages (source, releases, issues) in the default browser rather than
+/// in an app window.
+#[tauri::command]
+fn open_link(url: String) -> Result<(), String> {
+    if !is_repo_link(&url) {
+        return Err("Only the project's own pages can be opened this way.".into());
+    }
+    #[cfg(windows)]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let program = "xdg-open";
+    std::process::Command::new(program)
+        .arg(&url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|err| format!("Couldn't open {url}: {err}"))
+}
+
 /// Whether this process runs elevated ("Run as administrator").
 #[cfg(windows)]
 fn is_elevated() -> bool {
@@ -636,7 +713,10 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             set_audio_fix,
             restart_app,
-            retry_audio_fix
+            retry_audio_fix,
+            data_folders,
+            open_data_folder,
+            open_link
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -688,6 +768,17 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn open_link_only_opens_the_projects_pages() {
+        assert!(is_repo_link(REPO_URL));
+        assert!(is_repo_link(&format!("{REPO_URL}/releases/latest")));
+        assert!(is_repo_link(&format!("{REPO_URL}/issues")));
+        assert!(!is_repo_link(&format!("{REPO_URL}.evil.example/x")));
+        assert!(!is_repo_link(&format!("{REPO_URL}-fork")));
+        assert!(!is_repo_link("https://example.com/"));
+        assert!(!is_repo_link("file:///C:/Windows/System32/calc.exe"));
     }
 
     #[test]

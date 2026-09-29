@@ -161,6 +161,17 @@ const tile = (i) => page.locator('.stage-box .board .tile').nth(i);
 const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used') && e.getAttribute('aria-disabled') === 'true');
 
 await page.goto(url);
+// ℹ About: version, build and links; in a browser it explains the data stays in this browser (no folders).
+await page.getByRole('button', { name: 'ℹ About' }).click();
+const about = page.getByRole('dialog', { name: 'About Jeopardy Builder' });
+const aboutText = await about.innerText();
+assert(/Version\s+\d+\.\d+\.\d+ \(single HTML file\)/.test(aboutText) && /Build\s+(\w{7}, )?\d{4}-\d\d-\d\d/.test(aboutText), 'About shows the version and build');
+assert(
+  aboutText.includes("kept in this browser's storage") && (await about.getByRole('button', { name: '📂 Open folder' }).count()) === 0 && (await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0,
+  'in a browser, About says the data stays in the browser (no folders, no desktop notice)',
+);
+await page.keyboard.press('Escape');
+await about.waitFor({ state: 'detached' });
 await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
 for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
 assert((await page.locator('.player').count()) === 3, 'added 3 players');

@@ -94,3 +94,44 @@ export async function restartApp(retry = false): Promise<string | null> {
     return typeof err === 'string' ? err : "Couldn't restart. Close Jeopardy Builder and open it again.";
   }
 }
+
+export interface DataFolder {
+  path: string | null;
+  exists: boolean;
+}
+
+/**
+ * Where the desktop app keeps things (see data_folders in src-tauri/src/main.rs): `data` holds the autosave and stored
+ * media, `settings` the Discord audio fix's files. Null outside the desktop app or if the app can't say.
+ */
+export async function dataFolders(): Promise<{ data: DataFolder; settings: DataFolder } | null> {
+  if (!inTauri()) return null;
+  try {
+    const f = await invoke<{ data: DataFolder; settings: DataFolder } | null>('data_folders');
+    return f?.data ? f : null;
+  } catch (err) {
+    console.warn('Could not get the data folders', err);
+    return null;
+  }
+}
+
+/** Show one of the app's folders in File Explorer. Resolves to an error message, or null. */
+export async function openDataFolder(which: 'data' | 'settings'): Promise<string | null> {
+  try {
+    await invoke('open_data_folder', { which });
+    return null;
+  } catch (err) {
+    return typeof err === 'string' ? err : "Couldn't open the folder.";
+  }
+}
+
+/** Open one of the project's pages (source, releases, issues) in the default browser. False if the app couldn't. */
+export async function openLink(url: string): Promise<boolean> {
+  try {
+    await invoke('open_link', { url });
+    return true;
+  } catch (err) {
+    console.warn('Could not open the link', err);
+    return false;
+  }
+}

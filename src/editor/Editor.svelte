@@ -12,6 +12,8 @@
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
+  import AboutDialog from './AboutDialog.svelte';
+  import { inTauri } from '../lib/platform';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
 
@@ -101,6 +103,26 @@
   }
 
   const problems = $derived(validate(game));
+
+  let about = $state(false);
+  // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
+  const NOTICE_KEY = 'jb.dataNoticeSeen';
+  let dataNotice = $state(inTauri() && !seen());
+  function seen(): boolean {
+    try {
+      return localStorage.getItem(NOTICE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+  function dismissNotice(): void {
+    dataNotice = false;
+    try {
+      localStorage.setItem(NOTICE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  }
 </script>
 
 <div class="editor">
@@ -117,14 +139,23 @@
     </button>
     <span class="spacer"></span>
     {#if app.storageOk}
-      <span class="muted autosave">Autosaved in this browser</span>
+      <span class="muted autosave">Autosaved {inTauri() ? 'on this PC' : 'in this browser'}</span>
     {:else}
       <span class="autosave warn" title="This browser won't let a file opened from disk store data. Use Save often.">
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
+    <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
     <button class="primary" onclick={onplay}>▶ Play</button>
   </header>
+  {#if dataNotice}
+    <div class="data-notice" role="status">
+      <span>Jeopardy Builder saves your autosave and media in a folder on this PC.</span>
+      <button class="small" onclick={() => ((about = true), dismissNotice())}>ℹ See where</button>
+      <button class="small ghost" onclick={dismissNotice}>Got it</button>
+    </div>
+  {/if}
+  {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
 
   <div class="body">
     <nav>
@@ -194,6 +225,18 @@
     width: min(420px, 40vw);
   }
   .autosave {
+    font-size: 12px;
+  }
+  .data-notice {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 16px;
+    font-size: 13px;
+    background: rgba(79, 124, 255, 0.12);
+    border-bottom: 1px solid var(--accent);
+  }
+  .data-notice .small {
     font-size: 12px;
   }
   .warn {

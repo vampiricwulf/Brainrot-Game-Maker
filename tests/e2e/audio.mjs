@@ -292,6 +292,11 @@ try {
           window.__calls.push([cmd, JSON.parse(JSON.stringify(args ?? {}))]);
           if (cmd === 'plugin:webview|create_webview_window') windows.push(args.options.label);
           if (cmd === 'plugin:window|get_all_windows') return windows;
+          if (cmd === 'data_folders')
+            return {
+              data: { path: 'C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot', exists: true },
+              settings: { path: 'C:\\Users\\Host\\AppData\\Roaming\\com.jeopardybuilder.brainrot', exists: false },
+            };
           return null;
         },
         transformCallback: (callback) => {
@@ -557,6 +562,40 @@ try {
     const restarting = help.getByRole('button', { name: 'Restarting…' });
     assert((await restarting.count()) === 1 && (await restarting.isDisabled()), 'the page shows the restart under way');
     assert((await calls(page, 'restart_app')).length === 0, 'the native side restarts by itself (the page may be blank)');
+    await context.close();
+  }
+
+  {
+    // Where the desktop app keeps its data: said once up front, and in ℹ About with buttons to open the folders.
+    const context = await desktopContext({ fix: true, active: true });
+    const page = watch(await context.newPage(), 'desktop (data folders)');
+    await page.goto(httpUrl);
+    const notice = page.getByRole('status').filter({ hasText: 'saves your autosave and media in a folder on this PC' });
+    await notice.waitFor();
+    assert(true, 'first start: a notice says the app saves data in a folder on this PC');
+    await notice.getByRole('button', { name: 'ℹ See where' }).click();
+    const about = page.getByRole('dialog', { name: 'About Jeopardy Builder' });
+    await about.getByText('C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot').waitFor();
+    assert((await about.getByText('Windows desktop app').count()) === 1, 'About shows the version and that this is the desktop app');
+    assert(
+      (await about.getByRole('link', { name: /GitHub/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot',
+      'About links to the GitHub repo',
+    );
+    await about.getByRole('link', { name: /GitHub/ }).click();
+    await called(page, 'open_link');
+    assert(
+      (await calls(page, 'open_link'))[0].url === 'https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot' && context.pages().length === 1,
+      "the repo link opens in the default browser (the app's open_link), not in an app window",
+    );
+    assert((await about.getByRole('button', { name: '📂 Open folder' }).count()) === 1 && (await about.getByText("Not created: it's only made").count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed)");
+    await about.getByRole('button', { name: '📂 Open folder' }).click();
+    await called(page, 'open_data_folder');
+    assert(JSON.stringify(await calls(page, 'open_data_folder')) === JSON.stringify([{ which: 'data' }]), 'Open folder asks the app to show the data folder');
+    await page.keyboard.press('Escape');
+    assert((await about.count()) === 0 && (await notice.count()) === 0, 'Esc closes About, and the notice is gone');
+    await page.reload();
+    await page.getByRole('button', { name: 'ℹ About' }).waitFor();
+    assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');
     await context.close();
   }
 

@@ -335,7 +335,15 @@ The same app can be wrapped as a native Windows program with [Tauri](https://tau
 Every push to `main` builds the `.exe` in CI and attaches it to the **Latest** release. In the desktop app,
 **📺 Audience window** opens a second app window (capture it in OBS; `F` or a double-click makes it full-screen on its
 monitor), the "Open on YouTube" fallback opens its own window, and closing the host window quits the app. Opening
-the app again brings the running one to the front. For Discord/OBS sound, see
+the app again brings the running one to the front.
+
+**Where it saves things**: the desktop app writes only to two folders (plus files you save or export yourself):
+`%LOCALAPPDATA%\com.jeopardybuilder.brainrot` (WebView2's data: the autosave, games in progress and stored media) and,
+only once you change the Discord audio fix, `%APPDATA%\com.jeopardybuilder.brainrot` (its settings files). It says so in
+a notice the first time it starts, and **ℹ About** in the editor lists both with **📂 Open folder** buttons, along with the
+version, build and links. To remove the app completely, delete the `.exe` and those two folders.
+
+For Discord/OBS sound, see
 [Streaming the sound](#streaming-the-sound-discord-obs). Pasted links are downloaded natively, so every site (Google Drive
 and `files.catbox.moe` included) gives a saved copy. The host window may download from any web address except
 `localhost`, `127.0.0.1`, `[::1]` and `0.0.0.0` (`src-tauri/capabilities/http.json`; the list compares addresses as
