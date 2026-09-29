@@ -126,7 +126,7 @@ export function youtubeThumb(id: string): string {
 }
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i;
-const AUDIO_EXT = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus)$/i;
+const AUDIO_EXT = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|weba|mka)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogv|mkv)$/i;
 
 /** What a URL path's file extension says it is. */
@@ -135,19 +135,6 @@ export function kindFromPath(path: string): LinkKind | undefined {
   if (AUDIO_EXT.test(path)) return 'audio';
   if (VIDEO_EXT.test(path)) return 'video';
   return undefined;
-}
-
-/** Guess what kind of online media a pasted URL is (old-style online media elements). */
-export function classifyUrl(url: string): 'youtube' | 'remoteVideo' | 'remoteAudio' | 'remoteImage' | null {
-  if (youtubeId(url)) return 'youtube';
-  let path = '';
-  try {
-    path = new URL(url.trim()).pathname.toLowerCase();
-  } catch {
-    return null;
-  }
-  const k = kindFromPath(path);
-  return k === 'image' ? 'remoteImage' : k === 'audio' ? 'remoteAudio' : 'remoteVideo';
 }
 
 // ---------- Google Drive ----------
@@ -261,13 +248,17 @@ export const linkMessages = {
     (/imgur\.com$/.test(host) ? " Imgur isn't available in the UK." : ''),
   http: (host: string, status: number) => `${host} says the file doesn't exist or isn't shared publicly (${status}).`,
   saved: (link: MediaLink) => `Saved a copy in your game. It works offline now${link.temporary ? ` (the link itself expires ${link.temporary.when})` : ''}.`,
-  live: (link: MediaLink, desktop: boolean) =>
-    `This site doesn't let the game save a copy, so it will play from ${link.host} during the show. You'll need internet.` +
-    (desktop ? '' : ' The desktop app can save a copy.') +
+  /** Added as a live link: the site didn't allow a copy, or (`notSaved`) the user said no to a big file, or it's over 1 GB. */
+  live: (link: MediaLink, desktop: boolean, notSaved?: 'declined' | 'too-big') =>
+    (notSaved
+      ? `Not saved in the game (${notSaved === 'declined' ? 'you chose not to' : "it's over 1 GB"}), so it plays from ${link.host} during the show. You'll need internet.`
+      : `This site doesn't let the game save a copy, so it will play from ${link.host} during the show. You'll need internet.` +
+        (desktop ? '' : ' The desktop app can save a copy.')) +
     (link.temporary ? ` Warning: this link stops working ${link.temporary.when}. Download the file and add it to the game, or upload it to catbox.moe.` : ''),
   saveFailed: (host: string, desktop: boolean) =>
     `${host} doesn't let the game save a copy. Download the file and add it instead${desktop ? '' : ', or use the desktop app'}.`,
   tooBig: "That file is bigger than 1 GB, too big to save in the game, and it won't play from the link either.",
+  declined: (host: string) => `Not saved in the game (you chose not to), and it didn't play from ${host} either.`,
   drivePrivate: `This Google Drive file isn't shared publicly. ${DRIVE_SHARE_HINT}`,
   driveQuota:
     "Google Drive says too many people viewed or downloaded this file recently, so it's locked for now (up to 24 hours). Try again later, or download it in your browser and add the file.",

@@ -52,7 +52,8 @@
 </script>
 
 {#if !player}
-  <div class="card"><span class="msg">Not a valid link for the {label}</span></div>
+  <!-- Only the host is told; the screen viewers watch shows nothing. -->
+  {#if !onScreen}<div class="card"><span class="msg">Not a valid link for the {label}</span></div>{/if}
 {:else if onScreen}
   {#if shown}
     {#key round}
@@ -68,7 +69,7 @@
 {:else}
   <div class="card" title={el.url}>
     <span class="play">▶</span>
-    <span class="msg">{player.name} · {mode === 'play' && !shown ? 'stopped' : 'click ▶ in the audience window'}</span>
+    <span class="msg">{player.name} · {mode === 'play' && !shown ? 'stopped' : "click ▶ inside it on the viewers' screen"}</span>
   </div>
 {/if}
 

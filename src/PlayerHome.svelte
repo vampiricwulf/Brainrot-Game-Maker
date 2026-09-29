@@ -6,7 +6,7 @@
   import { finalName, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
-  import { onlineCount } from './lib/export';
+  import { onlineCount } from './lib/usage';
 
   let {
     onplay,

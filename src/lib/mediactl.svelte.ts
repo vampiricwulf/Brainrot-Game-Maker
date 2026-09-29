@@ -142,7 +142,7 @@ export function fmtTime(t: number): string {
 
 // ---------- URL helpers (they live in links.ts; re-exported for existing imports) ----------
 
-export { classifyUrl, youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl } from './links';
+export { youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl } from './links';
 
 /** Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. */
 export function openMediaPopup(url: string): boolean {

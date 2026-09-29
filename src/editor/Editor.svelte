@@ -83,7 +83,7 @@
       if (r)
         toast(
           `Exported a playable HTML file (${formatBytes(r.size)}). Double-click it to play.` +
-            (r.online ? ` ${r.online} item${r.online === 1 ? '' : 's'} play from the internet, so it needs internet during the game.` : ''),
+            (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
           r.online ? 8000 : 5000,
         );
       if (r?.missing.length) alert(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);

@@ -94,10 +94,13 @@ images, game sounds, wheel and dice outcomes) has **Or paste a link** in its fil
 you see the progress and a **Cancel** button; a message then says what happened:
 
 - **Saved a copy in your game**: the file was downloaded into the game. It works offline, goes into `.jbr` packs and
-  exports, and keeps working if the link expires. Files over 150 MB ask first; files over 1 GB are never saved.
-- **Plays from the internet** (🌐): the site doesn't let the game save a copy, so the file plays from the link during the
-  show. It needs internet, in the host and audience windows alike. **Save a copy** in the Media tab (or the item's
-  settings) tries again later; the image editor asks for a copy first.
+  exports, and keeps working if the link expires. Files over 150 MB ask first; files over 1 GB are never saved. A sound
+  in an MP4 or WebM file (`.m4a`, `.weba`…) counts as a sound.
+- **Plays from the internet** (🌐): the site doesn't let the game save a copy (or you said no to a big file, or it's over
+  1 GB), so the file plays from the link during the show. It needs internet, in the host and audience windows alike.
+  **Save a copy** in the Media tab (or the item's settings) tries again later; the image editor asks for a copy first.
+  If a link stops working during the show, viewers just see an empty spot: only the host's copy of the stage and the
+  host's media controls say what failed (with **Open link ↗**).
 
 | Link | Browser (the `.html` file) | Desktop app (`.exe`) |
 |---|---|---|

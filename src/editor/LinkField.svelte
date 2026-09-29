@@ -5,7 +5,7 @@
   Google Drive in the browser can't be downloaded, so it asks what the file is and offers the ways that work.
 -->
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, addMediaLink, canPlay, formatBytes, type LinkAdded } from '../lib/media.svelte';
   import { isAbort, LinkError } from '../lib/download';
@@ -104,6 +104,7 @@
       if (controller === ctl) {
         controller = null;
         busy = null;
+        refocus();
       }
     }
   }
@@ -113,6 +114,18 @@
     controller = null;
     busy = null;
     toast('Cancelled');
+    refocus();
+  }
+
+  /**
+   * The field is disabled while busy and Cancel goes away after, which drops the focus to the page (where
+   * Esc closes the whole clue editor). Put it back in the field, unless it has moved on somewhere else.
+   */
+  function refocus(): void {
+    void tick().then(() => {
+      const at = document.activeElement;
+      if (input?.isConnected && (!at || at === document.body)) input.focus();
+    });
   }
 
   /** A top-level visit to the file downloads it: the one way Google lets a browser have a Drive file. */
@@ -156,7 +169,11 @@
       <span class="small">
         {busy.loaded ? `Downloading… ${formatBytes(busy.loaded)}${busy.total ? ` of ${formatBytes(busy.total)}` : ''}` : 'Checking the link…'}
       </span>
-      {#if busy.total}<progress max={busy.total} value={busy.loaded}></progress>{:else}<progress></progress>{/if}
+      {#if busy.total}
+        <progress aria-label="Download progress" max={busy.total} value={busy.loaded}></progress>
+      {:else}
+        <progress aria-label="Download progress"></progress>
+      {/if}
       <button class="small" onclick={cancel}>Cancel</button>
     </div>
   {:else if drive}

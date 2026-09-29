@@ -9,7 +9,7 @@ import { uniqueMediaName } from './medianame';
 import { loadPlay } from './persist';
 import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, parseMediaLink, type LinkKind, type MediaLink } from './links';
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
-import { kindOfMime, mimeFromName } from './sniff';
+import { kindOfMime, mimeFromName, soundTwin } from './sniff';
 import { inTauri } from './platform';
 
 const blobs = new Map<string, Blob>();
@@ -92,15 +92,15 @@ const EXT_KIND: Record<string, MediaKind> = {
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', avif: 'image', bmp: 'image',
   mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', ogv: 'video', m4v: 'video',
   mp3: 'audio', wav: 'audio', ogg: 'audio', oga: 'audio', m4a: 'audio', aac: 'audio', flac: 'audio', opus: 'audio',
-  ttf: 'font', otf: 'font', woff: 'font', woff2: 'font',
+  weba: 'audio', mka: 'audio', ttf: 'font', otf: 'font', woff: 'font', woff2: 'font',
 };
 
 const EXT_MIME: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
   avif: 'image/avif', bmp: 'image/bmp', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
   mkv: 'video/x-matroska', ogv: 'video/ogg', m4v: 'video/mp4', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
-  oga: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/opus', ttf: 'font/ttf',
-  otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2',
+  oga: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/opus', weba: 'audio/webm',
+  mka: 'audio/x-matroska', ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2',
 };
 
 export function extOf(name: string): string {
@@ -121,9 +121,9 @@ export function mimeFor(name: string, mime?: string): string {
 export const ACCEPT = {
   image: 'image/*,.svg,.avif',
   video: 'video/*,.mkv,.mov',
-  audio: 'audio/*,.flac,.opus,.m4a',
+  audio: 'audio/*,.flac,.opus,.m4a,.weba,.mka',
   font: '.ttf,.otf,.woff,.woff2',
-  any: 'image/*,video/*,audio/*,.mkv,.mov,.flac,.opus,.m4a',
+  any: 'image/*,video/*,audio/*,.mkv,.mov,.flac,.opus,.m4a,.weba,.mka',
 };
 
 /**
@@ -172,6 +172,7 @@ function explain(e: unknown, link: MediaLink): LinkError {
     if (e.reason === 'html') return new LinkError({ problem: 'html-page', message: linkMessages.htmlPage });
     if (e.reason === 'not-media') return new LinkError({ problem: 'not-media', message: linkMessages.notMedia });
     if (e.reason === 'too-big') return new LinkError({ problem: 'unreachable', message: linkMessages.tooBig });
+    if (e.reason === 'declined') return new LinkError({ problem: 'unreachable', message: linkMessages.declined(link.host) });
   }
   return new LinkError({ problem: 'unreachable', message: linkMessages.unreachable(link.host) });
 }
@@ -217,8 +218,11 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
   }
 
   let failure: LinkError;
+  /** Why there's no copy when the site did allow one: the user said no to a big file, or it's over 1 GB. */
+  let notSaved: 'declined' | 'too-big' | undefined;
   try {
-    const file: Downloaded = link.drive ? await downloadDrive(link.drive, job) : await downloadFirst(link.fetchUrls, job);
+    const got = { ...job, want };
+    const file: Downloaded = link.drive ? await downloadDrive(link.drive, got) : await downloadFirst(link.fetchUrls, got);
     const kind = kindOfMime(file.mime);
     if (!kind) throw new LinkError({ problem: 'not-media', message: linkMessages.notMedia });
     if (want && kind !== want) throw wrongKind(kind, want);
@@ -227,6 +231,7 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
   } catch (e) {
     if (isAbort(e) || e instanceof LinkError) throw e;
     failure = explain(e, link);
+    if (e instanceof DownloadError && (e.reason === 'declined' || e.reason === 'too-big')) notSaved = e.reason;
     // A web page, or a file that isn't media, won't play live either; nor will a Drive link that failed.
     if (e instanceof DownloadError && (e.reason === 'html' || e.reason === 'not-media')) throw failure;
     if (link.drive) throw failure;
@@ -238,7 +243,7 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
     if (job.signal?.aborted) throw cancelled();
     if (!kind) continue;
     if (want && kind !== want) throw wrongKind(kind, want);
-    return { ref: addLinkRef(game, url, kind, link, extra), saved: false, message: linkMessages.live(link, desktop), warn: !!link.temporary, link };
+    return { ref: addLinkRef(game, url, kind, link, extra), saved: false, message: linkMessages.live(link, desktop, notSaved), warn: !!link.temporary, link };
   }
   throw failure;
 }
@@ -254,19 +259,24 @@ export async function saveLinkCopy(game: Game, id: string, job: DownloadJob = {}
   const parsed = ref.source ? parseMediaLink(ref.source, ref.kind === 'font' ? undefined : ref.kind) : null;
   const link = parsed && !isLinkProblem(parsed) && !parsed.embed ? parsed : null;
   let file: Downloaded;
+  const got = { ...job, want: ref.kind === 'font' ? undefined : ref.kind };
   try {
-    if (link?.drive && inTauri()) file = await downloadDrive(link.drive, job);
-    else file = await downloadFirst([...new Set([...(link && !link.drive ? link.fetchUrls : []), url])], job);
+    if (link?.drive && inTauri()) file = await downloadDrive(link.drive, got);
+    else file = await downloadFirst([...new Set([...(link && !link.drive ? link.fetchUrls : []), url])], got);
   } catch (e) {
     if (isAbort(e) || e instanceof LinkError) throw e;
     const host = link?.host ?? new URL(url).hostname;
     if (e instanceof DownloadError && e.reason === 'http') throw new LinkError({ problem: 'http', message: linkMessages.http(host, e.status) });
     throw new LinkError({ problem: 'save-failed', message: linkMessages.saveFailed(host, inTauri()) });
   }
-  const kind = kindOfMime(file.mime);
+  let mime = file.mime;
+  // The link already played as a sound: an MP4 or WebM copy is that sound, whatever its header or name says.
+  const twin = ref.kind === 'audio' && soundTwin(mime);
+  if (twin) mime = twin;
+  const kind = kindOfMime(mime);
   if (kind !== ref.kind) throw kind ? wrongKind(kind, ref.kind) : new LinkError({ problem: 'not-media', message: linkMessages.notMedia });
-  await putMedia(id, file.blob);
-  ref.mime = file.mime;
+  await putMedia(id, mime === file.mime ? file.blob : file.blob.slice(0, file.blob.size, mime));
+  ref.mime = mime;
   ref.size = file.blob.size;
   delete ref.url;
   delete ref.expiresAt;

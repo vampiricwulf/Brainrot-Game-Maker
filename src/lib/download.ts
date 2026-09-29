@@ -7,7 +7,7 @@
 // (tauri-plugin-http), which works for every host, Google Drive included.
 import { driveUrls, linkMessages, nameFromUrl, type DriveRef, type LinkKind, type LinkProblem } from './links';
 import { inTauri } from './platform';
-import { filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, withExtension } from './sniff';
+import { fileMime, filenameFromDisposition, looksLikeHtml, readDrivePage, withExtension } from './sniff';
 
 /** Files above this ask first; above MAX_DOWNLOAD they're never saved in the game. */
 export const ASK_ABOVE = 150 * 1024 ** 2;
@@ -20,6 +20,8 @@ export interface DownloadJob {
   onprogress?: (loaded: number, total?: number) => void;
   /** Asked before saving a file over 150 MB (`bytes` so far when the size isn't known); false plays it from the link. */
   confirmBig?: (bytes: number, known: boolean) => boolean | Promise<boolean>;
+  /** What the spot needs: a sound spot takes an MP4 or WebM that nothing says is a video as a sound. */
+  want?: LinkKind;
 }
 
 export interface Downloaded {
@@ -144,7 +146,7 @@ export async function download(url: string, job: DownloadJob = {}): Promise<Down
   if (looksLikeHtml(head)) throw new DownloadError('html', 'A web page', res.status, await whole.slice(0, 200_000).text(), finalUrl);
   const headerType = /^(image|video|audio)\//.test(type) ? type.split(';')[0].trim() : null;
   const named = filenameFromDisposition(res.headers.get('content-disposition')) ?? nameFromUrl(finalUrl);
-  const mime = sniffMime(head) ?? headerType ?? mimeFromName(named);
+  const mime = fileMime(head, headerType, named, job.want);
   if (!mime) throw new DownloadError('not-media', 'Not a media file', 0, '', finalUrl);
   return { blob: whole.slice(0, whole.size, mime), mime, name: withExtension(named, mime), url: finalUrl };
 }

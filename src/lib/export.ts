@@ -4,7 +4,7 @@ import { buildPack } from './pack';
 import { downloadBlob, safeFilename } from './fileio';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
-import { allEmbeds } from './usage';
+import { onlineCount } from './usage';
 
 export const PACK_ELEMENT_ID = 'jb-pack';
 
@@ -38,11 +38,6 @@ function selfHtml(): string {
 
 const WARN = 100 * 1024 ** 2;
 const STRONG = 250 * 1024 ** 2;
-
-/** How many things in the game play from the internet (live-link files and online players). */
-export function onlineCount(game: Game): number {
-  return game.media.filter((m) => m.url).length + allEmbeds(game).length;
-}
 
 export async function exportStandaloneHtml(game: Game): Promise<{ size: number; missing: string[]; online: number } | null> {
   const { blob: pack, missing } = await buildPack(game);

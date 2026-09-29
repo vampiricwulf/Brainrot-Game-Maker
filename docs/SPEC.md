@@ -242,8 +242,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   OneDrive personal, Box viewer, MEGA, Tenor pages, unsigned or expired Discord links).
   - The editor first tries to **download a copy into the game** (the browser can only when the site sends
     `Access-Control-Allow-Origin`; the desktop app downloads natively from any site). The bytes decide the type (magic
-    numbers), a web page is refused, files over 150 MB ask first and over 1 GB are never saved. The copy is ordinary game
-    media (offline, packed, editable) that remembers its `source`.
+    numbers), except that MP4, WebM and Matroska look the same with or without pictures: an audio Content-Type or file
+    name (`.m4a`, `.weba`, `.opus`, `.mka`), or a sound spot when nothing says video, makes one a sound. A web page is
+    refused, files over 150 MB ask first and over 1 GB are never saved (a "no" or an oversize file falls back to a live
+    link, and the message says why). The copy is ordinary game media (offline, packed, editable) that remembers its
+    `source`.
   - Otherwise, if the link plays in a plain `<img>`/`<video>` (no permission needed), it's added as a **live link**
     (`MediaRef.url`): it plays from the internet during the show, from both windows. The Media tab marks it 🌐 with the site,
     *Save a copy* (downloads it later under the same id) and *Check link*; the checklist counts what plays from the internet
@@ -264,7 +267,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   - Clicking it (host view, or the `Y` shortcut) opens the **actual YouTube watch page** (`youtube.com/watch?v=…&t=<startAt>`)
     in a **popup window** sized 1280×720, so it can be window-captured in OBS or dragged onto the stream.
   - An "Open on YouTube" button is **always** available in the host's media controls, even when the embed works.
-  - Live links (and older games' direct media URLs) that fail to load get the same "Open link" popup fallback.
+  - Live links (and older games' direct media URLs) that fail to load get the same "Open link" popup fallback, in the
+    host's media controls and the host's copy of the stage. The screen viewers watch (audience window, single-window
+    stage) never shows host-facing messages: a failed picture, sound or video, or an invalid player link, leaves an empty
+    spot there.
 - YouTube embeds use the IFrame Player API so the standard controls (play/pause, seek, volume, start/end) work the same as for local media.
   Standalone HTML export keeps them (and live links) as links, and says the file needs internet.
 

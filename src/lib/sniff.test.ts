@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, withExtension } from './sniff';
-import { migrateGame, newGame } from './model';
+import { fileMime, filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, soundTwin, withExtension } from './sniff';
+import { migrateGame, newAudioEl, newEmbedEl, newGame, newImageEl } from './model';
+import { onlineCount } from './usage';
 
 const bytes = (...parts: (string | number[])[]) =>
   new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p)));
@@ -18,6 +19,7 @@ describe('sniffMime', () => {
     ['WebP', bytes('RIFF', [0, 0, 0, 0], 'WEBPVP8 '), 'image/webp'],
     ['WAV', bytes('RIFF', [0, 0, 0, 0], 'WAVEfmt '), 'audio/wav'],
     ['AVI', bytes('RIFF', [0, 0, 0, 0], 'AVI LIST'), 'video/x-msvideo'],
+    // (An MP4, WebM or Matroska file may hold only sound: fileMime decides that from the header and name.)
     ['MP4', bytes([0, 0, 0, 0x20], 'ftypisom'), 'video/mp4'],
     ['M4A', bytes([0, 0, 0, 0x20], 'ftypM4A '), 'audio/mp4'],
     ['MOV', bytes([0, 0, 0, 0x14], 'ftypqt  '), 'video/quicktime'],
@@ -39,6 +41,50 @@ describe('sniffMime', () => {
     ['too short', bytes('ab'), null],
   ];
   it.each(cases)('%s', (_name, b, mime) => expect(sniffMime(b)).toBe(mime));
+});
+
+describe('fileMime (a downloaded file\'s type)', () => {
+  const isom = bytes([0, 0, 0, 0x20], 'ftypisom');
+  const dash = bytes([0, 0, 0, 0x20], 'ftypdash');
+  const webm = bytes([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 1, 0x42, 0x82, 0x84], 'webm');
+  const mkv = bytes([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x82, 0x88], 'matroska');
+  const png = bytes([0x89], 'PNG', [13, 10, 26, 10]);
+
+  it('an MP4, WebM or Matroska file is a sound when its header or name says so', () => {
+    expect(fileMime(isom, 'audio/mp4', 'isom-voice.m4a')).toBe('audio/mp4');
+    expect(fileMime(isom, 'audio/mp4', 'download')).toBe('audio/mp4');
+    expect(fileMime(dash, null, 'song.m4a')).toBe('audio/mp4');
+    expect(fileMime(webm, 'audio/webm', 'voice.weba')).toBe('audio/webm');
+    expect(fileMime(webm, null, 'clip.opus')).toBe('audio/webm');
+    expect(fileMime(webm, null, 'voice.weba')).toBe('audio/webm');
+    expect(fileMime(mkv, null, 'track.mka')).toBe('audio/x-matroska');
+  });
+
+  it('otherwise it stays a video, unless a sound spot asked and nothing says video', () => {
+    expect(fileMime(isom, null, 'abc123')).toBe('video/mp4');
+    expect(fileMime(isom, 'video/mp4', 'clip.mp4')).toBe('video/mp4');
+    expect(fileMime(webm, null, 'clip.webm')).toBe('video/webm');
+    expect(fileMime(isom, null, 'abc123', 'audio')).toBe('audio/mp4');
+    expect(fileMime(webm, null, 'download', 'audio')).toBe('audio/webm');
+    expect(fileMime(isom, 'video/mp4', 'abc123', 'audio')).toBe('video/mp4');
+    expect(fileMime(isom, null, 'clip.mp4', 'audio')).toBe('video/mp4');
+    expect(fileMime(isom, null, 'abc123', 'video')).toBe('video/mp4');
+  });
+
+  it('the first bytes still win over a wrong header or name', () => {
+    expect(fileMime(png, 'audio/mp4', 'x.m4a')).toBe('image/png');
+    expect(fileMime(bytes('ID3', [4, 0, 0]), 'video/mp4', 'x.mp4')).toBe('audio/mpeg');
+    expect(fileMime(bytes('Hello there'), 'audio/webm', 'x')).toBe('audio/webm');
+    expect(fileMime(bytes('Hello there'), null, 'x.weba')).toBe('audio/webm');
+    expect(fileMime(bytes('Hello there'), null, 'x')).toBeNull();
+  });
+
+  it('knows which types have a sound-only twin', () => {
+    expect(soundTwin('video/mp4')).toBe('audio/mp4');
+    expect(soundTwin('video/webm')).toBe('audio/webm');
+    expect(soundTwin('video/quicktime')).toBeNull();
+    expect(soundTwin('audio/mp4')).toBeNull();
+  });
 });
 
 describe('looksLikeHtml', () => {
@@ -67,6 +113,10 @@ describe('file names', () => {
     expect(withExtension('pic.jpeg', 'image/jpeg')).toBe('pic.jpeg');
     expect(withExtension('clip.m4v', 'video/mp4')).toBe('clip.m4v');
     expect(withExtension('v1.2 final', 'audio/mpeg')).toBe('v1.2 final.mp3');
+    expect(withExtension('isom-voice.m4a', 'audio/mp4')).toBe('isom-voice.m4a');
+    expect(withExtension('voice.weba', 'audio/webm')).toBe('voice.weba');
+    expect(withExtension('voice', 'audio/webm')).toBe('voice.weba');
+    expect(mimeFromName('voice.weba')).toBe('audio/webm');
     expect(mimeFromName('a.MP3')).toBe('audio/mpeg');
     expect(mimeFromName('a.jpeg')).toBe('image/jpeg');
     expect(mimeFromName('noext')).toBeNull();
@@ -125,5 +175,18 @@ describe('migrateGame and online links', () => {
     expect(m[1]).toMatchObject({ source: 'https://litter.catbox.moe/b.png' });
     expect(m[2].url).toBeUndefined();
     expect(m[2].source).toBeUndefined();
+  });
+});
+
+describe('onlineCount', () => {
+  it('counts the live links the game uses and its online players, not unused links in the library', () => {
+    const g = newGame();
+    const link = (id: string) => ({ id, name: `${id}.png`, mime: 'image/png', size: 0, kind: 'image' as const, url: `https://files.catbox.moe/${id}.png` });
+    g.media = [link('used'), link('unused'), { id: 'copy', name: 'copy.mp3', mime: 'audio/mpeg', size: 9, kind: 'audio' }];
+    const slide = g.rounds[0].categories[0].clues[0].questionSlide;
+    slide.elements.push(newImageEl('used'), newAudioEl('copy'));
+    expect(onlineCount(g)).toBe(1);
+    slide.elements.push(newEmbedEl('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'youtube'));
+    expect(onlineCount(g)).toBe(2);
   });
 });

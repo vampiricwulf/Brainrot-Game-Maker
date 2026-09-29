@@ -41,6 +41,32 @@ export function sniffMime(b: Uint8Array): string | null {
   return null;
 }
 
+/** Containers that hold a sound as often as a video, and their sound-only type. */
+const SOUND_TWIN: Record<string, string> = { 'video/mp4': 'audio/mp4', 'video/webm': 'audio/webm', 'video/x-matroska': 'audio/x-matroska' };
+
+/** The sound-only type of an MP4, WebM or Matroska file (which may or may not have pictures), or null. */
+export function soundTwin(mime: string): string | null {
+  return SOUND_TWIN[mime] ?? null;
+}
+
+/**
+ * A downloaded file's type. Its first bytes win, except that an MP4, WebM or Matroska file looks the same
+ * with or without pictures (sniffMime calls it a video): a Content-Type or file name that says sound
+ * (audio/mp4, .m4a, .weba…) makes it a sound, and so does a sound spot (`want`) when neither says video.
+ */
+export function fileMime(head: Uint8Array, headerType: string | null, name: string, want?: LinkKind): string | null {
+  const sniffed = sniffMime(head);
+  const named = mimeFromName(name);
+  const twin = sniffed && soundTwin(sniffed);
+  if (twin) {
+    const header = headerType ? kindOfMime(headerType) : null;
+    const byName = named ? kindOfMime(named) : null;
+    if (header === 'audio' || byName === 'audio') return twin;
+    if (want === 'audio' && header !== 'video' && byName !== 'video') return twin;
+  }
+  return sniffed ?? headerType ?? named;
+}
+
 /** The start of a file as text, without a byte-order mark or leading whitespace. */
 function textHead(b: Uint8Array): string {
   return new TextDecoder().decode(b.subarray(0, 512)).replace(/^\uFEFF/, '').trimStart();
@@ -60,7 +86,8 @@ const MIME_EXT: Record<string, string> = {
   'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/avif': 'avif',
   'image/heic': 'heic', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
   'video/x-matroska': 'mkv', 'video/ogg': 'ogv', 'video/x-msvideo': 'avi', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3',
-  'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/flac': 'flac',
+  'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/flac': 'flac', 'audio/webm': 'weba',
+  'audio/x-matroska': 'mka',
 };
 
 /** The media type a file name's extension stands for, or null. */
@@ -80,7 +107,7 @@ export function withExtension(name: string, mime: string): string {
   const same = cur === ext || (ext === 'jpg' && cur === 'jpeg') || (ext === 'mp4' && cur === 'm4v') || (ext === 'ogg' && (cur === 'oga' || cur === 'opus'));
   if (same) return name;
   // A known media extension that disagrees (e.g. ".png" on a JPEG) is replaced; anything else is kept.
-  const base = dot > 0 && /^(png|jpe?g|gif|webp|bmp|avif|svg|mp4|m4v|webm|mov|mkv|ogv|avi|mp3|m4a|aac|ogg|oga|opus|wav|flac|bin)$/.test(cur) ? name.slice(0, dot) : name;
+  const base = dot > 0 && /^(png|jpe?g|gif|webp|bmp|avif|svg|mp4|m4v|webm|mov|mkv|ogv|avi|mp3|m4a|aac|ogg|oga|opus|wav|flac|weba|mka|bin)$/.test(cur) ? name.slice(0, dot) : name;
   return `${base}.${ext}`;
 }
 

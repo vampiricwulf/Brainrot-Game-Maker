@@ -36,6 +36,8 @@
   const sorted = $derived([...slide.elements].sort((a, b) => a.zIndex - b.zIndex));
   const mainText = $derived(slide.elements.find((e) => e.kind === 'text')?.id);
   const bgImage = $derived(slide.background.image ? mediaUrls[slide.background.image] : undefined);
+  /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
+  const hostView = $derived(mode === 'edit' || role === 'mirror');
 
   function label(el: SlideElement): string {
     if (el.kind === 'embed') return embedName(el.embedKind, el.url);
@@ -83,7 +85,8 @@
       {:else if el.kind === 'image'}
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}
         {#if src && broken[src]}
-          <div class="missing">Couldn't load the picture from {linkHost(src)}</div>
+          <!-- Viewers (and OBS) see an empty spot; only the host is told why. -->
+          {#if hostView}<div class="missing">Couldn't load the picture from {linkHost(src)}</div>{/if}
         {:else if src}
           <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" onerror={(e) => imgError(e, src)} />
         {:else}

@@ -25,6 +25,8 @@
   const openUrl = $derived(el.kind === 'embed' ? el.url : src);
   const fit = $derived('fit' in el ? el.fit : 'contain');
   const showIcon = $derived(isAudio && (mode === 'edit' || (el.kind === 'audio' ? el.visible : true)));
+  /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
+  const hostView = $derived(mode === 'edit' || role === 'mirror');
 
   let node = $state<HTMLVideoElement | HTMLAudioElement>();
   let failed = $state(false);
@@ -126,17 +128,21 @@
 </script>
 
 {#if failed && remote}
-  <button
-    class="fallback"
-    onclick={(e) => {
-      e.stopPropagation();
-      if (openUrl) openMediaPopup(openUrl);
-    }}
-    title="Open the link in its own window"
-  >
-    <span class="big">▶</span>
-    <span>Media couldn't load here. Click to open the link.</span>
-  </button>
+  <!-- Only the editor and the host's copy say so: the screen viewers watch (and OBS captures) shows nothing,
+       and the host's media controls already offer the link. -->
+  {#if hostView}
+    <button
+      class="fallback"
+      onclick={(e) => {
+        e.stopPropagation();
+        if (openUrl) openMediaPopup(openUrl);
+      }}
+      title="Open the link in its own window"
+    >
+      <span class="big">▶</span>
+      <span class="msg">Media couldn't load here. Click to open the link.</span>
+    </button>
+  {/if}
 {:else if isAudio}
   <audio bind:this={node} {src} preload="auto" onloadedmetadata={onmeta} ontimeupdate={ontime} onended={onended}
     onplay={onstate} onpause={onstate} onvolumechange={onstate} onerror={onerror}></audio>
@@ -190,7 +196,9 @@
     align-items: center;
     justify-content: center;
     gap: 16px;
-    font-size: 40px;
+    /* Its text is sized to the box, so a small sound icon's box still fits the message. */
+    container-type: size;
+    overflow: hidden;
     color: #fff;
     background: #111;
     border: 4px solid #fff;
@@ -198,7 +206,10 @@
     white-space: normal;
   }
   .big {
-    font-size: 140px;
+    font-size: min(140px, 30cqmin);
     line-height: 1;
+  }
+  .msg {
+    font-size: min(40px, 11cqmin);
   }
 </style>

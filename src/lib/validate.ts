@@ -3,7 +3,7 @@ import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
 import { finalName, playableClues, type Game } from './model';
-import { allEmbeds, mediaUsage, slideHasContent } from './usage';
+import { mediaUsage, onlineCount, slideHasContent } from './usage';
 
 export interface Problem {
   text: string;
@@ -48,8 +48,8 @@ export function validate(game: Game): Problem[] {
   if (unplayable) out.push({ text: `${unplayable} video/audio file(s) this browser may not play`, tab: 'media', level: 'warn' });
 
   const links = game.media.filter((m) => m.url);
-  const online = allEmbeds(game).length + links.length;
-  if (online) out.push({ text: `${online} item${online === 1 ? '' : 's'} play from the internet: need internet during the game`, tab: 'media', level: 'info' });
+  const online = onlineCount(game);
+  if (online) out.push({ text: `${online} item${online === 1 ? ' plays' : 's play'} from the internet: need internet during the game`, tab: 'media', level: 'info' });
   const life = links.map((m) => linkLifetime(m));
   const expired = life.filter((l) => l === 'expired').length;
   const temporary = life.filter((l) => l === 'temporary').length;

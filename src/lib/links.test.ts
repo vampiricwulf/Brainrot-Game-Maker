@@ -232,6 +232,14 @@ describe('link messages', () => {
       "This site doesn't let the game save a copy, so it will play from files.catbox.moe during the show. You'll need internet. The desktop app can save a copy.",
     );
     expect(linkMessages.live(link, true)).toContain('Warning: this link stops working within 3 days.');
+    // The site allowed a copy, but the user said no to a big file, or it's over 1 GB: not the site's doing.
+    expect(linkMessages.live(permanent, false, 'declined')).toBe(
+      "Not saved in the game (you chose not to), so it plays from files.catbox.moe during the show. You'll need internet.",
+    );
+    expect(linkMessages.live(permanent, true, 'too-big')).toBe(
+      "Not saved in the game (it's over 1 GB), so it plays from files.catbox.moe during the show. You'll need internet.",
+    );
+    expect(linkMessages.declined('example.com')).toBe("Not saved in the game (you chose not to), and it didn't play from example.com either.");
     expect(linkMessages.wrongKind('video', 'image')).toBe('That link is a video; this spot needs a picture.');
     expect(linkMessages.wrongKind('image', 'audio')).toBe('That link is a picture; this spot needs a sound.');
     expect(linkMessages.unreachable('files.catbox.moe')).toContain('VPN');

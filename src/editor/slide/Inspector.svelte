@@ -4,7 +4,7 @@
   import { fontChoices } from '../../lib/fonts';
   import type { EntranceType, Game, SlideElement, TextEl } from '../../lib/model';
   import { openMediaPopup } from '../../lib/mediactl.svelte';
-  import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, linkHost } from '../../lib/links';
+  import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, formatWhen, linkHost } from '../../lib/links';
   import SaveCopyButton from '../SaveCopyButton.svelte';
 
   let {
@@ -74,7 +74,7 @@
   {#if liveRef}
     <p class="hint">
       🌐 Plays from {linkHost(liveRef.url)} during the show (needs internet).
-      {#if liveRef.expiresAt}The link expires {new Date(liveRef.expiresAt).toLocaleString()}.{/if}
+      {#if liveRef.expiresAt}The link {liveRef.expiresAt < Date.now() ? 'expired' : 'expires'} {formatWhen(liveRef.expiresAt)}.{/if}
     </p>
     <SaveCopyButton id={liveRef.id} />
   {/if}
