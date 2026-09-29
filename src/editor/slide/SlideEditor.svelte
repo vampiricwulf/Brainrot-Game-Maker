@@ -8,6 +8,7 @@
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { pickFile } from '../../lib/fileio';
   import { clone } from '../../lib/ops';
+  import { restack, type Restack } from '../../lib/layers';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
     type ImageEl, type MediaKind, type ShapeType, type Slide, type SlideElement, type TextEl,
@@ -18,6 +19,9 @@
   import Inspector from './Inspector.svelte';
   import MediaPicker from './MediaPicker.svelte';
   import ImageEditor from './ImageEditor.svelte';
+  import LayersPanel from './LayersPanel.svelte';
+  import LayerMenu from './LayerMenu.svelte';
+  import type { LayerAction } from './layerlabel';
   import { themeStyle } from '../../lib/theme';
 
   let {
@@ -39,6 +43,11 @@
   let previewing = $state(false);
   let textArea = $state<HTMLTextAreaElement>();
   let canvasEl = $state<HTMLDivElement>();
+  // Layers: items hidden while editing, the item under the mouse, and the right-click menu.
+  let hidden = $state<string[]>([]);
+  let hovered = $state<string | null>(null);
+  let menu = $state<{ x: number; y: number; stack: SlideElement[] } | null>(null);
+  const editView = $derived(hidden.length ? { ...slide, elements: slide.elements.filter((e) => !hidden.includes(e.id)) } : slide);
 
   const single = $derived(selected.length === 1 ? slide.elements.find((e) => e.id === selected[0]) : undefined);
   const topZ = () => Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1;
@@ -190,8 +199,10 @@
 
   // ---------- Selection actions ----------
   function remove(): void {
-    slide.elements = slide.elements.filter((e) => !selected.includes(e.id));
-    selected = [];
+    const locked = slide.elements.filter((e) => selected.includes(e.id) && e.locked).length;
+    slide.elements = slide.elements.filter((e) => !selected.includes(e.id) || e.locked);
+    selected = selected.filter((id) => slide.elements.some((e) => e.id === id));
+    if (locked) toast(`${locked === 1 ? 'A locked item was' : `${locked} locked items were`} kept. Unlock to delete.`);
   }
 
   function duplicate(): void {
@@ -202,13 +213,26 @@
   }
 
   function order(dir: 'front' | 'back' | 'up' | 'down'): void {
-    if (!single) return;
-    const others = slide.elements.filter((e) => e.id !== single.id).sort((a, b) => a.zIndex - b.zIndex);
-    const idx = [...others.map((e) => e.zIndex), single.zIndex].sort((a, b) => a - b).indexOf(single.zIndex);
-    let pos = dir === 'front' ? others.length : dir === 'back' ? 0 : dir === 'up' ? idx + 1 : idx - 1;
-    pos = Math.max(0, Math.min(others.length, pos));
-    others.splice(pos, 0, single);
-    others.forEach((e, i) => (e.zIndex = i));
+    restack(slide.elements, selected, dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir);
+  }
+
+  function menuAction(a: LayerAction): void {
+    if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restack(slide.elements, selected, a);
+    else if (a === 'duplicate') duplicate();
+    else if (a === 'lock' || a === 'unlock') {
+      for (const e of slide.elements) if (selected.includes(e.id)) e.locked = a === 'lock' || undefined;
+    } else if (a === 'hide') {
+      hidden = [...hidden, ...selected];
+      selected = [];
+    } else if (a === 'delete') remove();
+  }
+
+  /** Tab / Shift+Tab: select the next item down (or up) the stack. */
+  function cycle(dir: 1 | -1): void {
+    const list = slide.elements.filter((e) => !hidden.includes(e.id)).sort((a, b) => b.zIndex - a.zIndex);
+    if (!list.length) return;
+    const i = selected.length ? list.findIndex((e) => e.id === selected[selected.length - 1]) : -1;
+    selected = [list[(i + dir + list.length) % list.length].id];
   }
 
   function align(how: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom'): void {
@@ -241,10 +265,18 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (typing(e) || picker) return;
+    if (typing(e) || picker || menu) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
-    if (mod && k === 'z') {
+    const onCanvas = document.activeElement === document.body || !!canvasEl?.contains(document.activeElement);
+    if (k === 'tab' && !mod && !e.altKey && onCanvas && slide.elements.length) {
+      e.preventDefault();
+      cycle(e.shiftKey ? -1 : 1);
+    } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
+      e.preventDefault();
+      const up = e.code === 'BracketRight';
+      restack(slide.elements, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward');
+    } else if (mod && k === 'z') {
       e.preventDefault();
       e.stopImmediatePropagation();
       if (e.shiftKey) redo();
@@ -257,7 +289,7 @@
       duplicate();
     } else if (mod && k === 'a') {
       e.preventDefault();
-      selected = slide.elements.map((x) => x.id);
+      selected = slide.elements.filter((x) => !x.locked && !hidden.includes(x.id)).map((x) => x.id);
     } else if ((k === 'delete' || k === 'backspace') && selected.length) {
       e.preventDefault();
       remove();
@@ -309,6 +341,17 @@
 
 {#if imageEl}
   <ImageEditor el={imageEl} onclose={() => (editingImage = null)} />
+{/if}
+{#if menu}
+  <LayerMenu
+    {...menu}
+    selected={slide.elements.filter((e) => selected.includes(e.id))}
+    {game}
+    bind:hovered
+    onpick={(id) => (selected = [id])}
+    onaction={menuAction}
+    onclose={() => (menu = null)}
+  />
 {/if}
 
 <div class="se">
@@ -383,10 +426,13 @@
             <SlideView {slide} mode="play" role="mirror" />
           {/key}
         {:else}
-          <SlideView {slide} mode="edit" />
+          <SlideView slide={editView} mode="edit" />
           <EditLayer
             {slide}
             bind:selected
+            {hidden}
+            bind:hovered
+            onmenu={(m) => (menu = m)}
             onchange={() => {}}
             ondblclick={(el) => (el.kind === 'text' ? textArea?.focus() : el.kind === 'image' && (editingImage = el.id))}
           />
@@ -395,6 +441,12 @@
     </div>
 
     <aside class="side">
+      {#if slide.elements.length > 1 || hidden.length}
+        <details class="layers-box" open>
+          <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
+          <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered />
+        </details>
+      {/if}
       {#if single}
         <Inspector
           el={single}
@@ -428,7 +480,13 @@
       {:else}
         <p class="muted">
           Click an item to edit it. Drag to move, pull the handles to resize, and use the round handle to rotate. Drop image, video or
-          audio files onto the slide. Shift-click selects several. Ctrl+C / Ctrl+V copy items between slides.
+          audio files onto the slide. Shift-click or drag a box on an empty spot to select several. Ctrl+C / Ctrl+V copy items
+          between slides.
+        </p>
+        <p class="muted small">
+          Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> to
+          go one layer down, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a background so clicks go
+          through it.
         </p>
       {/if}
       {#if selected.length}
@@ -521,6 +579,21 @@
   }
   .aligns {
     margin-top: 12px;
+  }
+  .layers-box {
+    margin-bottom: 12px;
+  }
+  .layers-box summary {
+    cursor: pointer;
+    margin-bottom: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .layers-box :global(.layers) {
+    max-height: 190px;
+    overflow-y: auto;
   }
   .pop-anchor {
     position: relative;

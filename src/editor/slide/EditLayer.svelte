@@ -1,27 +1,40 @@
 <!--
   Interaction layer drawn over a slide in the editor: select, move (with snapping guides),
   resize (rotation-aware) and rotate elements. Works in 1920×1080 stage coordinates.
+  Drag on an empty spot to select with a box; Alt+click walks down through stacked items; right-click
+  opens a menu of everything under the pointer. Locked items let clicks through to what's under them.
 -->
 <script lang="ts">
   import { getContext } from 'svelte';
+  import { elementsAt, nextBelow, touchedBy, type Pt } from '../../lib/layers';
   import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from '../../lib/model';
 
   let {
     slide,
     selected = $bindable(),
+    hidden = [],
+    hovered = $bindable(null),
     onchange,
     ondblclick,
+    onmenu,
   }: {
     slide: Slide;
     selected: string[];
+    /** Items hidden while editing (not drawn, can't be clicked). */
+    hidden?: string[];
+    /** Item under the mouse, shared with the layers list so each outlines what the other points at. */
+    hovered?: string | null;
     /** Called when a drag/resize/rotate finishes (for undo history). */
     onchange: () => void;
     ondblclick?: (el: SlideElement) => void;
+    /** Right-click: everything under the pointer (top-most first), at viewport position x/y. */
+    onmenu?: (m: { x: number; y: number; stack: SlideElement[] }) => void;
   } = $props();
 
   const stage = getContext<{ scale: number }>('stage');
-  const sorted = $derived([...slide.elements].sort((a, b) => a.zIndex - b.zIndex));
-  const sel = $derived(slide.elements.filter((e) => selected.includes(e.id)));
+  const visible = $derived(hidden.length ? slide.elements.filter((e) => !hidden.includes(e.id)) : slide.elements);
+  const sorted = $derived([...visible].sort((a, b) => a.zIndex - b.zIndex));
+  const sel = $derived(visible.filter((e) => selected.includes(e.id)));
   const single = $derived(sel.length === 1 ? sel[0] : null);
 
   const SNAP = 10;
@@ -30,10 +43,13 @@
   type Drag =
     | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean }
     | { kind: 'resize'; sx: number; sy: number; hx: number; hy: number; o: { x: number; y: number; w: number; h: number }; keep: boolean }
-    | { kind: 'rotate'; cx: number; cy: number };
+    | { kind: 'rotate'; cx: number; cy: number }
+    | { kind: 'marquee'; a: Pt; base: string[] };
   let drag: Drag | null = null;
+  /** The drag-to-select box while it's being drawn. */
+  let marquee = $state<{ a: Pt; b: Pt } | null>(null);
 
-  function toStage(e: PointerEvent, layer: HTMLElement): { x: number; y: number } {
+  function toStage(e: MouseEvent, layer: HTMLElement): Pt {
     const r = layer.getBoundingClientRect();
     const s = stage.scale || 1;
     return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s };
@@ -44,8 +60,23 @@
   function down(e: PointerEvent, el: SlideElement | null): void {
     if (e.button !== 0) return;
     e.stopPropagation();
+    const p = toStage(e, layerEl);
+    // Alt+click: the next item down the stack under the pointer (locked ones too); repeat to keep going.
+    if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      const next = nextBelow(visible, p, selected.length === 1 ? selected[0] : null);
+      if (next) {
+        selected = [next.id];
+        if (next.locked) return;
+        el = next;
+      }
+    }
     if (!el) {
-      selected = [];
+      // An empty spot (or only locked items): drag out a box to select everything it touches.
+      const base = e.shiftKey || e.ctrlKey || e.metaKey ? [...selected] : [];
+      selected = base;
+      drag = { kind: 'marquee', a: p, base };
+      marquee = { a: p, b: p };
+      layerEl.setPointerCapture(e.pointerId);
       return;
     }
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
@@ -53,9 +84,8 @@
     } else if (!selected.includes(el.id)) {
       selected = [el.id];
     }
-    const movable = slide.elements.filter((x) => selected.includes(x.id) && !x.locked);
+    const movable = visible.filter((x) => selected.includes(x.id) && !x.locked);
     if (!movable.length) return;
-    const p = toStage(e, layerEl);
     drag = { kind: 'move', sx: p.x, sy: p.y, orig: new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }])), moved: false };
     layerEl.setPointerCapture(e.pointerId);
   }
@@ -80,7 +110,7 @@
   function snap(box: { x: number; y: number; w: number; h: number }, ignore: Set<string>): { dx: number; dy: number } {
     const xs = [0, SLIDE_W / 2, SLIDE_W];
     const ys = [0, SLIDE_H / 2, SLIDE_H];
-    for (const o of slide.elements) {
+    for (const o of visible) {
       if (ignore.has(o.id)) continue;
       xs.push(o.x, o.x + o.w / 2, o.x + o.w);
       ys.push(o.y, o.y + o.h / 2, o.y + o.h);
@@ -109,7 +139,15 @@
   function move(e: PointerEvent): void {
     if (!drag) return;
     const p = toStage(e, layerEl);
-    if (drag.kind === 'move') {
+    if (drag.kind === 'marquee') {
+      marquee = { a: drag.a, b: p };
+      const hit = touchedBy(
+        visible.filter((x) => !x.locked),
+        drag.a,
+        p,
+      ).map((x) => x.id);
+      selected = [...new Set([...drag.base, ...hit])];
+    } else if (drag.kind === 'move') {
       let dx = p.x - drag.sx;
       let dy = p.y - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < 2) return;
@@ -166,9 +204,22 @@
   }
 
   function up(): void {
-    if (drag && (drag.kind !== 'move' || drag.moved)) onchange();
+    if (drag && drag.kind !== 'marquee' && (drag.kind !== 'move' || drag.moved)) onchange();
     drag = null;
+    marquee = null;
     guides = { x: [], y: [] };
+  }
+
+  function context(e: MouseEvent): void {
+    e.preventDefault();
+    if (!onmenu || drag) return;
+    const stack = elementsAt(visible, toStage(e, layerEl));
+    // Right-clicking something that isn't selected selects it first (the top unlocked item there).
+    if (!stack.some((x) => selected.includes(x.id))) {
+      const top = stack.find((x) => !x.locked) ?? stack[0];
+      selected = top ? [top.id] : [];
+    }
+    onmenu({ x: e.clientX, y: e.clientY, stack });
   }
 
   const HANDLES: [number, number][] = [
@@ -187,12 +238,14 @@
   onpointermove={move}
   onpointerup={up}
   onpointercancel={up}
+  oncontextmenu={context}
   role="presentation"
 >
   {#each sorted as el (el.id)}
     <div
       class="hit"
       class:locked={el.locked}
+      class:hl={hovered === el.id}
       style:left="{el.x}px"
       style:top="{el.y}px"
       style:width="{el.w}px"
@@ -200,6 +253,8 @@
       style:transform="rotate({el.rotation}deg)"
       style:z-index={el.zIndex}
       onpointerdown={(e) => down(e, el)}
+      onpointerenter={() => (hovered = el.id)}
+      onpointerleave={() => hovered === el.id && (hovered = null)}
       ondblclick={() => ondblclick?.(el)}
       role="presentation"
     ></div>
@@ -234,6 +289,17 @@
     </div>
   {/each}
 
+  {#if marquee}
+    <div
+      class="marquee"
+      style:left="{Math.min(marquee.a.x, marquee.b.x)}px"
+      style:top="{Math.min(marquee.a.y, marquee.b.y)}px"
+      style:width="{Math.abs(marquee.b.x - marquee.a.x)}px"
+      style:height="{Math.abs(marquee.b.y - marquee.a.y)}px"
+      style:--inv={inv}
+    ></div>
+  {/if}
+
   {#each guides.x as x}<div class="guide v" style:left="{x}px" style:--inv={inv}></div>{/each}
   {#each guides.y as y}<div class="guide h" style:top="{y}px" style:--inv={inv}></div>{/each}
 </div>
@@ -249,11 +315,22 @@
     position: absolute;
     cursor: move;
   }
-  .hit:hover {
+  .hit:hover,
+  .hit.hl {
     outline: calc(2px * var(--inv, 1)) dashed rgba(79, 124, 255, 0.7);
   }
   .hit.locked {
-    cursor: default;
+    /* Locked items stay put and let clicks through to what's underneath (pick them from the layers list). */
+    pointer-events: none;
+  }
+  .hit.locked.hl {
+    outline-color: rgba(154, 157, 176, 0.8);
+  }
+  .marquee {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(79, 124, 255, 0.12);
+    outline: calc(1.5px * var(--inv, 1)) solid rgba(79, 124, 255, 0.9);
   }
   .frame {
     position: absolute;

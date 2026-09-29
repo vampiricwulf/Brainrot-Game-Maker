@@ -8,7 +8,8 @@
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
-  import { newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type Round, type Slide } from '../lib/model';
+  import { restack } from '../lib/layers';
+  import { newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type Round, type Slide, type SlideElement } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
@@ -17,6 +18,8 @@
   import LayersPanel from './slide/LayersPanel.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import ImageEditor from './slide/ImageEditor.svelte';
+  import LayerMenu from './slide/LayerMenu.svelte';
+  import type { LayerAction } from './slide/layerlabel';
 
   let { round, onclose }: { round: Round; onclose: () => void } = $props();
 
@@ -30,9 +33,9 @@
   let picking = $state<'add' | 'replace' | null>(null);
   let editingImage = $state<string | null>(null);
   let canvasEl = $state<HTMLDivElement>();
+  let menu = $state<{ x: number; y: number; stack: SlideElement[] } | null>(null);
   const single = $derived(selected.length === 1 ? decor.find((d) => d.id === selected[0]) : undefined);
   const imageEl = $derived(decor.find((d) => d.id === editingImage) as ImageEl | undefined);
-  const hoverEl = $derived(hovered ? decor.find((d) => d.id === hovered) : undefined);
   const others = $derived(game.rounds.filter((r) => r.id !== round.id));
 
   // The board as it looks at the start of this round, minus anything hidden while editing.
@@ -115,8 +118,10 @@
   }
 
   function remove(): void {
-    round.decor = decor.filter((d) => !selected.includes(d.id));
-    selected = [];
+    const locked = decor.filter((d) => selected.includes(d.id) && d.locked).length;
+    round.decor = decor.filter((d) => !selected.includes(d.id) || d.locked);
+    selected = selected.filter((id) => decor.some((d) => d.id === id));
+    if (locked) toast(`${locked === 1 ? 'A locked image was' : `${locked} locked images were`} kept. Unlock to delete.`);
   }
 
   function duplicate(): void {
@@ -126,12 +131,18 @@
   }
 
   function order(dir: 'front' | 'back' | 'up' | 'down'): void {
-    if (!single) return;
-    const rest = decor.filter((d) => d.id !== single.id).sort((a, b) => a.zIndex - b.zIndex);
-    const idx = [...rest.map((d) => d.zIndex), single.zIndex].sort((a, b) => a - b).indexOf(single.zIndex);
-    const pos = Math.max(0, Math.min(rest.length, dir === 'front' ? rest.length : dir === 'back' ? 0 : dir === 'up' ? idx + 1 : idx - 1));
-    rest.splice(pos, 0, single);
-    rest.forEach((d, i) => (d.zIndex = i));
+    restack(decor, selected, dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir);
+  }
+
+  function menuAction(a: LayerAction): void {
+    if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restack(decor, selected, a);
+    else if (a === 'duplicate') duplicate();
+    else if (a === 'lock' || a === 'unlock') {
+      for (const d of decor) if (selected.includes(d.id)) d.locked = a === 'lock' || undefined;
+    } else if (a === 'hide') {
+      hidden = [...hidden, ...selected];
+      selected = [];
+    } else if (a === 'delete') remove();
   }
 
   /** Copy the selected images (or all of them) onto every other round's board. */
@@ -151,10 +162,17 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (editingImage || picking || typing(e)) return;
+    if (editingImage || picking || menu || typing(e)) return;
     const k = e.key.toLowerCase();
     const mod = e.ctrlKey || e.metaKey;
-    if (k === 'escape') {
+    if (k === 'tab' && !mod && !e.altKey && (document.activeElement === document.body || !!canvasEl?.contains(document.activeElement)) && decor.length) {
+      const list = decor.filter((d) => !hidden.includes(d.id)).sort((a, b) => b.zIndex - a.zIndex);
+      const i = selected.length ? list.findIndex((d) => d.id === selected[selected.length - 1]) : -1;
+      if (list.length) selected = [list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length].id];
+    } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
+      const up = e.code === 'BracketRight';
+      restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward');
+    } else if (k === 'escape') {
       if (selected.length) selected = [];
       else onclose();
     } else if ((k === 'delete' || k === 'backspace') && selected.length) {
@@ -162,7 +180,7 @@
     } else if (mod && k === 'd' && selected.length) {
       duplicate();
     } else if (mod && k === 'a') {
-      selected = decor.map((d) => d.id);
+      selected = decor.filter((d) => !d.locked && !hidden.includes(d.id)).map((d) => d.id);
     } else if (k.startsWith('arrow') && selected.length && !(e.target as HTMLElement)?.closest?.('[role="list"]')) {
       const step = e.shiftKey ? 10 : 1;
       for (const d of decor.filter((x) => selected.includes(x.id) && !x.locked)) {
@@ -189,6 +207,17 @@
 
 {#if imageEl}
   <ImageEditor el={imageEl} onclose={() => (editingImage = null)} />
+{/if}
+{#if menu}
+  <LayerMenu
+    {...menu}
+    selected={decor.filter((d) => selected.includes(d.id))}
+    {game}
+    bind:hovered
+    onpick={(id) => (selected = [id])}
+    onaction={menuAction}
+    onclose={() => (menu = null)}
+  />
 {/if}
 
 <div class="backdrop" role="presentation">
@@ -220,19 +249,12 @@
       >
         <Stage>
           <AudienceView game={preview} {session} {live} role="mirror" />
-          {#if hoverEl && !selected.includes(hoverEl.id)}
-            <div
-              class="hover"
-              style:left="{hoverEl.x}px"
-              style:top="{hoverEl.y}px"
-              style:width="{hoverEl.w}px"
-              style:height="{hoverEl.h}px"
-              style:transform="rotate({hoverEl.rotation}deg)"
-            ></div>
-          {/if}
           <EditLayer
-            slide={{ background: {}, elements: pseudo.elements.filter((d) => !hidden.includes(d.id)) }}
+            slide={pseudo}
             bind:selected
+            {hidden}
+            bind:hovered
+            onmenu={(m) => (menu = m)}
             onchange={() => {}}
             ondblclick={(el) => el.kind === 'image' && (editingImage = el.id)}
           />
@@ -283,7 +305,8 @@
         {:else}
           <p class="muted small">
             Add logos, stickers or GIFs anywhere on this round's board. Drop image files onto the preview or paste them. Drag to
-            move, pull the handles to resize, and use the round handle to rotate. Double-click an image to edit it.
+            move, pull the handles to resize, and use the round handle to rotate. Double-click an image to edit it. Right-click,
+            Alt+click or the Layers list picks an image hidden under another.
           </p>
         {/if}
       </aside>
@@ -346,12 +369,6 @@
     /* Keep the whole board on screen on short windows. */
     max-height: calc(100dvh - 140px);
     max-width: calc((100dvh - 140px) * 16 / 9);
-  }
-  .hover {
-    position: absolute;
-    z-index: 1001;
-    pointer-events: none;
-    outline: 4px dashed rgba(79, 124, 255, 0.9);
   }
   .side {
     display: flex;

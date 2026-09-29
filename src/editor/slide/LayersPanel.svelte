@@ -5,6 +5,7 @@
 <script lang="ts">
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
+  import { LAYER_ICON, layerLabel } from './layerlabel';
 
   let {
     elements,
@@ -26,29 +27,6 @@
   } = $props();
 
   const top = $derived([...elements].sort((a, b) => b.zIndex - a.zIndex));
-  const ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
-  const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow' };
-
-  function label(el: SlideElement): string {
-    switch (el.kind) {
-      case 'text':
-        return el.text.trim().split('\n')[0].slice(0, 60) || 'Empty text';
-      case 'image':
-      case 'video':
-      case 'audio':
-        return game.media.find((m) => m.id === el.media)?.name ?? (el.kind === 'image' ? 'Image' : el.kind === 'video' ? 'Video' : 'Audio');
-      case 'shape':
-        return SHAPES[el.shape];
-      case 'embed':
-        if (el.embedKind === 'youtube') return 'YouTube';
-        try {
-          return new URL(el.url).hostname;
-        } catch {
-          return 'Link';
-        }
-    }
-  }
-
   function pick(e: MouseEvent, el: SlideElement): void {
     if (e.shiftKey || e.ctrlKey || e.metaKey) selected = selected.includes(el.id) ? selected.filter((x) => x !== el.id) : [...selected, el.id];
     else selected = [el.id];
@@ -129,6 +107,7 @@
     <div
       class="row"
       class:sel={isSel}
+      class:hl={hovered === el.id && !isSel}
       class:off={isHidden}
       class:drop-before={dropAt?.id === el.id && !dropAt.after}
       class:drop-after={dropAt?.id === el.id && dropAt.after}
@@ -155,8 +134,8 @@
         aria-pressed={isSel}
         title="Click to select (Shift/Ctrl adds). Drag to restack; Alt+↑/↓ moves it up or down."
       >
-        {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{ICON[el.kind]}</span>{/if}
-        <span class="txt">{label(el)}</span>
+        {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+        <span class="txt">{layerLabel(el, game)}</span>
       </button>
       <button class="ico" class:on={!isHidden} onclick={() => toggleHidden(el)} aria-label={isHidden ? 'Show while editing' : 'Hide while editing'} title={isHidden ? 'Show while editing' : 'Hide while editing (still shows in the game)'}>
         {isHidden ? '◌' : '👁'}
@@ -190,8 +169,13 @@
     background: var(--panel-2);
     position: relative;
   }
-  .row:hover {
+  .row:hover,
+  .row.hl {
     border-color: var(--border);
+  }
+  .row.hl {
+    border-style: dashed;
+    border-color: var(--accent);
   }
   .row.sel {
     border-color: var(--accent);

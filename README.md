@@ -35,6 +35,13 @@ face** (custom text or an image instead of the value), host notes, and two slide
 - Add **images**, **video**, **audio**, **shapes**, and **🌐 links** (YouTube or direct media URLs; these need internet during
   the game).
 - Drag to move (with snapping guides), pull the handles to resize, and use the round handle to rotate (Shift snaps to 15°).
+- **Layers**: the **Layers** list shows every item top-first. Click to select (Shift/Ctrl adds), drag or ▲▼ to restack,
+  👁 to hide an item while editing (it still shows in the game), and 🔒 to lock it. Locked items can't be moved or deleted,
+  and clicks go through them, so a full-slide background never gets in the way.
+- **Stacked items**: **right-click** the slide to pick from everything under the pointer (plus restack, lock, hide,
+  duplicate and delete). **Alt+click** goes one layer down each click, and **Tab** / **Shift+Tab** steps through items.
+  Drag a box on an empty spot to select several. `Ctrl+]` / `Ctrl+[` bring forward / send backward, and add **Shift** for
+  front / back.
 - **Entrance animations**: fade, pop, slide, typewriter, shake, spin. Click **▶ Preview** to watch them.
 - Drop files onto the slide, or paste images. Ctrl+C / Ctrl+V copies items between slides, and **Copy slide / Paste slide**
   copies whole slides. Ctrl+Z / Ctrl+Y undo and redo.
