@@ -6,8 +6,10 @@ declare global {
   interface Window {
     /** The WebView2 switches the app started with, when they aren't the defaults (the Discord audio fix is on). */
     __JB_BROWSER_ARGS?: string;
-    /** The Discord audio fix is switched on (it applies from the next start). */
+    /** The Discord audio fix is switched on (the default; it applies from the next start). */
     __JB_AUDIO_FIX?: boolean;
+    /** The fix is switched on, but WebView2 wouldn't start with it on this PC, so the app runs without it. */
+    __JB_AUDIO_FIX_FAILED?: boolean;
     /** Set when the app runs as administrator or in compatibility mode (Discord/OBS may then miss its sound). */
     __JB_CAPTURE?: { elevated?: boolean; compat?: string | null };
   }
@@ -20,6 +22,8 @@ export const desktop = $state({
   fixSaved: !!w?.__JB_AUDIO_FIX,
   /** The app is running with it (it only changes with a restart). */
   fixActive: !!w?.__JB_BROWSER_ARGS,
+  /** It's switched on but couldn't start (a restart won't help). */
+  fixFailed: !!w?.__JB_AUDIO_FIX_FAILED,
 });
 
 /** The switches every new app window must be created with (undefined: the defaults). */

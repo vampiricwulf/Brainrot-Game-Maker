@@ -213,12 +213,13 @@ help:
   processes outside the app, where Discord and OBS can't find them. The host window then shows a red warning.
 - Opening it a second time just brings the running app to the front.
 - The audience window may play sound right away (no "click once" needed).
-- **Discord audio fix** (experimental, off by default; in the 🔊 Sound help) starts WebView2 with its audio inside its main
-  process, a direct child of the app, which per-program capture may pick up. It needs a restart (**↻ Restart now**). It's
-  saved as the empty file `discord-audio-fix` in `%APPDATA%\com.jeopardybuilder.brainrot\`; if the app ever fails to start
-  with it, the app starts without it (deleting that file also turns it off).
+- **Discord audio fix** (on by default; switch it off in the 🔊 Sound help) starts WebView2 with its audio inside its
+  main process, a direct child of the app, which is what lets Discord's per-program capture hear the game (tested on
+  Windows with Discord). Turning it off or on needs a restart (**↻ Restart now**). Switching it off is saved as the empty
+  file `discord-audio-fix-off` in `%APPDATA%\com.jeopardybuilder.brainrot\` (delete it to turn the fix back on). If
+  WebView2 ever won't start with it, the app starts without it and the Sound help says so.
 
-**Trying the audio fix without the app's setting** (e.g. on an older build): close Jeopardy Builder, open a Command Prompt
+**Trying the audio fix on an older build** (before it was built in): close Jeopardy Builder, open a Command Prompt
 and run the two lines below; for the second one, drag the `.exe` into the Command Prompt window to paste its path, then
 press Enter. WebView2 adds this variable to the app's own switches and only keeps the last `--disable-features`, so it
 must repeat the full list:

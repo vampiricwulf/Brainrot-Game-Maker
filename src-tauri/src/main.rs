@@ -13,7 +13,8 @@
 //   WebView2 processes;
 // - the host page is told when the app runs as administrator or in compatibility mode (WebView2
 //   then starts its processes outside this app, where per-app capture can't see them);
-// - an opt-in, experimental "Discord audio fix" plays the sound in WebView2's main process.
+// - the "Discord audio fix" (on unless the host turns it off) plays the sound in WebView2's main
+//   process, a direct child of this exe, which is what Discord needs to capture it (tested on Windows).
 
 // Hides the console window on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -45,26 +46,41 @@ fn is_audience(url: &Url) -> bool {
     url.fragment() == Some("audience")
 }
 
-/// The Discord audio fix is on while this (empty) file exists in the app's settings folder.
-fn audio_fix_flag(app: &AppHandle) -> Option<PathBuf> {
+/// The Discord audio fix is on unless this (empty) file exists in the app's settings folder.
+fn audio_fix_off_flag(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|dir| dir.join("discord-audio-fix-off"))
+}
+
+/// The file that turned the fix on while it was opt-in (it's on by default now).
+fn legacy_audio_fix_flag(app: &AppHandle) -> Option<PathBuf> {
     app.path()
         .app_config_dir()
         .ok()
         .map(|dir| dir.join("discord-audio-fix"))
 }
 
+/// Whether the Discord audio fix is switched on (the default).
+fn audio_fix_wanted(app: &AppHandle) -> bool {
+    !audio_fix_off_flag(app).is_some_and(|flag| flag.exists())
+}
+
 /// Turn the Discord audio fix on or off. It takes effect at the next start.
 #[tauri::command]
 fn set_audio_fix(app: AppHandle, on: bool) -> Result<(), String> {
-    let flag = audio_fix_flag(&app).ok_or("The app's settings folder wasn't found.")?;
+    let flag = audio_fix_off_flag(&app).ok_or("The app's settings folder wasn't found.")?;
     let result = if on {
+        if flag.exists() {
+            std::fs::remove_file(&flag)
+        } else {
+            Ok(())
+        }
+    } else {
         flag.parent()
             .map_or(Ok(()), std::fs::create_dir_all)
             .and_then(|()| std::fs::write(&flag, b""))
-    } else if flag.exists() {
-        std::fs::remove_file(&flag)
-    } else {
-        Ok(())
     };
     result.map_err(|err| format!("Couldn't save the setting: {err}"))
 }
@@ -121,9 +137,13 @@ fn capture_problem() -> Option<serde_json::Value> {
     None
 }
 
-/// Facts the host page reads at startup (see src/lib/desktop.svelte.ts).
-fn page_flags(args: Option<&str>, fix_saved: bool) -> String {
+/// Facts the host page reads at startup (see src/lib/desktop.svelte.ts). `fix_failed`: the fix is
+/// switched on but WebView2 wouldn't start with it, so this run is without it.
+fn page_flags(args: Option<&str>, fix_saved: bool, fix_failed: bool) -> String {
     let mut js = format!("window.__JB_AUDIO_FIX = {fix_saved};");
+    if fix_failed {
+        js.push_str("window.__JB_AUDIO_FIX_FAILED = true;");
+    }
     if let Some(args) = args {
         js.push_str(&format!(
             "window.__JB_BROWSER_ARGS = {};",
@@ -188,7 +208,12 @@ fn open_popup(
 }
 
 /// The host window. `args`: WebView2 switches to use instead of wry's defaults.
-fn build_main(app: &AppHandle, args: Option<&'static str>, fix_saved: bool) -> tauri::Result<()> {
+fn build_main(
+    app: &AppHandle,
+    args: Option<&'static str>,
+    fix_saved: bool,
+    fix_failed: bool,
+) -> tauri::Result<()> {
     let handle = app.clone();
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("Jeopardy Builder")
@@ -196,7 +221,7 @@ fn build_main(app: &AppHandle, args: Option<&'static str>, fix_saved: bool) -> t
         .min_inner_size(900.0, 600.0)
         // Shown once its webview exists, so a failed start (retried below) never flashes an empty window.
         .visible(false)
-        .initialization_script(page_flags(args, fix_saved))
+        .initialization_script(page_flags(args, fix_saved, fix_failed))
         .on_new_window(move |url, features| open_popup(&handle, url, features));
     if let Some(args) = args {
         builder = builder.additional_browser_args(args);
@@ -224,23 +249,27 @@ fn main() {
         .invoke_handler(tauri::generate_handler![set_audio_fix, restart_app])
         .setup(|app| {
             let handle = app.handle().clone();
-            let fix_saved = audio_fix_flag(&handle).is_some_and(|flag| flag.exists());
+            // The fix used to be opt-in (that file switched it on); it's on by default now.
+            if let Some(old) = legacy_audio_fix_flag(&handle).filter(|f| f.exists()) {
+                let _ = std::fs::remove_file(old);
+            }
+            let fix_saved = audio_fix_wanted(&handle);
             let args = fix_saved.then_some(AUDIO_FIX_ARGS);
             // Right after a restart, the old copy's WebView2 processes can still hold the data folder
             // with other switches, and WebView2 won't start with different ones until they've quit.
             let mut tries = 0;
             loop {
-                match build_main(&handle, args, fix_saved) {
+                match build_main(&handle, args, fix_saved, false) {
                     Ok(()) => break,
                     Err(err) if tries < 16 => {
                         tries += 1;
                         eprintln!("main window didn't start ({err}), trying again");
                         std::thread::sleep(Duration::from_millis(250));
                     }
-                    // The experimental fix must never keep the app from starting.
+                    // The fix must never keep the app from starting.
                     Err(err) if args.is_some() => {
                         eprintln!("starting without the Discord audio fix: {err}");
-                        build_main(&handle, None, fix_saved)?;
+                        build_main(&handle, None, fix_saved, true)?;
                         break;
                     }
                     Err(err) => return Err(err.into()),
@@ -266,17 +295,27 @@ mod tests {
 
     #[test]
     fn page_flags_without_the_fix() {
-        let js = page_flags(None, false);
+        let js = page_flags(None, false, false);
         assert!(js.contains("window.__JB_AUDIO_FIX = false;"));
+        assert!(!js.contains("__JB_AUDIO_FIX_FAILED"));
         // No switches: every window keeps wry's defaults.
         assert!(!js.contains("__JB_BROWSER_ARGS"));
     }
 
     #[test]
     fn page_flags_with_the_fix() {
-        let js = page_flags(Some(AUDIO_FIX_ARGS), true);
+        let js = page_flags(Some(AUDIO_FIX_ARGS), true, false);
         assert!(js.contains("window.__JB_AUDIO_FIX = true;"));
         assert!(js.contains(&format!("window.__JB_BROWSER_ARGS = \"{AUDIO_FIX_ARGS}\";")));
+    }
+
+    #[test]
+    fn page_flags_when_the_fix_could_not_start() {
+        // Switched on, but this run started without the switches: the page says so instead of offering a restart.
+        let js = page_flags(None, true, true);
+        assert!(js.contains("window.__JB_AUDIO_FIX = true;"));
+        assert!(js.contains("window.__JB_AUDIO_FIX_FAILED = true;"));
+        assert!(!js.contains("__JB_BROWSER_ARGS"));
     }
 
     #[test]

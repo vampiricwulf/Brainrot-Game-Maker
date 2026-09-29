@@ -183,13 +183,18 @@
       <section class="box">
         <label class="check">
           <input type="checkbox" checked={desktop.fixSaved} onchange={(e) => toggleFix(e.currentTarget)} />
-          <b>Discord audio fix</b> <span class="tag">experimental</span>
+          <b>Discord audio fix</b> <span class="muted small">(on by default)</span>
         </label>
         <p class="muted small">
-          Try this if Discord or OBS stream no game sound: it plays the sound from Jeopardy Builder's own process. Takes effect after a
-          restart.
+          Plays the game's sound from Jeopardy Builder's own process, so Discord and OBS can pick it up. Keep it on; turn it off only if
+          the sound stutters or the app misbehaves. Changes take effect after a restart.
         </p>
-        {#if desktop.fixSaved !== desktop.fixActive}
+        {#if desktop.fixSaved && desktop.fixFailed}
+          <p class="warn small">
+            The fix couldn't start on this PC, so the app is running without it. Share your whole screen with sound instead, or run the
+            show in Chrome or Edge (see below).
+          </p>
+        {:else if desktop.fixSaved !== desktop.fixActive}
           <div class="row">
             <span class="warn small">Restart Jeopardy Builder to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
             <button class="small" onclick={restart} disabled={restarting}>{restarting ? 'Restarting…' : '↻ Restart now'}</button>
@@ -230,7 +235,7 @@
         {#if exe}
           <li>
             Close Jeopardy Builder, check in Task Manager that no "Jeopardy Builder" or "Microsoft Edge WebView2" entries are left, start it
-            again and retry. Then try the <b>Discord audio fix</b> above.
+            again and retry. Check that the <b>Discord audio fix</b> above is on (it is unless you turned it off).
           </li>
           <li>
             Still silent: share your whole screen with Sound on (viewers hear everything your PC plays, including your call: use
@@ -343,14 +348,6 @@
     border-radius: 8px;
     padding: 8px 10px;
     color: var(--bad);
-  }
-  .tag {
-    background: var(--warn);
-    color: #000;
-    border-radius: 6px;
-    padding: 0 6px;
-    font-size: 11px;
-    font-weight: 700;
   }
   details {
     border-top: 1px solid var(--border);

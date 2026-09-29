@@ -294,7 +294,8 @@ try {
       if (location.hash === '#audience') return;
       // What src-tauri/src/main.rs injects into the host window.
       window.__JB_AUDIO_FIX = o.fix;
-      if (o.fix) window.__JB_BROWSER_ARGS = o.args;
+      if (o.fix && !o.failed) window.__JB_BROWSER_ARGS = o.args;
+      if (o.failed) window.__JB_AUDIO_FIX_FAILED = true;
       if (o.admin) window.__JB_CAPTURE = { elevated: true, compat: null };
       // WebView2 without the native new-window handler: the app falls back to creating the window itself.
       window.open = () => null;
@@ -333,7 +334,7 @@ try {
     assert((await help.getByText('Share Your Screen › Applications › "Untitled Game · Audience"').count()) === 1, 'the Discord steps name the audience window by its real title');
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(await fix.isChecked(), 'the Discord audio fix shows as on');
-    assert((await help.getByText('experimental', { exact: true }).count()) === 1, 'it is labelled experimental');
+    assert((await help.getByText('(on by default)').count()) === 1 && (await help.getByText('experimental', { exact: true }).count()) === 0, 'it says it is on by default (no longer experimental)');
     await fix.uncheck();
     await help.getByText('Restart Jeopardy Builder to turn it off.').waitFor();
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: false }]), 'switching it off saves the setting');
@@ -367,6 +368,18 @@ try {
     await fix.click();
     await dialog(page).getByText("Couldn't save the setting: access denied").waitFor();
     assert(!(await fix.isChecked()) && (await dialog(page).getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
+    await context.close();
+  }
+  {
+    // Switched on (the default) but WebView2 wouldn't start with it: the app says so instead of offering a restart.
+    const context = await desktopContext({ fix: true, failed: true, admin: false, args: ARGS });
+    const page = watch(await context.newPage(), 'desktop (fix failed)');
+    await toPregame(page, httpUrl);
+    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    const help = dialog(page);
+    assert(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked(), 'the fix still shows as switched on');
+    assert((await help.getByText("The fix couldn't start on this PC").count()) === 1, 'the help says it could not start on this PC');
+    assert((await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0, 'and offers no pointless restart');
     await context.close();
   }
 
