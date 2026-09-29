@@ -137,6 +137,17 @@ try {
   await page.mouse.up();
   assert((await page.getByText('2 items selected.').count()) === 1, 'dragging a box selects the two shapes (not the locked picture)');
 
+  // "Use this style elsewhere" copies the text look to the other questions in the round (it used to crash
+  // on text without an outline or glow).
+  await layers.filter({ hasText: 'Under the picture' }).locator('.name').click();
+  await page.locator('.insp input[type=color]').first().fill('#ff00aa');
+  await page.locator('.insp').getByRole('button', { name: 'Apply', exact: true }).click();
+  await page.getByText(/Style applied to 29 slides/).waitFor();
+  assert(true, '"Use this style elsewhere" restyles the other 29 questions');
+  await page.getByRole('button', { name: 'Next ▶' }).click();
+  await page.locator('.canvas .hit').first().click();
+  assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue got the new text color');
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nLayers E2E passed.');
 } finally {
