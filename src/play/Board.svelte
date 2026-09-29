@@ -7,6 +7,13 @@
   let { game, session, onpick }: { game: Game; session: Session; onpick?: (ref: ClueRef) => void } = $props();
   const round = $derived(game.rounds[session.currentRound]);
   const sym = $derived(game.settings.currencySymbol);
+  const intro = $derived(session.intro);
+  // Tile-fill animation: each tile pops in after a random delay (stable per round).
+  const delays = $derived.by(() => {
+    void round?.id;
+    return Array.from({ length: 200 }, () => Math.random() * 1.4);
+  });
+  const catShown = (ci: number) => !intro || (intro.stage === 'categories' && ci < intro.revealed);
 </script>
 
 {#if round}
@@ -15,9 +22,13 @@
     style:grid-template-columns="repeat({round.categories.length}, 1fr)"
     style:grid-template-rows="1.35fr repeat({round.values.length}, 1fr)"
   >
-    {#each round.categories as cat (cat.id)}
-      <div class="cell header" use:autofit={{ size: 54, enabled: true, text: cat.title }}>
-        <div>{cat.title}</div>
+    {#each round.categories as cat, ci (cat.id)}
+      <div class="cell header" class:fill={intro?.stage === 'fill'} style:animation-delay="{delays[ci]}s">
+        {#if catShown(ci)}
+          <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, enabled: true, text: cat.title }}>
+            <div>{cat.title}</div>
+          </div>
+        {/if}
       </div>
     {/each}
     {#each round.values as _, row}
@@ -27,7 +38,9 @@
         <button
           class="cell tile"
           class:used
-          disabled={used || !onpick}
+          class:fill={intro?.stage === 'fill'}
+          style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
+          disabled={used || !onpick || !!intro}
           onclick={() => onpick?.({ round: session.currentRound, cat: ci, row })}
           aria-label="{cat.title} for {clueValue(round, row, clue)}"
         >
@@ -70,6 +83,31 @@
     border-radius: 0;
     padding: 12px;
     box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+  }
+  .fill {
+    animation: fill-in 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  }
+  @keyframes fill-in {
+    from {
+      scale: 0;
+      opacity: 0;
+    }
+  }
+  .title {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .title.revealing {
+    animation: cat-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes cat-in {
+    from {
+      translate: 0 -120%;
+      opacity: 0;
+    }
   }
   .header {
     font-family: var(--board-font);

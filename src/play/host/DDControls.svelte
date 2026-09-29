@@ -1,0 +1,74 @@
+<!-- Daily Double: pick the player and wager before the clue is shown. -->
+<script lang="ts">
+  import { untrack } from 'svelte';
+  import { textOn } from '../../lib/colors';
+  import { formatPoints, type Game, type Session } from '../../lib/model';
+  import { ddCap, score } from '../../lib/session';
+
+  let { game, session, onshow }: { game: Game; session: Session; onshow: (playerId: string, wager: number) => void } = $props();
+
+  // Initial choice only: whoever is picking (the host can change it).
+  let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? session.players[0]?.id ?? ''));
+  let wager = $state<number | null>(null);
+  let override = $state(false);
+  const sym = $derived(game.settings.currencySymbol);
+  const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
+  const valid = $derived(wager !== null && wager >= 0 && (override || wager <= cap));
+</script>
+
+<div class="dd">
+  <b>Daily Double!</b>
+  <span class="muted">Who found it?</span>
+  <div class="row">
+    {#each session.players as p (p.id)}
+      <button
+        class="chip"
+        style:border-color={p.color}
+        style:background={playerId === p.id ? p.color : undefined}
+        style:color={playerId === p.id ? textOn(p.color) : undefined}
+        onclick={() => (playerId = p.id)}
+      >
+        {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
+      </button>
+    {/each}
+  </div>
+  <div class="row">
+    <label class="check">
+      Wager
+      <!-- svelte-ignore a11y_autofocus -->
+      <input
+        type="number"
+        min="0"
+        bind:value={wager}
+        autofocus
+        onkeydown={(e) => e.key === 'Enter' && valid && onshow(playerId, wager!)}
+      />
+    </label>
+    <button class="small ghost" onclick={() => (wager = cap)}>True Daily Double ({formatPoints(cap, sym)})</button>
+    <span class="muted small">Max {formatPoints(cap, sym)} (their score or the round's top value)</span>
+    <label class="check small"><input type="checkbox" bind:checked={override} /> Ignore the limit</label>
+    <span class="spacer"></span>
+    <button class="primary" disabled={!playerId || !valid} onclick={() => onshow(playerId, wager!)}>Show question ▶</button>
+  </div>
+</div>
+
+<style>
+  .dd {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid #b54cff;
+    border-radius: 8px;
+    background: rgba(122, 0, 255, 0.12);
+  }
+  .chip {
+    border-width: 2px;
+  }
+  .small {
+    font-size: 12px;
+  }
+  input {
+    width: 110px;
+  }
+</style>

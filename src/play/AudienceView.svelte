@@ -1,16 +1,21 @@
 <!--
   Everything viewers see, in 1920×1080 stage coordinates. It never renders an answer until
-  session.revealed / finalStep === 'answer' (spec §7). Reused as-is by the separate audience window in M2.
+  session.revealed / finalStep === 'answer' (spec §7). Reused by the audience window, the single-window
+  stage and the host's mirror in dual mode.
 -->
 <script lang="ts">
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
   import { formatPoints, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, standings } from '../lib/session';
+  import { currentClueInfo, score, standings, tiedLeaders } from '../lib/session';
+  import { mediaUrls } from '../lib/media.svelte';
+  import type { MediaRole } from '../lib/mediactl.svelte';
+  import type { Live } from '../lib/live';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
   import ScoreBar from './ScoreBar.svelte';
-  import type { Live } from '../lib/live';
+  import TimerDisplay from './TimerDisplay.svelte';
+  import Confetti from './Confetti.svelte';
 
   let {
     game,
@@ -24,7 +29,7 @@
     session: Session;
     live: Live;
     /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
-    role?: 'single' | 'mirror' | 'audience';
+    role?: MediaRole;
     onpick?: (ref: ClueRef) => void;
     onpicker?: (id: string) => void;
   } = $props();
@@ -32,46 +37,122 @@
   const info = $derived(currentClueInfo(session, game));
   const finalCategorySlide = $derived(textSlide(game.final.category || 'Final Jeopardy'));
   const sym = $derived(game.settings.currencySymbol);
+  const round = $derived(game.rounds[session.currentRound]);
+  const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
+  const ddPlayer = $derived(session.dd?.playerId ? byId[session.dd.playerId] : undefined);
+  const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
+  const winners = $derived.by(() => {
+    const ties = tiedLeaders(session);
+    if (ties.length && session.coWinners) return ties;
+    const top = standings(session)[0];
+    return top ? [top.player] : [];
+  });
 </script>
 
 {#if session.phase === 'board'}
-  <div class="board-area" in:fade={{ duration: 200 }}>
-    <Board {game} {session} {onpick} />
-  </div>
-  <div class="score-area"><ScoreBar {game} {session} {onpicker} /></div>
-{:else if session.phase === 'clue' && info}
-  {#key `${info.clue.id}-${session.revealed}`}
-    <div class="full" in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}>
-      <SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />
+  {#if session.intro?.stage === 'title'}
+    <div class="full title-card" in:scale={{ start: 0.3, duration: 600 }} out:fade={{ duration: 250 }}>
+      <div class="round-name">{round?.name}</div>
     </div>
-  {/key}
+  {:else}
+    <div class="board-area" in:fade={{ duration: 200 }}>
+      <Board {game} {session} {onpick} />
+    </div>
+    <div class="score-area"><ScoreBar {game} {session} {onpicker} /></div>
+  {/if}
+{:else if session.phase === 'clue' && info}
+  {#if session.dd?.stage === 'splash'}
+    <div class="full dd" in:scale={{ start: 0.05, duration: 700 }}>
+      <div class="dd-text">DAILY<br />DOUBLE!</div>
+      {#if ddPlayer}
+        <div class="dd-player" style:background={ddPlayer.color} style:color={textOn(ddPlayer.color)}>{ddPlayer.name}</div>
+      {/if}
+    </div>
+  {:else}
+    {#key `${info.clue.id}-${session.revealed}`}
+      <div class="full" in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}>
+        <SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />
+      </div>
+    {/key}
+    {#if session.dd?.stage === 'question' && ddPlayer}
+      <div class="dd-badge" style:border-color={ddPlayer.color}>
+        <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double · {formatPoints(session.dd.wager ?? 0, sym)}
+      </div>
+    {/if}
+  {/if}
 {:else if session.phase === 'final'}
   {#key session.finalStep}
     <div class="full" in:fade={{ duration: 400 }}>
-      {#if session.finalStep === 'category'}
+      {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
         <div class="final-label">FINAL JEOPARDY!</div>
         <SlideView slide={finalCategorySlide} />
+        {#if session.finalStep === 'wagers'}<div class="final-sub">Make your wagers…</div>{/if}
       {:else if session.finalStep === 'question'}
         <SlideView slide={game.final.questionSlide} {role} />
-      {:else}
+      {:else if session.finalStep === 'answer'}
         <SlideView slide={game.final.answerSlide} {role} />
+      {:else if session.finalStep === 'reveal'}
+        <div class="reveal">
+          <div class="final-label small">FINAL JEOPARDY!</div>
+          {#if spotlight && session.final}
+            {@const f = session.final}
+            {@const res = f.results[spotlight.id]}
+            {#key spotlight.id}
+              <div class="spot" in:fly={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
+                <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                <div class="spot-wager">
+                  {#if f.shown[spotlight.id]}
+                    Wagered <b>{formatPoints(f.wagers[spotlight.id] ?? 0, sym)}</b>
+                  {:else}
+                    Wager: ???
+                  {/if}
+                </div>
+                {#if res}
+                  <div class="spot-result {res}" in:scale={{ start: 2, duration: 350 }}>{res === 'right' ? '✔ CORRECT' : '✘ WRONG'}</div>
+                {/if}
+                <div class="spot-score">{formatPoints(score(session, spotlight.id), sym)}</div>
+              </div>
+            {/key}
+          {/if}
+        </div>
+        <div class="score-area"><ScoreBar {game} {session} /></div>
       {/if}
+    </div>
+  {/key}
+{:else if session.phase === 'tiebreaker' && game.tiebreaker}
+  {#key session.tiebreakerRevealed}
+    <div class="full" in:fade={{ duration: 300 }}>
+      <SlideView slide={session.tiebreakerRevealed ? game.tiebreaker.answerSlide : game.tiebreaker.questionSlide} {role} />
+      <div class="final-label small">TIEBREAKER</div>
     </div>
   {/key}
 {:else if session.phase === 'end'}
   {@const ranked = standings(session)}
   <div class="full end" in:fade={{ duration: 500 }}>
-    <h1>{ranked.length ? `${ranked[0].player.name} wins!` : 'Game over'}</h1>
+    <Confetti colors={[...winners.map((w) => w.color), '#ffcc00', '#ffffff']} />
+    <h1>
+      {#if winners.length > 1}
+        It's a tie: {winners.map((w) => w.name).join(' & ')}!
+      {:else if winners.length}
+        {winners[0].name} wins!
+      {:else}
+        Game over
+      {/if}
+    </h1>
     <ol>
-      {#each ranked as { player, score }, i (player.id)}
+      {#each ranked as { player, score: s }, i (player.id)}
         <li style:--c={player.color} in:fly={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
           <span class="rank">{i + 1}</span>
           <span class="nm" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
-          <span class="sc">{formatPoints(score, sym)}</span>
+          <span class="sc">{formatPoints(s, sym)}</span>
         </li>
       {/each}
     </ol>
   </div>
+{/if}
+
+{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board')}
+  <TimerDisplay timer={live.timer} />
 {/if}
 
 <div class="pops" style:bottom={session.phase === 'board' ? '270px' : '40px'}>
@@ -81,6 +162,12 @@
     </div>
   {/each}
 </div>
+
+{#if role !== 'mirror' && live.sound && mediaUrls[live.sound.media]}
+  {#key live.sound.nonce}
+    <audio src={mediaUrls[live.sound.media]} autoplay></audio>
+  {/key}
+{/if}
 
 <style>
   .board-area {
@@ -102,6 +189,70 @@
     inset: 0;
     background: var(--tile);
   }
+  .title-card {
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 45%, #2a36ff, var(--tile) 50%, #020550);
+  }
+  .round-name {
+    font-family: var(--value-font);
+    font-size: 200px;
+    font-weight: 900;
+    color: var(--value);
+    text-align: center;
+    text-shadow: 10px 10px 0 #000;
+    -webkit-text-stroke: 4px #000;
+    paint-order: stroke fill;
+    padding: 0 60px;
+    line-height: 1;
+  }
+  .dd {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    background: radial-gradient(circle, #ff3dcb 0%, #7a00ff 35%, var(--tile) 70%);
+    animation: dd-spin 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes dd-spin {
+    from {
+      rotate: -540deg;
+    }
+  }
+  .dd-text {
+    font-family: var(--value-font);
+    font-size: 230px;
+    line-height: 0.95;
+    font-weight: 900;
+    color: var(--value);
+    text-align: center;
+    text-shadow: 12px 12px 0 #000;
+    -webkit-text-stroke: 5px #000;
+    paint-order: stroke fill;
+  }
+  .dd-player {
+    font-family: var(--board-font);
+    font-size: 70px;
+    font-weight: 800;
+    padding: 8px 40px;
+    border-radius: 20px;
+    border: 6px solid #fff;
+  }
+  .dd-badge {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    padding: 10px 24px;
+    font-family: var(--board-font);
+    font-size: 40px;
+    font-weight: 800;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.7);
+    border: 5px solid;
+    border-radius: 16px;
+    z-index: 15;
+  }
   .final-label {
     position: absolute;
     top: 60px;
@@ -113,6 +264,73 @@
     text-shadow: 5px 5px 0 #000;
     z-index: 1;
   }
+  .final-label.small {
+    top: 24px;
+    font-size: 54px;
+  }
+  .final-sub {
+    position: absolute;
+    bottom: 80px;
+    width: 100%;
+    text-align: center;
+    font-size: 60px;
+    color: #fff;
+    font-family: var(--board-font);
+    opacity: 0.85;
+  }
+  .reveal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 850px;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 40%, #1b27ff, var(--tile) 55%, #020550);
+  }
+  .spot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    padding: 40px 80px;
+    border-radius: 30px;
+    border: 8px solid var(--c);
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-family: var(--board-font);
+    min-width: 900px;
+  }
+  .spot-name {
+    font-size: 90px;
+    font-weight: 900;
+    padding: 6px 40px;
+    border-radius: 18px;
+  }
+  .spot-wager {
+    font-size: 64px;
+  }
+  .spot-wager b {
+    color: var(--value);
+  }
+  .spot-result {
+    font-size: 90px;
+    font-weight: 900;
+    padding: 4px 30px;
+    border-radius: 14px;
+  }
+  .spot-result.right {
+    background: #1f9d55;
+  }
+  .spot-result.wrong {
+    background: #c53030;
+  }
+  .spot-score {
+    font-family: var(--value-font);
+    font-size: 110px;
+    font-weight: 900;
+    text-shadow: 6px 6px 0 #000;
+  }
   .end {
     display: flex;
     flex-direction: column;
@@ -122,13 +340,18 @@
     background: radial-gradient(circle at 50% 30%, #1b27ff, var(--tile) 45%, #020550);
   }
   .end h1 {
+    position: relative;
+    z-index: 6;
     font-family: var(--value-font);
     font-size: 110px;
-    margin: 0 0 40px;
+    margin: 0 40px 40px;
+    text-align: center;
     color: var(--value);
     text-shadow: 6px 6px 0 #000;
   }
   .end ol {
+    position: relative;
+    z-index: 6;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -165,7 +388,6 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 40px;
     display: flex;
     gap: 20px;
     justify-content: center;

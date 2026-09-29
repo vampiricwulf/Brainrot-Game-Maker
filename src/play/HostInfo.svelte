@@ -15,6 +15,13 @@
       <span class="cat">{info.category.title}</span>
       <span class="val">{formatPoints(info.value, sym)}</span>
     </div>
+    {#if session.dd}
+      <div class="dd">
+        ⭐ Daily Double{session.dd.stage === 'question'
+          ? ` · ${session.players.find((p) => p.id === session.dd?.playerId)?.name ?? ''} wagered ${formatPoints(session.dd.wager ?? 0, sym)}`
+          : ' · waiting for the wager'}
+      </div>
+    {/if}
     <div class="label">Question {session.revealed ? '' : '(on screen)'}</div>
     <div class="q">{slideText(info.clue.questionSlide) || '—'}</div>
     <div class="label">Answer {session.revealed ? '(on screen)' : '(hidden from viewers)'}</div>
@@ -29,6 +36,25 @@
     <div class="q">{slideText(game.final.questionSlide) || '—'}</div>
     <div class="label">Answer</div>
     <div class="a">{slideText(game.final.answerSlide) || '—'}</div>
+    {#if session.final}
+      <div class="label">Wagers</div>
+      <ol>
+        {#each session.final.order as id (id)}
+          {@const p = session.players.find((x) => x.id === id)}
+          <li>
+            <span class="dot" style:background={p?.color}></span>{p?.name}
+            <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : '—'}</b>
+            {session.final.results[id] === 'right' ? '✔' : session.final.results[id] === 'wrong' ? '✘' : ''}
+          </li>
+        {/each}
+      </ol>
+    {/if}
+  {:else if session.phase === 'tiebreaker' && game.tiebreaker}
+    <div class="meta"><span class="cat">Tiebreaker</span></div>
+    <div class="label">Question</div>
+    <div class="q">{slideText(game.tiebreaker.questionSlide) || '—'}</div>
+    <div class="label">Answer</div>
+    <div class="a">{slideText(game.tiebreaker.answerSlide) || '—'}</div>
   {:else}
     <div class="meta"><span class="cat">{game.rounds[session.currentRound]?.name ?? ''}</span></div>
     <div class="label">Picking next</div>
@@ -62,6 +88,13 @@
   }
   .val {
     color: var(--value);
+  }
+  .dd {
+    background: #7a00ff;
+    color: #fff;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-weight: 600;
   }
   .label {
     margin-top: 8px;

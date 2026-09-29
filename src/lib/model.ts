@@ -174,6 +174,20 @@ export interface GameSettings {
   /** After a single-player award, that player becomes the current picker (TV-style). */
   pickerFollowsAward: boolean;
   maxPlayers: number;
+  /** Start a clue's countdown automatically when it opens (if it has a timer). */
+  timerAutoStart: boolean;
+  /** Let players with $0 or less play Final Jeopardy. */
+  finalAllowNonPositive: boolean;
+  roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
+}
+
+/** Optional sounds played on the audience side at key moments (spec §9). */
+export interface GameAudio {
+  roundIntro?: Id;
+  dailyDouble?: Id;
+  timesUp?: Id;
+  finalThink?: Id;
+  winner?: Id;
 }
 
 export type ClueType = 'standard' | 'dailyDouble' | 'wheel' | 'dice';
@@ -225,9 +239,25 @@ export interface Game {
   rounds: Round[];
   final: FinalRound;
   media: MediaRef[];
+  audio: GameAudio;
+  /** Optional clue used to break a tie at the end. */
+  tiebreaker?: { questionSlide: Slide; answerSlide: Slide; hostNotes?: string };
 }
 
 // ---------- Runtime session ----------
+
+export interface FinalState {
+  /** Players taking part (others sat out, e.g. score ≤ 0). */
+  players: Id[];
+  wagers: Record<Id, number>;
+  /** Order for the one-by-one reveal. */
+  order: Id[];
+  /** Wager shown on screen for this player. */
+  shown: Record<Id, boolean>;
+  results: Record<Id, 'right' | 'wrong'>;
+  /** Player currently spotlighted in the reveal. */
+  current?: Id;
+}
 
 export interface Player {
   id: Id;
@@ -259,9 +289,17 @@ export interface Session {
   /** Clue ids that have been played. */
   used: Record<Id, true>;
   currentRound: number;
-  phase: 'board' | 'clue' | 'final' | 'end';
-  /** Step within Final Jeopardy (wagers + per-player reveal arrive in M4). */
-  finalStep?: 'category' | 'question' | 'answer';
+  phase: 'board' | 'clue' | 'final' | 'tiebreaker' | 'end';
+  /** Round intro sequence in progress (spec §6.3 step 0). */
+  intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
+  /** Daily Double in progress for the open clue. */
+  dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number } | null;
+  finalStep?: 'category' | 'wagers' | 'question' | 'answer' | 'reveal';
+  final?: FinalState;
+  /** Tiebreaker clue showing the answer. */
+  tiebreakerRevealed?: boolean;
+  /** The host declared the tied leaders co-winners. */
+  coWinners?: boolean;
   currentClue: ClueRef | null;
   revealed: boolean;
   scoreLog: ScoreEvent[];
@@ -377,12 +415,16 @@ export function newGame(): Game {
       currencySymbol: '$',
       rollOffDie: 20,
       pickerFollowsAward: true,
+      timerAutoStart: true,
+      finalAllowNonPositive: false,
+      roundIntro: { titleCard: true, tileFill: true, categoryReveal: 'click' },
       maxPlayers: 8,
     },
     players: [],
     rounds: [newRound('Jeopardy!')],
     final: { enabled: true, category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 },
     media: [],
+    audio: {},
   };
 }
 
@@ -414,5 +456,7 @@ export function migrateGame(data: Game): Game {
   g.settings = { ...d.settings, ...(data.settings ?? {}) };
   g.final = { ...d.final, ...(data.final ?? {}) };
   g.media ??= [];
+  g.audio ??= {};
+  g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
   return g;
 }

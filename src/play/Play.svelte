@@ -2,8 +2,10 @@
   import { app, toast } from '../lib/app.svelte';
   import { newId, type ClueRef } from '../lib/model';
   import {
-    applyScore, backToBoard, clueReason, currentClueInfo, finalNext, goToRound, openClue, redo, reveal, undo,
+    applyScore, backToBoard, clueReason, currentClueInfo, ddShowQuestion, finalNext, goToRound, introNext, openClue, redo,
+    reveal, skipIntro, startIntro, undo,
   } from '../lib/session';
+  import { playSound, startTimer, timerRemaining, toggleTimer } from '../lib/live';
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
   import AudienceView from './AudienceView.svelte';
@@ -47,7 +49,30 @@
 
   onMount(() => {
     registerGameFonts(game);
+    // Time's up watcher (the host is the single source of truth for expiry).
+    const id = setInterval(() => {
+      const t = app.live.timer;
+      if (t && !t.expired && t.startedAt !== null && timerRemaining(t) <= 0) {
+        t.elapsed = t.total;
+        t.startedAt = null;
+        t.expired = true;
+        playSound(app.live, game.audio.timesUp);
+      }
+    }, 150);
+    return () => clearInterval(id);
   });
+
+  /** Seconds for the open clue's countdown: its own setting, else the game default (0/blank = none). */
+  function clueTimer(): number | null {
+    const c = currentClueInfo(session, game)?.clue;
+    const t = c?.timerSeconds ?? game.settings.defaultTimerSeconds;
+    return t && t > 0 ? t : null;
+  }
+
+  function autoTimer(): void {
+    const t = clueTimer();
+    if (t && game.settings.timerAutoStart) startTimer(app.live, t);
+  }
 
   /** The first controllable media element on screen (for the Space / ← → / M / Y shortcuts). */
   function firstMedia(): [string, { paused: boolean; muted: boolean; openUrl?: string }] | undefined {
@@ -67,8 +92,10 @@
   }
 
   function reasonNow(): string {
-    if (session.phase === 'clue' && session.currentClue) return clueReason(game, session.currentClue);
+    if (session.phase === 'clue' && session.currentClue)
+      return clueReason(game, session.currentClue) + (session.dd?.stage === 'question' ? ' (Daily Double)' : '');
     if (session.phase === 'final') return 'Final Jeopardy';
+    if (session.phase === 'tiebreaker') return 'Tiebreaker';
     return 'Adjustment';
   }
 
@@ -87,15 +114,61 @@
   const info = $derived(currentClueInfo(session, game));
 
   function pick(ref: ClueRef): void {
-    openClue(session, ref);
+    openClue(session, ref, game);
     selected = [];
     amount = currentClueInfo(session, game)?.value ?? null;
+    app.live.timer = null;
+    if (session.dd) playSound(app.live, game.audio.dailyDouble);
+    else autoTimer();
+  }
+
+  function ddShow(playerId: string, wager: number): void {
+    ddShowQuestion(session, playerId, wager);
+    selected = [playerId];
+    amount = wager;
+    autoTimer();
   }
 
   function back(): void {
     backToBoard(session, game);
     selected = [];
     amount = null;
+    app.live.timer = null;
+  }
+
+  function nextRound(delta: number): void {
+    goToRound(session, game, session.currentRound + delta);
+    app.live.timer = null;
+    selected = [];
+    amount = null;
+    if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
+    if (session.phase === 'end') playSound(app.live, game.audio.winner);
+  }
+
+  function intro(): void {
+    introNext(session, game);
+  }
+
+  // Auto-advance through category reveals when set to 'auto'.
+  $effect(() => {
+    const i = session.intro;
+    if (!i || app.pregame) return;
+    const mode = game.settings.roundIntro.categoryReveal;
+    const delay = i.stage === 'title' ? 0 : i.stage === 'fill' ? 1900 : mode === 'auto' ? 1300 : 0;
+    if (!delay || (i.stage === 'categories' && mode !== 'auto')) return;
+    void i.revealed;
+    const t = setTimeout(() => introNext(session, game), delay);
+    return () => clearTimeout(t);
+  });
+
+  function finalStep(): void {
+    app.live.timer = null;
+    if (session.phase === 'final' && session.finalStep === 'question') {
+      startTimer(app.live, game.final.timerSeconds || game.settings.finalTimerSeconds || 30);
+      playSound(app.live, game.audio.finalThink);
+    }
+    if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
+    if (session.phase === 'end') playSound(app.live, game.audio.winner);
   }
 
   function doUndo(): void {
@@ -113,6 +186,8 @@
       return;
     }
     app.pregame = false;
+    startIntro(session, game);
+    if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
   }
 
   function toggleFullscreen(): void {
@@ -162,7 +237,15 @@
         else if (session.phase === 'clue') back();
         break;
       case 'n':
-        if (session.phase === 'final') finalNext(session);
+        if (session.phase === 'board' && session.intro) intro();
+        else if (session.phase === 'final' && session.finalStep !== 'wagers') {
+          finalNext(session);
+          finalStep();
+        }
+        break;
+      case 't':
+        if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
+        else startTimer(app.live, clueTimer() ?? (game.settings.defaultTimerSeconds || 30));
         break;
       case 'p':
         pickerPending = true;
@@ -257,14 +340,18 @@
         bind:selected
         bind:amount
         onaward={(s) => award(s)}
-        onwrong={(id) => award(-1, [id], info?.value ?? 0)}
+        onwrong={(id) => award(-1, [id], session.dd?.wager ?? info?.value ?? 0)}
         onreveal={() => reveal(session)}
         onback={back}
         onundo={doUndo}
         onredo={doRedo}
-        onnextround={() => goToRound(session, game, session.currentRound + 1)}
-        onprevround={() => goToRound(session, game, session.currentRound - 1)}
-        onfinalnext={() => finalNext(session)}
+        onnextround={() => nextRound(1)}
+        onprevround={() => nextRound(-1)}
+        onintronext={intro}
+        onskipintro={() => skipIntro(session)}
+        onddshow={ddShow}
+        onfinalstep={finalStep}
+        ontiebreakerdone={() => ((session.phase = 'end'), (app.live.timer = null))}
         onlog={() => (showLog = !showLog)}
         onplayers={() => (showPlayers = true)}
         {dual}

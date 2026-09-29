@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, newId } from './model';
 import { setRowCount, addCategory, removeCategory } from './ops';
 import {
-  applyScore, backToBoard, finalNext, goToRound, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
+  applyScore, backToBoard, ddCap, finalJudge, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
 } from './session';
 
 function setup(players = 3) {
@@ -82,15 +82,67 @@ describe('flow', () => {
     expect(session.phase).toBe('end');
   });
 
-  it('goes through Final Jeopardy when enabled', () => {
-    const { game, session } = setup();
+  it('goes through Final Jeopardy with wagers and a per-player reveal', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a], 1000, 'x');
+    applyScore(session, game, [b], 400, 'x');
     goToRound(session, game, 1);
     expect([session.phase, session.finalStep]).toEqual(['final', 'category']);
-    finalNext(session);
-    finalNext(session);
-    expect(session.finalStep).toBe('answer');
+    // c has $0 and sits out; reveal order is lowest score first.
+    expect(session.final!.players).toEqual([a, b]);
+    expect(session.final!.order).toEqual([b, a]);
+    expect(finalWagerCap(session, b)).toBe(400);
+    finalNext(session); // wagers
+    session.final!.wagers[a] = 600;
+    session.final!.wagers[b] = 400;
+    finalNext(session); // question
+    finalNext(session); // answer
+    finalNext(session); // reveal
+    expect(session.final!.current).toBe(b);
+    finalJudge(session, game, b, true);
+    finalJudge(session, game, a, false);
+    expect([score(session, a), score(session, b)]).toEqual([400, 800]);
+    // Re-judging replaces the earlier result instead of stacking.
+    finalJudge(session, game, a, true);
+    expect(score(session, a)).toBe(1600);
+    expect(score(session, c)).toBe(0);
     finalNext(session);
     expect(session.phase).toBe('end');
+  });
+
+  it('caps Daily Double wagers TV-style', () => {
+    const { game, session, a } = setup();
+    expect(ddCap(session, game, a)).toBe(1000);
+    applyScore(session, game, [a], 2500, 'x');
+    expect(ddCap(session, game, a)).toBe(2500);
+  });
+
+  it('places Daily Doubles at most one per category, skipping empty tiles', () => {
+    const { game } = setup();
+    const round = game.rounds[0];
+    round.categories[0].clues.forEach((c) => (c.empty = true));
+    let seed = 1;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    expect(randomizeDailyDoubles(round, 3, rand)).toBe(3);
+    const dds = round.categories.map((c) => c.clues.filter((cl) => cl.type === 'dailyDouble').length);
+    expect(dds[0]).toBe(0);
+    expect(dds.every((n) => n <= 1)).toBe(true);
+    expect(dds.reduce((x, y) => x + y)).toBe(3);
+  });
+
+  it('runs the round intro steps and detects tied leaders', () => {
+    const { game, session, a, b } = setup();
+    goToRound(session, game, 0);
+    session.phase = 'clue';
+    goToRound(session, game, 0);
+    expect(session.intro?.stage).toBe('title');
+    introNext(session, game);
+    expect(session.intro?.stage).toBe('fill');
+    introNext(session, game);
+    for (let i = 0; i < game.rounds[0].categories.length; i++) introNext(session, game);
+    expect(session.intro).toBeNull();
+    applyScore(session, game, [a, b], 500, 'x');
+    expect(tiedLeaders(session).map((p) => p.id)).toEqual([a, b]);
   });
 });
 

@@ -4,12 +4,19 @@
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { currentClueInfo, roundComplete, score, setScore } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
+  import TimerControls from './host/TimerControls.svelte';
+  import DDControls from './host/DDControls.svelte';
+  import FinalControls from './host/FinalControls.svelte';
+  import EndControls from './host/EndControls.svelte';
+  import type { Snippet } from 'svelte';
 
   let {
     game,
     session,
     selected = $bindable(),
     amount = $bindable(),
+    dual,
+    tools,
     onaward,
     onwrong,
     onreveal,
@@ -18,18 +25,25 @@
     onredo,
     onnextround,
     onprevround,
-    onfinalnext,
+    onintronext,
+    onskipintro,
+    onddshow,
+    onfinalstep,
+    ontiebreakerdone,
+    onrolloff,
     onlog,
     onplayers,
     onhide,
     onexit,
-    dual,
     onaudience,
   }: {
     game: Game;
     session: Session;
     selected: string[];
     amount: number | null;
+    dual: boolean;
+    /** Extra tool buttons (dice, wheel…) rendered in the nav row. */
+    tools?: Snippet;
     onaward: (sign: 1 | -1) => void;
     onwrong: (playerId: string) => void;
     onreveal: () => void;
@@ -38,22 +52,41 @@
     onredo: () => void;
     onnextround: () => void;
     onprevround: () => void;
-    onfinalnext: () => void;
+    onintronext: () => void;
+    onskipintro: () => void;
+    onddshow: (playerId: string, wager: number) => void;
+    onfinalstep: () => void;
+    ontiebreakerdone: () => void;
+    onrolloff?: (ids: string[]) => void;
     onlog: () => void;
     onplayers: () => void;
     onhide: () => void;
     onexit: () => void;
-    dual: boolean;
     onaudience: () => void;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived(game.rounds[session.currentRound]);
-  const done = $derived(session.phase === 'board' && roundComplete(session, game));
+  const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const canUndo = $derived(session.scoreLog.some((e) => !e.undone));
   const isLastRound = $derived(session.currentRound >= game.rounds.length - 1);
-  const scoring = $derived(session.phase === 'clue' || session.phase === 'final' || session.phase === 'board');
+  const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
+  const scoring = $derived(
+    !ddWager &&
+      (session.phase === 'clue' ||
+        session.phase === 'board' ||
+        session.phase === 'tiebreaker' ||
+        (session.phase === 'final' && session.finalStep !== 'reveal')),
+  );
+  const introLabel = $derived(
+    session.intro?.stage === 'title'
+      ? 'Show board ▶'
+      : session.intro?.stage === 'fill'
+        ? 'Reveal categories ▶'
+        : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${round?.categories.length ?? 0} ▶`,
+  );
+  const timerDefault = $derived(info?.clue.timerSeconds || game.settings.defaultTimerSeconds || 30);
 
   let editingScore = $state<string | null>(null);
 
@@ -66,41 +99,70 @@
     if (value.trim() !== '' && Number.isFinite(n)) setScore(session, id, n);
     editingScore = null;
   }
-
-  const finalLabels = { category: 'Show question ▶', question: 'Reveal answer ▶', answer: 'Finish game ▶' } as const;
 </script>
 
 <div class="panel">
   <div class="status row">
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
-      <span class="muted">Pick a tile on the board.</span>
+      {#if session.intro}
+        <span class="muted">Round intro…</span>
+      {:else}
+        <span class="muted">Pick a tile on the board.</span>
+      {/if}
       {#if done}<span class="done">Round complete!</span>{/if}
     {:else if session.phase === 'clue' && info}
       <b>{info.category.title}</b>
-      <span class="val">{sym}{info.value}</span>
+      <span class="val">{formatPoints(info.value, sym)}</span>
+      {#if session.dd?.stage === 'question'}<span class="ddtag">DD {formatPoints(session.dd.wager ?? 0, sym)}</span>{/if}
       <span class="muted">·</span>
       {#if session.revealed}
         <span class="revealed">Answer is showing</span>
       {:else}
         <span class="muted">Answer hidden</span>
       {/if}
-      {#if info.clue.hostNotes}<span class="notes" title="Host notes">📝 {info.clue.hostNotes}</span>{/if}
+      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes">📝 {info.clue.hostNotes}</span>{/if}
     {:else if session.phase === 'final'}
       <b>Final Jeopardy</b>
-      <span class="muted">Step: {session.finalStep}. Enter each player's result below using the amount + Award/Deduct.</span>
+      <span class="muted">{session.finalStep}</span>
+    {:else if session.phase === 'tiebreaker'}
+      <b>Tiebreaker</b>
+      <span class="muted">Award the winner with the scoring buttons, then go back to the results.</span>
     {:else}
       <b>Game over</b>
     {/if}
+    <span class="spacer"></span>
+    <TimerControls defaultSeconds={timerDefault} />
   </div>
 
   <MediaControls {dual} />
+
+  {#if session.phase === 'board' && session.intro}
+    <div class="row">
+      <button class="primary" onclick={onintronext} title="N">{introLabel}</button>
+      <button class="ghost" onclick={onskipintro}>Skip intro</button>
+    </div>
+  {/if}
+
+  {#if ddWager}
+    {#key info?.clue.id}
+      <DDControls {game} {session} onshow={onddshow} />
+    {/key}
+  {/if}
+
+  {#if session.phase === 'final'}
+    <FinalControls {game} {session} onstep={onfinalstep} />
+  {/if}
+
+  {#if session.phase === 'end'}
+    <EndControls {game} {session} {onrolloff} />
+  {/if}
 
   {#if scoring}
     <div class="players">
       {#each session.players as p, i (p.id)}
         {@const on = selected.includes(p.id)}
-        <div class="p" class:on style:--c={p.color}>
+        <div class="p" class:on class:picker={session.currentPickerId === p.id} style:--c={p.color}>
           <button
             class="sel"
             onclick={() => toggle(p.id)}
@@ -131,7 +193,9 @@
             </button>
           {/if}
           {#if game.settings.deductOnWrong && session.phase === 'clue' && info}
-            <button class="small wrong" onclick={() => onwrong(p.id)} title="Deduct the clue value">✘ −{info.value}</button>
+            <button class="small wrong" onclick={() => onwrong(p.id)} title="Deduct the clue value">
+              ✘ −{session.dd?.wager ?? info.value}
+            </button>
           {/if}
         </div>
       {/each}
@@ -162,17 +226,21 @@
   {/if}
 
   <div class="row nav">
-    {#if session.phase === 'clue'}
+    {#if session.phase === 'clue' && !ddWager}
       <button class="primary" onclick={onreveal} disabled={session.revealed} title="R">👁 Reveal answer</button>
+      <button onclick={onback} title="Esc">▦ Back to board</button>
+    {:else if session.phase === 'clue'}
       <button onclick={onback} title="Esc">▦ Back to board</button>
     {:else if session.phase === 'board'}
       <button onclick={onprevround} disabled={session.currentRound === 0}>◀ Prev round</button>
       <button class:primary={done} onclick={onnextround}>
         {isLastRound ? (game.final.enabled ? 'Final Jeopardy ▶' : 'End game ▶') : 'Next round ▶'}
       </button>
-    {:else if session.phase === 'final'}
-      <button class="primary" onclick={onfinalnext} title="N">{finalLabels[session.finalStep ?? 'category']}</button>
+    {:else if session.phase === 'tiebreaker'}
+      <button class="primary" onclick={onreveal} disabled={session.tiebreakerRevealed} title="R">👁 Reveal answer</button>
+      <button onclick={ontiebreakerdone}>🏁 Back to results</button>
     {/if}
+    {@render tools?.()}
     <span class="spacer"></span>
     <button onclick={onaudience} class:on={dual} title="A">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
     <button onclick={onlog} title="L">📜 Log</button>
@@ -190,10 +258,20 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 55vh;
+    overflow-y: auto;
   }
   .val {
     color: var(--value);
     font-weight: 800;
+  }
+  .ddtag {
+    background: #7a00ff;
+    color: #fff;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-weight: 700;
+    font-size: 12px;
   }
   .done,
   .revealed {
@@ -221,6 +299,9 @@
   .p.on {
     box-shadow: 0 0 0 2px var(--c);
   }
+  .p.picker .sel::after {
+    content: ' ★';
+  }
   .sel {
     font-weight: 700;
     border: none;
@@ -240,6 +321,9 @@
   }
   .wrong {
     color: var(--bad);
+  }
+  .small {
+    font-size: 12px;
   }
   .award input {
     width: 110px;

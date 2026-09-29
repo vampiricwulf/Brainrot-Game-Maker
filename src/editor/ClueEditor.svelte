@@ -66,6 +66,13 @@
       </header>
 
       <div class="opts row">
+        <label class="check">
+          Type
+          <select bind:value={clue.type} disabled={clue.empty}>
+            <option value="standard">Standard</option>
+            <option value="dailyDouble">⭐ Daily Double</option>
+          </select>
+        </label>
         <label class="check"><input type="checkbox" bind:checked={clue.empty} /> Empty tile (not playable)</label>
         <label class="check">
           Value
@@ -75,6 +82,18 @@
             value={clue.value ?? ''}
             oninput={(e) => (clue.value = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
           />
+        </label>
+        <label class="check" title="Countdown when this clue opens. Blank = game default, 0 = no timer.">
+          ⏱
+          <input
+            type="number"
+            min="0"
+            class="secs"
+            placeholder={app.game.settings.defaultTimerSeconds ? String(app.game.settings.defaultTimerSeconds) : 'none'}
+            value={clue.timerSeconds ?? ''}
+            oninput={(e) => (clue.timerSeconds = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
+          />
+          s
         </label>
         <label class="check" title="Show this on the board tile instead of the value">
           Tile shows
@@ -157,6 +176,9 @@
   }
   .opts input[type='number'] {
     width: 100px;
+  }
+  .secs {
+    width: 70px;
   }
   .face {
     width: 140px;

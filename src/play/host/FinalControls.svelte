@@ -1,0 +1,172 @@
+<!-- Final Jeopardy host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
+<script lang="ts">
+  import { textOn } from '../../lib/colors';
+  import { formatPoints, type Game, type Session } from '../../lib/model';
+  import { finalJudge, finalNext, finalShow, finalWagerCap, score } from '../../lib/session';
+
+  let { game, session, onstep }: { game: Game; session: Session; onstep: () => void } = $props();
+  const f = $derived(session.final);
+  const sym = $derived(game.settings.currencySymbol);
+  const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
+  let override = $state(false);
+
+  const wagersOk = $derived(
+    !!f && f.players.every((id) => {
+      const w = f.wagers[id];
+      return typeof w === 'number' && w >= 0 && (override || w <= finalWagerCap(session, id));
+    }),
+  );
+
+  function toggleIn(id: string): void {
+    if (!f) return;
+    if (f.players.includes(id)) {
+      f.players = f.players.filter((x) => x !== id);
+      f.order = f.order.filter((x) => x !== id);
+    } else {
+      f.players.push(id);
+      f.order.push(id);
+    }
+  }
+
+  function move(id: string, d: number): void {
+    if (!f) return;
+    const i = f.order.indexOf(id);
+    const j = i + d;
+    if (j < 0 || j >= f.order.length) return;
+    [f.order[i], f.order[j]] = [f.order[j], f.order[i]];
+  }
+
+  function next(): void {
+    finalNext(session);
+    onstep();
+  }
+
+  const labels = {
+    category: 'Lock category, take wagers ▶',
+    wagers: 'Show question ▶',
+    question: 'Reveal answer ▶',
+    answer: 'Start player reveals ▶',
+    reveal: 'Finish game ▶',
+  } as const;
+</script>
+
+{#if f}
+  <div class="fj">
+    {#if session.finalStep === 'category'}
+      <span class="muted">Category is on screen. Players who can play:</span>
+      <div class="row">
+        {#each session.players as p (p.id)}
+          <label class="check chip" style:border-color={p.color}>
+            <input type="checkbox" checked={f.players.includes(p.id)} onchange={() => toggleIn(p.id)} />
+            {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
+          </label>
+        {/each}
+      </div>
+    {:else if session.finalStep === 'wagers'}
+      <span class="muted">Enter each wager (only you see these).</span>
+      <div class="wagers">
+        {#each f.players as id (id)}
+          {@const p = byId[id]}
+          {@const cap = finalWagerCap(session, id)}
+          {@const w = f.wagers[id]}
+          <label class="check chip" style:border-color={p?.color}>
+            {p?.name}
+            <input
+              type="number"
+              min="0"
+              value={w ?? ''}
+              class:bad={typeof w === 'number' && !override && w > cap}
+              oninput={(e) => (f.wagers[id] = e.currentTarget.value === '' ? (undefined as unknown as number) : +e.currentTarget.value)}
+            />
+            <span class="muted small">max {formatPoints(cap, sym)}</span>
+          </label>
+        {/each}
+      </div>
+      <label class="check small"><input type="checkbox" bind:checked={override} /> Ignore the limits</label>
+    {:else if session.finalStep === 'reveal'}
+      <span class="muted">Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼.</span>
+      <div class="order">
+        {#each f.order as id, i (id)}
+          {@const p = byId[id]}
+          {@const res = f.results[id]}
+          <div class="pl" class:cur={f.current === id} style:--c={p?.color}>
+            <button class="ghost small" onclick={() => move(id, -1)} disabled={i === 0}>▲</button>
+            <button class="ghost small" onclick={() => move(id, 1)} disabled={i === f.order.length - 1}>▼</button>
+            <button
+              class="name"
+              style:background={p?.color}
+              style:color={p ? textOn(p.color) : undefined}
+              onclick={() => (f.current = id)}
+              title="Spotlight on screen"
+            >{p?.name}</button>
+            <span class="muted small">{formatPoints(score(session, id), sym)} · wager {formatPoints(f.wagers[id] ?? 0, sym)}</span>
+            <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
+            <button class="small good" class:on={res === 'right'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, true))}>✔ Right</button>
+            <button class="small bad" class:on={res === 'wrong'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, false))}>✘ Wrong</button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    <div class="row">
+      <span class="spacer"></span>
+      <button class="primary" onclick={next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
+        {labels[session.finalStep ?? 'category']}
+      </button>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .fj {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .chip {
+    border: 2px solid;
+    border-radius: 8px;
+    padding: 4px 8px;
+  }
+  .wagers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .wagers input {
+    width: 100px;
+  }
+  input.bad {
+    outline: 2px solid var(--bad);
+  }
+  .order {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pl {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 3px 6px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+  }
+  .pl.cur {
+    border-color: var(--c);
+  }
+  .name {
+    font-weight: 700;
+    border: none;
+  }
+  .small {
+    font-size: 12px;
+  }
+  button.good:not(.on),
+  button.bad:not(.on) {
+    opacity: 0.7;
+  }
+  button.on {
+    box-shadow: 0 0 0 2px #fff;
+  }
+</style>

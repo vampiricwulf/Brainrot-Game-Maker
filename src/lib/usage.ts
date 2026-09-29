@@ -20,6 +20,10 @@ export function allSlides(game: Game): SlideRef[] {
     out.push({ slide: game.final.questionSlide, where: 'Final Jeopardy (question)' });
     out.push({ slide: game.final.answerSlide, where: 'Final Jeopardy (answer)' });
   }
+  if (game.tiebreaker) {
+    out.push({ slide: game.tiebreaker.questionSlide, where: 'Tiebreaker (question)' });
+    out.push({ slide: game.tiebreaker.answerSlide, where: 'Tiebreaker (answer)' });
+  }
   return out;
 }
 
@@ -50,10 +54,9 @@ export function mediaUsage(game: Game): Map<string, number> {
   return n;
 }
 
-/** Hook for later milestones (wheel/dice/theme media) to report their references. */
+/** Media referenced outside slides: game sounds (and later wheel/dice/theme media). */
 export function extraMediaRefs(game: Game): string[] {
-  void game;
-  return [];
+  return Object.values(game.audio ?? {}).filter((x): x is string => !!x);
 }
 
 export function allEmbeds(game: Game): { el: EmbedEl; where: string }[] {

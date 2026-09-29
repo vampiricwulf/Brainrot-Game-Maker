@@ -121,11 +121,28 @@ await page.getByRole('button', { name: '🌐 Link' }).click();
 await page.locator('.canvas .card').waitFor();
 assert(true, 'YouTube link added (editor shows a thumbnail card)');
 await page.getByRole('button', { name: 'Done' }).click();
+
+// A Daily Double on the 4th tile.
+await page.locator('.tile').nth(3).click();
+await page.getByLabel('Type').selectOption('dailyDouble');
+await page.getByRole('button', { name: 'Done' }).click();
+assert((await page.locator('.tile').nth(3).innerText()).includes('DD'), 'tile marked as Daily Double in the editor');
 await shot('2-round-editor');
 
 await page.getByRole('button', { name: '▶ Play' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).click();
+// Round intro: title card → tiles fill in → categories revealed on N.
+await page.locator('.round-name').waitFor();
+assert((await page.locator('.round-name').innerText()) === 'Jeopardy!', 'round intro title card shows');
+await page.keyboard.press('n');
 await page.locator('.board .tile').first().waitFor();
+await page.getByRole('button', { name: /Reveal category 1 of/ }).waitFor();
+assert((await page.locator('.board .header .title').count()) === 0, 'categories hidden until revealed');
+await page.keyboard.press('n');
+await page.locator('.board .header .title').first().waitFor();
+assert((await page.locator('.board .header .title').count()) === 1, 'N reveals one category at a time');
+await page.getByRole('button', { name: 'Skip intro' }).click();
+assert((await page.locator('.board .header .title').count()) === 6, 'skip intro shows the full board');
 await shot('3-board');
 
 await page.locator('.board .tile').first().click();
@@ -198,6 +215,59 @@ if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
 if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
 await page.getByRole('button', { name: '📺 Close audience window' }).click();
 assert(aud.isClosed(), 'audience window closes from the host');
+
+// Daily Double: splash, wager (TV cap), then the question with the wager prefilled.
+await page.locator('.board .tile').nth(3).click();
+await page.locator('.dd-text').waitFor();
+assert(true, 'Daily Double splash shows');
+await page.locator('.dd .chip', { hasText: 'Player 2' }).click();
+await page.locator('.dd input[type=number]').fill('99999');
+assert(await page.getByRole('button', { name: 'Show question ▶' }).isDisabled(), 'wager over the cap is blocked');
+await page.locator('.dd input[type=number]').fill('500');
+await page.getByRole('button', { name: 'Show question ▶' }).click();
+await page.locator('.dd-badge').waitFor();
+assert((await page.locator('.award input').inputValue()) === '500', 'wager prefilled as the amount');
+await page.keyboard.press('Enter');
+assert((await scoreOf(1)) === '$850', 'Daily Double wager awarded to the chosen player');
+
+// Timer: start a 1-second countdown and see TIME'S UP.
+await page.locator('.tc input').fill('1');
+await page.locator('.tc button', { hasText: 'Start 1s' }).click();
+await page.locator('.timer').waitFor();
+await page.getByText("TIME'S UP!").waitFor({ timeout: 5000 });
+assert(true, "countdown runs out and shows TIME'S UP");
+await page.keyboard.press('Escape');
+
+// Final Jeopardy: eligible players, private wagers, one-by-one reveal.
+await page.getByRole('button', { name: 'Final Jeopardy ▶' }).click();
+await page.locator('.final-label').waitFor();
+const eligible = await page.locator('.fj input[type=checkbox]:checked').count();
+assert(eligible === 2, 'players with $0 sit out of Final by default');
+await page.getByRole('button', { name: /take wagers/ }).click();
+await page.getByText('Make your wagers…').waitFor();
+const wagers = page.locator('.fj .wagers input');
+await wagers.nth(0).fill('300');
+await wagers.nth(1).fill('0');
+await page.getByRole('button', { name: 'Show question ▶' }).click();
+await page.locator('.timer').waitFor();
+assert(true, 'Final question starts the think timer');
+await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
+await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+await page.locator('.spot').waitFor();
+assert((await page.locator('.spot-wager').innerText()).includes('???'), 'wager hidden until shown');
+const rows = page.locator('.fj .pl');
+await rows.nth(0).getByRole('button', { name: '✔ Right' }).click();
+await rows.nth(1).getByRole('button', { name: '✘ Wrong' }).click();
+await shot('8-final-reveal');
+assert((await page.locator('.spot-result').innerText()).includes('WRONG'), 'reveal shows the result');
+await page.getByRole('button', { name: 'Finish game ▶' }).click();
+await page.locator('.end h1').waitFor();
+// P1 550+300 = 850 ties P2 850-0 = 850.
+assert(await page.getByText('Tie for first:').isVisible(), 'tie for first is detected');
+await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
+await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
+assert(true, 'co-winners declared on the winner screen');
+await shot('9-winner');
 
 // .jbr round trip: save the pack, start a new game, open the pack again.
 await page.getByRole('button', { name: 'Exit' }).click();

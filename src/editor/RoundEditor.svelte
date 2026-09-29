@@ -3,6 +3,8 @@
   import { clueValue, slideText, type Round } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import { addCategory, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
+  import { randomizeDailyDoubles } from '../lib/session';
+  import { toast } from '../lib/app.svelte';
   import ClueEditor from './ClueEditor.svelte';
 
   let { round, canDelete, ondelete }: { round: Round; canDelete: boolean; ondelete: () => void } = $props();
@@ -51,6 +53,25 @@
   {/each}
   <button class="small" onclick={() => scaleValues(round, 2)} title="Double every row value">×2</button>
   <button class="small" onclick={() => scaleValues(round, 0.5)} title="Halve every row value">÷2</button>
+  <span class="spacer"></span>
+  <span class="muted">⭐ Daily Doubles</span>
+  <input
+    type="number"
+    min="0"
+    max="10"
+    value={round.dailyDoubleCount ?? 1}
+    oninput={(e) => (round.dailyDoubleCount = Math.max(0, +e.currentTarget.value || 0))}
+    aria-label="How many Daily Doubles"
+    class="ddn"
+  />
+  <button
+    class="small"
+    onclick={() => {
+      const n = randomizeDailyDoubles(round, round.dailyDoubleCount ?? 1);
+      toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
+    }}
+    title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🎲 Randomize</button>
+  <span class="muted small">{round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble').length, 0)} placed</span>
 </div>
 
 <div class="grid-wrap">
@@ -80,6 +101,7 @@
           <span class="val">
             {clue.empty ? 'EMPTY' : `${sym}${clueValue(round, row, clue)}`}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}
+            {#if clue.type === 'dailyDouble' && !clue.empty}<span class="dd" title="Daily Double">⭐ DD</span>{/if}
           </span>
           {#if !clue.empty}
             <span class="q" class:missing={!q && !kinds.length}>{q || (kinds.length ? '' : 'No question yet')}</span>
@@ -170,6 +192,17 @@
     color: var(--value);
     font-weight: 800;
     font-size: 16px;
+  }
+  .ddn {
+    width: 60px !important;
+  }
+  .dd {
+    font-size: 11px;
+    background: #7a00ff;
+    color: #fff;
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 4px;
   }
   .badge {
     font-size: 11px;
