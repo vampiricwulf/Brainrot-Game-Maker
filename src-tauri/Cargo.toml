@@ -17,6 +17,9 @@ tauri-plugin-single-instance = "2"
 # Detects running as administrator (which makes Discord/OBS miss the game's sound), and shows a message
 # box when the window can't start at all.
 windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+# Notices WebView2's browser process crashing with the Discord audio fix on. Must be the version wry uses
+# (see Cargo.lock), since the webview handles Tauri gives us are its types.
+webview2-com = "0.39"
 
 [profile.release]
 strip = true
