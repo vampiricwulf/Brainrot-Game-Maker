@@ -67,6 +67,9 @@ fn open_popup(app: &AppHandle, url: Url, features: NewWindowFeatures) -> NewWind
 
 fn main() {
     tauri::Builder::default()
+        // Downloads online media links into the game natively (the page's own fetch is limited by
+        // CORS). What it may reach is set in capabilities/http.json.
+        .plugin(tauri_plugin_http::init())
         .setup(|app| {
             let handle = app.handle().clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))

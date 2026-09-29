@@ -4,6 +4,7 @@ import { buildPack } from './pack';
 import { downloadBlob, safeFilename } from './fileio';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
+import { allEmbeds } from './usage';
 
 export const PACK_ELEMENT_ID = 'jb-pack';
 
@@ -38,7 +39,12 @@ function selfHtml(): string {
 const WARN = 100 * 1024 ** 2;
 const STRONG = 250 * 1024 ** 2;
 
-export async function exportStandaloneHtml(game: Game): Promise<{ size: number; missing: string[] } | null> {
+/** How many things in the game play from the internet (live-link files and online players). */
+export function onlineCount(game: Game): number {
+  return game.media.filter((m) => m.url).length + allEmbeds(game).length;
+}
+
+export async function exportStandaloneHtml(game: Game): Promise<{ size: number; missing: string[]; online: number } | null> {
   const { blob: pack, missing } = await buildPack(game);
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
@@ -48,5 +54,5 @@ export async function exportStandaloneHtml(game: Game): Promise<{ size: number; 
   const html = selfHtml().replace(/<\/body>(?![\s\S]*<\/body>)/, `<script type="application/octet-stream" id="${PACK_ELEMENT_ID}">${b64}</script>\n</body>`);
   const out = new Blob([html], { type: 'text/html' });
   downloadBlob(`${safeFilename(game.title)}.html`, out);
-  return { size: out.size, missing };
+  return { size: out.size, missing, online: onlineCount(game) };
 }

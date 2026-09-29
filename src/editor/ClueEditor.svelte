@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
-  import { mediaUrls } from '../lib/media.svelte';
+  import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { setSlideText, slideText, type Round, type TextEl } from '../lib/model';
   import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
@@ -138,7 +138,7 @@
         </label>
         <div class="pop">
           {#if clue.tileFace?.image}
-            <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" />
+            <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
             <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image">✕</button>
           {:else}
             <button class="small" onclick={() => (facePicker = true)} title="Show an image on the tile">🖼 Tile image</button>

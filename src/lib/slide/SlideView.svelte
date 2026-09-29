@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import type { FitResult } from '../autofit';
+  import { imageFallback, cssUrl, embedName, linkHost } from '../links';
   import { mediaUrls } from '../media.svelte';
   import type { MediaRole } from '../mediactl.svelte';
   import type { Slide, SlideElement } from '../model';
@@ -12,6 +13,7 @@
   import ShapeView from './ShapeView.svelte';
   import MediaPlayer from './MediaPlayer.svelte';
   import YouTubeEmbed from './YouTubeEmbed.svelte';
+  import PlayerEmbed from './PlayerEmbed.svelte';
 
   let {
     slide,
@@ -36,17 +38,25 @@
   const bgImage = $derived(slide.background.image ? mediaUrls[slide.background.image] : undefined);
 
   function label(el: SlideElement): string {
-    if (el.kind === 'embed') return el.url;
+    if (el.kind === 'embed') return embedName(el.embedKind, el.url);
     if (el.kind === 'video' || el.kind === 'audio') return `${el.kind === 'video' ? 'Video' : 'Audio'}`;
     return el.kind;
+  }
+
+  // Online pictures that wouldn't load (keyed by address): a Drive picture tries its thumbnail first.
+  let broken = $state<Record<string, boolean>>({});
+  function imgError(e: Event, src: string): void {
+    const img = e.currentTarget as HTMLImageElement;
+    const next = imageFallback(src);
+    if (next && img.src !== next) img.src = next;
+    else if (!src.startsWith('blob:')) broken[src] = true;
   }
 </script>
 
 <div
   class="slide"
   style:background-color={slide.background.color ?? (slide.background.gradient ? undefined : fallbackBg)}
-  style:background-image={[bgImage ? `url("${bgImage}")` : '', slide.background.gradient ?? ''].filter(Boolean).join(', ') ||
-    undefined}
+  style:background-image={[bgImage ? cssUrl(bgImage) : '', slide.background.gradient ?? ''].filter(Boolean).join(', ') || undefined}
   style:background-size={slide.background.fit ?? 'cover'}
 >
   {#each sorted as el (el.id)}
@@ -72,8 +82,10 @@
         />
       {:else if el.kind === 'image'}
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}
-        {#if src}
-          <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" />
+        {#if src && broken[src]}
+          <div class="missing">Couldn't load the picture from {linkHost(src)}</div>
+        {:else if src}
+          <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" onerror={(e) => imgError(e, src)} />
         {:else}
           <div class="missing">Missing image</div>
         {/if}
@@ -89,6 +101,8 @@
       {:else if el.kind === 'embed'}
         {#if el.embedKind === 'youtube'}
           <YouTubeEmbed {el} {mode} {role} label={label(el)} />
+        {:else if el.embedKind === 'drive' || el.embedKind === 'streamable'}
+          <PlayerEmbed {el} {mode} {role} label={label(el)} />
         {:else if el.embedKind === 'remoteImage'}
           <img src={el.url} alt="" style:object-fit="contain" draggable="false" />
         {:else}

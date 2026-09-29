@@ -80,6 +80,7 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   border-radius: 8px;
   z-index: 1000;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  max-width: min(760px, calc(100vw - 32px));
   /* Messages only: clicks go through to what's underneath (in play, the host's nav row). */
   pointer-events: none;
 }

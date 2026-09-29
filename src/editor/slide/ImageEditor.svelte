@@ -9,6 +9,8 @@
   import { newId, type ImageEdits, type ImageEl } from '../../lib/model';
   import { aspectCrop } from '../../lib/editing';
   import { fontChoices } from '../../lib/fonts';
+  import { linkHost } from '../../lib/links';
+  import SaveCopyButton from '../SaveCopyButton.svelte';
   import {
     canvasToBlob, defaultEdits, fitCrop, loadImage, orientedSize, outputSize, renderEdited, renderOriented, STICKERS,
   } from '../../lib/imageedit';
@@ -49,8 +51,14 @@
   const out = $derived(img ? outputSize(img.naturalWidth, img.naturalHeight, edits) : { w: 0, h: 0 });
   const oriented = $derived(img ? orientedSize(img.naturalWidth, img.naturalHeight, edits.rotate) : { w: 1, h: 1 });
 
-  onMount(() => {
+  // A picture that plays from its link can't be edited (the browser won't let a page read another site's
+  // pixels), so the editor asks to save a copy in the game first.
+  const linked = $derived(!!source?.url);
+  function load(): void {
     loadImage(mediaUrls[el.media]).then((i) => (img = i)).catch(() => toast("Couldn't load the original image"));
+  }
+  onMount(() => {
+    if (!untrack(() => source?.url)) load();
   });
 
   // Re-render the preview (capped at ~1200px) whenever the edits change.
@@ -311,6 +319,15 @@
 
 <div class="backdrop" role="presentation">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Edit image">
+    {#if linked}
+      <div class="gate">
+        <p>🌐 This picture plays from {linkHost(source?.url)}. The image editor works on a copy saved in your game.</p>
+        <div class="row">
+          <SaveCopyButton id={el.media} label="💾 Save a copy first" onsaved={load} />
+          <button onclick={onclose}>Cancel</button>
+        </div>
+      </div>
+    {/if}
     <header class="row">
       <b>🎨 Edit image</b>
       <span class="muted small">{source?.name} · output {out.w}×{out.h}px</span>
@@ -468,7 +485,22 @@
     place-items: center;
     padding: 12px;
   }
+  .gate {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+    background: var(--panel);
+    border-radius: 10px;
+  }
   .modal {
+    position: relative;
     width: min(1300px, 100%);
     height: min(900px, 100%);
     background: var(--panel);

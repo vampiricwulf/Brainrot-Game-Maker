@@ -19,7 +19,9 @@
   } = $props();
 
   const isAudio = $derived(el.kind === 'audio' || (el.kind === 'embed' && el.embedKind === 'remoteAudio'));
-  const remote = $derived(el.kind === 'embed');
+  // Played from the internet: an old-style online item, or a file that's a live link (not a stored blob).
+  const remote = $derived(el.kind === 'embed' || (!!src && !src.startsWith('blob:')));
+  const openUrl = $derived(el.kind === 'embed' ? el.url : src);
   const fit = $derived('fit' in el ? el.fit : 'contain');
   const showIcon = $derived(isAudio && (mode === 'edit' || (el.kind === 'audio' ? el.visible : true)));
 
@@ -73,7 +75,7 @@
         volume: n.volume,
         muted: n.muted,
         loop,
-        openUrl: remote ? (el as EmbedEl).url : undefined,
+        openUrl: remote ? openUrl : undefined,
       },
       start(),
     );
@@ -124,7 +126,7 @@
     class="fallback"
     onclick={(e) => {
       e.stopPropagation();
-      openMediaPopup((el as EmbedEl).url);
+      if (openUrl) openMediaPopup(openUrl);
     }}
     title="Open the link in its own window"
   >

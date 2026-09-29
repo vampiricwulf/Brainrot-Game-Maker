@@ -3,7 +3,9 @@
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
   import type { EntranceType, Game, SlideElement, TextEl } from '../../lib/model';
-  import { openMediaPopup, youtubeId, youtubeWatchUrl } from '../../lib/mediactl.svelte';
+  import { openMediaPopup } from '../../lib/mediactl.svelte';
+  import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, linkHost } from '../../lib/links';
+  import SaveCopyButton from '../SaveCopyButton.svelte';
 
   let {
     el,
@@ -36,6 +38,10 @@
     onedit?: (change: () => void) => void;
   } = $props();
   const edit = (change: () => void) => (onedit ? onedit(change) : change());
+  /** The selected image/video/audio file, when it plays from the internet (a live link). */
+  const liveRef = $derived('media' in el ? game.media.find((m) => m.id === el.media && m.url) : undefined);
+  /** Google Drive's or Streamable's own player: no playback options apply. */
+  const sitePlayer = $derived(el.kind === 'embed' && (el.embedKind === 'drive' || el.embedKind === 'streamable'));
   const lock = (on: boolean) => edit(() => (el.locked = on || undefined));
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
@@ -62,6 +68,17 @@
   let applyScope = $state('round-q');
   const num = (v: string, fallback = 0) => (v === '' || isNaN(+v) ? fallback : +v);
 </script>
+
+<!-- A file that plays from its link: say so, and offer to save a copy. -->
+{#snippet liveNote()}
+  {#if liveRef}
+    <p class="hint">
+      🌐 Plays from {linkHost(liveRef.url)} during the show (needs internet).
+      {#if liveRef.expiresAt}The link expires {new Date(liveRef.expiresAt).toLocaleString()}.{/if}
+    </p>
+    <SaveCopyButton id={liveRef.id} />
+  {/if}
+{/snippet}
 
 <div class="insp">
   {#if el.kind === 'text'}
@@ -194,6 +211,7 @@
         {#if oneditimage}<button onclick={oneditimage}>🎨 Edit image…</button>{/if}
         <button onclick={onreplace}>Replace…</button>
       </div>
+      {@render liveNote()}
     </section>
   {:else if el.kind === 'shape'}
     <section>
@@ -227,21 +245,26 @@
   {:else if el.kind === 'video' || el.kind === 'audio' || el.kind === 'embed'}
     <section>
       <h4>
-        {el.kind === 'video' ? 'Video' : el.kind === 'audio' ? 'Audio' : el.embedKind === 'youtube' ? 'YouTube' : 'Online media'}
+        {el.kind === 'video' ? 'Video' : el.kind === 'audio' ? 'Audio' : el.embedKind === 'remoteImage' || el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio' ? 'Online media' : embedName(el.embedKind, el.url)}
       </h4>
       {#if el.kind === 'embed'}
         <label class="field">Link<input bind:value={el.url} /></label>
-        <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
-        <button
-          class="small"
-          onclick={() => {
-            const id = youtubeId(el.url);
-            openMediaPopup(id ? youtubeWatchUrl(id, el.startAt) : el.url);
-          }}>Test link ↗</button>
+        {#if sitePlayer}
+          <p class="hint">
+            🌐 Needs internet during the game. It plays in the audience window (or on the stage in single-window mode): click ▶
+            inside it there. The host can restart or stop it and open it in its own window, but can't pause, seek or mute it.
+          </p>
+          {#if el.embedKind === 'drive'}<p class="hint">{DRIVE_SHARE_HINT}</p>{/if}
+          <p class="hint">Try it here with ▶ Preview (sound on).</p>
+        {:else}
+          <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
+        {/if}
+        <button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))}>Test link ↗</button>
       {:else}
         <button class="small" onclick={onreplace}>Replace file…</button>
+        {@render liveNote()}
       {/if}
-      {#if el.kind !== 'embed' || el.embedKind !== 'remoteImage'}
+      {#if !sitePlayer && (el.kind !== 'embed' || el.embedKind !== 'remoteImage')}
         <label class="check"><input type="checkbox" bind:checked={el.autoplay} /> Autoplay when the slide appears</label>
         <label class="check"><input type="checkbox" bind:checked={el.loop} /> Loop</label>
         <label class="check"><input type="checkbox" bind:checked={el.muted} /> Start muted</label>

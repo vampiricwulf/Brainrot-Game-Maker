@@ -6,6 +6,7 @@
   import { finalName, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
+  import { onlineCount } from './lib/export';
 
   let {
     onplay,
@@ -17,6 +18,7 @@
   const game = $derived(app.game);
   const clues = $derived(game.rounds.reduce((n, r) => n + playableClues(r).length, 0));
   const style = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
+  const online = $derived(onlineCount(game));
 </script>
 
 <div class="home" {style}>
@@ -38,6 +40,9 @@
       </div>
     {:else}
       <button class="primary big" onclick={onplay}>▶ Play</button>
+    {/if}
+    {#if online}
+      <p class="muted small">🌐 {online} item{online === 1 ? '' : 's'} in this game play{online === 1 ? 's' : ''} from the internet, so stay online while you play.</p>
     {/if}
     {#if !app.storageOk}
       <p class="warn small">This browser won't save progress for files opened from disk, so a refresh restarts the game.</p>

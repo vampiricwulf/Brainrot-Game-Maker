@@ -37,7 +37,8 @@ decides who gets points, and controls media.
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.
 Everything must work from a `file://` URL with no server. The app itself makes no network requests (fonts and libraries are
-bundled). The only exception is **online media embeds** (YouTube / media URLs, §5.5) that the author chooses to use.
+bundled). The only exception is **online media** (YouTube, Google Drive, file links, §5.5) that the author chooses to use:
+the editor fetches a pasted link once to save a copy in the game, and whatever it couldn't save plays from the internet.
 
 ---
 
@@ -75,7 +76,9 @@ Game {
   final?: FinalRound,               // optional
   wheels: WheelPreset[],
   dicePresets: DicePreset[],
-  media: MediaRef[],                // index of files in media/
+  media: MediaRef[],                // index of files in media/ (MediaRef { id, name, mime, size, kind,
+                                    //   url? — plays live from this link, no file; source? — the link it was added from;
+                                    //   expiresAt? — when that link stops working })
   fonts: FontRef[],
   tiebreaker?: Tiebreaker,
 }
@@ -136,8 +139,9 @@ TextEl  { text: RichText, font, size, weight, italic, underline, color, align, v
           glow?:{color,blur}, background?:{color,padding,radius}, autoFit: boolean }
 ImageEl { media: MediaRef, edits: ImageEdits /* non-destructive */ , fit }
 VideoEl { media: MediaRef, autoplay, loop, muted, startAt?, endAt?, volume, showControls }
-EmbedEl { url: string, kind: 'youtube' | 'remoteVideo' | 'remoteAudio' | 'remoteImage',
-          autoplay, loop, muted, startAt?, endAt?, volume }   // online media; needs internet at game time
+EmbedEl { url: string, kind: 'youtube' | 'drive' | 'streamable' | 'remoteVideo' | 'remoteAudio' | 'remoteImage',
+          autoplay, loop, muted, startAt?, endAt?, volume }   // a site's own player; needs internet at game time
+                                                              // (remote* = older games' direct links)
 AudioEl { media: MediaRef, autoplay, loop, startAt?, endAt?, volume, visible /* icon on slide or hidden */ }
 ShapeEl { shape: 'rect'|'ellipse'|'line'|'arrow', fill, stroke }
 
@@ -232,10 +236,26 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   if the file won't play (e.g. HEVC `.mov`).
 - A media library panel lists everything in the game with its size and usage count. "Remove unused" is available.
 - Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
-- **Online media (optional)**: paste a YouTube link or a direct image/video/audio URL to create an `EmbedEl`.
-  The editor labels it "🌐 needs internet". The validation panel lists all online media, with a "check links" button, and
-  offers "download to file" guidance. Caveats shown to the author: the video may be removed or region-blocked, and ads may
-  appear.
+- **Online links (optional)**: every file picker (except fonts) has *Paste a link*, and the slide editor has *🌐 Link* (and
+  takes pasted or dropped links). One parser (`links.ts`) turns share pages into file addresses (Dropbox, GitHub, Imgur,
+  GIPHY, Discord, Pixeldrain, tmpfiles, SharePoint, Google Drive) and explains links that can't work (albums, folders,
+  OneDrive personal, Box viewer, MEGA, Tenor pages, unsigned or expired Discord links).
+  - The editor first tries to **download a copy into the game** (the browser can only when the site sends
+    `Access-Control-Allow-Origin`; the desktop app downloads natively from any site). The bytes decide the type (magic
+    numbers), a web page is refused, files over 150 MB ask first and over 1 GB are never saved. The copy is ordinary game
+    media (offline, packed, editable) that remembers its `source`.
+  - Otherwise, if the link plays in a plain `<img>`/`<video>` (no permission needed), it's added as a **live link**
+    (`MediaRef.url`): it plays from the internet during the show, from both windows. The Media tab marks it 🌐 with the site,
+    *Save a copy* (downloads it later under the same id) and *Check link*; the checklist counts what plays from the internet
+    and warns about temporary or expired links. Pages send no referrer (`<meta name="referrer" content="no-referrer">`,
+    YouTube and site players ask for theirs explicitly).
+  - **Google Drive** refuses its files to web pages (403 for any other site, `file://` and the desktop webview included).
+    The desktop app downloads them natively, following the virus-scan form of big files and explaining sign-in, quota and
+    "downloads turned off" pages. In the browser, pictures show through Google's image link (`lh3`, thumbnail fallback);
+    video and sound can go on a slide as **Google Drive's player** (`EmbedEl` kind `drive`): an iframe of `/preview` only on
+    the screen viewers watch (audience window, or the stage in single-window mode), a card for the host and the editor. The
+    host can restart it, stop it or open it in a window, but not pause or seek it, and nothing swaps to it automatically.
+    *⬇ Download from Drive* (a top-level visit, which Google allows) is always offered, followed by adding the file.
 - **YouTube fallback (required)**: the IFrame player may refuse to play from a `file://` page (YouTube requires a referrer).
   The embed is treated as best-effort:
   - Failure is detected by a player `onError` (e.g. codes 2/5/100/101/150/153), or by no `onReady` within ~6 s.
@@ -244,9 +264,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   - Clicking it (host view, or the `Y` shortcut) opens the **actual YouTube watch page** (`youtube.com/watch?v=…&t=<startAt>`)
     in a **popup window** sized 1280×720, so it can be window-captured in OBS or dragged onto the stream.
   - An "Open on YouTube" button is **always** available in the host's media controls, even when the embed works.
-  - Direct media URLs (`remoteVideo/Audio/Image`) that fail to load get the same "Open link" popup fallback.
+  - Live links (and older games' direct media URLs) that fail to load get the same "Open link" popup fallback.
 - YouTube embeds use the IFrame Player API so the standard controls (play/pause, seek, volume, start/end) work the same as for local media.
-  Standalone HTML export keeps them as links (not embedded).
+  Standalone HTML export keeps them (and live links) as links, and says the file needs internet.
 
 ### 5.6 Wheel & dice preset editor
 - **Wheel**: segments with label, color, and **weight** (the slice size and landing probability are proportional
@@ -438,7 +458,8 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   < 100 MB of media (mostly images + short clips). Such a game loads in under 5 s from a `.jbr` or standalone HTML.
   Larger games must still work (media loaded lazily as blob URLs) but aren't optimized for.
 - **Reliability**: no data loss on crash (autosave). Undo for scores.
-- **Offline**: no runtime network calls, except online media embeds the author opted into. A game with no embeds works fully offline.
+- **Offline**: no runtime network calls, except online media the author opted into. A game with no players or live links
+  works fully offline (links saved as copies are ordinary files).
 - **Accessibility**: keyboard-operable host controls, adequate contrast in default themes, and player colors
   paired with names (never color alone).
 - **Security**: all content is local. Uploaded SVG is sanitized, and rich text is escaped/sanitized.
@@ -529,6 +550,7 @@ checked by Vitest; **manual** = not automated yet.
 | Stack | Svelte 5 + Vite, built to a single-file HTML |
 | Expected size | Small (< 100 MB media) |
 | Online media | Allowed (YouTube / URLs) as an opt-in, flagged "needs internet". Local files remain the default. |
+| Online links | Download a copy into the game whenever possible; play live from the link only when the site won't allow it. Google Drive video in the browser: Drive's own player on a slide (opt-in), never swapped in automatically. |
 | YouTube failure | Detect the failure → "Open on YouTube" popup window with the real page. The button is always available to the host. |
 | Spike | Skipped. Go straight to building; the risks are covered by fallbacks. |
 | Slide engine | DOM + moveable |

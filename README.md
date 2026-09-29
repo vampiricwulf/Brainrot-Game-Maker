@@ -23,7 +23,7 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 | **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
 | 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, a **banner image above the board** (height and fit), and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
-| 🖼 **Media** | Every file in the game, with usage counts, "remove unused" and a list of online links. |
+| 🖼 **Media** | Every file in the game, with usage counts and "remove unused". Files that play from the internet show 🌐 and their site, with **Save a copy** and **Check link**. Also **Paste a link** to add one, and a list of online players (YouTube, Google Drive's player). |
 | **Final round** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
@@ -36,8 +36,8 @@ answer typed while the question slide is showing can still be undone on the answ
 **Slide editor** (16:9, freeform):
 - Add **text boxes**: bundled fonts or your own uploaded font, size / shrink-to-fit, bold/italic/underline/caps, alignment,
   line height, letter spacing, outline, drop shadow, glow, background box.
-- Add **images**, **video**, **audio**, **shapes**, and **🌐 links** (YouTube or direct media URLs; these need internet during
-  the game).
+- Add **images**, **video**, **audio**, **shapes**, and **🌐 links**: YouTube, Google Drive, Streamable, or a link to a picture,
+  video or sound file online (see [Online links](#online-links-catbox-google-drive-)).
 - Click an item to select it (Shift/Ctrl+click adds or removes one). **Double-click** to edit it: text goes straight to its
   text field, and images open the image editor. With a text box selected you can also just start typing.
 - Drag to move (with snapping guides; press Shift while dragging to keep to one axis, or Alt to skip snapping), pull the
@@ -56,8 +56,9 @@ answer typed while the question slide is showing can still be undone on the answ
 - **Entrance animations**: fade, pop, slide, typewriter, shake, spin. Click **▶ Preview** to watch them and hear the slide's
   video, audio and YouTube (🔈 mutes the preview). The preview is look-only; press Esc or click the slide to go back to
   editing. A YouTube embed keeps its own clicks there.
-- Drop files or links onto the slide, or paste images, text and links. A YouTube link or a direct link to an image,
-  video or audio file becomes online media, and other text fills the empty main text box or makes a new one.
+- Drop files or links onto the slide, or paste images, text and links. A YouTube link becomes a YouTube player, a link to
+  a picture, video or sound (or a share link from a site like Google Drive or Dropbox) goes through 🌐 Link, and other
+  text fills the empty main text box or makes a new one.
 - Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste items between slides (a copy pasted onto the same slide lands offset), and
   **Copy slide / Paste slide** copies whole slides. Ctrl+D duplicates, Ctrl+B / Ctrl+I / Ctrl+U style the selected text,
   and the arrow keys nudge (Shift for 10 px). In the Layers list, ↑/↓ move through the list and Alt+↑/↓ restack instead.
@@ -83,7 +84,44 @@ blocks the tiles it covers). The **Layers** list shows everything top-first: cli
 an image while editing, 🔒 to lock it. **Copy to other rounds** puts the same images on every board.
 
 The **Checklist** in the sidebar flags missing questions and answers, blank categories, wheel tiles with no wheel, missing or
-unplayable media, and online links. Click an item to jump to the tab that fixes it.
+unplayable media, what plays from the internet, and links that expire. Click an item to jump to the tab that fixes it.
+
+### Online links (catbox, Google Drive, …)
+
+Every place that takes a file (slide pictures, video and sound, tile and category images, the board image and banner, board
+images, game sounds, wheel and dice outcomes) has **Or paste a link** in its file picker, e.g.
+`https://files.catbox.moe/abc123.mp3`. On a slide, use **🌐 Link**, or paste or drop the link on the slide. While it works,
+you see the progress and a **Cancel** button; a message then says what happened:
+
+- **Saved a copy in your game**: the file was downloaded into the game. It works offline, goes into `.jbr` packs and
+  exports, and keeps working if the link expires. Files over 150 MB ask first; files over 1 GB are never saved.
+- **Plays from the internet** (🌐): the site doesn't let the game save a copy, so the file plays from the link during the
+  show. It needs internet, in the host and audience windows alike. **Save a copy** in the Media tab (or the item's
+  settings) tries again later; the image editor asks for a copy first.
+
+| Link | Browser (the `.html` file) | Desktop app (`.exe`) |
+|---|---|---|
+| Sites that allow it: `litter.catbox.moe`, GitHub, Dropbox, Discord, many image hosts | Saved copy | Saved copy |
+| `files.catbox.moe` and other sites that don't | Plays from the internet | Saved copy |
+| Google Drive picture | Plays from the internet (Google's picture link) | Saved copy |
+| Google Drive video or sound | On a slide: **Google Drive's player**, or **⬇ Download from Drive** and add the file. Elsewhere: download and add the file. | Saved copy |
+| YouTube, Streamable | On a slide only, in the site's own player | Same |
+
+- **Share links** are understood: Dropbox, GitHub file pages, Imgur pages and `.gifv`, GIPHY (a silent looping clip),
+  Pixeldrain, tmpfiles, SharePoint. Links that can't work say why and what to copy instead: Catbox and Imgur albums, Tenor
+  pages, folders, OneDrive personal, Box's viewer, MEGA, and Discord links missing their `ex=…&is=…&hm=…` ending.
+- **Temporary links** (Discord ~1 day, uguu ~3 hours, litterbox up to 3 days, tmpfiles ~1 hour): a saved copy is fine; a link
+  that plays from the internet gets a warning, and the checklist flags it (and any that expired).
+- **Google Drive**: share the file first. **In Google Drive: Share → General access → Anyone with the link → Copy link.**
+  Google refuses Drive files to web pages, so the browser version shows Drive pictures through Google's picture link and
+  can't play Drive video or sound itself. On a slide it can use **Google Drive's player** instead: it shows only on the
+  screen viewers watch (the audience window, or the stage in single-window mode), and you click ▶ inside it there. The host
+  gets **⟲ Restart**, **■ Stop** and **Open player window ↗**, but can't pause, seek or mute it (the host window and the
+  editor show a card, so the sound never plays twice; ▶ Preview with sound on shows the player). The desktop app downloads
+  Drive files like any other link, and explains Drive's own messages (not shared publicly, too many downloads, downloads
+  turned off by the owner).
+- catbox.moe is blocked in the UK and Ireland and by some internet providers (a VPN usually fixes it); Imgur isn't available
+  in the UK.
 
 ### Saving and sharing
 
@@ -135,7 +173,8 @@ optional sound. Nothing is scored automatically.
 
 **Media**: the host panel has play/pause, seek, ±5 s, time, volume, mute, loop and restart for the slide's video/audio/YouTube
 (`Space`, `←`/`→`, `M`). If **YouTube won't embed** (common for files opened from disk), the host gets **▶ Open on YouTube**,
-which opens the real page in a popup window you can capture on stream (`Y`).
+which opens the real page in a popup window you can capture on stream (`Y`). **Google Drive's player** can only be restarted,
+stopped (taken off the screen) or opened in its own window (`Y`); press ▶ inside it in the audience window.
 
 **Tools, any time**: **🎲 Dice** (d4–d100, 2d6, or anything like `3d37`, plus saved dice), **🎡 Wheel** (saved wheels, or a
 quick wheel from a list), **🏁 Who goes first** (everyone rolls in their color, tied leaders re-roll, and the winner becomes
@@ -192,7 +231,9 @@ The same app can be wrapped as a native Windows program with [Tauri](https://tau
 
 Every push to `main` builds the `.exe` in CI and attaches it to the **Latest** release. In the desktop app,
 **📺 Audience window** opens a second app window (capture it in OBS; `F` or a double-click makes it full-screen on its
-monitor), the "Open on YouTube" fallback opens its own window, and closing the host window quits the app.
+monitor), the "Open on YouTube" fallback opens its own window, and closing the host window quits the app. Pasted links are
+downloaded natively, so every site (Google Drive and `files.catbox.moe` included) gives a saved copy; the host window may
+download from any web address except this computer's own (`src-tauri/capabilities/http.json`).
 
 ## Development
 
@@ -201,7 +242,7 @@ npm install
 npm run dev        # dev server with hot reload
 npm run build      # → dist/index.html (single self-contained file)
 npm run check      # type-check (svelte-check)
-npm test           # unit tests (scoring, undo, Daily Double, Final, dice, wheel, roll-off)
+npm test           # unit tests (scoring, undo, Daily Double, Final, dice, wheel, roll-off, online links)
 npm run test:e2e   # drives the built file from file:// in Chromium (build first)
 ```
 
@@ -216,11 +257,12 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/lib/session.ts` | Game flow and scoring: score log, undo/redo, Daily Double, Final, round intro, ties |
 | `src/lib/tools.ts`, `overlay.ts` | Dice, weighted wheel, roll-off, score effects; the full-screen tool overlays |
 | `src/lib/live.ts`, `sync.svelte.ts` | On-screen transient state (pops, timer, sounds, overlays) and host ⇄ audience window sync |
-| `src/lib/media.svelte.ts`, `mediactl.svelte.ts` | Media store (blobs + IndexedDB) and playback control / YouTube helpers |
+| `src/lib/media.svelte.ts`, `mediactl.svelte.ts` | Media store (blobs + IndexedDB, live links, `addMediaLink`) and playback control |
+| `src/lib/links.ts`, `download.ts`, `sniff.ts` | Online links: every host's URL rules and messages; downloading (browser or native) and trying a link live; file-type sniffing and Google Drive's pages |
 | `src/lib/pack.ts`, `export.ts` | `.jbr` packs and standalone HTML export |
 | `src/lib/imageedit.ts`, `theme.ts` | Image-editor canvas pipeline; theme presets |
 | `src/lib/editing.ts`, `autofit.ts` | Slide and image editor helpers (undo history, placement, crop geometry); shrink-to-fit text |
 | `src/lib/layers.ts` | Layers: hit testing (what's under the pointer, what a drag-to-select box touches), Alt+click stepping, restacking |
-| `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media) |
+| `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media, `LinkField` for pasted links) |
 | `src/play/` | Play UI (audience view, board, host panel, tools) |
 | `src/audience/` | The audience window app |

@@ -1,4 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
+import { cssUrl } from './links';
 import type { Id } from './model';
 
 export type ThemePreset = 'classic' | 'dark' | 'neon' | 'pastel';
@@ -110,7 +111,7 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     '--glow': th.glow === 'none' ? 'transparent' : th.glow,
     '--glow-size': th.glow === 'none' ? '0px' : '18px',
     '--scorebar-bg': th.scoreBarBg,
-    '--board-image': boardImageUrl ? `url("${boardImageUrl}")` : 'none',
+    '--board-image': boardImageUrl ? cssUrl(boardImageUrl) : 'none',
   };
   return Object.entries(vars)
     .map(([k, v]) => `${k}: ${v}`)

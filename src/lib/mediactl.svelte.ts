@@ -3,11 +3,14 @@
 // commands; in dual-window mode they are also forwarded to the audience window, whose elements
 // report their status back so the host sees real progress.
 
+import { isWebUrl } from './links';
+
 export type MediaRole = 'single' | 'mirror' | 'audience';
 
 export interface MediaState {
   label: string;
-  kind: 'video' | 'audio' | 'youtube' | 'remote';
+  /** 'external': a site's own player (Google Drive, Streamable) that the app can't pause, seek or mute. */
+  kind: 'video' | 'audio' | 'youtube' | 'remote' | 'external';
   paused: boolean;
   time: number;
   duration: number;
@@ -20,6 +23,8 @@ export interface MediaState {
   failed?: boolean;
   /** Page to open as a fallback (YouTube watch URL or the remote media URL). */
   openUrl?: string;
+  /** For 'external': the player is showing (false once the host stopped it). */
+  shown?: boolean;
 }
 
 export interface MediaHandle {
@@ -29,9 +34,13 @@ export interface MediaHandle {
   setVolume(v: number): void;
   setMuted(m: boolean): void;
   setLoop(l: boolean): void;
+  /** Start over by reloading (a site's own player, which can't be sought). */
+  reload?(): void;
+  /** Take it off the screen (the only sure way to silence a site's own player). */
+  stop?(): void;
 }
 
-export type MediaOp = 'play' | 'pause' | 'toggle' | 'seek' | 'seekBy' | 'volume' | 'muted' | 'loop' | 'restart';
+export type MediaOp = 'play' | 'pause' | 'toggle' | 'seek' | 'seekBy' | 'volume' | 'muted' | 'loop' | 'restart' | 'stop';
 export interface MediaCmd {
   el: string;
   op: MediaOp;
@@ -101,8 +110,15 @@ export function applyLocal(cmd: MediaCmd): void {
       h.seek(Math.max(0, st.time + (Number(cmd.value) || 0)));
       break;
     case 'restart':
-      h.seek(e.start);
-      h.play();
+      if (h.reload) h.reload();
+      else {
+        h.seek(e.start);
+        h.play();
+      }
+      break;
+    case 'stop':
+      if (h.stop) h.stop();
+      else h.pause();
       break;
     case 'volume':
       h.setVolume(Number(cmd.value));
@@ -124,63 +140,12 @@ export function fmtTime(t: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// ---------- YouTube / URL helpers ----------
+// ---------- URL helpers (they live in links.ts; re-exported for existing imports) ----------
 
-export function youtubeId(url: string): string | null {
-  try {
-    const u = new URL(url.trim());
-    const host = u.hostname.replace(/^www\.|^m\./, '');
-    if (host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
-    if (host === 'youtube.com' || host === 'youtube-nocookie.com' || host === 'music.youtube.com') {
-      if (u.searchParams.get('v')) return u.searchParams.get('v');
-      const m = u.pathname.match(/^\/(?:embed|shorts|live|v)\/([\w-]{6,})/);
-      if (m) return m[1];
-    }
-  } catch {
-    /* not a URL */
-  }
-  return null;
-}
+export { classifyUrl, youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl } from './links';
 
-/** Start time from a YouTube link (?t=90, ?t=1m30s, ?start=90). */
-export function youtubeStart(url: string): number | undefined {
-  try {
-    const u = new URL(url.trim());
-    const t = u.searchParams.get('t') ?? u.searchParams.get('start');
-    if (!t) return undefined;
-    if (/^\d+$/.test(t)) return +t;
-    const m = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/);
-    if (!m) return undefined;
-    return (+(m[1] ?? 0)) * 3600 + (+(m[2] ?? 0)) * 60 + (+(m[3] ?? 0));
-  } catch {
-    return undefined;
-  }
-}
-
-export function youtubeWatchUrl(id: string, start?: number): string {
-  return `https://www.youtube.com/watch?v=${id}${start ? `&t=${Math.floor(start)}s` : ''}`;
-}
-
-export function youtubeThumb(id: string): string {
-  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-}
-
-/** Guess what kind of online media a pasted URL is. */
-export function classifyUrl(url: string): 'youtube' | 'remoteVideo' | 'remoteAudio' | 'remoteImage' | null {
-  if (youtubeId(url)) return 'youtube';
-  let path = '';
-  try {
-    path = new URL(url.trim()).pathname.toLowerCase();
-  } catch {
-    return null;
-  }
-  if (/\.(png|jpe?g|gif|webp|svg|avif|bmp)$/.test(path)) return 'remoteImage';
-  if (/\.(mp3|wav|ogg|oga|m4a|aac|flac|opus)$/.test(path)) return 'remoteAudio';
-  if (/\.(mp4|webm|mov|m4v|ogv|mkv)$/.test(path)) return 'remoteVideo';
-  return 'remoteVideo';
-}
-
-/** Open the real page for an online media element in a popup window (the YouTube fallback). */
+/** Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. */
 export function openMediaPopup(url: string): boolean {
+  if (!isWebUrl(url)) return false;
   return !!window.open(url, 'jb-media', 'popup=yes,width=1280,height=760');
 }
