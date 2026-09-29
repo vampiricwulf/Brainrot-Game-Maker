@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newId } from './model';
+import { newGame, newId, newRound } from './model';
 import { setRowCount, addCategory, removeCategory } from './ops';
 import {
   applyScore, backToBoard, ddCap, finalJudge, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
@@ -143,6 +143,34 @@ describe('flow', () => {
     expect(session.intro).toBeNull();
     applyScore(session, game, [a, b], 500, 'x');
     expect(tiedLeaders(session).map((p) => p.id)).toEqual([a, b]);
+  });
+});
+
+describe('multi-round games', () => {
+  it('plays through 3 rounds of different sizes, then Final', () => {
+    const game = newGame();
+    game.players.push({ id: 'a', name: 'A', color: '#111111' });
+    const sizes: [number, number][] = [[6, 5], [4, 3], [8, 7]];
+    game.rounds = sizes.map(([cats, rows], i) => {
+      const r = newRound(`R${i + 1}`, cats, Array.from({ length: rows }, (_, k) => (k + 1) * 100));
+      return r;
+    });
+    const session = newSession(game);
+    sizes.forEach(([cats, rows], i) => {
+      expect(game.rounds[i].categories).toHaveLength(cats);
+      expect(game.rounds[i].categories.every((c) => c.clues.length === rows)).toBe(true);
+      game.rounds[i].categories.forEach((c, ci) =>
+        c.clues.forEach((_, row) => {
+          openClue(session, { round: i, cat: ci, row }, game);
+          applyScore(session, game, ['a'], 1, 'x');
+          backToBoard(session, game);
+        }),
+      );
+      expect(roundComplete(session, game, i)).toBe(true);
+      goToRound(session, game, i + 1);
+    });
+    expect(session.phase).toBe('final');
+    expect(score(session, 'a')).toBe(6 * 5 + 4 * 3 + 8 * 7);
   });
 });
 

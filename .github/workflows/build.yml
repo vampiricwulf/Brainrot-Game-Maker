@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Install Chromium for the end-to-end test
+        run: npx playwright-core install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Name the single-file app
+        run: cp dist/index.html jeopardy-builder.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jeopardy-builder
+          path: jeopardy-builder.html
+      - name: Attach to the release (version tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: jeopardy-builder.html

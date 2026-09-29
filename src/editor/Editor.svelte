@@ -1,8 +1,10 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { newGame, newRound, playableClues, slideText } from '../lib/model';
+  import { newGame, newRound } from '../lib/model';
   import { pickFile, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
+  import { exportStandaloneHtml } from '../lib/export';
+  import { formatBytes } from '../lib/media.svelte';
   import { pruneMedia } from '../lib/media.svelte';
   import SetupPanel from './SetupPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
@@ -11,7 +13,7 @@
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
   import { registerGameFonts } from '../lib/fonts';
-  import { allEmbeds, slideHasContent } from '../lib/usage';
+  import { validate } from '../lib/validate';
 
   let { onplay }: { onplay: () => void } = $props();
 
@@ -20,6 +22,9 @@
   const game = $derived(app.game);
   $effect(() => {
     registerGameFonts(game);
+  });
+  $effect(() => {
+    document.title = game.title ? `${game.title} · Jeopardy Builder` : 'Jeopardy Builder';
   });
 
   function addRound(): void {
@@ -70,20 +75,21 @@
     }
   }
 
-  const problems = $derived.by(() => {
-    const out: string[] = [];
-    if (game.players.length === 0) out.push('No players yet (you can also add them before starting).');
-    game.rounds.forEach((r) => {
-      const missingQ = playableClues(r).filter((c) => !slideHasContent(c.questionSlide)).length;
-      const missingA = playableClues(r).filter((c) => !slideHasContent(c.answerSlide)).length;
-      if (missingQ) out.push(`${r.name}: ${missingQ} clue(s) with no question`);
-      if (missingA) out.push(`${r.name}: ${missingA} clue(s) with no answer`);
-    });
-    if (game.final.enabled && !slideHasContent(game.final.questionSlide)) out.push('Final Jeopardy has no question');
-    const online = allEmbeds(game).length;
-    if (online) out.push(`${online} online media link(s): need internet during the game`);
-    return out;
-  });
+  let exporting = $state(false);
+  async function exportHtml(): Promise<void> {
+    exporting = true;
+    try {
+      const r = await exportStandaloneHtml($state.snapshot(game));
+      if (r) toast(`Exported a playable HTML file (${formatBytes(r.size)}). Double-click it to play.`, 5000);
+      if (r?.missing.length) alert(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
+    } catch (e) {
+      alert('Export failed: ' + (e as Error).message);
+    } finally {
+      exporting = false;
+    }
+  }
+
+  const problems = $derived(validate(game));
 </script>
 
 <div class="editor">
@@ -92,6 +98,9 @@
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
     <button onclick={save} disabled={saving} title="Download a .jbr game pack (game + all media)">{saving ? 'Saving…' : 'Save'}</button>
+    <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
+      {exporting ? 'Exporting…' : '⬇ Export HTML'}
+    </button>
     <button class="ghost" onclick={() => saveGameJson($state.snapshot(game))} title="Text only, no media. Handy for hand-editing.">
       Export JSON
     </button>
@@ -126,9 +135,11 @@
         <div class="problems">
           <div class="navlabel">Checklist</div>
           {#each problems as p}
-            <div class="problem">• {p}</div>
+            <button class="problem {p.level}" onclick={() => (tab = p.tab)}>{p.level === 'warn' ? '⚠' : 'ℹ'} {p.text}</button>
           {/each}
         </div>
+      {:else}
+        <div class="problems ok">✓ Ready to play</div>
       {/if}
     </nav>
 
@@ -215,7 +226,25 @@
     color: var(--warn);
   }
   .problem {
+    display: block;
+    width: 100%;
     margin-top: 4px;
+    padding: 2px 4px;
+    border: none;
+    background: none;
+    text-align: left;
+    white-space: normal;
+    font-size: 12px;
+    color: var(--warn);
+  }
+  .problem.info {
+    color: var(--muted);
+  }
+  .problem:hover {
+    background: var(--panel-2);
+  }
+  .problems.ok {
+    color: var(--good);
   }
   main {
     flex: 1;

@@ -97,7 +97,7 @@ assert((await page.locator('.player').count()) === 3, 'added 3 players');
 const colors = await page.locator('.player input[type=color]').evaluateAll((els) => els.map((e) => e.value));
 assert(new Set(colors).size === 3, 'players got unique colors');
 
-await page.getByRole('button', { name: 'Jeopardy!' }).click();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
 await page.locator('.cat textarea').first().fill('Memes');
 await page.locator('.tile').first().click();
 // Select the slide's main text box on the canvas, then type in the inspector.
@@ -219,7 +219,7 @@ await segs.nth(0).getByLabel(/Affects score/).check();
 await segs.nth(0).locator('.more select').selectOption('setScore');
 await segs.nth(1).locator('input.label').fill('Sing a song');
 assert((await segs.count()) === 2, 'wheel editor: slices added/removed, weights and score effect set');
-await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 await page.locator('.tile').nth(4).click();
 await page.getByLabel('Type').selectOption('wheel');
 await page.getByLabel('Which wheel').selectOption({ label: 'Punishment Wheel' });
@@ -296,7 +296,7 @@ await shot('5-board-after');
 // Crash recovery: reload and resume.
 await page.waitForTimeout(300);
 await page.reload();
-await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$350', 'scores survive a reload');
@@ -446,12 +446,12 @@ assert(pickerName === winnerName, `roll-off winner (${winnerName}) is the curren
 
 // .jbr round trip: save the pack, start a new game, open the pack again.
 await page.getByRole('button', { name: 'Exit' }).click();
-await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);
 assert(dl.suggestedFilename().endsWith('.jbr'), 'Save downloads a .jbr pack');
 const packPath = await dl.path();
 await page.getByRole('button', { name: 'New' }).click();
-await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 assert((await page.locator('.cat textarea').first().inputValue()) !== 'Memes', 'new game is blank');
 const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
 await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: (await import('node:fs')).readFileSync(packPath) });
@@ -462,6 +462,28 @@ assert((await page.getByRole('button', { name: /Media \(3\)/ }).count()) === 1, 
 await page.getByRole('button', { name: /Media \(3\)/ }).click();
 await page.locator('.card img').first().waitFor();
 assert((await page.locator('.card .missing').count()) === 0, 'media from the pack is loaded (no missing files)');
+
+// Standalone player-only HTML export: opens straight into a Play screen with everything embedded.
+const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export HTML' }).click()]);
+assert(html.suggestedFilename().endsWith('.html'), 'Export HTML downloads a .html file');
+mkdirSync('test-results', { recursive: true });
+const exported = resolve('test-results/exported-game.html');
+await html.saveAs(exported);
+const player = await context.newPage();
+player.on('pageerror', (e) => errors.push('[exported] ' + e.message));
+player.on('dialog', (d) => d.accept());
+await player.goto(pathToFileURL(exported).href);
+await player.getByRole('button', { name: '▶ Play' }).waitFor();
+assert((await player.locator('.home h1').innerText()) === 'Untitled Game', 'exported file shows the player-only start screen');
+assert((await player.getByRole('button', { name: /Export HTML|Save/ }).count()) === 0, 'exported file has no editor');
+await player.getByRole('button', { name: '▶ Play' }).click();
+await player.getByRole('button', { name: 'Start game ▶' }).click();
+await player.getByRole('button', { name: 'Skip intro' }).click();
+await player.locator('.board .tile').first().click();
+await player.locator('.full img').waitFor();
+const imgOk = await player.locator('.full img').first().evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth > 0) : (i.onload = () => res(true)))));
+assert(imgOk, 'exported game plays with its embedded (edited) image');
+await player.close();
 
 assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();

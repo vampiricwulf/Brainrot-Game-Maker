@@ -9,6 +9,7 @@
   import { openDice, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import ToolLauncher from './host/ToolLauncher.svelte';
+  import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
   import AudienceView from './AudienceView.svelte';
@@ -31,6 +32,7 @@
   let showLog = $state(false);
   let showPlayers = $state(false);
   let hideControls = $state(false);
+  let showKeys = $state(false);
   let pickerPending = false;
 
   const sym = $derived(game.settings.currencySymbol);
@@ -237,7 +239,11 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (app.pregame || showPlayers) return;
+    if (app.pregame || showPlayers || showKeys) return;
+    if (e.key === '?') {
+      showKeys = true;
+      return;
+    }
     const t = e.target as HTMLElement;
     if (t.closest('input, textarea, select, [contenteditable]')) return;
     const k = e.key.toLowerCase();
@@ -422,10 +428,14 @@
       >
         {#snippet tools()}
           <ToolLauncher {game} {session} onrolloff={rolloff} />
+          <button class="ghost" onclick={() => (showKeys = true)} title="Keyboard shortcuts (?)">⌨</button>
         {/snippet}
       </HostPanel>
     {/if}
   </div>
+  {#if showKeys}
+    <KeysHelp onclose={() => (showKeys = false)} />
+  {/if}
   {#if showLog}
     <ScoreLog {session} {sym} onclose={() => (showLog = false)} />
   {/if}

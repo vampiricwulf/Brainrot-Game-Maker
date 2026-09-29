@@ -1,6 +1,6 @@
 # Jeopardy Builder "Brainrot": Product & Technical Spec
 
-Status: **v1.4 (build started)** · Last updated: 2026-09-28
+Status: **v1.5 (M1–M7 implemented)** · Last updated: 2026-09-29
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
@@ -439,36 +439,56 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 ## 11. Milestones
 
-| # | Milestone | Scope |
-|---|---|---|
-| M1 | Core game | Data model, basic editor (rounds/categories/values/text clues), play mode single-window, scoring panel (multi/none/custom), used tiles, score log + undo, autosave. |
-| M2 | Streaming | Dual-window mode, audience view, reveal gating, keyboard shortcuts, `.jbr` save/load. |
-| M3 | Rich slides | Freeform slide editor, text styling/effects/animations, image/video/audio elements, online embeds (YouTube/URL), playback controls, fonts, custom tile faces. |
-| M4 | Game mechanics | Daily Double (manual + randomize), round intro animations, timers, Final Jeopardy with wagers + per-player reveal, tie handling (roll-off / tiebreaker clue / co-winners), winner screen, mid-game player edits. |
-| M5 | Tools | Dice (custom sides, custom faces, presets), weighted wheel, wheel/dice clue types, roll-off + current picker, roll log, global toolbar. |
-| M6 | Image editor & themes | Crop/rotate/flip/resize, filters, overlays, stickers, brush. Theme presets + overrides. |
-| M7 | Export & polish | Standalone HTML export, validation panel, JSON import/export, E2E tests, docs. |
-| M8 | Desktop (optional) | Tauri `.exe` packaging. |
+| # | Milestone | Scope | Status |
+|---|---|---|---|
+| M1 | Core game | Data model, basic editor (rounds/categories/values/text clues), play mode single-window, scoring panel (multi/none/custom), used tiles, score log + undo, autosave. | ✅ Done |
+| M2 | Streaming | Dual-window mode, audience view, reveal gating, keyboard shortcuts, `.jbr` save/load. | ✅ Done |
+| M3 | Rich slides | Freeform slide editor, text styling/effects/animations, image/video/audio elements, online embeds (YouTube/URL), playback controls, fonts, custom tile faces. | ✅ Done |
+| M4 | Game mechanics | Daily Double (manual + randomize), round intro animations, timers, Final Jeopardy with wagers + per-player reveal, tie handling (roll-off / tiebreaker clue / co-winners), winner screen, mid-game player edits. | ✅ Done |
+| M5 | Tools | Dice (custom sides, custom faces, presets), weighted wheel, wheel/dice clue types, roll-off + current picker, roll log, global toolbar. | ✅ Done |
+| M6 | Image editor & themes | Crop/rotate/flip/resize, filters, overlays, stickers, brush. Theme presets + overrides. | ✅ Done |
+| M7 | Export & polish | Standalone HTML export, validation panel, JSON import/export, E2E tests, docs. | ✅ Done |
+| M8 | Desktop (optional) | Tauri `.exe` packaging. | Scaffolded (see `src-tauri/`) |
+
+### Implementation notes (differences from the original plan)
+- **Slide templates** became *Copy slide / Paste slide* plus *Use this style elsewhere* (copies a text look to every question
+  and/or answer in a round or the game).
+- **Wheel/dice outcomes** support a label, details text, media (image/GIF/video/audio), a countdown and an optional score
+  effect. A fully custom reveal *slide* per outcome (`revealSlide`) is not implemented.
+- **Category header slides** (`Category.headerSlide`) are not implemented. Category names are styled by the theme.
+- **Two-window sync** uses `window.open` + `postMessage` only (no BroadcastChannel). The audience window must be opened from
+  the host's button. Media blobs are sent across with the state.
+- **YouTube** is driven through the IFrame player's postMessage protocol (no external API script). Failure is detected by
+  `onError` or by no reply within 7 s, and the host always has *Open on YouTube*.
+- **Standalone HTML export** embeds the `.jbr` zip as base64 in the app's own HTML and starts in a player-only mode with
+  its own autosave slot.
+- **Image edits** are stored as parameters, and the result is saved as a separate media file (PNG if transparency is
+  possible, otherwise JPEG), so the original is always kept.
 
 ---
 
 ## 12. Acceptance Criteria (highlights)
-- [ ] Opening `jeopardy-builder.html` from disk (no server) loads the editor in Chrome, Edge, and Firefox.
-- [ ] A game with 3 rounds of different sizes (e.g. 6×5, 4×3, 8×7) plus Final can be built, saved, reopened, and played.
-- [ ] Each player's color is unique and enforced. Players can be added mid-game.
-- [ ] During a clue, the host can award +X to two players, −Y to one, and nothing to others, with X/Y ≠ the clue value.
-- [ ] Every score change appears in the log and can be undone.
-- [ ] The audience window never shows the answer before Reveal (verified by E2E test).
-- [ ] mp4/webm/mp3/wav/ogg files play with full controls. Autoplay works when enabled.
-- [ ] A wheel with weights 1/1/8 lands on the heavy segment ~80% of the time over 1,000 simulated spins.
-- [ ] A d37 and a custom-face die can be created, saved, and rolled.
-- [ ] A 4-player roll-off with a forced tie re-rolls only the tied players, then sets the winner as the current picker.
-- [ ] A punishment wheel with free-text outcomes (no score actions) spins, reveals the details text/GIF on the audience view,
-      can be tagged with a player, and appears in the roll log with no score change.
-- [ ] A die with 6 custom text faces and a "2d6" range mapping both roll and reveal the correct outcome.
-- [ ] A wheel segment with a "Bankrupt" score action proposes the change, applies it only after Confirm, and can be undone from the score log.
-- [ ] Refreshing the browser mid-game offers to resume, with scores and used tiles intact.
-- [ ] Exported standalone HTML plays the game without the editor.
+Legend: **E2E** = checked by `tests/e2e/smoke.mjs` against the built file opened from `file://` in Chromium; **unit** =
+checked by Vitest; **manual** = not automated yet.
+
+- [x] Opening `jeopardy-builder.html` from disk (no server) loads the editor. **E2E (Chromium)**. Edge is Chromium-based;
+      Firefox is **manual**.
+- [x] A game with 3 rounds of different sizes plus Final can be built and played through. **unit** (round sizes, flow),
+      **E2E** (save → reopen of a `.jbr`).
+- [x] Each player's color is unique and enforced. **E2E**. Players can be added mid-game via 👥 Players. **manual**
+- [x] During a clue, the host can award +X to two players, −Y to one, and nothing to others, with X/Y ≠ the clue value. **E2E + unit**
+- [x] Every score change appears in the log and can be undone. **E2E + unit**
+- [x] The audience window never shows the answer before Reveal. **E2E**
+- [x] Media plays with full controls, and autoplay works when enabled. **E2E** (WAV via host controls). Other formats rely on
+      the browser's codecs, and the editor warns on import.
+- [x] A wheel with weights 1/1/8 lands on the heavy segment ~80% of the time over 1,000 simulated spins. **unit**
+- [x] A d37 and a custom-face die can be rolled. **unit** (d37 notation, custom faces). Saving them in the editor is **manual**.
+- [x] A roll-off with a forced tie re-rolls only the tied players, then sets the winner as the current picker. **unit + E2E**
+- [x] A wheel spin reveals its outcome on the audience view, can be tagged with a player, and appears in the roll log. **E2E**
+- [x] A die with custom text faces and a total-range mapping reveals the correct outcome. **unit**
+- [x] A wheel segment with a "Bankrupt" score action applies only after Confirm and can be undone. **E2E + unit**
+- [x] Refreshing the browser mid-game offers to resume, with scores and used tiles intact. **E2E**
+- [x] Exported standalone HTML plays the game without the editor. **E2E**
 
 ---
 
@@ -514,3 +534,4 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 ## 15. Open Questions
 None at the moment. Risks are handled in the design: the YouTube popup fallback, and codec warnings on media import.
+Firefox and Safari still need a manual pass, especially for the `file://` storage and popup behaviour.

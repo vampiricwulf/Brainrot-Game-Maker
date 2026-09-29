@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, type SavedPlay } from './lib/persist';
+  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage, type SavedPlay } from './lib/persist';
+  import { openPack } from './lib/pack';
+  import { unpackEmbedded } from './lib/export';
+  import PlayerHome from './PlayerHome.svelte';
   import { loadGameMedia, pruneMedia } from './lib/media.svelte';
   import { migrateGame } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
@@ -10,10 +13,30 @@
   import Editor from './editor/Editor.svelte';
   import Play from './play/Play.svelte';
 
+  /** Base64 game pack when this file is an exported, player-only game. */
+  let { embedded = null }: { embedded?: string | null } = $props();
+  // Fixed for the page's lifetime (set once at mount).
+  const playerOnly = untrack(() => !!embedded);
+
   let loaded = $state(false);
+  let loadError = $state('');
   let resumable = $state<SavedPlay | null>(null);
 
   onMount(async () => {
+    if (embedded) {
+      try {
+        app.game = await openPack(await unpackEmbedded(embedded));
+        document.title = app.game.title;
+        usePlayerStorage(app.game.id);
+        app.storageOk = await testStorage();
+        const play = await loadPlay();
+        if (play && play.session.phase !== 'end') resumable = { ...play, game: migrateGame(play.game) };
+      } catch (e) {
+        loadError = (e as Error).message;
+      }
+      loaded = true;
+      return;
+    }
     const [draft, play, ok] = await Promise.all([loadDraft(), loadPlay(), testStorage()]);
     app.storageOk = ok;
     if (draft) {
@@ -42,7 +65,7 @@
   });
   $effect(() => {
     const snap = $state.snapshot(app.game);
-    if (loaded) saveDraftSoon(snap);
+    if (loaded && !playerOnly) saveDraftSoon(snap);
   });
   $effect(() => {
     const game = $state.snapshot(app.playGame);
@@ -86,6 +109,10 @@
 
 {#if !loaded}
   <div class="loading muted">Loading…</div>
+{:else if loadError}
+  <div class="loading">Couldn't open this game: {loadError}</div>
+{:else if playerOnly && app.screen === 'editor'}
+  <PlayerHome onplay={startPlay} {resumable} onresume={resume} ondiscard={discardResume} />
 {:else if app.screen === 'editor'}
   {#if resumable}
     <div class="resume">

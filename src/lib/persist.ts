@@ -24,10 +24,16 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
 export const loadDraft = () => safe(() => get<Game>(DRAFT_KEY));
 export const saveDraft = (game: Game) => safe(() => set(DRAFT_KEY, game));
 
-export const loadPlay = () => safe(() => get<SavedPlay>(PLAY_KEY));
+// Exported player-only files keep their own saved game (keyed per game) so they never touch the builder's.
+let playKey = PLAY_KEY;
+export function usePlayerStorage(gameId: string): void {
+  playKey = `${PLAY_KEY}:player:${gameId}`;
+}
+
+export const loadPlay = () => safe(() => get<SavedPlay>(playKey));
 export const savePlay = (game: Game, session: Session) =>
-  safe(() => set(PLAY_KEY, { game, session, savedAt: Date.now() } satisfies SavedPlay));
-export const clearPlay = () => safe(() => del(PLAY_KEY));
+  safe(() => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
+export const clearPlay = () => safe(() => del(playKey));
 
 /** Runs `fn` with the latest arguments once calls stop for `ms`. `flush()` runs a pending call now. */
 export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number) {

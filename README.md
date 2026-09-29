@@ -1,46 +1,112 @@
 # Jeopardy Builder "Brainrot"
 
-Build and host custom Jeopardy-style games for livestreams. It all lives in one HTML file: open it in a browser and play,
-with no install or server.
+Build and host custom Jeopardy-style games for livestreams. The whole app is **one HTML file**: double-click it to open it in a
+browser, with no install, server or internet needed. Players buzz in by voice on the stream; the host runs the board and decides who
+gets points.
 
 The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 
-## Using it
+## Getting the app
 
-1. Build it (see below), or grab a built `jeopardy-builder.html`.
-2. Double-click the file to open it in Chrome, Edge or Firefox.
-3. **Editor**: set up players (unique colors), rounds (any number, 1–10 categories × 1–10 questions, any values),
-   and clues. Each question and answer is a freeform 16:9 slide: add text boxes (fonts, outline, shadow, glow,
-   background box, entrance animations), images, video, audio, shapes, and YouTube/online links. Drag to move, pull
-   handles to resize or rotate, drop files straight onto the slide, Ctrl+C/Ctrl+V between slides, Ctrl+Z to undo.
-   Tiles can show custom text or an image instead of the value. The **🖼 Media** tab lists every file with usage counts. Work is autosaved in the browser. **Save** downloads a `.jbr`
-   game pack (the game plus all its media) that you can **Open** later. **Export JSON** gives a text-only copy.
-4. **▶ Play**: confirm the players, pick a display mode, then start.
-   - **Single window**: the top of the window is what viewers see. The host controls sit below it (`H` hides them).
-   - **📺 Separate audience window**: a clean popup to capture in OBS (double-click it or press `F` for full-screen).
-     The host window shows the answer, notes and standings, for your eyes only. Allow popups for the file if the browser asks.
+- **Download** `jeopardy-builder.html` from the latest GitHub Actions run or release, or build it yourself (see
+  [Development](#development)). It lands in `dist/index.html`.
+- Open it in **Chrome, Edge or Firefox**. Everything works from a file opened from disk.
 
-### Host controls
+## Building a game (Editor)
+
+| Tab | What it's for |
+|---|---|
+| ⚙ **Setup & Players** | Default players (name + unique color), rules (negative scores, quick "wrong" buttons, points symbol), timers, round intro, and game **sounds** (round intro, Daily Double, time's up, Final think music, winner). |
+| **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. |
+| 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, and score bar position (bottom/top/hidden). |
+| 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
+| 🖼 **Media** | Every file in the game, with usage counts, "remove unused" and a list of online links. |
+| **Final Jeopardy** | Category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
+
+**Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
+face** (custom text or an image instead of the value), host notes, and two slides: **Question** and **Answer**.
+
+**Slide editor** (16:9, freeform):
+- Add **text boxes**: bundled fonts or your own uploaded font, size / shrink-to-fit, bold/italic/underline/caps, alignment,
+  line height, letter spacing, outline, drop shadow, glow, background box.
+- Add **images**, **video**, **audio**, **shapes**, and **🌐 links** (YouTube or direct media URLs; these need internet during
+  the game).
+- Drag to move (with snapping guides), pull the handles to resize, and use the round handle to rotate (Shift snaps to 15°).
+- **Entrance animations**: fade, pop, slide, typewriter, shake, spin. Click **▶ Preview** to watch them.
+- Drop files onto the slide, or paste images. Ctrl+C / Ctrl+V copies items between slides, and **Copy slide / Paste slide**
+  copies whole slides. Ctrl+Z / Ctrl+Y undo and redo.
+- **Use this style elsewhere** copies a text look to every question and/or answer in the round or the whole game.
+- Video/audio options: autoplay, loop, start muted, start/stop times, volume.
+- **🎨 Edit image…** (or double-click an image): crop (free, 16:9, 4:3, 1:1, 9:16), rotate, flip, resize, brightness /
+  contrast / saturation / hue / blur / grayscale / sepia / invert, meme text, emoji stickers, and a brush with an eraser.
+  The original file is always kept; **Use original** undoes everything.
+
+The **Checklist** in the sidebar flags missing questions and answers, blank categories, wheel tiles with no wheel, missing or
+unplayable media, and online links. Click an item to jump to the tab that fixes it.
+
+### Saving and sharing
+
+- Work **autosaves** in the browser. If the browser blocks storage for files opened from disk, the header warns you to use
+  Save.
+- **Save** downloads a **`.jbr` game pack** (a zip with the game plus all its media). **Open…** loads `.jbr` or `.json`.
+- **⬇ Export HTML** makes a **single player-only HTML file** with everything inside. Send it to anyone; they double-click it
+  and press ▶ Play. You're warned above ~100 MB. For big games, share the `.jbr` instead.
+- **Export JSON** is a text-only copy, handy for hand-editing or writing clues with an AI.
+
+## Hosting a game (Play)
+
+1. Press **▶ Play**, then confirm the players (names, colors, starting scores) and pick a display mode:
+   - **Single window**: viewers see this window. `H` hides the host controls.
+   - **📺 Separate audience window**: a clean popup to capture in OBS (Window Capture). Double-click it or press `F` for
+     full-screen, and **click it once** so it's allowed to play sound. The host window shows the answer, notes, standings and
+     all controls. Allow popups for the file if the browser asks.
+2. The round intro plays: title card → tiles fill in → press `N` to reveal each category (or **Skip intro**).
+3. Click a tile. The question zooms in, and the answer is never on screen until you press **Reveal** (`R`).
+4. **Scoring**: toggle any players (`1`–`9`; zero, one or many), set any amount (prefilled with the clue value), then
+   **Award** (`Enter`) or **Deduct** (`Shift+Enter`). The per-player **✘ −value** buttons handle quick wrong answers. Click a
+   score to type an exact value. Every change is logged and undoable (`Ctrl+Z`, 📜 Log).
+5. **Back to board** (`Esc`) marks the tile used. Right after a correct answer, that player becomes the picker (★).
+
+**Daily Double**: a splash plays, then you pick the player and enter the wager (capped TV-style at their score or the round's
+top value; **Ignore the limit** overrides). The wager is prefilled for scoring.
+
+**Timers**: they start automatically when a clue has one, or any time with `T`. At zero you get a TIME'S UP banner and your
+optional sound. Nothing is scored automatically.
+
+**Media**: the host panel has play/pause, seek, ±5 s, time, volume, mute, loop and restart for the slide's video/audio/YouTube
+(`Space`, `←`/`→`, `M`). If **YouTube won't embed** (common for files opened from disk), the host gets **▶ Open on YouTube**,
+which opens the real page in a popup window you can capture on stream (`Y`).
+
+**Tools, any time**: **🎲 Dice** (d4–d100, 2d6, or anything like `3d37`, plus saved dice), **🎡 Wheel** (saved wheels, or a
+quick wheel from a list), **🏁 Who goes first** (everyone rolls in their color, tied leaders re-roll, and the winner becomes
+the picker), **📊 Scores** overlay. These show full-screen on the audience view. Results can be tagged with a player for the
+**roll log**. Score effects only apply when you press **Confirm**.
+
+**Final Jeopardy**: category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
+music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. **Ties** offer
+a roll-off, the tiebreaker clue, or co-winners.
+
+If the browser closes mid-game, reopen the file and press **Resume game**. Scores, used tiles and logs are autosaved after
+every change.
+
+### Host keyboard shortcuts
 
 | Key | Action |
 |---|---|
-| `1`–`9` | Select/deselect player N for scoring (any number of players, or none) |
-| `Enter` / `Shift+Enter` | Award / deduct the amount (prefilled with the clue value, editable to anything) |
+| `1`–`9` | Select/deselect player N for scoring |
+| `Enter` / `Shift+Enter` | Award / deduct the amount |
 | `R` | Reveal the answer |
-| `Esc` / `B` | Back to the board (marks the tile used) |
-| `P`, then `1`–`9` | Make player N the current picker (or click their name plate) |
-| `N` | Next step in Final Jeopardy |
+| `Esc` / `B` | Close the tool overlay, or go back to the board |
+| `N` | Next step (round intro, Final Jeopardy) |
+| `T` | Start/pause the countdown |
+| `P`, then `1`–`9` | Make player N the current picker |
+| `D` / `W` / `O` / `S` | Roll dice again / spin the wheel / roll-off / scoreboard |
+| `Space` / `←` `→` / `M` | Play/pause, seek ±5 s, mute the slide's media |
+| `Y` | Open YouTube/online media in its own window |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change |
-| `L` | Score log (undo/restore any single change) |
+| `L` | Score & roll log |
 | `A` | Open/close the audience window |
-| `Space` / `←` `→` / `M` | Play/pause, seek ±5 s, mute the slide's video/audio |
-| `Y` | Open the slide's YouTube/online media in its own window (fallback if it won't embed) |
-| `H` | Hide/show host controls |
-| `F` | Full-screen |
-
-Other controls: click a score in the host panel to type an exact value, use the per-player **✘ −value** buttons for
-wrong answers, and use **👥 Players** to add, remove or recolor players mid-game. If the browser closes mid-game, reopen the file
-and press **Resume game**.
+| `H` / `F` / `?` | Hide host controls / full-screen / show all shortcuts |
 
 ## Development
 
@@ -48,15 +114,25 @@ and press **Resume game**.
 npm install
 npm run dev        # dev server with hot reload
 npm run build      # → dist/index.html (single self-contained file)
-npm run check      # type-check
-npm test           # unit tests (scoring, undo, round flow)
-npm run test:e2e   # drives the built file from file:// in Chromium
+npm run check      # type-check (svelte-check)
+npm test           # unit tests (scoring, undo, Daily Double, Final, dice, wheel, roll-off)
+npm run test:e2e   # drives the built file from file:// in Chromium (build first)
 ```
 
-Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singlefile`. Autosave uses IndexedDB (`idb-keyval`).
+Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singlefile`. Autosave and media use IndexedDB
+(`idb-keyval`), `.jbr` packs use JSZip, and the fonts are bundled from `@fontsource` (SIL Open Font License).
 
-## Status
+### Code map
 
-Milestone **M1 (core game)** is done: editor, rounds, values, text clues, single-window play, flexible scoring, score log +
-undo, autosave/resume, and a basic Final Jeopardy (no wagers yet). See the milestones in `docs/SPEC.md` §11 for what's next
-(dual host/audience windows, `.jbr` packs with media, freeform slides, Daily Doubles, dice, wheel, image editor, themes).
+| Path | What's there |
+|---|---|
+| `src/lib/model.ts` | Data model (game, slides, clues, wheels, dice, session) and factories |
+| `src/lib/session.ts` | Game flow and scoring: score log, undo/redo, Daily Double, Final, round intro, ties |
+| `src/lib/tools.ts`, `overlay.ts` | Dice, weighted wheel, roll-off, score effects; the full-screen tool overlays |
+| `src/lib/live.ts`, `sync.svelte.ts` | On-screen transient state (pops, timer, sounds, overlays) and host ⇄ audience window sync |
+| `src/lib/media.svelte.ts`, `mediactl.svelte.ts` | Media store (blobs + IndexedDB) and playback control / YouTube helpers |
+| `src/lib/pack.ts`, `export.ts` | `.jbr` packs and standalone HTML export |
+| `src/lib/imageedit.ts`, `theme.ts` | Image-editor canvas pipeline; theme presets |
+| `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media) |
+| `src/play/` | Play UI (audience view, board, host panel, tools) |
+| `src/audience/` | The audience window app |

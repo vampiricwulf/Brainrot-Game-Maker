@@ -1,0 +1,101 @@
+<!-- Start screen of an exported, player-only game file. -->
+<script lang="ts">
+  import { app, toast } from './lib/app.svelte';
+  import { savePack } from './lib/pack';
+  import type { SavedPlay } from './lib/persist';
+  import { playableClues } from './lib/model';
+  import { mediaUrls } from './lib/media.svelte';
+  import { themeStyle } from './lib/theme';
+
+  let {
+    onplay,
+    resumable,
+    onresume,
+    ondiscard,
+  }: { onplay: () => void; resumable: SavedPlay | null; onresume: () => void; ondiscard: () => void } = $props();
+
+  const game = $derived(app.game);
+  const clues = $derived(game.rounds.reduce((n, r) => n + playableClues(r).length, 0));
+  const style = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
+</script>
+
+<div class="home" {style}>
+  <div class="card">
+    <div class="logo">JEOPARDY!</div>
+    <h1>{game.title}</h1>
+    <p class="muted">
+      {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{game.final.enabled ? ' · Final Jeopardy' : ''}
+    </p>
+    {#if resumable}
+      <div class="resume">
+        <span>A game in progress was saved {new Date(resumable.savedAt).toLocaleString()}.</span>
+        <div class="row">
+          <button class="primary" onclick={onresume}>Resume game</button>
+          <button class="ghost" onclick={ondiscard}>Start over</button>
+        </div>
+      </div>
+    {:else}
+      <button class="primary big" onclick={onplay}>▶ Play</button>
+    {/if}
+    {#if !app.storageOk}
+      <p class="warn small">This browser won't save progress for files opened from disk, so a refresh restarts the game.</p>
+    {/if}
+    <button
+      class="ghost small"
+      onclick={async () => {
+        await savePack($state.snapshot(game));
+        toast('Downloaded the .jbr game pack: open it in the Jeopardy Builder to edit');
+      }}>⬇ Download as .jbr (to edit in the builder)</button>
+  </div>
+</div>
+
+<style>
+  .home {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: var(--board-image, none) center / cover no-repeat, radial-gradient(circle at 50% 30%, var(--tile), #000 80%);
+  }
+  .card {
+    width: min(560px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 32px 24px;
+    text-align: center;
+    background: rgba(10, 12, 20, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .logo {
+    font-family: var(--value-font);
+    font-size: 44px;
+    color: var(--value);
+    text-shadow: 3px 3px 0 #000;
+  }
+  h1 {
+    margin: 0;
+    font-size: 28px;
+  }
+  p {
+    margin: 0;
+  }
+  .big {
+    font-size: 20px;
+    padding: 12px 36px;
+  }
+  .resume {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  .small {
+    font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
+  }
+</style>
