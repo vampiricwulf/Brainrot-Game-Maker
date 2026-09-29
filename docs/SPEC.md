@@ -1,6 +1,6 @@
 # Jeopardy Builder "Brainrot": Product & Technical Spec
 
-Status: **Draft v1.3** · Last updated: 2026-09-28
+Status: **v1.4 (build started)** · Last updated: 2026-09-28
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
@@ -47,7 +47,7 @@ bundled). The only exception is **online media embeds** (YouTube / media URLs, �
 |---|---|---|
 | UI framework | **Svelte 5 + TypeScript** | Small bundle, simple reactivity |
 | Build | **Vite** + `vite-plugin-singlefile` | Outputs one `.html` |
-| Slide canvas / element editing | **Konva.js** (via `svelte-konva`) or plain DOM with `moveable` | Drag, resize, rotate handles. Decide in the spike (§15). |
+| Slide canvas / element editing | **Plain DOM + `moveable`** | Decided: native text/video/CSS effects. Drag, resize, and rotate handles come from moveable. |
 | Image editor | Canvas 2D API + **Cropper.js** for crop | Filters via canvas `filter`; brush/annotate on an overlay canvas |
 | Zip packs | **JSZip** | Read and write `.jbr` |
 | Local persistence | **IndexedDB** via `idb-keyval` | Autosave, crash recovery, media blobs |
@@ -235,9 +235,16 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Online media (optional)**: paste a YouTube link or a direct image/video/audio URL to create an `EmbedEl`.
   The editor labels it "🌐 needs internet". The validation panel lists all online media, with a "check links" button, and
   offers "download to file" guidance. Caveats shown to the author: the video may be removed or region-blocked, and ads may
-  appear. The YouTube IFrame player may refuse to play from a `file://` page (YouTube now requires a referrer), so the
-  M0 spike must verify this. Fallbacks: a tiny bundled local server mode (`http://localhost`) in the Tauri build, or
-  "open link in a popup window" for the audience capture.
+  appear.
+- **YouTube fallback (required)**: the IFrame player may refuse to play from a `file://` page (YouTube requires a referrer).
+  The embed is treated as best-effort:
+  - Failure is detected by a player `onError` (e.g. codes 2/5/100/101/150/153), or by no `onReady` within ~6 s.
+  - On failure, the element shows a clear **"▶ Open on YouTube"** card in place of the player (the video thumbnail if it loads,
+    the title/URL otherwise).
+  - Clicking it (host view, or the `Y` shortcut) opens the **actual YouTube watch page** (`youtube.com/watch?v=…&t=<startAt>`)
+    in a **popup window** sized 1280×720, so it can be window-captured in OBS or dragged onto the stream.
+  - An "Open on YouTube" button is **always** available in the host's media controls, even when the embed works.
+  - Direct media URLs (`remoteVideo/Audio/Image`) that fail to load get the same "Open link" popup fallback.
 - YouTube embeds use the IFrame Player API so the standard controls (play/pause, seek, volume, start/end) work the same as for local media.
   Standalone HTML export keeps them as links (not embedded).
 
@@ -434,7 +441,6 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 | # | Milestone | Scope |
 |---|---|---|
-| M0 | Spike | Vite + Svelte single-file build. Verify on `file://` that the two-window `postMessage`, IndexedDB, video autoplay, and YouTube embeds work in Chrome, Edge, and Firefox. Pick Konva vs DOM for slides. |
 | M1 | Core game | Data model, basic editor (rounds/categories/values/text clues), play mode single-window, scoring panel (multi/none/custom), used tiles, score log + undo, autosave. |
 | M2 | Streaming | Dual-window mode, audience view, reveal gating, keyboard shortcuts, `.jbr` save/load. |
 | M3 | Rich slides | Freeform slide editor, text styling/effects/animations, image/video/audio elements, online embeds (YouTube/URL), playback controls, fonts, custom tile faces. |
@@ -495,6 +501,9 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | Stack | Svelte 5 + Vite, built to a single-file HTML |
 | Expected size | Small (< 100 MB media) |
 | Online media | Allowed (YouTube / URLs) as an opt-in, flagged "needs internet". Local files remain the default. |
+| YouTube failure | Detect the failure → "Open on YouTube" popup window with the real page. The button is always available to the host. |
+| Spike | Skipped. Go straight to building; the risks are covered by fallbacks. |
+| Slide engine | DOM + moveable |
 | Daily Double placement | Manual toggle + "Randomize" button (weighted to lower rows) |
 | Bulk clue entry | Not needed for v1 (editor + JSON import only) |
 | End-game ties | Offer a tiebreaker roll-off, a tiebreaker clue, or co-winners |
@@ -504,7 +513,4 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | Timer end | Visual + optional user sound. No auto-reveal. |
 
 ## 15. Open Questions
-1. **Slide rendering engine**: Konva (canvas; easy transforms, harder rich text/video) or DOM + `moveable`
-   (native text/video, CSS effects). Leaning **DOM + moveable**. Decide in the M0 spike.
-2. **YouTube from `file://`**: confirm whether the IFrame embed plays when the page is opened from disk. If not, choose
-   between the Tauri/localhost fallback and a popup-window fallback.
+None at the moment. Risks are handled in the design: the YouTube popup fallback, and codec warnings on media import.
