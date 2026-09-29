@@ -144,8 +144,7 @@ Outcome {
 }
 
 WheelPreset { id, name, segments: (Outcome & { color, weight /* proportion */ })[],
-              spinDurationMs, removeAfterLanding: boolean,
-              revealStyle: 'banner' | 'fullscreen' }   // how big the result is shown
+              spinDurationMs, removeAfterLanding: boolean }
 DicePreset  { id, name, dice: { sides: number /* 2..1000 */, count: number,
               customFaces?: Outcome[] /* length = sides; else faces are 1..sides */ }[],
               showTotal: boolean,
@@ -302,6 +301,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   It is usable anytime, for anything (who goes first, how many seconds, punishment severity...).
 - **Wheel**: any saved preset, or a quick ad-hoc wheel from a text list. Weighted random.
   Uses `crypto.getRandomValues`, and the spin animation lands on the pre-selected result.
+- **Placement**: the wheel and dice always appear as a **full-screen overlay** on the audience view while spinning
+  or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue).
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
   ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact).
@@ -433,7 +434,9 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | Rounds | Any number of rounds + optional Final |
 | Mechanics | Daily Doubles, negative scores/deductions, Final wagers, timers |
 | Daily Double cap | TV rules (max(score, highest board value)), host can override |
-| Wheel/dice results | General-purpose outcomes (punishments, dares, prompts, numbers) with optional details/media/timer. Score actions are a rare, optional extra, always host-confirmed. Separate roll log. |
+| Wheel/dice results | General-purpose outcomes (punishments, dares, prompts, numbers) with optional details/media/timer. Score actions are a rare, optional extra, always host-confirmed. |
+| Punishment tracking | Roll log only (optional player tag). No on-stream tally or active-effect badges. |
+| Wheel/dice placement | Full-screen overlay on the audience view |
 | Score bar | Name + color only (no avatars) |
 | Slides | Freeform 16:9 elements |
 | Image editing | Crop/rotate/flip/resize, filters, text/sticker overlays, brush |
