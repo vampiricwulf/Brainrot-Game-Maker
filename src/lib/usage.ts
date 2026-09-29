@@ -80,6 +80,12 @@ export function allEmbeds(game: Game): { el: EmbedEl; where: string }[] {
   );
 }
 
+/** How many things the game plays from the internet: the live-link files it uses, and online players. */
+export function onlineCount(game: Game): number {
+  const used = mediaUsage(game);
+  return game.media.filter((m) => m.url && used.has(m.id)).length + allEmbeds(game).length;
+}
+
 /** Does a slide show anything besides empty text? */
 export function slideHasContent(slide: Slide): boolean {
   return slide.elements.some((e) => e.kind !== 'text' || e.text.trim() !== '');

@@ -166,8 +166,8 @@
           </p>
         {/if}
         <p class="muted small">
-          Sends the game's sound to another device, e.g. a virtual cable (VB-CABLE) for OBS. YouTube videos and "Open link" pop-ups
-          can't be moved: they always play on the default device.
+          Sends the game's sound to another device, e.g. a virtual cable (VB-CABLE) for OBS. YouTube videos, Google Drive's and
+          Streamable's players and "Open link" pop-ups can't be moved: they always play on the default device.
         </p>
       </section>
     {/if}

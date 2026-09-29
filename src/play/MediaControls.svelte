@@ -11,7 +11,7 @@
     dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror'),
   );
 
-  const icon = { video: '🎬', audio: '🔊', youtube: '▶️', remote: '🌐' } as const;
+  const icon = { video: '🎬', audio: '🔊', youtube: '▶️', remote: '🌐', external: '🎞' } as const;
 
   function open(url?: string): void {
     if (url && !openMediaPopup(url)) toast('The browser blocked the popup. Allow popups for this file.', 5000);
@@ -27,6 +27,19 @@
         {#if m.failed}
           <span class="msg">{m.kind === 'youtube' ? "YouTube won't play embedded here." : "Couldn't load this media."}</span>
           <button class="primary small" onclick={() => open(m.openUrl)} title="Y">▶ Open {m.kind === 'youtube' ? 'on YouTube' : 'link'} ↗</button>
+        {:else if m.kind === 'external'}
+          <!-- A site's own player (Google Drive, Streamable): only showing, restarting and stopping it work from here. -->
+          <span class="msg">
+            {m.label}{m.shown === false ? ' is stopped.' : `: click ▶ inside it ${dual ? 'in the audience window' : 'on the stage'}.`}
+            It can't be paused or sought from here.
+          </span>
+          {#if m.shown === false}
+            <button class="small" onclick={() => mediaCommand({ el: id, op: 'play' })}>▶ Show player</button>
+          {:else}
+            <button class="small" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Load the player again from the start">⟲ Restart</button>
+            <button class="small" onclick={() => mediaCommand({ el: id, op: 'stop' })} title="Take the player off the screen (stops its sound)">■ Stop</button>
+          {/if}
+          <button class="small ghost" onclick={() => open(m.openUrl)} title="Open the player in its own window (Y)">Open player window ↗</button>
         {:else}
           <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title="Space">{m.paused ? '▶' : '⏸'}</button>
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Restart">⏮</button>

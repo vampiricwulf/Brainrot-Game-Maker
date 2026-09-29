@@ -516,13 +516,18 @@ assert((await hits()) === 4 && (await insp.locator('textarea').inputValue()) ===
 await pasteText('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 await page.locator('.canvas .card').waitFor();
 assert((await hits()) === 5, 'a pasted YouTube link becomes a YouTube element');
+// A picture dragged from another tab: a (mocked) file host that allows downloads, so a copy is saved in the game.
+await context.route('https://media.example.test/**', (r) =>
+  r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: bigPng(160, 90) }),
+);
 await page.locator('.canvas').evaluate((c) => {
   const dt = new DataTransfer();
-  dt.setData('text/uri-list', 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+  dt.setData('text/uri-list', 'https://media.example.test/dropped.png');
   const r = c.getBoundingClientRect();
   c.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: r.x + 100, clientY: r.y + 100, bubbles: true, cancelable: true }));
 });
-assert((await hits()) === 6, 'a link dropped from another tab adds online media');
+await page.waitForFunction(() => document.querySelectorAll('.canvas .hit').length === 6);
+assert((await page.locator('.linkbox').count()) === 0, 'a link dropped from another tab adds its picture to the slide');
 // Preview is look-only (the add buttons are off), a YouTube embed keeps its own clicks, and a click
 // anywhere else on the slide goes back to editing.
 await page.getByRole('button', { name: '▶ Preview' }).click();
@@ -566,8 +571,9 @@ assert(col6.every((t, i) => t.includes(`Q${i + 1} question`) && !t.includes('No 
 
 // A second clue with a YouTube link (should fall back to "Open on YouTube" if it can't embed).
 await page.locator('.tile').nth(1).click();
-page.once('dialog', (d) => d.accept('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42'));
 await page.getByRole('button', { name: '🌐 Link' }).click();
+await page.locator('.linkbox').getByLabel('Paste a link').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42');
+await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas .card').waitFor();
 assert(true, 'YouTube link added (editor shows a thumbnail card)');
 await page.getByRole('button', { name: 'Done' }).click();
@@ -1122,9 +1128,10 @@ await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: 
 await page.locator('.cat textarea').first().waitFor();
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Memes');
 assert(true, 'reopened .jbr restores the game');
-// pepe.png, its edited copy, beep.wav and clip.webm (unused files stay in the library until removed).
-assert((await page.getByRole('button', { name: /Media \(4\)/ }).count()) === 1, 'reopened .jbr includes its media files');
-await page.getByRole('button', { name: /Media \(4\)/ }).click();
+// pepe.png, its edited copy, beep.wav, clip.webm and the picture saved from a dropped link (unused files stay
+// in the library until removed).
+assert((await page.getByRole('button', { name: /Media \(5\)/ }).count()) === 1, 'reopened .jbr includes its media files');
+await page.getByRole('button', { name: /Media \(5\)/ }).click();
 await page.locator('.card img').first().waitFor();
 assert((await page.locator('.card .missing').count()) === 0, 'media from the pack is loaded (no missing files)');
 const discardMsg = await answerDialog(() => page.getByRole('button', { name: 'Discard' }).click(), true);

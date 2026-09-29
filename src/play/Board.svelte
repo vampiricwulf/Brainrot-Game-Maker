@@ -2,7 +2,7 @@
 <script lang="ts">
   import { categoryLabel, clueValue, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit } from '../lib/autofit';
-  import { mediaUrls } from '../lib/media.svelte';
+  import { imgFallback, mediaUrls } from '../lib/media.svelte';
 
   let {
     game,
@@ -39,7 +39,7 @@
         {#if catShown(ci)}
           {#if cat.image && mediaUrls[cat.image]}
             <div class="title has-image" class:revealing={!!intro}>
-              <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} />
+              <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
               {#if cat.showTitleOverImage && cat.title}
                 <div class="caption" use:autofit={{ size: 40, enabled: true, text: cat.title }}><div>{cat.title}</div></div>
               {/if}
@@ -74,7 +74,7 @@
         >
           {#if !used}
             {#if clue.tileFace?.image && mediaUrls[clue.tileFace.image]}
-              <img src={mediaUrls[clue.tileFace.image]} alt="" draggable="false" />
+              <img src={mediaUrls[clue.tileFace.image]} alt="" draggable="false" onerror={imgFallback} />
             {/if}
             {#if clue.tileFace?.text}
               <span class="face" use:autofit={{ size: 84, enabled: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>

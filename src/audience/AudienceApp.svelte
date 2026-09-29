@@ -1,7 +1,7 @@
 <!-- The audience window (#audience): a clean, control-free view for OBS window capture. -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { registerBlob } from '../lib/media.svelte';
+  import { registerBlob, registerLinks } from '../lib/media.svelte';
   import type { Game, Session } from '../lib/model';
   import { newLive, type Live } from '../lib/live';
   import { CHANNEL_NAME, audienceTitle, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
@@ -49,6 +49,8 @@
       switch (m?.type) {
         case 'game':
           game = m.game;
+          // Files that play from their link never arrive as blobs.
+          registerLinks(m.game);
           registerGameFonts(m.game);
           document.title = audienceTitle(m.game);
           status = 'connected';

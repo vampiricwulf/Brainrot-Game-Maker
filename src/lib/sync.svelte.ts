@@ -101,7 +101,8 @@ function post(msg: HostMsg): void {
 function sendMedia(game: Game): void {
   const items: { id: string; blob: Blob }[] = [];
   for (const ref of game.media) {
-    if (sentMedia.has(ref.id)) continue;
+    // Live links have no file: the audience window plays them from the link too (registerLinks).
+    if (sentMedia.has(ref.id) || ref.url) continue;
     const blob = getBlob(ref.id);
     if (!blob) continue;
     items.push({ id: ref.id, blob });

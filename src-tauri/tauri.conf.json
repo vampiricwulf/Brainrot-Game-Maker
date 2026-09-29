@@ -15,6 +15,11 @@
       "csp": null
     }
   },
+  "plugins": {
+    "http": {
+      "scopeRedirects": true
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [

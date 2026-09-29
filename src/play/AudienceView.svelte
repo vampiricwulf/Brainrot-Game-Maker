@@ -8,7 +8,7 @@
   import { textOn } from '../lib/colors';
   import { finalName, formatPoints, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, score, standings, tiedLeaders } from '../lib/session';
-  import { mediaUrls } from '../lib/media.svelte';
+  import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
   import type { Live, StageAction } from '../lib/live';
@@ -86,7 +86,7 @@
       {#if decorBehind.length}<div class="layer behind"><DecorLayer items={decorBehind} /></div>{/if}
       {#if layout.banner && bannerUrl}
         <div class="banner" style:top="{layout.banner.top}px" style:height="{layout.banner.height}px">
-          <img src={bannerUrl} alt="" draggable="false" style:object-fit={game.theme.bannerFit ?? 'contain'} />
+          <img src={bannerUrl} alt="" draggable="false" style:object-fit={game.theme.bannerFit ?? 'contain'} onerror={imgFallback} />
         </div>
       {/if}
       <div

@@ -1,9 +1,11 @@
-<!-- Popover: pick a file already in the game, or upload a new one. -->
+<!-- Popover: pick a file already in the game, upload a new one, or paste a link to one online. -->
 <script lang="ts">
   import { app, toast } from '../../lib/app.svelte';
-  import { ACCEPT, addMediaFile, canPlay, formatBytes, mediaUrls } from '../../lib/media.svelte';
+  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls } from '../../lib/media.svelte';
   import { pickFile } from '../../lib/fileio';
+  import { linkHost } from '../../lib/links';
   import type { MediaKind } from '../../lib/model';
+  import LinkField from '../LinkField.svelte';
 
   let { kind, onpick, onclose }: { kind: MediaKind; onpick: (id: string) => void; onclose: () => void } = $props();
   const items = $derived(app.game.media.filter((m) => m.kind === kind));
@@ -28,18 +30,23 @@
 <div class="backdrop" onclick={onclose} role="presentation"></div>
 <div class="picker" role="dialog" aria-label="Choose {kind}">
   <button class="primary" onclick={upload}>⬆ Upload {kind} file…</button>
+  <!-- Fonts need the file itself (a font can't be used from a link without the site's permission). -->
+  {#if kind !== 'font'}
+    <div class="muted small">Or paste a link to one online:</div>
+    <LinkField want={kind} onmedia={(ref) => onpick(ref.id)} />
+  {/if}
   {#if items.length}
     <div class="muted small">Or reuse one from this game:</div>
     <div class="list">
       {#each items as m (m.id)}
         <button class="item" onclick={() => onpick(m.id)} title={m.name}>
           {#if kind === 'image' && mediaUrls[m.id]}
-            <img src={mediaUrls[m.id]} alt="" />
+            <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
           {:else}
             <span class="ic">{kind === 'video' ? '🎬' : kind === 'audio' ? '🔊' : '🔤'}</span>
           {/if}
           <span class="nm">{m.name}</span>
-          <span class="muted small">{formatBytes(m.size)}</span>
+          <span class="muted small" title={m.url ? 'Plays from the internet' : undefined}>{m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)}</span>
         </button>
       {/each}
     </div>
@@ -95,6 +102,12 @@
     height: 70px;
     display: grid;
     place-items: center;
+  }
+  .item .muted {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .nm {
     font-size: 11px;

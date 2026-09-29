@@ -1,8 +1,9 @@
 // Pre-game checklist for the editor (spec §5.2 validation panel).
 import { canPlay, mediaUrls } from './media.svelte';
+import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
 import { finalName, playableClues, type Game } from './model';
-import { allEmbeds, mediaUsage, slideHasContent } from './usage';
+import { mediaUsage, onlineCount, slideHasContent } from './usage';
 
 export interface Problem {
   text: string;
@@ -42,10 +43,17 @@ export function validate(game: Game): Problem[] {
   const missingRefs = [...mediaUsage(game).keys()].filter((id) => !known.has(id)).length;
   const missingFiles = game.media.filter((m) => !mediaUrls[m.id]).length;
   if (missingRefs || missingFiles) out.push({ text: `${missingRefs + missingFiles} media file(s) missing`, tab: 'media', level: 'warn' });
-  const unplayable = game.media.filter((m) => (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
+  // (A live link already played when it was added; its type is often unknown from the address.)
+  const unplayable = game.media.filter((m) => !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
   if (unplayable) out.push({ text: `${unplayable} video/audio file(s) this browser may not play`, tab: 'media', level: 'warn' });
 
-  const online = allEmbeds(game).length;
-  if (online) out.push({ text: `${online} online media link(s): need internet during the game`, tab: 'media', level: 'info' });
+  const links = game.media.filter((m) => m.url);
+  const online = onlineCount(game);
+  if (online) out.push({ text: `${online} item${online === 1 ? ' plays' : 's play'} from the internet: need internet during the game`, tab: 'media', level: 'info' });
+  const life = links.map((m) => linkLifetime(m));
+  const expired = life.filter((l) => l === 'expired').length;
+  const temporary = life.filter((l) => l === 'temporary').length;
+  if (expired) out.push({ text: `${expired} online link(s) expired: add those files again`, tab: 'media', level: 'warn' });
+  if (temporary) out.push({ text: `${temporary} online link(s) stop working soon (temporary upload sites): save a copy or add the files`, tab: 'media', level: 'warn' });
   return out;
 }

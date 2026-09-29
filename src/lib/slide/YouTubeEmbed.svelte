@@ -140,7 +140,8 @@
 </script>
 
 {#if !vid}
-  <div class="card"><span>Not a valid YouTube link</span></div>
+  <!-- Only the host is told; the screen viewers watch shows nothing. -->
+  {#if mode === 'edit' || role === 'mirror'}<div class="card"><span>Not a valid YouTube link</span></div>{/if}
 {:else if mode === 'edit' || failed}
   <button
     class="card"

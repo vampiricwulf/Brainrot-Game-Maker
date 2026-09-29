@@ -94,13 +94,14 @@ export function knobPlacement(el: Box & { rotation: number }, dist: number): 'ab
 const MEDIA_EXT = /\.(png|jpe?g|gif|webp|svg|avif|bmp|mp3|wav|ogg|oga|m4a|aac|flac|opus|mp4|webm|mov|m4v|ogv|mkv)$/i;
 
 /**
- * Whether pasted or dropped text is a link to online media we can show (YouTube, or a direct image,
- * video or audio file). Plain text and links to ordinary web pages return false.
+ * Whether pasted or dropped text is a link to online media (a direct image, video or audio file, or a
+ * link from a media site `isMediaSite` knows: YouTube, Google Drive, catbox…). Plain text and links to
+ * ordinary web pages return false.
  */
-export function isMediaLink(text: string, isYouTube: (url: string) => boolean): boolean {
+export function isMediaLink(text: string, isMediaSite: (url: string) => boolean): boolean {
   const t = text.trim();
   if (!/^https?:\/\/\S+$/i.test(t)) return false;
-  if (isYouTube(t)) return true;
+  if (isMediaSite(t)) return true;
   try {
     return MEDIA_EXT.test(new URL(t).pathname);
   } catch {

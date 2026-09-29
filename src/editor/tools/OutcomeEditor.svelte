@@ -1,7 +1,7 @@
 <!-- Edit what a wheel slice / die face means: label, and optionally details, media, a timer and a score effect. -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
-  import { mediaUrls } from '../../lib/media.svelte';
+  import { imgFallback, mediaUrls } from '../../lib/media.svelte';
   import type { MediaKind, Outcome, ScoreAction } from '../../lib/model';
   import MediaPicker from '../slide/MediaPicker.svelte';
 
@@ -50,7 +50,7 @@
       <div class="row">
         <span class="muted small">Media:</span>
         {#if media}
-          {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" />{/if}
+          {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} />{/if}
           <span class="small">{media.name}</span>
           <button class="ghost small" onclick={() => (outcome.media = undefined)}>✕</button>
         {/if}

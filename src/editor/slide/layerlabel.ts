@@ -1,4 +1,5 @@
 // How the layers list, the right-click menu and the editors' notices name slide items.
+import { embedName } from '../../lib/links';
 import type { Game, SlideElement } from '../../lib/model';
 
 /** What the right-click menu (and its shortcuts) can do to the selection. */
@@ -23,11 +24,6 @@ export function layerLabel(el: SlideElement, game: Game): string {
     case 'shape':
       return SHAPES[el.shape];
     case 'embed':
-      if (el.embedKind === 'youtube') return 'YouTube';
-      try {
-        return new URL(el.url).hostname;
-      } catch {
-        return 'Link';
-      }
+      return embedName(el.embedKind, el.url);
   }
 }

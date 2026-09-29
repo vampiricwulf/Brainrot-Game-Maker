@@ -4,8 +4,9 @@
 //   reported, so the host learns when the browser blocked them ("click the audience window once").
 // - "Game audio output": the host can send the game's sound to another device (e.g. a virtual cable
 //   for OBS) with HTMLMediaElement.setSinkId. The choice is saved per computer and applied in the window
-//   that plays the sound: the audience window in dual mode, the host window otherwise. YouTube (a frame
-//   from another site) and "Open link" pop-ups can't be rerouted: they always use the default device.
+//   that plays the sound: the audience window in dual mode, the host window otherwise. YouTube, Google
+//   Drive's and Streamable's players (frames from other sites) and "Open link" pop-ups can't be
+//   rerouted: they always use the default device.
 import { AUDIO_OUT_KEY, DEFAULT_OUTPUT, chimeWav, outputList, parseSavedOutput, playFailure, type AudioOutput } from './audio';
 
 /** What the window that plays the sound tells the host (the audience window forwards these). */

@@ -80,7 +80,12 @@
     exporting = true;
     try {
       const r = await exportStandaloneHtml($state.snapshot(game));
-      if (r) toast(`Exported a playable HTML file (${formatBytes(r.size)}). Double-click it to play.`, 5000);
+      if (r)
+        toast(
+          `Exported a playable HTML file (${formatBytes(r.size)}). Double-click it to play.` +
+            (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
+          r.online ? 8000 : 5000,
+        );
       if (r?.missing.length) alert(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
     } catch (e) {
       alert('Export failed: ' + (e as Error).message);

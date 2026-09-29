@@ -1,6 +1,6 @@
 // .jbr game packs: a zip holding game.json + media/<id>.<ext> (spec §8).
 import JSZip from 'jszip';
-import { extOf, getBlob, loadGameMedia, mimeFor, putMedia } from './media.svelte';
+import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from './media.svelte';
 import { migrateGame, type Game } from './model';
 import { downloadBlob, parseGame, safeFilename } from './fileio';
 
@@ -15,6 +15,8 @@ export async function buildPack(game: Game): Promise<{ blob: Blob; missing: stri
   zip.file('game.json', JSON.stringify(game, null, 2));
   const missing: string[] = [];
   for (const ref of game.media) {
+    // A live link has no file to pack: game.json keeps its link.
+    if (ref.url) continue;
     const b = getBlob(ref.id);
     if (b) zip.file(mediaPath(ref), b);
     else missing.push(ref.name);
@@ -41,16 +43,22 @@ export async function openPack(file: Blob): Promise<Game> {
   if (!json) throw new Error('This pack has no game.json inside.');
   const game = migrateGame(parseGame(await json.async('text')));
   for (const ref of game.media) {
+    if (ref.url) continue;
     const entry = zip.file(mediaPath(ref));
     if (!entry) continue;
     const data = await entry.async('blob');
     await putMedia(ref.id, new Blob([data], { type: mimeFor(ref.name, ref.mime) }));
   }
+  registerLinks(game);
   return game;
 }
 
 /** Open either a .jbr pack or a plain .json game. */
 export async function openGameFile(file: File): Promise<Game> {
-  if (/\.json$/i.test(file.name) || file.type === 'application/json') return migrateGame(parseGame(await file.text()));
+  if (/\.json$/i.test(file.name) || file.type === 'application/json') {
+    const game = migrateGame(parseGame(await file.text()));
+    registerLinks(game);
+    return game;
+  }
   return openPack(file);
 }

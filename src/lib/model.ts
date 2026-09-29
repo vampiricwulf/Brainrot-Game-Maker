@@ -1,6 +1,7 @@
 // Core data model. See docs/SPEC.md §4.
 // Authored content (Game) is kept separate from runtime state (Session).
 
+import { isWebUrl } from './links';
 import { dedupeMediaNames } from './medianame';
 import { presetTheme, type Theme } from './theme';
 
@@ -15,13 +16,23 @@ export function newId(): Id {
 
 export type MediaKind = 'image' | 'video' | 'audio' | 'font';
 
-/** A file stored with the game (blob lives in the media store / .jbr pack, keyed by id). */
+/**
+ * A file used by the game. Normally stored with it (the blob lives in the media store / .jbr pack, keyed
+ * by id). A link the game couldn't save a copy of plays straight from the internet instead (`url`).
+ */
 export interface MediaRef {
   id: Id;
   name: string;
   mime: string;
+  /** Bytes (0 for a link: it isn't stored). */
   size: number;
   kind: MediaKind;
+  /** Plays live from this http(s) link during the show (needs internet); no file is stored. */
+  url?: string;
+  /** The link it was added from, as pasted (for credit, and to save a copy later). */
+  source?: string;
+  /** When that link stops working (ms since 1970), if the site says (Discord). */
+  expiresAt?: number;
 }
 
 // ---------- Slides ----------
@@ -124,11 +135,16 @@ export interface ShapeEl extends ElementBase {
   radius: number;
 }
 
-export type EmbedKind = 'youtube' | 'remoteVideo' | 'remoteAudio' | 'remoteImage';
+/**
+ * 'youtube', 'drive' (Google Drive's own player) and 'streamable' play in the site's player; the
+ * remote* kinds are older games' direct links (new links become ordinary image/video/audio items).
+ */
+export type EmbedKind = 'youtube' | 'drive' | 'streamable' | 'remoteVideo' | 'remoteAudio' | 'remoteImage';
 
-/** Online media: needs internet during the game. */
+/** Online media played in its site's own player: needs internet during the game. */
 export interface EmbedEl extends ElementBase, Playback {
   kind: 'embed';
+  /** The link as pasted; the player's address is worked out from it when the slide shows. */
   url: string;
   embedKind: EmbedKind;
 }
@@ -616,6 +632,11 @@ export function migrateGame(data: Game): Game {
   g.settings = { ...d.settings, ...(data.settings ?? {}) };
   g.final = { ...d.final, ...(data.final ?? {}) };
   g.media ??= [];
+  // Links only ever point at web pages (a hand-edited game must not smuggle in javascript: or file:).
+  for (const m of g.media) {
+    if (m.url !== undefined && !isWebUrl(m.url)) delete m.url;
+    if (m.source !== undefined && !isWebUrl(m.source)) delete m.source;
+  }
   dedupeMediaNames(g.media);
   g.audio ??= {};
   g.wheels ??= [];

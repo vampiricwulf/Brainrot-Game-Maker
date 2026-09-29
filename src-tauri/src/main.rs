@@ -498,6 +498,9 @@ fn main() {
             }
         }))
         .manage(env)
+        // Downloads online media links into the game natively (the page's own fetch is limited by
+        // CORS). What it may reach is set in capabilities/http.json.
+        .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             set_audio_fix,
             restart_app,

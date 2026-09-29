@@ -5,7 +5,7 @@
   import { addCategory, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
   import { toast } from '../lib/app.svelte';
-  import { addMediaFile, mediaUrls } from '../lib/media.svelte';
+  import { addMediaFile, imgFallback, mediaUrls } from '../lib/media.svelte';
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -146,7 +146,7 @@
         {#if cat.image}
           <div class="cat-img">
             {#if mediaUrls[cat.image]}
-              <img src={mediaUrls[cat.image]} alt="" style:object-fit={cat.imageFit ?? 'contain'} />
+              <img src={mediaUrls[cat.image]} alt="" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
             {:else}
               <span class="missing small">Missing image</span>
             {/if}
@@ -210,7 +210,7 @@
           ondragleave={() => dropTarget === `t${ci}-${row}` && (dropTarget = null)}
           ondrop={(e) => dropOnTile(e, ci, row)}
         >
-          {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" />{/if}
+          {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
           <span class="val">
             {clue.empty ? 'EMPTY' : `${sym}${clueValue(round, row, clue)}`}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}

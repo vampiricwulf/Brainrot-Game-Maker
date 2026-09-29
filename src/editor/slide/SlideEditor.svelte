@@ -49,20 +49,21 @@
   import { app, toast } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
   import { clipboard } from '../../lib/clipboard.svelte';
-  import { addMediaFile, canPlay, mediaUrls } from '../../lib/media.svelte';
-  import { classifyUrl, youtubeId, youtubeStart } from '../../lib/mediactl.svelte';
+  import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
+  import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
   import { restack, type Restack } from '../../lib/layers';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
-    type ImageEl, type MediaKind, type ShapeType, type SlideElement, type TextEl,
+    type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type SlideElement, type TextEl,
   } from '../../lib/model';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
   import Inspector from './Inspector.svelte';
   import MediaPicker from './MediaPicker.svelte';
+  import LinkField from '../LinkField.svelte';
   import ImageEditor from './ImageEditor.svelte';
   import LayersPanel from './LayersPanel.svelte';
   import LayerMenu from './LayerMenu.svelte';
@@ -94,6 +95,9 @@
   let picker = $state<MediaKind | null>(null);
   let replacing = $state<string | null>(null);
   let shapeMenu = $state(false);
+  /** The 🌐 Link box: the link it started with (pasted or dropped) and where the item goes. */
+  let linkBox = $state<{ initial: string; at?: { x: number; y: number }; key: number } | null>(null);
+  let linkKey = 0;
   let previewKey = $state(0);
   let previewing = $state(false);
   let previewMuted = $state(false);
@@ -241,11 +245,16 @@
     });
   }
 
-  async function addMedia(kind: MediaKind, id: string, at?: { x: number; y: number }): Promise<void> {
+  /** Put a file on the slide. `gif`: a GIF turned into a video (GIPHY, Imgur .gifv), so it loops silently. */
+  async function addMedia(kind: MediaKind, id: string, at?: { x: number; y: number }, gif = false): Promise<void> {
     if (kind === 'image') {
       const { w, h } = await imageSize(id);
       add(newImageEl(id, w, h), at);
-    } else if (kind === 'video') add(newVideoEl(id), at);
+    } else if (kind === 'video') {
+      const v = newVideoEl(id);
+      if (gif) Object.assign(v, { loop: true, muted: true });
+      add(v, at);
+    }
     else if (kind === 'audio') add(newAudioEl(id), at);
     else if (kind === 'font') {
       await registerGameFonts(game);
@@ -278,25 +287,35 @@
     add(newShapeEl(shape));
   }
 
-  /** Add a YouTube or direct media link as an online media element. */
-  function addLinkEl(url: string, at?: { x: number; y: number }): boolean {
-    const kind = classifyUrl(url);
-    if (!kind) return false;
-    const el = newEmbedEl(url.trim(), kind);
+  // ---------- Links (🌐 Link, or a link pasted or dropped on the slide) ----------
+  function openLink(initial = '', at?: { x: number; y: number }): void {
+    linkBox = { initial, at, key: ++linkKey };
+  }
+
+  /** A site's own player (YouTube, Streamable, Google Drive's player) as a slide item. */
+  function addEmbed(url: string, kind: EmbedKind, at?: { x: number; y: number }): void {
+    const el = newEmbedEl(url, kind);
     if (kind === 'youtube') el.startAt = youtubeStart(url);
     add(el, at);
-    return true;
   }
 
-  function addLink(): void {
-    const url = prompt('Paste a YouTube link or a direct link to an image, video or audio file.\n\nThis will need internet during the game.');
-    if (!url?.trim()) return;
-    if (!addLinkEl(url)) toast("That doesn't look like a link");
+  /** The link box turned a link into a file (downloaded, or a live link): put it on the slide. */
+  async function linked(ref: MediaRef, added: LinkAdded | null): Promise<void> {
+    const at = linkBox?.at;
+    linkBox = null;
+    await addMedia(ref.kind, ref.id, at, !!added?.link.gif);
   }
 
-  /** Pasted or dropped text: a media link becomes online media; other text fills the empty main text box or a new one. */
+  /** A YouTube or Streamable link goes straight on; any other link opens the link box (download, progress, Cancel). */
+  function addLinkEl(url: string, at?: { x: number; y: number }): void {
+    const link = parseMediaLink(url);
+    if (link && !isLinkProblem(link) && link.embed) addEmbed(link.source, link.embed, at);
+    else openLink(url, at);
+  }
+
+  /** Pasted or dropped text: a media link becomes media; other text fills the empty main text box or a new one. */
   function addTextContent(text: string, at?: { x: number; y: number }): void {
-    if (isMediaLink(text, (u) => !!youtubeId(u)) && addLinkEl(text, at)) return;
+    if (isMediaLink(text, isMediaHost)) return addLinkEl(text.trim(), at);
     const main = slide.elements.find((e): e is TextEl => e.kind === 'text');
     if (main && !main.text.trim()) {
       edit(() => (main.text = text));
@@ -460,6 +479,7 @@
       selected = [];
       shapeMenu = false;
       picker = null;
+      linkBox = null;
       previewKey++;
     }
   }
@@ -651,7 +671,44 @@
           </div>
         {/if}
       </div>
-      <button onclick={addLink} title="YouTube or a link to online media (needs internet)">🌐 Link</button>
+      <div class="pop">
+        <button onclick={() => (linkBox ? (linkBox = null) : openLink())} title="YouTube, Google Drive, or a link to a picture, video or sound online">
+          🌐 Link
+        </button>
+        {#if linkBox}
+          <!-- Stays open while you click around the slide (a download keeps going); ✕ or Esc closes it. -->
+          <div
+            class="linkbox"
+            role="dialog"
+            aria-label="Add from a link"
+            tabindex="-1"
+            onkeydown={(e) => {
+              // Esc closes just this box (not the clue editor around it).
+              if (e.key !== 'Escape') return;
+              e.stopPropagation();
+              linkBox = null;
+            }}
+          >
+            <div class="row">
+              <b class="small">🌐 Add from a link</b>
+              <span class="spacer"></span>
+              <button class="ghost small" onclick={() => (linkBox = null)} aria-label="Close">✕</button>
+            </div>
+            {#key linkBox.key}
+              <LinkField
+                initial={linkBox.initial}
+                hint="YouTube, Google Drive, or a direct file link, e.g. https://files.catbox.moe/abc123.mp4"
+                onmedia={linked}
+                onembed={(url, kind) => {
+                  const at = linkBox?.at;
+                  linkBox = null;
+                  addEmbed(url, kind, at);
+                }}
+              />
+            {/key}
+          </div>
+        {/if}
+      </div>
       <span class="sep"></span>
       <label class="bg" title="Slide background color">
         BG
@@ -875,6 +932,22 @@
   }
   .menu button {
     text-align: left;
+  }
+  .linkbox {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 60;
+    margin-top: 4px;
+    width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
   .sep {
     width: 8px;
