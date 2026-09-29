@@ -2,18 +2,35 @@
 <script lang="ts">
   import { audience, sound } from '../../lib/sync.svelte';
   import { audioOut } from '../../lib/audioout.svelte';
-  import { captureProblem } from '../../lib/desktop.svelte';
+  import { captureProblem, desktop, restartApp } from '../../lib/desktop.svelte';
 
   let { dual, onhelp }: { dual: boolean; onhelp: () => void } = $props();
 
   const capture = captureProblem();
   const missing = $derived(dual ? sound.outputMissing : audioOut.missing);
+  let retryError = $state('');
 </script>
 
 {#if capture}
   <div class="w bad" role="alert" title={capture.compat ? `Compatibility setting: ${capture.compat}` : undefined}>
     ⚠ Jeopardy Builder is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and
     start it normally.
+    <button class="small ghost" onclick={onhelp}>🔊 Help</button>
+  </div>
+{/if}
+<!-- The desktop app's Discord audio fix is switched on but not running: like the above, Discord may get no sound. -->
+{#if desktop.fixSaved && desktop.fixCrashed}
+  <div class="w bad" role="alert">
+    ⚠ The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound.
+    <button class="small ghost" onclick={async () => (retryError = (await restartApp(true)) ?? '')} disabled={desktop.restarting}>
+      {desktop.restarting ? 'Restarting…' : '↻ Try it again'}
+    </button>
+    <button class="small ghost" onclick={onhelp}>🔊 Help</button>
+    {#if retryError}<span>{retryError}</span>{/if}
+  </div>
+{:else if desktop.fixSaved && desktop.fixFailed}
+  <div class="w bad" role="alert">
+    ⚠ The Discord audio fix didn't start this time, so Discord may stream no game sound. Restart Jeopardy Builder to try again.
     <button class="small ghost" onclick={onhelp}>🔊 Help</button>
   </div>
 {/if}

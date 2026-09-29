@@ -24,7 +24,6 @@
   let outputs = $state<AudioOutput[] | null>(null);
   let listing = $state(false);
   let fixError = $state('');
-  let restarting = $state(false);
   let modal: HTMLDivElement;
 
   const where = $derived(dual ? 'the audience window' : 'this window');
@@ -92,15 +91,9 @@
     box.checked = desktop.fixSaved;
   }
 
-  async function restart(): Promise<void> {
-    if (!confirm('Restart Jeopardy Builder now? Everything is saved: a game in progress can be resumed from the editor.')) return;
-    restarting = true;
-    try {
-      await restartApp();
-    } catch {
-      restarting = false;
-      fixError = "Couldn't restart. Close Jeopardy Builder and open it again.";
-    }
+  /** `retry`: try the fix again after WebView2 crashed with it. */
+  async function restart(retry = false): Promise<void> {
+    fixError = (await restartApp(retry)) ?? '';
   }
 </script>
 
@@ -189,18 +182,42 @@
           Plays the game's sound from Jeopardy Builder's own process, so Discord and OBS can pick it up. Keep it on; turn it off only if
           the sound stutters or the app misbehaves. Changes take effect after a restart.
         </p>
-        {#if desktop.fixSaved && desktop.fixFailed}
+        <!-- Switched off, none of these apply: unticking hides them, ticking again brings them back. -->
+        {#if desktop.fixSaved && desktop.fixCrashed}
           <p class="warn small">
-            The fix couldn't start on this PC, so the app is running without it. Share your whole screen with sound instead, or run the
-            show in Chrome or Edge (see below).
+            The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound.
+            Try it again; if it crashes again, Jeopardy Builder restarts without it.
           </p>
+          <div class="row">
+            <button class="small" onclick={() => restart(true)} disabled={desktop.restarting}>
+              {desktop.restarting ? 'Restarting…' : '↻ Try it again'}
+            </button>
+          </div>
+        {:else if desktop.fixSaved && desktop.fixFailed}
+          <p class="warn small">
+            The fix didn't start this time, so Jeopardy Builder is running without it: its previous WebView2 processes were probably
+            still closing. Restart to try again. If it keeps happening, share your whole screen with sound instead, or run the show in
+            Chrome or Edge (see below).
+          </p>
+          <div class="row">
+            <button class="small" onclick={() => restart()} disabled={desktop.restarting}>
+              {desktop.restarting ? 'Restarting…' : '↻ Restart now'}
+            </button>
+          </div>
         {:else if desktop.fixSaved !== desktop.fixActive}
           <div class="row">
             <span class="warn small">Restart Jeopardy Builder to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
-            <button class="small" onclick={restart} disabled={restarting}>{restarting ? 'Restarting…' : '↻ Restart now'}</button>
+            <button class="small" onclick={() => restart()} disabled={desktop.restarting}>
+              {desktop.restarting ? 'Restarting…' : '↻ Restart now'}
+            </button>
           </div>
         {/if}
         {#if fixError}<p class="bad small">{fixError}</p>{/if}
+        <p class="muted small">
+          If Jeopardy Builder ever won't open or its window stays blank, start it once with <code>--no-audio-fix</code> (e.g. at the
+          end of a shortcut's Target), or put an empty file named <code>discord-audio-fix-off</code> in
+          <code>%APPDATA%\com.jeopardybuilder.brainrot</code>. Either one turns the fix off.
+        </p>
       </section>
     {/if}
 
@@ -235,7 +252,8 @@
         {#if exe}
           <li>
             Close Jeopardy Builder, check in Task Manager that no "Jeopardy Builder" or "Microsoft Edge WebView2" entries are left, start it
-            again and retry. Check that the <b>Discord audio fix</b> above is on (it is unless you turned it off).
+            again and retry. Check that the <b>Discord audio fix</b> above is on (it is unless you turned it off) and that nothing under
+            it says it's off for this run.
           </li>
           <li>
             Still silent: share your whole screen with Sound on (viewers hear everything your PC plays, including your call: use

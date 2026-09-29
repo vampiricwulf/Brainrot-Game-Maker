@@ -276,6 +276,10 @@ try {
 
   // ---------- 4. The desktop app, with a stand-in for its native side ----------
   const ARGS = '--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AudioServiceOutOfProcess --autoplay-policy=no-user-gesture-required';
+  /**
+   * `fix`: the Discord audio fix is switched on. `active`: the app runs with its switches. `failed`: switched on, but it
+   * didn't start this time. `crashed`: switched on, but off for this run after a WebView2 crash. `admin`: run as administrator.
+   */
   async function desktopContext(opts) {
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
     await context.addInitScript((o) => {
@@ -294,22 +298,47 @@ try {
       if (location.hash === '#audience') return;
       // What src-tauri/src/main.rs injects into the host window.
       window.__JB_AUDIO_FIX = o.fix;
-      if (o.fix && !o.failed) window.__JB_BROWSER_ARGS = o.args;
+      if (o.active) window.__JB_BROWSER_ARGS = o.args;
       if (o.failed) window.__JB_AUDIO_FIX_FAILED = true;
+      if (o.crashed) window.__JB_AUDIO_FIX_CRASHED = true;
       if (o.admin) window.__JB_CAPTURE = { elevated: true, compat: null };
       // WebView2 without the native new-window handler: the app falls back to creating the window itself.
       window.open = () => null;
-    }, opts);
+    }, { ...opts, args: ARGS });
     return context;
   }
   const calls = (page, cmd) => page.evaluate((c) => window.__calls.filter(([name]) => name === c).map(([, a]) => a), cmd);
+  const called = (page, cmd) => page.waitForFunction((c) => window.__calls.some(([name]) => name === c), cmd, { timeout: 5000 });
+  /** The audience window the app creates itself (the fallback), from the host panel or the pre-game screen. */
+  async function createdAudience(page, button) {
+    await page.getByRole('button', { name: button }).click();
+    await called(page, 'plugin:webview|create_webview_window');
+    return (await calls(page, 'plugin:webview|create_webview_window'))[0].options;
+  }
+  /** A command that fails once (it isn't logged in __calls then). */
+  const failOnce = (page, cmd, message) =>
+    page.evaluate(
+      ([c, m]) => {
+        const invoke = window.__TAURI_INTERNALS__.invoke;
+        window.__TAURI_INTERNALS__.invoke = (name, args) => {
+          if (name !== c) return invoke(name, args);
+          window.__TAURI_INTERNALS__.invoke = invoke;
+          return Promise.reject(m);
+        };
+      },
+      [cmd, message],
+    );
+  const fixWarning = (page, text) => page.getByRole('alert').filter({ hasText: text });
+  const FAILED_WARNING = "The Discord audio fix didn't start this time";
+  const CRASHED_WARNING = 'The Discord audio fix was turned off for this run because WebView2 crashed with it';
 
   {
-    const context = await desktopContext({ fix: true, admin: true, args: ARGS });
+    const context = await desktopContext({ fix: true, active: true, admin: true });
     const page = watch(await context.newPage(), 'desktop');
     await toPregame(page, httpUrl);
     const banner = 'Jeopardy Builder is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.';
     assert((await page.getByText(banner).count()) === 1, 'running as administrator: the host shows the warning banner');
+    assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'the fix is running: no fix warning');
 
     // The fallback audience window must get exactly the switches the app started with.
     await page.getByRole('button', { name: /Separate audience window/ }).click();
@@ -335,6 +364,11 @@ try {
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(await fix.isChecked(), 'the Discord audio fix shows as on');
     assert((await help.getByText('(on by default)').count()) === 1 && (await help.getByText('experimental', { exact: true }).count()) === 0, 'it says it is on by default (no longer experimental)');
+    assert(
+      (await help.locator('code', { hasText: '--no-audio-fix' }).count()) === 1 && (await help.locator('code', { hasText: 'discord-audio-fix-off' }).count()) === 1,
+      'the help says how to switch the fix off from outside the app',
+    );
+    assert((await help.getByText(/didn't start this time|crashed/).count()) === 0 && (await help.getByRole('button', { name: /Restart now|Try it again/ }).count()) === 0, 'running as saved: no fix trouble and no restart offered');
     await fix.uncheck();
     await help.getByText('Restart Jeopardy Builder to turn it off.').waitFor();
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: false }]), 'switching it off saves the setting');
@@ -349,37 +383,122 @@ try {
     await context.close();
   }
   {
-    const context = await desktopContext({ fix: false, admin: false, args: ARGS });
+    // Switched off, and running without it.
+    const context = await desktopContext({ fix: false });
     const page = watch(await context.newPage(), 'desktop (no fix)');
     await toPregame(page, httpUrl);
     assert((await page.getByText('running as administrator').count()) === 0, 'no administrator warning when started normally');
-    await page.getByRole('button', { name: /Separate audience window/ }).click();
-    await page.waitForFunction(() => window.__calls.some(([c]) => c === 'plugin:webview|create_webview_window'));
-    const [created] = await calls(page, 'plugin:webview|create_webview_window');
-    assert(!('additionalBrowserArgs' in created.options), 'with the fix off, the fallback window keeps the default switches');
+    assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'switched off by the host: no fix warning');
+    const created = await createdAudience(page, /Separate audience window/);
+    assert(!('additionalBrowserArgs' in created), 'with the fix off, the fallback window keeps the default switches');
     await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
-    const fix = dialog(page).getByRole('checkbox', { name: /Discord audio fix/ });
+    const help = dialog(page);
+    const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(!(await fix.isChecked()), 'with the setting off, the Discord audio fix box is unticked');
+    await fix.check();
+    await help.getByText('Restart Jeopardy Builder to turn it on.').waitFor();
+    assert((await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1, 'switching it on asks for a restart, with a Restart now button');
+    assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }]), 'switching it on saves the setting');
+    await fix.uncheck();
+    await help.getByText(/Restart Jeopardy Builder to turn it/).waitFor({ state: 'detached' });
+    assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }, { on: false }]), 'switching it back off is saved and needs no restart');
     // A setting that couldn't be saved: the box goes back to what still applies, with no restart offered.
-    await page.evaluate(() => {
-      const invoke = window.__TAURI_INTERNALS__.invoke;
-      window.__TAURI_INTERNALS__.invoke = (cmd, args) => (cmd === 'set_audio_fix' ? Promise.reject("Couldn't save the setting: access denied") : invoke(cmd, args));
-    });
+    await failOnce(page, 'set_audio_fix', "Couldn't save the setting: access denied");
     await fix.click();
-    await dialog(page).getByText("Couldn't save the setting: access denied").waitFor();
-    assert(!(await fix.isChecked()) && (await dialog(page).getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
+    await help.getByText("Couldn't save the setting: access denied").waitFor();
+    assert(!(await fix.isChecked()) && (await help.getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
     await context.close();
   }
   {
-    // Switched on (the default) but WebView2 wouldn't start with it: the app says so instead of offering a restart.
-    const context = await desktopContext({ fix: true, failed: true, admin: false, args: ARGS });
-    const page = watch(await context.newPage(), 'desktop (fix failed)');
+    // Switched off, but WebView2 wouldn't start without the switches this time (the previous copy still held its data
+    // folder), so the app runs with them.
+    const context = await desktopContext({ fix: false, active: true });
+    const page = watch(await context.newPage(), 'desktop (off, running with it)');
     await toPregame(page, httpUrl);
+    assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'no fix warning: the sound still reaches Discord');
+    const created = await createdAudience(page, /Separate audience window/);
+    assert(created.additionalBrowserArgs === ARGS, 'running with the switches: the fallback audience window gets them too');
     await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
     const help = dialog(page);
+    assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows the saved setting (off)');
+    assert(
+      (await help.getByText('Restart Jeopardy Builder to turn it off.').count()) === 1 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1,
+      'it offers the restart that turns it off',
+    );
+    await context.close();
+  }
+  {
+    // Switched on (the default), but WebView2 wouldn't start with it this time (the previous copy's WebView2 processes
+    // were still closing): the app runs without it, warns the host and offers a restart.
+    const context = await desktopContext({ fix: true, failed: true });
+    const page = watch(await context.newPage(), 'desktop (fix failed)');
+    await toPregame(page, httpUrl);
+    assert((await fixWarning(page, FAILED_WARNING).count()) === 1, 'the pre-game screen warns that the fix didn’t start');
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    const warning = fixWarning(page.locator('.panel'), FAILED_WARNING);
+    await warning.waitFor();
+    assert((await dialog(page).count()) === 0, 'the host panel warns too, without opening the Sound help');
+    assert((await warning.getByText('Restart Jeopardy Builder to try again').count()) === 1, 'the warning says a restart should bring it back');
+    const created = await createdAudience(page, '📺 Audience window');
+    assert(!('additionalBrowserArgs' in created), 'running without the switches: the fallback audience window keeps the defaults');
+    await warning.getByRole('button', { name: '🔊 Help' }).click();
+    const help = dialog(page);
+    await help.waitFor();
+    assert(true, "the warning's Help button opens the Sound help");
+    const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
+    assert(await fix.isChecked(), 'the fix still shows as switched on');
+    assert(
+      (await help.getByText("The fix didn't start this time").count()) === 1 && (await help.getByText('probably still closing').count()) === 1,
+      'the help says it didn’t start this time, and why',
+    );
+    assert((await help.getByText("couldn't start on this PC").count()) === 0, 'it no longer calls it permanent');
+    assert((await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1, 'it offers a restart');
+    await fix.uncheck();
+    await help.getByText("The fix didn't start this time").waitFor({ state: 'detached' });
+    assert(
+      (await help.getByText(/Restart Jeopardy Builder to turn it/).count()) === 0 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0,
+      'unticking it hides the failed text, with no restart needed (the app already runs without it)',
+    );
+    assert((await warning.count()) === 0, 'and the host warning goes away');
+    await fix.check();
+    await help.getByText("The fix didn't start this time").waitFor();
+    assert((await warning.count()) === 1, 'ticking it again brings both back');
+    assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: false }, { on: true }]), 'both changes are saved');
+    await help.getByRole('button', { name: '↻ Restart now' }).click();
+    await called(page, 'restart_app');
+    assert(true, 'Restart now restarts the app');
+    if (shots) await page.screenshot({ path: `${shots}/audio-fix-failed.png` });
+    await context.close();
+  }
+  {
+    // Switched on, but WebView2 crashed with it: this run is without it, and the host can try it again.
+    const context = await desktopContext({ fix: true, crashed: true });
+    const page = watch(await context.newPage(), 'desktop (fix crashed)');
+    await toPregame(page, httpUrl);
+    const warning = fixWarning(page, CRASHED_WARNING);
+    assert((await warning.count()) === 1, 'the host is told the fix is off for this run because WebView2 crashed with it');
+    assert((await fixWarning(page, FAILED_WARNING).count()) === 0, 'not as a failed start');
+    const created = await createdAudience(page, /Separate audience window/);
+    assert(!('additionalBrowserArgs' in created), 'running without the switches: the fallback audience window keeps the defaults');
+    await warning.getByRole('button', { name: '🔊 Help' }).click();
+    const help = dialog(page);
+    await help.waitFor();
     assert(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked(), 'the fix still shows as switched on');
-    assert((await help.getByText("The fix couldn't start on this PC").count()) === 1, 'the help says it could not start on this PC');
-    assert((await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0, 'and offers no pointless restart');
+    assert((await help.getByText(CRASHED_WARNING).count()) === 1, 'the help says so too');
+    assert((await help.getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'it doesn’t offer a plain restart (that would start without it again)');
+    // A try that fails (the crash note couldn't be removed) says why, and the button works again.
+    await failOnce(page, 'retry_audio_fix', "Couldn't save the setting: access denied");
+    await help.getByRole('button', { name: '↻ Try it again' }).click();
+    await help.getByText("Couldn't save the setting: access denied").waitFor();
+    assert(
+      (await calls(page, 'retry_audio_fix')).length === 0 && (await help.getByRole('button', { name: '↻ Try it again' }).isEnabled()),
+      'a failed try says why and can be repeated',
+    );
+    await help.getByRole('button', { name: 'Close' }).click();
+    await warning.getByRole('button', { name: '↻ Try it again' }).click();
+    await called(page, 'retry_audio_fix');
+    assert(true, "the host warning's Try it again restarts with the fix (retry_audio_fix)");
     await context.close();
   }
 
