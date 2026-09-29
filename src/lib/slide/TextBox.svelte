@@ -1,8 +1,22 @@
 <script lang="ts">
   import type { TextEl } from '../model';
-  import { autofit } from '../autofit';
+  import { autofit, type FitResult } from '../autofit';
 
-  let { el }: { el: TextEl } = $props();
+  let {
+    el,
+    edit = false,
+    placeholder,
+    onfit,
+  }: {
+    el: TextEl;
+    /** In the slide editor: show the placeholder when empty and warn when the text doesn't fit. */
+    edit?: boolean;
+    placeholder?: string;
+    onfit?: (r: FitResult) => void;
+  } = $props();
+
+  let fitted = $state<FitResult>({ size: 0, overflow: false });
+  const ghost = $derived(edit && !el.text && !!placeholder);
 
   const justify = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
   const shadow = $derived.by(() => {
@@ -11,11 +25,25 @@
     if (el.glow) parts.push(`0 0 ${el.glow.blur}px ${el.glow.color}`, `0 0 ${el.glow.blur * 2}px ${el.glow.color}`);
     return parts.join(', ') || 'none';
   });
+  // Everything besides the words that changes the text's layout (the words are watched directly).
+  const layoutKey = $derived(
+    `${el.font}|${el.w}x${el.h}|${el.lineHeight}|${el.letterSpacing}|${el.uppercase}|${el.weight}|${el.italic}|${el.stroke?.width}|${el.background?.padding}|${ghost}`,
+  );
 </script>
 
 <div
   class="text"
-  use:autofit={{ size: el.size, enabled: el.autoFit, text: `${el.text}|${el.font}|${el.w}x${el.h}|${el.lineHeight}|${el.letterSpacing}|${el.uppercase}|${el.background?.padding}` }}
+  use:autofit={{
+    size: el.size,
+    enabled: el.autoFit,
+    text: layoutKey,
+    onfit: edit
+      ? (r) => {
+          fitted = r;
+          onfit?.(r);
+        }
+      : undefined,
+  }}
   style:justify-content={justify[el.vAlign]}
   style:font-family={el.font}
   style:font-weight={el.weight}
@@ -33,8 +61,11 @@
   style:padding={el.background ? `${el.background.padding}px` : undefined}
   style:border-radius={el.background ? `${el.background.radius}px` : undefined}
 >
-  <div class="inner">{el.text}</div>
+  <div class="inner" class:ghost>{ghost ? placeholder : el.text}</div>
 </div>
+{#if edit && fitted.overflow && el.text}
+  <div class="nofit" title="Make the box bigger or the text shorter">⚠ Text doesn't fit</div>
+{/if}
 
 <style>
   .text {
@@ -46,5 +77,21 @@
     box-sizing: border-box;
     white-space: pre-wrap;
     overflow-wrap: break-word;
+  }
+  .ghost {
+    opacity: 0.45;
+    font-style: italic;
+    text-transform: none;
+  }
+  .nofit {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 6px 16px;
+    border-radius: 10px;
+    background: var(--bad, #e5484d);
+    color: #fff;
+    font: 700 30px system-ui, sans-serif;
+    pointer-events: none;
   }
 </style>

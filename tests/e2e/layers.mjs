@@ -102,6 +102,14 @@ try {
   await page.mouse.click(p.x, p.y, { button: 'right' });
   await menu.getByRole('menuitem', { name: /Send to back/ }).click();
   assert((await layers.first().innerText()).includes('cover.png'), 'Send to back from the menu');
+  // Each restack is one undo step, from the menu or the keyboard.
+  await page.keyboard.press('Control+z');
+  assert((await layers.first().innerText()).includes('Under the picture'), 'Ctrl+Z undoes Send to back');
+  await page.keyboard.press('Control+z');
+  assert((await layers.first().innerText()).includes('cover.png'), 'a second Ctrl+Z undoes the Ctrl+Shift+] restack');
+  await page.keyboard.press('Control+y');
+  await page.keyboard.press('Control+y');
+  assert((await layers.first().innerText()).includes('cover.png'), 'Ctrl+Y redoes both');
 
   // Lock the picture: clicks go through it, and Delete leaves it alone.
   await layers.filter({ hasText: 'cover.png' }).getByRole('button', { name: 'Lock' }).click();
@@ -112,10 +120,20 @@ try {
   await layers.filter({ hasText: 'cover.png' }).locator('.name').click();
   await page.keyboard.press('Delete');
   assert((await layers.count()) === 2, 'Delete keeps a locked item');
+  assert((await page.locator('.notice').innerText()).includes('Skipped 1 locked item'), 'and says it skipped it');
 
   // Hide while editing.
   await layers.filter({ hasText: 'cover.png' }).getByRole('button', { name: 'Hide while editing' }).click();
   assert((await page.locator('.canvas .slide img').count()) === 0, 'hide-while-editing takes it off the canvas');
+  // Hiding is editor-only, so undo skips it: Ctrl+Z undoes the lock from the Layers list before it.
+  const coverRow = layers.filter({ hasText: 'cover.png' });
+  await page.keyboard.press('Control+z');
+  assert(
+    (await coverRow.getByRole('button', { name: 'Lock', exact: true }).count()) === 1 && (await page.locator('.canvas .slide img').count()) === 0,
+    'Ctrl+Z undoes the lock and leaves the picture hidden',
+  );
+  await page.keyboard.press('Control+y');
+  assert((await coverRow.getByRole('button', { name: 'Unlock', exact: true }).count()) === 1, 'Ctrl+Y locks it again');
   await layers.filter({ hasText: 'cover.png' }).getByRole('button', { name: 'Show while editing' }).click();
   assert((await page.locator('.canvas .slide img').count()) === 1, 'and shows it again');
 

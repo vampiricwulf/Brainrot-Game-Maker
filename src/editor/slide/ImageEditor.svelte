@@ -7,6 +7,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
   import { newId, type ImageEdits, type ImageEl } from '../../lib/model';
+  import { aspectCrop } from '../../lib/editing';
   import { fontChoices } from '../../lib/fonts';
   import {
     canvasToBlob, defaultEdits, fitCrop, loadImage, orientedSize, outputSize, renderEdited, renderOriented, STICKERS,
@@ -17,6 +18,10 @@
   const game = app.game;
   const source = $derived(game.media.find((m) => m.id === el.media));
   let edits = $state<ImageEdits>(untrack(() => ({ ...defaultEdits(), ...JSON.parse(JSON.stringify(el.edits ?? {})) })));
+  // What the edits were when the editor opened: closing with anything else asks first. (Opening the
+  // Crop tool adds a full-image crop, which isn't an edit.)
+  const snapshot = (e: ImageEdits) => JSON.stringify({ ...e, crop: e.crop && (e.crop.x || e.crop.y || e.crop.w < 1 || e.crop.h < 1) ? e.crop : undefined });
+  const opened = snapshot(untrack(() => edits));
   let img = $state<HTMLImageElement | null>(null);
   let tool = $state<'move' | 'crop' | 'draw' | 'text' | 'sticker'>('move');
   let selectedId = $state<string | null>(null);
@@ -65,15 +70,31 @@
     });
   });
 
-  // ---------- Undo ----------
+  // ---------- Undo / redo ----------
   let history: string[] = [];
+  let future: string[] = [];
   function commit(): void {
     history.push(JSON.stringify(edits));
     if (history.length > 60) history.shift();
+    future = [];
   }
   function undo(): void {
     const prev = history.pop();
-    if (prev) edits = JSON.parse(prev);
+    if (!prev) return;
+    future.push(JSON.stringify(edits));
+    edits = JSON.parse(prev);
+  }
+  function redo(): void {
+    const next = future.pop();
+    if (!next) return;
+    history.push(JSON.stringify(edits));
+    edits = JSON.parse(next);
+  }
+
+  /** Cancel (Esc, the Cancel button): ask before throwing edits away. */
+  function cancel(): void {
+    if (snapshot(edits) !== opened && !confirm('Discard your image edits?')) return;
+    onclose();
   }
 
   // ---------- Pointer interactions (in fractions of the displayed image) ----------
@@ -154,17 +175,16 @@
         c.x = Math.min(1 - o.w, Math.max(0, o.x + dx));
         c.y = Math.min(1 - o.h, Math.max(0, o.y + dy));
       } else {
+        if (cropAspect !== 'free') {
+          // Keep the pixel aspect: in image fractions, height = width × (W / H) / aspect.
+          Object.assign(c, aspectCrop(mode, o, dx, dy, oriented.w / oriented.h / cropAspect));
+          return;
+        }
         let x1 = o.x, y1 = o.y, x2 = o.x + o.w, y2 = o.y + o.h;
         if (mode.includes('w')) x1 = Math.min(x2 - 0.02, Math.max(0, o.x + dx));
         if (mode.includes('e')) x2 = Math.max(x1 + 0.02, Math.min(1, o.x + o.w + dx));
         if (mode.includes('n')) y1 = Math.min(y2 - 0.02, Math.max(0, o.y + dy));
         if (mode.includes('s')) y2 = Math.max(y1 + 0.02, Math.min(1, o.y + o.h + dy));
-        if (cropAspect !== 'free') {
-          // Keep the pixel aspect: derive height from width.
-          const wantH = ((x2 - x1) * oriented.w) / cropAspect / oriented.h;
-          if (mode.includes('n')) y1 = Math.max(0, y2 - wantH);
-          else y2 = Math.min(1, y1 + wantH);
-        }
         Object.assign(c, { x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
       }
     }
@@ -247,13 +267,28 @@
 
   function onkey(e: KeyboardEvent): void {
     const typing = (e.target as HTMLElement)?.closest?.('input, textarea, select');
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) {
+    const mod = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    if (mod && k === 'enter') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (!saving && img) apply();
+    } else if (mod && ((k === 'z' && e.shiftKey) || k === 'y') && !typing) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      redo();
+    } else if (mod && k === 'z' && !typing) {
       e.preventDefault();
       e.stopImmediatePropagation();
       undo();
     } else if (e.key === 'Escape') {
       e.stopImmediatePropagation();
-      onclose();
+      // Esc in a field (e.g. the meme caption) just leaves the field.
+      if (typing) (e.target as HTMLElement).blur();
+      else cancel();
+    } else if (e.altKey && e.key.startsWith('Arrow')) {
+      // Not the clue editor's Prev/Next: that would drop this dialog and its edits.
+      e.stopImmediatePropagation();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !typing) {
       e.stopImmediatePropagation();
       removeSelected();
@@ -279,13 +314,17 @@
     <header class="row">
       <b>🎨 Edit image</b>
       <span class="muted small">{source?.name} · output {out.w}×{out.h}px</span>
+      {#if tool === 'crop' && edits.crop && img}
+        <span class="small crop-size">crop {Math.round(edits.crop.w * oriented.w)}×{Math.round(edits.crop.h * oriented.h)}px</span>
+      {/if}
       {#if source?.mime === 'image/gif'}<span class="warn small">Editing a GIF makes it a still image.</span>{/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={undo} title="Ctrl+Z">↶ Undo</button>
+      <button class="ghost" onclick={redo} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
       <button class="ghost" onclick={resetAll}>Reset all</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
-      <button onclick={onclose}>Cancel</button>
-      <button class="primary" onclick={apply} disabled={saving || !img}>{saving ? 'Saving…' : 'Apply'}</button>
+      <button onclick={cancel} title="Esc">Cancel</button>
+      <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? 'Saving…' : 'Apply'}</button>
     </header>
 
     <div class="tools row">
@@ -445,6 +484,9 @@
   }
   .warn {
     color: var(--warn);
+  }
+  .crop-size {
+    color: var(--accent);
   }
   .tools button.on,
   button.on {

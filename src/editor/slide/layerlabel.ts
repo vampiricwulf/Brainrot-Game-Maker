@@ -1,8 +1,13 @@
-// How the layers list and the right-click menu name slide items.
+// How the layers list, the right-click menu and the editors' notices name slide items.
 import type { Game, SlideElement } from '../../lib/model';
 
 /** What the right-click menu (and its shortcuts) can do to the selection. */
 export type LayerAction = 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete';
+
+/** The one notice for an action that left locked items alone (delete, cut, align, nudge). */
+export function lockedNote(n: number, noun = 'item'): string {
+  return `🔒 Skipped ${n} locked ${noun}${n === 1 ? '' : 's'}: unlock ${n === 1 ? 'it' : 'them'} first.`;
+}
 
 export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
 const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow' };

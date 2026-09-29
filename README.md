@@ -28,28 +28,51 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
 face** (custom text or an image instead of the value), host notes, and two slides: **Question** and **Answer**.
+Plain clues never need the canvas: type into the **Question** and **Answer** fields above the slides. The Question field has
+focus when a clue opens and Tab moves on, so you can type, Tab, type, then press **Ctrl+Enter** for the next clue
+(**Shift+Ctrl+Enter** or Alt+← goes back). Each slide keeps its own undo history from the moment the clue opens, so an
+answer typed while the question slide is showing can still be undone on the answer slide.
 
 **Slide editor** (16:9, freeform):
 - Add **text boxes**: bundled fonts or your own uploaded font, size / shrink-to-fit, bold/italic/underline/caps, alignment,
   line height, letter spacing, outline, drop shadow, glow, background box.
 - Add **images**, **video**, **audio**, **shapes**, and **🌐 links** (YouTube or direct media URLs; these need internet during
   the game).
-- Drag to move (with snapping guides), pull the handles to resize, and use the round handle to rotate (Shift snaps to 15°).
+- Click an item to select it (Shift/Ctrl+click adds or removes one). **Double-click** to edit it: text goes straight to its
+  text field, and images open the image editor. With a text box selected you can also just start typing.
+- Drag to move (with snapping guides; press Shift while dragging to keep to one axis, or Alt to skip snapping), pull the
+  handles to resize, and use the round handle to rotate (Shift snaps to 15°). The handles stay reachable for items at the
+  slide's edges or covering the whole slide.
 - **Layers**: the **Layers** list shows every item top-first. Click to select (Shift/Ctrl adds), drag or ▲▼ to restack,
-  👁 to hide an item while editing (it still shows in the game), and 🔒 to lock it. Locked items can't be moved or deleted,
-  and clicks go through them, so a full-slide background never gets in the way.
+  👁 to hide an item while editing (it still shows in the game), and 🔒 to lock it. Locked items can't be dragged, resized,
+  nudged or deleted (Ctrl+A, the arrow keys and the "Move to the slide's…" buttons skip them, with a note saying so), and
+  clicks go through them, so a full-slide background never gets in the way.
 - **Stacked items**: **right-click** the slide to pick from everything under the pointer (plus restack, lock, hide,
-  duplicate and delete). **Alt+click** goes one layer down each click, and **Tab** / **Shift+Tab** steps through items.
-  Drag a box on an empty spot to select several. `Ctrl+]` / `Ctrl+[` bring forward / send backward, and add **Shift** for
-  front / back.
-- **Entrance animations**: fade, pop, slide, typewriter, shake, spin. Click **▶ Preview** to watch them.
-- Drop files onto the slide, or paste images. Ctrl+C / Ctrl+V copies items between slides, and **Copy slide / Paste slide**
-  copies whole slides. Ctrl+Z / Ctrl+Y undo and redo.
+  duplicate and delete). **Alt+click** goes one layer down each click (locked items too; after the bottom one it starts
+  again at the top), and **Tab** / **Shift+Tab** steps through items. Drag a box on an empty spot to select several.
+  `Ctrl+]` / `Ctrl+[` bring forward / send backward, and add **Shift** for front / back.
+- **Entrance animations**: fade, pop, slide, typewriter, shake, spin. Click **▶ Preview** to watch them and hear the slide's
+  video, audio and YouTube (🔈 mutes the preview). The preview is look-only; press Esc or click the slide to go back to
+  editing. A YouTube embed keeps its own clicks there.
+- Drop files or links onto the slide, or paste images, text and links. A YouTube link or a direct link to an image,
+  video or audio file becomes online media, and other text fills the empty main text box or makes a new one.
+- Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste items between slides (a copy pasted onto the same slide lands offset), and
+  **Copy slide / Paste slide** copies whole slides. Ctrl+D duplicates, Ctrl+B / Ctrl+I / Ctrl+U style the selected text,
+  and the arrow keys nudge (Shift for 10 px).
+- Ctrl+Z / Ctrl+Y undo and redo. Each slide keeps its history when you switch between Question and Answer, move to
+  another clue or reopen one, and deleting shows a notice with an **Undo** button. Restacking, locking, duplicating and
+  deleting are one step each, whether from the Layers list, the right-click menu or a shortcut; hiding an item while
+  editing isn't a change to the slide, so undo leaves it alone. On the Final tab, which shows two slides, shortcuts, copy
+  and paste go to the slide you last clicked (or whose Question/Answer tab you switched).
+- Shrink-to-fit text gets smaller as you type and keeps long words whole. The inspector shows the size it's drawn at,
+  and a ⚠ badge in the editor flags text that can't fit its box.
 - **Use this style elsewhere** copies a text look to every question and/or answer in the round or the whole game.
 - Video/audio options: autoplay, loop, start muted, start/stop times, volume.
 - **🎨 Edit image…** (or double-click an image): crop (free, 16:9, 4:3, 1:1, 9:16), rotate, flip, resize, brightness /
   contrast / saturation / hue / blur / grayscale / sepia / invert, meme text, emoji stickers, and a brush with an eraser.
-  The original file is always kept; **Use original** undoes everything.
+  The original file is always kept; **Use original** undoes everything. Inside it, Ctrl+Z / Ctrl+Y undo and redo, and
+  Ctrl+Enter applies. Esc or **Cancel** asks before throwing away unapplied edits (Esc in a text field just leaves it).
+  With an aspect ratio picked, the crop box keeps that shape from any handle.
 
 **Board images** (per round, **🖼 Board images** on the round's tab): drop or add images onto a live preview of the board, then
 drag, resize, rotate or edit them like slide items. Each image has an **opacity**, can sit **behind the tiles** (it peeks
@@ -194,6 +217,8 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/lib/media.svelte.ts`, `mediactl.svelte.ts` | Media store (blobs + IndexedDB) and playback control / YouTube helpers |
 | `src/lib/pack.ts`, `export.ts` | `.jbr` packs and standalone HTML export |
 | `src/lib/imageedit.ts`, `theme.ts` | Image-editor canvas pipeline; theme presets |
+| `src/lib/editing.ts`, `autofit.ts` | Slide and image editor helpers (undo history, placement, crop geometry); shrink-to-fit text |
+| `src/lib/layers.ts` | Layers: hit testing (what's under the pointer, what a drag-to-select box touches), Alt+click stepping, restacking |
 | `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media) |
 | `src/play/` | Play UI (audience view, board, host panel, tools) |
 | `src/audience/` | The audience window app |

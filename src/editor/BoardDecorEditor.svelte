@@ -19,7 +19,7 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
-  import type { LayerAction } from './slide/layerlabel';
+  import { lockedNote, type LayerAction } from './slide/layerlabel';
 
   let { round, onclose }: { round: Round; onclose: () => void } = $props();
 
@@ -121,7 +121,7 @@
     const locked = decor.filter((d) => selected.includes(d.id) && d.locked).length;
     round.decor = decor.filter((d) => !selected.includes(d.id) || d.locked);
     selected = selected.filter((id) => decor.some((d) => d.id === id));
-    if (locked) toast(`${locked === 1 ? 'A locked image was' : `${locked} locked images were`} kept. Unlock to delete.`);
+    if (locked) toast(lockedNote(locked, 'image'));
   }
 
   function duplicate(): void {

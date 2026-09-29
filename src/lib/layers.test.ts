@@ -49,6 +49,33 @@ describe('hit-testing', () => {
     expect(nextBelow(els, p, null)?.id).toBe('text');
   });
 
+  it('respects rotation for a full-height bar', () => {
+    const bar = box('a', 900, 0, 120, 1080, 0);
+    expect(contains(bar, { x: 960, y: 100 })).toBe(true);
+    expect(contains({ ...bar, rotation: 90 }, { x: 960, y: 100 })).toBe(false);
+    expect(contains({ ...bar, rotation: 90 }, { x: 500, y: 540 })).toBe(true);
+  });
+
+  it('Alt+click walks the whole stack under the pointer, locked items too, and wraps', () => {
+    const items = [
+      box('text', 120, 90, 1680, 900, 0),
+      box('img', 0, 0, 1920, 1080, 2),
+      { ...box('box', 800, 400, 300, 300, 1), locked: true },
+      box('far', 0, 0, 50, 50, 5),
+    ];
+    const p = { x: 960, y: 540 };
+    // Nothing there selected (or something elsewhere): start at the top.
+    expect(nextBelow(items, p, null)?.id).toBe('img');
+    expect(nextBelow(items, p, 'far')?.id).toBe('img');
+    expect(nextBelow(items, p, 'img')?.id).toBe('box');
+    expect(nextBelow(items, p, 'box')?.id).toBe('text');
+    expect(nextBelow(items, p, 'text')?.id).toBe('img');
+    expect(nextBelow([items[0]], p, null)?.id).toBe('text');
+    expect(nextBelow([items[0]], p, 'text')?.id).toBe('text');
+    expect(nextBelow(items, { x: 1919, y: 1079 }, null)?.id).toBe('img');
+    expect(nextBelow(items, { x: -5, y: 540 }, null)).toBeUndefined();
+  });
+
   it('finds what a drag-to-select box touches, from any corner', () => {
     const els = [box('a', 0, 0, 100, 100, 0), box('b', 300, 300, 100, 100, 1)];
     expect(touchedBy(els, { x: 50, y: 50 }, { x: 200, y: 200 }).map((e) => e.id)).toEqual(['a']);

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { app, toast } from '../lib/app.svelte';
-  import { applyTextStyle } from '../lib/ops';
+  import { app } from '../lib/app.svelte';
+  import { textStyleTargets } from '../lib/ops';
   import { finalName, textSlide, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
 
@@ -8,10 +8,8 @@
   let side = $state<'q' | 'a'>('q');
   let tbSide = $state<'q' | 'a'>('q');
 
-  function applyStyle(el: TextEl, scope: string): void {
-    const n = applyTextStyle(app.game, null, el, scope.replace('round', 'game'));
-    toast(`Style applied to ${n} slide${n === 1 ? '' : 's'}`);
-  }
+  // There is no "this round" here, so round scopes cover the whole game.
+  const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));
 </script>
 
 <h2>{finalName(app.game)}</h2>
@@ -32,7 +30,12 @@
     <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer</button>
   </div>
   {#key side}
-    <SlideEditor slide={side === 'q' ? final.questionSlide : final.answerSlide} onapplystyle={applyStyle} />
+    <SlideEditor
+      slide={side === 'q' ? final.questionSlide : final.answerSlide}
+      styletargets={styleTargets}
+      placeholder={side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
+      badge={side === 'a' ? 'ANSWER' : undefined}
+    />
   {/key}
 {/if}
 
@@ -53,7 +56,12 @@
     <button role="tab" class:on={tbSide === 'a'} aria-selected={tbSide === 'a'} onclick={() => (tbSide = 'a')}>Tiebreaker answer</button>
   </div>
   {#key tbSide}
-    <SlideEditor slide={tbSide === 'q' ? tb.questionSlide : tb.answerSlide} onapplystyle={applyStyle} />
+    <SlideEditor
+      slide={tbSide === 'q' ? tb.questionSlide : tb.answerSlide}
+      styletargets={styleTargets}
+      placeholder={tbSide === 'q' ? 'Click to type the tiebreaker question' : 'Click to type the tiebreaker answer'}
+      badge={tbSide === 'a' ? 'ANSWER' : undefined}
+    />
   {/key}
 {/if}
 

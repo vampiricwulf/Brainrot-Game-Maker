@@ -13,7 +13,7 @@
     selected = $bindable(),
     hidden = $bindable([]),
     hovered = $bindable(null),
-    onchange,
+    onedit,
   }: {
     elements: SlideElement[];
     game: Game;
@@ -22,9 +22,13 @@
     hidden?: string[];
     /** Item under the mouse in this list (the canvas outlines it). */
     hovered?: string | null;
-    /** A discrete change happened (restack, lock), for undo history. */
-    onchange?: () => void;
+    /**
+     * Makes each discrete change (restack, lock) by calling `change`, so an undo history can record it
+     * as one step. Hiding while editing isn't a change to the slide and never goes through here.
+     */
+    onedit?: (change: () => void) => void;
   } = $props();
+  const edit = (change: () => void) => (onedit ? onedit(change) : change());
 
   const top = $derived([...elements].sort((a, b) => b.zIndex - a.zIndex));
   function pick(e: MouseEvent, el: SlideElement): void {
@@ -38,14 +42,12 @@
   }
 
   function toggleLock(el: SlideElement): void {
-    el.locked = el.locked ? undefined : true;
-    onchange?.();
+    edit(() => (el.locked = el.locked ? undefined : true));
   }
 
   /** Restack: `order` is top-most first. */
   function apply(order: SlideElement[]): void {
-    order.forEach((el, i) => (el.zIndex = order.length - 1 - i));
-    onchange?.();
+    edit(() => order.forEach((el, i) => (el.zIndex = order.length - 1 - i)));
   }
 
   function nudge(el: SlideElement, dir: -1 | 1): void {

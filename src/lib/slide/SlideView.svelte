@@ -4,6 +4,7 @@
   mode 'play': entrance animations run and media registers with the host's playback controls.
 -->
 <script lang="ts">
+  import type { FitResult } from '../autofit';
   import { mediaUrls } from '../media.svelte';
   import type { MediaRole } from '../mediactl.svelte';
   import type { Slide, SlideElement } from '../model';
@@ -17,9 +18,21 @@
     mode = 'play',
     role = 'single',
     fallbackBg = 'var(--tile)',
-  }: { slide: Slide; mode?: 'edit' | 'play'; role?: MediaRole; fallbackBg?: string } = $props();
+    placeholder,
+    onfit,
+  }: {
+    slide: Slide;
+    mode?: 'edit' | 'play';
+    role?: MediaRole;
+    fallbackBg?: string;
+    /** Edit mode: shown in the slide's main text box while it's empty ("Click to type the question"). */
+    placeholder?: string;
+    /** Edit mode: told each text element's fitted font size. */
+    onfit?: (id: string, r: FitResult) => void;
+  } = $props();
 
   const sorted = $derived([...slide.elements].sort((a, b) => a.zIndex - b.zIndex));
+  const mainText = $derived(slide.elements.find((e) => e.kind === 'text')?.id);
   const bgImage = $derived(slide.background.image ? mediaUrls[slide.background.image] : undefined);
 
   function label(el: SlideElement): string {
@@ -51,7 +64,12 @@
       style:animation-duration={anim ? `${anim.duration}s` : undefined}
     >
       {#if el.kind === 'text'}
-        <TextBox {el} />
+        <TextBox
+          {el}
+          edit={mode === 'edit'}
+          placeholder={el.id === mainText ? placeholder : undefined}
+          onfit={mode === 'edit' && onfit ? (r) => onfit(el.id, r) : undefined}
+        />
       {:else if el.kind === 'image'}
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}
         {#if src}

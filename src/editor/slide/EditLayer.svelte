@@ -1,11 +1,13 @@
 <!--
   Interaction layer drawn over a slide in the editor: select, move (with snapping guides),
   resize (rotation-aware) and rotate elements. Works in 1920×1080 stage coordinates.
-  Drag on an empty spot to select with a box; Alt+click walks down through stacked items; right-click
-  opens a menu of everything under the pointer. Locked items let clicks through to what's under them.
+  Double-click an element to edit it. Drag on an empty spot to select with a box; Alt+click walks down
+  through stacked items; right-click opens a menu of everything under the pointer. Locked items let
+  clicks through to what's under them.
 -->
 <script lang="ts">
   import { getContext } from 'svelte';
+  import { knobPlacement } from '../../lib/editing';
   import { elementsAt, nextBelow, touchedBy, type Pt } from '../../lib/layers';
   import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from '../../lib/model';
 
@@ -14,6 +16,7 @@
     selected = $bindable(),
     hidden = [],
     hovered = $bindable(null),
+    onstart,
     onchange,
     ondblclick,
     onmenu,
@@ -24,6 +27,8 @@
     hidden?: string[];
     /** Item under the mouse, shared with the layers list so each outlines what the other points at. */
     hovered?: string | null;
+    /** Called when a drag/resize/rotate starts (the undo history holds its changes until it ends). */
+    onstart?: () => void;
     /** Called when a drag/resize/rotate finishes (for undo history). */
     onchange: () => void;
     ondblclick?: (el: SlideElement) => void;
@@ -36,14 +41,17 @@
   const sorted = $derived([...visible].sort((a, b) => a.zIndex - b.zIndex));
   const sel = $derived(visible.filter((e) => selected.includes(e.id)));
   const single = $derived(sel.length === 1 ? sel[0] : null);
+  // Selection frames and their handles sit above every element's hit box, so a handle drawn over
+  // the element (the rotate knob inside a full-bleed image, the inner half of a resize handle) can be grabbed.
+  const frameZ = $derived(Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1);
 
   const SNAP = 10;
   let guides = $state<{ x: number[]; y: number[] }>({ x: [], y: [] });
 
   type Drag =
-    | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean }
+    | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean; shiftAtDown: boolean }
     | { kind: 'resize'; sx: number; sy: number; hx: number; hy: number; o: { x: number; y: number; w: number; h: number }; keep: boolean }
-    | { kind: 'rotate'; cx: number; cy: number }
+    | { kind: 'rotate'; cx: number; cy: number; a0: number; r0: number }
     | { kind: 'marquee'; a: Pt; base: string[] };
   let drag: Drag | null = null;
   /** The drag-to-select box while it's being drawn. */
@@ -56,6 +64,14 @@
   }
 
   let layerEl: HTMLDivElement;
+  // Pointer capture sends click/dblclick to the layer itself, so remember what the press was on.
+  let lastDown: SlideElement | null = null;
+
+  function begin(d: Drag, e: PointerEvent): void {
+    drag = d;
+    onstart?.();
+    layerEl.setPointerCapture(e.pointerId);
+  }
 
   function down(e: PointerEvent, el: SlideElement | null): void {
     if (e.button !== 0) return;
@@ -66,10 +82,14 @@
       const next = nextBelow(visible, p, selected.length === 1 ? selected[0] : null);
       if (next) {
         selected = [next.id];
-        if (next.locked) return;
+        if (next.locked) {
+          lastDown = null;
+          return;
+        }
         el = next;
       }
     }
+    lastDown = el;
     if (!el) {
       // An empty spot (or only locked items): drag out a box to select everything it touches.
       const base = e.shiftKey || e.ctrlKey || e.metaKey ? [...selected] : [];
@@ -80,14 +100,19 @@
       return;
     }
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
-      selected = selected.includes(el.id) ? selected.filter((x) => x !== el.id) : [...selected, el.id];
+      if (selected.includes(el.id)) {
+        // Shift/Ctrl+click on a selected item only takes it out of the selection (no drag of the rest).
+        selected = selected.filter((x) => x !== el.id);
+        return;
+      }
+      selected = [...selected, el.id];
     } else if (!selected.includes(el.id)) {
       selected = [el.id];
     }
     const movable = visible.filter((x) => selected.includes(x.id) && !x.locked);
     if (!movable.length) return;
-    drag = { kind: 'move', sx: p.x, sy: p.y, orig: new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }])), moved: false };
-    layerEl.setPointerCapture(e.pointerId);
+    const orig = new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }]));
+    begin({ kind: 'move', sx: p.x, sy: p.y, orig, moved: false, shiftAtDown: e.shiftKey }, e);
   }
 
   function handleDown(e: PointerEvent, hx: number, hy: number): void {
@@ -95,15 +120,18 @@
     e.stopPropagation();
     const p = toStage(e, layerEl);
     const keepByDefault = single.kind === 'image' || single.kind === 'video' || (single.kind === 'embed' && single.embedKind !== 'remoteAudio');
-    drag = { kind: 'resize', sx: p.x, sy: p.y, hx, hy, o: { x: single.x, y: single.y, w: single.w, h: single.h }, keep: keepByDefault };
-    layerEl.setPointerCapture(e.pointerId);
+    begin({ kind: 'resize', sx: p.x, sy: p.y, hx, hy, o: { x: single.x, y: single.y, w: single.w, h: single.h }, keep: keepByDefault }, e);
   }
+
+  const angle = (p: { x: number; y: number }, cx: number, cy: number) => (Math.atan2(p.y - cy, p.x - cx) * 180) / Math.PI;
 
   function rotateDown(e: PointerEvent): void {
     if (!single || single.locked) return;
     e.stopPropagation();
-    drag = { kind: 'rotate', cx: single.x + single.w / 2, cy: single.y + single.h / 2 };
-    layerEl.setPointerCapture(e.pointerId);
+    const cx = single.x + single.w / 2;
+    const cy = single.y + single.h / 2;
+    // Relative to where the handle was grabbed, so it works wherever the handle is drawn.
+    begin({ kind: 'rotate', cx, cy, a0: angle(toStage(e, layerEl), cx, cy), r0: single.rotation }, e);
   }
 
   /** Snap a box's edges/center to the slide and other elements; returns the offset to apply. */
@@ -152,6 +180,12 @@
       let dy = p.y - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < 2) return;
       drag.moved = true;
+      // Shift pressed during the drag: move along one axis only (whichever the pointer moved more on).
+      // A Shift still held from the press (Shift+click adds to the selection) doesn't count until released.
+      if (!e.shiftKey) drag.shiftAtDown = false;
+      const lock = e.shiftKey && !drag.shiftAtDown ? (Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y') : null;
+      if (lock === 'x') dy = 0;
+      if (lock === 'y') dx = 0;
       const orig = drag.orig;
       const ids = new Set(orig.keys());
       const moving = slide.elements.filter((x) => ids.has(x.id));
@@ -162,8 +196,9 @@
         const maxX = Math.max(...moving.map((m) => orig.get(m.id)!.x + m.w)) + dx;
         const maxY = Math.max(...moving.map((m) => orig.get(m.id)!.y + m.h)) + dy;
         const s = snap({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }, ids);
-        dx += s.dx;
-        dy += s.dy;
+        if (lock !== 'y') dx += s.dx;
+        if (lock !== 'x') dy += s.dy;
+        if (lock) guides = lock === 'x' ? { x: guides.x, y: [] } : { x: [], y: guides.y };
       } else guides = { x: [], y: [] };
       for (const m of moving) {
         const o = orig.get(m.id)!;
@@ -196,7 +231,7 @@
       single.x = Math.round(cx0 - w / 2);
       single.y = Math.round(cy0 - h / 2);
     } else if (drag.kind === 'rotate' && single) {
-      let a = (Math.atan2(p.y - drag.cy, p.x - drag.cx) * 180) / Math.PI + 90;
+      let a = drag.r0 + angle(p, drag.cx, drag.cy) - drag.a0;
       if (e.shiftKey) a = Math.round(a / 15) * 15;
       a = ((Math.round(a) % 360) + 360) % 360;
       single.rotation = a > 180 ? a - 360 : a;
@@ -204,10 +239,12 @@
   }
 
   function up(): void {
-    if (drag && drag.kind !== 'marquee' && (drag.kind !== 'move' || drag.moved)) onchange();
+    // Every drag that began (and told onstart) ends with onchange; a selection box changes nothing.
+    const ended = !!drag && drag.kind !== 'marquee';
     drag = null;
     marquee = null;
     guides = { x: [], y: [] };
+    if (ended) onchange();
   }
 
   function context(e: MouseEvent): void {
@@ -229,6 +266,8 @@
   ];
   const cursor = (hx: number, hy: number) => (hx === 0 ? 'ns-resize' : hy === 0 ? 'ew-resize' : hx === hy ? 'nwse-resize' : 'nesw-resize');
   const inv = $derived(1 / (stage.scale || 1));
+  // The rotate handle sits 44 screen px out; flip it below (or inside) when that would be off the slide.
+  const knob = $derived(single ? knobPlacement(single, 52 * inv) : 'above');
 </script>
 
 <div
@@ -239,6 +278,7 @@
   onpointerup={up}
   onpointercancel={up}
   oncontextmenu={context}
+  ondblclick={() => lastDown && ondblclick?.(lastDown)}
   role="presentation"
 >
   {#each sorted as el (el.id)}
@@ -255,20 +295,20 @@
       onpointerdown={(e) => down(e, el)}
       onpointerenter={() => (hovered = el.id)}
       onpointerleave={() => hovered === el.id && (hovered = null)}
-      ondblclick={() => ondblclick?.(el)}
       role="presentation"
     ></div>
   {/each}
 
   {#each sel as el (el.id)}
     <div
-      class="frame"
+      class="frame knob-{knob}"
       class:multi={!single}
       style:left="{el.x}px"
       style:top="{el.y}px"
       style:width="{el.w}px"
       style:height="{el.h}px"
       style:transform="rotate({el.rotation}deg)"
+      style:z-index={frameZ}
       style:--inv={inv}
     >
       {#if single && !el.locked}
@@ -370,6 +410,18 @@
     border: calc(2px * var(--inv)) solid #fff;
     cursor: grab;
     pointer-events: auto;
+  }
+  .knob-below .rot-stem {
+    top: 100%;
+  }
+  .knob-below .rot {
+    top: calc(100% + 44px * var(--inv));
+  }
+  .knob-inside .rot-stem {
+    top: 0;
+  }
+  .knob-inside .rot {
+    top: calc(44px * var(--inv));
   }
   .lock {
     position: absolute;
