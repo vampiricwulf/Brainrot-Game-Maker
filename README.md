@@ -45,11 +45,13 @@ answer typed while the question slide is showing can still be undone on the answ
   slide's edges or covering the whole slide.
 - **Layers**: the **Layers** list shows every item top-first. Click to select (Shift/Ctrl adds), drag or ▲▼ to restack,
   👁 to hide an item while editing (it still shows in the game), and 🔒 to lock it. Locked items can't be dragged, resized,
-  nudged or deleted (Ctrl+A leaves them out, and Delete and the "Move to the slide's…" buttons skip them with a note saying
-  so), and clicks go through them, so a full-slide background never gets in the way.
+  nudged, cut or deleted (Ctrl+A leaves them out, and Delete, Ctrl+X and the "Move to the slide's…" buttons skip them with a
+  note saying so), and clicks go through them, so a full-slide background never gets in the way. The list still shows when
+  a locked item is the only one on the slide, so you can always unlock it.
 - **Stacked items**: **right-click** the slide to pick from everything under the pointer (plus restack, lock, hide,
-  duplicate and delete). **Alt+click** goes one layer down each click (locked items too; after the bottom one it starts
-  again at the top), and **Tab** / **Shift+Tab** steps through items. Drag a box on an empty spot to select several.
+  duplicate and delete). **Alt+click** walks down everything under the pointer, locked items too: the first click picks
+  the top item, each further click the next one down, and after the bottom one it wraps back to the top. **Tab** /
+  **Shift+Tab** steps through items. Drag a box on an empty spot to select several.
   `Ctrl+]` / `Ctrl+[` bring forward / send backward, and add **Shift** for front / back.
 - **Entrance animations**: fade, pop, slide, typewriter, shake, spin. Click **▶ Preview** to watch them and hear the slide's
   video, audio and YouTube (🔈 mutes the preview). The preview is look-only; press Esc or click the slide to go back to
@@ -58,12 +60,12 @@ answer typed while the question slide is showing can still be undone on the answ
   video or audio file becomes online media, and other text fills the empty main text box or makes a new one.
 - Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste items between slides (a copy pasted onto the same slide lands offset), and
   **Copy slide / Paste slide** copies whole slides. Ctrl+D duplicates, Ctrl+B / Ctrl+I / Ctrl+U style the selected text,
-  and the arrow keys nudge (Shift for 10 px).
+  and the arrow keys nudge (Shift for 10 px). In the Layers list, ↑/↓ move through the list and Alt+↑/↓ restack instead.
 - Ctrl+Z / Ctrl+Y undo and redo. Each slide keeps its history when you switch between Question and Answer, move to
   another clue or reopen one, and deleting shows a notice with an **Undo** button. Restacking, locking, duplicating and
-  deleting are one step each, whether from the Layers list, the right-click menu or a shortcut; hiding an item while
-  editing isn't a change to the slide, so undo leaves it alone. On the Final tab, which shows two slides, shortcuts, copy
-  and paste go to the slide you last clicked (or whose Question/Answer tab you switched).
+  deleting are one step each, whether from the Layers list, the inspector, the right-click menu or a shortcut; hiding an
+  item while editing isn't a change to the slide, so undo leaves it alone. On the Final tab, which shows two slides,
+  shortcuts, copy and paste go to the slide you last clicked (or whose Question/Answer tab you switched).
 - Shrink-to-fit text gets smaller as you type and keeps long words whole. The inspector shows the size it's drawn at,
   and a ⚠ badge in the editor flags text that can't fit its box.
 - **Use this style elsewhere** copies a text look to every question and/or answer in the round or the whole game.

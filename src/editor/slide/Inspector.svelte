@@ -17,6 +17,7 @@
     onapplystyle,
     onuploadfont,
     oneditimage,
+    onedit,
   }: {
     el: SlideElement;
     game: Game;
@@ -31,7 +32,11 @@
     onapplystyle?: (el: TextEl, scope: string) => void;
     onuploadfont: () => void;
     oneditimage?: () => void;
+    /** Makes a discrete change (locking) by calling `change`, so an undo history can record it as one step. */
+    onedit?: (change: () => void) => void;
   } = $props();
+  const edit = (change: () => void) => (onedit ? onedit(change) : change());
+  const lock = (on: boolean) => edit(() => (el.locked = on || undefined));
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
   const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
@@ -293,7 +298,7 @@
     </div>
     <div class="row">
       <label class="check" title="A locked item can't be moved, resized, nudged or deleted, and clicks on the slide go through it">
-        <input type="checkbox" checked={!!el.locked} onchange={(e) => (el.locked = e.currentTarget.checked || undefined)} /> Lock
+        <input type="checkbox" checked={!!el.locked} onchange={(e) => lock(e.currentTarget.checked)} /> Lock
       </label>
       <span class="spacer"></span>
       <button class="small" onclick={onduplicate} title="Ctrl+D">Duplicate</button>

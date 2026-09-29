@@ -107,9 +107,12 @@ try {
   assert((await layers.first().innerText()).includes('Under the picture'), 'Ctrl+Z undoes Send to back');
   await page.keyboard.press('Control+z');
   assert((await layers.first().innerText()).includes('cover.png'), 'a second Ctrl+Z undoes the Ctrl+Shift+] restack');
+  await layers.filter({ hasText: 'cover.png' }).locator('.name').click();
+  assert((await pos.getByLabel('W', { exact: true }).inputValue()) === '1920', '…on its own: the picture keeps the size set before it');
   await page.keyboard.press('Control+y');
+  assert((await layers.first().innerText()).includes('Under the picture'), 'Ctrl+Y redoes the Ctrl+Shift+] restack');
   await page.keyboard.press('Control+y');
-  assert((await layers.first().innerText()).includes('cover.png'), 'Ctrl+Y redoes both');
+  assert((await layers.first().innerText()).includes('cover.png'), 'a second Ctrl+Y redoes Send to back');
 
   // Lock the picture: clicks go through it, and Delete leaves it alone.
   await layers.filter({ hasText: 'cover.png' }).getByRole('button', { name: 'Lock' }).click();
@@ -121,6 +124,24 @@ try {
   await page.keyboard.press('Delete');
   assert((await layers.count()) === 2, 'Delete keeps a locked item');
   assert((await page.locator('.notice').innerText()).includes('Skipped 1 locked item'), 'and says it skipped it');
+  // Ctrl+X leaves it too, and doesn't copy it, so a paste can't make a second one.
+  await page.keyboard.press('Control+x');
+  assert((await layers.count()) === 2, 'Ctrl+X keeps a locked item');
+  await page.keyboard.press('Control+v');
+  assert((await layers.count()) === 2, 'and Ctrl+V after it pastes nothing');
+  await layers.filter({ hasText: 'Under the picture' }).locator('.name').click({ modifiers: ['Shift'] });
+  await page.keyboard.press('Control+x');
+  const cutNote = await page.locator('.notice').innerText();
+  assert(
+    (await layers.count()) === 1 && cutNote.includes('Cut text box') && cutNote.includes('Skipped 1 locked item'),
+    'Ctrl+X on the text and the locked picture cuts only the text (and says so); the Layers list stays for the locked picture',
+  );
+  await page.keyboard.press('Control+v');
+  assert((await layers.count()) === 2 && (await layers.filter({ hasText: 'cover.png' }).count()) === 1, 'Ctrl+V brings back just the text');
+  // Undo the paste and the cut, so the steps below line up.
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  assert((await layers.count()) === 2 && (await layers.first().innerText()).includes('cover.png'), 'Ctrl+Z twice undoes the paste and the cut');
 
   // Hide while editing.
   await layers.filter({ hasText: 'cover.png' }).getByRole('button', { name: 'Hide while editing' }).click();
@@ -155,6 +176,38 @@ try {
   await page.mouse.up();
   assert((await page.getByText('2 items selected.').count()) === 1, 'dragging a box selects the two shapes (not the locked picture)');
 
+  // The Layers list keeps the keyboard: arrow keys move through it (they never nudge the item), and
+  // Alt+↑/↓ or ▲▼ restack the row and keep focus on it, so they can be pressed again.
+  const topId = await layers.first().getAttribute('data-layer');
+  const topRow = page.locator(`.layers-box .row[data-layer="${topId}"]`);
+  const rowIndex = () => layers.evaluateAll((rows, id) => rows.findIndex((r) => r.dataset.layer === id), topId);
+  const focusedRow = () => page.evaluate(() => document.activeElement?.closest('[data-layer]')?.getAttribute('data-layer'));
+  const xy = async () => `${await pos.getByLabel('X', { exact: true }).inputValue()},${await pos.getByLabel('Y', { exact: true }).inputValue()}`;
+  await topRow.locator('.name').click();
+  const xy0 = await xy();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowLeft');
+  assert((await xy()) === xy0, "←/→ in the Layers list don't nudge the selected item");
+  await page.keyboard.press('Alt+ArrowDown');
+  await page.keyboard.press('Alt+ArrowDown');
+  assert((await rowIndex()) === 2 && (await focusedRow()) === topId, 'Alt+↓ twice moves the row down two places, keeping focus on it');
+  await page.keyboard.press('ArrowRight');
+  assert((await xy()) === xy0, 'so an arrow key after a restack still leaves the item where it is');
+  await topRow.getByRole('button', { name: 'Bring forward' }).focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  assert((await rowIndex()) === 0 && (await focusedRow()) === topId, 'Enter on ▲ twice brings it back to the top, keeping focus on the row');
+
+  // The inspector's Lock box is one undo step each time, like the list's 🔒.
+  const lockBox = page.locator('.insp').getByLabel('Lock', { exact: true });
+  await lockBox.check();
+  await lockBox.uncheck();
+  await topRow.locator('.name').focus();
+  await page.keyboard.press('Control+z');
+  assert(await lockBox.isChecked(), 'Ctrl+Z undoes unticking Lock in the inspector');
+  await page.keyboard.press('Control+z');
+  assert(!(await lockBox.isChecked()) && (await rowIndex()) === 0, 'a second Ctrl+Z undoes ticking it (and nothing before it)');
+
   // "Use this style elsewhere" copies the text look to the other questions in the round (it used to crash
   // on text without an outline or glow).
   await layers.filter({ hasText: 'Under the picture' }).locator('.name').click();
@@ -165,6 +218,13 @@ try {
   await page.getByRole('button', { name: 'Next ▶' }).click();
   await page.locator('.canvas .hit').first().click();
   assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue got the new text color');
+
+  // Clicks go through a locked item, so a slide whose only item is locked still lists it to unlock it.
+  assert((await page.locator('.layers-box').count()) === 0, 'a slide with one item has no Layers list');
+  await page.locator('.insp').getByLabel('Lock', { exact: true }).check();
+  assert((await layers.count()) === 1, 'but it shows once that item is locked');
+  await layers.first().getByRole('button', { name: 'Unlock', exact: true }).click();
+  assert(!(await page.locator('.insp').getByLabel('Lock', { exact: true }).isChecked()), 'and unlocks it from there');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nLayers E2E passed.');

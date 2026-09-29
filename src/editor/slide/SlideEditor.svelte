@@ -540,9 +540,9 @@
   }
 
   // ---------- Clipboard ----------
-  /** Copy the selection to the in-app clipboard, and mark the system clipboard as ours. */
-  function copyItems(data: DataTransfer | null): number {
-    const items = clone(slide.elements.filter((x) => selected.includes(x.id)));
+  /** Copy items (the selection by default) to the in-app clipboard, and mark the system clipboard as ours. */
+  function copyItems(data: DataTransfer | null, from = slide.elements.filter((x) => selected.includes(x.id))): number {
+    const items = clone(from);
     const words = items.flatMap((x) => (x.kind === 'text' && x.text.trim() ? [x.text] : [])).join('\n');
     clipboard.elements = items;
     clipboard.token = newId();
@@ -561,7 +561,10 @@
   function oncut(e: ClipboardEvent): void {
     if (!inCharge() || typing(e) || previewing || !selected.length) return;
     e.preventDefault();
-    copyItems(e.clipboardData);
+    // Locked items stay where they are, so they aren't copied either (a paste would duplicate them).
+    const { free, locked } = selection();
+    if (!free.length) return void tell(lockedNote(locked));
+    copyItems(e.clipboardData, free);
     remove('Cut');
   }
 
@@ -766,7 +769,8 @@
     </div>
 
     <aside class="side">
-      {#if !previewing && (slide.elements.length > 1 || hidden.length)}
+      <!-- Also for a lone locked item: clicks go through it, so the list is the easy way to reach it. -->
+      {#if !previewing && (slide.elements.length > 1 || hidden.length || slide.elements.some((e) => e.locked))}
         <details class="layers-box" open>
           <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
           <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
@@ -795,6 +799,7 @@
             picker = 'font';
           }}
           oneditimage={single.kind === 'image' ? () => (editingImage = single!.id) : undefined}
+          onedit={edit}
         />
         {#if picker && replacing === single.id}
           <div class="pop-anchor"><MediaPicker kind={picker} onpick={picked} onclose={() => ((picker = null), (replacing = null))} /></div>
@@ -813,9 +818,9 @@
           items between slides.
         </p>
         <p class="muted small">
-          Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> to
-          go one layer down, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a background so clicks go
-          through it.
+          Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b>
+          again and again to walk down the stack, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a
+          background so clicks go through it.
         </p>
       {/if}
       {#if selected.length && !previewing}

@@ -3,6 +3,7 @@
   drag to restack, 👁 hides an item while editing (never in the game), 🔒 locks it in place.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
   import { LAYER_ICON, layerLabel } from './layerlabel';
@@ -31,6 +32,7 @@
   const edit = (change: () => void) => (onedit ? onedit(change) : change());
 
   const top = $derived([...elements].sort((a, b) => b.zIndex - a.zIndex));
+  let listEl = $state<HTMLDivElement>();
   function pick(e: MouseEvent, el: SlideElement): void {
     if (e.shiftKey || e.ctrlKey || e.metaKey) selected = selected.includes(el.id) ? selected.filter((x) => x !== el.id) : [...selected, el.id];
     else selected = [el.id];
@@ -50,13 +52,23 @@
     edit(() => order.forEach((el, i) => (el.zIndex = order.length - 1 - i)));
   }
 
-  function nudge(el: SlideElement, dir: -1 | 1): void {
+  /**
+   * Move an item one place up or down the list. Reordering the rows drops keyboard focus, so it goes
+   * back to the moved row's `refocus` control (its name if that control is now disabled), letting
+   * Alt+↑/↓ or ▲▼ repeat and keeping arrow keys in the list.
+   */
+  function nudge(el: SlideElement, dir: -1 | 1, refocus = '.name'): void {
     const order = [...top];
     const i = order.indexOf(el);
     const j = i + dir;
     if (j < 0 || j >= order.length) return;
     [order[i], order[j]] = [order[j], order[i]];
     apply(order);
+    tick().then(() => {
+      const row = listEl?.querySelector(`[data-layer="${el.id}"]`);
+      const target = row?.querySelector<HTMLButtonElement>(refocus);
+      (target && !target.disabled ? target : row?.querySelector<HTMLElement>('.name'))?.focus();
+    });
   }
 
   // ---------- Drag to restack ----------
@@ -101,7 +113,7 @@
   }
 </script>
 
-<div class="layers" role="list" aria-label="Layers">
+<div class="layers" role="list" aria-label="Layers" bind:this={listEl}>
   {#each top as el, i (el.id)}
     {@const isSel = selected.includes(el.id)}
     {@const isHidden = hidden.includes(el.id)}
@@ -146,8 +158,8 @@
         {el.locked ? '🔒' : '🔓'}
       </button>
       <span class="updown">
-        <button class="ico" onclick={() => nudge(el, -1)} disabled={i === 0} aria-label="Bring forward" title="Bring forward">▲</button>
-        <button class="ico" onclick={() => nudge(el, 1)} disabled={i === top.length - 1} aria-label="Send backward" title="Send backward">▼</button>
+        <button class="ico up" onclick={() => nudge(el, -1, '.up')} disabled={i === 0} aria-label="Bring forward" title="Bring forward">▲</button>
+        <button class="ico down" onclick={() => nudge(el, 1, '.down')} disabled={i === top.length - 1} aria-label="Send backward" title="Send backward">▼</button>
       </span>
     </div>
   {:else}
