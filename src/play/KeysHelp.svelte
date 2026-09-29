@@ -6,7 +6,7 @@
     ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
     ['R', 'Reveal the answer'],
     ['Esc / B', 'Close the tool overlay, or go back to the board'],
-    ['N', 'Next step (round intro, Final Jeopardy)'],
+    ['N', 'Next step (round intro, final round)'],
     ['T', 'Start / pause the countdown'],
     ['P then 1 – 9', 'Make player N the current picker'],
     ['D', 'Roll the last dice again'],

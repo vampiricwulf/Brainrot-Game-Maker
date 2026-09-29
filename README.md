@@ -8,9 +8,12 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Getting the app
 
-- **Download** `jeopardy-builder.html` from the latest GitHub Actions run or release, or build it yourself (see
-  [Development](#development)). It lands in `dist/index.html`.
-- Open it in **Chrome, Edge or Firefox**. Everything works from a file opened from disk.
+- **Download from the [Latest release](../../releases/latest)**. It's rebuilt automatically on every push to `main`:
+  - `jeopardy-builder.html`: the whole app in one file. Double-click it to open it in **Chrome, Edge or Firefox**.
+    Everything works from a file opened from disk.
+  - `jeopardy-builder-portable.exe`: the Windows desktop app, no install needed.
+  - `jeopardy-builder-setup.exe`: an installer for the Windows desktop app.
+- Or build it yourself (see [Development](#development)). It lands in `dist/index.html`.
 
 ## Building a game (Editor)
 
@@ -21,7 +24,7 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 | 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
 | 🖼 **Media** | Every file in the game, with usage counts, "remove unused" and a list of online links. |
-| **Final Jeopardy** | Category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
+| **Final round** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
 face** (custom text or an image instead of the value), host notes, and two slides: **Question** and **Answer**.
@@ -61,7 +64,13 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
      full-screen, and **click it once** so it's allowed to play sound. The host window shows the answer, notes, standings and
      all controls. Allow popups for the file if the browser asks.
 2. The round intro plays: title card → tiles fill in → press `N` to reveal each category (or **Skip intro**).
-3. Click a tile. The question zooms in, and the answer is never on screen until you press **Reveal** (`R`).
+3. Click a tile. The question zooms in, and the answer is never on screen until you reveal it: **click the slide**, press
+   `R`, or use **👁 Reveal answer**. Showed it by accident? Press `R` again or **🙈 Hide answer**. Click the answer
+   slide to go back to the board.
+
+   **Click the stage to drive the show**: click the intro to advance it, click the question to reveal it, click the
+   wheel to spin it (and again to close it), click dice to roll them, and click to step through the final round. This
+   works in the host's window only; the audience window never reacts to clicks.
 4. **Scoring**: toggle any players (`1`–`9`; zero, one or many), set any amount (prefilled with the clue value), then
    **Award** (`Enter`) or **Deduct** (`Shift+Enter`). The per-player **✘ −value** buttons handle quick wrong answers. Click a
    score to type an exact value. Every change is logged and undoable (`Ctrl+Z`, 📜 Log).
@@ -82,7 +91,7 @@ quick wheel from a list), **🏁 Who goes first** (everyone rolls in their color
 the picker), **📊 Scores** overlay. These show full-screen on the audience view. Results can be tagged with a player for the
 **roll log**. Score effects only apply when you press **Confirm**.
 
-**Final Jeopardy**: category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
+**Final round** (renameable): category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
 music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. **Ties** offer
 a roll-off, the tiebreaker clue, or co-winners.
 
@@ -95,7 +104,7 @@ every change.
 |---|---|
 | `1`–`9` | Select/deselect player N for scoring |
 | `Enter` / `Shift+Enter` | Award / deduct the amount |
-| `R` | Reveal the answer |
+| `R` | Reveal the answer (press again to hide it) |
 | `Esc` / `B` | Close the tool overlay, or go back to the board |
 | `N` | Next step (round intro, Final Jeopardy) |
 | `T` | Start/pause the countdown |
@@ -112,14 +121,14 @@ every change.
 
 The same app can be wrapped as a native Windows program with [Tauri](https://tauri.app) (`src-tauri/`):
 
-- Run the **Desktop (Windows .exe)** workflow from the GitHub Actions tab (or push a `v*` tag). It uploads an installer and
-  a portable `jeopardy-builder.exe`.
+- Grab it from the [Latest release](../../releases/latest), or run the **Desktop (Windows .exe)** workflow by hand from
+  the Actions tab.
 - Or locally: install Rust and the [Tauri prerequisites](https://tauri.app/start/prerequisites/), then run
   `npm run desktop:build` (or `npm run desktop:dev`).
 
-The HTML file is still the main way to use the app. The desktop build hasn't been tested yet; in particular, check that
-**📺 Audience window** (a popup), **Save/Export** (downloads) and YouTube embeds behave in the Windows webview before
-relying on it.
+Every push to `main` builds the `.exe` in CI and attaches it to the **Latest** release. The HTML file is still the main
+way to use the app. Check that **📺 Audience window** (a popup), **Save/Export** (downloads) and YouTube embeds behave
+in the Windows webview before relying on it on stream.
 
 ## Development
 

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { newId, type ClueRef } from '../lib/model';
+  import { finalName, newId, type ClueRef } from '../lib/model';
   import {
     applyScore, backToBoard, clueReason, currentClueInfo, ddShowQuestion, finalNext, goToRound, introNext, openClue, redo,
-    reveal, skipIntro, startIntro, undo,
+    answerShowing, reveal, skipIntro, startIntro, toggleReveal, undo,
   } from '../lib/session';
-  import { overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer } from '../lib/live';
+  import { overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import ToolLauncher from './host/ToolLauncher.svelte';
@@ -99,7 +99,7 @@
   function reasonNow(): string {
     if (session.phase === 'clue' && session.currentClue)
       return clueReason(game, session.currentClue) + (session.dd?.stage === 'question' ? ' (Daily Double)' : '');
-    if (session.phase === 'final') return 'Final Jeopardy';
+    if (session.phase === 'final') return finalName(game);
     if (session.phase === 'tiebreaker') return 'Tiebreaker';
     return 'Adjustment';
   }
@@ -154,6 +154,57 @@
       // Only if that roll-off is still the one on screen (or was closed after finishing).
       if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) session.currentPickerId = winner;
     }, overlayDoneAt(o) - Date.now() + 200);
+  }
+
+  /** Reveal or hide the answer (R / the host button / clicking the slide). */
+  function revealToggle(): void {
+    const wasFinalQuestion = session.phase === 'final' && session.finalStep === 'question';
+    toggleReveal(session);
+    if (answerShowing(session)) {
+      // A finished countdown has done its job once the answer is up.
+      if (app.live.timer?.expired) app.live.timer = null;
+      if (wasFinalQuestion) {
+        app.live.timer = null;
+        app.live.sound = null;
+      }
+    }
+  }
+
+  // Host clicks on the stage. A short guard stops one double-click from both revealing and leaving the clue.
+  let lastStageAct = 0;
+  function stageAct(a: StageAction): void {
+    const now = Date.now();
+    if (now - lastStageAct < 450) return;
+    lastStageAct = now;
+    switch (a) {
+      case 'intro':
+        intro();
+        break;
+      case 'reveal':
+        if (!answerShowing(session)) revealToggle();
+        break;
+      case 'back':
+        if (session.phase === 'clue') back();
+        break;
+      case 'final-next':
+        finalNext(session);
+        finalStep();
+        break;
+      case 'overlay':
+        overlayPrimary();
+        break;
+    }
+  }
+
+  /** Clicking a tool overlay: spin/roll if it hasn't happened yet, otherwise close it once it's finished. */
+  function overlayPrimary(): void {
+    const o = app.live.overlay;
+    if (!o) return;
+    const busy = Date.now() < overlayDoneAt(o);
+    if (busy) return;
+    if (o.kind === 'wheel' && !o.spin) spinWheel(app.live, session, game);
+    else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
+    else closeOverlay();
   }
 
   function closeOverlay(): void {
@@ -276,7 +327,7 @@
         award(e.shiftKey ? -1 : 1);
         break;
       case 'r':
-        reveal(session);
+        revealToggle();
         break;
       case 'escape':
       case 'b':
@@ -389,6 +440,7 @@
             role={dual ? 'mirror' : 'single'}
             onpick={pick}
             onpicker={(id) => (session.currentPickerId = session.currentPickerId === id ? undefined : id)}
+            onact={stageAct}
           />
         </Stage>
       </div>
@@ -406,7 +458,7 @@
         bind:amount
         onaward={(s) => award(s)}
         onwrong={(id) => award(-1, [id], session.dd?.wager ?? info?.value ?? 0)}
-        onreveal={() => reveal(session)}
+        onreveal={revealToggle}
         onback={back}
         onundo={doUndo}
         onredo={doRedo}

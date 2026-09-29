@@ -1,5 +1,7 @@
 name: Build
 
+# Every push to main: check, test, build the single-file app and the Windows .exe, then replace the
+# rolling "latest" GitHub Release with the new files. Version tags (v*) get their own permanent release.
 on:
   push:
     branches: [main]
@@ -42,23 +44,91 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
       - name: Name the single-file app
-        run: cp dist/index.html jeopardy-builder.html
+        run: mkdir -p out && cp dist/index.html out/jeopardy-builder.html
       - uses: actions/upload-artifact@v6
         with:
           name: jeopardy-builder
-          path: jeopardy-builder.html
+          path: out/jeopardy-builder.html
 
-  release:
-    # Attach the app to GitHub releases for version tags.
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+  windows:
+    # The desktop app (Tauri). Skipped for pull requests (desktop.yml covers src-tauri changes there).
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npx tauri build
+      - name: Collect the Windows files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item src-tauri/target/release/jeopardy-builder.exe out/jeopardy-builder-portable.exe
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          Copy-Item $setup.FullName out/jeopardy-builder-setup.exe
+          Get-ChildItem out
+      - uses: actions/upload-artifact@v6
+        with:
+          name: jeopardy-builder-windows
+          path: out/*.exe
+
+  release-latest:
+    # Rolling release: replaced on every push to main, always the newest build.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: jeopardy-builder
+          path: out
+          merge-multiple: true
+      - name: Publish the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          ls -la out
+          SHORT="${SHA:0:7}"
+          SUBJECT="$(printf '%s' "$MESSAGE" | head -n 1)"
+          cat > notes.md <<NOTES
+          Newest build of \`main\` (${SHORT}): ${SUBJECT}
+
+          **Downloads**
+          - \`jeopardy-builder.html\`: the whole app in one file. Download it and double-click to open it in Chrome, Edge or Firefox.
+          - \`jeopardy-builder-portable.exe\`: Windows desktop app, no install needed (uses the WebView2 runtime that Windows 10/11 already have).
+          - \`jeopardy-builder-setup.exe\`: Windows installer for the desktop app.
+
+          This release is replaced automatically on every push to \`main\`.
+          NOTES
+          gh release delete latest --repo "$REPO" --yes --cleanup-tag || true
+          gh release create latest out/* --repo "$REPO" --target "$SHA" --latest \
+            --title "Latest build (${SHORT})" --notes-file notes.md
+
+  release-tag:
+    # Permanent release for version tags like v1.0.0.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: out
+          merge-multiple: true
       - uses: softprops/action-gh-release@v3
         with:
-          files: jeopardy-builder.html
+          files: out/*
+          generate_release_notes: true

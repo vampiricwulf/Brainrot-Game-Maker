@@ -10,10 +10,16 @@
   import DiceView from './DiceView.svelte';
   import RollOffView from './RollOffView.svelte';
 
-  let { o, game, session, role }: { o: Overlay; game: Game; session: Session; role: MediaRole } = $props();
+  let {
+    o,
+    game,
+    session,
+    role,
+    onclick,
+  }: { o: Overlay; game: Game; session: Session; role: MediaRole; onclick?: () => void } = $props();
 </script>
 
-<div class="ov" transition:fade={{ duration: 200 }}>
+<div class="ov" class:clickable={!!onclick} transition:fade={{ duration: 200 }} onclick={() => onclick?.()} role="presentation">
   {#key o.nonce}
     {#if o.kind === 'wheel'}
       <WheelView {o} {game} {role} />
@@ -42,6 +48,9 @@
     inset: 0;
     z-index: 40;
     background: radial-gradient(circle at 50% 50%, rgba(20, 30, 160, 0.92), rgba(0, 0, 20, 0.96));
+  }
+  .clickable {
+    cursor: pointer;
   }
   .sb {
     position: absolute;

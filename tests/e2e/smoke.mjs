@@ -5,7 +5,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const file = resolve('dist/index.html');
+const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
 const url = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
@@ -233,6 +233,11 @@ await page.locator('.canvas .card').waitFor();
 assert(true, 'YouTube link added (editor shows a thumbnail card)');
 await page.getByRole('button', { name: 'Done' }).click();
 
+// The final round can be renamed.
+await page.getByRole('button', { name: 'Final Jeopardy!', exact: true }).click();
+await page.getByLabel('Name (shown on screen)').fill('Final Brainrot');
+assert((await page.getByRole('button', { name: 'Final Brainrot', exact: true }).count()) === 1, 'final round renamed (editor nav follows)');
+
 // Theme: Brainrot Neon with the score bar on top.
 await page.getByRole('button', { name: '🎨 Theme' }).click();
 await page.getByRole('button', { name: /Brainrot Neon/ }).click();
@@ -277,9 +282,10 @@ await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.locator('.round-name').waitFor();
 assert((await page.locator('.round-name').evaluate((e) => getComputedStyle(e).color)) === 'rgb(57, 255, 20)', 'theme applies in play (neon values)');
 assert((await page.locator('.round-name').innerText()) === 'Jeopardy!', 'round intro title card shows');
-await page.keyboard.press('n');
+await page.locator('.title-card').click();
 await page.locator('.board .tile').first().waitFor();
 await page.getByRole('button', { name: /Reveal category 1 of/ }).waitFor();
+assert(true, 'clicking the title card advances the intro');
 assert((await page.locator('.board .header .title').count()) === 0, 'categories hidden until revealed');
 await page.keyboard.press('n');
 await page.locator('.board .header .title').first().waitFor();
@@ -311,9 +317,16 @@ await page.locator('.panel .p').nth(2).locator('.wrong').click();
 assert((await scoreOf(2)) === '−$200', 'quick wrong deducts the clue value');
 await shot('4-clue-scored');
 
-await page.keyboard.press('r');
+await page.locator('.stage-box .full').click();
 await page.getByText('Who is Pepe?').waitFor();
-assert(true, 'answer revealed with R');
+assert(true, 'clicking the question slide reveals the answer');
+await page.waitForTimeout(500); // past the double-click guard
+await page.keyboard.press('r');
+await page.getByText('This frog became a meme').waitFor();
+assert((await page.getByText('Who is Pepe?').count()) === 0, 'R hides an accidentally revealed answer again');
+await page.getByRole('button', { name: '👁 Reveal answer' }).click();
+await page.getByText('Who is Pepe?').waitFor();
+assert(await page.getByRole('button', { name: '🙈 Hide answer' }).isVisible(), 'reveal button turns into Hide answer');
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 assert(await page.locator('.board .tile').first().isDisabled(), 'tile marked used after returning to board');
@@ -365,7 +378,7 @@ assert(aud.isClosed(), 'audience window closes from the host');
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 assert(true, 'wheel tile opens the wheel overlay');
-await page.getByRole('button', { name: 'Spin!' }).click();
+await page.locator('.stage-box .ov').click();
 await page.locator('.tc .result').waitFor({ timeout: 8000 });
 assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
 await page.locator('.ov .card').waitFor();
@@ -375,8 +388,10 @@ await page.locator('.ac').waitFor();
 await page.locator('.ac').getByRole('button', { name: 'Skip' }).click();
 assert((await scoreOf(0)) === '$550', 'skipping the score effect changes nothing');
 await shot('10-wheel');
-await page.keyboard.press('Escape');
+await page.waitForTimeout(500);
+await page.locator('.stage-box .ov').click();
 await page.locator('.ov').waitFor({ state: 'detached' });
+assert(true, 'clicking the landed wheel closes it');
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 
@@ -403,8 +418,9 @@ assert(true, "countdown runs out and shows TIME'S UP");
 await page.keyboard.press('Escape');
 
 // Final Jeopardy: eligible players, private wagers, one-by-one reveal.
-await page.getByRole('button', { name: 'Final Jeopardy ▶' }).click();
+await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.locator('.final-label').waitFor();
+assert((await page.locator('.final-label').innerText()) === 'FINAL BRAINROT', 'renamed final round shows on screen');
 const eligible = await page.locator('.fj input[type=checkbox]:checked').count();
 assert(eligible === 2, 'players with $0 sit out of Final by default');
 await page.getByRole('button', { name: /take wagers/ }).click();
@@ -416,6 +432,13 @@ await page.getByRole('button', { name: 'Show question ▶' }).click();
 await page.locator('.timer').waitFor();
 assert(true, 'Final question starts the think timer');
 await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
+await page.locator('.fj').getByRole('button', { name: '🙈 Hide answer' }).click();
+await page.getByRole('button', { name: 'Reveal answer ▶' }).waitFor();
+assert(true, 'final answer can be hidden again');
+await page.waitForTimeout(500);
+await page.locator('.stage-box .full').click();
+await page.getByRole('button', { name: 'Start player reveals ▶' }).waitFor();
+assert(true, 'clicking the final question reveals its answer');
 await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
 await page.locator('.spot').waitFor();
 assert((await page.locator('.spot-wager').innerText()).includes('???'), 'wager hidden until shown');

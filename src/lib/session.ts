@@ -1,6 +1,6 @@
 // Runtime game logic: scores, score log with undo/redo, used tiles, round flow.
 // Pure functions over plain objects so they're easy to test and to autosave.
-import { clueValue, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session } from './model';
+import { clueValue, finalName, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -120,6 +120,28 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
 export function reveal(session: Session): void {
   if (session.phase === 'clue' && session.dd?.stage !== 'splash') session.revealed = true;
   if (session.phase === 'tiebreaker') session.tiebreakerRevealed = true;
+  if (session.phase === 'final' && session.finalStep === 'question') session.finalStep = 'answer';
+}
+
+/** Take the answer off screen again (e.g. it was revealed by accident). */
+export function unreveal(session: Session): void {
+  if (session.phase === 'clue') session.revealed = false;
+  if (session.phase === 'tiebreaker') session.tiebreakerRevealed = false;
+  if (session.phase === 'final' && session.finalStep === 'answer') session.finalStep = 'question';
+}
+
+/** Is an answer currently on screen? */
+export function answerShowing(session: Session): boolean {
+  return (
+    (session.phase === 'clue' && session.revealed) ||
+    (session.phase === 'tiebreaker' && !!session.tiebreakerRevealed) ||
+    (session.phase === 'final' && session.finalStep === 'answer')
+  );
+}
+
+export function toggleReveal(session: Session): void {
+  if (answerShowing(session)) unreveal(session);
+  else reveal(session);
 }
 
 /** Close the current clue and mark it used. */
@@ -174,7 +196,7 @@ export function skipIntro(session: Session): void {
   session.intro = null;
 }
 
-/** Move to round `index`; past the last round goes to Final Jeopardy (if enabled) or the end screen. */
+/** Move to round `index`; past the last round goes to the final round (if enabled) or the end screen. */
 export function goToRound(session: Session, game: Game, index: number): void {
   session.currentClue = null;
   session.revealed = false;
@@ -244,7 +266,10 @@ export function randomizeDailyDoubles(round: Game['rounds'][number], count: numb
   return placed;
 }
 
-// ---------- Final Jeopardy ----------
+// ---------- Final round ----------
+
+/** clueId used to tag the final round's score events (so re-judging finds the earlier one). */
+export const FINAL_CLUE_ID = 'final';
 
 export function startFinal(session: Session, game: Game): void {
   const eligible = session.players.filter((p) => game.settings.finalAllowNonPositive || score(session, p.id) > 0).map((p) => p.id);
@@ -294,13 +319,13 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
   const prev = f.results[playerId];
   if (prev) {
     // Undo the earlier judgment's score change.
-    const e = [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.reason === 'Final Jeopardy' && !x.undone);
+    const e = [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === FINAL_CLUE_ID && !x.undone);
     if (e) e.undone = true;
   }
   const wager = f.wagers[playerId] ?? 0;
   f.results[playerId] = right ? 'right' : 'wrong';
   f.shown[playerId] = true;
-  if (wager) applyScore(session, game, [playerId], right ? wager : -wager, 'Final Jeopardy');
+  if (wager) applyScore(session, game, [playerId], right ? wager : -wager, finalName(game), FINAL_CLUE_ID);
 }
 
 // ---------- End of game ----------

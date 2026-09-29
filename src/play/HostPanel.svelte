@@ -1,8 +1,8 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
   import { textOn } from '../lib/colors';
-  import { formatPoints, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, roundComplete, score, setScore } from '../lib/session';
+  import { finalName, formatPoints, type Game, type Session } from '../lib/model';
+  import { answerShowing, currentClueInfo, roundComplete, score, setScore } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
@@ -110,7 +110,7 @@
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
       {#if session.intro}
-        <span class="muted">Round intro…</span>
+        <span class="muted">Round intro… <span class="hint">click the screen or press N to continue</span></span>
       {:else}
         <span class="muted">Pick a tile on the board.</span>
       {/if}
@@ -122,12 +122,14 @@
       <span class="muted">·</span>
       {#if session.revealed}
         <span class="revealed">Answer is showing</span>
-      {:else}
+        <span class="muted hint">· click the slide to go back to the board</span>
+      {:else if !ddWager}
         <span class="muted">Answer hidden</span>
+        <span class="muted hint">· click the slide or press R to reveal</span>
       {/if}
       {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes">📝 {info.clue.hostNotes}</span>{/if}
     {:else if session.phase === 'final'}
-      <b>Final Jeopardy</b>
+      <b>{finalName(game)}</b>
       <span class="muted">{session.finalStep}</span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
@@ -159,7 +161,7 @@
   {/if}
 
   {#if session.phase === 'final'}
-    <FinalControls {game} {session} onstep={onfinalstep} />
+    <FinalControls {game} {session} onstep={onfinalstep} {onreveal} />
   {/if}
 
   {#if session.phase === 'end'}
@@ -235,17 +237,21 @@
 
   <div class="row nav">
     {#if session.phase === 'clue' && !ddWager}
-      <button class="primary" onclick={onreveal} disabled={session.revealed} title="R">👁 Reveal answer</button>
-      <button onclick={onback} title="Esc">▦ Back to board</button>
+      <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)">
+        {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
+      </button>
+      <button class:primary={session.revealed} onclick={onback} title="Esc">▦ Back to board</button>
     {:else if session.phase === 'clue'}
       <button onclick={onback} title="Esc">▦ Back to board</button>
     {:else if session.phase === 'board'}
       <button onclick={onprevround} disabled={session.currentRound === 0}>◀ Prev round</button>
       <button class:primary={done} onclick={onnextround}>
-        {isLastRound ? (game.final.enabled ? 'Final Jeopardy ▶' : 'End game ▶') : 'Next round ▶'}
+        {isLastRound ? (game.final.enabled ? `${finalName(game)} ▶` : 'End game ▶') : 'Next round ▶'}
       </button>
     {:else if session.phase === 'tiebreaker'}
-      <button class="primary" onclick={onreveal} disabled={session.tiebreakerRevealed} title="R">👁 Reveal answer</button>
+      <button class:primary={!session.tiebreakerRevealed} onclick={onreveal} title="R (press again to hide)">
+        {answerShowing(session) ? '🙈 Hide answer' : '👁 Reveal answer'}
+      </button>
       <button onclick={ontiebreakerdone}>🏁 Back to results</button>
     {/if}
     {@render tools?.()}
@@ -284,6 +290,9 @@
   .revealed {
     color: var(--good);
     font-weight: 600;
+  }
+  .hint {
+    font-size: 12px;
   }
   .notes {
     background: var(--panel-2);

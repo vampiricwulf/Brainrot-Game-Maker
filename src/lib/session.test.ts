@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, newId, newRound } from './model';
 import { setRowCount, addCategory, removeCategory } from './ops';
 import {
-  applyScore, backToBoard, ddCap, finalJudge, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
+  applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
 } from './session';
 
 function setup(players = 3) {
@@ -143,6 +143,42 @@ describe('flow', () => {
     expect(session.intro).toBeNull();
     applyScore(session, game, [a, b], 500, 'x');
     expect(tiedLeaders(session).map((p) => p.id)).toEqual([a, b]);
+  });
+});
+
+describe('reveal / hide', () => {
+  it('toggles the answer off again after an accidental reveal', () => {
+    const { game, session } = setup();
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    toggleReveal(session);
+    expect(answerShowing(session)).toBe(true);
+    toggleReveal(session);
+    expect([answerShowing(session), session.phase]).toEqual([false, 'clue']);
+  });
+
+  it('hides the final answer by stepping back to the question', () => {
+    const { game, session, a } = setup();
+    applyScore(session, game, [a], 100, 'x');
+    goToRound(session, game, 1);
+    finalNext(session);
+    finalNext(session);
+    expect(session.finalStep).toBe('question');
+    toggleReveal(session);
+    expect(session.finalStep).toBe('answer');
+    toggleReveal(session);
+    expect(session.finalStep).toBe('question');
+  });
+
+  it('names final score events after the renamed final round', () => {
+    const { game, session, a } = setup();
+    game.final.name = 'Final Brainrot';
+    applyScore(session, game, [a], 100, 'x');
+    goToRound(session, game, 1);
+    session.final!.wagers[a] = 50;
+    finalJudge(session, game, a, true);
+    finalJudge(session, game, a, false);
+    expect(score(session, a)).toBe(50);
+    expect(session.scoreLog.filter((e) => !e.undone).at(-1)?.reason).toBe('Final Brainrot');
   });
 });
 

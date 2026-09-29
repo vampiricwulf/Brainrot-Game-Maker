@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { newGame, newRound } from '../lib/model';
+  import { finalName, newGame, newRound } from '../lib/model';
   import { pickFile, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
@@ -128,7 +128,7 @@
       <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
       <div class="navlabel muted">End</div>
       <button class:active={tab === 'final'} onclick={() => (tab = 'final')}>
-        Final Jeopardy {game.final.enabled ? '' : '(off)'}
+        {finalName(game)} {game.final.enabled ? '' : '(off)'}
       </button>
 
       {#if problems.length}

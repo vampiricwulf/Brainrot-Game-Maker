@@ -145,7 +145,10 @@
   <button
     class="card"
     style:background-image="url({youtubeThumb(vid)})"
-    onclick={() => mode === 'play' && openMediaPopup(watchUrl)}
+    onclick={(e) => {
+      e.stopPropagation();
+      if (mode === 'play') openMediaPopup(watchUrl);
+    }}
     title={mode === 'play' ? 'Open on YouTube in a popup window' : el.url}
     tabindex={mode === 'play' ? 0 : -1}
   >

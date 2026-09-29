@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import type { EmbedEl, Game, Slide } from './model';
+import { finalName, type EmbedEl, type Game, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -17,8 +17,8 @@ export function allSlides(game: Game): SlideRef[] {
         out.push({ slide: cl.questionSlide, where: `${where} (question)` }, { slide: cl.answerSlide, where: `${where} (answer)` });
       });
   if (game.final.enabled) {
-    out.push({ slide: game.final.questionSlide, where: 'Final Jeopardy (question)' });
-    out.push({ slide: game.final.answerSlide, where: 'Final Jeopardy (answer)' });
+    out.push({ slide: game.final.questionSlide, where: `${finalName(game)} (question)` });
+    out.push({ slide: game.final.answerSlide, where: `${finalName(game)} (answer)` });
   }
   if (game.tiebreaker) {
     out.push({ slide: game.tiebreaker.questionSlide, where: 'Tiebreaker (question)' });

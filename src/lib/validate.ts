@@ -1,7 +1,7 @@
 // Pre-game checklist for the editor (spec §5.2 validation panel).
 import { canPlay, mediaUrls } from './media.svelte';
 import { normalizeColor } from './colors';
-import { playableClues, type Game } from './model';
+import { finalName, playableClues, type Game } from './model';
 import { allEmbeds, mediaUsage, slideHasContent } from './usage';
 
 export interface Problem {
@@ -34,8 +34,8 @@ export function validate(game: Game): Problem[] {
   });
 
   if (game.final.enabled) {
-    if (!slideHasContent(game.final.questionSlide)) out.push({ text: 'Final Jeopardy has no question', tab: 'final', level: 'warn' });
-    if (!slideHasContent(game.final.answerSlide)) out.push({ text: 'Final Jeopardy has no answer', tab: 'final', level: 'warn' });
+    if (!slideHasContent(game.final.questionSlide)) out.push({ text: `${finalName(game)} has no question`, tab: 'final', level: 'warn' });
+    if (!slideHasContent(game.final.answerSlide)) out.push({ text: `${finalName(game)} has no answer`, tab: 'final', level: 'warn' });
   }
 
   const known = new Set(game.media.map((m) => m.id));

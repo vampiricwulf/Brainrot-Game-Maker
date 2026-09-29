@@ -12,7 +12,7 @@
     <b>Tie for first:</b> {ties.map((p) => p.name).join(', ')}
     <div class="row">
       {#if onrolloff}<button onclick={() => onrolloff(ties.map((p) => p.id))}>🎲 Tiebreaker roll-off</button>{/if}
-      <button onclick={() => startTiebreaker(session)} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : 'Write one in the editor under Final Jeopardy'}>
+      <button onclick={() => startTiebreaker(session)} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : 'Write one in the editor on the final round tab'}>
         ❓ Tiebreaker clue
       </button>
       <button onclick={() => (session.coWinners = true)}>🤝 Declare co-winners</button>

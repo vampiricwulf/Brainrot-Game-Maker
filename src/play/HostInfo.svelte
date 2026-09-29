@@ -1,6 +1,6 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
-  import { formatPoints, slideText, type Game, type Session } from '../lib/model';
+  import { finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
   import { currentClueInfo, standings } from '../lib/session';
 
   let { game, session }: { game: Game; session: Session } = $props();
@@ -31,7 +31,7 @@
       <div class="notes">{info.clue.hostNotes}</div>
     {/if}
   {:else if session.phase === 'final'}
-    <div class="meta"><span class="cat">Final Jeopardy · {game.final.category}</span></div>
+    <div class="meta"><span class="cat">{finalName(game)} · {game.final.category}</span></div>
     <div class="label">Question</div>
     <div class="q">{slideText(game.final.questionSlide) || '—'}</div>
     <div class="label">Answer</div>

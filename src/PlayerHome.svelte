@@ -3,7 +3,7 @@
   import { app, toast } from './lib/app.svelte';
   import { savePack } from './lib/pack';
   import type { SavedPlay } from './lib/persist';
-  import { playableClues } from './lib/model';
+  import { finalName, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
 
@@ -24,7 +24,7 @@
     <div class="logo">JEOPARDY!</div>
     <h1>{game.title}</h1>
     <p class="muted">
-      {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{game.final.enabled ? ' · Final Jeopardy' : ''}
+      {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{game.final.enabled ? ` · ${finalName(game)}` : ''}
     </p>
     {#if resumable}
       <div class="resume">

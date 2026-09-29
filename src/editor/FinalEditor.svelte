@@ -1,7 +1,7 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
   import { applyTextStyle } from '../lib/ops';
-  import { textSlide, type TextEl } from '../lib/model';
+  import { finalName, textSlide, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   const final = $derived(app.game.final);
@@ -14,11 +14,15 @@
   }
 </script>
 
-<h2>Final Jeopardy</h2>
-<label class="check"><input type="checkbox" bind:checked={final.enabled} /> Include Final Jeopardy</label>
+<h2>{finalName(app.game)}</h2>
+<label class="check"><input type="checkbox" bind:checked={final.enabled} /> Include a final round</label>
 
 {#if final.enabled}
   <div class="grid">
+    <label class="field">
+      Name (shown on screen)
+      <input bind:value={final.name} placeholder="Final Jeopardy!" maxlength="40" />
+    </label>
     <label class="field">Category<input bind:value={final.category} placeholder="e.g. Internet History" /></label>
     <label class="field">Think time (seconds)<input type="number" min="5" bind:value={final.timerSeconds} /></label>
     <span class="muted hint">Wagers are entered privately by the host during the game, then revealed player by player.</span>

@@ -221,7 +221,7 @@ export interface GameSettings {
   maxPlayers: number;
   /** Start a clue's countdown automatically when it opens (if it has a timer). */
   timerAutoStart: boolean;
-  /** Let players with $0 or less play Final Jeopardy. */
+  /** Let players with $0 or less play the final round. */
   finalAllowNonPositive: boolean;
   roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
 }
@@ -328,6 +328,8 @@ export interface Round {
 
 export interface FinalRound {
   enabled: boolean;
+  /** Shown on screen and in the host UI, e.g. "Final Jeopardy!" or "Final Brainrot". */
+  name: string;
   category: string;
   questionSlide: Slide;
   answerSlide: Slide;
@@ -543,7 +545,7 @@ export function newGame(): Game {
     },
     players: [],
     rounds: [newRound('Jeopardy!')],
-    final: { enabled: true, category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 },
+    final: { enabled: true, name: 'Final Jeopardy!', category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 },
     media: [],
     audio: {},
     wheels: [],
@@ -586,4 +588,9 @@ export function migrateGame(data: Game): Game {
   g.theme = { ...d.theme, ...(data.theme ?? {}) };
   g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
   return g;
+}
+
+/** Display name of the final round (never empty). */
+export function finalName(game: Game): string {
+  return game.final.name?.trim() || 'Final Jeopardy!';
 }

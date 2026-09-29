@@ -13,7 +13,7 @@
     ['roundIntro', 'Round intro', 'Plays with the round title card'],
     ['dailyDouble', 'Daily Double', 'Plays with the Daily Double splash'],
     ['timesUp', "Time's up", 'Plays when a countdown runs out'],
-    ['finalThink', 'Final Jeopardy think music', 'Plays when the Final question appears'],
+    ['finalThink', 'Final round think music', 'Plays when the final question appears'],
     ['winner', 'Winner', 'Plays on the winner screen'],
   ];
 
@@ -43,7 +43,7 @@
       <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
     </label>
     <label class="check">
-      <input type="checkbox" bind:checked={s.finalAllowNonPositive} /> Players with $0 or less can play Final Jeopardy
+      <input type="checkbox" bind:checked={s.finalAllowNonPositive} /> Players with $0 or less can play the final round
     </label>
     <label class="field">
       Points symbol
@@ -64,7 +64,7 @@
         oninput={(e) => (s.defaultTimerSeconds = e.currentTarget.value === '' || +e.currentTarget.value === 0 ? null : +e.currentTarget.value)}
       />
     </label>
-    <label class="field">Final Jeopardy think time (seconds)<input type="number" min="5" bind:value={app.game.final.timerSeconds} /></label>
+    <label class="field">Final round think time (seconds)<input type="number" min="5" bind:value={app.game.final.timerSeconds} /></label>
     <label class="check"><input type="checkbox" bind:checked={s.timerAutoStart} /> Start the countdown automatically when a clue opens</label>
   </div>
   <p class="muted small">The host can also start a timer any time with <b>T</b>, and set any clue's own time in the clue editor.</p>

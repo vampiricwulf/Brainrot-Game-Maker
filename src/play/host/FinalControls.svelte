@@ -1,10 +1,15 @@
-<!-- Final Jeopardy host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
+<!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
   import { formatPoints, type Game, type Session } from '../../lib/model';
   import { finalJudge, finalNext, finalShow, finalWagerCap, score } from '../../lib/session';
 
-  let { game, session, onstep }: { game: Game; session: Session; onstep: () => void } = $props();
+  let {
+    game,
+    session,
+    onstep,
+    onreveal,
+  }: { game: Game; session: Session; onstep: () => void; onreveal: () => void } = $props();
   const f = $derived(session.final);
   const sym = $derived(game.settings.currencySymbol);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
@@ -108,8 +113,13 @@
       </div>
     {/if}
     <div class="row">
+      {#if session.finalStep === 'answer'}
+        <button onclick={onreveal} title="R">🙈 Hide answer</button>
+      {:else if session.finalStep === 'category' || session.finalStep === 'question'}
+        <span class="muted small">Tip: click the screen to continue</span>
+      {/if}
       <span class="spacer"></span>
-      <button class="primary" onclick={next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
+      <button class="primary" onclick={session.finalStep === 'question' ? onreveal : next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
         {labels[session.finalStep ?? 'category']}
       </button>
     </div>

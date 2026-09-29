@@ -19,6 +19,7 @@
 {#if round}
   <div
     class="board"
+    class:intro={!!intro}
     style:grid-template-columns="repeat({round.categories.length}, 1fr)"
     style:grid-template-rows="1.35fr repeat({round.values.length}, 1fr)"
   >
@@ -147,6 +148,10 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+  .tile.fill,
+  .board.intro .tile {
+    pointer-events: none;
   }
   .tile.used {
     background: var(--tile-used);

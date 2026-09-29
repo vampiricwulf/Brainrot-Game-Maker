@@ -120,7 +120,14 @@
 </script>
 
 {#if failed && remote}
-  <button class="fallback" onclick={() => openMediaPopup((el as EmbedEl).url)} title="Open the link in its own window">
+  <button
+    class="fallback"
+    onclick={(e) => {
+      e.stopPropagation();
+      openMediaPopup((el as EmbedEl).url);
+    }}
+    title="Open the link in its own window"
+  >
     <span class="big">▶</span>
     <span>Media couldn't load here. Click to open the link.</span>
   </button>

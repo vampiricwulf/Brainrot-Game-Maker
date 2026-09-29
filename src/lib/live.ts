@@ -2,6 +2,9 @@
 import { newId, type DicePreset, type Id, type WheelSegment } from './model';
 import type { DiceRoll, RollOffRound } from './tools';
 
+/** What a host click on the stage asks for (the host's view decides what it means right now). */
+export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay';
+
 /** A short "+400 Alex" badge that floats up on the audience view after a score change. */
 export interface Pop {
   id: string;

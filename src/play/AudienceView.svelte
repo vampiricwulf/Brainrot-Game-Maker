@@ -6,11 +6,11 @@
 <script lang="ts">
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
-  import { formatPoints, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
+  import { finalName, formatPoints, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, score, standings, tiedLeaders } from '../lib/session';
   import { mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
-  import type { Live } from '../lib/live';
+  import type { Live, StageAction } from '../lib/live';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
   import ScoreBar from './ScoreBar.svelte';
@@ -26,6 +26,7 @@
     role = 'single',
     onpick,
     onpicker,
+    onact,
   }: {
     game: Game;
     session: Session;
@@ -34,10 +35,14 @@
     role?: MediaRole;
     onpick?: (ref: ClueRef) => void;
     onpicker?: (id: string) => void;
+    /** Host clicked the stage (only passed in the host's window, never the audience window). */
+    onact?: (a: StageAction) => void;
   } = $props();
+  const act = (a: StageAction) => onact?.(a);
 
   const info = $derived(currentClueInfo(session, game));
-  const finalCategorySlide = $derived(textSlide(game.final.category || 'Final Jeopardy'));
+  const finalCategorySlide = $derived(textSlide(game.final.category || finalName(game)));
+  const finalLabel = $derived(finalName(game).toUpperCase());
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived(game.rounds[session.currentRound]);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
@@ -56,11 +61,24 @@
 <div class="theme" style={themeCss}>
 {#if session.phase === 'board'}
   {#if session.intro?.stage === 'title'}
-    <div class="full title-card" in:scale={{ start: 0.3, duration: 600 }} out:fade={{ duration: 250 }}>
+    <div
+      class="full title-card"
+      class:clickable={!!onact}
+      onclick={() => act('intro')}
+      role="presentation"
+      in:scale={{ start: 0.3, duration: 600 }}
+      out:fade={{ duration: 250 }}
+    >
       <div class="round-name">{round?.name}</div>
     </div>
   {:else}
-    <div class="board-area bar-{bar}" in:fade={{ duration: 200 }}>
+    <div
+      class="board-area bar-{bar}"
+      class:clickable={!!onact && !!session.intro}
+      onclick={() => session.intro && act('intro')}
+      role="presentation"
+      in:fade={{ duration: 200 }}
+    >
       <Board {game} {session} {onpick} />
     </div>
     {#if bar !== 'hidden'}
@@ -77,7 +95,13 @@
     </div>
   {:else}
     {#key `${info.clue.id}-${session.revealed}`}
-      <div class="full" in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}>
+      <div
+        class="full"
+        class:clickable={!!onact}
+        onclick={() => act(session.revealed ? 'back' : 'reveal')}
+        role="presentation"
+        in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}
+      >
         <SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />
       </div>
     {/key}
@@ -89,9 +113,16 @@
   {/if}
 {:else if session.phase === 'final'}
   {#key session.finalStep}
-    <div class="full" in:fade={{ duration: 400 }}>
+    <div
+      class="full"
+      class:clickable={!!onact && session.finalStep !== 'wagers' && session.finalStep !== 'reveal'}
+      onclick={() =>
+        session.finalStep === 'question' ? act('reveal') : session.finalStep === 'category' || session.finalStep === 'answer' ? act('final-next') : undefined}
+      role="presentation"
+      in:fade={{ duration: 400 }}
+    >
       {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
-        <div class="final-label">FINAL JEOPARDY!</div>
+        <div class="final-label">{finalLabel}</div>
         <SlideView slide={finalCategorySlide} />
         {#if session.finalStep === 'wagers'}<div class="final-sub">Make your wagers…</div>{/if}
       {:else if session.finalStep === 'question'}
@@ -100,7 +131,7 @@
         <SlideView slide={game.final.answerSlide} {role} />
       {:else if session.finalStep === 'reveal'}
         <div class="reveal">
-          <div class="final-label small">FINAL JEOPARDY!</div>
+          <div class="final-label small">{finalLabel}</div>
           {#if spotlight && session.final}
             {@const f = session.final}
             {@const res = f.results[spotlight.id]}
@@ -128,7 +159,13 @@
   {/key}
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
   {#key session.tiebreakerRevealed}
-    <div class="full" in:fade={{ duration: 300 }}>
+    <div
+      class="full"
+      class:clickable={!!onact && !session.tiebreakerRevealed}
+      onclick={() => !session.tiebreakerRevealed && act('reveal')}
+      role="presentation"
+      in:fade={{ duration: 300 }}
+    >
       <SlideView slide={session.tiebreakerRevealed ? game.tiebreaker.answerSlide : game.tiebreaker.questionSlide} {role} />
       <div class="final-label small">TIEBREAKER</div>
     </div>
@@ -163,7 +200,7 @@
 {/if}
 
 {#if live.overlay}
-  <ToolOverlay o={live.overlay} {game} {session} {role} />
+  <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} />
 {/if}
 
 <div class="pops" style:bottom={session.phase === 'board' ? '270px' : '40px'}>
@@ -212,6 +249,9 @@
     position: absolute;
     inset: 0;
     background: var(--tile);
+  }
+  .clickable {
+    cursor: pointer;
   }
   .title-card {
     display: grid;
