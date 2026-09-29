@@ -78,11 +78,16 @@ export function newLive(): Live {
   return { pops: [], timer: null, sound: null, overlay: null };
 }
 
+/** How long into a roll-off round the dice settle (+ a beat before the winner shows). */
+export const ROLLOFF_ROLL_MS = 1300;
+export const ROLLOFF_REVEAL_MS = ROLLOFF_ROLL_MS + 300;
+
 /** When a tool overlay's animation finishes (ms timestamp). */
 export function overlayDoneAt(o: Overlay): number {
   if (o.kind === 'wheel') return o.spin ? o.spin.startedAt + o.spin.duration : 0;
   if (o.kind === 'dice') return o.roll ? o.startedAt + o.duration : 0;
-  if (o.kind === 'rolloff') return o.startedAt + o.rounds.length * o.roundMs;
+  // Matches RollOffView: the winner shows 1.6s into the last round.
+  if (o.kind === 'rolloff') return o.startedAt + (o.rounds.length - 1) * o.roundMs + ROLLOFF_REVEAL_MS;
   return 0;
 }
 

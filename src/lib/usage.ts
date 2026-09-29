@@ -57,6 +57,7 @@ export function mediaUsage(game: Game): Map<string, number> {
 /** Media referenced outside slides: game sounds (and later wheel/dice/theme media). */
 export function extraMediaRefs(game: Game): string[] {
   const out = Object.values(game.audio ?? {}).filter((x): x is string => !!x);
+  if (game.theme?.boardImage) out.push(game.theme.boardImage);
   for (const w of game.wheels ?? []) for (const s of w.segments) if (s.media) out.push(s.media);
   for (const d of game.dice ?? []) {
     for (const die of d.dice) for (const f of die.customFaces ?? []) if (f.media) out.push(f.media);

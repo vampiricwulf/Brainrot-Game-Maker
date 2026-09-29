@@ -1,6 +1,8 @@
 // Core data model. See docs/SPEC.md §4.
 // Authored content (Game) is kept separate from runtime state (Session).
 
+import { presetTheme, type Theme } from './theme';
+
 export type Id = string;
 
 export function newId(): Id {
@@ -133,20 +135,63 @@ export interface EmbedEl extends ElementBase, Playback {
 export type SlideElement = TextEl | ImageEl | VideoEl | AudioEl | ShapeEl | EmbedEl;
 export type ElementKind = SlideElement['kind'];
 
-/** Non-destructive image edits (M6). */
+/** Non-destructive image edits (spec §5.4). Positions/sizes are fractions of the output image. */
 export interface ImageEdits {
+  /** Fractions of the rotated image. */
   crop?: { x: number; y: number; w: number; h: number };
   rotate: number;
   flipH: boolean;
   flipV: boolean;
+  /** Percent (100 = unchanged). */
   brightness: number;
   contrast: number;
   saturation: number;
+  /** Degrees. */
   hue: number;
+  /** Pixels at output size. */
   blur: number;
+  /** Percent. */
   grayscale: number;
   sepia: number;
   invert: number;
+  /** Output size multiplier (1 = original resolution). */
+  scale: number;
+  texts: ImageText[];
+  stickers: ImageSticker[];
+  strokes: ImageStroke[];
+}
+
+export interface ImageText {
+  id: Id;
+  text: string;
+  x: number;
+  y: number;
+  /** Font size as a fraction of image width. */
+  size: number;
+  color: string;
+  stroke: string;
+  /** Outline width as a fraction of the font size. */
+  strokeWidth: number;
+  font: string;
+  rotation: number;
+}
+
+export interface ImageSticker {
+  id: Id;
+  emoji: string;
+  x: number;
+  y: number;
+  size: number;
+  rotation: number;
+}
+
+export interface ImageStroke {
+  color: string;
+  /** Fraction of image width. */
+  size: number;
+  erase: boolean;
+  /** Flat list x0, y0, x1, y1… as fractions. */
+  points: number[];
 }
 
 export interface Slide {
@@ -301,6 +346,7 @@ export interface Game {
   audio: GameAudio;
   wheels: WheelPreset[];
   dice: DicePreset[];
+  theme: Theme;
   /** Optional clue used to break a tie at the end. */
   tiebreaker?: { questionSlide: Slide; answerSlide: Slide; hostNotes?: string };
 }
@@ -502,6 +548,7 @@ export function newGame(): Game {
     audio: {},
     wheels: [],
     dice: [],
+    theme: presetTheme('classic'),
   };
 }
 
@@ -536,6 +583,7 @@ export function migrateGame(data: Game): Game {
   g.audio ??= {};
   g.wheels ??= [];
   g.dice ??= [];
+  g.theme = { ...d.theme, ...(data.theme ?? {}) };
   g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
   return g;
 }

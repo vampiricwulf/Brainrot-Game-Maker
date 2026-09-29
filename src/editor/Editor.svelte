@@ -9,13 +9,14 @@
   import FinalEditor from './FinalEditor.svelte';
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
+  import ThemeEditor from './ThemeEditor.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { allEmbeds, slideHasContent } from '../lib/usage';
 
   let { onplay }: { onplay: () => void } = $props();
 
   // 'setup' | 'final' | 'media' | round index
-  let tab = $state<'setup' | 'final' | 'media' | 'tools' | number>(0);
+  let tab = $state<'setup' | 'final' | 'media' | 'tools' | 'theme' | number>(0);
   const game = $derived(app.game);
   $effect(() => {
     registerGameFonts(game);
@@ -113,6 +114,7 @@
         <button class:active={tab === i} onclick={() => (tab = i)}>{round.name || `Round ${i + 1}`}</button>
       {/each}
       <button class="ghost" onclick={addRound}>＋ Add round</button>
+      <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
       <div class="navlabel muted">End</div>
@@ -139,6 +141,8 @@
         <MediaLibrary />
       {:else if tab === 'tools'}
         <ToolsEditor />
+      {:else if tab === 'theme'}
+        <ThemeEditor />
       {:else if game.rounds[tab]}
         {#key game.rounds[tab].id}
           <RoundEditor round={game.rounds[tab]} canDelete={game.rounds.length > 1} ondelete={() => removeRound(tab as number)} />

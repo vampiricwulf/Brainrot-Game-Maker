@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import type { Overlay } from '../../lib/live';
+  import { ROLLOFF_REVEAL_MS, ROLLOFF_ROLL_MS, type Overlay } from '../../lib/live';
   import type { Session } from '../../lib/model';
   import { textOn } from '../../lib/colors';
   import Die from './Die.svelte';
@@ -14,13 +14,13 @@
     return () => clearInterval(id);
   });
 
-  const ROLL = 1300;
+  const ROLL = ROLLOFF_ROLL_MS;
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const elapsed = $derived(now - o.startedAt);
   const roundIdx = $derived(Math.min(o.rounds.length - 1, Math.floor(elapsed / o.roundMs)));
   const round = $derived(o.rounds[roundIdx]);
   const rolling = $derived(elapsed - roundIdx * o.roundMs < ROLL);
-  const done = $derived(elapsed >= (o.rounds.length - 1) * o.roundMs + ROLL + 300);
+  const done = $derived(elapsed >= (o.rounds.length - 1) * o.roundMs + ROLLOFF_REVEAL_MS);
   const top = $derived(Math.max(...round.players.map((p) => round.rolls[p])));
   const tied = $derived(!rolling && !done && round.players.filter((p) => round.rolls[p] === top).length > 1);
   const winner = $derived(byId[o.winner]);

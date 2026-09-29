@@ -33,7 +33,7 @@
     gap: 18px;
     padding: 18px 24px;
     justify-content: center;
-    background: linear-gradient(#050835, #000);
+    background: linear-gradient(var(--scorebar-bg, #050835), #000);
   }
   .plate {
     flex: 1 1 0;

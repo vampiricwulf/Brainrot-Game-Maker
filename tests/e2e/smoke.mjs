@@ -27,7 +27,49 @@ function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
 }
-// Tiny test media generated in memory.
+// Test media generated in memory.
+import { deflateSync } from 'node:zlib';
+/** Solid-ish RGB PNG of the given size (a horizontal gradient). */
+function bigPng(w, h) {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf) => {
+    let c = 0xffffffff;
+    for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type), data]);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(td));
+    return Buffer.concat([len, td, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) {
+    raw[y * (w * 3 + 1)] = 0;
+    for (let x = 0; x < w; x++) {
+      const o = y * (w * 3 + 1) + 1 + x * 3;
+      raw[o] = Math.round((x / w) * 255);
+      raw[o + 1] = 80;
+      raw[o + 2] = Math.round((y / h) * 255);
+    }
+  }
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
 function png() {
   // 2×2 red PNG
   return Buffer.from(
@@ -100,9 +142,40 @@ await posBox.getByLabel('Y', { exact: true }).fill('90');
 // Media: upload an image and a short audio clip onto the question slide.
 await page.getByRole('button', { name: '🖼 Image' }).click();
 let [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
-await fc.setFiles({ name: 'pepe.png', mimeType: 'image/png', buffer: png() });
+await fc.setFiles({ name: 'pepe.png', mimeType: 'image/png', buffer: bigPng(200, 100) });
 await page.locator('.canvas img').waitFor();
 assert(true, 'image added to the slide');
+
+// Image editor: rotate 90°, flip, brighten, crop 1:1, meme text, sticker, brush → Apply.
+await page.getByRole('button', { name: '🎨 Edit image…' }).click();
+const ie = page.locator('[aria-label="Edit image"]');
+await ie.locator('.canvas-host canvas').waitFor();
+await ie.getByRole('button', { name: '⟳ 90°' }).click();
+await ie.getByRole('button', { name: '⇋ Flip H' }).click();
+await ie.locator('.slider', { hasText: 'Brightness' }).locator('input').fill('140');
+await ie.getByRole('button', { name: '✂ Crop' }).click();
+await ie.getByRole('button', { name: '1:1' }).click();
+await ie.getByRole('button', { name: 'Done cropping' }).click();
+const ibox = await ie.locator('.imgbox').boundingBox();
+await ie.getByRole('button', { name: '🅣 Text' }).click();
+await page.mouse.click(ibox.x + ibox.width / 2, ibox.y + ibox.height * 0.2);
+await ie.locator('#ie-text').fill('WHEN THE FROG');
+await ie.getByRole('button', { name: '😂 Sticker' }).click();
+await page.mouse.click(ibox.x + ibox.width * 0.8, ibox.y + ibox.height * 0.8);
+await ie.getByRole('button', { name: '🖌 Draw' }).click();
+await page.mouse.move(ibox.x + 10, ibox.y + ibox.height - 10);
+await page.mouse.down();
+await page.mouse.move(ibox.x + ibox.width / 2, ibox.y + ibox.height / 2, { steps: 5 });
+await page.mouse.up();
+await shot('1a-image-editor');
+assert((await ie.locator('.muted.small').first().innerText()).includes('100×100'), 'image editor output is 100×100 after rotate + 1:1 crop');
+await ie.getByRole('button', { name: 'Apply' }).click();
+await ie.waitFor({ state: 'detached' });
+const dims = await page.locator('.canvas img').first().evaluate((i) => new Promise((res) => (i.complete ? res([i.naturalWidth, i.naturalHeight]) : (i.onload = () => res([i.naturalWidth, i.naturalHeight])))));
+assert(dims[0] === 100 && dims[1] === 100, `edited image replaces the original on the slide (${dims.join('×')})`);
+await page.getByRole('button', { name: '🎨 Edit image…' }).click();
+assert((await ie.locator('#ie-text').count()) === 0 && (await ie.getByRole('button', { name: 'Use original' }).count()) === 1, 'edits reopen non-destructively (original kept)');
+await ie.getByRole('button', { name: 'Cancel' }).click();
 await page.getByRole('button', { name: '🔊 Audio' }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
 await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(3) });
@@ -121,6 +194,15 @@ await page.getByRole('button', { name: '🌐 Link' }).click();
 await page.locator('.canvas .card').waitFor();
 assert(true, 'YouTube link added (editor shows a thumbnail card)');
 await page.getByRole('button', { name: 'Done' }).click();
+
+// Theme: Brainrot Neon with the score bar on top.
+await page.getByRole('button', { name: '🎨 Theme' }).click();
+await page.getByRole('button', { name: /Brainrot Neon/ }).click();
+await page.getByRole('combobox', { name: 'Score bar' }).selectOption('top');
+await page.locator('.preview .board').waitFor();
+const previewTile = await page.locator('.preview .board .tile').nth(1).evaluate((e) => getComputedStyle(e).backgroundColor);
+assert(previewTile === 'rgb(22, 0, 46)', `theme preview uses the neon tile color (${previewTile})`);
+await shot('2a-theme');
 
 // A weighted "Punishment Wheel" (Bankrupt is ~certain) with a score effect, used by the 5th tile.
 await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
@@ -155,6 +237,7 @@ await page.getByRole('button', { name: '▶ Play' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 // Round intro: title card → tiles fill in → categories revealed on N.
 await page.locator('.round-name').waitFor();
+assert((await page.locator('.round-name').evaluate((e) => getComputedStyle(e).color)) === 'rgb(57, 255, 20)', 'theme applies in play (neon values)');
 assert((await page.locator('.round-name').innerText()) === 'Jeopardy!', 'round intro title card shows');
 await page.keyboard.press('n');
 await page.locator('.board .tile').first().waitFor();
@@ -165,6 +248,7 @@ await page.locator('.board .header .title').first().waitFor();
 assert((await page.locator('.board .header .title').count()) === 1, 'N reveals one category at a time');
 await page.getByRole('button', { name: 'Skip intro' }).click();
 assert((await page.locator('.board .header .title').count()) === 6, 'skip intro shows the full board');
+assert((await page.locator('.score-area.bar-top').count()) === 1, 'score bar sits on top per the theme');
 await shot('3-board');
 
 await page.locator('.board .tile').first().click();
@@ -374,8 +458,8 @@ await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: 
 await page.locator('.cat textarea').first().waitFor();
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Memes');
 assert(true, 'reopened .jbr restores the game');
-assert((await page.getByRole('button', { name: /Media \(2\)/ }).count()) === 1, 'reopened .jbr includes its media files');
-await page.getByRole('button', { name: /Media \(2\)/ }).click();
+assert((await page.getByRole('button', { name: /Media \(3\)/ }).count()) === 1, 'reopened .jbr includes its media files');
+await page.getByRole('button', { name: /Media \(3\)/ }).click();
 await page.locator('.card img').first().waitFor();
 assert((await page.locator('.card .missing').count()) === 0, 'media from the pack is loaded (no missing files)');
 

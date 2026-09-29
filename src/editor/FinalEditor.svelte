@@ -1,10 +1,9 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
   import { applyTextStyle } from '../lib/ops';
-  import { textSlide, type SlideElement, type TextEl } from '../lib/model';
+  import { textSlide, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
 
-  let { oneditimage }: { oneditimage?: (el: SlideElement) => void } = $props();
   const final = $derived(app.game.final);
   let side = $state<'q' | 'a'>('q');
   let tbSide = $state<'q' | 'a'>('q');
@@ -29,7 +28,7 @@
     <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer</button>
   </div>
   {#key side}
-    <SlideEditor slide={side === 'q' ? final.questionSlide : final.answerSlide} onapplystyle={applyStyle} {oneditimage} />
+    <SlideEditor slide={side === 'q' ? final.questionSlide : final.answerSlide} onapplystyle={applyStyle} />
   {/key}
 {/if}
 
@@ -50,7 +49,7 @@
     <button role="tab" class:on={tbSide === 'a'} aria-selected={tbSide === 'a'} onclick={() => (tbSide = 'a')}>Tiebreaker answer</button>
   </div>
   {#key tbSide}
-    <SlideEditor slide={tbSide === 'q' ? tb.questionSlide : tb.answerSlide} onapplystyle={applyStyle} {oneditimage} />
+    <SlideEditor slide={tbSide === 'q' ? tb.questionSlide : tb.answerSlide} onapplystyle={applyStyle} />
   {/key}
 {/if}
 

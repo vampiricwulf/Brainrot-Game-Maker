@@ -10,23 +10,25 @@
   import { clone } from '../../lib/ops';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
-    type MediaKind, type ShapeType, type Slide, type SlideElement, type TextEl,
+    type ImageEl, type MediaKind, type ShapeType, type Slide, type SlideElement, type TextEl,
   } from '../../lib/model';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
   import Inspector from './Inspector.svelte';
   import MediaPicker from './MediaPicker.svelte';
+  import ImageEditor from './ImageEditor.svelte';
+  import { themeStyle } from '../../lib/theme';
 
   let {
     slide,
     onapplystyle,
-    oneditimage,
   }: {
     slide: Slide;
     onapplystyle?: (el: TextEl, scope: string) => void;
-    oneditimage?: (el: SlideElement) => void;
   } = $props();
+  let editingImage = $state<string | null>(null);
+  const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
 
   const game = $derived(app.game);
   let selected = $state<string[]>([]);
@@ -303,7 +305,11 @@
   }
 </script>
 
-<svelte:window onkeydowncapture={onkey} oncopy={oncopy} onpaste={onpaste} />
+<svelte:window onkeydowncapture={(e) => !editingImage && onkey(e)} oncopy={oncopy} onpaste={onpaste} />
+
+{#if imageEl}
+  <ImageEditor el={imageEl} onclose={() => (editingImage = null)} />
+{/if}
 
 <div class="se">
   <div class="toolbar">
@@ -364,6 +370,7 @@
   <div class="body">
     <div
       class="canvas"
+      style={themeStyle(game.theme)}
       bind:this={canvasEl}
       ondragover={(e) => e.preventDefault()}
       {ondrop}
@@ -377,7 +384,12 @@
           {/key}
         {:else}
           <SlideView {slide} mode="edit" />
-          <EditLayer {slide} bind:selected onchange={() => {}} ondblclick={(el) => el.kind === 'text' && textArea?.focus()} />
+          <EditLayer
+            {slide}
+            bind:selected
+            onchange={() => {}}
+            ondblclick={(el) => (el.kind === 'text' ? textArea?.focus() : el.kind === 'image' && (editingImage = el.id))}
+          />
         {/if}
       </Stage>
     </div>
@@ -402,7 +414,7 @@
             replacing = null;
             picker = 'font';
           }}
-          oneditimage={oneditimage && single.kind === 'image' ? () => oneditimage(single!) : undefined}
+          oneditimage={single.kind === 'image' ? () => (editingImage = single!.id) : undefined}
         />
         {#if picker && replacing === single.id}
           <div class="pop-anchor"><MediaPicker kind={picker} onpick={picked} onclose={() => ((picker = null), (replacing = null))} /></div>

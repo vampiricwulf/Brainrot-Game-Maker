@@ -2,7 +2,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { mediaUrls } from '../lib/media.svelte';
   import { applyTextStyle } from '../lib/ops';
-  import type { Round, SlideElement, TextEl } from '../lib/model';
+  import type { Round, TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
@@ -10,12 +10,10 @@
     round,
     pos = $bindable(),
     onclose,
-    oneditimage,
   }: {
     round: Round;
     pos: { cat: number; row: number };
     onclose: () => void;
-    oneditimage?: (el: SlideElement) => void;
   } = $props();
 
   const cat = $derived(round.categories[pos.cat]);
@@ -148,7 +146,7 @@
           <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer (hidden until revealed)</button>
         </div>
         {#key `${clue.id}-${side}`}
-          <SlideEditor slide={side === 'q' ? clue.questionSlide : clue.answerSlide} onapplystyle={applyStyle} {oneditimage} />
+          <SlideEditor slide={side === 'q' ? clue.questionSlide : clue.answerSlide} onapplystyle={applyStyle} />
         {/key}
         <label class="field notes">
           Host notes (never shown on stream)

@@ -156,7 +156,8 @@
 
   function closeOverlay(): void {
     const o = app.live.overlay;
-    if (o?.kind === 'rolloff' && Date.now() >= overlayDoneAt(o)) session.currentPickerId = o.winner;
+    // The result was decided up front, so closing early (skipping the animation) still sets the picker.
+    if (o?.kind === 'rolloff') session.currentPickerId = o.winner;
     app.live.overlay = null;
     // A wheel/dice tile shows its question (if any) once the tool is closed.
     if (session.phase === 'clue') autoTimer();

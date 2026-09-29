@@ -17,6 +17,7 @@
   import TimerDisplay from './TimerDisplay.svelte';
   import Confetti from './Confetti.svelte';
   import ToolOverlay from './tools/ToolOverlay.svelte';
+  import { themeStyle } from '../lib/theme';
 
   let {
     game,
@@ -42,6 +43,8 @@
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const ddPlayer = $derived(session.dd?.playerId ? byId[session.dd.playerId] : undefined);
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
+  const themeCss = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
+  const bar = $derived(game.theme?.scoreBar ?? 'bottom');
   const winners = $derived.by(() => {
     const ties = tiedLeaders(session);
     if (ties.length && session.coWinners) return ties;
@@ -50,16 +53,19 @@
   });
 </script>
 
+<div class="theme" style={themeCss}>
 {#if session.phase === 'board'}
   {#if session.intro?.stage === 'title'}
     <div class="full title-card" in:scale={{ start: 0.3, duration: 600 }} out:fade={{ duration: 250 }}>
       <div class="round-name">{round?.name}</div>
     </div>
   {:else}
-    <div class="board-area" in:fade={{ duration: 200 }}>
+    <div class="board-area bar-{bar}" in:fade={{ duration: 200 }}>
       <Board {game} {session} {onpick} />
     </div>
-    <div class="score-area"><ScoreBar {game} {session} {onpicker} /></div>
+    {#if bar !== 'hidden'}
+      <div class="score-area bar-{bar}"><ScoreBar {game} {session} {onpicker} /></div>
+    {/if}
   {/if}
 {:else if session.phase === 'clue' && info}
   {#if session.dd?.stage === 'splash'}
@@ -173,14 +179,27 @@
     <audio src={mediaUrls[live.sound.media]} autoplay></audio>
   {/key}
 {/if}
+</div>
 
 <style>
+  .theme {
+    display: contents;
+  }
   .board-area {
     position: absolute;
     left: 0;
     top: 0;
     width: 1920px;
     height: 850px;
+  }
+  .board-area.bar-top {
+    top: 230px;
+  }
+  .board-area.bar-hidden {
+    height: 1080px;
+  }
+  .score-area.bar-top {
+    top: 0;
   }
   .score-area {
     position: absolute;

@@ -67,7 +67,7 @@
     display: grid;
     gap: 10px;
     padding: 10px;
-    background: var(--board-gap);
+    background: var(--board-image, none) center / cover no-repeat, var(--board-gap);
   }
   .cell {
     background: var(--tile);
@@ -82,7 +82,7 @@
     border: none;
     border-radius: 0;
     padding: 12px;
-    box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 0 0 var(--glow-size, 0) var(--glow, transparent);
   }
   .fill {
     animation: fill-in 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) both;
