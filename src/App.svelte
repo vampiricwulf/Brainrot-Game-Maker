@@ -5,7 +5,7 @@
   import { openPack } from './lib/pack';
   import { unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
-  import { loadGameMedia, pruneMedia } from './lib/media.svelte';
+  import { holdOpenLock, loadGameMedia, pruneMedia } from './lib/media.svelte';
   import { migrateGame } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
   import { newSession, rebaseSession } from './lib/session';
@@ -37,6 +37,7 @@
       loaded = true;
       return;
     }
+    holdOpenLock();
     const [draft, play, ok] = await Promise.all([loadDraft(), loadPlay(), testStorage()]);
     app.storageOk = ok;
     if (draft) {

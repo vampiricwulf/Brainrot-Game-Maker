@@ -1,7 +1,7 @@
 <!-- Every file in the game, with usage counts and cleanup (spec §5.5), and everything that plays from the internet. -->
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls } from '../lib/media.svelte';
+  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile } from '../lib/media.svelte';
   import { allEmbeds, mediaUsage } from '../lib/usage';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
@@ -18,6 +18,7 @@
   const links = $derived(game.media.length - stored.length);
   const unused = $derived(game.media.filter((m) => !usage.get(m.id)));
   const embeds = $derived(allEmbeds(game));
+  const missing = $derived(missingMedia(game));
   const icon = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };
 
@@ -39,6 +40,39 @@
 
   function remove(ids: string[]): void {
     game.media = game.media.filter((m) => !ids.includes(m.id));
+  }
+
+  function pickFiles(accept: string, multiple: boolean): Promise<File[]> {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = multiple;
+      input.accept = accept;
+      input.onchange = () => resolve(Array.from(input.files ?? []));
+      input.oncancel = () => resolve([]);
+      input.click();
+    });
+  }
+
+  /** Put a new file in place of this one (every use of it follows). */
+  async function replace(m: MediaRef): Promise<void> {
+    const [f] = await pickFiles(ACCEPT[m.kind], false);
+    if (!f) return;
+    try {
+      await replaceMediaFile(game, m.id, f);
+      toast(`"${f.name}" is in place: everything that used this file shows it now`);
+    } catch (e) {
+      toast((e as Error).message, 6000);
+    }
+  }
+
+  /** Pick several files at once; each missing file with the same name gets reconnected. */
+  async function findMissing(): Promise<void> {
+    const files = await pickFiles(`${ACCEPT.any},${ACCEPT.font}`, true);
+    if (!files.length) return;
+    const r = await relinkMissing(game, files);
+    const rest = r.stillMissing.length ? ` Still missing: ${r.stillMissing.join(', ')} (use 🔗 Replace file… on each).` : '';
+    toast(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}.${rest}${r.errors.length ? ' ' + r.errors.join(' ') : ''}`, r.stillMissing.length || r.errors.length ? 9000 : 4000);
   }
 
   async function upload(): Promise<void> {
@@ -66,6 +100,14 @@
   {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
   {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .jbr packs but make big standalone HTML exports.</span>{/if}
 </p>
+{#if missing.length}
+  <div class="missing-box" role="alert">
+    ⚠ {missing.length} file{missing.length === 1 ? ' is' : 's are'} missing from this browser (e.g. after opening a .json export, which
+    has no media). Pick the files again to put them back:
+    <button class="small" onclick={findMissing}>🔗 Find missing files…</button>
+    <span class="muted small">(matched by file name; or use 🔗 Replace file… on each one below)</span>
+  </div>
+{/if}
 <div class="row top">
   <button onclick={upload}>⬆ Add files…</button>
   <div class="link">
@@ -118,7 +160,14 @@
       {:else if m.source}
         <div class="meta muted" title={m.source}>Saved from {linkHost(m.source)}</div>
       {/if}
-      <button class="ghost small" onclick={() => (!n || confirm(`"${m.name}" is used ${n}×. Remove it anyway?`)) && remove([m.id])}>Remove</button>
+      <div class="acts">
+        {#if !m.url && !mediaUrls[m.id]}
+          <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
+        {:else}
+          <button class="ghost small" onclick={() => replace(m)} title="Swap in another file; every place it's used follows">Replace…</button>
+        {/if}
+        <button class="ghost small" onclick={() => (!n || confirm(`"${m.name}" is used ${n}×. Remove it anyway?`)) && remove([m.id])}>Remove</button>
+      </div>
     </div>
   {/each}
 </div>
@@ -253,5 +302,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .missing-box {
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--warn);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--warn) 12%, transparent);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 </style>

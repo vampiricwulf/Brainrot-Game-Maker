@@ -23,7 +23,7 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 | **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
 | 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, a **banner image above the board** (height and fit), and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
-| 🖼 **Media** | Every file in the game, with usage counts and "remove unused". Files that play from the internet show 🌐 and their site, with **Save a copy** and **Check link**. Also **Paste a link** to add one, and a list of online players (YouTube, Google Drive's player). |
+| 🖼 **Media** | Every file in the game, with usage counts and "remove unused". Files that play from the internet show 🌐 and their site, with **Save a copy** and **Check link**. Also **Paste a link** to add one, and a list of online players (YouTube, Google Drive's player). **Replace…** swaps in another file everywhere it's used; a file missing from this browser (e.g. after opening a `.json`, which has no media) is flagged, with **🔗 Replace file…** on it and **🔗 Find missing files…** to put back many at once by file name. |
 | **Final round** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
@@ -133,6 +133,8 @@ you see the progress and a **Cancel** button; a message then says what happened:
 - Every file in a game has its own name: adding a file whose name is already taken (every pasted screenshot is
   `image.png`) gives it a random suffix, like `image-k3f9x2.png`, so files are easy to tell apart.
 - **Save** downloads a **`.jbr` game pack** (a zip with the game plus all its media). **Open…** loads `.jbr` or `.json`.
+  Big games show a percentage while saving and the page stays usable. A file the browser can no longer read is left
+  out and listed, instead of failing the whole save.
 - **⬇ Export HTML** makes a **single player-only HTML file** with everything inside. Send it to anyone; they double-click it
   and press ▶ Play. You're warned above ~100 MB. For big games, share the `.jbr` instead.
 - **Export JSON** is a text-only copy, handy for hand-editing or writing clues with an AI.

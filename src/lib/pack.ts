@@ -3,31 +3,44 @@ import JSZip from 'jszip';
 import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from './media.svelte';
 import { migrateGame, type Game } from './model';
 import { downloadBlob, parseGame, safeFilename } from './fileio';
+import { buildZip, type ZipEntry } from './zipwrite';
 
 function mediaPath(ref: { id: string; name: string }): string {
   const ext = extOf(ref.name);
   return `media/${ref.id}${ext ? '.' + ext : ''}`;
 }
 
-export async function buildPack(game: Game): Promise<{ blob: Blob; missing: string[] }> {
+/** Progress while a pack is built: bytes of media checked so far, of the total. */
+export type PackProgress = (done: number, total: number) => void;
+
+/**
+ * Build the .jbr zip. Media that isn't stored, or that the browser can no longer read, is left out
+ * and listed in `missing` rather than failing the whole save.
+ */
+export async function buildPack(game: Game, onProgress?: PackProgress): Promise<{ blob: Blob; missing: string[] }> {
   await loadGameMedia(game);
-  const zip = new JSZip();
-  zip.file('game.json', JSON.stringify(game, null, 2));
+  const entries: ZipEntry[] = [{ name: 'game.json', data: new Blob([JSON.stringify(game, null, 2)], { type: 'application/json' }) }];
   const missing: string[] = [];
+  const byPath = new Map<string, string>();
   for (const ref of game.media) {
     // A live link has no file to pack: game.json keeps its link.
     if (ref.url) continue;
     const b = getBlob(ref.id);
-    if (b) zip.file(mediaPath(ref), b);
-    else missing.push(ref.name);
+    if (!b) {
+      missing.push(ref.name);
+      continue;
+    }
+    const path = mediaPath(ref);
+    byPath.set(path, ref.name);
+    entries.push({ name: path, data: b });
   }
-  // Media is already compressed; only deflate the JSON.
-  const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE', mimeType: 'application/zip' });
+  const { blob, failed } = await buildZip(entries, onProgress);
+  for (const path of failed) missing.push(byPath.get(path) ?? path);
   return { blob, missing };
 }
 
-export async function savePack(game: Game): Promise<string[]> {
-  const { blob, missing } = await buildPack(game);
+export async function savePack(game: Game, onProgress?: PackProgress): Promise<string[]> {
+  const { blob, missing } = await buildPack(game, onProgress);
   downloadBlob(`${safeFilename(game.title)}.jbr`, blob);
   return missing;
 }

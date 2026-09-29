@@ -1,6 +1,6 @@
 // Standalone player-only HTML export (spec §2, §8): this very app file plus the game pack embedded
 // as base64. When opened it detects the pack and starts in player mode.
-import { buildPack } from './pack';
+import { buildPack, type PackProgress } from './pack';
 import { downloadBlob, safeFilename } from './fileio';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
@@ -17,6 +17,21 @@ export async function unpackEmbedded(b64: string): Promise<Blob> {
   // fetch() on a data: URL decodes large base64 far more efficiently than atob().
   const res = await fetch(`data:application/zip;base64,${b64}`);
   return res.blob();
+}
+
+/**
+ * Base64 of a Blob as byte pieces (3 MB of input each): no single huge string is ever built, and each
+ * piece is turned into bytes as it's made, so the final Blob doesn't have to encode it all at once.
+ */
+async function base64Pieces(blob: Blob): Promise<Uint8Array<ArrayBuffer>[]> {
+  const STEP = 3 * 1024 * 1024; // a multiple of 3, so the pieces join without padding in between
+  const enc = new TextEncoder();
+  const out: Uint8Array<ArrayBuffer>[] = [];
+  for (let at = 0; at < blob.size; at += STEP) {
+    out.push(enc.encode(await blobToBase64(blob.slice(at, at + STEP))) as Uint8Array<ArrayBuffer>);
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  return out;
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -39,15 +54,20 @@ function selfHtml(): string {
 const WARN = 100 * 1024 ** 2;
 const STRONG = 250 * 1024 ** 2;
 
-export async function exportStandaloneHtml(game: Game): Promise<{ size: number; missing: string[]; online: number } | null> {
-  const { blob: pack, missing } = await buildPack(game);
+export async function exportStandaloneHtml(game: Game, onProgress?: PackProgress): Promise<{ size: number; missing: string[]; online: number } | null> {
+  const { blob: pack, missing } = await buildPack(game, onProgress);
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
   if (estimate > STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .jbr pack is better. Export anyway?`)) return null;
   if (estimate > WARN && estimate <= STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`)) return null;
-  const b64 = await blobToBase64(pack);
-  const html = selfHtml().replace(/<\/body>(?![\s\S]*<\/body>)/, `<script type="application/octet-stream" id="${PACK_ELEMENT_ID}">${b64}</script>\n</body>`);
-  const out = new Blob([html], { type: 'text/html' });
+  const html = selfHtml();
+  const cut = html.lastIndexOf('</body>');
+  const [head, tail] = cut < 0 ? [html, ''] : [html.slice(0, cut), html.slice(cut)];
+  // Built from pieces: one giant string could exceed the browser's string limit and freeze the page.
+  const out = new Blob(
+    [head, `<script type="application/octet-stream" id="${PACK_ELEMENT_ID}">`, ...(await base64Pieces(pack)), '</script>\n', tail],
+    { type: 'text/html' },
+  );
   downloadBlob(`${safeFilename(game.title)}.html`, out);
   return { size: out.size, missing, online: onlineCount(game) };
 }

@@ -62,10 +62,15 @@
   }
 
   let saving = $state(false);
+  /** Percent done while a pack is built (big games take a few seconds). */
+  let packPct = $state<number | null>(null);
+  const packProgress = (done: number, total: number) => (packPct = total ? Math.floor((done / total) * 100) : null);
+
   async function save(): Promise<void> {
     saving = true;
+    packPct = null;
     try {
-      const missing = await savePack($state.snapshot(game));
+      const missing = await savePack($state.snapshot(game), packProgress);
       if (missing.length) alert(`Saved, but these media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast('Saved game pack (.jbr)');
     } catch (e) {
@@ -78,8 +83,9 @@
   let exporting = $state(false);
   async function exportHtml(): Promise<void> {
     exporting = true;
+    packPct = null;
     try {
-      const r = await exportStandaloneHtml($state.snapshot(game));
+      const r = await exportStandaloneHtml($state.snapshot(game), packProgress);
       if (r)
         toast(
           `Exported a playable HTML file (${formatBytes(r.size)}). Double-click it to play.` +
@@ -102,9 +108,9 @@
     <input class="title" bind:value={game.title} aria-label="Game title" />
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
-    <button onclick={save} disabled={saving} title="Download a .jbr game pack (game + all media)">{saving ? 'Saving…' : 'Save'}</button>
+    <button onclick={save} disabled={saving} title="Download a .jbr game pack (game + all media)">{saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}</button>
     <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
-      {exporting ? 'Exporting…' : '⬇ Export HTML'}
+      {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Export HTML'}
     </button>
     <button class="ghost" onclick={() => saveGameJson($state.snapshot(game))} title="Text only, no media. Handy for hand-editing.">
       Export JSON

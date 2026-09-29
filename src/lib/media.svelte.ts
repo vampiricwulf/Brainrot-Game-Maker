@@ -68,19 +68,48 @@ export async function loadGameMedia(game: Game): Promise<string[]> {
 }
 
 /** Delete stored media not referenced by any of the given games (or by the saved game in progress). */
+/** Held (shared) by every open copy of the app, so one copy can tell whether others are open. */
+const OPEN_LOCK = 'jeopardy-builder-open';
+
+/** Mark this copy of the app as open for as long as the page lives (see pruneMedia). */
+export function holdOpenLock(): void {
+  try {
+    void navigator.locks?.request(OPEN_LOCK, { mode: 'shared' }, () => new Promise<never>(() => {}));
+  } catch {
+    /* no Web Locks: pruning just can't see other copies */
+  }
+}
+
+/** Another copy of the app (tab or window) shares this storage and may use media this one doesn't know about. */
+async function otherCopiesOpen(): Promise<boolean> {
+  try {
+    const held = (await navigator.locks?.query())?.held ?? [];
+    return held.filter((l) => l.name === OPEN_LOCK).length > 1;
+  } catch {
+    return false;
+  }
+}
+
 export async function pruneMedia(games: (Game | null | undefined)[]): Promise<void> {
+  // Every copy of the app opened from disk shares one storage: with another copy open (a second tab
+  // or window), its media would look unused here, so leave storage alone.
+  const shared = await otherCopiesOpen();
   // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it.
   const saved = (await loadPlay())?.game;
-  const keep = new Set([...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []));
-  try {
-    for (const k of await keys()) {
-      if (typeof k === 'string' && k.startsWith('media:') && !keep.has(k.slice(6))) await del(k);
+  // Checked again for every file: media added while this runs must survive.
+  const keep = () => new Set([...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []));
+  if (!shared) {
+    try {
+      for (const k of await keys()) {
+        if (typeof k === 'string' && k.startsWith('media:') && !keep().has(k.slice(6))) await del(k);
+      }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
   }
+  const kept = keep();
   for (const id of [...blobs.keys()]) {
-    if (!keep.has(id)) {
+    if (!kept.has(id)) {
       blobs.delete(id);
       forget(id);
       delete mediaUrls[id];
@@ -290,6 +319,59 @@ export function imgFallback(e: Event): void {
     img.dataset.fallback = '1';
     img.src = next;
   }
+}
+
+const KIND_WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a video', audio: 'a sound', font: 'a font' };
+
+/**
+ * Put a new file in place of a game file (one that went missing, or one to swap), keeping its id so
+ * every tile, slide and sound that uses it is fixed at once. The new file must be the same kind.
+ */
+export async function replaceMediaFile(game: Game, id: string, file: File): Promise<MediaRef> {
+  const ref = game.media.find((m) => m.id === id);
+  if (!ref) throw new Error('That file is no longer in the game.');
+  const mime = mimeFor(file.name, file.type);
+  const kind = mediaKind(file.name, mime);
+  if (!kind) throw new Error(`"${file.name}" isn't a supported image, video, audio or font file.`);
+  if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
+  let blob: Blob = file;
+  if (mime === 'image/svg+xml') blob = new Blob([sanitizeSvg(await file.text())], { type: mime });
+  await putMedia(id, blob.type ? blob : new Blob([blob], { type: mime }));
+  ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
+  ref.mime = mime;
+  ref.size = blob.size;
+  // It's a stored file now, not a link.
+  delete ref.url;
+  delete ref.expiresAt;
+  delete ref.source;
+  return ref;
+}
+
+/** Game files with nothing to show: not stored in this browser and not a link. */
+export function missingMedia(game: Game): MediaRef[] {
+  return game.media.filter((m) => !m.url && !mediaUrls[m.id]);
+}
+
+/**
+ * Reconnect missing files from a batch the user picked, matched by file name (ignoring case).
+ * Returns how many were reconnected and the names still missing.
+ */
+export async function relinkMissing(game: Game, files: File[]): Promise<{ fixed: number; stillMissing: string[]; errors: string[] }> {
+  const byName = new Map(files.map((f) => [f.name.toLowerCase(), f]));
+  let fixed = 0;
+  const errors: string[] = [];
+  for (const ref of missingMedia(game)) {
+    const f = byName.get(ref.name.toLowerCase());
+    if (!f) continue;
+    try {
+      await replaceMediaFile(game, ref.id, f);
+      byName.delete(ref.name.toLowerCase());
+      fixed++;
+    } catch (e) {
+      errors.push((e as Error).message);
+    }
+  }
+  return { fixed, stillMissing: missingMedia(game).map((m) => m.name), errors };
 }
 
 /** Strip scripts, event handlers and external references from an SVG (spec §10 security). */
