@@ -216,8 +216,19 @@ help:
 - **Discord audio fix** (on by default; switch it off in the 🔊 Sound help) starts WebView2 with its audio inside its
   main process, a direct child of the app, which is what lets Discord's per-program capture hear the game (tested on
   Windows with Discord). Turning it off or on needs a restart (**↻ Restart now**). Switching it off is saved as the empty
-  file `discord-audio-fix-off` in `%APPDATA%\com.jeopardybuilder.brainrot\` (delete it to turn the fix back on). If
-  WebView2 ever won't start with it, the app starts without it and the Sound help says so.
+  file `discord-audio-fix-off` in `%APPDATA%\com.jeopardybuilder.brainrot\` (delete it to turn the fix back on).
+- The fix never keeps the app from starting. Right after a restart, WebView2 can refuse a changed setting for a few
+  seconds while the previous copy's WebView2 processes close, so the app keeps trying for about 4 seconds, then starts
+  with the other setting for that run:
+  - fix on but started without it: the host panel and the Sound help say so, and **↻ Restart now** tries again. If it
+    keeps happening, share your whole screen with sound, or run the show in Chrome or Edge;
+  - fix switched off but started with it: the Sound help offers the restart that turns it off.
+
+  If WebView2 won't start either way, a message box says so.
+- If WebView2 crashes with the fix on (both windows go blank: with the fix, the sound and any audio software that hooks
+  into it run inside WebView2's main process), the app restarts without the fix. The host panel and the Sound help say "The
+  Discord audio fix was turned off for this run because WebView2 crashed with it", and it stays off until you press
+  **↻ Try it again**. Your setting itself isn't changed.
 
 **Trying the audio fix on an older build** (before it was built in): close Jeopardy Builder, open a Command Prompt
 and run the two lines below; for the second one, drag the `.exe` into the Command Prompt window to paste its path, then
@@ -232,6 +243,26 @@ set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-features=msWebOOUI,msPdfOOUI
 It works if Task Manager (Details tab, with the "Command line" column) no longer shows an `msedgewebview2.exe` whose
 command line contains `--utility-sub-type=audio.mojom.AudioService`. Then go live in Discord on the audience window (it's
 listed as "*game name* · Audience") with Sound on and check that a viewer hears Test sound.
+
+### If the app won't open or its window stays blank
+
+Turn the Discord audio fix off from outside the app, in either of these ways, then open Jeopardy Builder normally:
+
+- **Command Prompt**: press Win+R, type `cmd` and press Enter, then paste this line and press Enter. It creates the
+  settings folder (if it isn't there yet) with the empty `discord-audio-fix-off` file in it:
+
+  ```bat
+  mkdir "%APPDATA%\com.jeopardybuilder.brainrot" 2>nul & type nul > "%APPDATA%\com.jeopardybuilder.brainrot\discord-audio-fix-off"
+  ```
+
+  A `discord-audio-fix-off.txt` made with Explorer's **New › Text Document** in that folder works too.
+- **Shortcut**: right-click the `.exe` › **Create shortcut** (on Windows 11, under **Show more options**), then
+  right-click the shortcut › **Properties** and add ` --no-audio-fix` at the very end of **Target**, after the closing
+  quote if there is one, e.g. `"C:\Users\you\Downloads\jeopardy-builder-portable.exe" --no-audio-fix`. Open Jeopardy
+  Builder once with this shortcut: it saves the fix as off, and if a blank copy is still open, restarts that copy
+  without the fix. A Command Prompt works the same way: `"C:\path\to\jeopardy-builder-portable.exe" --no-audio-fix`.
+
+To turn the fix back on later, tick it in the 🔊 Sound help (or delete the file).
 
 ## Desktop app (experimental)
 
@@ -280,4 +311,4 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media) |
 | `src/play/` | Play UI (audience view, board, host panel, tools) |
 | `src/audience/` | The audience window app |
-| `src-tauri/` | The desktop app (window handling, single instance, the Discord audio fix's WebView2 switches) |
+| `src-tauri/` | The desktop app (window handling, single instance, the Discord audio fix: its WebView2 switches, start fallback, crash recovery and off switches) |
