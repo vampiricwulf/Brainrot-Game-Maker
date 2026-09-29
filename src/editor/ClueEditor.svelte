@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { mediaUrls } from '../lib/media.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { setSlideText, slideText, type Round, type TextEl } from '../lib/model';
-  import SlideEditor from './slide/SlideEditor.svelte';
+  import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
   let {
@@ -25,6 +25,13 @@
   let side = $state<'q' | 'a'>('q');
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
+
+  // Both slides keep undo history from the moment the clue opens, so typing the answer in its quick
+  // field while the question slide is showing is still a step Ctrl+Z can undo on the answer slide.
+  $effect(() => {
+    const c = clue;
+    if (c) untrack(() => [c.questionSlide, c.answerSlide].forEach(trackSlide));
+  });
 
   // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next.
   const focusQuestion = () => tick().then(() => questionField?.focus());

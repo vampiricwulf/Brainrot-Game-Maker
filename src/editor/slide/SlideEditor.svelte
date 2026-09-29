@@ -12,6 +12,9 @@
   const instances = new Set<Instance>();
   let active: Instance | null = null;
   let imageEditors = 0;
+  // An editor went away. The next one to mount takes over: it's the same editor remounted by a
+  // Question/Answer tab switch (tabs sit outside the editor, so clicking one doesn't activate it).
+  let vacated = false;
 
   // Undo history per slide, so it survives Question/Answer switches, Prev/Next and reopening a clue.
   // Keyed by the slide itself: opening another game starts fresh histories.
@@ -27,6 +30,14 @@
     // Changed while no editor showed it (e.g. the clue's quick text fields): that's one undo step.
     h.commit(now);
     return h;
+  }
+
+  /**
+   * Start a slide's undo history before any editor shows it (the clue editor calls this for both
+   * slides when a clue opens), so a quick-field edit to the hidden slide can be undone there later.
+   */
+  export function trackSlide(slide: Slide): void {
+    historyFor(slide);
   }
 
   /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
@@ -102,11 +113,13 @@
   }
   onMount(() => {
     instances.add(me);
-    if (!active) active = me;
+    if (!active || vacated) activate();
+    vacated = false;
     registerGameFonts(game);
     return () => {
       instances.delete(me);
       if (active === me) active = null;
+      vacated = true;
     };
   });
   $effect(() => {
@@ -317,7 +330,8 @@
   }
 
   // ---------- Selection actions ----------
-  function remove(): void {
+  /** Delete the selected (unlocked) items. `verb` names it in the notice ("Cut image · Undo"). */
+  function remove(verb = 'Deleted'): void {
     const gone = slide.elements.filter((e) => selected.includes(e.id) && !e.locked);
     if (!gone.length) {
       if (selected.length) tell('🔒 Locked items can’t be deleted. Untick Lock first.');
@@ -328,7 +342,7 @@
       slide.elements = slide.elements.filter((e) => !ids.has(e.id));
       selected = selected.filter((id) => !ids.has(id));
     });
-    tell(`Deleted ${describe(gone)}`, undo);
+    tell(`${verb} ${describe(gone)}`, undo);
   }
 
   function duplicate(): void {
@@ -499,7 +513,7 @@
     if (!inCharge() || typing(e) || previewing || !selected.length) return;
     e.preventDefault();
     copyItems(e.clipboardData);
-    remove();
+    remove('Cut');
   }
 
   function pasteItems(): void {
@@ -548,61 +562,64 @@
 
 <div class="se" class:fill onpointerdowncapture={activate} onfocusin={activate}>
   <div class="toolbar">
-    <button onclick={addText} title="Add a text box">🅣 Text</button>
-    <div class="pop">
-      <button onclick={() => (picker = 'image')}>🖼 Image</button>
-      {#if picker === 'image' && !replacing}<MediaPicker kind="image" onpick={picked} onclose={() => (picker = null)} />{/if}
-    </div>
-    <div class="pop">
-      <button onclick={() => (picker = 'video')}>🎬 Video</button>
-      {#if picker === 'video' && !replacing}<MediaPicker kind="video" onpick={picked} onclose={() => (picker = null)} />{/if}
-    </div>
-    <div class="pop">
-      <button onclick={() => (picker = 'audio')}>🔊 Audio</button>
-      {#if picker === 'audio' && !replacing}<MediaPicker kind="audio" onpick={picked} onclose={() => (picker = null)} />{/if}
-    </div>
-    <div class="pop">
-      <button onclick={() => (shapeMenu = !shapeMenu)}>◼ Shape ▾</button>
-      {#if shapeMenu}
-        <div class="menu">
-          <button onclick={() => addShape('rect')}>▭ Rectangle</button>
-          <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
-          <button onclick={() => addShape('line')}>― Line</button>
-          <button onclick={() => addShape('arrow')}>➝ Arrow</button>
-        </div>
-      {/if}
-    </div>
-    <button onclick={addLink} title="YouTube or a link to online media (needs internet)">🌐 Link</button>
-    <span class="sep"></span>
-    <label class="bg" title="Slide background color">
-      BG
-      <input
-        type="color"
-        aria-label="Slide background color"
-        value={slide.background.color ?? '#060ce9'}
-        oninput={(e) => (slide.background.color = e.currentTarget.value)}
-      />
-    </label>
-    <div class="pop">
-      <button onclick={() => (picker = 'image', (replacing = 'bg'))} title="Background image">🖼 BG</button>
-      {#if picker === 'image' && replacing === 'bg'}
-        <MediaPicker
-          kind="image"
-          onpick={(id) => {
-            edit(() => (slide.background.image = id));
-            picker = null;
-            replacing = null;
-          }}
-          onclose={() => ((picker = null), (replacing = null))}
+    <!-- Preview is look-only: everything that edits the slide is off until it stops. -->
+    <fieldset class="tools" disabled={previewing}>
+      <button onclick={addText} title="Add a text box">🅣 Text</button>
+      <div class="pop">
+        <button onclick={() => (picker = 'image')}>🖼 Image</button>
+        {#if picker === 'image' && !replacing}<MediaPicker kind="image" onpick={picked} onclose={() => (picker = null)} />{/if}
+      </div>
+      <div class="pop">
+        <button onclick={() => (picker = 'video')}>🎬 Video</button>
+        {#if picker === 'video' && !replacing}<MediaPicker kind="video" onpick={picked} onclose={() => (picker = null)} />{/if}
+      </div>
+      <div class="pop">
+        <button onclick={() => (picker = 'audio')}>🔊 Audio</button>
+        {#if picker === 'audio' && !replacing}<MediaPicker kind="audio" onpick={picked} onclose={() => (picker = null)} />{/if}
+      </div>
+      <div class="pop">
+        <button onclick={() => (shapeMenu = !shapeMenu)}>◼ Shape ▾</button>
+        {#if shapeMenu}
+          <div class="menu">
+            <button onclick={() => addShape('rect')}>▭ Rectangle</button>
+            <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
+            <button onclick={() => addShape('line')}>― Line</button>
+            <button onclick={() => addShape('arrow')}>➝ Arrow</button>
+          </div>
+        {/if}
+      </div>
+      <button onclick={addLink} title="YouTube or a link to online media (needs internet)">🌐 Link</button>
+      <span class="sep"></span>
+      <label class="bg" title="Slide background color">
+        BG
+        <input
+          type="color"
+          aria-label="Slide background color"
+          value={slide.background.color ?? '#060ce9'}
+          oninput={(e) => (slide.background.color = e.currentTarget.value)}
         />
+      </label>
+      <div class="pop">
+        <button onclick={() => (picker = 'image', (replacing = 'bg'))} title="Background image">🖼 BG</button>
+        {#if picker === 'image' && replacing === 'bg'}
+          <MediaPicker
+            kind="image"
+            onpick={(id) => {
+              edit(() => (slide.background.image = id));
+              picker = null;
+              replacing = null;
+            }}
+            onclose={() => ((picker = null), (replacing = null))}
+          />
+        {/if}
+      </div>
+      {#if slide.background.image || slide.background.color}
+        <button class="ghost small" onclick={() => edit(() => (slide.background = {}))} title="Reset background">✕ BG</button>
       {/if}
-    </div>
-    {#if slide.background.image || slide.background.color}
-      <button class="ghost small" onclick={() => edit(() => (slide.background = {}))} title="Reset background">✕ BG</button>
-    {/if}
+    </fieldset>
     <span class="spacer"></span>
     <button class="ghost small" onclick={copySlide}>Copy slide</button>
-    <button class="ghost small" onclick={pasteSlide} disabled={!clipboard.slide}>Paste slide</button>
+    <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide}>Paste slide</button>
     <button class="small" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
       {previewing ? '■ Stop preview' : '▶ Preview'}
     </button>
@@ -616,20 +633,24 @@
       aria-label={previewMuted ? 'Preview sound is off' : 'Preview sound is on'}
       title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}
     >{previewMuted ? '🔇' : '🔈'}</button>
-    <button class="ghost small" onclick={undo} disabled={!canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
-    <button class="ghost small" onclick={redo} disabled={!canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
+    <button class="ghost small" onclick={undo} disabled={previewing || !canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
+    <button class="ghost small" onclick={redo} disabled={previewing || !canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
   </div>
 
   <div class="body">
     <div class="cell">
-      <!-- The padding is a pasteboard, so handles on items at the slide's edges stay visible and grabbable. -->
+      <!-- The padding is a pasteboard, so handles on items at the slide's edges stay visible and grabbable.
+           A click on it stops a preview (from the keyboard: Esc, or ■ Stop preview in the toolbar). -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
       <div
         class="canvas"
+        class:previewing
         style={themeStyle(game.theme)}
         bind:this={canvasEl}
         ondragover={(e) => e.preventDefault()}
         {ondrop}
         onpointerdown={(e) => e.target === canvasEl && (selected = [])}
+        onclick={() => previewing && togglePreview()}
         role="region"
         aria-label="Slide canvas. Drop files or links here."
       >
@@ -657,13 +678,13 @@
           {/if}
         </Stage>
         {#if previewing}
-          <button class="stop-cover" onclick={togglePreview} aria-label="Stop preview" title="Back to editing (Esc)">
-            <span class="ribbon preview">PREVIEW · click to stop</span>
-          </button>
+          <!-- A click on the slide stops the preview. A YouTube embed keeps its own clicks (they stay
+               inside its frame), so it can still be started or paused here. -->
+          <div class="ribbon preview">PREVIEW · click to stop</div>
         {:else if badge}
           <div class="ribbon">{badge}</div>
         {/if}
-        {#if notice && notice.at === hv && !pending}
+        {#if notice && notice.at === hv && !pending && !previewing}
           <div class="notice" role="status">
             <span>{notice.text}</span>
             {#if notice.undo}
@@ -692,7 +713,7 @@
           bind:textArea
           onorder={order}
           onduplicate={duplicate}
-          ondelete={remove}
+          ondelete={() => remove()}
           onreplace={() => {
             if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
               replacing = single.id;
@@ -713,14 +734,14 @@
         <p class="muted">{selected.length} items selected.</p>
         <div class="row">
           <button class="small" onclick={duplicate}>Duplicate</button>
-          <button class="small bad" onclick={remove}>Delete</button>
+          <button class="small bad" onclick={() => remove()}>Delete</button>
         </div>
       {:else}
         <p class="muted">
-          Click an item to edit it, or double-click it (text goes straight to its text field). Drag to move (Shift keeps it on one
-          axis), pull the handles to resize, and use the round handle to rotate. Alt+click reaches an item hidden under another.
-          Drop or paste images, video, audio and links. Shift-click selects several. Ctrl+C / Ctrl+X / Ctrl+V copy items between
-          slides.
+          Click an item to edit it, or double-click it (text goes straight to its text field). Drag to move (press Shift while
+          dragging to keep to one axis), pull the handles to resize, and use the round handle to rotate. Alt+click reaches an
+          item hidden under another. Drop or paste images, video, audio and links. Shift-click selects several. Ctrl+C / Ctrl+X
+          / Ctrl+V copy items between slides.
         </p>
       {/if}
       {#if selected.length && !previewing}
@@ -818,14 +839,10 @@
   .canvas > :global(.frame > .stage) {
     overflow: visible;
   }
-  .stop-cover {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
+  .tools {
+    display: contents;
+  }
+  .canvas.previewing {
     cursor: pointer;
   }
   .side {
@@ -898,7 +915,6 @@
   }
   .fill .canvas {
     width: min(calc(100cqw - 2 * var(--pb) - 2px), calc((100cqh - 2 * var(--pb) - 2px) * 16 / 9));
-    margin-inline: auto;
   }
   .fill .side {
     max-height: none;

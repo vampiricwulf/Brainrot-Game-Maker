@@ -89,7 +89,7 @@
     bottom: 0;
     padding: 6px 16px;
     border-radius: 10px;
-    background: #e5484d;
+    background: var(--bad, #e5484d);
     color: #fff;
     font: 700 30px system-ui, sans-serif;
     pointer-events: none;
