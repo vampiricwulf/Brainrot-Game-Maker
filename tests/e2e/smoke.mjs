@@ -38,9 +38,12 @@ process.on('uncaughtException', onFailure);
 process.on('unhandledRejection', onFailure);
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
+/** Messages of the confirm() dialogs seen so far (all accepted). */
+const confirms = [];
 page.on('dialog', (d) => {
   if (d.type() === 'prompt') return; // answered by the step that triggers it
   if (d.type() === 'alert') console.log('  [alert] ' + d.message());
+  if (d.type() === 'confirm') confirms.push(d.message());
   d.accept();
 });
 
@@ -211,9 +214,40 @@ await ie.getByRole('button', { name: 'Apply' }).click();
 await ie.waitFor({ state: 'detached' });
 const dims = await page.locator('.canvas img').first().evaluate((i) => new Promise((res) => (i.complete ? res([i.naturalWidth, i.naturalHeight]) : (i.onload = () => res([i.naturalWidth, i.naturalHeight])))));
 assert(dims[0] === 100 && dims[1] === 100, `edited image replaces the original on the slide (${dims.join('×')})`);
-await page.getByRole('button', { name: '🎨 Edit image…' }).click();
-assert((await ie.locator('#ie-text').count()) === 0 && (await ie.getByRole('button', { name: 'Use original' }).count()) === 1, 'edits reopen non-destructively (original kept)');
+// Double-clicking the image on the slide reopens the image editor.
+const center = (b) => [b.x + b.width / 2, b.y + b.height / 2];
+await page.mouse.dblclick(...center(await page.locator('.canvas img').first().boundingBox()));
+await ie.locator('.canvas-host canvas').waitFor();
+assert((await ie.locator('#ie-text').count()) === 0 && (await ie.getByRole('button', { name: 'Use original' }).count()) === 1, 'double-click reopens the edits non-destructively (original kept)');
+// Esc inside the caption field only leaves the field; the edits are still there.
+await ie.getByRole('button', { name: '🅣 Text' }).click();
+await imgbox.click({ position: await at(0.3, 0.92) });
+await ie.locator('#ie-text').fill('BOTTOM TEXT');
+await ie.locator('#ie-text').press('Escape');
+assert((await ie.count()) === 1 && (await ie.locator('#ie-text').inputValue()) === 'BOTTOM TEXT', 'Esc in the caption field keeps the image editor open');
+// Aspect-locked crop: the top edge handle works and every drag keeps the box square.
+await ie.getByRole('button', { name: '✂ Crop' }).click();
+await ie.getByRole('button', { name: '1:1' }).click();
+const cropBox = () => ie.locator('.crop').boundingBox();
+const c0 = await cropBox();
+await page.mouse.move(...center(await ie.locator('.ch.n').boundingBox()));
+await page.mouse.down();
+await page.mouse.move(c0.x + c0.width / 2, c0.y + c0.height * 0.3, { steps: 4 });
+await page.mouse.up();
+const c1 = await cropBox();
+assert(c1.height < c0.height - 10 && Math.abs(c1.width / c1.height - 1) < 0.03, `1:1 crop: dragging the top edge shrinks the box and keeps it square (${Math.round(c1.width)}×${Math.round(c1.height)})`);
+await page.mouse.move(...center(await ie.locator('.ch.se').boundingBox()));
+await page.mouse.down();
+await page.mouse.move(c1.x + c1.width + 900, c1.y + c1.height + 40, { steps: 4 });
+await page.mouse.up();
+const c2 = await cropBox();
+assert(Math.abs(c2.width / c2.height - 1) < 0.03, `1:1 crop stays square when dragged past the image edge (${Math.round(c2.width)}×${Math.round(c2.height)})`);
+// Cancel asks before throwing the edits away, and the slide keeps the earlier result.
 await ie.getByRole('button', { name: 'Cancel' }).click();
+await ie.waitFor({ state: 'detached' });
+assert(confirms.at(-1) === 'Discard your image edits?', 'Cancel with unsaved edits asks first');
+const dims2 = await page.locator('.canvas img').first().evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+assert(dims2.join('×') === '100×100', 'cancelled edits leave the slide image as it was');
 await page.getByRole('button', { name: '🔊 Audio' }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
 await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(3) });
@@ -224,6 +258,167 @@ await page.getByRole('tab', { name: /Answer/ }).click();
 await typeOnSlide('Who is Pepe?');
 await shot('1-clue-editor');
 await page.getByRole('button', { name: 'Done' }).click();
+
+// ---------- Slide editor ergonomics, on a scratch clue (category 4, $400) ----------
+await page.locator('.tile').nth(9).click();
+const hits = () => page.locator('.canvas .hit').count();
+const insp = page.locator('.insp');
+const rect = (loc) => loc.evaluate((e) => e.getBoundingClientRect().toJSON());
+// Laptop screens: the slide fits beside the inspector, fully on screen, never over the fields above it.
+for (const [w, h] of [[1280, 720], [1366, 768], [1536, 864]]) {
+  await page.setViewportSize({ width: w, height: h });
+  await frames();
+  const cv = await rect(page.locator('.canvas'));
+  const notes = await rect(page.locator('.quick textarea').nth(2));
+  const onTop = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.quick') !== null, [notes.x + notes.width / 2, notes.y + notes.height / 2]);
+  assert(cv.bottom <= h && cv.top >= notes.bottom && onTop, `${w}×${h}: the slide canvas fits on screen and covers nothing (canvas ${Math.round(cv.top)}–${Math.round(cv.bottom)})`);
+}
+await page.setViewportSize({ width: 1400, height: 900 });
+await frames();
+// Double-click a text box: the cursor lands in its text field. Typing with the box selected goes there too.
+await page.mouse.dblclick(...center(await page.locator('.canvas .hit').first().boundingBox()));
+assert(await page.evaluate(() => document.activeElement === document.querySelector('.insp textarea')), 'double-clicking a text box puts the cursor in its text field');
+await page.locator('.canvas .hit').first().click();
+await page.keyboard.type('Typed');
+assert((await insp.locator('textarea').inputValue()) === 'Typed', 'typing with a text box selected edits its text');
+await page.locator('.canvas .hit').first().click();
+const bold = insp.getByRole('button', { name: 'Bold' });
+const boldWas = await bold.getAttribute('aria-pressed');
+await page.keyboard.press('Control+b');
+assert((await bold.getAttribute('aria-pressed')) !== boldWas, 'Ctrl+B toggles bold on the selected text');
+await page.keyboard.press('Control+b');
+const names = [...(await page.locator('.se').ariaSnapshot()).matchAll(/- button "([^"]*)"/g)].map((m) => m[1].trim());
+const glyphs = names.filter((n) => [...new Intl.Segmenter().segment(n)].length <= 1);
+assert(names.length > 20 && glyphs.length === 0, `slide editor buttons all have real names${glyphs.length ? ` (not: ${glyphs.join(' ')})` : ''}`);
+// Shrink-to-fit follows new text at once, and shrinks a long word rather than breaking it.
+const mainFit = () =>
+  page.evaluate(() => {
+    const t = document.querySelector('.canvas .text');
+    const i = t.firstElementChild;
+    return { fits: i.scrollHeight <= t.clientHeight, lines: Math.round(i.scrollHeight / parseFloat(getComputedStyle(i).lineHeight)), size: parseFloat(t.style.fontSize) };
+  });
+await page.locator('.quick textarea').first().fill('Which famous frog meme started life in a 2005 comic by Matt Furie, became a symbol of everything online, and then got its own documentary film about who owns a meme? Name it.');
+let fit = await mainFit();
+assert(fit.fits && fit.size < 110, `a 180-character question shrinks to fit straight away (${fit.size}px)`);
+await page.locator('.canvas .hit').first().click();
+assert(/showing \d+/.test(await insp.locator('.fitted').innerText()), 'the inspector shows the size the text is drawn at');
+await page.locator('.quick textarea').first().fill('SUPERCALIFRAGILISTICEXPIALIDOCIOUS');
+fit = await mainFit();
+assert(fit.lines === 1, `a long word stays on one line (${fit.size}px)`);
+await page.locator('.quick textarea').first().fill('Typed');
+
+// Undo: pressed at once, it never skips the latest change, and it survives switching slides.
+await page.getByRole('button', { name: '🅣 Text' }).click();
+assert((await hits()) === 2, 'added a second text box');
+await page.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+await page.keyboard.press('Control+z');
+assert((await hits()) === 2, 'Delete then an immediate Ctrl+Z brings the text box back');
+await page.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+assert((await page.locator('.notice').innerText()).includes('Deleted text box'), 'deleting says what was deleted');
+await page.getByRole('tab', { name: /Answer/ }).click();
+await page.getByRole('tab', { name: /Question/ }).click();
+await page.keyboard.press('Control+z');
+assert((await hits()) === 2, 'undo history survives switching to the answer slide and back');
+await page.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+await page.locator('.notice').getByRole('button', { name: 'Undo' }).click();
+assert((await hits()) === 2, 'the Deleted notice has a working Undo button');
+// Preview is look-only: keys don't edit the (hidden) selection.
+await page.locator('.canvas .hit').last().click();
+await page.getByRole('button', { name: '▶ Preview' }).click();
+await page.keyboard.press('Backspace');
+assert((await insp.count()) === 0, 'the inspector hides while previewing');
+await page.keyboard.press('Escape');
+assert((await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 && (await hits()) === 2, 'Esc stops the preview, and Backspace during it deleted nothing');
+
+// Preview plays sound: the audio clip plays unmuted, and stops with the preview.
+await page.getByRole('button', { name: '🔊 Audio' }).click();
+await page.locator('.picker .item', { hasText: 'beep.wav' }).click();
+await page.getByRole('button', { name: '▶ Preview' }).click();
+await page.waitForFunction(() => { const a = document.querySelector('.canvas audio'); return a && !a.paused && a.currentTime > 0; });
+assert(await page.locator('.canvas audio').evaluate((a) => !a.muted), 'preview plays audio with sound');
+await page.getByRole('button', { name: '■ Stop preview' }).click();
+assert(await page.locator('.canvas audio').evaluateAll((els) => els.every((a) => a.paused)), 'stopping the preview stops the audio');
+await page.getByRole('button', { name: 'Preview sound is on' }).click();
+await page.getByRole('button', { name: '▶ Preview' }).click();
+assert(await page.locator('.canvas audio').evaluate((a) => a.muted), 'the preview sound toggle mutes it');
+await page.getByRole('button', { name: '■ Stop preview' }).click();
+await page.getByRole('button', { name: 'Preview sound is off' }).click();
+await page.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+
+// A full-bleed image: its rotate handle stays on screen; locked, it can't be deleted; Alt+click reaches what's under it.
+await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.locator('.picker .item', { hasText: 'pepe.png' }).click();
+for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await posBox.getByLabel(k, { exact: true }).fill(String(v));
+const cvBox = await rect(page.locator('.canvas'));
+const rot = await rect(page.locator('.frame .rot'));
+assert(rot.top >= cvBox.top && rot.bottom <= cvBox.bottom && rot.left >= cvBox.left && rot.right <= cvBox.right, 'a full-bleed image keeps its rotate handle inside the canvas');
+await posBox.getByLabel('Lock').check();
+await page.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+assert((await hits()) === 3 && (await insp.getByText('Locked — unlock to delete').count()) === 1, 'a locked image survives Delete');
+await page.keyboard.press('Control+a');
+await page.keyboard.press('Delete');
+assert((await hits()) === 1, 'Ctrl+A then Delete skips the locked image');
+await page.keyboard.press('Control+z');
+assert((await hits()) === 3, 'and Ctrl+Z brings the text boxes back');
+await page.keyboard.down('Alt');
+await page.mouse.click(...center(await page.locator('.canvas .stage').boundingBox()));
+await page.keyboard.up('Alt');
+assert((await insp.getByLabel('Text', { exact: true }).count()) === 1, 'Alt+click selects the text box under the image');
+// "Use this style elsewhere" asks first and can be undone.
+await page.getByRole('combobox', { name: 'Which slides get this style' }).selectOption('round-q');
+await insp.getByRole('button', { name: 'Apply' }).click();
+assert(/^Restyle the main text on \d+ slides\?/.test(confirms.at(-1)) && (await page.locator('.notice').innerText()).includes('Style applied'), 'Use this style elsewhere confirms, then offers Undo');
+await page.locator('.notice').getByRole('button', { name: 'Undo' }).click();
+
+// Copy/paste: the copy lands offset, Ctrl+X cuts, newer text or a link on the clipboard wins.
+const xNow = () => posBox.getByLabel('X', { exact: true }).inputValue().then(Number);
+const xCopied = await xNow();
+await page.keyboard.press('Control+c');
+await page.keyboard.press('Control+v');
+assert((await hits()) === 4 && (await xNow()) === xCopied + 30, 'a pasted copy lands 30px down-right of the original');
+await page.keyboard.press('Control+x');
+assert((await hits()) === 3, 'Ctrl+X cuts the selected item');
+const pasteText = (text, type = 'text/plain') =>
+  page.evaluate(([t, ty]) => {
+    const dt = new DataTransfer();
+    dt.setData(ty, t);
+    document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+  }, [text, type]);
+await pasteText('Some newer words');
+assert((await hits()) === 4 && (await insp.locator('textarea').inputValue()) === 'Some newer words', 'text copied elsewhere since pastes as that text, not the old items');
+await pasteText('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+await page.locator('.canvas .card').waitFor();
+assert((await hits()) === 5, 'a pasted YouTube link becomes a YouTube element');
+await page.locator('.canvas').evaluate((c) => {
+  const dt = new DataTransfer();
+  dt.setData('text/uri-list', 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+  const r = c.getBoundingClientRect();
+  c.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: r.x + 100, clientY: r.y + 100, bubbles: true, cancelable: true }));
+});
+assert((await hits()) === 6, 'a link dropped from another tab adds online media');
+await page.getByRole('button', { name: 'Done' }).click();
+
+// ---------- Keyboard-first clue entry: type, Tab, type, Ctrl+Enter (category 6) ----------
+await page.locator('.tile').nth(5).click();
+for (const n of [1, 2, 3]) {
+  assert(await page.evaluate(() => document.activeElement?.getAttribute('placeholder') === 'Type the question…'), `clue ${n}: the Question field has focus`);
+  await page.keyboard.type(`Q${n} question`);
+  await page.keyboard.press('Tab');
+  await page.keyboard.type(`A${n} answer`);
+  if (n === 3) break;
+  await page.getByRole('tab', { name: /Answer/ }).click();
+  await page.keyboard.press('Control+Enter');
+  assert((await page.getByRole('tab', { name: /Question/ }).getAttribute('aria-selected')) === 'true', `Ctrl+Enter moves to the next clue on its Question slide`);
+}
+assert((await page.getByText('Click to type the question').count()) === 0, 'the empty-slide placeholder is gone once there is text');
+await page.getByRole('button', { name: 'Done' }).click();
+const col6 = await Promise.all([5, 11, 17].map((i) => page.locator('.tile').nth(i).innerText()));
+assert(col6.every((t, i) => t.includes(`Q${i + 1} question`) && !t.includes('No answer')), 'three clues written from the keyboard show on the board with their answers');
 
 // A second clue with a YouTube link (should fall back to "Open on YouTube" if it can't embed).
 await page.locator('.tile').nth(1).click();
@@ -237,6 +432,35 @@ await page.getByRole('button', { name: 'Done' }).click();
 await page.getByRole('button', { name: 'Final Jeopardy!', exact: true }).click();
 await page.getByLabel('Name (shown on screen)').fill('Final Brainrot');
 assert((await page.getByRole('button', { name: 'Final Brainrot', exact: true }).count()) === 1, 'final round renamed (editor nav follows)');
+
+// The Final tab shows two slide editors: shortcuts, copy and paste reach only the one last clicked.
+await page.getByLabel('Include a tiebreaker clue').check();
+const finSe = page.locator('.se').nth(0);
+const tbSe = page.locator('.se').nth(1);
+const counts = async () => [await finSe.locator('.canvas .hit').count(), await tbSe.locator('.canvas .hit').count()].join(',');
+await finSe.locator('.canvas .hit').first().click();
+await finSe.locator('.insp textarea').fill('FINAL QUESTION TEXT');
+await tbSe.locator('.canvas .hit').first().click();
+await tbSe.locator('.insp textarea').fill('TIEBREAKER TEXT');
+await finSe.locator('.canvas .hit').first().click();
+await page.keyboard.press('Control+c');
+await page.keyboard.press('Control+v');
+assert((await counts()) === '2,1', 'Ctrl+C / Ctrl+V on the Final slide leave the tiebreaker alone');
+await tbSe.locator('.canvas .hit').first().click();
+await finSe.getByRole('button', { name: '🅣 Text' }).click();
+await finSe.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+assert((await counts()) === '2,1', "deleting on the Final slide doesn't delete the tiebreaker's earlier selection");
+await finSe.getByRole('button', { name: '🖼 Image' }).click();
+await page.locator('.picker .item', { hasText: 'pepe.png' }).click();
+await page.mouse.dblclick(...center(await finSe.locator('.canvas img').boundingBox()));
+await ie.getByRole('button', { name: '😂 Sticker' }).click();
+await imgbox.click({ position: await at(0.5, 0.5) });
+await page.keyboard.press('Delete');
+assert((await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 0 && (await counts()) === '3,1', 'Delete in an image editor opened from the Final only removes the sticker');
+await ie.getByRole('button', { name: 'Cancel' }).click();
+await ie.waitFor({ state: 'detached' });
+await page.getByLabel('Include a tiebreaker clue').uncheck();
 
 // Theme: Brainrot Neon with the score bar on top.
 await page.getByRole('button', { name: '🎨 Theme' }).click();
@@ -361,6 +585,7 @@ await page.locator('.board .tile').nth(2).click();
 await page.locator('.info .a').waitFor();
 assert((await page.locator('.info .a').innerText()) === '—', 'host info panel shows the answer slot');
 await aud.locator('.full').waitFor();
+assert((await page.getByText(/Click to type/).count()) + (await aud.getByText(/Click to type/).count()) === 0, "an empty slide shows no editor placeholder in play");
 await page.keyboard.press('1');
 await page.keyboard.press('Enter');
 await aud.getByText('+$200').waitFor();
