@@ -33,7 +33,8 @@ fn open_popup(app: &AppHandle, url: Url, features: NewWindowFeatures) -> NewWind
     let mut builder = WebviewWindowBuilder::new(
         app,
         format!("popup-{n}"),
-        // WebView2 navigates the new window to the requested URL itself once it's attached.
+        // Tauri doesn't navigate a webview whose URL is about:blank, and WebView2 needs the new window
+        // un-navigated: it loads the requested URL into it itself once it's attached.
         WebviewUrl::External("about:blank".parse().expect("valid URL")),
     )
     .title(title)
@@ -42,6 +43,11 @@ fn open_popup(app: &AppHandle, url: Url, features: NewWindowFeatures) -> NewWind
     .resizable(true)
     // Applies the requested size/position and, crucially, shares the opener's webview environment.
     .window_features(features)
+    // Windows opened by the page can open windows too (e.g. "Open on YouTube" clicked in the audience window).
+    .on_new_window({
+        let app = app.clone();
+        move |url, features| open_popup(&app, url, features)
+    })
     .on_document_title_changed(|window, title| {
         if !title.trim().is_empty() {
             let _ = window.set_title(&title);
