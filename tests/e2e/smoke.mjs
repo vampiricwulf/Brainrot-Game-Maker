@@ -17,7 +17,7 @@ const context = await browser.newContext({ viewport: { width: 1400, height: 900 
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('dialog', (d) => d.accept());
+page.on('dialog', (d) => { if (d.type() === 'alert') console.log('  [alert] ' + d.message()); d.accept(); });
 
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
@@ -76,6 +76,7 @@ await shot('5-board-after');
 // Crash recovery: reload and resume.
 await page.waitForTimeout(300);
 await page.reload();
+await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
 await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$350', 'scores survive a reload');

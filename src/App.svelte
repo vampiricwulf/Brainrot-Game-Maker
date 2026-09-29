@@ -28,7 +28,18 @@
   });
 
   // Autosave (spec §5.8 / §6.5). Only after the initial load so a blank game never overwrites a draft.
-  const saveDraftSoon = debounce(saveDraft, 800);
+  const saveDraftSoon = debounce(saveDraft, 500);
+  // Don't lose the last edits if the tab is closed or hidden right after typing.
+  onMount(() => {
+    const flush = () => saveDraftSoon.flush();
+    const onvis = () => document.visibilityState === 'hidden' && flush();
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onvis);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onvis);
+    };
+  });
   $effect(() => {
     const snap = $state.snapshot(app.game);
     if (loaded) saveDraftSoon(snap);
@@ -40,6 +51,7 @@
   });
 
   function startPlay(): void {
+    saveDraftSoon.flush();
     app.playGame = clone(app.game);
     app.session = newSession(app.playGame);
     app.pregame = true;

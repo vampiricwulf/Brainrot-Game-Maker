@@ -29,13 +29,25 @@ export const savePlay = (game: Game, session: Session) =>
   safe(() => set(PLAY_KEY, { game, session, savedAt: Date.now() } satisfies SavedPlay));
 export const clearPlay = () => safe(() => del(PLAY_KEY));
 
-/** Calls `fn` at most once per `ms`, always running the latest call. */
+/** Runs `fn` with the latest arguments once calls stop for `ms`. `flush()` runs a pending call now. */
 export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number) {
   let t: ReturnType<typeof setTimeout> | undefined;
-  return (...a: A) => {
+  let pending: A | null = null;
+  const run = () => {
     clearTimeout(t);
-    t = setTimeout(() => fn(...a), ms);
+    if (pending) {
+      const a = pending;
+      pending = null;
+      fn(...a);
+    }
   };
+  const call = (...a: A) => {
+    pending = a;
+    clearTimeout(t);
+    t = setTimeout(run, ms);
+  };
+  call.flush = run;
+  return call;
 }
 
 /** Can we write to IndexedDB here? (Some browsers block it for files opened from disk or in private windows.) */
