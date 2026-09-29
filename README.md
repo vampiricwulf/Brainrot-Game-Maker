@@ -45,8 +45,8 @@ answer typed while the question slide is showing can still be undone on the answ
   slide's edges or covering the whole slide.
 - **Layers**: the **Layers** list shows every item top-first. Click to select (Shift/Ctrl adds), drag or ▲▼ to restack,
   👁 to hide an item while editing (it still shows in the game), and 🔒 to lock it. Locked items can't be dragged, resized,
-  nudged or deleted (Ctrl+A, the arrow keys and the "Move to the slide's…" buttons skip them, with a note saying so), and
-  clicks go through them, so a full-slide background never gets in the way.
+  nudged or deleted (Ctrl+A leaves them out, and Delete and the "Move to the slide's…" buttons skip them with a note saying
+  so), and clicks go through them, so a full-slide background never gets in the way.
 - **Stacked items**: **right-click** the slide to pick from everything under the pointer (plus restack, lock, hide,
   duplicate and delete). **Alt+click** goes one layer down each click (locked items too; after the bottom one it starts
   again at the top), and **Tab** / **Shift+Tab** steps through items. Drag a box on an empty spot to select several.
