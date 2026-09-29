@@ -19,7 +19,7 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 
 | Tab | What it's for |
 |---|---|
-| ⚙ **Setup & Players** | Default players (name + unique color), rules (negative scores, quick "wrong" buttons, points symbol), timers, round intro, and game **sounds** (round intro, Daily Double, time's up, Final think music, winner). |
+| ⚙ **Setup & Players** | Default players (name + unique color), rules (negative scores, quick ✔/✘ buttons, points symbol), timers, round intro, and game **sounds** (round intro, Daily Double, time's up, Final think music, winner). |
 | **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
 | 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, a **banner image above the board** (height and fit), and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
@@ -73,11 +73,15 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
 
 ## Hosting a game (Play)
 
-1. Press **▶ Play**, then confirm the players (names, colors, starting scores) and pick a display mode:
+1. Press **▶ Play**, then confirm the players (names, colors, starting scores; **＋ Add 3 sample players** if you have
+   none) and pick a display mode:
    - **Single window**: viewers see this window. `H` hides the host controls.
    - **📺 Separate audience window**: a clean popup to capture in OBS (Window Capture). Double-click it or press `F` for
      full-screen, and **click it once** so it's allowed to play sound. The host window shows the answer, notes, standings and
      all controls. Allow popups for the file if the browser asks.
+
+   The pre-game screen also lists **things to check** (blank clues, a missing Daily Double with **🎲 Place now**, missing
+   media…). They're only warnings: **Start game** works as soon as there's a player.
 2. The round intro plays: title card → tiles fill in → press `N` to reveal each category (or **Skip intro**).
 3. Click a tile. The question zooms in, and the answer is never on screen until you reveal it: **click the slide**, press
    `R`, or use **👁 Reveal answer**. Showed it by accident? Press `R` again or **🙈 Hide answer**. Click the answer
@@ -87,9 +91,15 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
    wheel to spin it (and again to close it), click dice to roll them, and click to step through the final round. This
    works in the host's window only; the audience window never reacts to clicks.
 4. **Scoring**: toggle any players (`1`–`9`; zero, one or many), set any amount (prefilled with the clue value), then
-   **Award** (`Enter`) or **Deduct** (`Shift+Enter`). The per-player **✘ −value** buttons handle quick wrong answers. Click a
-   score to type an exact value. Every change is logged and undoable (`Ctrl+Z`, 📜 Log).
-5. **Back to board** (`Esc`) marks the tile used. Right after a correct answer, that player becomes the picker (★).
+   **Award** (`Enter`) or **Deduct** (`Shift+Enter`). The per-player **✔ +value** / **✘ −value** buttons score one player
+   in one click. Click a score to type an exact value (`Esc` cancels). Every change is logged and undoable (`Ctrl+Z`, 📜 Log);
+   undo takes back a whole award at once (all the players it touched), and the toast says what it undid, with **↷ Redo**.
+5. **▦ Done ▶ board** (`Esc`) marks the tile used. Right after a correct answer, that player becomes the picker (★).
+   Opened the wrong tile? **↩ Cancel (keep tile)** (`Shift+Esc`) goes back without using it up (so does `Esc` on the Daily
+   Double splash). A used tile can be put back with **right-click** on the host's board, **↶ Reopen** in the host panel or
+   the toast, or **Reopen tile** in the 📜 Log.
+6. **Next round ▶** / **Final Jeopardy! ▶** / **End game ▶** sit on the right of the host panel. With tiles left they ask inline first
+   ("12 clues left · go on? Yes"). **◀ Prev round**, or going back to a round later, never replays its intro.
 
 **Daily Double**: a splash plays, then you pick the player and enter the wager (capped TV-style at their score or the round's
 top value; **Ignore the limit** overrides). The wager is prefilled for scoring.
@@ -107,11 +117,20 @@ the picker), **📊 Scores** overlay. These show full-screen on the audience vie
 **roll log**. Score effects only apply when you press **Confirm**.
 
 **Final round** (renameable): category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
-music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. **Ties** offer
-a roll-off, the tiebreaker clue, or co-winners.
+music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. In the
+reveals, `N` shows the spotlit player's wager and then moves to the next player, `C` / `X` mark them right / wrong, and once
+everyone is judged a second `N` finishes (finishing earlier asks first). **◀ Back to <last round>** leaves the final round
+during the category and wager steps (wagers are kept). **Ties** offer a roll-off, the tiebreaker clue, or co-winners.
 
-If the browser closes mid-game, reopen the file and press **Resume game**. Scores, used tiles and logs are autosaved after
-every change.
+**Game over**: fix any score by clicking it, go **◀ Back to final reveals** to change a judgment, **📋 Copy results** (one line
+for chat), or **🔁 Rematch** with the same players at 0.
+
+**Players mid-game**: 👥 Players can add, rename or recolor players. Removing one asks first, and they can be restored
+with their score from the same dialog.
+
+**Leaving and resuming**: **Exit** keeps the game. The editor then shows **Resume game** (also after a reload or a
+crash), plus **Resume with my edits** to carry on with the editor's current version of the game (fixed typos, new
+slides). Starting a new game while one is saved asks first. Scores, used tiles and logs are autosaved after every change.
 
 ### Host keyboard shortcuts
 
@@ -120,16 +139,19 @@ every change.
 | `1`–`9` | Select/deselect player N for scoring |
 | `Enter` / `Shift+Enter` | Award / deduct the amount |
 | `R` | Reveal the answer (press again to hide it) |
-| `Esc` / `B` | Close the tool overlay, or go back to the board |
-| `N` | Next step (round intro, Final Jeopardy) |
+| `Esc` / `B` | Close the tool overlay, or go back to the board (the tile is used) |
+| `Shift+Esc` | Cancel the clue: back to the board, the tile stays playable |
+| Right-click a used tile | Put it back on the board |
+| `N` | Next step (round intro, Final Jeopardy; in the reveals: show the wager, then the next player) |
+| `C` / `X` | Final reveals: mark the spotlit player right / wrong |
 | `T` | Start/pause the countdown |
 | `P`, then `1`–`9` | Make player N the current picker |
 | `D` / `W` / `O` / `S` | Roll dice again / spin the wheel / roll-off / scoreboard |
 | `Space` / `←` `→` / `M` | Play/pause, seek ±5 s, mute the slide's media |
 | `Y` | Open YouTube/online media in its own window |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change (a whole multi-player award at once) |
 | `L` | Score & roll log |
-| `A` | Open/close the audience window |
+| `A` | Open / focus the audience window (it never closes it; the 📺 button does, after asking) |
 | `H` / `F` / `?` | Hide host controls / full-screen / show all shortcuts |
 
 ## Desktop app (experimental)
