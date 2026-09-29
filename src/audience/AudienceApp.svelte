@@ -4,7 +4,8 @@
   import { registerBlob } from '../lib/media.svelte';
   import type { Game, Session } from '../lib/model';
   import { newLive, type Live } from '../lib/live';
-  import type { AudienceMsg, HostMsg } from '../lib/sync.svelte';
+  import { CHANNEL_NAME, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
+  import { toggleFullscreen } from '../lib/platform';
   import { applyLocal, onLocalMediaChange } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import Stage from '../lib/Stage.svelte';
@@ -19,18 +20,28 @@
   // Browsers only allow sound autoplay after the user has clicked this window once.
   let activated = $state(!!navigator.userActivation?.hasBeenActive);
 
+  // Talk to the host through window.opener when there is one; otherwise (e.g. a window the desktop app
+  // created itself) through a BroadcastChannel. Only one link is used so nothing is handled twice.
+  let channel: BroadcastChannel | null = null;
   function send(msg: AudienceMsg): void {
-    window.opener?.postMessage(msg, '*');
+    if (window.opener) window.opener.postMessage(msg, '*');
+    else channel?.postMessage({ from: 'audience', msg } satisfies ChannelMsg);
   }
 
   onMount(() => {
-    if (!window.opener) {
-      status = 'no-host';
-      return;
+    const viaOpener = !!window.opener;
+    if (!viaOpener) {
+      try {
+        channel = new BroadcastChannel(CHANNEL_NAME);
+      } catch {
+        channel = null;
+      }
+      if (!channel) {
+        status = 'no-host';
+        return;
+      }
     }
-    const onmsg = (e: MessageEvent<HostMsg>) => {
-      if (e.source !== window.opener) return;
-      const m = e.data;
+    const handle = (m: HostMsg) => {
       switch (m?.type) {
         case 'game':
           game = m.game;
@@ -56,7 +67,18 @@
           break;
       }
     };
-    window.addEventListener('message', onmsg);
+    const onmsg = (e: MessageEvent<HostMsg>) => {
+      if (e.source === window.opener) handle(e.data);
+    };
+    const onchannel = (e: MessageEvent<ChannelMsg>) => {
+      if (e.data?.from === 'host') handle(e.data.msg);
+    };
+    if (viaOpener) window.addEventListener('message', onmsg);
+    else channel!.addEventListener('message', onchannel);
+    // No host answered on the channel: this window wasn't opened by a host.
+    const noHost = setTimeout(() => status === 'waiting' && (status = 'no-host'), 4000);
+    const onunload = () => send({ type: 'bye' });
+    window.addEventListener('beforeunload', onunload);
     const offMedia = onLocalMediaChange((id, state) =>
       send({ type: 'audience-event', event: { kind: 'media', id, state: state ? $state.snapshot(state) : null } }),
     );
@@ -65,6 +87,9 @@
     poke();
     return () => {
       window.removeEventListener('message', onmsg);
+      window.removeEventListener('beforeunload', onunload);
+      channel?.close();
+      clearTimeout(noHost);
       offMedia();
     };
   });
@@ -82,10 +107,6 @@
     send({ type: 'audience-event', event: { kind: 'activation', active: true } });
   }
 
-  function toggleFullscreen(): void {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen?.();
-  }
 </script>
 
 <svelte:window onmousemove={poke} onkeydown={(e) => e.key.toLowerCase() === 'f' && toggleFullscreen()} />

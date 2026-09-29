@@ -19,6 +19,7 @@
   import { audience, closeAudienceWindow, mediaCommand, openAudienceWindow, pushGame, pushLive, pushSession } from '../lib/sync.svelte';
   import { localMedia, openMediaPopup, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
+  import { inTauri, toggleFullscreen } from '../lib/platform';
   import { onMount } from 'svelte';
 
   let { onexit }: { onexit: () => void } = $props();
@@ -85,9 +86,15 @@
     return src[0];
   }
 
-  function toggleAudience(): void {
+  async function toggleAudience(): Promise<void> {
     if (audience.open) closeAudienceWindow();
-    else if (!openAudienceWindow()) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    else if (!(await openAudienceWindow()))
+      toast(
+        inTauri()
+          ? "Couldn't open the audience window. Try again, or use single-window mode."
+          : 'The browser blocked the popup. Allow popups for this file and try again.',
+        5000,
+      );
   }
 
   function pop(text: string, color: string): void {
@@ -284,10 +291,6 @@
     if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
   }
 
-  function toggleFullscreen(): void {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen?.();
-  }
 
   function onkey(e: KeyboardEvent): void {
     if (app.pregame || showPlayers || showKeys) return;

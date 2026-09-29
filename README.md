@@ -126,9 +126,9 @@ The same app can be wrapped as a native Windows program with [Tauri](https://tau
 - Or locally: install Rust and the [Tauri prerequisites](https://tauri.app/start/prerequisites/), then run
   `npm run desktop:build` (or `npm run desktop:dev`).
 
-Every push to `main` builds the `.exe` in CI and attaches it to the **Latest** release. The HTML file is still the main
-way to use the app. Check that **📺 Audience window** (a popup), **Save/Export** (downloads) and YouTube embeds behave
-in the Windows webview before relying on it on stream.
+Every push to `main` builds the `.exe` in CI and attaches it to the **Latest** release. In the desktop app,
+**📺 Audience window** opens a second app window (capture it in OBS; `F` or a double-click makes it full-screen on its
+monitor), the "Open on YouTube" fallback opens its own window, and closing the host window quits the app.
 
 ## Development
 
