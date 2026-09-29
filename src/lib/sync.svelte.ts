@@ -9,9 +9,12 @@
 // The audience window picks one link, so nothing is processed twice.
 import { getBlob } from './media.svelte';
 import { applyLocal, remoteMedia, type MediaCmd, type MediaState } from './mediactl.svelte';
-import type { Game, Session } from './model';
+import { newId, type Game, type Session } from './model';
 import type { Live } from './live';
 import { inTauri } from './platform';
+import { browserArgs } from './desktop.svelte';
+import { audioOut, onSoundReport, playChime, setAudioOut, type SoundReport } from './audioout.svelte';
+import type { AudioOutput } from './audio';
 
 export type HostMsg =
   | { type: 'game'; game: Game }
@@ -19,11 +22,17 @@ export type HostMsg =
   | { type: 'live'; live: Live }
   | { type: 'media'; items: { id: string; blob: Blob }[] }
   | { type: 'media-cmd'; cmd: MediaCmd }
+  /** Play the test chime and answer with a 'sound' event carrying this nonce. */
+  | { type: 'test-sound'; nonce: string }
+  /** The game audio output the host picked. */
+  | { type: 'audio-out'; deviceId: string; label: string }
   | { type: 'bye' };
 
 export type AudienceEvent =
   | { kind: 'media'; id: string; state: MediaState | null }
-  | { kind: 'activation'; active: boolean };
+  | { kind: 'activation'; active: boolean }
+  // A game sound played or was blocked (test: the nonce of a Test sound), or the chosen output is missing there.
+  | SoundReport;
 
 export type AudienceMsg = { type: 'hello' } | { type: 'audience-event'; event: AudienceEvent } | { type: 'bye' };
 
@@ -35,6 +44,18 @@ export const CHANNEL_NAME = 'jeopardy-builder-sync';
 
 /** open: the audience window exists · activated: it has been clicked, so it may autoplay with sound. */
 export const audience = $state({ open: false, activated: false });
+
+export type SoundTest = { nonce: string; where: 'audience' | 'host'; state: 'waiting' | 'ok' | 'blocked' | 'error' | 'no-answer' };
+/**
+ * Sound from the window that plays it (the audience window in dual mode, else this one):
+ * cueBlocked: the browser blocked a game sound · outputMissing: the chosen output device wasn't found there ·
+ * test: the last Test sound.
+ */
+export const sound = $state<{ cueBlocked: boolean; outputMissing: boolean; test: SoundTest | null }>({
+  cueBlocked: false,
+  outputMissing: false,
+  test: null,
+});
 
 let win: Window | null = null;
 /** Desktop app fallback: a window created through Tauri's API (no opener link). */
@@ -86,6 +107,8 @@ function sendMedia(game: Game): void {
 
 function resendAll(): void {
   sentMedia.clear();
+  // First, so sounds in the state below already start on the right device.
+  post({ type: 'audio-out', deviceId: audioOut.deviceId, label: audioOut.label });
   if (last.game) {
     sendMedia(last.game);
     post({ type: 'game', game: last.game });
@@ -94,17 +117,34 @@ function resendAll(): void {
   if (last.live) post({ type: 'live', live: last.live });
 }
 
+function onSound(ev: SoundReport): void {
+  if (ev.kind === 'audio-out') {
+    sound.outputMissing = ev.missing;
+    return;
+  }
+  const t = sound.test;
+  if (ev.test && t?.nonce === ev.test) t.state = ev.ok ? 'ok' : (ev.reason ?? 'error');
+  // Anything that played means sound is allowed there now.
+  if (ev.ok) sound.cueBlocked = false;
+  else if (!ev.test && ev.reason === 'blocked') sound.cueBlocked = true;
+}
+
 function fromAudience(msg: AudienceMsg): void {
   if (msg?.type === 'hello') {
     for (const k of Object.keys(remoteMedia)) delete remoteMedia[k];
     audience.open = true;
+    sound.cueBlocked = false;
+    sound.outputMissing = false;
     resendAll();
   } else if (msg?.type === 'audience-event') {
     const ev = msg.event;
     if (ev.kind === 'media') {
       if (ev.state) remoteMedia[ev.id] = ev.state;
       else delete remoteMedia[ev.id];
-    } else if (ev.kind === 'activation') audience.activated = ev.active;
+    } else if (ev.kind === 'activation') {
+      audience.activated = ev.active;
+      if (ev.active) sound.cueBlocked = false;
+    } else onSound(ev);
   } else if (msg?.type === 'bye' && !win) {
     markClosed();
   }
@@ -122,11 +162,15 @@ if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH) {
     fromAudience(e.data.msg);
   });
   window.addEventListener('beforeunload', () => post({ type: 'bye' }));
+  // Sounds this window plays itself (single-window mode; in dual mode its copy is silent).
+  onSoundReport((r) => !audience.open && onSound(r));
 }
 
 function markClosed(): void {
   audience.open = false;
   audience.activated = false;
+  sound.cueBlocked = false;
+  sound.outputMissing = false;
   win = null;
   nativeWin = null;
   viaChannel = false;
@@ -145,13 +189,18 @@ async function openNativeAudience(): Promise<boolean> {
   try {
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
     const label = `popup-audience-${Date.now()}`;
-    const w = new WebviewWindow(label, {
+    const args = browserArgs();
+    const options = {
       url: `index.html${AUDIENCE_HASH}`,
       title: 'Jeopardy Builder · Audience',
       width: 1280,
       height: 760,
       resizable: true,
-    });
+      // With the Discord audio fix on, the app runs with its own WebView2 switches, and WebView2 only creates
+      // windows with exactly the same ones (the option is real but missing from the TypeScript types).
+      ...(args ? { additionalBrowserArgs: args } : {}),
+    };
+    const w = new WebviewWindow(label, options as ConstructorParameters<typeof WebviewWindow>[1]);
     await new Promise<void>((resolve, reject) => {
       w.once('tauri://created', () => resolve());
       w.once('tauri://error', (e) => reject(e.payload));
@@ -214,4 +263,28 @@ export function pushSession(session: Session): void {
 export function pushLive(live: Live): void {
   last.live = live;
   post({ type: 'live', live });
+}
+
+let testTimer: ReturnType<typeof setTimeout> | undefined;
+/** Play the test chime in the window that plays the game's sound; the result lands in `sound.test`. */
+export function testSound(): void {
+  const nonce = newId();
+  clearTimeout(testTimer);
+  if (audience.open) {
+    sound.test = { nonce, where: 'audience', state: 'waiting' };
+    post({ type: 'test-sound', nonce });
+    testTimer = setTimeout(() => {
+      if (sound.test?.nonce === nonce && sound.test.state === 'waiting') sound.test.state = 'no-answer';
+    }, 4000);
+  } else {
+    sound.test = { nonce, where: 'host', state: 'waiting' };
+    playChime(nonce);
+  }
+}
+
+/** Send the game's sound to this output (remembered on this computer), here and in the audience window. */
+export function chooseAudioOut(out: AudioOutput): void {
+  setAudioOut(out, true);
+  sound.outputMissing = false;
+  post({ type: 'audio-out', deviceId: out.deviceId, label: out.label });
 }

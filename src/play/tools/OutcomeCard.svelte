@@ -4,6 +4,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, Outcome } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
+  import { autoPlay } from '../../lib/audioout.svelte';
 
   let { outcome, game, role, color = '#ffcc00' }: { outcome: Outcome; game: Game; role: MediaRole; color?: string } = $props();
   const ref = $derived(outcome.media ? game.media.find((m) => m.id === outcome.media) : undefined);
@@ -15,11 +16,16 @@
   {#if url && ref}
     {#if ref.kind === 'image'}
       <img src={url} alt="" />
-    {:else if ref.kind === 'video'}
+    {:else if ref.kind === 'video' && role === 'mirror'}
+      <!-- The host's silent copy in dual mode. -->
       <!-- svelte-ignore a11y_media_has_caption -->
-      <video src={url} autoplay loop muted={role === 'mirror'} playsinline></video>
+      <video src={url} autoplay loop muted playsinline></video>
+    {:else if ref.kind === 'video'}
+      <!-- Plays with sound, or muted if the browser blocks that (the host is told either way). -->
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video use:autoPlay={url} loop playsinline></video>
     {:else if ref.kind === 'audio' && role !== 'mirror'}
-      <audio src={url} autoplay></audio>
+      <audio use:autoPlay={url}></audio>
     {/if}
   {/if}
   {#if outcome.details}<div class="details">{outcome.details}</div>{/if}
