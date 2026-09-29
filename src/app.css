@@ -1,0 +1,83 @@
+:root {
+  /* Classic theme (theme presets arrive in M6) */
+  --tile: #060ce9;
+  --tile-used: #030773;
+  --board-gap: #000;
+  --value: #ffcc00;
+  --board-text: #fff;
+  --board-font: 'Swiss 911', 'Swiss911 XCm BT', 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif;
+  --value-font: 'Swiss 911', Impact, 'Arial Black', 'Arial Narrow', sans-serif;
+
+  /* App chrome (editor + host controls) */
+  --bg: #12131a;
+  --panel: #1c1e28;
+  --panel-2: #262937;
+  --border: #353849;
+  --text: #e8e9ef;
+  --muted: #9a9db0;
+  --accent: #4f7cff;
+  --good: #2fbf71;
+  --bad: #e5484d;
+  --warn: #f5a524;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #app {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+button {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.good { background: var(--good); border-color: var(--good); color: #fff; }
+button.bad { background: var(--bad); border-color: var(--bad); color: #fff; }
+button.ghost { background: transparent; }
+button.small { padding: 2px 8px; font-size: 12px; }
+
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input[type='color'] { padding: 0; width: 36px; height: 30px; cursor: pointer; }
+input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--accent); }
+
+label.field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+label.field > input, label.field > textarea, label.field > select { color: var(--text); font-size: 14px; }
+label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+.muted { color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 10px 18px;
+  border-radius: 8px;
+  z-index: 1000;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
