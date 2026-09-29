@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { mediaUrls } from '../lib/media.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import type { Round, TextEl } from '../lib/model';
+  import { setSlideText, slideText, type Round, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
@@ -23,12 +24,19 @@
   const cats = $derived(round.categories.length);
   let side = $state<'q' | 'a'>('q');
   let facePicker = $state(false);
+  let questionField = $state<HTMLTextAreaElement>();
+
+  // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next.
+  const focusQuestion = () => tick().then(() => questionField?.focus());
+  onMount(() => void focusQuestion());
 
   // Walk clues column by column (down a category, then on to the next one).
   function step(d: number): void {
     const idx = pos.cat * rows + pos.row + d;
     if (idx < 0 || idx >= rows * cats) return;
     pos = { cat: Math.floor(idx / rows), row: idx % rows };
+    side = 'q';
+    focusQuestion();
   }
 
   function typing(e: Event): boolean {
@@ -36,9 +44,17 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (e.key === 'Escape' && !typing(e) && !facePicker) onclose();
-    if (e.altKey && e.key === 'ArrowRight') step(1);
-    if (e.altKey && e.key === 'ArrowLeft') step(-1);
+    // Esc closes from anywhere but the slide editor's own fields (the quick fields save as you type).
+    const quick = !!(e.target as HTMLElement)?.closest?.('.quick');
+    if (e.key === 'Escape' && (!typing(e) || quick) && !facePicker) onclose();
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      step(e.shiftKey ? -1 : 1);
+    } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      // Alt+← is the browser's Back button on Windows.
+      e.preventDefault();
+      step(e.key === 'ArrowRight' ? 1 : -1);
+    }
   }
 </script>
 
@@ -53,8 +69,9 @@
           <div class="value">{sym}{clue.value ?? round.values[pos.row]}</div>
         </div>
         <span class="spacer"></span>
-        <button onclick={() => step(-1)} disabled={pos.cat === 0 && pos.row === 0} title="Alt+←">◀ Prev</button>
-        <button onclick={() => step(1)} disabled={pos.cat === cats - 1 && pos.row === rows - 1} title="Alt+→">Next ▶</button>
+        <span class="muted small keys">Ctrl+Enter next clue · Alt+←/→ previous/next</span>
+        <button onclick={() => step(-1)} disabled={pos.cat === 0 && pos.row === 0} title="Alt+← or Shift+Ctrl+Enter">◀ Prev</button>
+        <button onclick={() => step(1)} disabled={pos.cat === cats - 1 && pos.row === rows - 1} title="Alt+→ or Ctrl+Enter">Next ▶</button>
         <button class="primary" onclick={onclose}>Done</button>
       </header>
 
@@ -136,20 +153,45 @@
         </p>
       {/if}
       {#if !clue.empty}
+        <!-- Quick text: the main text of each slide, so plain clues never need the canvas. Tab moves along. -->
+        <div class="quick">
+          <label class="field">
+            Question
+            <textarea
+              bind:this={questionField}
+              rows="2"
+              placeholder="Type the question…"
+              value={slideText(clue.questionSlide)}
+              oninput={(e) => setSlideText(clue.questionSlide, e.currentTarget.value)}
+            ></textarea>
+          </label>
+          <label class="field">
+            Answer (hidden until revealed)
+            <textarea
+              rows="2"
+              placeholder="Type the answer…"
+              value={slideText(clue.answerSlide)}
+              oninput={(e) => setSlideText(clue.answerSlide, e.currentTarget.value)}
+            ></textarea>
+          </label>
+          <label class="field">
+            Host notes (never shown on stream)
+            <textarea rows="2" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
+          </label>
+        </div>
         <div class="tabs" role="tablist">
-          <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question (shown to players)</button>
-          <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer (hidden until revealed)</button>
+          <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question slide</button>
+          <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer slide (hidden until revealed)</button>
         </div>
         {#key `${clue.id}-${side}`}
           <SlideEditor
             slide={side === 'q' ? clue.questionSlide : clue.answerSlide}
             styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope)}
+            placeholder={side === 'q' ? 'Click to type the question' : 'Click to type the answer'}
+            badge={side === 'a' ? 'ANSWER' : undefined}
+            fill
           />
         {/key}
-        <label class="field notes">
-          Host notes (never shown on stream)
-          <textarea rows="2" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
-        </label>
       {/if}
     </div>
   </div>
@@ -173,12 +215,17 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     width: min(1400px, 100%);
-    max-height: 100%;
+    /* A fixed-height column: the slide editor takes whatever height the fields above leave. */
+    height: 100%;
     overflow: auto;
     padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+  }
+  /* Only the slide editor shrinks; everything else keeps its height (the modal scrolls if it must). */
+  .modal > * {
+    flex-shrink: 0;
   }
   header {
     display: flex;
@@ -193,6 +240,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .keys {
+    margin-right: 4px;
   }
   .opts input[type='number'] {
     width: 100px;
@@ -216,6 +266,17 @@
     height: 30px;
     border-radius: 4px;
   }
+  .quick {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 10px;
+  }
+  .quick textarea {
+    resize: none;
+    field-sizing: content;
+    min-height: calc(2lh + 14px);
+    max-height: calc(4lh + 14px);
+  }
   .tabs {
     display: flex;
     gap: 4px;
@@ -228,5 +289,13 @@
     background: var(--accent);
     border-color: var(--accent);
     color: #fff;
+  }
+  @media (max-width: 900px) {
+    .quick {
+      grid-template-columns: 1fr;
+    }
+    .keys {
+      display: none;
+    }
   }
 </style>
