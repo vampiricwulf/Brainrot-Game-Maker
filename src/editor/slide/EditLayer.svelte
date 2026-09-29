@@ -28,12 +28,15 @@
   const sorted = $derived([...slide.elements].sort((a, b) => a.zIndex - b.zIndex));
   const sel = $derived(slide.elements.filter((e) => selected.includes(e.id)));
   const single = $derived(sel.length === 1 ? sel[0] : null);
+  // Selection frames and their handles sit above every element's hit box, so a handle drawn over
+  // the element (the rotate knob inside a full-bleed image, the inner half of a resize handle) can be grabbed.
+  const frameZ = $derived(Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1);
 
   const SNAP = 10;
   let guides = $state<{ x: number[]; y: number[] }>({ x: [], y: [] });
 
   type Drag =
-    | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean }
+    | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean; shiftAtDown: boolean }
     | { kind: 'resize'; sx: number; sy: number; hx: number; hy: number; o: { x: number; y: number; w: number; h: number }; keep: boolean }
     | { kind: 'rotate'; cx: number; cy: number; a0: number; r0: number };
   let drag: Drag | null = null;
@@ -69,13 +72,19 @@
       return;
     }
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
-      selected = selected.includes(el.id) ? selected.filter((x) => x !== el.id) : [...selected, el.id];
+      if (selected.includes(el.id)) {
+        // Shift/Ctrl+click on a selected item only takes it out of the selection (no drag of the rest).
+        selected = selected.filter((x) => x !== el.id);
+        return;
+      }
+      selected = [...selected, el.id];
     } else if (!selected.includes(el.id)) {
       selected = [el.id];
     }
     const movable = slide.elements.filter((x) => selected.includes(x.id) && !x.locked);
     if (!movable.length) return;
-    begin({ kind: 'move', sx: p.x, sy: p.y, orig: new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }])), moved: false }, e);
+    const orig = new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }]));
+    begin({ kind: 'move', sx: p.x, sy: p.y, orig, moved: false, shiftAtDown: e.shiftKey }, e);
   }
 
   function handleDown(e: PointerEvent, hx: number, hy: number): void {
@@ -135,8 +144,10 @@
       let dy = p.y - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < 2) return;
       drag.moved = true;
-      // Shift held while dragging: move along one axis only (whichever the pointer moved more on).
-      const lock = e.shiftKey ? (Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y') : null;
+      // Shift pressed during the drag: move along one axis only (whichever the pointer moved more on).
+      // A Shift still held from the press (Shift+click adds to the selection) doesn't count until released.
+      if (!e.shiftKey) drag.shiftAtDown = false;
+      const lock = e.shiftKey && !drag.shiftAtDown ? (Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y') : null;
       if (lock === 'x') dy = 0;
       if (lock === 'y') dx = 0;
       const orig = drag.orig;
@@ -243,6 +254,7 @@
       style:width="{el.w}px"
       style:height="{el.h}px"
       style:transform="rotate({el.rotation}deg)"
+      style:z-index={frameZ}
       style:--inv={inv}
     >
       {#if single && !el.locked}
