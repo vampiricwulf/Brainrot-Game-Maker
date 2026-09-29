@@ -26,6 +26,7 @@
     live,
     role = 'single',
     onpick,
+    onunmark,
     onpicker,
     onact,
   }: {
@@ -35,6 +36,8 @@
     /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
     role?: MediaRole;
     onpick?: (ref: ClueRef) => void;
+    /** Host only: put a used tile back on the board (right-click). */
+    onunmark?: (ref: ClueRef) => void;
     onpicker?: (id: string) => void;
     /** Host clicked the stage (only passed in the host's window, never the audience window). */
     onact?: (a: StageAction) => void;
@@ -93,7 +96,7 @@
         onclick={() => session.intro && act('intro')}
         role="presentation"
       >
-        <Board {game} {session} {onpick} />
+        <Board {game} {session} {onpick} {onunmark} />
       </div>
       {#if layout.score}
         <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px"><ScoreBar {game} {session} {onpicker} /></div>

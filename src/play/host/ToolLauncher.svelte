@@ -10,7 +10,9 @@
   let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
   let custom = $state('');
   let quickList = $state('');
-  let who = $state<string[]>(untrack(() => session.players.map((p) => p.id)));
+  // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
+  let skipped = $state<string[]>([]);
+  const who = $derived(session.players.filter((p) => !skipped.includes(p.id)).map((p) => p.id));
   let sides = $state(untrack(() => game.settings.rollOffDie || 20));
 
   function dice(sides: number, count: number, name?: string): void {
@@ -78,7 +80,7 @@
             <input
               type="checkbox"
               checked={who.includes(p.id)}
-              onchange={(e) => (who = e.currentTarget.checked ? [...who, p.id] : who.filter((x) => x !== p.id))}
+              onchange={(e) => (skipped = e.currentTarget.checked ? skipped.filter((x) => x !== p.id) : [...skipped, p.id])}
             />
             <span style:color={p.color}>●</span> {p.name}
           </label>
@@ -86,9 +88,9 @@
         <label class="check small">Die: d<input type="number" min="2" max="1000" bind:value={sides} class="n" /></label>
         <button
           class="primary small"
-          disabled={who.filter((id) => session.players.some((p) => p.id === id)).length < 1}
+          disabled={who.length < 1}
           onclick={() => {
-            onrolloff(who.filter((id) => session.players.some((p) => p.id === id)), sides);
+            onrolloff(who, sides);
             menu = null;
           }}>Roll for {who.length}</button>
       </div>

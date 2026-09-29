@@ -1,14 +1,15 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage, type SavedPlay } from './lib/persist';
+  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage } from './lib/persist';
   import { openPack } from './lib/pack';
   import { unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
   import { loadGameMedia, pruneMedia } from './lib/media.svelte';
   import { migrateGame } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
-  import { newSession } from './lib/session';
+  import { newSession, rebaseSession } from './lib/session';
+  import { newLive } from './lib/live';
   import { clone } from './lib/ops';
   import Editor from './editor/Editor.svelte';
   import Play from './play/Play.svelte';
@@ -20,7 +21,6 @@
 
   let loaded = $state(false);
   let loadError = $state('');
-  let resumable = $state<SavedPlay | null>(null);
 
   onMount(async () => {
     if (embedded) {
@@ -30,7 +30,7 @@
         usePlayerStorage(app.game.id);
         app.storageOk = await testStorage();
         const play = await loadPlay();
-        if (play && play.session.phase !== 'end') resumable = { ...play, game: migrateGame(play.game) };
+        if (play) app.resumable = { ...play, game: migrateGame(play.game) };
       } catch (e) {
         loadError = (e as Error).message;
       }
@@ -43,10 +43,10 @@
       app.game = migrateGame(draft);
       await loadGameMedia(app.game);
     }
-    if (play && play.session.phase !== 'end') resumable = { ...play, game: migrateGame(play.game) };
-    else if (play) await clearPlay();
+    // A finished game stays too, so its results can still be viewed after a reload.
+    if (play) app.resumable = { ...play, game: migrateGame(play.game) };
     // Drop stored media that no saved game uses any more.
-    await pruneMedia([app.game, resumable?.game]);
+    await pruneMedia([app.game, app.resumable?.game]);
     loaded = true;
   });
 
@@ -70,40 +70,77 @@
   $effect(() => {
     const game = $state.snapshot(app.playGame);
     const session = $state.snapshot(app.session);
-    if (loaded && game && session) savePlay(game, session);
+    // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
+    if (loaded && !app.pregame && game && session) savePlay(game, session);
   });
 
+  const savedTime = (ts: number) => new Date(ts).toLocaleString();
+
   function startPlay(): void {
+    const saved = app.resumable;
+    if (
+      saved &&
+      saved.session.phase !== 'end' &&
+      !confirm(
+        `A game in progress ("${saved.game.title}", saved ${savedTime(saved.savedAt)}) can still be resumed. ` +
+          'Start a new game anyway?\n\nThe saved game is replaced once you press "Start game". Cancel keeps it.',
+      )
+    )
+      return;
     saveDraftSoon.flush();
     app.playGame = clone(app.game);
     app.session = newSession(app.playGame);
+    app.live = newLive();
     app.pregame = true;
     app.screen = 'play';
-    resumable = null;
   }
 
-  async function resume(): Promise<void> {
-    if (!resumable) return;
-    await loadGameMedia(resumable.game);
-    app.playGame = resumable.game;
-    app.session = resumable.session;
+  /** Resume the saved game, optionally switching it to the editor's current version of the game. */
+  async function resume(withEdits = false): Promise<void> {
+    const saved = app.resumable;
+    if (!saved) return;
+    let game = saved.game;
+    if (withEdits) {
+      game = clone(app.game);
+      rebaseSession(saved.session, saved.game, game);
+    }
+    await loadGameMedia(game);
+    app.playGame = game;
+    app.session = saved.session;
+    app.live = newLive();
     app.pregame = false;
     app.screen = 'play';
-    resumable = null;
+    app.resumable = null;
   }
 
   async function discardResume(): Promise<void> {
-    resumable = null;
+    const saved = app.resumable;
+    if (saved && saved.session.phase !== 'end' && !confirm(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`))
+      return;
+    app.resumable = null;
     await clearPlay();
     toast('Saved game discarded');
   }
 
-  function exitPlay(): void {
+  function leavePlay(): void {
     closeAudienceWindow();
     app.screen = 'editor';
     app.playGame = null;
     app.session = null;
-    clearPlay();
+    app.pregame = false;
+    app.live = newLive();
+  }
+
+  /** Leave a game: it stays saved and can be resumed from the editor. A finished game is cleared. */
+  function exitPlay(): void {
+    const { playGame, session } = app;
+    if (playGame && session && !app.pregame) {
+      if (session.phase === 'end') {
+        app.resumable = null;
+        clearPlay();
+      } else app.resumable = { game: $state.snapshot(playGame), session: $state.snapshot(session), savedAt: Date.now() };
+    }
+    leavePlay();
   }
 </script>
 
@@ -112,25 +149,47 @@
 {:else if loadError}
   <div class="loading">Couldn't open this game: {loadError}</div>
 {:else if playerOnly && app.screen === 'editor'}
-  <PlayerHome onplay={startPlay} {resumable} onresume={resume} ondiscard={discardResume} />
+  <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => resume()} ondiscard={discardResume} />
 {:else if app.screen === 'editor'}
-  {#if resumable}
+  {#if app.resumable}
+    {@const saved = app.resumable}
+    {@const ended = saved.session.phase === 'end'}
     <div class="resume">
       <span>
-        A game in progress was found: <b>{resumable.game.title}</b>
-        <span class="muted">(saved {new Date(resumable.savedAt).toLocaleString()})</span>
+        {ended ? 'A finished game was saved:' : 'A game in progress was found:'} <b>{saved.game.title}</b>
+        <span class="muted">(saved {savedTime(saved.savedAt)})</span>
+        {#if !ended}
+          <span class="muted small">Edits you make here don't change it unless you resume with them.</span>
+        {/if}
       </span>
-      <button class="primary" onclick={resume}>Resume game</button>
+      <button class="primary" onclick={() => resume()}>{ended ? 'View results' : 'Resume game'}</button>
+      {#if !ended && saved.game.id === app.game.id}
+        <button onclick={() => resume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+          Resume with my edits
+        </button>
+      {/if}
       <button class="ghost" onclick={discardResume}>Discard</button>
     </div>
   {/if}
   <Editor onplay={startPlay} />
 {:else}
-  <Play onexit={exitPlay} />
+  <Play onexit={exitPlay} oncancel={leavePlay} />
 {/if}
 
 {#if app.toast}
-  <div class="toast" role="status">{app.toast}</div>
+  <div class="toast" role="status">
+    {app.toast}
+    {#if app.toastAction}
+      {@const action = app.toastAction}
+      <button
+        class="small"
+        onclick={() => {
+          action.run();
+          app.toast = '';
+          app.toastAction = null;
+        }}>{action.label}</button>
+    {/if}
+  </div>
 {/if}
 
 <style>
@@ -143,8 +202,15 @@
     display: flex;
     gap: 12px;
     align-items: center;
+    flex-wrap: wrap;
     padding: 10px 16px;
     background: #2a2410;
     border-bottom: 1px solid var(--warn);
+  }
+  .small {
+    font-size: 12px;
+  }
+  .toast button {
+    margin-left: 10px;
   }
 </style>

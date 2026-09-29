@@ -5,8 +5,11 @@
     ['1 – 9', 'Select / deselect player N for scoring'],
     ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
     ['R', 'Reveal the answer'],
-    ['Esc / B', 'Close the tool overlay, or go back to the board'],
-    ['N', 'Next step (round intro, final round)'],
+    ['Esc / B', 'Close the tool overlay, or go back to the board (the tile is used up)'],
+    ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable'],
+    ['Right-click a used tile', 'Put it back on the board (or use ↶ Reopen in the host panel)'],
+    ['N', 'Next step (round intro, final round; in the reveals: show the wager, then the next player)'],
+    ['C / X', 'Final reveals: mark the spotlit player right / wrong'],
     ['T', 'Start / pause the countdown'],
     ['P then 1 – 9', 'Make player N the current picker'],
     ['D', 'Roll the last dice again'],
@@ -19,14 +22,23 @@
     ['Y', 'Open YouTube / online media in its own window'],
     ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo the last score change'],
     ['L', 'Score & roll log'],
-    ['A', 'Open / close the audience window'],
+    ['A', 'Open / focus the audience window (never closes it)'],
     ['H', 'Hide / show the host controls'],
     ['F', 'Full-screen'],
     ['?', 'This list'],
   ];
 </script>
 
-<svelte:window onkeydown={(e) => (e.key === 'Escape' || e.key === '?') && (e.stopImmediatePropagation(), onclose())} />
+<svelte:window
+  onkeydown={(e) => {
+    // '?' typed into a text field is just a question mark.
+    const typing = (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]');
+    if (e.key === 'Escape' || (e.key === '?' && !typing)) {
+      e.stopImmediatePropagation();
+      onclose();
+    }
+  }}
+/>
 
 <div class="backdrop" onclick={onclose} role="presentation">
   <div class="modal" role="dialog" aria-label="Keyboard shortcuts">

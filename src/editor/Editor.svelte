@@ -46,7 +46,7 @@
     if (!confirm('Start a new game? Save this one first if you want to keep it.')) return;
     app.game = newGame();
     tab = 'setup';
-    pruneMedia([app.game, app.playGame]);
+    pruneMedia([app.game, app.playGame, app.resumable?.game]);
   }
 
   async function open(): Promise<void> {

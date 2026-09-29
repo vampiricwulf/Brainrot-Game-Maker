@@ -265,7 +265,9 @@ export function applyAction(
   rollTotal = 0,
 ): void {
   const deltas = actionDeltas(session, a, targets, source, rollTotal);
-  for (const [id, delta] of Object.entries(deltas)) applyScore(session, game, [id], delta, reason, undefined, true);
+  // One undo step for the whole effect (a swap or steal changes two scores).
+  const batchId = newId();
+  for (const [id, delta] of Object.entries(deltas)) applyScore(session, game, [id], delta, reason, undefined, true, batchId);
 }
 
 // ---------- Roll log ----------

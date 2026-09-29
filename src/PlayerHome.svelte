@@ -27,11 +27,13 @@
       {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{game.final.enabled ? ` · ${finalName(game)}` : ''}
     </p>
     {#if resumable}
+      {@const ended = resumable.session.phase === 'end'}
       <div class="resume">
-        <span>A game in progress was saved {new Date(resumable.savedAt).toLocaleString()}.</span>
+        <span>{ended ? 'A finished game' : 'A game in progress'} was saved {new Date(resumable.savedAt).toLocaleString()}.</span>
         <div class="row">
-          <button class="primary" onclick={onresume}>Resume game</button>
-          <button class="ghost" onclick={ondiscard}>Start over</button>
+          <button class="primary" onclick={onresume}>{ended ? 'View results' : 'Resume game'}</button>
+          <!-- App asks before deleting a game in progress. -->
+          <button class="ghost" onclick={ondiscard}>{ended ? 'New game' : 'Start over'}</button>
         </div>
       </div>
     {:else}

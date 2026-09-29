@@ -2,13 +2,14 @@
 <script lang="ts">
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, currentClueInfo, roundComplete, score, setScore } from '../lib/session';
+  import { answerShowing, clueName, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
+  import RoundNav from './host/RoundNav.svelte';
   import { app } from '../lib/app.svelte';
   import type { Snippet } from 'svelte';
 
@@ -18,15 +19,23 @@
     selected = $bindable(),
     amount = $bindable(),
     dual,
+    pickerPending = false,
+    finishArmed = false,
     tools,
     onaward,
+    onright,
     onwrong,
     onreveal,
     onback,
+    oncancelclue,
+    onreopen,
     onundo,
     onredo,
     onnextround,
     onprevround,
+    onbackfromfinal,
+    onbackfromend,
+    onrematch,
     onintronext,
     onskipintro,
     onddshow,
@@ -45,16 +54,30 @@
     selected: string[];
     amount: number | null;
     dual: boolean;
+    /** P was pressed and the next number key picks the picker. */
+    pickerPending?: boolean;
+    /** Everyone in the final reveal is judged; the next N finishes the game. */
+    finishArmed?: boolean;
     /** Extra tool buttons (dice, wheel…) rendered in the nav row. */
     tools?: Snippet;
     onaward: (sign: 1 | -1) => void;
+    /** One-click correct answer for one player (awards the clue value or Daily Double wager). */
+    onright: (playerId: string) => void;
     onwrong: (playerId: string) => void;
     onreveal: () => void;
+    /** Done with the clue: back to the board, tile used. */
     onback: () => void;
+    /** Back to the board without using up the tile. */
+    oncancelclue: () => void;
+    /** Put a used tile back on the board. */
+    onreopen: (clueId: string) => void;
     onundo: () => void;
     onredo: () => void;
     onnextround: () => void;
     onprevround: () => void;
+    onbackfromfinal: () => void;
+    onbackfromend: () => void;
+    onrematch: () => void;
     onintronext: () => void;
     onskipintro: () => void;
     onddshow: (playerId: string, wager: number) => void;
@@ -74,7 +97,6 @@
   const round = $derived(game.rounds[session.currentRound]);
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const canUndo = $derived(session.scoreLog.some((e) => !e.undone));
-  const isLastRound = $derived(session.currentRound >= game.rounds.length - 1);
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(
     !ddWager &&
@@ -83,6 +105,8 @@
         session.phase === 'tiebreaker' ||
         (session.phase === 'final' && session.finalStep !== 'reveal')),
   );
+  // At the end the chips stay (scores can still be fixed) but there's nothing to award.
+  const showPlayers = $derived(scoring || session.phase === 'end');
   const introLabel = $derived(
     session.intro?.stage === 'title'
       ? 'Show board ▶'
@@ -91,6 +115,14 @@
         : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${round?.categories.length ?? 0} ▶`,
   );
   const timerDefault = $derived(info?.clue.timerSeconds || game.settings.defaultTimerSeconds || 30);
+  const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
+  const lastClosedRef = $derived(session.lastClosed && session.used[session.lastClosed] ? findClueRef(game, session.lastClosed) : null);
+  const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
+  const awardLabel = $derived.by(() => {
+    if (selected.length !== 1) return `＋ Award${selected.length ? ` (${selected.length})` : ''}`;
+    const p = session.players.find((x) => x.id === selected[0]);
+    return `＋ Award ${p?.name ?? ''}${amount ? ` +${formatPoints(Math.abs(amount), sym)}` : ''}`;
+  });
 
   let editingScore = $state<string | null>(null);
 
@@ -103,6 +135,10 @@
     if (value.trim() !== '' && Number.isFinite(n)) setScore(session, id, n);
     editingScore = null;
   }
+
+  /** The quick ✔/✘ buttons: clue phase only, and during a Daily Double only for the player who found it. */
+  const quickFor = (id: string) =>
+    game.settings.deductOnWrong && session.phase === 'clue' && !!info && (session.dd?.stage !== 'question' || session.dd.playerId === id);
 </script>
 
 <div class="panel">
@@ -115,6 +151,29 @@
         <span class="muted">Pick a tile on the board.</span>
       {/if}
       {#if done}<span class="done">Round complete!</span>{/if}
+      {#if lastClosedRef && session.lastClosed}
+        {@const id = session.lastClosed}
+        <button class="small ghost" onclick={() => onreopen(id)} title="Put the last tile you closed back on the board">
+          ↶ Reopen {clueName(game, lastClosedRef)}
+        </button>
+      {/if}
+      {#if used.length}
+        <select
+          class="small"
+          aria-label="Reopen a used tile"
+          title="Put a used tile back on the board (or right-click it on the board)"
+          onchange={(e) => {
+            const id = e.currentTarget.value;
+            e.currentTarget.value = '';
+            if (id) onreopen(id);
+          }}
+        >
+          <option value="">↶ Reopen a tile…</option>
+          {#each used as t (t.id)}
+            <option value={t.id}>{clueName(game, t.ref)}</option>
+          {/each}
+        </select>
+      {/if}
     {:else if session.phase === 'clue' && info}
       <b>{categoryLabel(info.category)}</b>
       <span class="val">{formatPoints(info.value, sym)}</span>
@@ -128,6 +187,12 @@
         <span class="muted hint">· click the slide or press R to reveal</span>
       {/if}
       {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes">📝 {info.clue.hostNotes}</span>{/if}
+      <!-- Up here, away from the nav row, so it's never hit by a double-click meant for something else. -->
+      <button
+        class="small ghost"
+        onclick={oncancelclue}
+        title={ddWager ? 'Esc: the question never showed, so the tile stays on the board' : 'Shift+Esc: back to the board without using up this tile'}
+      >↩ Cancel (keep tile)</button>
     {:else if session.phase === 'final'}
       <b>{finalName(game)}</b>
       <span class="muted">{session.finalStep}</span>
@@ -136,7 +201,9 @@
       <span class="muted">Award the winner with the scoring buttons, then go back to the results.</span>
     {:else}
       <b>Game over</b>
+      <span class="muted hint">Click a score to fix it.</span>
     {/if}
+    {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
     <TimerControls defaultSeconds={timerDefault} />
   </div>
@@ -161,29 +228,33 @@
   {/if}
 
   {#if session.phase === 'final'}
-    <FinalControls {game} {session} onstep={onfinalstep} {onreveal} />
+    <FinalControls {game} {session} armed={finishArmed} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
   {/if}
 
   {#if session.phase === 'end'}
-    <EndControls {game} {session} {onrolloff} />
+    <EndControls {game} {session} {onrolloff} onback={onbackfromend} {onrematch} />
   {/if}
 
-  {#if scoring}
+  {#if showPlayers}
     <div class="players">
       {#each session.players as p, i (p.id)}
         {@const on = selected.includes(p.id)}
         <div class="p" class:on class:picker={session.currentPickerId === p.id} style:--c={p.color}>
-          <button
-            class="sel"
-            onclick={() => toggle(p.id)}
-            style:background={on ? p.color : undefined}
-            style:color={on ? textOn(p.color) : undefined}
-            aria-pressed={on}
-            title="Toggle (key {i + 1})"
-          >
-            <span class="key">{i + 1}</span>
-            {p.name}
-          </button>
+          {#if scoring}
+            <button
+              class="sel"
+              onclick={() => toggle(p.id)}
+              style:background={on ? p.color : undefined}
+              style:color={on ? textOn(p.color) : undefined}
+              aria-pressed={on}
+              title="Toggle (key {i + 1})"
+            >
+              <span class="key">{i + 1}</span>
+              {p.name}
+            </button>
+          {:else}
+            <span class="sel name">{p.name}</span>
+          {/if}
           {#if editingScore === p.id}
             <!-- svelte-ignore a11y_autofocus -->
             <input
@@ -191,26 +262,33 @@
               type="number"
               autofocus
               value={score(session, p.id)}
+              onfocus={(e) => e.currentTarget.select()}
               onkeydown={(e) => {
                 if (e.key === 'Enter') commitScore(p.id, e.currentTarget.value);
+                // Cancel: stop editing first, so the blur that follows doesn't commit the typed value.
                 if (e.key === 'Escape') editingScore = null;
               }}
-              onblur={(e) => commitScore(p.id, e.currentTarget.value)}
+              onblur={(e) => editingScore === p.id && commitScore(p.id, e.currentTarget.value)}
             />
           {:else}
             <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score">
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}
-          {#if game.settings.deductOnWrong && session.phase === 'clue' && info}
-            <button class="small wrong" onclick={() => onwrong(p.id)} title="Deduct the clue value">
-              ✘ −{session.dd?.wager ?? info.value}
+          {#if quickFor(p.id)}
+            <button class="small right" onclick={() => onright(p.id)} title="Correct: award the value to {p.name} only">
+              ✔ +{quickValue}
+            </button>
+            <button class="small wrong" onclick={() => onwrong(p.id)} title="Wrong: deduct the value from {p.name}">
+              ✘ −{quickValue}
             </button>
           {/if}
         </div>
       {/each}
     </div>
+  {/if}
 
+  {#if scoring}
     <div class="row award">
       <label class="check">
         Amount
@@ -218,17 +296,25 @@
           type="number"
           bind:value={amount}
           onkeydown={(e) => {
-            if (e.key === 'Enter') onaward(e.shiftKey ? -1 : 1);
+            // Give the keys back to the shortcuts afterwards, so the next "2" selects a player instead of typing.
+            if (e.key === 'Enter') {
+              onaward(e.shiftKey ? -1 : 1);
+              e.currentTarget.blur();
+            } else if (e.key === 'Escape') e.currentTarget.blur();
           }}
         />
       </label>
       <button class="good" disabled={!selected.length || !amount} onclick={() => onaward(1)} title="Enter">
-        ＋ Award {selected.length ? `(${selected.length})` : ''}
+        {awardLabel}
       </button>
       <button class="bad" disabled={!selected.length || !amount} onclick={() => onaward(-1)} title="Shift+Enter">
         − Deduct
       </button>
-      <button class="ghost" disabled={!selected.length} onclick={() => (selected = [])}>Clear selection</button>
+      {#if selected.length}
+        <button class="ghost" onclick={() => (selected = [])}>Clear selection</button>
+      {:else}
+        <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}), then Award ⏎ / Deduct ⇧⏎</span>
+      {/if}
       <span class="spacer"></span>
       <button onclick={onundo} disabled={!canUndo} title="Ctrl+Z">↶ Undo</button>
       <button onclick={onredo} disabled={!session.redoStack.length} title="Ctrl+Shift+Z">↷ Redo</button>
@@ -240,14 +326,7 @@
       <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)">
         {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
       </button>
-      <button class:primary={session.revealed} onclick={onback} title="Esc">▦ Back to board</button>
-    {:else if session.phase === 'clue'}
-      <button onclick={onback} title="Esc">▦ Back to board</button>
-    {:else if session.phase === 'board'}
-      <button onclick={onprevround} disabled={session.currentRound === 0}>◀ Prev round</button>
-      <button class:primary={done} onclick={onnextround}>
-        {isLastRound ? (game.final.enabled ? `${finalName(game)} ▶` : 'End game ▶') : 'Next round ▶'}
-      </button>
+      <button class:primary={session.revealed} onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
     {:else if session.phase === 'tiebreaker'}
       <button class:primary={!session.tiebreakerRevealed} onclick={onreveal} title="R (press again to hide)">
         {answerShowing(session) ? '🙈 Hide answer' : '👁 Reveal answer'}
@@ -256,7 +335,12 @@
     {/if}
     {@render tools?.()}
     <span class="spacer"></span>
-    <button onclick={onaudience} class:on={dual} title="A">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+    {#if session.phase === 'board'}
+      <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
+      <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} />
+      <span class="divider" aria-hidden="true"></span>
+    {/if}
+    <button onclick={onaudience} class:on={dual} title="A opens or focuses it">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
     <button onclick={onlog} title="L">📜 Log</button>
     <button onclick={onplayers}>👥 Players</button>
     <button onclick={onhide} title="H">Hide controls</button>
@@ -299,6 +383,14 @@
     padding: 2px 8px;
     border-radius: 6px;
   }
+  .pending {
+    background: var(--warn);
+    color: #000;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-weight: 700;
+    font-size: 12px;
+  }
   .players {
     display: flex;
     flex-wrap: wrap;
@@ -322,6 +414,9 @@
     font-weight: 700;
     border: none;
   }
+  .sel.name {
+    padding: 6px 12px;
+  }
   .key {
     font-size: 10px;
     opacity: 0.7;
@@ -335,13 +430,25 @@
   .score-edit {
     width: 100px;
   }
+  .right {
+    color: var(--good);
+  }
   .wrong {
     color: var(--bad);
   }
   .small {
     font-size: 12px;
   }
+  select.small {
+    padding: 2px 6px;
+  }
   .award input {
     width: 110px;
+  }
+  .divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--border);
+    margin: 0 4px;
   }
 </style>

@@ -1,13 +1,16 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { finalName, newId, type ClueRef } from '../lib/model';
+  import { finalName, formatPoints, getClue, newId, type ClueRef } from '../lib/model';
   import {
-    applyScore, backToBoard, clueReason, currentClueInfo, ddShowQuestion, finalNext, goToRound, introNext, openClue, redo,
-    answerShowing, reveal, skipIntro, startIntro, toggleReveal, undo,
+    applyScore, backToBoard, backToFinalReveal, backToLastRound, clueName, clueReason, currentClueInfo, ddShowQuestion, describeStep,
+    finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
+    redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
   } from '../lib/session';
-  import { overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
+  import { newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
+  import { validate } from '../lib/validate';
+  import { nextFreeColor } from '../lib/colors';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
@@ -22,7 +25,15 @@
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { onMount } from 'svelte';
 
-  let { onexit }: { onexit: () => void } = $props();
+  let {
+    onexit,
+    oncancel,
+  }: {
+    /** Leave the game (it stays saved and resumable). */
+    onexit: () => void;
+    /** Pre-game "Back to editor": nothing was played, so nothing is saved or cleared. */
+    oncancel: () => void;
+  } = $props();
 
   // Play is only mounted when these exist.
   const game = $derived(app.playGame!);
@@ -34,10 +45,23 @@
   let showPlayers = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
-  let pickerPending = false;
+  /** P was pressed: the next 1–9 sets the picker. */
+  let pickerPending = $state(false);
+  /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
+  let finishArmed = $state(false);
 
   const sym = $derived(game.settings.currencySymbol);
   const dual = $derived(audience.open);
+
+  // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.
+  const pending = new Set<ReturnType<typeof setTimeout>>();
+  function later(fn: () => void, ms: number): void {
+    const id = setTimeout(() => {
+      pending.delete(id);
+      fn();
+    }, ms);
+    pending.add(id);
+  }
 
   // Mirror state to the audience window whenever it changes.
   $effect(() => {
@@ -52,6 +76,12 @@
     const l = $state.snapshot(app.live);
     if (audience.open) pushLive(l);
   });
+  // "Press N again to finish" only applies right where it was armed.
+  $effect(() => {
+    void session.phase;
+    void session.finalStep;
+    finishArmed = false;
+  });
 
   onMount(() => {
     registerGameFonts(game);
@@ -65,7 +95,11 @@
         playSound(app.live, game.audio.timesUp);
       }
     }, 150);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      for (const t of pending) clearTimeout(t);
+      pending.clear();
+    };
   });
 
   /** Seconds for the open clue's countdown: its own setting, else the game default (0/blank = none). */
@@ -86,9 +120,9 @@
     return src[0];
   }
 
-  async function toggleAudience(): Promise<void> {
-    if (audience.open) closeAudienceWindow();
-    else if (!(await openAudienceWindow()))
+  /** Open the audience window, or bring it to the front if it's already open. Never closes it. */
+  async function openAudience(): Promise<void> {
+    if (!(await openAudienceWindow()))
       toast(
         inTauri()
           ? "Couldn't open the audience window. Try again, or use single-window mode."
@@ -97,10 +131,17 @@
       );
   }
 
+  /** The host panel's audience button: closing mid-game asks first, since it's usually the stream capture. */
+  function toggleAudience(): void {
+    if (!audience.open) openAudience();
+    else if (confirm('Close the audience window? Your stream capture will go black.')) closeAudienceWindow();
+  }
+
   function pop(text: string, color: string): void {
     const p = { id: newId(), text, color };
     app.live.pops.push(p);
-    setTimeout(() => (app.live.pops = app.live.pops.filter((x) => x.id !== p.id)), 2200);
+    const live = app.live;
+    later(() => (live.pops = live.pops.filter((x) => x.id !== p.id)), 2200);
   }
 
   function reasonNow(): string {
@@ -112,7 +153,8 @@
   }
 
   function award(sign: 1 | -1, ids = selected, amt = amount): void {
-    if (!ids.length || !amt) return;
+    if (!ids.length) return toast(`Select a player first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
+    if (!amt) return toast('Enter an amount first');
     const events = applyScore(session, game, ids, sign * Math.abs(amt), reasonNow(), info?.clue.id);
     for (const e of events) {
       const p = session.players.find((x) => x.id === e.playerId);
@@ -157,9 +199,11 @@
     if (o?.kind !== 'rolloff') return;
     const winner = o.winner;
     const nonce = o.nonce;
-    setTimeout(() => {
-      // Only if that roll-off is still the one on screen (or was closed after finishing).
-      if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) session.currentPickerId = winner;
+    const s = session;
+    later(() => {
+      // Only in this game, and only if that roll-off is still the one on screen (or was closed after finishing).
+      if (app.session !== s) return;
+      if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) s.currentPickerId = winner;
     }, overlayDoneAt(o) - Date.now() + 200);
   }
 
@@ -230,11 +274,24 @@
     autoTimer();
   }
 
-  function back(): void {
-    backToBoard(session, game);
+  /**
+   * Back to the board. The tile is marked used, unless the host cancelled (`keep`) or the Daily Double
+   * question never showed.
+   */
+  function back(keep = false): void {
+    // The host panel's status row then offers "↶ Reopen <tile>" (no toast: it would cover the round buttons).
+    backToBoard(session, game, { markUsed: !keep && session.dd?.stage !== 'splash' });
     selected = [];
     amount = null;
     app.live.timer = null;
+  }
+
+  /** Put a used tile back on the board, or mark one as played. */
+  function toggleTile(clueId: string): void {
+    const ref = findClueRef(game, clueId);
+    const used = toggleUsed(session, clueId);
+    const name = ref ? clueName(game, ref) : 'That tile';
+    toast(used ? `${name} marked as played` : `${name} is back on the board`);
   }
 
   function nextRound(delta: number): void {
@@ -244,6 +301,32 @@
     amount = null;
     if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
     if (session.phase === 'end') playSound(app.live, game.audio.winner);
+  }
+
+  /** Final round started by mistake (or a tile was skipped): back to the last round's board, wagers kept. */
+  function backFromFinal(): void {
+    backToLastRound(session, game);
+    app.live.timer = null;
+    app.live.sound = null;
+  }
+
+  /** From the end screen: back to the final reveals to fix a judgment, or to the board if there was no Final. */
+  function backFromEnd(): void {
+    app.live.sound = null;
+    app.live.overlay = null;
+    if (session.final && game.final.enabled) backToFinalReveal(session);
+    else backToLastRound(session, game);
+  }
+
+  /** Same players (names and colors) at 0 and a fresh board, via the pre-game screen. */
+  function rematch(): void {
+    const s = newSession(game);
+    s.players = session.players.map(({ id, name, color }) => ({ id, name, color, startScore: 0 }));
+    selected = [];
+    amount = null;
+    app.live = newLive();
+    app.session = s;
+    app.pregame = true;
   }
 
   function intro(): void {
@@ -272,34 +355,102 @@
     if (session.phase === 'end') playSound(app.live, game.audio.winner);
   }
 
+  /** N in the final reveal: show the wager, then the next player; finishing takes a second N once all are judged. */
+  function finalRevealNext(): void {
+    const r = finalAdvance(session);
+    if (r === 'done') {
+      // The final controls show "press N again to finish" while armed.
+      if (finishArmed) {
+        finalNext(session);
+        finalStep();
+      } else finishArmed = true;
+    } else if (r === 'waiting' && session.final?.current)
+      toast(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
+  }
+
+  /** C / X in the final reveal: judge the spotlit player. */
+  function finalJudgeKey(right: boolean): void {
+    const id = session.final?.current;
+    if (!id || session.phase !== 'final' || session.finalStep !== 'reveal') return;
+    finalShow(session, id);
+    finalJudge(session, game, id, right);
+  }
+
   function doUndo(): void {
-    const e = undo(session);
-    if (e) toast(`Undid ${e.delta > 0 ? '+' : '−'}${Math.abs(e.delta)} (${session.players.find((p) => p.id === e.playerId)?.name ?? '?'})`);
+    const events = undo(session);
+    if (!events.length) return toast('Nothing to undo');
+    toast(`Undid ${describeStep(session, events, sym)}`, 5000, { label: '↷ Redo', run: doRedo });
   }
 
   function doRedo(): void {
-    if (redo(session)) toast('Redone');
+    const events = redo(session);
+    if (events.length) toast(`Redid ${describeStep(session, events, sym)}`);
   }
 
   function start(): void {
-    if (!session.players.length) {
-      toast('Add at least one player');
-      return;
-    }
+    if (!session.players.length) return;
+    // A game without a saved roster keeps these players for next time.
+    if (!app.game.players.length) app.game.players = session.players.map(({ id, name, color }) => ({ id, name, color }));
+    // This game now replaces any older saved one (autosave starts once pre-game is over).
+    app.resumable = null;
     app.pregame = false;
     startIntro(session, game);
     if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
   }
 
+  // ---------- Pre-game ----------
+
+  /** Things worth fixing before going live (warnings only: Start still works). */
+  const checks = $derived.by(() => {
+    const out: { text: string; ddRound?: number }[] = validate(game)
+      .filter((p) => p.level === 'warn')
+      .map((p) => ({ text: p.text }));
+    game.rounds.forEach((r, i) => {
+      const want = r.dailyDoubleCount ?? 1;
+      const placed = r.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
+      const listed = out.some((p) => p.text.startsWith(`${r.name}:`) && p.text.includes('Daily Double'));
+      if (placed < want && !listed) out.push({ text: `${r.name}: ${want} Daily Double${want === 1 ? '' : 's'} wanted, ${placed} placed`, ddRound: i });
+    });
+    return out;
+  });
+
+  /** Scatter the missing Daily Doubles now (in this game and in the editor's copy, so they're kept). */
+  function placeDailyDoubles(ri: number): void {
+    const r = game.rounds[ri];
+    const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1);
+    const types = new Map(r.categories.flatMap((c) => c.clues.map((cl) => [cl.id, cl.type] as const)));
+    for (const c of app.game.rounds.find((x) => x.id === r.id)?.categories ?? [])
+      for (const cl of c.clues) cl.type = types.get(cl.id) ?? cl.type;
+    toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
+  }
+
+  function addSamplePlayers(): void {
+    for (const name of ['Alex', 'Sam', 'Jordan']) {
+      if (session.players.length >= game.settings.maxPlayers) break;
+      session.players.push({ id: newId(), name, color: nextFreeColor(session.players.map((p) => p.color)), startScore: 0 });
+    }
+  }
+
+  // ---------- Players mid-game ----------
+
+  function removeFromGame(id: string): void {
+    const p = session.players.find((x) => x.id === id);
+    if (!p) return;
+    const msg = `Remove ${p.name} (${formatPoints(score(session, id), sym)})? Their points leave the scoreboard. You can restore them from this dialog.`;
+    if (!confirm(msg)) return;
+    removePlayer(session, id);
+    selected = selected.filter((x) => x !== id);
+  }
 
   function onkey(e: KeyboardEvent): void {
     if (app.pregame || showPlayers || showKeys) return;
+    const t = e.target as HTMLElement;
+    // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'.
+    if (t.closest('input, textarea, select, [contenteditable]')) return;
     if (e.key === '?') {
       showKeys = true;
       return;
     }
-    const t = e.target as HTMLElement;
-    if (t.closest('input, textarea, select, [contenteditable]')) return;
     const k = e.key.toLowerCase();
 
     if ((e.ctrlKey || e.metaKey) && k === 'z') {
@@ -336,7 +487,8 @@
       case 'b':
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
-        else if (session.phase === 'clue') back();
+        // Shift+Esc cancels: back to the board without using up the tile.
+        else if (session.phase === 'clue') back(e.shiftKey);
         break;
       case 'd':
         if (app.live.overlay?.kind !== 'dice' || Date.now() >= overlayDoneAt(app.live.overlay)) rollDice(app.live, session, lastDice);
@@ -357,10 +509,15 @@
         break;
       case 'n':
         if (session.phase === 'board' && session.intro) intro();
+        else if (session.phase === 'final' && session.finalStep === 'reveal') finalRevealNext();
         else if (session.phase === 'final' && session.finalStep !== 'wagers') {
           finalNext(session);
           finalStep();
         }
+        break;
+      case 'c':
+      case 'x':
+        finalJudgeKey(k === 'c');
         break;
       case 't':
         if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
@@ -379,7 +536,7 @@
         toggleFullscreen();
         break;
       case 'a':
-        toggleAudience();
+        openAudience();
         break;
       case ' ': {
         const m = firstMedia();
@@ -414,20 +571,58 @@
 {#if app.pregame}
   <div class="pregame">
     <h1>{game.title}</h1>
+    {#if app.resumable && app.resumable.session.phase !== 'end'}
+      <p class="warn">
+        ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the editor and
+        press Resume game.
+      </p>
+    {/if}
     <p class="muted">Confirm who's playing. Names, colors, and starting scores can be changed here or during the game.</p>
     <PlayerList bind:players={session.players} max={game.settings.maxPlayers} showScores />
-    <div class="row actions">
-      <button class="ghost" onclick={onexit}>◀ Back to editor</button>
-      <button class="primary big" onclick={start}>Start game ▶</button>
-    </div>
+    {#if !session.players.length}
+      <div class="row">
+        <span class="warn">Add at least one player to start.</span>
+        <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
+      </div>
+    {/if}
+
+    <h2>Display</h2>
     <div class="modes">
       <button class="mode" class:on={!dual} onclick={() => dual && closeAudienceWindow()}>
         <b>Single window</b>
         <span class="muted">Viewers see this window. Press H to hide the host controls.</span>
       </button>
-      <button class="mode" class:on={dual} onclick={() => !dual && toggleAudience()}>
+      <button class="mode" class:on={dual} onclick={() => !dual && openAudience()}>
         <b>📺 Separate audience window</b>
         <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
+      </button>
+    </div>
+
+    {#if checks.length}
+      <details class="checks">
+        <summary>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</summary>
+        <ul>
+          {#each checks as c}
+            <li>
+              {c.text}
+              {#if c.ddRound !== undefined}
+                {@const ri = c.ddRound}
+                <button class="small" onclick={() => placeDailyDoubles(ri)}>🎲 Place now</button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        <div class="row">
+          <button class="small" onclick={oncancel}>◀ Fix in editor</button>
+          <span class="muted small">These are only warnings: you can still start.</span>
+        </div>
+      </details>
+    {/if}
+
+    <div class="row actions">
+      <button class="ghost" onclick={oncancel}>◀ Back to editor</button>
+      <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add at least one player first'}>
+        Start game ▶
       </button>
     </div>
   </div>
@@ -442,6 +637,10 @@
             live={app.live}
             role={dual ? 'mirror' : 'single'}
             onpick={pick}
+            onunmark={(ref) => {
+              const id = getClue(game, ref)?.clue.id;
+              if (id && session.used[id]) toggleTile(id);
+            }}
             onpicker={(id) => (session.currentPickerId = session.currentPickerId === id ? undefined : id)}
             onact={stageAct}
           />
@@ -459,14 +658,22 @@
         {session}
         bind:selected
         bind:amount
+        {pickerPending}
+        {finishArmed}
         onaward={(s) => award(s)}
+        onright={(id) => award(1, [id], session.dd?.wager ?? info?.value ?? 0)}
         onwrong={(id) => award(-1, [id], session.dd?.wager ?? info?.value ?? 0)}
         onreveal={revealToggle}
-        onback={back}
+        onback={() => back()}
+        oncancelclue={() => back(true)}
+        onreopen={toggleTile}
         onundo={doUndo}
         onredo={doRedo}
         onnextround={() => nextRound(1)}
         onprevround={() => nextRound(-1)}
+        onbackfromfinal={backFromFinal}
+        onbackfromend={backFromEnd}
+        onrematch={rematch}
         onintronext={intro}
         onskipintro={() => skipIntro(session)}
         onddshow={ddShow}
@@ -479,7 +686,12 @@
         oncloseoverlay={closeOverlay}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20)}
         onhide={() => (hideControls = true)}
-        onexit={() => confirm('Leave this game? Progress is kept until you start a new game.') && onexit()}
+        onexit={() =>
+          confirm(
+            session.phase === 'end'
+              ? 'Leave the results screen? (Copy the results first if you want to keep them.)'
+              : 'Leave this game? You can resume it from the editor.',
+          ) && onexit()}
       >
         {#snippet tools()}
           <ToolLauncher {game} {session} onrolloff={rolloff} />
@@ -492,14 +704,28 @@
     <KeysHelp onclose={() => (showKeys = false)} />
   {/if}
   {#if showLog}
-    <ScoreLog {session} {sym} onclose={() => (showLog = false)} />
+    <ScoreLog {session} {sym} onreopen={toggleTile} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
     <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && (showPlayers = false)}>
       <div class="modal" role="dialog" aria-modal="true" aria-label="Players">
         <h2>Players</h2>
         <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
-        <PlayerList bind:players={session.players} max={game.settings.maxPlayers} />
+        <PlayerList bind:players={session.players} max={game.settings.maxPlayers} inGame onremove={removeFromGame} />
+        {#if session.removedPlayers?.length}
+          <div class="removed">
+            <span class="muted small">Removed this game:</span>
+            {#each session.removedPlayers as p (p.id)}
+              <span class="gone" style:border-color={p.color}>
+                {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
+                <button
+                  class="small"
+                  disabled={session.players.length >= game.settings.maxPlayers}
+                  onclick={() => restorePlayer(session, p.id)}>↩ Restore</button>
+              </span>
+            {/each}
+          </div>
+        {/if}
         <div class="row"><span class="spacer"></span><button class="primary" onclick={() => (showPlayers = false)}>Done</button></div>
       </div>
     </div>
@@ -518,8 +744,35 @@
   .pregame h1 {
     margin: 0;
   }
+  .pregame h2 {
+    margin: 8px 0 0;
+    font-size: 15px;
+  }
   .pregame p {
     margin: 0;
+  }
+  .warn {
+    color: var(--warn);
+  }
+  .small {
+    font-size: 12px;
+  }
+  .checks {
+    border: 1px solid var(--warn);
+    border-radius: 8px;
+    padding: 8px 12px;
+  }
+  .checks summary {
+    cursor: pointer;
+    color: var(--warn);
+    font-weight: 600;
+  }
+  .checks ul {
+    margin: 8px 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .actions {
     margin-top: 12px;
@@ -550,7 +803,6 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-top: 8px;
   }
   .mode {
     display: flex;
@@ -606,5 +858,19 @@
   .modal h2,
   .modal p {
     margin: 0;
+  }
+  .removed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .gone {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    border: 2px solid;
+    border-radius: 8px;
+    padding: 3px 3px 3px 8px;
   }
 </style>

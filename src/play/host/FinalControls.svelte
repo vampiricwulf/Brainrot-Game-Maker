@@ -2,14 +2,25 @@
 <script lang="ts">
   import { textOn } from '../../lib/colors';
   import { formatPoints, type Game, type Session } from '../../lib/model';
-  import { finalJudge, finalNext, finalShow, finalWagerCap, score } from '../../lib/session';
+  import { finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, score } from '../../lib/session';
 
   let {
     game,
     session,
+    armed = false,
     onstep,
     onreveal,
-  }: { game: Game; session: Session; onstep: () => void; onreveal: () => void } = $props();
+    onback,
+  }: {
+    game: Game;
+    session: Session;
+    /** Everyone is judged and N was pressed once: the next N finishes. */
+    armed?: boolean;
+    onstep: () => void;
+    onreveal: () => void;
+    /** Back to the last round's board (wagers entered so far are kept). */
+    onback: () => void;
+  } = $props();
   const f = $derived(session.final);
   const sym = $derived(game.settings.currencySymbol);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
@@ -41,7 +52,13 @@
     [f.order[i], f.order[j]] = [f.order[j], f.order[i]];
   }
 
+  const lastRound = $derived(game.rounds[game.rounds.length - 1]);
+  const unjudged = $derived(finalUnjudged(session).length);
+
   function next(): void {
+    // Finishing shows the winner and confetti on stream, so ask if some players were never judged.
+    if (session.finalStep === 'reveal' && unjudged && !confirm(`${unjudged} player${unjudged === 1 ? '' : 's'} not judged yet. Finish the game anyway?`))
+      return;
     finalNext(session);
     onstep();
   }
@@ -89,7 +106,10 @@
       </div>
       <label class="check small"><input type="checkbox" bind:checked={override} /> Ignore the limits</label>
     {:else if session.finalStep === 'reveal'}
-      <span class="muted">Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼.</span>
+      <span class="muted">
+        Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼.
+        <span class="small">Keys: N shows the wager, then the next player · C right · X wrong.</span>
+      </span>
       <div class="order">
         {#each f.order as id, i (id)}
           {@const p = byId[id]}
@@ -113,10 +133,19 @@
       </div>
     {/if}
     <div class="row">
+      {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
+        <button class="ghost" onclick={onback} title="Wagers entered so far are kept">◀ Back to {lastRound?.name ?? 'the board'}</button>
+      {/if}
       {#if session.finalStep === 'answer'}
         <button onclick={onreveal} title="R">🙈 Hide answer</button>
       {:else if session.finalStep === 'category' || session.finalStep === 'question'}
         <span class="muted small">Tip: click the screen to continue</span>
+      {:else if session.finalStep === 'reveal'}
+        {#if armed}
+          <span class="armed">Everyone is judged: press N again (or the button) to finish.</span>
+        {:else if unjudged}
+          <span class="muted small">{unjudged} still to judge</span>
+        {/if}
       {/if}
       <span class="spacer"></span>
       <button class="primary" onclick={session.finalStep === 'question' ? onreveal : next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
@@ -178,5 +207,9 @@
   }
   button.on {
     box-shadow: 0 0 0 2px #fff;
+  }
+  .armed {
+    color: var(--good);
+    font-weight: 600;
   }
 </style>

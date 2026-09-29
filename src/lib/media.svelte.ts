@@ -4,6 +4,7 @@
 import { del, get, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
+import { loadPlay } from './persist';
 
 const blobs = new Map<string, Blob>();
 /** id → object URL, reactive so components re-render when media arrives. */
@@ -47,9 +48,11 @@ export async function loadGameMedia(game: Game): Promise<string[]> {
   return missing;
 }
 
-/** Delete stored media not referenced by any of the given games. */
+/** Delete stored media not referenced by any of the given games (or by the saved game in progress). */
 export async function pruneMedia(games: (Game | null | undefined)[]): Promise<void> {
-  const keep = new Set(games.flatMap((g) => g?.media.map((m) => m.id) ?? []));
+  // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it.
+  const saved = (await loadPlay())?.game;
+  const keep = new Set([...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []));
   try {
     for (const k of await keys()) {
       if (typeof k === 'string' && k.startsWith('media:') && !keep.has(k.slice(6))) await del(k);

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newId, newRound } from './model';
-import { setRowCount, addCategory, removeCategory } from './ops';
+import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
+  backToFinalReveal, backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
+  toggleUsed, usedTiles, describeStep,
 } from './session';
+import { applyAction } from './tools';
 
 function setup(players = 3) {
   const game = newGame();
@@ -42,7 +45,7 @@ describe('scoring', () => {
     redo(session);
     expect(score(session, a)).toBe(100);
     applyScore(session, game, [a], 5, 'x');
-    expect(redo(session)).toBeNull();
+    expect(redo(session)).toEqual([]);
     expect(score(session, a)).toBe(105);
   });
 
@@ -220,5 +223,195 @@ describe('ops', () => {
     expect(round.categories.every((c) => c.clues.length === 7)).toBe(true);
     setRowCount(round, 3);
     expect(round.categories.every((c) => c.clues.length === 3)).toBe(true);
+  });
+});
+
+describe('undo as one step', () => {
+  it('undoes and redoes a whole multi-player award', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a], 50, 'earlier');
+    applyScore(session, game, [a, b, c], 200, 'x');
+    expect(undo(session)).toHaveLength(3);
+    expect([score(session, a), score(session, b), score(session, c)]).toEqual([50, 0, 0]);
+    expect(redo(session)).toHaveLength(3);
+    expect([score(session, a), score(session, b), score(session, c)]).toEqual([250, 200, 200]);
+    // Two undos take back both steps; one redo brings back only the earlier one.
+    undo(session);
+    undo(session);
+    expect(score(session, a)).toBe(0);
+    expect(redo(session).map((e) => e.reason)).toEqual(['earlier']);
+  });
+
+  it('treats a swap as one step', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a], 300, 'x');
+    applyAction(session, game, { kind: 'swapScores' }, [b], a, 'Wheel');
+    expect([score(session, a), score(session, b)]).toEqual([0, 300]);
+    undo(session);
+    expect([score(session, a), score(session, b)]).toEqual([300, 0]);
+  });
+
+  it('skips events of removed players', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a], 100, 'x');
+    applyScore(session, game, [b], 300, 'x');
+    removePlayer(session, b);
+    expect(undo(session).map((e) => e.playerId)).toEqual([a]);
+    expect(score(session, a)).toBe(0);
+    expect(undo(session)).toEqual([]);
+  });
+
+  it('describes an undone step with points, names and reason', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a, b], 200, 'Memes $200');
+    expect(describeStep(session, undo(session), '$')).toBe('+$200 × 2 (P1, P2) · Memes $200');
+    applyScore(session, game, [a], -400, 'Wrong');
+    removePlayer(session, a);
+    expect(describeStep(session, session.scoreLog.slice(-1), '$')).toBe('−$400 (P1) · Wrong');
+  });
+
+  it('toggles a whole step from the log', () => {
+    const { game, session, a, b } = setup();
+    const [e] = applyScore(session, game, [a, b], 100, 'x');
+    toggleStep(session, stepOf(e));
+    expect([score(session, a), score(session, b)]).toEqual([0, 0]);
+    toggleStep(session, stepOf(e));
+    expect([score(session, a), score(session, b)]).toEqual([100, 100]);
+  });
+});
+
+describe('players mid-game', () => {
+  it('removes a player during Final cleanly, and restores their score', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    session.currentPickerId = c;
+    goToRound(session, game, 1);
+    finalNext(session);
+    session.final!.wagers[c] = 100;
+    removePlayer(session, c);
+    expect(session.players.map((p) => p.id)).toEqual([a, b]);
+    expect(session.final!.players).not.toContain(c);
+    expect(session.final!.order).not.toContain(c);
+    expect(session.final!.wagers[c]).toBeUndefined();
+    expect(session.currentPickerId).toBeUndefined();
+    expect(score(session, c)).toBe(400);
+    restorePlayer(session, c);
+    expect(session.players.map((p) => p.id)).toEqual([a, b, c]);
+    expect(session.removedPlayers).toEqual([]);
+    expect(score(session, c)).toBe(400);
+  });
+});
+
+describe('closing and reopening tiles', () => {
+  it('can close a clue without using it, and put a used tile back', () => {
+    const { game, session } = setup();
+    const id = game.rounds[0].categories[0].clues[0].id;
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    expect(backToBoard(session, game, { markUsed: false })).toBeNull();
+    expect(session.used[id]).toBeUndefined();
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    expect(backToBoard(session, game)).toBe(id);
+    expect([session.used[id], session.lastClosed]).toEqual([true, id]);
+    expect(usedTiles(session, game).map((t) => t.id)).toEqual([id]);
+    expect(toggleUsed(session, id)).toBe(false);
+    expect([session.used[id], session.lastClosed]).toEqual([undefined, null]);
+    expect(toggleUsed(session, id)).toBe(true);
+    expect(findClueRef(game, id)).toEqual({ round: 0, cat: 0, row: 0 });
+  });
+});
+
+describe('round navigation', () => {
+  function twoRounds() {
+    const s = setup();
+    s.game.rounds.push(newRound('Double', 2, [400, 800]));
+    startIntro(s.session, s.game);
+    return s;
+  }
+
+  it('never replays an intro when going back or returning', () => {
+    const { game, session } = twoRounds();
+    expect(session.intro?.stage).toBe('title');
+    goToRound(session, game, 1);
+    expect(session.intro?.stage).toBe('title');
+    goToRound(session, game, 0);
+    expect(session.intro).toBeNull();
+    goToRound(session, game, 1);
+    expect(session.intro).toBeNull();
+  });
+
+  it('goes back from Final to the board and returns with the wagers kept', () => {
+    const { game, session, a, b } = twoRounds();
+    goToRound(session, game, 1);
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 2);
+    finalNext(session);
+    session.final!.wagers[a] = 300;
+    backToLastRound(session, game);
+    expect([session.phase, session.currentRound, session.intro]).toEqual(['board', 1, null]);
+    expect(session.final!.wagers[a]).toBe(300);
+    goToRound(session, game, 2);
+    expect([session.phase, session.finalStep]).toEqual(['final', 'category']);
+    expect(session.final!.wagers[a]).toBe(300);
+    expect(session.final!.players).toEqual([a, b]);
+  });
+});
+
+describe('final reveal with N', () => {
+  it('shows wagers and moves the spotlight, but never ends the game', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a], 300, 'x');
+    applyScore(session, game, [b], 200, 'x');
+    applyScore(session, game, [c], 100, 'x');
+    goToRound(session, game, 1);
+    for (let i = 0; i < 4; i++) finalNext(session); // category → wagers → question → answer → reveal
+    const f = session.final!;
+    expect(f.current).toBe(c);
+    expect(finalAdvance(session)).toBe('shown');
+    expect(f.shown[c]).toBe(true);
+    finalJudge(session, game, c, true);
+    expect(finalAdvance(session)).toBe('next');
+    expect(f.current).toBe(b);
+    // Pressing on without judging skips ahead; the last player left waits to be judged.
+    expect(finalAdvance(session)).toBe('shown');
+    expect(finalAdvance(session)).toBe('next');
+    expect(f.current).toBe(a);
+    finalJudge(session, game, a, false);
+    expect(finalUnjudged(session)).toEqual([b]);
+    expect(finalAdvance(session)).toBe('next');
+    expect(f.current).toBe(b);
+    expect(finalAdvance(session)).toBe('waiting');
+    finalJudge(session, game, b, true);
+    expect(finalAdvance(session)).toBe('done');
+    expect(session.phase).toBe('final');
+  });
+
+  it('goes back from the end screen to the reveals', () => {
+    const { game, session, a } = setup();
+    applyScore(session, game, [a], 300, 'x');
+    goToRound(session, game, 1);
+    for (let i = 0; i < 5; i++) finalNext(session);
+    expect(session.phase).toBe('end');
+    backToFinalReveal(session);
+    expect([session.phase, session.finalStep]).toEqual(['final', 'reveal']);
+  });
+});
+
+describe('resume with edits', () => {
+  it('keeps used tiles and scores, and finds the open clue again by id', () => {
+    const { game, session, a } = setup();
+    const played = clone(game);
+    openClue(session, { round: 0, cat: 1, row: 2 }, played);
+    applyScore(session, game, [a], 600, 'x');
+    const openId = played.rounds[0].categories[1].clues[2].id;
+    const edited = clone(played);
+    const [moved] = edited.rounds[0].categories.splice(1, 1);
+    edited.rounds[0].categories.push(moved);
+    rebaseSession(session, played, edited);
+    expect(session.currentClue).toEqual(findClueRef(edited, openId));
+    expect(score(session, a)).toBe(600);
+    const moreEdits = clone(edited);
+    moreEdits.rounds[0].categories.pop();
+    rebaseSession(session, edited, moreEdits);
+    expect([session.currentClue, session.phase]).toEqual([null, 'board']);
   });
 });

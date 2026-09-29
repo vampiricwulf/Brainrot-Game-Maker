@@ -4,7 +4,18 @@
   import { autofit } from '../lib/autofit';
   import { mediaUrls } from '../lib/media.svelte';
 
-  let { game, session, onpick }: { game: Game; session: Session; onpick?: (ref: ClueRef) => void } = $props();
+  let {
+    game,
+    session,
+    onpick,
+    onunmark,
+  }: {
+    game: Game;
+    session: Session;
+    onpick?: (ref: ClueRef) => void;
+    /** Host views only: right-clicking a used tile puts it back (used tiles then stay enabled but can't be picked). */
+    onunmark?: (ref: ClueRef) => void;
+  } = $props();
   const round = $derived(game.rounds[session.currentRound]);
   const sym = $derived(game.settings.currencySymbol);
   const intro = $derived(session.intro);
@@ -50,8 +61,15 @@
           class:used
           class:fill={intro?.stage === 'fill'}
           style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
-          disabled={used || !onpick || !!intro}
-          onclick={() => onpick?.({ round: session.currentRound, cat: ci, row })}
+          disabled={(used && !onunmark) || !onpick || !!intro}
+          aria-disabled={used || undefined}
+          onclick={() => !used && onpick?.({ round: session.currentRound, cat: ci, row })}
+          oncontextmenu={onunmark &&
+            ((e) => {
+              // Never show the browser menu on the host's stage (it may be on stream).
+              e.preventDefault();
+              if (session.used[clue.id]) onunmark({ round: session.currentRound, cat: ci, row });
+            })}
           aria-label="{categoryLabel(cat)} for {clueValue(round, row, clue)}"
         >
           {#if !used}
@@ -161,7 +179,7 @@
     cursor: pointer;
     transition: filter 0.12s;
   }
-  .tile:hover:not(:disabled) {
+  .tile:hover:not(:disabled):not(.used) {
     filter: brightness(1.25);
   }
   .tile {

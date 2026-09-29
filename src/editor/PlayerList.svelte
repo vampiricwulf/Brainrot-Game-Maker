@@ -1,4 +1,4 @@
-<!-- Editable player roster with enforced unique colors. Used in Setup and in the pre-game screen. -->
+<!-- Editable player roster with enforced unique colors. Used in Setup, the pre-game screen and the in-game Players dialog. -->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
   import { newId } from '../lib/model';
@@ -10,7 +10,21 @@
     color: string;
     startScore?: number;
   }
-  let { players = $bindable(), max = 8, showScores = false }: { players: P[]; max?: number; showScores?: boolean } = $props();
+  let {
+    players = $bindable(),
+    max = 8,
+    showScores = false,
+    inGame = false,
+    onremove,
+  }: {
+    players: P[];
+    max?: number;
+    showScores?: boolean;
+    /** In a running game: row numbers are the scoring keys, so say that reordering changes them. */
+    inGame?: boolean;
+    /** Replaces the plain removal (e.g. to ask first and keep the player restorable mid-game). */
+    onremove?: (id: string) => void;
+  } = $props();
 
   function add(): void {
     if (players.length >= max) return;
@@ -54,12 +68,14 @@
       {/if}
       <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
       <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move down">▼</button>
-      <button class="ghost small" onclick={() => players.splice(i, 1)} aria-label="Remove {p.name}">✕</button>
+      <button class="ghost small" onclick={() => (onremove ? onremove(p.id) : players.splice(i, 1))} aria-label="Remove {p.name}">✕</button>
     </div>
   {/each}
   <div class="row">
     <button onclick={add} disabled={players.length >= max}>＋ Add player</button>
-    <span class="muted">{players.length}/{max} players · each color must be unique</span>
+    <span class="muted">
+      {players.length}/{max} players · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
+    </span>
   </div>
 </div>
 

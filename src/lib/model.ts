@@ -211,6 +211,7 @@ export interface PlayerTemplate {
 
 export interface GameSettings {
   allowNegativeScores: boolean;
+  /** Show the one-click ✔ +value / ✘ −value buttons on each player in the host panel. */
   deductOnWrong: boolean;
   defaultTimerSeconds: number | null;
   finalTimerSeconds: number;
@@ -404,6 +405,8 @@ export interface ScoreEvent {
   reason: string;
   clueId?: Id;
   undone?: boolean;
+  /** Shared by every event of one award/effect (e.g. "Award (3)"), so Undo/Redo treat it as one step. */
+  batchId?: Id;
 }
 
 export interface RollEvent {
@@ -425,9 +428,15 @@ export interface ClueRef {
 export interface Session {
   gameId: Id;
   players: Player[];
+  /** Players taken out mid-game, kept (with their log entries) so the host can restore them. */
+  removedPlayers?: Player[];
   /** Clue ids that have been played. */
   used: Record<Id, true>;
+  /** The clue most recently closed (and marked used), for "Reopen last tile". */
+  lastClosed?: Id | null;
   currentRound: number;
+  /** Rounds whose intro has already played, so revisiting a round never replays it. */
+  introducedRounds?: number[];
   phase: 'board' | 'clue' | 'final' | 'tiebreaker' | 'end';
   /** Round intro sequence in progress (spec §6.3 step 0). */
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;

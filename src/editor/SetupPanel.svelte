@@ -37,7 +37,7 @@
   <div class="grid">
     <label class="check"><input type="checkbox" bind:checked={s.allowNegativeScores} /> Allow negative scores</label>
     <label class="check">
-      <input type="checkbox" bind:checked={s.deductOnWrong} /> Show quick "Wrong (−value)" buttons
+      <input type="checkbox" bind:checked={s.deductOnWrong} /> Show quick ✔/✘ buttons (one click for right or wrong)
     </label>
     <label class="check">
       <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
