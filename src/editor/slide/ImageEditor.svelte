@@ -423,6 +423,9 @@
     background: rgba(0, 0, 0, 0.7);
     z-index: 300;
     display: grid;
+    /* A viewport-sized track so the modal's max-height/height: 100% resolves against the window. */
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     place-items: center;
     padding: 12px;
   }

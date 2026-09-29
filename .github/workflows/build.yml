@@ -2,20 +2,25 @@ name: Build
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -23,17 +28,37 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
-      - name: Install Chromium for the end-to-end test
-        run: npx playwright-core install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Install Chromium (headless shell) for the end-to-end test
+        run: npx playwright-core install --with-deps --only-shell chromium
+      - name: End-to-end test (drives the built file from file://)
+        run: npm run test:e2e
+        env:
+          SCREENSHOTS: test-results/screenshots
+      - name: Upload E2E debug output (screenshots + Playwright trace)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-debug
+          path: test-results/
+          if-no-files-found: ignore
       - name: Name the single-file app
         run: cp dist/index.html jeopardy-builder.html
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: jeopardy-builder
           path: jeopardy-builder.html
-      - name: Attach to the release (version tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+
+  release:
+    # Attach the app to GitHub releases for version tags.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: jeopardy-builder
+      - uses: softprops/action-gh-release@v3
         with:
           files: jeopardy-builder.html

@@ -14,7 +14,28 @@ const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browser
 
 const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+// Keep the run hermetic: no third-party network (CI has internet, the dev sandbox doesn't).
+await context.route(/(youtube(-nocookie)?\.com|ytimg\.com|googlevideo\.com|google\.com)/, (r) => r.abort());
+await context.tracing.start({ screenshots: true, snapshots: true });
 const page = await context.newPage();
+
+// On any failure, save a screenshot + Playwright trace to test-results/ (uploaded by CI).
+let failing = false;
+async function onFailure(e) {
+  if (failing) return;
+  failing = true;
+  console.error(e);
+  try {
+    mkdirSync('test-results', { recursive: true });
+    await page.screenshot({ path: 'test-results/failure.png', fullPage: true });
+    await context.tracing.stop({ path: 'test-results/trace.zip' });
+  } catch {
+    /* best effort */
+  }
+  process.exit(1);
+}
+process.on('uncaughtException', onFailure);
+process.on('unhandledRejection', onFailure);
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => {
@@ -156,17 +177,34 @@ await ie.locator('.slider', { hasText: 'Brightness' }).locator('input').fill('14
 await ie.getByRole('button', { name: '✂ Crop' }).click();
 await ie.getByRole('button', { name: '1:1' }).click();
 await ie.getByRole('button', { name: 'Done cropping' }).click();
-const ibox = await ie.locator('.imgbox').boundingBox();
+// The preview re-renders in requestAnimationFrame: wait for the square (cropped) canvas, then
+// measure positions at action time so clicks never use a stale layout.
+await page.waitForFunction(() => {
+  const c = document.querySelector('[aria-label="Edit image"] .canvas-host canvas');
+  return !!c && c.width === c.height;
+});
+const imgbox = ie.locator('.imgbox');
+const frames = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const at = async (fx, fy) => {
+  await frames();
+  const b = await imgbox.boundingBox();
+  return { x: b.width * fx, y: b.height * fy };
+};
 await ie.getByRole('button', { name: '🅣 Text' }).click();
-await page.mouse.click(ibox.x + ibox.width / 2, ibox.y + ibox.height * 0.2);
+await imgbox.click({ position: await at(0.5, 0.2) });
 await ie.locator('#ie-text').fill('WHEN THE FROG');
 await ie.getByRole('button', { name: '😂 Sticker' }).click();
-await page.mouse.click(ibox.x + ibox.width * 0.8, ibox.y + ibox.height * 0.8);
+await imgbox.click({ position: await at(0.8, 0.8) });
+assert((await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 1, 'sticker placed on the image');
 await ie.getByRole('button', { name: '🖌 Draw' }).click();
-await page.mouse.move(ibox.x + 10, ibox.y + ibox.height - 10);
+await imgbox.hover({ position: await at(0.03, 0.97) });
 await page.mouse.down();
-await page.mouse.move(ibox.x + ibox.width / 2, ibox.y + ibox.height / 2, { steps: 5 });
+{
+  const b = await imgbox.boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
+}
 await page.mouse.up();
+assert(await ie.getByRole('button', { name: 'Undo stroke' }).isEnabled(), 'brush stroke drawn');
 await shot('1a-image-editor');
 assert((await ie.locator('.muted.small').first().innerText()).includes('100×100'), 'image editor output is 100×100 after rotate + 1:1 crop');
 await ie.getByRole('button', { name: 'Apply' }).click();
@@ -316,7 +354,8 @@ await aud.getByText('+$200').waitFor();
 assert(true, 'score pop shows in the audience window');
 await page.keyboard.press('Escape');
 await aud.locator('.board').waitFor();
-assert(await aud.locator('.board .tile').nth(2).isDisabled(), 'audience board shows the used tile');
+await aud.locator('.board .tile.used').nth(1).waitFor();
+assert(await aud.locator('.board .tile').nth(2).evaluate((e) => e.classList.contains('used')), 'audience board shows the used tile');
 if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
 if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
 await page.getByRole('button', { name: '📺 Close audience window' }).click();
@@ -486,5 +525,6 @@ assert(imgOk, 'exported game plays with its embedded (edited) image');
 await player.close();
 
 assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
+await context.tracing.stop();
 await browser.close();
 console.log('E2E smoke passed');
