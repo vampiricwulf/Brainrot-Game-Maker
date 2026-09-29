@@ -118,4 +118,24 @@ describe('aspect-locked crop', () => {
     expect(w.x + w.w).toBeCloseTo(0.6);
     expect(w.y + w.h).toBeCloseTo(0.5);
   });
+
+  it('corners follow the bigger pointer move, so they shrink along one axis too', () => {
+    // SE dragged straight left: the box shrinks, the NW corner stays put.
+    const b = aspectCrop('se', sq, -0.2, 0, 1);
+    expect(b.w).toBeCloseTo(0.3);
+    expect(b.h).toBeCloseTo(0.3);
+    expect(b.x).toBeCloseTo(0.25);
+    expect(b.y).toBeCloseTo(0.25);
+    // Mostly inward with a little outward on the other axis: still shrinks.
+    expect(aspectCrop('se', sq, -0.2, 0.02, 1).w).toBeCloseTo(0.3);
+    // NW dragged inward: the SE corner stays put.
+    const n = aspectCrop('nw', sq, 0.2, 0, 1);
+    expect(n.w).toBeCloseTo(0.3);
+    expect(n.x + n.w).toBeCloseTo(0.75);
+    expect(n.y + n.h).toBeCloseTo(0.75);
+    // Mostly vertical: the height drives (0.75 height per width, so dy = 0.15 is 0.2 of width).
+    const v = aspectCrop('se', { x: 0.1, y: 0.1, w: 0.4, h: 0.3 }, 0.05, 0.15, 0.75);
+    expect(v.h).toBeCloseTo(0.45);
+    expect(v.w).toBeCloseTo(0.6);
+  });
 });

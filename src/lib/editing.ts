@@ -136,9 +136,9 @@ export function isMediaLink(text: string, isYouTube: (url: string) => boolean): 
 /**
  * Resize a crop box (fractions 0..1 of the image) by dragging one handle while keeping its shape.
  * `ratio` is the box's height per unit of width in those fractions (pixel aspect × image W/H).
- * Corners anchor the opposite corner and follow whichever way the pointer moved more; edges anchor
- * the opposite edge and keep the box centred on the other axis. The box always stays inside the
- * image, shrinking on both axes together so the ratio holds.
+ * Corners anchor the opposite corner and follow whichever way the pointer moved more (in or out);
+ * edges anchor the opposite edge and keep the box centred on the other axis. The box always stays
+ * inside the image, shrinking on both axes together so the ratio holds.
  */
 export function aspectCrop(mode: string, o: Box, dx: number, dy: number, ratio: number, min = 0.02): Box {
   const sx = mode.includes('e') ? 1 : mode.includes('w') ? -1 : 0;
@@ -148,7 +148,9 @@ export function aspectCrop(mode: string, o: Box, dx: number, dy: number, ratio: 
   const ay = sy > 0 ? o.y : sy < 0 ? o.y + o.h : o.y + o.h / 2;
   const wantW = o.w + sx * dx;
   const wantH = o.h + sy * dy;
-  let w = sx && sy ? Math.max(wantW, wantH / ratio) : sx ? wantW : wantH / ratio;
+  // A corner goes by the bigger pointer move, measured in width (a height change of dy is dy / ratio).
+  const byW = sx !== 0 && (sy === 0 || Math.abs(dx) >= Math.abs(dy) / ratio);
+  let w = byW ? wantW : wantH / ratio;
   const maxW = sx > 0 ? 1 - ax : sx < 0 ? ax : 1;
   const maxH = sy > 0 ? 1 - ay : sy < 0 ? ay : 1;
   w = Math.min(w, maxW, maxH / ratio);
