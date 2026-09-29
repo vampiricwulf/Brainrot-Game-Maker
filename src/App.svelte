@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, type SavedPlay } from './lib/persist';
+  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, type SavedPlay } from './lib/persist';
+  import { loadGameMedia, pruneMedia } from './lib/media.svelte';
+  import { migrateGame } from './lib/model';
+  import { closeAudienceWindow } from './lib/sync.svelte';
   import { newSession } from './lib/session';
   import { clone } from './lib/ops';
   import Editor from './editor/Editor.svelte';
@@ -11,9 +14,16 @@
   let resumable = $state<SavedPlay | null>(null);
 
   onMount(async () => {
-    const [draft, play] = await Promise.all([loadDraft(), loadPlay()]);
-    if (draft) app.game = draft;
-    if (play && play.session.phase !== 'end') resumable = play;
+    const [draft, play, ok] = await Promise.all([loadDraft(), loadPlay(), testStorage()]);
+    app.storageOk = ok;
+    if (draft) {
+      app.game = migrateGame(draft);
+      await loadGameMedia(app.game);
+    }
+    if (play && play.session.phase !== 'end') resumable = { ...play, game: migrateGame(play.game) };
+    else if (play) await clearPlay();
+    // Drop stored media that no saved game uses any more.
+    await pruneMedia([app.game, resumable?.game]);
     loaded = true;
   });
 
@@ -37,8 +47,9 @@
     resumable = null;
   }
 
-  function resume(): void {
+  async function resume(): Promise<void> {
     if (!resumable) return;
+    await loadGameMedia(resumable.game);
     app.playGame = resumable.game;
     app.session = resumable.session;
     app.pregame = false;
@@ -53,6 +64,7 @@
   }
 
   function exitPlay(): void {
+    closeAudienceWindow();
     app.screen = 'editor';
     app.playGame = null;
     app.session = null;

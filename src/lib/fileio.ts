@@ -1,15 +1,19 @@
-// Plain JSON save/open. The .jbr zip pack with media arrives in milestone M2.
+// File download/upload helpers and plain-JSON game export (text only, no media).
 import type { Game } from './model';
 
 export function downloadText(filename: string, text: string, type = 'application/json'): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
+  downloadBlob(filename, new Blob([text], { type }));
+}
+
+export function downloadBlob(filename: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export function safeFilename(title: string): string {

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
   import { newGame, newRound, playableClues, slideText } from '../lib/model';
-  import { parseGame, pickFile, saveGameJson } from '../lib/fileio';
+  import { pickFile, saveGameJson } from '../lib/fileio';
+  import { openGameFile, savePack } from '../lib/pack';
+  import { pruneMedia } from '../lib/media.svelte';
   import SetupPanel from './SetupPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
@@ -31,17 +33,32 @@
     if (!confirm('Start a new game? Save this one first if you want to keep it.')) return;
     app.game = newGame();
     tab = 'setup';
+    pruneMedia([app.game, app.playGame]);
   }
 
   async function open(): Promise<void> {
-    const file = await pickFile('.json,application/json');
+    const file = await pickFile('.jbr,.zip,.json,application/json,application/zip');
     if (!file) return;
     try {
-      app.game = parseGame(await file.text());
+      app.game = await openGameFile(file);
       tab = 0;
       toast(`Opened "${app.game.title}"`);
     } catch (e) {
       alert((e as Error).message);
+    }
+  }
+
+  let saving = $state(false);
+  async function save(): Promise<void> {
+    saving = true;
+    try {
+      const missing = await savePack($state.snapshot(game));
+      if (missing.length) alert(`Saved, but these media files were missing and weren't included:\n${missing.join('\n')}`);
+      else toast('Saved game pack (.jbr)');
+    } catch (e) {
+      alert('Save failed: ' + (e as Error).message);
+    } finally {
+      saving = false;
     }
   }
 
@@ -64,9 +81,18 @@
     <input class="title" bind:value={game.title} aria-label="Game title" />
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
-    <button onclick={() => saveGameJson($state.snapshot(game))}>Save</button>
+    <button onclick={save} disabled={saving} title="Download a .jbr game pack (game + all media)">{saving ? 'Saving…' : 'Save'}</button>
+    <button class="ghost" onclick={() => saveGameJson($state.snapshot(game))} title="Text only, no media. Handy for hand-editing.">
+      Export JSON
+    </button>
     <span class="spacer"></span>
-    <span class="muted autosave">Autosaved in this browser</span>
+    {#if app.storageOk}
+      <span class="muted autosave">Autosaved in this browser</span>
+    {:else}
+      <span class="autosave warn" title="This browser won't let a file opened from disk store data. Use Save often.">
+        ⚠ Autosave unavailable here: use Save
+      </span>
+    {/if}
     <button class="primary" onclick={onplay}>▶ Play</button>
   </header>
 
@@ -128,6 +154,9 @@
   }
   .autosave {
     font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
   }
   .body {
     flex: 1;

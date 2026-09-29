@@ -10,9 +10,12 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 1. Build it (see below), or grab a built `jeopardy-builder.html`.
 2. Double-click the file to open it in Chrome, Edge or Firefox.
 3. **Editor**: set up players (unique colors), rounds (any number, 1–10 categories × 1–10 questions, any values),
-   and clues (question + answer + optional host notes). Work is autosaved in the browser. **Save** downloads a `.json`
-   file that you can **Open** later.
-4. **▶ Play**: confirm the players, then start. The top of the window is what viewers see. The host controls sit below it.
+   and clues (question + answer + optional host notes). Work is autosaved in the browser. **Save** downloads a `.jbr`
+   game pack (the game plus all its media) that you can **Open** later. **Export JSON** gives a text-only copy.
+4. **▶ Play**: confirm the players, pick a display mode, then start.
+   - **Single window**: the top of the window is what viewers see. The host controls sit below it (`H` hides them).
+   - **📺 Separate audience window**: a clean popup to capture in OBS (double-click it or press `F` for full-screen).
+     The host window shows the answer, notes and standings, for your eyes only. Allow popups for the file if the browser asks.
 
 ### Host controls
 
@@ -26,6 +29,7 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 | `N` | Next step in Final Jeopardy |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change |
 | `L` | Score log (undo/restore any single change) |
+| `A` | Open/close the audience window |
 | `H` | Hide/show host controls |
 | `F` | Full-screen |
 

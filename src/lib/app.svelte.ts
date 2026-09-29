@@ -1,5 +1,6 @@
 // Global app state (Svelte 5 runes). Components mutate it directly; App.svelte autosaves it.
 import { newGame, type Game, type Session } from './model';
+import { newLive, type Live } from './live';
 
 export type Screen = 'editor' | 'play';
 
@@ -11,14 +12,20 @@ export const app = $state<{
   session: Session | null;
   /** Pre-game setup is showing (players/confirm) before the board. */
   pregame: boolean;
+  /** On-screen transient state mirrored to the audience window. */
+  live: Live;
   toast: string;
+  /** IndexedDB autosave works in this browser. */
+  storageOk: boolean;
 }>({
   screen: 'editor',
   game: newGame(),
   playGame: null,
   session: null,
   pregame: false,
+  live: newLive(),
   toast: '',
+  storageOk: true,
 });
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;

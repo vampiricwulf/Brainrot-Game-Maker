@@ -9,7 +9,8 @@
   import AudienceView from './AudienceView.svelte';
   import HostPanel from './HostPanel.svelte';
   import ScoreLog from './ScoreLog.svelte';
-  import type { Pop } from './types';
+  import HostInfo from './HostInfo.svelte';
+  import { audience, closeAudienceWindow, openAudienceWindow, pushGame, pushLive, pushSession } from '../lib/sync.svelte';
 
   let { onexit }: { onexit: () => void } = $props();
 
@@ -22,15 +23,34 @@
   let showLog = $state(false);
   let showPlayers = $state(false);
   let hideControls = $state(false);
-  let pops = $state<Pop[]>([]);
   let pickerPending = false;
 
   const sym = $derived(game.settings.currencySymbol);
+  const dual = $derived(audience.open);
+
+  // Mirror state to the audience window whenever it changes.
+  $effect(() => {
+    const g = $state.snapshot(game);
+    if (audience.open) pushGame(g);
+  });
+  $effect(() => {
+    const s = $state.snapshot(session);
+    if (audience.open) pushSession(s);
+  });
+  $effect(() => {
+    const l = $state.snapshot(app.live);
+    if (audience.open) pushLive(l);
+  });
+
+  function toggleAudience(): void {
+    if (audience.open) closeAudienceWindow();
+    else if (!openAudienceWindow()) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+  }
 
   function pop(text: string, color: string): void {
     const p = { id: newId(), text, color };
-    pops.push(p);
-    setTimeout(() => (pops = pops.filter((x) => x.id !== p.id)), 2200);
+    app.live.pops.push(p);
+    setTimeout(() => (app.live.pops = app.live.pops.filter((x) => x.id !== p.id)), 2200);
   }
 
   function reasonNow(): string {
@@ -143,6 +163,9 @@
       case 'f':
         toggleFullscreen();
         break;
+      case 'a':
+        toggleAudience();
+        break;
       default:
         return;
     }
@@ -161,23 +184,35 @@
       <button class="ghost" onclick={onexit}>◀ Back to editor</button>
       <button class="primary big" onclick={start}>Start game ▶</button>
     </div>
-    <p class="muted small">
-      Tip: this window is what viewers see. Press <b>H</b> to hide the host controls, and <b>F</b> for full-screen. A separate
-      host/audience window mode is coming next.
-    </p>
+    <div class="modes">
+      <button class="mode" class:on={!dual} onclick={() => dual && closeAudienceWindow()}>
+        <b>Single window</b>
+        <span class="muted">Viewers see this window. Press H to hide the host controls.</span>
+      </button>
+      <button class="mode" class:on={dual} onclick={() => !dual && toggleAudience()}>
+        <b>📺 Separate audience window</b>
+        <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
+      </button>
+    </div>
   </div>
 {:else}
   <div class="play" class:hidden={hideControls}>
-    <div class="stage-area">
-      <Stage>
-        <AudienceView
-          {game}
-          {session}
-          {pops}
-          onpick={pick}
-          onpicker={(id) => (session.currentPickerId = session.currentPickerId === id ? undefined : id)}
-        />
-      </Stage>
+    <div class="stage-area" class:dual>
+      <div class="stage-box">
+        <Stage>
+          <AudienceView
+            {game}
+            {session}
+            live={app.live}
+            role={dual ? 'mirror' : 'single'}
+            onpick={pick}
+            onpicker={(id) => (session.currentPickerId = session.currentPickerId === id ? undefined : id)}
+          />
+        </Stage>
+      </div>
+      {#if dual}
+        <HostInfo {game} {session} />
+      {/if}
     </div>
     {#if hideControls}
       <button class="show-controls" onclick={() => (hideControls = false)} title="H">Show controls</button>
@@ -198,6 +233,8 @@
         onfinalnext={() => finalNext(session)}
         onlog={() => (showLog = !showLog)}
         onplayers={() => (showPlayers = true)}
+        {dual}
+        onaudience={toggleAudience}
         onhide={() => (hideControls = true)}
         onexit={() => confirm('Leave this game? Progress is kept until you start a new game.') && onexit()}
       />
@@ -240,9 +277,6 @@
     font-size: 16px;
     padding: 10px 22px;
   }
-  .small {
-    font-size: 12px;
-  }
   .play {
     display: flex;
     flex-direction: column;
@@ -251,6 +285,38 @@
   .stage-area {
     flex: 1;
     min-height: 0;
+    display: flex;
+  }
+  .stage-box {
+    flex: 1;
+    min-width: 0;
+  }
+  .stage-area.dual > :global(.info) {
+    width: min(360px, 35vw);
+    flex-shrink: 0;
+  }
+  .modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .mode {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+    white-space: normal;
+    padding: 12px;
+  }
+  .mode.on {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  @media (max-width: 640px) {
+    .modes {
+      grid-template-columns: 1fr;
+    }
   }
   .show-controls {
     position: fixed;

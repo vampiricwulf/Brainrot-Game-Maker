@@ -81,6 +81,41 @@ await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$350', 'scores survive a reload');
 assert(await page.locator('.board .tile').first().isDisabled(), 'used tiles survive a reload');
 
+// Dual-window mode: the audience window never shows the answer before reveal.
+const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+await aud.locator('.board').waitFor();
+assert(true, 'audience window opened and synced the board');
+await page.locator('.board .tile').nth(1).click();
+await page.locator('.info .a').waitFor();
+assert((await page.locator('.info .a').innerText()) === '—', 'host info panel shows the answer slot');
+await aud.locator('.full').waitFor();
+await page.keyboard.press('1');
+await page.keyboard.press('Enter');
+await aud.getByText('+$200').waitFor();
+assert(true, 'score pop shows in the audience window');
+await page.keyboard.press('Escape');
+await aud.locator('.board').waitFor();
+assert(await aud.locator('.board .tile').nth(1).isDisabled(), 'audience board shows the used tile');
+if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
+if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
+await page.getByRole('button', { name: '📺 Close audience window' }).click();
+assert(aud.isClosed(), 'audience window closes from the host');
+
+// .jbr round trip: save the pack, start a new game, open the pack again.
+await page.getByRole('button', { name: 'Exit' }).click();
+await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);
+assert(dl.suggestedFilename().endsWith('.jbr'), 'Save downloads a .jbr pack');
+const packPath = await dl.path();
+await page.getByRole('button', { name: 'New' }).click();
+await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+assert((await page.locator('.cat textarea').first().inputValue()) !== 'Memes', 'new game is blank');
+const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
+await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: (await import('node:fs')).readFileSync(packPath) });
+await page.locator('.cat textarea').first().waitFor();
+await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Memes');
+assert(true, 'reopened .jbr restores the game');
+
 assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();
 console.log('E2E smoke passed');

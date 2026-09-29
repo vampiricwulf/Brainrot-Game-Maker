@@ -37,3 +37,11 @@ export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number)
     t = setTimeout(() => fn(...a), ms);
   };
 }
+
+/** Can we write to IndexedDB here? (Some browsers block it for files opened from disk or in private windows.) */
+export async function testStorage(): Promise<boolean> {
+  return (await safe(async () => {
+    await set('__probe', Date.now());
+    return true;
+  })) ?? false;
+}

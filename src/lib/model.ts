@@ -8,6 +8,19 @@ export function newId(): Id {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+// ---------- Media ----------
+
+export type MediaKind = 'image' | 'video' | 'audio' | 'font';
+
+/** A file stored with the game (blob lives in the media store / .jbr pack, keyed by id). */
+export interface MediaRef {
+  id: Id;
+  name: string;
+  mime: string;
+  size: number;
+  kind: MediaKind;
+}
+
 // ---------- Slides ----------
 
 /** Logical slide size; slides are scaled to fit whatever window shows them. */
@@ -124,6 +137,7 @@ export interface Game {
   players: PlayerTemplate[];
   rounds: Round[];
   final: FinalRound;
+  media: MediaRef[];
 }
 
 // ---------- Runtime session ----------
@@ -253,6 +267,7 @@ export function newGame(): Game {
     players: [],
     rounds: [newRound('Jeopardy!')],
     final: { enabled: true, category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 },
+    media: [],
   };
 }
 
@@ -275,4 +290,14 @@ export function playableClues(round: Round): Clue[] {
 /** "−$200", "$1,000", "350 pts"-style formatting with the game's points symbol. */
 export function formatPoints(n: number, sym: string): string {
   return (n < 0 ? '−' : '') + sym + Math.abs(n).toLocaleString();
+}
+
+/** Fill in fields added in later versions so older saved games keep loading. */
+export function migrateGame(data: Game): Game {
+  const d = newGame();
+  const g = { ...d, ...data } as Game;
+  g.settings = { ...d.settings, ...(data.settings ?? {}) };
+  g.final = { ...d.final, ...(data.final ?? {}) };
+  g.media ??= [];
+  return g;
 }

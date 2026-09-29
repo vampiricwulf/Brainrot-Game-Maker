@@ -10,18 +10,21 @@
   import SlideView from '../lib/SlideView.svelte';
   import Board from './Board.svelte';
   import ScoreBar from './ScoreBar.svelte';
-  import type { Pop } from './types';
+  import type { Live } from '../lib/live';
 
   let {
     game,
     session,
-    pops = [],
+    live,
+    role = 'single',
     onpick,
     onpicker,
   }: {
     game: Game;
     session: Session;
-    pops?: Pop[];
+    live: Live;
+    /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
+    role?: 'single' | 'mirror' | 'audience';
     onpick?: (ref: ClueRef) => void;
     onpicker?: (id: string) => void;
   } = $props();
@@ -71,8 +74,8 @@
   </div>
 {/if}
 
-<div class="pops">
-  {#each pops as p (p.id)}
+<div class="pops" style:bottom={session.phase === 'board' ? '270px' : '40px'}>
+  {#each live.pops as p (p.id)}
     <div class="pop" style:background={p.color} style:color={textOn(p.color)} in:fly={{ y: 80, duration: 250 }} out:fade>
       {p.text}
     </div>

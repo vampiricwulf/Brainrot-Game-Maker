@@ -22,6 +22,8 @@
     onplayers,
     onhide,
     onexit,
+    dual,
+    onaudience,
   }: {
     game: Game;
     session: Session;
@@ -40,6 +42,8 @@
     onplayers: () => void;
     onhide: () => void;
     onexit: () => void;
+    dual: boolean;
+    onaudience: () => void;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -167,6 +171,7 @@
       <button class="primary" onclick={onfinalnext} title="N">{finalLabels[session.finalStep ?? 'category']}</button>
     {/if}
     <span class="spacer"></span>
+    <button onclick={onaudience} class:on={dual} title="A">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
     <button onclick={onlog} title="L">📜 Log</button>
     <button onclick={onplayers}>👥 Players</button>
     <button onclick={onhide} title="H">Hide controls</button>
