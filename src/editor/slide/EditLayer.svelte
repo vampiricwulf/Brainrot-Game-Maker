@@ -1,19 +1,24 @@
 <!--
   Interaction layer drawn over a slide in the editor: select, move (with snapping guides),
   resize (rotation-aware) and rotate elements. Works in 1920×1080 stage coordinates.
+  Double-click an element to edit it; Alt+click picks the element underneath.
 -->
 <script lang="ts">
   import { getContext } from 'svelte';
+  import { cycleAt, knobPlacement } from '../../lib/editing';
   import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from '../../lib/model';
 
   let {
     slide,
     selected = $bindable(),
+    onstart,
     onchange,
     ondblclick,
   }: {
     slide: Slide;
     selected: string[];
+    /** Called when a drag/resize/rotate starts (the undo history holds its changes until it ends). */
+    onstart?: () => void;
     /** Called when a drag/resize/rotate finishes (for undo history). */
     onchange: () => void;
     ondblclick?: (el: SlideElement) => void;
@@ -30,7 +35,7 @@
   type Drag =
     | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean }
     | { kind: 'resize'; sx: number; sy: number; hx: number; hy: number; o: { x: number; y: number; w: number; h: number }; keep: boolean }
-    | { kind: 'rotate'; cx: number; cy: number };
+    | { kind: 'rotate'; cx: number; cy: number; a0: number; r0: number };
   let drag: Drag | null = null;
 
   function toStage(e: PointerEvent, layer: HTMLElement): { x: number; y: number } {
@@ -40,10 +45,25 @@
   }
 
   let layerEl: HTMLDivElement;
+  // Pointer capture sends click/dblclick to the layer itself, so remember what the press was on.
+  let lastDown: SlideElement | null = null;
+
+  function begin(d: Drag, e: PointerEvent): void {
+    drag = d;
+    onstart?.();
+    layerEl.setPointerCapture(e.pointerId);
+  }
 
   function down(e: PointerEvent, el: SlideElement | null): void {
     if (e.button !== 0) return;
     e.stopPropagation();
+    const p = toStage(e, layerEl);
+    if (el && e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      // Alt+click: reach the element underneath (repeat to keep going down the stack).
+      el = cycleAt(slide.elements, p, selected.length === 1 ? selected[0] : null) ?? el;
+      selected = [el.id];
+    }
+    lastDown = el;
     if (!el) {
       selected = [];
       return;
@@ -55,9 +75,7 @@
     }
     const movable = slide.elements.filter((x) => selected.includes(x.id) && !x.locked);
     if (!movable.length) return;
-    const p = toStage(e, layerEl);
-    drag = { kind: 'move', sx: p.x, sy: p.y, orig: new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }])), moved: false };
-    layerEl.setPointerCapture(e.pointerId);
+    begin({ kind: 'move', sx: p.x, sy: p.y, orig: new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }])), moved: false }, e);
   }
 
   function handleDown(e: PointerEvent, hx: number, hy: number): void {
@@ -65,15 +83,18 @@
     e.stopPropagation();
     const p = toStage(e, layerEl);
     const keepByDefault = single.kind === 'image' || single.kind === 'video' || (single.kind === 'embed' && single.embedKind !== 'remoteAudio');
-    drag = { kind: 'resize', sx: p.x, sy: p.y, hx, hy, o: { x: single.x, y: single.y, w: single.w, h: single.h }, keep: keepByDefault };
-    layerEl.setPointerCapture(e.pointerId);
+    begin({ kind: 'resize', sx: p.x, sy: p.y, hx, hy, o: { x: single.x, y: single.y, w: single.w, h: single.h }, keep: keepByDefault }, e);
   }
+
+  const angle = (p: { x: number; y: number }, cx: number, cy: number) => (Math.atan2(p.y - cy, p.x - cx) * 180) / Math.PI;
 
   function rotateDown(e: PointerEvent): void {
     if (!single || single.locked) return;
     e.stopPropagation();
-    drag = { kind: 'rotate', cx: single.x + single.w / 2, cy: single.y + single.h / 2 };
-    layerEl.setPointerCapture(e.pointerId);
+    const cx = single.x + single.w / 2;
+    const cy = single.y + single.h / 2;
+    // Relative to where the handle was grabbed, so it works wherever the handle is drawn.
+    begin({ kind: 'rotate', cx, cy, a0: angle(toStage(e, layerEl), cx, cy), r0: single.rotation }, e);
   }
 
   /** Snap a box's edges/center to the slide and other elements; returns the offset to apply. */
@@ -114,6 +135,10 @@
       let dy = p.y - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < 2) return;
       drag.moved = true;
+      // Shift held while dragging: move along one axis only (whichever the pointer moved more on).
+      const lock = e.shiftKey ? (Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y') : null;
+      if (lock === 'x') dy = 0;
+      if (lock === 'y') dx = 0;
       const orig = drag.orig;
       const ids = new Set(orig.keys());
       const moving = slide.elements.filter((x) => ids.has(x.id));
@@ -124,8 +149,9 @@
         const maxX = Math.max(...moving.map((m) => orig.get(m.id)!.x + m.w)) + dx;
         const maxY = Math.max(...moving.map((m) => orig.get(m.id)!.y + m.h)) + dy;
         const s = snap({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }, ids);
-        dx += s.dx;
-        dy += s.dy;
+        if (lock !== 'y') dx += s.dx;
+        if (lock !== 'x') dy += s.dy;
+        if (lock) guides = lock === 'x' ? { x: guides.x, y: [] } : { x: [], y: guides.y };
       } else guides = { x: [], y: [] };
       for (const m of moving) {
         const o = orig.get(m.id)!;
@@ -158,7 +184,7 @@
       single.x = Math.round(cx0 - w / 2);
       single.y = Math.round(cy0 - h / 2);
     } else if (drag.kind === 'rotate' && single) {
-      let a = (Math.atan2(p.y - drag.cy, p.x - drag.cx) * 180) / Math.PI + 90;
+      let a = drag.r0 + angle(p, drag.cx, drag.cy) - drag.a0;
       if (e.shiftKey) a = Math.round(a / 15) * 15;
       a = ((Math.round(a) % 360) + 360) % 360;
       single.rotation = a > 180 ? a - 360 : a;
@@ -166,9 +192,10 @@
   }
 
   function up(): void {
-    if (drag && (drag.kind !== 'move' || drag.moved)) onchange();
+    const ended = !!drag;
     drag = null;
     guides = { x: [], y: [] };
+    if (ended) onchange();
   }
 
   const HANDLES: [number, number][] = [
@@ -178,6 +205,8 @@
   ];
   const cursor = (hx: number, hy: number) => (hx === 0 ? 'ns-resize' : hy === 0 ? 'ew-resize' : hx === hy ? 'nwse-resize' : 'nesw-resize');
   const inv = $derived(1 / (stage.scale || 1));
+  // The rotate handle sits 44 screen px out; flip it below (or inside) when that would be off the slide.
+  const knob = $derived(single ? knobPlacement(single, 52 * inv) : 'above');
 </script>
 
 <div
@@ -187,6 +216,7 @@
   onpointermove={move}
   onpointerup={up}
   onpointercancel={up}
+  ondblclick={() => lastDown && ondblclick?.(lastDown)}
   role="presentation"
 >
   {#each sorted as el (el.id)}
@@ -200,14 +230,13 @@
       style:transform="rotate({el.rotation}deg)"
       style:z-index={el.zIndex}
       onpointerdown={(e) => down(e, el)}
-      ondblclick={() => ondblclick?.(el)}
       role="presentation"
     ></div>
   {/each}
 
   {#each sel as el (el.id)}
     <div
-      class="frame"
+      class="frame knob-{knob}"
       class:multi={!single}
       style:left="{el.x}px"
       style:top="{el.y}px"
@@ -293,6 +322,18 @@
     border: calc(2px * var(--inv)) solid #fff;
     cursor: grab;
     pointer-events: auto;
+  }
+  .knob-below .rot-stem {
+    top: 100%;
+  }
+  .knob-below .rot {
+    top: calc(100% + 44px * var(--inv));
+  }
+  .knob-inside .rot-stem {
+    top: 0;
+  }
+  .knob-inside .rot {
+    top: calc(44px * var(--inv));
   }
   .lock {
     position: absolute;

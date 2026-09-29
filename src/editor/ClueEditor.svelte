@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { app, toast } from '../lib/app.svelte';
+  import { app } from '../lib/app.svelte';
   import { mediaUrls } from '../lib/media.svelte';
-  import { applyTextStyle } from '../lib/ops';
+  import { textStyleTargets } from '../lib/ops';
   import type { Round, TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -39,11 +39,6 @@
     if (e.key === 'Escape' && !typing(e) && !facePicker) onclose();
     if (e.altKey && e.key === 'ArrowRight') step(1);
     if (e.altKey && e.key === 'ArrowLeft') step(-1);
-  }
-
-  function applyStyle(el: TextEl, scope: string): void {
-    const n = applyTextStyle(app.game, round, el, scope);
-    toast(`Style applied to ${n} slide${n === 1 ? '' : 's'}`);
   }
 </script>
 
@@ -146,7 +141,10 @@
           <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer (hidden until revealed)</button>
         </div>
         {#key `${clue.id}-${side}`}
-          <SlideEditor slide={side === 'q' ? clue.questionSlide : clue.answerSlide} onapplystyle={applyStyle} />
+          <SlideEditor
+            slide={side === 'q' ? clue.questionSlide : clue.answerSlide}
+            styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope)}
+          />
         {/key}
         <label class="field notes">
           Host notes (never shown on stream)

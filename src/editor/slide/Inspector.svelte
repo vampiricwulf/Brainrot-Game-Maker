@@ -1,5 +1,6 @@
 <!-- Property panel for the selected slide element. -->
 <script lang="ts">
+  import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
   import type { EntranceType, Game, SlideElement, TextEl } from '../../lib/model';
   import { openMediaPopup, youtubeId, youtubeWatchUrl } from '../../lib/mediactl.svelte';
@@ -7,6 +8,7 @@
   let {
     el,
     game,
+    fit,
     textArea = $bindable(),
     onorder,
     onduplicate,
@@ -18,15 +20,21 @@
   }: {
     el: SlideElement;
     game: Game;
+    /** A text element's size as drawn on the canvas (after shrink-to-fit). */
+    fit?: FitResult;
     textArea?: HTMLTextAreaElement;
     onorder: (dir: 'front' | 'back' | 'up' | 'down') => void;
     onduplicate: () => void;
     ondelete: () => void;
     onreplace: () => void;
-    onapplystyle: (el: TextEl, scope: string) => void;
+    /** "Use this style elsewhere" (not offered when missing). */
+    onapplystyle?: (el: TextEl, scope: string) => void;
     onuploadfont: () => void;
     oneditimage?: () => void;
   } = $props();
+
+  const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
+  const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
 
   const fonts = $derived(fontChoices(game));
   const ENTRANCES: [EntranceType | '', string][] = [
@@ -53,34 +61,45 @@
 <div class="insp">
   {#if el.kind === 'text'}
     <section>
-      <h4>Text</h4>
-      <textarea bind:this={textArea} bind:value={el.text} rows="4" placeholder="Type here…"></textarea>
+      <h4>Text box</h4>
+      <label class="field">
+        Text
+        <textarea bind:this={textArea} bind:value={el.text} rows="4" placeholder="Type here…"></textarea>
+      </label>
       <label class="field">
         Font
         <div class="row">
-          <select bind:value={el.font} style:font-family={el.font}>
+          <select bind:value={el.font} style:font-family={el.font} aria-label="Font">
             {#each fonts as f}<option value={f.css} style:font-family={f.css}>{f.label}</option>{/each}
             {#if !fonts.some((f) => f.css === el.font)}<option value={el.font}>{el.font.split(',')[0]}</option>{/if}
           </select>
-          <button class="small" onclick={onuploadfont} title="Upload a .ttf/.otf/.woff font">＋</button>
+          <button class="small" onclick={onuploadfont} aria-label="Upload a font file" title="Upload a .ttf/.otf/.woff font">＋</button>
         </div>
       </label>
       <div class="grid2">
-        <label class="field">{el.autoFit ? 'Max size' : 'Size'}<input type="number" min="8" max="600" bind:value={el.size} /></label>
+        <label class="field">
+          <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted"> · showing {fit.size}</span>{/if}</span>
+          <input type="number" min="8" max="600" bind:value={el.size} />
+        </label>
         <label class="field">Color<input type="color" bind:value={el.color} /></label>
       </div>
+      {#if fit?.overflow && el.text}
+        <p class="warn">
+          ⚠ The text doesn't fit{el.autoFit ? ', even at the smallest size' : ''}. Make the box bigger or the text shorter{el.autoFit ? '' : ', or tick Shrink to fit'}.
+        </p>
+      {/if}
       <div class="row toggles">
-        <button class:on={el.weight >= 700} onclick={() => (el.weight = el.weight >= 700 ? 400 : 700)} title="Bold"><b>B</b></button>
-        <button class:on={el.italic} onclick={() => (el.italic = !el.italic)} title="Italic"><i>I</i></button>
-        <button class:on={el.underline} onclick={() => (el.underline = !el.underline)} title="Underline"><u>U</u></button>
-        <button class:on={el.uppercase} onclick={() => (el.uppercase = !el.uppercase)} title="ALL CAPS">AA</button>
+        <button class:on={el.weight >= 700} aria-pressed={el.weight >= 700} onclick={() => (el.weight = el.weight >= 700 ? 400 : 700)} aria-label="Bold" title="Bold (Ctrl+B)"><b>B</b></button>
+        <button class:on={el.italic} aria-pressed={el.italic} onclick={() => (el.italic = !el.italic)} aria-label="Italic" title="Italic (Ctrl+I)"><i>I</i></button>
+        <button class:on={el.underline} aria-pressed={el.underline} onclick={() => (el.underline = !el.underline)} aria-label="Underline" title="Underline (Ctrl+U)"><u>U</u></button>
+        <button class:on={el.uppercase} aria-pressed={el.uppercase} onclick={() => (el.uppercase = !el.uppercase)} aria-label="All caps" title="ALL CAPS">AA</button>
         <span class="sep"></span>
         {#each ['left', 'center', 'right'] as const as a}
-          <button class:on={el.align === a} onclick={() => (el.align = a)} title="Align {a}">{a === 'left' ? '⇤' : a === 'center' ? '↔' : '⇥'}</button>
+          <button class:on={el.align === a} aria-pressed={el.align === a} onclick={() => (el.align = a)} aria-label={ALIGN[a][1]} title={ALIGN[a][1]}>{ALIGN[a][0]}</button>
         {/each}
         <span class="sep"></span>
         {#each ['top', 'middle', 'bottom'] as const as v}
-          <button class:on={el.vAlign === v} onclick={() => (el.vAlign = v)} title="Vertical {v}">{v === 'top' ? '⤒' : v === 'middle' ? '↕' : '⤓'}</button>
+          <button class:on={el.vAlign === v} aria-pressed={el.vAlign === v} onclick={() => (el.vAlign = v)} aria-label={VALIGN[v][1]} title={VALIGN[v][1]}>{VALIGN[v][0]}</button>
         {/each}
       </div>
       <label class="check"><input type="checkbox" bind:checked={el.autoFit} /> Shrink text to fit the box</label>
@@ -137,21 +156,23 @@
       {/if}
     </section>
 
-    <section>
-      <h4>Use this style elsewhere</h4>
-      <div class="row">
-        <select bind:value={applyScope}>
-          <option value="round-q">Questions in this round</option>
-          <option value="round-a">Answers in this round</option>
-          <option value="round-qa">Questions + answers in this round</option>
-          <option value="game-q">Questions in the whole game</option>
-          <option value="game-a">Answers in the whole game</option>
-          <option value="game-qa">Everything in the whole game</option>
-        </select>
-        <button class="small" onclick={() => onapplystyle(el as TextEl, applyScope)}>Apply</button>
-      </div>
-      <p class="hint">Copies font, size, colors and effects to the main text of those slides (the words stay the same).</p>
-    </section>
+    {#if onapplystyle}
+      <section>
+        <h4>Use this style elsewhere</h4>
+        <div class="row">
+          <select bind:value={applyScope} aria-label="Which slides get this style">
+            <option value="round-q">Questions in this round</option>
+            <option value="round-a">Answers in this round</option>
+            <option value="round-qa">Questions + answers in this round</option>
+            <option value="game-q">Questions in the whole game</option>
+            <option value="game-a">Answers in the whole game</option>
+            <option value="game-qa">Everything in the whole game</option>
+          </select>
+          <button class="small" onclick={() => onapplystyle(el as TextEl, applyScope)}>Apply</button>
+        </div>
+        <p class="hint">Copies font, size, colors and effects to the main text of those slides (the words stay the same).</p>
+      </section>
+    {/if}
   {:else if el.kind === 'image'}
     <section>
       <h4>Image</h4>
@@ -241,7 +262,7 @@
 
   <section>
     <h4>Entrance animation</h4>
-    <select value={el.entrance?.type ?? ''} onchange={(e) => setEntrance(e.currentTarget.value)}>
+    <select value={el.entrance?.type ?? ''} onchange={(e) => setEntrance(e.currentTarget.value)} aria-label="Entrance animation">
       {#each ENTRANCES as [v, l]}<option value={v}>{l}</option>{/each}
     </select>
     {#if el.entrance}
@@ -266,15 +287,21 @@
     </div>
     <div class="row">
       <button class="small" onclick={() => onorder('front')} title="Bring to front">⤒ Front</button>
-      <button class="small" onclick={() => onorder('up')} title="Bring forward">↑</button>
-      <button class="small" onclick={() => onorder('down')} title="Send backward">↓</button>
+      <button class="small" onclick={() => onorder('up')} aria-label="Bring forward" title="Bring forward">↑</button>
+      <button class="small" onclick={() => onorder('down')} aria-label="Send backward" title="Send backward">↓</button>
       <button class="small" onclick={() => onorder('back')} title="Send to back">⤓ Back</button>
     </div>
     <div class="row">
-      <label class="check"><input type="checkbox" checked={!!el.locked} onchange={(e) => (el.locked = e.currentTarget.checked || undefined)} /> Lock</label>
+      <label class="check" title="A locked item can't be moved, resized, nudged or deleted">
+        <input type="checkbox" checked={!!el.locked} onchange={(e) => (el.locked = e.currentTarget.checked || undefined)} /> Lock
+      </label>
       <span class="spacer"></span>
       <button class="small" onclick={onduplicate} title="Ctrl+D">Duplicate</button>
-      <button class="small bad" onclick={ondelete} title="Delete">Delete</button>
+      {#if el.locked}
+        <span class="hint">🔒 Locked — unlock to delete</span>
+      {:else}
+        <button class="small bad" onclick={ondelete} title="Delete (Del)">Delete</button>
+      {/if}
     </div>
   </section>
 </div>
@@ -342,6 +369,14 @@
     margin: 0;
     font-size: 12px;
     color: var(--muted);
+  }
+  .fitted {
+    color: var(--accent);
+  }
+  .warn {
+    margin: 0;
+    font-size: 12px;
+    color: var(--warn);
   }
   .small {
     font-size: 12px;

@@ -56,12 +56,15 @@
           <img src={mediaUrls[m.id]} alt="" />
         {:else if m.kind === 'video' && mediaUrls[m.id]}
           <!-- svelte-ignore a11y_media_has_caption -->
-          <video src={mediaUrls[m.id]} preload="metadata" muted></video>
+          <video src={mediaUrls[m.id]} preload="metadata" controls></video>
         {:else}
           <span class="ic">{icon[m.kind]}</span>
         {/if}
         {#if !mediaUrls[m.id]}<span class="missing">missing</span>{/if}
       </div>
+      {#if m.kind === 'audio' && mediaUrls[m.id]}
+        <audio class="listen" src={mediaUrls[m.id]} preload="none" controls aria-label="Play {m.name}"></audio>
+      {/if}
       <div class="nm" title={m.name}>{m.name}</div>
       <div class="meta muted">
         {formatBytes(m.size)} · {n ? `used ${n}×` : 'unused'}
@@ -134,6 +137,10 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+  .listen {
+    width: 100%;
+    height: 32px;
   }
   .ic {
     font-size: 40px;
