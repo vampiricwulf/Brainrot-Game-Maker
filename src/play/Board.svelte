@@ -1,6 +1,6 @@
 <!-- The game board in stage coordinates (fills its parent). -->
 <script lang="ts">
-  import { clueValue, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueValue, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit } from '../lib/autofit';
   import { mediaUrls } from '../lib/media.svelte';
 
@@ -26,9 +26,18 @@
     {#each round.categories as cat, ci (cat.id)}
       <div class="cell header" class:fill={intro?.stage === 'fill'} style:animation-delay="{delays[ci]}s">
         {#if catShown(ci)}
-          <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, enabled: true, text: cat.title }}>
-            <div>{cat.title}</div>
-          </div>
+          {#if cat.image && mediaUrls[cat.image]}
+            <div class="title has-image" class:revealing={!!intro}>
+              <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} />
+              {#if cat.showTitleOverImage && cat.title}
+                <div class="caption" use:autofit={{ size: 40, enabled: true, text: cat.title }}><div>{cat.title}</div></div>
+              {/if}
+            </div>
+          {:else}
+            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, enabled: true, text: cat.title }}>
+              <div>{cat.title}</div>
+            </div>
+          {/if}
         {/if}
       </div>
     {/each}
@@ -43,7 +52,7 @@
           style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
           disabled={used || !onpick || !!intro}
           onclick={() => onpick?.({ round: session.currentRound, cat: ci, row })}
-          aria-label="{cat.title} for {clueValue(round, row, clue)}"
+          aria-label="{categoryLabel(cat)} for {clueValue(round, row, clue)}"
         >
           {#if !used}
             {#if clue.tileFace?.image && mediaUrls[clue.tileFace.image]}
@@ -68,7 +77,8 @@
     display: grid;
     gap: 10px;
     padding: 10px;
-    background: var(--board-image, none) center / cover no-repeat, var(--board-gap);
+    /* The board's background (gap colour / image) is drawn by AudienceView so board images can sit between it and the tiles. */
+    background: transparent;
   }
   .cell {
     background: var(--tile);
@@ -100,6 +110,30 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .title.has-image {
+    position: relative;
+    width: calc(100% + 24px);
+    height: calc(100% + 24px);
+    margin: -12px;
+  }
+  .cat-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .caption {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 4px;
+    height: 42%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
+    text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
   }
   .title.revealing {
     animation: cat-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;

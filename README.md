@@ -20,8 +20,8 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 | Tab | What it's for |
 |---|---|
 | ⚙ **Setup & Players** | Default players (name + unique color), rules (negative scores, quick "wrong" buttons, points symbol), timers, round intro, and game **sounds** (round intro, Daily Double, time's up, Final think music, winner). |
-| **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. |
-| 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, and score bar position (bottom/top/hidden). |
+| **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
+| 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, a **banner image above the board** (height and fit), and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
 | 🖼 **Media** | Every file in the game, with usage counts, "remove unused" and a list of online links. |
 | **Final round** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
@@ -43,6 +43,12 @@ face** (custom text or an image instead of the value), host notes, and two slide
 - **🎨 Edit image…** (or double-click an image): crop (free, 16:9, 4:3, 1:1, 9:16), rotate, flip, resize, brightness /
   contrast / saturation / hue / blur / grayscale / sepia / invert, meme text, emoji stickers, and a brush with an eraser.
   The original file is always kept; **Use original** undoes everything.
+
+**Board images** (per round, **🖼 Board images** on the round's tab): drop or add images onto a live preview of the board, then
+drag, resize, rotate or edit them like slide items. Each image has an **opacity**, can sit **behind the tiles** (it peeks
+through the gaps) or on top of them, and can be **click-through** so the host can still click the tiles under it (a solid image
+blocks the tiles it covers). The **Layers** list shows everything top-first: click to select, drag or ▲▼ to restack, 👁 to hide
+an image while editing, 🔒 to lock it. **Copy to other rounds** puts the same images on every board.
 
 The **Checklist** in the sidebar flags missing questions and answers, blank categories, wheel tiles with no wheel, missing or
 unplayable media, and online links. Click an item to jump to the tab that fixes it.

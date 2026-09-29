@@ -8,7 +8,7 @@
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "test:e2e": "node tests/e2e/smoke.mjs && node tests/e2e/channel.mjs",
+    "test:e2e": "node tests/e2e/smoke.mjs && node tests/e2e/channel.mjs && node tests/e2e/boardimages.mjs",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build"

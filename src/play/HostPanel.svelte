@@ -1,7 +1,7 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
   import { textOn } from '../lib/colors';
-  import { finalName, formatPoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, type Game, type Session } from '../lib/model';
   import { answerShowing, currentClueInfo, roundComplete, score, setScore } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -116,7 +116,7 @@
       {/if}
       {#if done}<span class="done">Round complete!</span>{/if}
     {:else if session.phase === 'clue' && info}
-      <b>{info.category.title}</b>
+      <b>{categoryLabel(info.category)}</b>
       <span class="val">{formatPoints(info.value, sym)}</span>
       {#if session.dd?.stage === 'question'}<span class="ddtag">DD {formatPoints(session.dd.wager ?? 0, sym)}</span>{/if}
       <span class="muted">·</span>

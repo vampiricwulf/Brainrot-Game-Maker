@@ -20,6 +20,11 @@ export interface Theme {
   glow: string;
   /** Image behind the board (shows through the gaps). */
   boardImage?: Id;
+  /** Image banner across the top of the board screen (logo / show title). */
+  banner?: Id;
+  /** Banner height in stage pixels (of 1080). */
+  bannerHeight?: number;
+  bannerFit?: 'contain' | 'cover';
   scoreBar: 'bottom' | 'top' | 'hidden';
   scoreBarBg: string;
 }
@@ -110,4 +115,29 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
   return Object.entries(vars)
     .map(([k, v]) => `${k}: ${v}`)
     .join('; ');
+}
+
+export const BANNER_DEFAULT = 170;
+export const BANNER_MIN = 60;
+export const BANNER_MAX = 400;
+const SCORE_H = 230;
+
+/** A horizontal band of the 1920×1080 board screen. */
+export interface Band {
+  top: number;
+  height: number;
+}
+
+/**
+ * Where the banner, board and score bar sit on the board screen. The banner always sits directly
+ * above the board; `bg` is the area the board background (gap color / image) covers.
+ */
+export function boardLayout(t: Theme | undefined, hasBanner = !!t?.banner): { banner?: Band; board: Band; score?: Band; bg: Band } {
+  const bar = t?.scoreBar ?? 'bottom';
+  const b = hasBanner ? Math.min(BANNER_MAX, Math.max(BANNER_MIN, t?.bannerHeight ?? BANNER_DEFAULT)) : 0;
+  const banner = (top: number) => (b ? { top, height: b } : undefined);
+  if (bar === 'top')
+    return { score: { top: 0, height: SCORE_H }, banner: banner(SCORE_H), board: { top: SCORE_H + b, height: 1080 - SCORE_H - b }, bg: { top: SCORE_H, height: 1080 - SCORE_H } };
+  if (bar === 'hidden') return { banner: banner(0), board: { top: b, height: 1080 - b }, bg: { top: 0, height: 1080 } };
+  return { banner: banner(0), board: { top: b, height: 1080 - SCORE_H - b }, score: { top: 1080 - SCORE_H, height: SCORE_H }, bg: { top: 0, height: 1080 - SCORE_H } };
 }

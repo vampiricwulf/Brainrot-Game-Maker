@@ -6,7 +6,7 @@
   import { newLive } from '../lib/live';
   import { newId } from '../lib/model';
   import { newSession } from '../lib/session';
-  import { PRESETS, presetTheme, type ThemePreset } from '../lib/theme';
+  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetTheme, type ThemePreset } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -14,7 +14,7 @@
   const game = $derived(app.game);
   const t = $derived(game.theme);
   const fonts = $derived(fontChoices(game));
-  let picking = $state(false);
+  let picking = $state<'bg' | 'banner' | null>(null);
 
   // A pretend game in progress for the preview.
   const demo = $derived.by(() => {
@@ -29,8 +29,9 @@
   const live = newLive();
 
   function applyPreset(p: ThemePreset): void {
-    const keepImage = t.boardImage;
-    game.theme = { ...presetTheme(p), boardImage: keepImage, scoreBar: t.scoreBar };
+    // A preset changes colors and fonts, not the images or layout.
+    const { boardImage, banner, bannerHeight, bannerFit, scoreBar } = t;
+    game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar };
   }
 
   const COLORS: [keyof typeof t, string][] = [
@@ -93,10 +94,37 @@
       <div class="row pop">
         <span>Background image</span>
         {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" />{/if}
-        <button class="small" onclick={() => (picking = true)}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
-        {#if t.boardImage}<button class="small ghost" onclick={() => (t.boardImage = undefined)}>✕</button>{/if}
-        {#if picking}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = false))} onclose={() => (picking = false)} />{/if}
+        <button class="small" onclick={() => (picking = 'bg')}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
+        {#if t.boardImage}<button class="small ghost" onclick={() => (t.boardImage = undefined)} title="Remove">✕</button>{/if}
+        {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
+      <div class="row pop">
+        <span title="A logo or show title across the top of the board">Banner above the board</span>
+        {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" />{/if}
+        <button class="small" onclick={() => (picking = 'banner')}>{t.banner ? 'Change…' : 'Choose…'}</button>
+        {#if t.banner}<button class="small ghost" onclick={() => (t.banner = undefined)} title="Remove">✕</button>{/if}
+        {#if picking === 'banner'}<MediaPicker kind="image" onpick={(id) => ((t.banner = id), (picking = null))} onclose={() => (picking = null)} />{/if}
+      </div>
+      {#if t.banner}
+        <label class="field">
+          Banner height
+          <input
+            type="range"
+            min={BANNER_MIN}
+            max={BANNER_MAX}
+            step="10"
+            value={t.bannerHeight ?? BANNER_DEFAULT}
+            oninput={(e) => (t.bannerHeight = +e.currentTarget.value)}
+          />
+        </label>
+        <label class="field">
+          Banner fit
+          <select value={t.bannerFit ?? 'contain'} onchange={(e) => (t.bannerFit = e.currentTarget.value === 'cover' ? 'cover' : undefined)}>
+            <option value="contain">Fit (whole image)</option>
+            <option value="cover">Fill (crop edges)</option>
+          </select>
+        </label>
+      {/if}
       <label class="field">
         Score bar
         <select bind:value={t.scoreBar}>
@@ -108,7 +136,8 @@
     </div>
     <p class="muted small">
       Question and answer slides use the tile color as their background unless a slide sets its own. Each text box's font and
-      effects are set in the slide editor (use "Use this style elsewhere" to copy a look to every clue).
+      effects are set in the slide editor (use "Use this style elsewhere" to copy a look to every clue). Category images and
+      free-placed board images are set per round in each round's tab.
     </p>
   </div>
 

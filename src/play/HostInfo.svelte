@@ -1,6 +1,6 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
-  import { finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
   import { currentClueInfo, standings } from '../lib/session';
 
   let { game, session }: { game: Game; session: Session } = $props();
@@ -12,7 +12,7 @@
 <div class="info">
   {#if session.phase === 'clue' && info}
     <div class="meta">
-      <span class="cat">{info.category.title}</span>
+      <span class="cat">{categoryLabel(info.category)}</span>
       <span class="val">{formatPoints(info.value, sym)}</span>
     </div>
     {#if session.dd}

@@ -313,8 +313,14 @@ export interface DicePreset {
 
 export interface Category {
   id: Id;
+  /** Also used by the host (log, notes) when the header shows an image. */
   title: string;
   clues: Clue[];
+  /** Image shown in the category header instead of (or under) the name. */
+  image?: Id;
+  imageFit?: 'contain' | 'cover';
+  /** Show the name on top of the image. */
+  showTitleOverImage?: boolean;
 }
 
 export interface Round {
@@ -324,6 +330,19 @@ export interface Round {
   /** Default value for each row (length = rows per category). */
   values: number[];
   dailyDoubleCount?: number;
+  /** Free-placed images on this round's board screen (1920×1080 stage coordinates). */
+  decor?: BoardDecor[];
+}
+
+/**
+ * An image placed on the board screen (logo, meme, sticker…). Reuses the slide image element so the
+ * slide editor's drag/resize/rotate/opacity tools work on it.
+ */
+export interface BoardDecor extends ImageEl {
+  /** Clicks go through to the tiles underneath (host window). */
+  clickThrough?: boolean;
+  /** Draw behind the tiles instead of on top of them. */
+  behind?: boolean;
 }
 
 export interface FinalRound {
@@ -509,6 +528,11 @@ export function setSlideText(slide: Slide, text: string): void {
 
 export function newClue(): Clue {
   return { id: newId(), value: null, type: 'standard', questionSlide: textSlide(), answerSlide: textSlide() };
+}
+
+/** A category's name for the host (log, notes, lists), even when the board shows an image instead. */
+export function categoryLabel(cat: Category): string {
+  return cat.title.trim() || (cat.image ? '🖼 Image category' : 'Category');
 }
 
 export function newCategory(rows: number, title = ''): Category {

@@ -1,6 +1,6 @@
 // Runtime game logic: scores, score log with undo/redo, used tiles, round flow.
 // Pure functions over plain objects so they're easy to test and to autosave.
-import { clueValue, finalName, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session } from './model';
+import { categoryLabel, clueValue, finalName, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -352,7 +352,7 @@ export function currentClueInfo(session: Session, game: Game) {
 export function clueReason(game: Game, ref: ClueRef): string {
   const f = getClue(game, ref);
   if (!f) return '';
-  return `${f.round.name} · ${f.category.title || 'Category'} ${game.settings.currencySymbol}${clueValue(f.round, ref.row, f.clue)}`;
+  return `${f.round.name} · ${categoryLabel(f.category)} ${game.settings.currencySymbol}${clueValue(f.round, ref.row, f.clue)}`;
 }
 
 /** Players ranked by score, highest first. */

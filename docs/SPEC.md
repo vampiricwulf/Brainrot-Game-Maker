@@ -266,6 +266,14 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - Presets: **Classic** (blue board, gold values), **Dark**, **Brainrot Neon**, and **Pastel**.
 - Overrides: board background (color/gradient/image/video), tile color, tile font/color, category header style,
   value text style, used-tile look, score bar style, and player-color accent usage.
+- **Board images** (added on request):
+  - Category headers can show an image instead of the name (fit or fill, optionally with the name on top). The name is
+    still used by the host (notes, log).
+  - A **banner** image can sit above the board (theme setting: height, fit).
+  - Each round can have **free-placed images** anywhere on its board screen. Every image has an opacity, sits on top of
+    or behind the tiles, and can be click-through (host clicks reach the tiles under it) or solid (it blocks them). They
+    are edited over a live board preview with a layers list, and can be copied to every round.
+  - Images can be dropped straight onto categories and tiles in the round grid. Several files fill the next ones.
 
 ### 5.8 Save / load / export
 - **Save** → download `.jbr` (zip). **Open** → file picker or drag-drop.

@@ -20,7 +20,7 @@ export function validate(game: Game): Problem[] {
   game.rounds.forEach((r, i) => {
     const playable = playableClues(r);
     if (!playable.length) out.push({ text: `${r.name}: no playable tiles`, tab: i, level: 'warn' });
-    const unnamed = r.categories.filter((c) => !c.title.trim()).length;
+    const unnamed = r.categories.filter((c) => !c.title.trim() && !c.image).length;
     if (unnamed) out.push({ text: `${r.name}: ${unnamed} category name(s) blank`, tab: i, level: 'warn' });
     const tools = playable.filter((c) => c.type === 'wheel' || c.type === 'dice');
     const noQ = playable.filter((c) => !tools.includes(c) && !slideHasContent(c.questionSlide)).length;

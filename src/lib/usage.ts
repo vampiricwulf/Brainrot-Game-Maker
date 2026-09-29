@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { finalName, type EmbedEl, type Game, type Slide } from './model';
+import { categoryLabel, finalName, type EmbedEl, type Game, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -13,7 +13,7 @@ export function allSlides(game: Game): SlideRef[] {
     for (const c of r.categories)
       c.clues.forEach((cl, i) => {
         if (cl.empty) return;
-        const where = `${r.name} · ${c.title || 'Category'} #${i + 1}`;
+        const where = `${r.name} · ${categoryLabel(c)} #${i + 1}`;
         out.push({ slide: cl.questionSlide, where: `${where} (question)` }, { slide: cl.answerSlide, where: `${where} (answer)` });
       });
   if (game.final.enabled) {
@@ -54,10 +54,18 @@ export function mediaUsage(game: Game): Map<string, number> {
   return n;
 }
 
-/** Media referenced outside slides: game sounds (and later wheel/dice/theme media). */
+/** Media referenced outside slides: game sounds, theme images, category and board images, wheel/dice media. */
 export function extraMediaRefs(game: Game): string[] {
   const out = Object.values(game.audio ?? {}).filter((x): x is string => !!x);
   if (game.theme?.boardImage) out.push(game.theme.boardImage);
+  if (game.theme?.banner) out.push(game.theme.banner);
+  for (const r of game.rounds) {
+    for (const c of r.categories) if (c.image) out.push(c.image);
+    for (const d of r.decor ?? []) {
+      out.push(d.media);
+      if (d.editedMedia) out.push(d.editedMedia);
+    }
+  }
   for (const w of game.wheels ?? []) for (const s of w.segments) if (s.media) out.push(s.media);
   for (const d of game.dice ?? []) {
     for (const die of d.dice) for (const f of die.customFaces ?? []) if (f.media) out.push(f.media);

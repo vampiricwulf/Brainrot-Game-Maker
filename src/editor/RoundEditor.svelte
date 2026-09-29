@@ -1,15 +1,69 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
-  import { clueValue, slideText, type Round } from '../lib/model';
+  import { categoryLabel, clueValue, slideText, type Round } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import { addCategory, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
   import { toast } from '../lib/app.svelte';
+  import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import ClueEditor from './ClueEditor.svelte';
+  import BoardDecorEditor from './BoardDecorEditor.svelte';
+  import MediaPicker from './slide/MediaPicker.svelte';
 
   let { round, canDelete, ondelete }: { round: Round; canDelete: boolean; ondelete: () => void } = $props();
   let editing = $state<{ cat: number; row: number } | null>(null);
+  let decorOpen = $state(false);
+  let catPicker = $state<number | null>(null);
+  let dropTarget = $state<string | null>(null);
   const sym = $derived(app.game.settings.currencySymbol);
+
+  const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+
+  /** Store dropped image files, skipping anything that isn't an image. */
+  async function images(e: DragEvent): Promise<string[]> {
+    e.preventDefault();
+    dropTarget = null;
+    const ids: string[] = [];
+    for (const file of Array.from(e.dataTransfer?.files ?? [])) {
+      try {
+        const ref = await addMediaFile(app.game, file);
+        if (ref.kind === 'image') ids.push(ref.id);
+        else toast(`"${ref.name}" isn't an image`);
+      } catch (err) {
+        toast((err as Error).message, 5000);
+      }
+    }
+    return ids;
+  }
+
+  // Several images dropped at once fill the next categories to the right…
+  async function dropOnCategory(e: DragEvent, ci: number): Promise<void> {
+    const ids = await images(e);
+    ids.forEach((id, i) => {
+      const cat = round.categories[ci + i];
+      if (cat) cat.image = id;
+    });
+    if (ids.length > 1) toast(`Set ${Math.min(ids.length, round.categories.length - ci)} category images`);
+  }
+
+  // …and the next tiles down the column (then on to the next column), skipping empty tiles.
+  async function dropOnTile(e: DragEvent, ci: number, row: number): Promise<void> {
+    const ids = await images(e);
+    const rows = round.values.length;
+    let n = 0;
+    for (let idx = ci * rows + row; idx < round.categories.length * rows && n < ids.length; idx++) {
+      const clue = round.categories[Math.floor(idx / rows)].clues[idx % rows];
+      if (clue.empty) continue;
+      clue.tileFace = { ...clue.tileFace, image: ids[n++] };
+    }
+    if (ids.length > 1) toast(`Set ${n} tile images`);
+  }
+
+  function over(e: DragEvent, key: string): void {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dropTarget = key;
+  }
 </script>
 
 <div class="head">
@@ -43,6 +97,9 @@
     />
   </label>
   <span class="spacer"></span>
+  <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
+    🖼 Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
+  </button>
   {#if canDelete}<button class="ghost" onclick={ondelete}>Delete round</button>{/if}
 </div>
 
@@ -77,17 +134,63 @@
 <div class="grid-wrap">
   <div class="grid" style:grid-template-columns="repeat({round.categories.length}, minmax(140px, 1fr))">
     {#each round.categories as cat, ci (cat.id)}
-      <div class="cat">
-        <textarea bind:value={cat.title} rows="2" placeholder="Category name" aria-label="Category {ci + 1} name"></textarea>
+      <div
+        class="cat"
+        class:drop={dropTarget === `c${ci}`}
+        ondragover={(e) => over(e, `c${ci}`)}
+        ondragleave={() => dropTarget === `c${ci}` && (dropTarget = null)}
+        ondrop={(e) => dropOnCategory(e, ci)}
+        role="group"
+        aria-label="Category {ci + 1}"
+      >
+        {#if cat.image}
+          <div class="cat-img">
+            {#if mediaUrls[cat.image]}
+              <img src={mediaUrls[cat.image]} alt="" style:object-fit={cat.imageFit ?? 'contain'} />
+            {:else}
+              <span class="missing small">Missing image</span>
+            {/if}
+            {#if cat.showTitleOverImage && cat.title}<span class="cap">{cat.title}</span>{/if}
+          </div>
+        {/if}
+        <textarea
+          bind:value={cat.title}
+          class:sub={!!cat.image}
+          rows={cat.image ? 1 : 2}
+          placeholder={cat.image ? 'Name (for you; optional on screen)' : 'Category name'}
+          aria-label="Category {ci + 1} name"></textarea>
+        {#if cat.image}
+          <div class="cat-img-opts">
+            <select
+              value={cat.imageFit ?? 'contain'}
+              onchange={(e) => (cat.imageFit = e.currentTarget.value === 'cover' ? 'cover' : undefined)}
+              aria-label="How the image fits the header"
+              title="Fit: whole image shows. Fill: covers the header, edges may be cropped."
+            >
+              <option value="contain">Fit</option>
+              <option value="cover">Fill</option>
+            </select>
+            <label class="check" title="Show the category name on top of the image">
+              <input type="checkbox" bind:checked={cat.showTitleOverImage} /> Name
+            </label>
+            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)">✕</button>
+          </div>
+        {/if}
         <div class="cat-tools">
           <button class="ghost small" onclick={() => moveCategory(round, ci, ci - 1)} disabled={ci === 0} title="Move left">◀</button>
           <button class="ghost small" onclick={() => moveCategory(round, ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right">▶</button>
           <button class="ghost small" onclick={() => duplicateCategory(round, ci)} disabled={round.categories.length >= 10} title="Duplicate">⧉</button>
           <button
             class="ghost small"
-            onclick={() => confirm(`Delete category "${cat.title}"?`) && removeCategory(round, ci)}
+            onclick={() => confirm(`Delete category "${categoryLabel(cat)}"?`) && removeCategory(round, ci)}
             disabled={round.categories.length <= 1}
             title="Delete">✕</button>
+          <span class="pop">
+            <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)">🖼</button>
+            {#if catPicker === ci}
+              <MediaPicker kind="image" onpick={(id) => ((cat.image = id), (catPicker = null))} onclose={() => (catPicker = null)} />
+            {/if}
+          </span>
         </div>
       </div>
     {/each}
@@ -97,7 +200,17 @@
         {@const q = slideText(clue.questionSlide).trim()}
         {@const a = slideHasContent(clue.answerSlide)}
         {@const kinds = [...new Set(clue.questionSlide.elements.map((e) => e.kind).filter((k) => k !== 'text'))]}
-        <button class="tile" class:empty={clue.empty} onclick={() => (editing = { cat: ci, row })}>
+        {@const face = clue.tileFace?.image && !clue.empty ? mediaUrls[clue.tileFace.image] : undefined}
+        <button
+          class="tile"
+          class:empty={clue.empty}
+          class:drop={dropTarget === `t${ci}-${row}`}
+          onclick={() => (editing = { cat: ci, row })}
+          ondragover={(e) => !clue.empty && over(e, `t${ci}-${row}`)}
+          ondragleave={() => dropTarget === `t${ci}-${row}` && (dropTarget = null)}
+          ondrop={(e) => dropOnTile(e, ci, row)}
+        >
+          {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" />{/if}
           <span class="val">
             {clue.empty ? 'EMPTY' : `${sym}${clueValue(round, row, clue)}`}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}
@@ -121,6 +234,10 @@
 {#if editing}
   <ClueEditor {round} bind:pos={editing} onclose={() => (editing = null)} />
 {/if}
+{#if decorOpen}
+  <BoardDecorEditor {round} onclose={() => (decorOpen = false)} />
+{/if}
+<p class="muted small tip">Tip: drop image files onto a category or a tile to use them there. Drop several to fill the next ones.</p>
 
 <style>
   .head {
@@ -173,6 +290,86 @@
     display: flex;
     justify-content: center;
     gap: 2px;
+    /* Line the tool rows up across categories with and without images. */
+    margin-top: auto;
+  }
+  .cat textarea.sub {
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    border-color: var(--border);
+  }
+  .cat,
+  .tile {
+    border-radius: 6px;
+  }
+  .cat.drop,
+  .tile.drop {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+  }
+  .cat-img {
+    position: relative;
+    height: 74px;
+    background: var(--tile);
+    border-radius: 4px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  .cat-img img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .cap {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    bottom: 2px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .cat-img-opts {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+  }
+  .cat-img-opts select {
+    padding: 2px;
+    font-size: 11px;
+  }
+  .cat-img-opts .check {
+    gap: 3px;
+  }
+  .pop {
+    position: relative;
+  }
+  .tile {
+    position: relative;
+  }
+  .tile .face {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 44px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.3);
+  }
+  .tip {
+    margin: 6px 0 0;
   }
   .tile {
     display: flex;

@@ -17,7 +17,8 @@
   import TimerDisplay from './TimerDisplay.svelte';
   import Confetti from './Confetti.svelte';
   import ToolOverlay from './tools/ToolOverlay.svelte';
-  import { themeStyle } from '../lib/theme';
+  import DecorLayer from './DecorLayer.svelte';
+  import { boardLayout, themeStyle } from '../lib/theme';
 
   let {
     game,
@@ -50,6 +51,10 @@
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
   const themeCss = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
+  const bannerUrl = $derived(game.theme?.banner ? mediaUrls[game.theme.banner] : undefined);
+  const layout = $derived(boardLayout(game.theme, !!bannerUrl));
+  const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
+  const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
   const winners = $derived.by(() => {
     const ties = tiedLeaders(session);
     if (ties.length && session.coWinners) return ties;
@@ -72,18 +77,29 @@
       <div class="round-name">{round?.name}</div>
     </div>
   {:else}
-    <div
-      class="board-area bar-{bar}"
-      class:clickable={!!onact && !!session.intro}
-      onclick={() => session.intro && act('intro')}
-      role="presentation"
-      in:fade={{ duration: 200 }}
-    >
-      <Board {game} {session} {onpick} />
+    <div class="board-screen" in:fade={{ duration: 200 }}>
+      <div class="board-bg" style:top="{layout.bg.top}px" style:height="{layout.bg.height}px"></div>
+      {#if decorBehind.length}<div class="layer behind"><DecorLayer items={decorBehind} /></div>{/if}
+      {#if layout.banner && bannerUrl}
+        <div class="banner" style:top="{layout.banner.top}px" style:height="{layout.banner.height}px">
+          <img src={bannerUrl} alt="" draggable="false" style:object-fit={game.theme.bannerFit ?? 'contain'} />
+        </div>
+      {/if}
+      <div
+        class="board-area bar-{bar}"
+        class:clickable={!!onact && !!session.intro}
+        style:top="{layout.board.top}px"
+        style:height="{layout.board.height}px"
+        onclick={() => session.intro && act('intro')}
+        role="presentation"
+      >
+        <Board {game} {session} {onpick} />
+      </div>
+      {#if layout.score}
+        <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px"><ScoreBar {game} {session} {onpicker} /></div>
+      {/if}
+      {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
     </div>
-    {#if bar !== 'hidden'}
-      <div class="score-area bar-{bar}"><ScoreBar {game} {session} {onpicker} /></div>
-    {/if}
   {/if}
 {:else if session.phase === 'clue' && info}
   {#if session.dd?.stage === 'splash'}
@@ -222,21 +238,51 @@
   .theme {
     display: contents;
   }
+  /* Board screen, back to front: background, images behind the tiles, banner + board, score bar, images on top. */
+  .board-screen {
+    position: absolute;
+    inset: 0;
+  }
+  .board-bg {
+    position: absolute;
+    left: 0;
+    width: 1920px;
+    z-index: 0;
+    background: var(--board-image, none) center / cover no-repeat, var(--board-gap);
+  }
+  .layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .layer.behind {
+    z-index: 1;
+  }
+  .layer.above {
+    z-index: 4;
+  }
+  .banner {
+    position: absolute;
+    left: 0;
+    width: 1920px;
+    z-index: 2;
+    padding: 10px 10px 0;
+    box-sizing: border-box;
+  }
+  .banner img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+  }
   .board-area {
     position: absolute;
     left: 0;
-    top: 0;
     width: 1920px;
-    height: 850px;
+    z-index: 2;
   }
-  .board-area.bar-top {
-    top: 230px;
-  }
-  .board-area.bar-hidden {
-    height: 1080px;
-  }
-  .score-area.bar-top {
-    top: 0;
+  .board-screen .score-area {
+    z-index: 3;
   }
   .score-area {
     position: absolute;
