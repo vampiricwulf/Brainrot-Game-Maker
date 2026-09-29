@@ -1,6 +1,6 @@
 # Jeopardy Builder "Brainrot": Product & Technical Spec
 
-Status: **Draft v1.1** · Last updated: 2026-09-28
+Status: **Draft v1.2** · Last updated: 2026-09-28
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
@@ -130,17 +130,33 @@ VideoEl { media: MediaRef, autoplay, loop, muted, startAt?, endAt?, volume, show
 AudioEl { media: MediaRef, autoplay, loop, startAt?, endAt?, volume, visible /* icon on slide or hidden */ }
 ShapeEl { shape: 'rect'|'ellipse'|'line'|'arrow', fill, stroke }
 
-WheelPreset { id, name, segments: { label, color, weight /* proportion */, media?: MediaRef, action?: Action }[],
-              spinDurationMs, removeAfterLanding: boolean }
-DicePreset  { id, name, dice: { sides: number /* 2..1000 */, count: number,
-              customFaces?: { label: string, action?: Action }[] }[],
-              totalAction?: Action /* applied using the roll total, e.g. "+ total×100" */ }
+// Wheels and dice are general-purpose randomizers. Most results are NOT points-related
+// (punishments, dares, "pick the next category", "who goes first", drink counts...).
+// A result is a label plus an optional reveal card. A score action is a rare, optional extra.
+Outcome {
+  label: string,                    // short text on the slice / die face: "Sing a song", "3", "Skip"
+  details?: RichText,               // optional longer text shown big on reveal ("Do your best
+                                    //   impression of the player to your left for 30s")
+  media?: MediaRef,                 // optional image/GIF/video/audio played on reveal
+  revealSlide?: Slide,              // optional fully custom reveal slide (overrides details/media)
+  timerSeconds?: number,            // optional countdown on reveal (e.g. a 30s punishment)
+  scoreAction?: ScoreAction         // optional; most outcomes have none
+}
 
-// Optional effect attached to a wheel segment / die face. Never applied automatically:
+WheelPreset { id, name, segments: (Outcome & { color, weight /* proportion */ })[],
+              spinDurationMs, removeAfterLanding: boolean,
+              revealStyle: 'banner' | 'fullscreen' }   // how big the result is shown
+DicePreset  { id, name, dice: { sides: number /* 2..1000 */, count: number,
+              customFaces?: Outcome[] /* length = sides; else faces are 1..sides */ }[],
+              showTotal: boolean,
+              totalOutcomes?: { min: number, max: number, outcome: Outcome }[] } // optional: map a
+                                    // total range to an outcome ("2–4: take a sip", "12: pick a victim")
+
+// Optional score effect on an Outcome. Never applied automatically:
 // the host sees a proposed change and clicks Confirm (or Skip).
-Action =
+ScoreAction =
   | { kind: 'addPoints',   amount: number }            // + / − to selected player(s)
-  | { kind: 'addRollTimes', multiplier: number }       // dice: + (roll total × multiplier)
+  | { kind: 'addRollTimes', multiplier: number }       // dice total × multiplier
   | { kind: 'multiplyScore', factor: number }          // e.g. double, halve
   | { kind: 'setScore',    amount: number }            // e.g. bankrupt → 0
   | { kind: 'steal',       amount: number | 'all' }    // from a chosen player to selected player(s)
@@ -154,6 +170,9 @@ Session {
   finalWagers?: Record<playerId, number>
 }
 ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" */, clueId? , undone? }
+RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* label(s) or numbers */,
+             playerIds?: string[] /* optional "who this was for" tag, e.g. who got the punishment */ }
+// Session also keeps rollLog: RollEvent[] (separate from the score log; no score impact)
 ```
 
 ---
@@ -201,10 +220,15 @@ ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" 
 ### 5.6 Wheel & dice preset editor
 - **Wheel**: segments with label, color, and **weight** (the slice size and landing probability are proportional
   to the weight). A live preview shows the percentages. Optional image per segment. Spin duration. "Remove segment after it lands" option.
-- **Dice**: any number of dice with any number of sides (d2–d1000), and custom face labels (e.g. `["Steal","Double","Nothing",...]`).
-  Default quick presets: d4, d6, d8, d10, d12, d20, d100, 2d6.
-- **Optional actions** (see `Action` in §4) can be attached to any wheel segment or custom die face,
-  e.g. "+500", "Bankrupt", "Double your score", "Steal 300", "Swap scores". Segments without an action are display-only.
+- **Dice**: any number of dice with any number of sides (d2–d1000). Faces show plain numbers by default,
+  or custom face labels (e.g. `["Truth","Dare","Drink","Skip","Pick someone","Roll again"]`).
+  Optional mapping of total ranges to outcomes. Default quick presets: d4, d6, d8, d10, d12, d20, d100, 2d6.
+- **Outcomes are free-form, not points.** Each segment/face is an `Outcome` (§4): a label, plus optional
+  details text, media, custom reveal slide, and countdown timer. Examples: punishments ("Talk in an accent until
+  your next correct answer"), dares, "Host picks the next category", "Everyone else votes", or plain numbers.
+- **Optional score action**: a small subset of outcomes may also carry a `ScoreAction` ("+500", "Bankrupt",
+  "Steal 300", "Swap scores"). This is off by default and is hidden under an "Affects score" toggle so it doesn't clutter
+  the common case.
 - Presets are saved with the game. Clue types `wheel` and `dice` link to a preset.
 
 ### 5.7 Theme
@@ -243,8 +267,10 @@ ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" 
 1. **Board**: category headers + value tiles. Used tiles are dimmed or blank. The score bar shows each player's name, color, and score.
 2. Host clicks a tile. It zoom-transitions to the **Question slide**.
    - *Daily Double*: DD splash, then a wager input for the chosen player (limited to max(score, highest round value) by default; the host can override), then the question.
-   - *Wheel clue*: the wheel appears and the host spins. The result is shown and optionally logged. Then the question slide, if any.
-   - *Dice clue*: the dice roll animation, then the result.
+   - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
+     so a tile can be purely "spin the punishment wheel" with no question at all.
+   - *Dice clue*: the dice roll animation, then the outcome. The question slide is optional too.
+   - For wheel/dice tiles with no question, the scoring panel stays available but is collapsed by default.
 3. Optional timer starts automatically or manually. Time's-up visual (no built-in SFX; a user audio file can be attached).
 4. **Scoring panel** (always available while a clue is open):
    - One toggle per player (colored chip). **Select zero, one, or many.**
@@ -273,9 +299,15 @@ ScoreEvent { id, ts, playerId, delta, reason: string /* "Round 1 · Memes $400" 
 
 ### 6.6 Global tools (available anytime from the toolbar)
 - **Dice roller**: quick d4–d100, a custom "NdS", or any saved preset. The result animates on the audience view.
+  It is usable anytime, for anything (who goes first, how many seconds, punishment severity...).
 - **Wheel**: any saved preset, or a quick ad-hoc wheel from a text list. Weighted random.
   Uses `crypto.getRandomValues`, and the spin animation lands on the pre-selected result.
-- **Result actions**: if the landed segment or face has an `Action`, the host view shows an action card
+- **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
+  optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
+  ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact).
+- **Removing slices**: with "remove after landing" on, a landed segment is removed for the rest of the session (e.g. each
+  punishment only once). The host can restore removed segments.
+- **Score actions (optional)**: only if the landed outcome has a `ScoreAction`, the host view shows an action card
   ("Bankrupt → set score to 0"). The host picks the target player(s) (and a source player for steal/swap), previews the
   score change, then clicks **Confirm** or **Skip**. Confirmed actions are written to the score log with a reason
   ("Wheel: Punishment Wheel → Bankrupt"), so they can be undone like any other score change.
@@ -376,7 +408,10 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 - [ ] mp4/webm/mp3/wav/ogg files play with full controls. Autoplay works when enabled.
 - [ ] A wheel with weights 1/1/8 lands on the heavy segment ~80% of the time over 1,000 simulated spins.
 - [ ] A d37 and a custom-face die can be created, saved, and rolled.
-- [ ] A wheel segment with a "Bankrupt" action proposes the change, applies it only after Confirm, and can be undone from the score log.
+- [ ] A punishment wheel with free-text outcomes (no score actions) spins, reveals the details text/GIF on the audience view,
+      can be tagged with a player, and appears in the roll log with no score change.
+- [ ] A die with 6 custom text faces and a "2d6" range mapping both roll and reveal the correct outcome.
+- [ ] A wheel segment with a "Bankrupt" score action proposes the change, applies it only after Confirm, and can be undone from the score log.
 - [ ] Refreshing the browser mid-game offers to resume, with scores and used tiles intact.
 - [ ] Exported standalone HTML plays the game without the editor.
 
@@ -398,7 +433,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | Rounds | Any number of rounds + optional Final |
 | Mechanics | Daily Doubles, negative scores/deductions, Final wagers, timers |
 | Daily Double cap | TV rules (max(score, highest board value)), host can override |
-| Wheel/dice results | Display, plus optional per-segment/face actions confirmed by the host |
+| Wheel/dice results | General-purpose outcomes (punishments, dares, prompts, numbers) with optional details/media/timer. Score actions are a rare, optional extra, always host-confirmed. Separate roll log. |
 | Score bar | Name + color only (no avatars) |
 | Slides | Freeform 16:9 elements |
 | Image editing | Crop/rotate/flip/resize, filters, text/sticker overlays, brush |
