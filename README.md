@@ -108,6 +108,19 @@ every change.
 | `A` | Open/close the audience window |
 | `H` / `F` / `?` | Hide host controls / full-screen / show all shortcuts |
 
+## Desktop app (experimental)
+
+The same app can be wrapped as a native Windows program with [Tauri](https://tauri.app) (`src-tauri/`):
+
+- Run the **Desktop (Windows .exe)** workflow from the GitHub Actions tab (or push a `v*` tag). It uploads an installer and
+  a portable `jeopardy-builder.exe`.
+- Or locally: install Rust and the [Tauri prerequisites](https://tauri.app/start/prerequisites/), then run
+  `npm run desktop:build` (or `npm run desktop:dev`).
+
+The HTML file is still the main way to use the app. The desktop build hasn't been tested yet; in particular, check that
+**📺 Audience window** (a popup), **Save/Export** (downloads) and YouTube embeds behave in the Windows webview before
+relying on it.
+
 ## Development
 
 ```sh

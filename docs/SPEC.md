@@ -448,7 +448,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | M5 | Tools | Dice (custom sides, custom faces, presets), weighted wheel, wheel/dice clue types, roll-off + current picker, roll log, global toolbar. | ✅ Done |
 | M6 | Image editor & themes | Crop/rotate/flip/resize, filters, overlays, stickers, brush. Theme presets + overrides. | ✅ Done |
 | M7 | Export & polish | Standalone HTML export, validation panel, JSON import/export, E2E tests, docs. | ✅ Done |
-| M8 | Desktop (optional) | Tauri `.exe` packaging. | Scaffolded (see `src-tauri/`) |
+| M8 | Desktop (optional) | Tauri `.exe` packaging. | Scaffolded: `src-tauri/` + Windows CI workflow; not yet run |
 
 ### Implementation notes (differences from the original plan)
 - **Slide templates** became *Copy slide / Paste slide* plus *Use this style elsewhere* (copies a text look to every question
