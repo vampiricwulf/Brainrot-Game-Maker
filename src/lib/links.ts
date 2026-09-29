@@ -389,7 +389,8 @@ export function parseMediaLink(raw: string, want?: LinkKind | 'font', now = Date
   }
 
   // Imgur: .gifv is a page around an .mp4; imgur.com/ID is a page around i.imgur.com/ID.*
-  if (host === 'i.imgur.com' && /\.gifv$/i.test(path)) return { ...direct(source.replace(/\.gifv(?=$|\?)/i, '.mp4')), kindHint: 'video', gif: true };
+  if (host === 'i.imgur.com' && /\.gifv$/i.test(path))
+    return want === 'image' ? direct(source.replace(/\.gifv(?=$|\?)/i, '.gif')) : { ...direct(source.replace(/\.gifv(?=$|\?)/i, '.mp4')), kindHint: 'video', gif: true };
   if (host === 'imgur.com' || host === 'm.imgur.com') {
     if (['a', 'gallery', 't', 'r', 'user'].includes(segs[0] ?? '')) return problem('album', linkMessages.imgurAlbum);
     const m = segs.length === 1 ? segs[0].match(/^([a-z0-9]{5,8})(\.[a-z0-9]+)?$/i) : null;

@@ -140,6 +140,7 @@ const rows: Row[] = [
   ['discord expired', discord('cdn.discordapp.com', `?ex=${PAST}&is=1&hm=2`), 'expired'],
   // Imgur
   ['imgur gifv', 'https://i.imgur.com/AbC123x.gifv', { fetchUrls: ['https://i.imgur.com/AbC123x.mp4'], kindHint: 'video', gif: true }],
+  ['imgur gifv for a picture', 'https://i.imgur.com/AbC123x.gifv', { fetchUrls: ['https://i.imgur.com/AbC123x.gif'], kindHint: 'image' }, 'image'],
   ['imgur direct', 'https://i.imgur.com/AbC123x.jpg', { fetchUrls: ['https://i.imgur.com/AbC123x.jpg'], kindHint: 'image' }],
   ['imgur page', 'https://imgur.com/AbC123x', { fetchUrls: ['https://i.imgur.com/AbC123x.png', 'https://i.imgur.com/AbC123x.mp4'] }],
   ['imgur page for a video spot', 'https://imgur.com/AbC123x', { fetchUrls: ['https://i.imgur.com/AbC123x.mp4', 'https://i.imgur.com/AbC123x.png'] }, 'video'],

@@ -20,6 +20,7 @@
     onembed,
     initial = '',
     hint = 'Direct file link, e.g. https://files.catbox.moe/abc123.mp3',
+    autofocus = true,
   }: {
     /** What the spot needs; leave out on a slide (anything goes there). */
     want?: LinkKind;
@@ -30,6 +31,8 @@
     /** Start with this link right away (pasted or dropped on a slide). */
     initial?: string;
     hint?: string;
+    /** Put the cursor in the field when it appears (a picker that was just opened). */
+    autofocus?: boolean;
   } = $props();
 
   const desktop = inTauri();
@@ -44,7 +47,7 @@
 
   onMount(() => {
     if (untrack(() => initial)) go();
-    else input?.focus();
+    else if (untrack(() => autofocus)) input?.focus();
     return () => controller?.abort();
   });
 
@@ -94,8 +97,9 @@
     } catch (e) {
       if (isAbort(e)) return;
       error = e instanceof LinkError || e instanceof Error ? e.message : String(e);
-      // A Drive file the desktop app couldn't download may still play in Drive's own player.
+      // A Drive file the desktop app couldn't download may still play in Drive's own player; otherwise just say why.
       if (link.drive && onembed && e instanceof LinkError && /drive-(quota|no-download|page)/.test(e.problem.problem)) drive = { link, step: 'video' };
+      else drive = null;
     } finally {
       if (controller === ctl) {
         controller = null;
@@ -142,6 +146,7 @@
       placeholder="Paste a link…"
       aria-label="Paste a link"
       disabled={!!busy}
+      oninput={() => ((drive = null), (error = ''), (fetched = false))}
       onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), go())}
     />
     <button class="small" onclick={() => go()} disabled={!!busy || !text.trim()}>Add</button>

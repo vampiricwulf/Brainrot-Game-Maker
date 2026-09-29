@@ -21,6 +21,7 @@ describe('sniffMime', () => {
     ['MP4', bytes([0, 0, 0, 0x20], 'ftypisom'), 'video/mp4'],
     ['M4A', bytes([0, 0, 0, 0x20], 'ftypM4A '), 'audio/mp4'],
     ['MOV', bytes([0, 0, 0, 0x14], 'ftypqt  '), 'video/quicktime'],
+    ['old MOV', bytes([0, 0, 0, 8], 'wide', [0, 0, 0, 0], 'mdat'), 'video/quicktime'],
     ['AVIF', bytes([0, 0, 0, 0x1c], 'ftypavif'), 'image/avif'],
     ['WebM', bytes([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 1, 0x42, 0x82, 0x84], 'webm'), 'video/webm'],
     ['Matroska', bytes([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x82, 0x88], 'matroska'), 'video/x-matroska'],

@@ -25,6 +25,8 @@ export function sniffMime(b: Uint8Array): string | null {
     if (/^(heic|heix|mif1|msf1)$/.test(brand)) return 'image/heic';
     return 'video/mp4';
   }
+  // Older QuickTime files start straight with a movie atom instead of "ftyp".
+  if (/^(moov|mdat|wide|free|skip|pnot)$/.test(ascii(b, 4, 4))) return 'video/quicktime';
   if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) {
     // EBML: WebM or Matroska, told apart by the DocType near the start.
     return ascii(b, 0, Math.min(64, b.length)).includes('webm') ? 'video/webm' : 'video/x-matroska';

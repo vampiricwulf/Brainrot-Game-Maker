@@ -187,13 +187,26 @@ assert((await page.locator('.canvas iframe').count()) === 0, "the editor shows a
 assert((await page.locator('.insp h4', { hasText: 'Google Drive player' }).count()) === 1, 'the inspector names it');
 await page.getByRole('button', { name: 'Done' }).click();
 
+// ---------- A picture that plays from its link: the image editor asks for a copy first ----------
+await page.locator('.tile').nth(2).click();
+await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/pic3.png');
+await page.locator('.picker').getByLabel('Paste a link').press('Enter');
+await page.locator('.canvas img').waitFor();
+assert((await page.locator('.canvas img').getAttribute('src')) === 'https://files.catbox.moe/pic3.png', 'a live-link picture shows on the slide from its link');
+await page.getByRole('button', { name: '🎨 Edit image…' }).click();
+await page.locator('.gate').getByText('🌐 This picture plays from files.catbox.moe. The image editor works on a copy saved in your game.').waitFor();
+assert(await page.locator('.gate').getByRole('button', { name: '💾 Save a copy first' }).isVisible(), 'the image editor offers to save a copy first');
+await page.locator('.gate').getByRole('button', { name: 'Cancel' }).click();
+await page.getByRole('button', { name: 'Done' }).click();
+
 // ---------- Drive picture (a category image): shown through Google's picture link ----------
 await page.locator('.cat').nth(2).getByTitle('Use an image for this category (or drop one here)').click();
 await page.locator('.picker').getByLabel('Paste a link').fill(`https://drive.google.com/file/d/${DRIVE_IMG}/view?usp=drive_link`);
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
-await page.locator('.cat').nth(2).locator('img').waitFor();
+await page.locator('.cat').nth(2).locator('.cat-img img').waitFor();
 assert(
-  (await page.locator('.cat').nth(2).locator('img').getAttribute('src')) === `https://lh3.googleusercontent.com/d/${DRIVE_IMG}=w1920`,
+  (await page.locator('.cat').nth(2).locator('.cat-img img').getAttribute('src')) === `https://lh3.googleusercontent.com/d/${DRIVE_IMG}=w1920`,
   'a Google Drive picture shows through lh3.googleusercontent.com',
 );
 
@@ -223,15 +236,23 @@ assert(/\d+(\.\d+)? KB/.test(await card('frog1.png').locator('.meta').first().in
 assert((await card('frog1.png').getByText('Saved from litter.catbox.moe').count()) === 1, 'and where it came from');
 assert((await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1, 'the live link shows its site instead of a size');
 assert((await card('Google Drive picture').getByText('🌐 lh3.googleusercontent.com').count()) === 1, 'so does the Drive picture');
-assert((await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await page.getByText(/2 more play from the internet/).count()) === 1, 'the total counts stored files only');
+assert((await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await page.getByText(/3 more play from the internet/).count()) === 1, 'the total counts stored files only');
 await card('beep1.wav').getByRole('button', { name: 'Check link' }).click();
 await card('beep1.wav').getByText('✓ The link works').waitFor();
 assert(true, 'Check link plays the link to see that it works');
 await card('beep1.wav').getByRole('button', { name: '💾 Save a copy' }).click();
 await page.locator('.toast', { hasText: "files.catbox.moe doesn't let the game save a copy." }).waitFor();
 assert((await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1, "Save a copy explains when the site refuses, and the link keeps working");
-assert((await page.locator('.problems').getByText('3 items play from the internet').count()) === 1, 'the checklist counts what plays from the internet (2 links + 1 Drive player)');
+assert((await page.locator('.problems').getByText('4 items play from the internet').count()) === 1, 'the checklist counts what plays from the internet (3 links + 1 Drive player)');
 await shot('links-2-media');
+// Save a copy works once the site allows it (here the host starts sending Access-Control-Allow-Origin).
+await context.route('https://files.catbox.moe/pic3.png', (r) =>
+  r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: png(200, 120) }),
+);
+await card('pic3.png').getByRole('button', { name: '💾 Save a copy' }).click();
+await card('pic3.png').getByText('Saved from files.catbox.moe').waitFor();
+assert(/\d+(\.\d+)? KB/.test(await card('pic3.png').locator('.meta').first().innerText()) && (await card('pic3.png').locator('.badge').count()) === 0, 'Save a copy downloads a live link into the game (same file, now stored)');
+assert((await page.getByText(/Files stored with this game: 2 ·/).count()) === 1, 'and it counts as stored');
 
 // ---------- Save: live links stay links in the pack ----------
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);

@@ -70,6 +70,7 @@
   <button onclick={upload}>⬆ Add files…</button>
   <div class="link">
     <LinkField
+      autofocus={false}
       onmedia={() => {}}
       hint="Add from a link: the game saves a copy when the site allows it, e.g. https://files.catbox.moe/abc123.mp3"
     />

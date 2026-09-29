@@ -52,7 +52,7 @@
 </script>
 
 {#if !player}
-  <div class="card"><span class="msg">This {label} link doesn't point to a file</span></div>
+  <div class="card"><span class="msg">Not a valid link for the {label}</span></div>
 {:else if onScreen}
   {#if shown}
     {#key round}
