@@ -122,7 +122,10 @@ try {
     await page.waitForTimeout(150);
     const firstPlayer = page.locator('.panel .p').first().locator('.sel');
     assert((await firstPlayer.getAttribute('aria-pressed')) !== 'true', 'shortcuts are off while the help is open');
+    assert(await dialog(page).evaluate((d) => d.contains(document.activeElement)), 'focus moves into the help');
     await dialog(page).getByRole('button', { name: 'Close' }).click();
+    const soundButton = page.locator('.panel').getByRole('button', { name: '🔊 Sound' });
+    assert(await soundButton.evaluate((b) => b === document.activeElement), 'closing it puts focus back on the button that opened it');
     await page.keyboard.press('1');
     assert((await firstPlayer.getAttribute('aria-pressed')) === 'true', 'and back on once it is closed');
     await page.keyboard.press('1');
@@ -131,10 +134,16 @@ try {
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
     watch(aud, 'audience');
     await aud.locator('.board').waitFor();
+    // Nothing clicked in the audience window yet (and no aud.evaluate, which Playwright runs as a click).
+    const clickOnce = page.getByText('Click the audience window once so it can play sound');
+    assert((await clickOnce.count()) === 1 && (await aud.locator('.activate').count()) === 1, 'before any click or sound, both windows ask for a click');
     await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
     assert((await dialog(page).getByText('plays in the audience window').count()) === 1, 'dual mode: it says the sound plays in the audience window');
     const hostPlays = await page.evaluate(() => window.__plays);
     await testSound(page, 'Sound played in the audience window');
+    // This browser lets the new window play sound without a click: a sound that played there proves it.
+    await clickOnce.waitFor({ state: 'detached' });
+    assert((await aud.locator('.activate').count()) === 0, 'a sound that played in the audience window clears "click once" in both windows');
     assert((await aud.evaluate(() => window.__plays)) >= 1, 'the audience window played the chime');
     assert((await page.evaluate(() => window.__plays)) === hostPlays, 'the host window stayed silent');
     if (shots) await page.screenshot({ path: `${shots}/audio-help.png` });
@@ -164,14 +173,24 @@ try {
         return Promise.resolve();
       };
       if (aud) {
+        // Like Chromium: a click or a key press counts, but not Esc or a modifier key on its own.
         let clicked = false;
         addEventListener('pointerdown', () => (clicked = true), true);
+        addEventListener('keydown', (e) => !['Escape', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key) && (clicked = true), true);
         Object.defineProperty(navigator, 'userActivation', { get: () => ({ hasBeenActive: clicked, isActive: false }) });
         const real = HTMLMediaElement.prototype.play;
         window.__plays = 0;
         HTMLMediaElement.prototype.play = function () {
           if (!clicked && !this.muted) return Promise.reject(new DOMException('play() needs a click first', 'NotAllowedError'));
           window.__plays++;
+          return real.call(this);
+        };
+      } else {
+        // In dual mode the host window must never play a sound out loud (its copy of the game is silent).
+        const real = HTMLMediaElement.prototype.play;
+        window.__loud = 0;
+        HTMLMediaElement.prototype.play = function () {
+          if (!this.muted) window.__loud++;
           return real.call(this);
         };
       }
@@ -183,6 +202,14 @@ try {
     await aud.getByText('Click anywhere in this window once so it can play sound').waitFor();
     await page.getByText('Click the audience window once so it can play sound').waitFor();
     assert(true, "dual mode: the host warns that the audience window can't play sound yet, with no slide media");
+    // Shift or Alt (e.g. Alt+Tab away from it) doesn't let a window play sound.
+    await aud.keyboard.press('Shift');
+    await aud.keyboard.press('Alt');
+    await page.waitForTimeout(300);
+    assert(
+      (await page.getByText('Click the audience window once so it can play sound').count()) === 1 && (await aud.locator('.activate').count()) === 1,
+      'a modifier key in the audience window keeps the warning',
+    );
 
     await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
     await testSound(page, 'Blocked: click the audience window once');
@@ -205,6 +232,7 @@ try {
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.getByText('The audience window blocked a sound').waitFor();
     assert(true, 'a blocked game sound is reported to the host');
+    assert((await page.evaluate(() => window.__loud)) === 0, 'dual mode: the host window did not play the round-intro sound');
     assert((await aud.evaluate(() => window.__sinks)).includes('cable'), 'the audience window sends game sounds to the chosen output');
 
     await aud.locator('.aud').click({ position: { x: 40, y: 40 } });
@@ -214,6 +242,7 @@ try {
     const before = await aud.evaluate(() => window.__plays);
     await testSound(page, 'Sound played in the audience window');
     assert((await aud.evaluate(() => window.__plays)) > before, 'after the click, the audience window plays the test sound');
+    assert((await page.evaluate(() => window.__loud)) === 0, 'the host window stayed silent for the test sound too');
 
     // A device that isn't there: the audience window falls back to the default device and says so.
     await picker.selectOption({ label: 'USB Headset' });
@@ -287,6 +316,7 @@ try {
     const [created] = await calls(page, 'plugin:webview|create_webview_window');
     assert(created.options.additionalBrowserArgs === ARGS, 'with the Discord audio fix on, the fallback audience window gets the same WebView2 switches');
     assert(created.options.url === 'index.html#audience' && created.options.label.startsWith('popup-audience-'), 'it opens the audience page');
+    assert(created.options.title === 'Untitled Game · Audience', `it's titled after the game, like the page inside (${created.options.title})`);
     // The desktop app's audience window connects over the channel and may play sound without a click.
     const aud = watch(await context.newPage(), 'desktop audience');
     await aud.goto(httpUrl + '#audience');
@@ -300,6 +330,7 @@ try {
     assert((await help.getByRole('alert').filter({ hasText: 'running as administrator' }).count()) === 1, 'the help repeats the administrator warning');
     const sections = await help.locator('summary').allInnerTexts();
     assert(sections.includes('Discord on Windows') && !sections.includes('Mac') && !sections.includes('Linux'), 'desktop app: Windows help only');
+    assert((await help.getByText('Share Your Screen › Applications › "Untitled Game · Audience"').count()) === 1, 'the Discord steps name the audience window by its real title');
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(await fix.isChecked(), 'the Discord audio fix shows as on');
     assert((await help.getByText('experimental', { exact: true }).count()) === 1, 'it is labelled experimental');
@@ -327,7 +358,15 @@ try {
     assert(!('additionalBrowserArgs' in created.options), 'with the fix off, the fallback window keeps the default switches');
     await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
     const fix = dialog(page).getByRole('checkbox', { name: /Discord audio fix/ });
-    assert(!(await fix.isChecked()), 'the Discord audio fix is off by default');
+    assert(!(await fix.isChecked()), 'with the setting off, the Discord audio fix box is unticked');
+    // A setting that couldn't be saved: the box goes back to what still applies, with no restart offered.
+    await page.evaluate(() => {
+      const invoke = window.__TAURI_INTERNALS__.invoke;
+      window.__TAURI_INTERNALS__.invoke = (cmd, args) => (cmd === 'set_audio_fix' ? Promise.reject("Couldn't save the setting: access denied") : invoke(cmd, args));
+    });
+    await fix.click();
+    await dialog(page).getByText("Couldn't save the setting: access denied").waitFor();
+    assert(!(await fix.isChecked()) && (await dialog(page).getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
     await context.close();
   }
 

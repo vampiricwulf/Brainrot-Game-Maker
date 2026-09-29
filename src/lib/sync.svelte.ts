@@ -42,6 +42,11 @@ export type ChannelMsg = { from: 'host'; msg: HostMsg } | { from: 'audience'; ms
 export const AUDIENCE_HASH = '#audience';
 export const CHANNEL_NAME = 'jeopardy-builder-sync';
 
+/** The audience window's title: Discord and OBS list the window by it ("My Game · Audience"). */
+export function audienceTitle(game: Game | undefined): string {
+  return `${game?.title.trim() || 'Jeopardy Builder'} · Audience`;
+}
+
 /** open: the audience window exists · activated: it has been clicked, so it may autoplay with sound. */
 export const audience = $state({ open: false, activated: false });
 
@@ -144,7 +149,11 @@ function fromAudience(msg: AudienceMsg): void {
     } else if (ev.kind === 'activation') {
       audience.activated = ev.active;
       if (ev.active) sound.cueBlocked = false;
-    } else onSound(ev);
+    } else {
+      // A sound played there, so it may play sound (a browser can allow that before any click).
+      if (ev.kind === 'sound' && ev.ok) audience.activated = true;
+      onSound(ev);
+    }
   } else if (msg?.type === 'bye' && !win) {
     markClosed();
   }
@@ -185,14 +194,15 @@ function watchClosed(check: () => boolean | Promise<boolean>): void {
 }
 
 /** Desktop app fallback: create the audience window with Tauri's window API. */
-async function openNativeAudience(): Promise<boolean> {
+async function openNativeAudience(title: string): Promise<boolean> {
   try {
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
     const label = `popup-audience-${Date.now()}`;
     const args = browserArgs();
     const options = {
       url: `index.html${AUDIENCE_HASH}`,
-      title: 'Jeopardy Builder · Audience',
+      // This window keeps its title (it doesn't follow the page's), so give it the page's from the start.
+      title,
       width: 1280,
       height: 760,
       resizable: true,
@@ -216,10 +226,10 @@ async function openNativeAudience(): Promise<boolean> {
 }
 
 /**
- * Open (or focus) the audience window. Must be called from a click.
+ * Open (or focus) the audience window. Must be called from a click. `title`: audienceTitle(game).
  * Resolves false if the browser's popup blocker (or the desktop app) refused.
  */
-export async function openAudienceWindow(): Promise<boolean> {
+export async function openAudienceWindow(title: string): Promise<boolean> {
   if (win && !win.closed) {
     win.focus();
     return true;
@@ -230,7 +240,7 @@ export async function openAudienceWindow(): Promise<boolean> {
   const url = location.href.split('#')[0] + AUDIENCE_HASH;
   win = window.open(url, 'jb-audience', 'popup=yes,width=1280,height=760');
   sentMedia.clear();
-  if (!win) return inTauri() ? openNativeAudience() : false;
+  if (!win) return inTauri() ? openNativeAudience(title) : false;
   audience.open = true;
   watchClosed(() => !win || win.closed);
   return true;

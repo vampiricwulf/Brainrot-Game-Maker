@@ -10,7 +10,8 @@
   import { DEFAULT_OUTPUT, matchOutput, type AudioOutput } from '../lib/audio';
   import { captureProblem, desktop, restartApp, setAudioFix } from '../lib/desktop.svelte';
 
-  let { dual, onclose }: { dual: boolean; onclose: () => void } = $props();
+  // windowTitle: the audience window's title, which Discord lists it by.
+  let { dual, windowTitle, onclose }: { dual: boolean; windowTitle: string; onclose: () => void } = $props();
 
   const exe = inTauri();
   const capture = captureProblem();
@@ -24,6 +25,7 @@
   let listing = $state(false);
   let fixError = $state('');
   let restarting = $state(false);
+  let modal: HTMLDivElement;
 
   const where = $derived(dual ? 'the audience window' : 'this window');
   const missing = $derived(dual ? sound.outputMissing : audioOut.missing);
@@ -63,9 +65,15 @@
     if (found && found.deviceId !== audioOut.deviceId) chooseAudioOut(found);
   }
 
-  // Once the speakers were listed before (the browser remembers the permission), list them right away.
   onMount(() => {
+    // Keyboard and screen reader users start inside the dialog, and go back to the button that opened it.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modal.focus();
+    // Once the speakers were listed before (the browser remembers the permission), list them right away.
     if (canRoute && !ownPicker) void showOutputs(false);
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
   });
 
   function choose(id: string): void {
@@ -78,8 +86,10 @@
     if (out) chooseAudioOut(out);
   }
 
-  async function toggleFix(on: boolean): Promise<void> {
-    fixError = (await setAudioFix(on)) ?? '';
+  async function toggleFix(box: HTMLInputElement): Promise<void> {
+    fixError = (await setAudioFix(box.checked)) ?? '';
+    // Not saved: the box goes back to the setting that still applies.
+    box.checked = desktop.fixSaved;
   }
 
   async function restart(): Promise<void> {
@@ -104,7 +114,7 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" tabindex="-1" bind:this={modal}>
     <div class="row">
       <h2>🔊 Streaming the sound</h2>
       <span class="spacer"></span>
@@ -123,9 +133,10 @@
     </p>
     <div class="row">
       <button class="primary" onclick={testSound}>▶ Test sound</button>
-      {#if test}
-        <span class="result" class:ok={test.state === 'ok'} class:bad={test.state !== 'ok' && test.state !== 'waiting'} role="status">{testText}</span>
-      {/if}
+      <!-- Always there, so screen readers announce each new result. -->
+      <span class="result" class:ok={test?.state === 'ok'} class:bad={!!test && test.state !== 'ok' && test.state !== 'waiting'} role="status">
+        {testText}
+      </span>
     </div>
 
     {#if canRoute}
@@ -171,7 +182,7 @@
     {#if exe}
       <section class="box">
         <label class="check">
-          <input type="checkbox" checked={desktop.fixSaved} onchange={(e) => toggleFix(e.currentTarget.checked)} />
+          <input type="checkbox" checked={desktop.fixSaved} onchange={(e) => toggleFix(e.currentTarget)} />
           <b>Discord audio fix</b> <span class="tag">experimental</span>
         </label>
         <p class="muted small">
@@ -198,7 +209,7 @@
             Open it only once. (Running Discord as administrator doesn't help.)
           </li>
           <li>Open the audience window and press <b>Test sound</b>.</li>
-          <li>In your voice channel: <b>Share Your Screen › Applications › "Jeopardy Builder · Audience"</b>. Turn <b>Sound</b> on, then Go Live.</li>
+          <li>In your voice channel: <b>Share Your Screen › Applications › "{windowTitle}"</b>. Turn <b>Sound</b> on, then Go Live.</li>
         {:else}
           <li>Use the Discord desktop app. Discord in a web browser can't send a window's sound (in Firefox, none at all).</li>
           <li>Open the audience window, click once inside it, then press <b>Test sound</b>.</li>
@@ -291,6 +302,7 @@
     padding: 16px;
   }
   .modal {
+    outline: none;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;

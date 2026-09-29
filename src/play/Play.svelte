@@ -22,7 +22,16 @@
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { audience, closeAudienceWindow, mediaCommand, openAudienceWindow, pushGame, pushLive, pushSession } from '../lib/sync.svelte';
+  import {
+    audience,
+    audienceTitle,
+    closeAudienceWindow,
+    mediaCommand,
+    openAudienceWindow,
+    pushGame,
+    pushLive,
+    pushSession,
+  } from '../lib/sync.svelte';
   import { localMedia, openMediaPopup, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
@@ -130,7 +139,7 @@
 
   /** Open the audience window, or bring it to the front if it's already open. Never closes it. */
   async function openAudience(): Promise<void> {
-    if (!(await openAudienceWindow()))
+    if (!(await openAudienceWindow(audienceTitle(game))))
       toast(
         inTauri()
           ? "Couldn't open the audience window. Try again, or use single-window mode."
@@ -784,7 +793,7 @@
 {/if}
 <!-- Before the game too (from the display settings) and during it (🔊 Sound in the host panel). -->
 {#if showSound}
-  <AudioHelp {dual} onclose={() => (showSound = false)} />
+  <AudioHelp {dual} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
 {/if}
 
 <style>

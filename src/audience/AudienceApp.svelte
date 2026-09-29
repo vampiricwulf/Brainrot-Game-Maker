@@ -4,7 +4,7 @@
   import { registerBlob } from '../lib/media.svelte';
   import type { Game, Session } from '../lib/model';
   import { newLive, type Live } from '../lib/live';
-  import { CHANNEL_NAME, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
+  import { CHANNEL_NAME, audienceTitle, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { applyLocal, onLocalMediaChange } from '../lib/mediactl.svelte';
   import { onSoundReport, playChime, setAudioOut, watchSinks } from '../lib/audioout.svelte';
@@ -21,6 +21,8 @@
   // Browsers only allow sound autoplay after the user has clicked this window once. The desktop app
   // starts its windows with autoplay allowed (WebView2's --autoplay-policy=no-user-gesture-required).
   let activated = $state(inTauri() || !!navigator.userActivation?.hasBeenActive);
+  /** A game sound was blocked since this window last told the host it may play sound. */
+  let blockedSince = false;
 
   // Talk to the host through window.opener when there is one; otherwise (e.g. a window the desktop app
   // created itself) through a BroadcastChannel. Only one link is used so nothing is handled twice.
@@ -48,7 +50,7 @@
         case 'game':
           game = m.game;
           registerGameFonts(m.game);
-          document.title = `${m.game.title} · Audience`;
+          document.title = audienceTitle(m.game);
           status = 'connected';
           break;
         case 'session':
@@ -91,7 +93,14 @@
       send({ type: 'audience-event', event: { kind: 'media', id, state: state ? $state.snapshot(state) : null } }),
     );
     // Sounds played or blocked here, and a missing output device: the host shows them.
-    const offSound = onSoundReport((event) => send({ type: 'audience-event', event }));
+    const offSound = onSoundReport((event) => {
+      // A sound that played means this window may play sound (a browser can allow that before any click).
+      if (event.kind === 'sound' && event.ok) {
+        activated = true;
+        blockedSince = false;
+      } else if (event.kind === 'sound' && event.reason === 'blocked') blockedSince = true;
+      send({ type: 'audience-event', event });
+    });
     const offSinks = watchSinks();
     send({ type: 'hello' });
     send({ type: 'audience-event', event: { kind: 'activation', active: activated } });
@@ -114,9 +123,23 @@
     idleTimer = setTimeout(() => (idle = true), 1500);
   }
 
-  function activate(): void {
-    if (activated) return;
+  // Keys that don't count as a click (browsers ignore Esc and modifier keys).
+  const NO_GESTURE = ['Escape', 'Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'CapsLock'];
+
+  /** The browser counted this click or key press, so this window may now play sound. */
+  function allowsSound(e: Event): boolean {
+    const ua = navigator.userActivation;
+    if (ua) return ua.hasBeenActive;
+    // Older browsers can't be asked: every other key counts.
+    return !(e instanceof KeyboardEvent && NO_GESTURE.includes(e.key));
+  }
+
+  function activate(e: Event): void {
+    if (!allowsSound(e)) return;
+    // Already said so, unless a sound was blocked since (the host then asks for a click again).
+    if (activated && !blockedSince) return;
     activated = true;
+    blockedSince = false;
     send({ type: 'audience-event', event: { kind: 'activation', active: true } });
   }
 
@@ -125,13 +148,14 @@
 <svelte:window
   onmousemove={poke}
   onkeydown={(e) => {
-    // A key press (except Esc) counts as the click that allows sound, too.
-    if (e.key !== 'Escape') activate();
+    // A key press (not Shift, Ctrl, Alt or Esc) counts as the click that allows sound, too.
+    activate(e);
     if (e.key.toLowerCase() === 'f') toggleFullscreen();
   }}
 />
 
-<div class="aud" class:idle ondblclick={toggleFullscreen} onpointerdown={activate} role="presentation">
+<!-- A touch only counts once the finger lifts, hence pointerup too. -->
+<div class="aud" class:idle ondblclick={toggleFullscreen} onpointerdown={activate} onpointerup={activate} role="presentation">
   {#if game && session}
     <Stage>
       <AudienceView {game} {session} {live} role="audience" />

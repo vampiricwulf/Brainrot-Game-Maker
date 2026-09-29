@@ -176,10 +176,10 @@ help:
   YouTube videos and "Open link" pop-ups can't be moved: they always play on the default device. If the chosen device is
   unplugged, the sound falls back to the default device and the host is told. Hidden in browsers that can't do this.
 - Step-by-step help for **Discord on Windows**, **OBS**, **Mac** and **Linux**. The short version for Discord: use the
-  Discord desktop app, **Share Your Screen › Applications**, pick the audience window (or the browser window showing it)
-  with **Sound** on, then press Test sound and ask a viewer. Still silent: in Discord's **Voice & Video › Screen Share**,
-  flip "Use an experimental method to capture audio from applications" and restart Discord, or share the whole screen
-  with sound.
+  Discord desktop app, **Share Your Screen › Applications**, pick the audience window ("*game name* · Audience", or the
+  browser window showing it) with **Sound** on, then press Test sound and ask a viewer. Still silent: in Discord's
+  **Voice & Video › Screen Share**, flip "Use an experimental method to capture audio from applications" and restart
+  Discord, or share the whole screen with sound.
 
 **In the desktop app** the game's sound is played by Microsoft Edge WebView2's helper processes, not by the app's own
 `.exe`, and Discord and OBS capture sound per program. So:
@@ -204,8 +204,8 @@ set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-features=msWebOOUI,msPdfOOUI
 ```
 
 It works if Task Manager (Details tab, with the "Command line" column) no longer shows an `msedgewebview2.exe` whose
-command line contains `--utility-sub-type=audio.mojom.AudioService`. Then go live in Discord on "Jeopardy Builder ·
-Audience" with Sound on and check that a viewer hears Test sound.
+command line contains `--utility-sub-type=audio.mojom.AudioService`. Then go live in Discord on the audience window (it's
+listed as "*game name* · Audience") with Sound on and check that a viewer hears Test sound.
 
 ## Desktop app (experimental)
 

@@ -121,7 +121,7 @@ fn capture_problem() -> Option<serde_json::Value> {
     None
 }
 
-/// Facts the host page reads at startup (see src/lib/platform.ts).
+/// Facts the host page reads at startup (see src/lib/desktop.svelte.ts).
 fn page_flags(args: Option<&str>, fix_saved: bool) -> String {
     let mut js = format!("window.__JB_AUDIO_FIX = {fix_saved};");
     if let Some(args) = args {
@@ -194,14 +194,20 @@ fn build_main(app: &AppHandle, args: Option<&'static str>, fix_saved: bool) -> t
         .title("Jeopardy Builder")
         .inner_size(1400.0, 900.0)
         .min_inner_size(900.0, 600.0)
+        // Shown once its webview exists, so a failed start (retried below) never flashes an empty window.
+        .visible(false)
         .initialization_script(page_flags(args, fix_saved))
         .on_new_window(move |url, features| open_popup(&handle, url, features));
     if let Some(args) = args {
         builder = builder.additional_browser_args(args);
     }
-    builder.build()?;
+    let window = builder.build()?;
     if let Some(args) = args {
         let _ = ACTIVE_ARGS.set(args);
+    }
+    // The window exists now: a failure here must not send the caller into another start.
+    if let Err(err) = window.show() {
+        eprintln!("couldn't show the main window: {err}");
     }
     Ok(())
 }
@@ -252,4 +258,39 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running Jeopardy Builder");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn page_flags_without_the_fix() {
+        let js = page_flags(None, false);
+        assert!(js.contains("window.__JB_AUDIO_FIX = false;"));
+        // No switches: every window keeps wry's defaults.
+        assert!(!js.contains("__JB_BROWSER_ARGS"));
+    }
+
+    #[test]
+    fn page_flags_with_the_fix() {
+        let js = page_flags(Some(AUDIO_FIX_ARGS), true);
+        assert!(js.contains("window.__JB_AUDIO_FIX = true;"));
+        assert!(js.contains(&format!("window.__JB_BROWSER_ARGS = \"{AUDIO_FIX_ARGS}\";")));
+    }
+
+    #[test]
+    fn audio_fix_args_keep_one_disable_features_switch() {
+        // A second --disable-features would replace the first, dropping wry's defaults.
+        assert_eq!(AUDIO_FIX_ARGS.matches("--disable-features=").count(), 1);
+        for feature in [
+            "msWebOOUI",
+            "msPdfOOUI",
+            "msSmartScreenProtection",
+            "AudioServiceOutOfProcess",
+        ] {
+            assert!(AUDIO_FIX_ARGS.contains(feature), "{feature} missing");
+        }
+        assert!(AUDIO_FIX_ARGS.contains("--autoplay-policy=no-user-gesture-required"));
+    }
 }
