@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { newLive } from './live';
 import { newGame, PLAYER_WHEEL } from './model';
-import { openPlayerWheel, spinWheel } from './overlay';
+import { editWheel, openPlayerWheel, openWheel, resetWheelEdits, spinWheel, wheelPool } from './overlay';
+import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
 import { validate } from './validate';
 
@@ -55,5 +56,61 @@ describe('Pick a player wheel', () => {
     expect(warn()).toBe(true);
     clue.wheelId = PLAYER_WHEEL;
     expect(warn()).toBe(false);
+  });
+});
+
+describe('editing a wheel for one spin', () => {
+  it('reads weights from quick wheel lines', () => {
+    expect(parseQuickWheel('Sing a song\nPush-ups x3\n  Skip ×0.5 \n\nTop 10\nNope *0')).toEqual([
+      { label: 'Sing a song', weight: 1 },
+      { label: 'Push-ups', weight: 3 },
+      { label: 'Skip', weight: 0.5 },
+      { label: 'Top 10', weight: 1 },
+    ]);
+  });
+
+  it('leaves players out and changes chances, only for this run', () => {
+    const { game, session, live } = withPlayers();
+    openPlayerWheel(live, session);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    const pool = wheelPool(o, session, game);
+    pool[0].off = true; // Ann sits this one out
+    pool[1].weight = 3;
+    editWheel(o, pool);
+    expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['Bob', 3], ['Cat', 1]]);
+    // A player who joins later gets a normal chance; Ann stays out.
+    session.players.push({ id: 'd', name: 'Dee', color: '#ffffff', startScore: 0 });
+    const seen = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      spinWheel(live, session, game);
+      seen.add(o.segments[o.result!].id);
+    }
+    expect(o.segments.map((s) => s.id)).toEqual(['b', 'c', 'd']);
+    expect(seen.has('a')).toBe(false);
+    // The edit box shows everyone, Ann switched off.
+    expect(wheelPool(o, session, game).map((s) => [s.id, !!s.off])).toEqual([['a', true], ['b', false], ['c', false], ['d', false]]);
+    resetWheelEdits(o, session, game);
+    expect(o.pool).toBeUndefined();
+    expect(o.segments.map((s) => s.id)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it("never changes the saved wheel", () => {
+    const { game, session, live } = withPlayers();
+    const w = newWheel('Dares', ['A', 'B', 'C']);
+    game.wheels.push(w);
+    openWheel(live, session, w);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    const pool = wheelPool(o, session, game);
+    pool[2].off = true;
+    pool[0].weight = 5;
+    pool[1].label = 'B!';
+    editWheel(o, pool);
+    for (let i = 0; i < 20; i++) {
+      spinWheel(live, session, game);
+      expect(['A', 'B!']).toContain(o.segments[o.result!].label);
+    }
+    expect(w.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
   });
 });

@@ -38,6 +38,29 @@ export function newSegment(label: string, i: number): WheelSegment {
   return { id: newId(), label, color: WHEEL_COLORS[i % WHEEL_COLORS.length], weight: 1 };
 }
 
+/** A wheel slice in the host's edit box: `off` leaves it out of this run of the wheel. */
+export type PoolSlice = WheelSegment & { off?: boolean };
+
+/** The slices that go on the wheel: switched on, with a chance above zero. */
+export function onSlices(pool: PoolSlice[]): WheelSegment[] {
+  return pool.filter((s) => !s.off && s.weight > 0).map(({ off: _off, ...s }) => s);
+}
+
+/**
+ * Quick wheel options, one per line. A line can end with a weight, like "Sing a song x3" (or ×3, *3), to
+ * make it that many times as likely.
+ */
+export function parseQuickWheel(text: string): { label: string; weight: number }[] {
+  return text
+    .split('\n')
+    .map((line) => {
+      const m = /^(.*?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*$/i.exec(line.trim());
+      const label = (m ? m[1] : line).trim();
+      return { label, weight: m && label ? Math.min(1000, +m[2]) : 1 };
+    })
+    .filter((o) => o.label && o.weight > 0);
+}
+
 export function newWheel(name = 'New wheel', labels = ['Option 1', 'Option 2', 'Option 3', 'Option 4']): WheelPreset {
   return { id: newId(), name, segments: labels.map(newSegment), spinDurationMs: 5000, removeAfterLanding: false };
 }

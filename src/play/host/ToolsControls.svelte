@@ -8,6 +8,7 @@
   import { rollDice, spinWheel } from '../../lib/overlay';
   import { describeRoll } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
+  import WheelEdit from './WheelEdit.svelte';
 
   let { game, session, onclose }: { game: Game; session: Session; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
@@ -52,6 +53,9 @@
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
         <button class="primary" disabled={busy} onclick={() => spinWheel(app.live, session, game)} title="W">{o.spin ? 'Spin again' : 'Spin!'}</button>
+        <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => (o.editing = !o.editing)} title="Turn slices off or change their chances for this spin">
+          ✎ Edit wheel{o.pool ? ' (edited)' : ''}
+        </button>
         {#if removed}
           <button class="ghost small" onclick={() => o.wheelId && session.removedSegments && (session.removedSegments[o.wheelId] = [])}>
             Restore {removed} used slice{removed === 1 ? '' : 's'}
@@ -70,6 +74,9 @@
       {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}
       <button onclick={onclose} title="Esc">Close</button>
     </div>
+    {#if o.kind === 'wheel' && o.editing}
+      {#key o.nonce}<WheelEdit {o} {game} {session} disabled={busy} />{/key}
+    {/if}
     {#if picked && !busy}
       <div class="row">
         {#if session.currentPickerId === picked.id}

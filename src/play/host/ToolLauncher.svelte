@@ -4,7 +4,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, Session } from '../../lib/model';
   import { openPlayerWheel, openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
-  import { parseDice, QUICK_DICE } from '../../lib/tools';
+  import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
 
   let { game, session, onrolloff }: { game: Game; session: Session; onrolloff: (ids: string[], sides: number) => void } = $props();
   let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
@@ -18,6 +18,20 @@
   function dice(sides: number, count: number, name?: string): void {
     rollDice(app.live, session, quickDice(sides, count, name));
     menu = null;
+  }
+
+  /** Open a wheel, with its edit box open when `edit` (to change this spin's slices or chances first). */
+  function wheel(open: () => void, edit = false): void {
+    open();
+    const o = app.live.overlay;
+    if (o?.kind === 'wheel') o.editing = edit;
+    menu = null;
+  }
+
+  function quickWheel(edit: boolean): void {
+    const options = parseQuickWheel(quickList);
+    if (options.length < 2) return toast('Add at least two options');
+    wheel(() => openQuickWheel(app.live, options), edit);
   }
 
   function rollCustom(): void {
@@ -52,26 +66,38 @@
     <button onclick={() => (menu = menu === 'wheel' ? null : 'wheel')}>🎡 Wheel</button>
     {#if menu === 'wheel'}
       <div class="menu">
-        <button
-          class="small item"
-          disabled={session.players.length < 2}
-          title={session.players.length < 2 ? 'Needs at least two players' : 'A wheel of the players, in their colors'}
-          onclick={() => ((menu = null), openPlayerWheel(app.live, session))}>🎯 Pick a player</button>
+        <div class="wl">
+          <button
+            class="small item"
+            disabled={session.players.length < 2}
+            title={session.players.length < 2 ? 'Needs at least two players' : 'A wheel of the players, in their colors'}
+            onclick={() => wheel(() => openPlayerWheel(app.live, session))}>🎯 Pick a player</button>
+          <button
+            class="small ghost"
+            disabled={session.players.length < 2}
+            aria-label="Edit Pick a player, then spin"
+            title="Leave players out or change their chances for this spin"
+            onclick={() => wheel(() => openPlayerWheel(app.live, session), true)}>✎</button>
+        </div>
         {#each game.wheels as w (w.id)}
-          <button class="small item" onclick={() => ((menu = null), openWheel(app.live, session, w))}>{w.name}</button>
+          <div class="wl">
+            <button class="small item" onclick={() => wheel(() => openWheel(app.live, session, w))}>{w.name}</button>
+            <button
+              class="small ghost"
+              aria-label={`Edit ${w.name}, then spin`}
+              title="Change slices or chances for this spin (the saved wheel stays as it is)"
+              onclick={() => wheel(() => openWheel(app.live, session, w), true)}>✎</button>
+          </div>
         {:else}
           <div class="muted small">No saved wheels yet: make them in the editor's 🎡 tab, or use a quick one.</div>
         {/each}
         <div class="muted small">Quick wheel (one option per line)</div>
-        <textarea rows="4" bind:value={quickList} placeholder={'Sing a song\nDo 10 push-ups\nSkip'}></textarea>
-        <button
-          class="small"
-          onclick={() => {
-            const labels = quickList.split('\n').map((l) => l.trim()).filter(Boolean);
-            if (labels.length < 2) return toast('Add at least two options');
-            openQuickWheel(app.live, labels);
-            menu = null;
-          }}>Open quick wheel</button>
+        <textarea rows="4" bind:value={quickList} placeholder={'Sing a song\nDo 10 push-ups x2\nSkip'} aria-label="Quick wheel options"></textarea>
+        <div class="muted small">End a line with x2, x3… to make it that many times as likely.</div>
+        <div class="row">
+          <button class="small" onclick={() => quickWheel(false)}>Open quick wheel</button>
+          <button class="small" onclick={() => quickWheel(true)} title="Open it with the edit box: colors, chances, and Save as">✎ Open & edit</button>
+        </div>
       </div>
     {/if}
   </div>
@@ -137,6 +163,13 @@
   }
   .item {
     text-align: left;
+  }
+  .wl {
+    display: flex;
+    gap: 4px;
+  }
+  .wl .item {
+    flex: 1;
   }
   .small {
     font-size: 12px;

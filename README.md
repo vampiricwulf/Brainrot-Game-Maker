@@ -183,10 +183,14 @@ optional sound. Nothing is scored automatically.
 which opens the real page in a popup window you can capture on stream (`Y`). **Google Drive's player** can only be restarted,
 stopped (taken off the screen) or opened in its own window (`Y`); press ▶ inside it in the audience window.
 
-**Tools, any time**: **🎲 Dice** (d4–d100, 2d6, or anything like `3d37`, plus saved dice), **🎡 Wheel** (saved wheels, or a
-quick wheel from a list), **🏁 Who goes first** (everyone rolls in their color, tied leaders re-roll, and the winner becomes
+**Tools, any time**: **🎲 Dice** (d4–d100, 2d6, or anything like `3d37`, plus saved dice), **🎡 Wheel** (saved wheels, the
+built-in **🎯 Pick a player** wheel with a slice per player in their colors, or a quick wheel from a list, where a line
+ending in `x3` is three times as likely), **🏁 Who goes first** (everyone rolls in their color, tied leaders re-roll, and the winner becomes
 the picker), **📊 Scores** overlay. These show full-screen on the audience view. Results can be tagged with a player for the
-**roll log**. Score effects only apply when you press **Confirm**.
+**roll log**. Score effects only apply when you press **Confirm**. **✎ Edit wheel** (or ✎ next to a wheel in the menu)
+changes the wheel on screen for this spin only: switch slices or players off, change their chances (the % shows), rename,
+recolor or add slices. The saved wheel stays as it is unless you press **💾 Save as new wheel…** or **Overwrite "name"**.
+After the player wheel lands, **★ Make X the picker** hands them the board.
 
 **Final round** (renameable): category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
 music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. In the

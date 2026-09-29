@@ -2,8 +2,12 @@
 import { newId, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
 import type { Live } from './live';
 import {
-  activeSegments, describeRoll, logRoll, newSegment, planRollOff, rollPreset, spinTarget, weightedIndex,
+  activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, spinTarget, weightedIndex,
+  type PoolSlice,
 } from './tools';
+
+type WheelOverlay = Extract<NonNullable<Live['overlay']>, { kind: 'wheel' }>;
+const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 export function openWheel(live: Live, session: Session, wheel: WheelPreset): void {
   live.overlay = {
@@ -37,26 +41,75 @@ export function openPlayerWheel(live: Live, session: Session): void {
   };
 }
 
-/** A throwaway wheel from a plain list of options. */
-export function openQuickWheel(live: Live, labels: string[]): void {
+/** A throwaway wheel from a plain list of options (with optional weights). */
+export function openQuickWheel(live: Live, options: { label: string; weight?: number }[]): void {
   live.overlay = {
     kind: 'wheel',
     nonce: newId(),
     name: 'Quick wheel',
-    segments: labels.map((l, i) => newSegment(l, i)),
+    segments: options.map((o, i) => ({ ...newSegment(o.label, i), weight: o.weight ?? 1 })),
     rotation: 0,
     spin: null,
     result: null,
   };
 }
 
+/** Players added, renamed or removed since the edit: they keep their on/off and chance. */
+function mergePlayers(pool: PoolSlice[], session: Session): PoolSlice[] {
+  return playerSegments(session).map((p) => {
+    const was = pool.find((s) => s.id === p.id);
+    return was ? { ...p, weight: was.weight, off: was.off } : p;
+  });
+}
+
+/** What the host's edit box starts from: this run's edits, else the wheel as it would spin now. */
+export function wheelPool(o: WheelOverlay, session: Session, game: Game): PoolSlice[] {
+  if (o.pool) return copy(o.players ? mergePlayers(o.pool, session) : o.pool);
+  if (o.players) return playerSegments(session);
+  const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
+  if (!preset) return copy(o.segments);
+  // Slices already used ("remove after landing") start switched off.
+  const active = new Set(activeSegments(session, preset).map((s) => s.id));
+  return copy(preset.segments).map((s) => (active.has(s.id) ? s : { ...s, off: true }));
+}
+
+/** Change this run of the wheel only (the saved wheel stays as it is). Clears the last result. */
+export function editWheel(o: WheelOverlay, pool: PoolSlice[]): void {
+  o.pool = copy(pool);
+  o.segments = onSlices(pool);
+  o.spin = null;
+  o.result = null;
+  o.tagged = undefined;
+}
+
+/** Back to the wheel as it was opened (players and saved wheels follow their current state). */
+export function resetWheelEdits(o: WheelOverlay, session: Session, game: Game): void {
+  o.pool = undefined;
+  const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
+  if (o.players) o.segments = playerSegments(session);
+  else if (preset) o.segments = copy(activeSegments(session, preset));
+  o.spin = null;
+  o.result = null;
+  o.tagged = undefined;
+}
+
 export function spinWheel(live: Live, session: Session, game: Game): void {
   const o = live.overlay;
   if (!o || o.kind !== 'wheel') return;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
-  if (preset) o.segments = JSON.parse(JSON.stringify(activeSegments(session, preset))) as WheelSegment[];
+  if (o.pool) {
+    // An edited run: its own slices and chances. Players added or removed since still count.
+    if (o.players) o.pool = mergePlayers(o.pool, session);
+    let segs = onSlices(o.pool);
+    if (preset?.removeAfterLanding) {
+      const removed = new Set(session.removedSegments?.[preset.id] ?? []);
+      const left = segs.filter((s) => !removed.has(s.id));
+      if (left.length) segs = left;
+    }
+    o.segments = segs;
+  } else if (preset) o.segments = copy(activeSegments(session, preset));
   // Players added, renamed or removed since the wheel opened.
-  if (o.players) o.segments = playerSegments(session);
+  else if (o.players) o.segments = playerSegments(session);
   if (!o.segments.length) return;
   const index = weightedIndex(o.segments.map((s) => s.weight));
   const from = o.rotation;

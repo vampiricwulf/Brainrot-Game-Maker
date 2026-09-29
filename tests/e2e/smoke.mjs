@@ -988,7 +988,7 @@ await page.locator('.tl textarea').click();
 await page.keyboard.type('Who is next?');
 assert((await page.locator('[aria-label="Keyboard shortcuts"]').count()) === 0, "typing '?' in the quick-wheel box doesn't open the shortcuts");
 await page.locator('.tl textarea').fill('');
-await page.getByRole('button', { name: 'Punishment Wheel' }).click();
+await page.getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
 await page.getByRole('button', { name: 'Spin!' }).click();
 await page.locator('.ac').waitFor({ timeout: 8000 });
 const deltaText = await page.locator('.ac .delta').first().innerText();
@@ -1019,6 +1019,56 @@ if (await makePicker.count()) await makePicker.click();
 await page.getByText(`★ ${wheelPick} picks the next clue.`).waitFor();
 const pickerIdx = await page.locator('.panel .p').evaluateAll((els) => els.findIndex((e) => e.classList.contains('picker')));
 assert(pickerIdx >= 0 && (await page.locator('.panel .p').nth(pickerIdx).innerText()).includes(wheelPick), `the wheel landed on ${wheelPick}, who is now the picker`);
+await page.keyboard.press('Escape');
+
+// ✎ Edit a wheel for one spin: leave players out, and the saved wheels stay as they are unless saved.
+const sliceTexts = () => page.locator('.stage-box svg text').allTextContents();
+const wheelMenu = async () => {
+  await page.getByRole('button', { name: '🎡 Wheel' }).click();
+  return page.locator('.tl .menu');
+};
+await (await wheelMenu()).getByRole('button', { name: 'Edit Pick a player, then spin' }).click();
+const editBox = page.getByRole('group', { name: 'Edit this wheel' });
+await editBox.getByLabel('Include Player 1').uncheck();
+await editBox.getByLabel('Include Player 3').uncheck();
+assert((await sliceTexts()).join() === 'Player 2' && (await editBox.locator('.pct').allInnerTexts()).join() === '—,100%,—', 'unticking players takes them off the wheel, and the chances follow');
+await page.getByRole('button', { name: 'Spin!' }).click();
+await page.getByText('★ Player 2 picks the next clue.').or(page.getByRole('button', { name: '★ Make Player 2 the picker' })).waitFor({ timeout: 10000 });
+assert(true, 'the edited player wheel can only land on the players left on it');
+await page.keyboard.press('Escape');
+await (await wheelMenu()).getByRole('button', { name: '🎯 Pick a player' }).click();
+assert((await sliceTexts()).length === 3, 'the edits were for that spin only: the player wheel has everyone again');
+await page.keyboard.press('Escape');
+// A saved wheel: change it for one spin, then Save as a new wheel; the original is untouched.
+await (await wheelMenu()).getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
+const punishment = await sliceTexts();
+await page.keyboard.press('Escape');
+await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment Wheel, then spin' }).click();
+await editBox.getByLabel(`Include ${punishment[0]}`).uncheck();
+assert((await sliceTexts()).length === punishment.length - 1, 'a saved wheel can lose a slice for this spin');
+nextDialog = (d) => d.accept('Punishment lite');
+await editBox.getByRole('button', { name: '💾 Save as new wheel…' }).click();
+await page.getByRole('button', { name: 'Overwrite "Punishment lite"' }).waitFor();
+assert(true, 'Save as new wheel makes a saved wheel (and the one on screen becomes it)');
+await page.keyboard.press('Escape');
+await (await wheelMenu()).getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
+assert((await sliceTexts()).join() === punishment.join(), 'the original wheel is unchanged');
+await page.keyboard.press('Escape');
+// Overwrite: the saved copy gets a new slice for good.
+await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment lite, then spin' }).click();
+await editBox.getByRole('button', { name: '＋ Add slice' }).click();
+await editBox.getByLabel('Slice 2 label').fill('Dance');
+await editBox.getByLabel('Slice 2 label').press('Enter');
+await answerDialog(() => editBox.getByRole('button', { name: 'Overwrite "Punishment lite"' }).click(), true);
+await page.keyboard.press('Escape');
+await (await wheelMenu()).getByRole('button', { name: 'Punishment lite', exact: true }).click();
+assert((await sliceTexts()).join() === [...punishment.slice(1), 'Dance'].join(), 'Overwrite keeps the edits in that saved wheel');
+await page.keyboard.press('Escape');
+// Quick wheel lines can carry a weight.
+const menuNow = await wheelMenu();
+await menuNow.getByLabel('Quick wheel options').fill('Rare\nCommon x3');
+await menuNow.getByRole('button', { name: '✎ Open & edit' }).click();
+assert((await editBox.locator('.pct').allInnerTexts()).join() === '25%,75%', '"x3" on a quick wheel line makes it three times as likely');
 await page.keyboard.press('Escape');
 
 // Roll-off: everyone rolls; the winner becomes the current picker.

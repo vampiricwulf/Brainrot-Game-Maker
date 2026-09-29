@@ -1,6 +1,6 @@
 // Transient on-screen state shared between the host and the audience window (not saved with the game).
 import { newId, type DicePreset, type Id, type WheelSegment } from './model';
-import type { DiceRoll, RollOffRound } from './tools';
+import type { DiceRoll, PoolSlice, RollOffRound } from './tools';
 
 /** What a host click on the stage asks for (the host's view decides what it means right now). */
 export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay';
@@ -41,6 +41,10 @@ export type Overlay =
       wheelId?: Id;
       /** The built-in "Pick a player" wheel: one slice per player (slice id = player id). */
       players?: boolean;
+      /** Set once the host edits this run of the wheel: every slice, including ones switched off. */
+      pool?: PoolSlice[];
+      /** The host's edit box is open (host only). */
+      editing?: boolean;
       segments: WheelSegment[];
       /** Resting rotation (degrees) before/after the current spin. */
       rotation: number;
