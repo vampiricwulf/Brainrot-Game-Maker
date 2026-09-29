@@ -2,7 +2,7 @@
 <script lang="ts">
   import { toast } from '../../lib/app.svelte';
   import { formatPoints, type Game, type Session } from '../../lib/model';
-  import { standings, startTiebreaker, tiedLeaders } from '../../lib/session';
+  import { places, startTiebreaker, tiedLeaders } from '../../lib/session';
 
   let {
     game,
@@ -21,12 +21,12 @@
   } = $props();
   const ties = $derived(tiedLeaders(session));
 
-  /** "🏆 Brainrot Night: 🥇 Sam $4,200 · 🥈 Alex $3,100 · 3. Jo $0" for chat or Discord. */
+  /** "🏆 Brainrot Night: 🥇 Sam $4,200 · 🥈 Alex $3,100 · 🥉 Jo $0" for chat or Discord. Tied players share a place and a medal. */
   function resultsText(): string {
     const medals = ['🥇', '🥈', '🥉'];
     const sym = game.settings.currencySymbol;
-    const ranked = standings(session).map((r, i) => `${medals[i] ?? `${i + 1}.`} ${r.player.name} ${formatPoints(r.score, sym)}`);
-    return `🏆 ${game.title}: ${ranked.join(' · ')}`;
+    const ranked = places(session).map((r) => `${medals[r.place - 1] ?? `${r.place}.`} ${r.player.name} ${formatPoints(r.score, sym)}`);
+    return `🏆 ${game.title}${session.coWinners && ties.length ? ' (co-winners)' : ''}: ${ranked.join(' · ')}`;
   }
 
   async function copyResults(): Promise<void> {

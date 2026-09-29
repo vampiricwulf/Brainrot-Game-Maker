@@ -55,10 +55,23 @@
   const lastRound = $derived(game.rounds[game.rounds.length - 1]);
   const unjudged = $derived(finalUnjudged(session).length);
 
+  /** "Finish game" was pressed with players still unjudged: it asks inline (a browser dialog would show on stream). */
+  let askFinish = $state(false);
+  let askedAt = 0;
+  $effect(() => {
+    if (!unjudged || session.finalStep !== 'reveal') askFinish = false;
+  });
+
   function next(): void {
-    // Finishing shows the winner and confetti on stream, so ask if some players were never judged.
-    if (session.finalStep === 'reveal' && unjudged && !confirm(`${unjudged} player${unjudged === 1 ? '' : 's'} not judged yet. Finish the game anyway?`))
+    // Finishing shows the winner and confetti on stream, so ask first if some players were never judged.
+    if (session.finalStep === 'reveal' && unjudged && !askFinish) {
+      askFinish = true;
+      askedAt = Date.now();
       return;
+    }
+    // The second half of a double-click on "Finish game" doesn't count as the answer.
+    if (askFinish && Date.now() - askedAt < 400) return;
+    askFinish = false;
     finalNext(session);
     onstep();
   }
@@ -148,9 +161,15 @@
         {/if}
       {/if}
       <span class="spacer"></span>
-      <button class="primary" onclick={session.finalStep === 'question' ? onreveal : next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
-        {labels[session.finalStep ?? 'category']}
-      </button>
+      {#if askFinish}
+        <span class="ask">{unjudged} player{unjudged === 1 ? '' : 's'} not judged yet · finish anyway?</span>
+        <button class="primary small" onclick={next}>Finish</button>
+        <button class="small" onclick={() => (askFinish = false)}>Keep judging</button>
+      {:else}
+        <button class="primary" onclick={session.finalStep === 'question' ? onreveal : next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
+          {labels[session.finalStep ?? 'category']}
+        </button>
+      {/if}
     </div>
   </div>
 {/if}
@@ -211,5 +230,10 @@
   .armed {
     color: var(--good);
     font-weight: 600;
+  }
+  .ask {
+    color: var(--warn);
+    font-weight: 600;
+    font-size: 12px;
   }
 </style>

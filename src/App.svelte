@@ -177,19 +177,7 @@
 {/if}
 
 {#if app.toast}
-  <div class="toast" role="status">
-    {app.toast}
-    {#if app.toastAction}
-      {@const action = app.toastAction}
-      <button
-        class="small"
-        onclick={() => {
-          action.run();
-          app.toast = '';
-          app.toastAction = null;
-        }}>{action.label}</button>
-    {/if}
-  </div>
+  <div class="toast" role="status">{app.toast}</div>
 {/if}
 
 <style>
@@ -209,8 +197,5 @@
   }
   .small {
     font-size: 12px;
-  }
-  .toast button {
-    margin-left: 10px;
   }
 </style>

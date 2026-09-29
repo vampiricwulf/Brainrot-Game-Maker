@@ -353,6 +353,15 @@ assert(await page.locator('.panel .p').nth(1).evaluate((e) => e.classList.contai
 await page.keyboard.press('Control+z');
 assert((await scoreOf(1)) === '$350', 'Ctrl+Z takes the quick ✔ back');
 assert((await page.locator('.toast').innerText()).includes('Undid +$200 (Player 2)'), 'the undo toast says what was undone');
+assert(
+  (await page.locator('.toast button').count()) === 0 && (await page.locator('.toast').evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none',
+  'the toast has no buttons and lets clicks through to the host nav row under it',
+);
+// Points were given for this clue, so it can't be cancelled back onto the board (it could be scored twice).
+assert(await page.getByRole('button', { name: '↩ Cancel (keep tile)' }).isDisabled(), 'Cancel (keep tile) is off once points were given');
+await page.keyboard.press('Shift+Escape');
+await page.getByText('Points were given for this clue').waitFor();
+assert((await page.locator('.stage-box .full').count()) === 1, 'Shift+Esc keeps a scored clue open and says why');
 await shot('4-clue-scored');
 
 await page.locator('.stage-box .full').click();
@@ -396,6 +405,22 @@ await page.locator('.board').waitFor();
 assert(!(await isUsed(2)), 'Shift+Esc cancels a clue and keeps its tile playable');
 await page.getByRole('button', { name: /↶ Reopen Category 2/ }).waitFor();
 assert(true, 'the host panel offers to reopen the last tile closed');
+// Picking from "Reopen a tile…" gives the keys back: shortcuts work, and arrow keys don't reopen another tile.
+const reopenSel = page.locator('select[aria-label="Reopen a used tile"]');
+await reopenSel.focus();
+await page.keyboard.press('ArrowDown');
+await page.waitForFunction(() => !document.querySelectorAll('.stage-box .board .tile')[0].classList.contains('used'));
+assert(await page.evaluate(() => document.activeElement?.tagName !== 'SELECT'), 'picking a tile to reopen takes focus off the list');
+await page.keyboard.press('ArrowDown');
+await page.waitForTimeout(200);
+assert(await isUsed(1), 'a later arrow key reopens nothing else');
+await page.keyboard.press('1');
+assert((await page.locator('.panel .p').nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the list');
+await page.keyboard.press('1');
+await tile(0).click();
+await page.locator('.full').waitFor();
+await page.keyboard.press('Escape');
+await page.locator('.board').waitFor();
 
 await page.keyboard.press('Control+z');
 assert((await scoreOf(2)) === '$0', 'Ctrl+Z undoes the last score change');
@@ -501,6 +526,7 @@ await page.waitForTimeout(450); // round buttons ignore clicks right after they 
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.getByText('25 clues left · go on?').waitFor();
 assert((await page.locator('.final-label').count()) === 0, 'Final Brainrot ▶ with tiles left asks before moving on');
+assert((await page.evaluate(() => document.activeElement?.textContent)) === 'Cancel', 'keyboard focus moves to Cancel while it asks');
 await page.getByRole('button', { name: 'Cancel', exact: true }).click();
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
@@ -545,9 +571,13 @@ await rows.nth(0).getByRole('button', { name: '✔ Right' }).click();
 await page.keyboard.press('n');
 await page.waitForFunction(() => document.querySelector('.spot-name')?.textContent === 'Player 2');
 assert((await page.locator('.end h1').count()) === 0, 'N in the reveals spotlights the next player instead of ending the game');
-const finishMsg = await answerDialog(() => page.getByRole('button', { name: 'Finish game ▶' }).click(), false);
-assert(finishMsg.includes('1 player not judged yet'), 'Finish with a player unjudged asks first');
-assert((await page.locator('.spot').count()) === 1, 'cancelling keeps the reveals going');
+const finishMsg = await answerDialog(async () => {
+  await page.getByRole('button', { name: 'Finish game ▶' }).click();
+  await page.getByText('1 player not judged yet · finish anyway?').waitFor();
+}, false);
+assert(finishMsg === '' && (await page.locator('.end h1').count()) === 0, 'Finish with a player unjudged asks first, inline (no browser dialog on stream)');
+await page.getByRole('button', { name: 'Keep judging' }).click();
+assert((await page.locator('.spot').count()) === 1 && (await page.getByRole('button', { name: 'Finish game ▶' }).isVisible()), 'Keep judging keeps the reveals going');
 await page.keyboard.press('n');
 await page.waitForFunction(() => document.querySelector('.spot-wager')?.textContent?.includes('Wagered'));
 assert(true, 'N shows the spotlit player’s wager');
@@ -635,7 +665,19 @@ await page.evaluate(() =>
 );
 await page.getByRole('button', { name: '📋 Copy results' }).click();
 const copied = await page.evaluate(() => window.__copied);
-assert(copied?.startsWith('🏆 Untitled Game: 🥇 Player') && copied.includes('$850'), `Copy results puts the standings on the clipboard (${copied})`);
+assert(
+  copied?.startsWith('🏆 Untitled Game (co-winners): 🥇 Player') && copied.match(/🥇 Player \d \$850/g)?.length === 2,
+  `Copy results puts the standings on the clipboard, co-winners sharing 🥇 (${copied})`,
+);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+assert((await page.getByText('Select a player first').count()) === 0, 'Enter on the end screen (no award row) does nothing');
+// Rematch, then back out: the finished game can still be viewed from the editor.
+await page.getByRole('button', { name: '🔁 Rematch' }).click();
+await page.getByRole('button', { name: '◀ Back to editor' }).click();
+await page.getByRole('button', { name: 'View results' }).click();
+await page.locator('.end h1').waitFor();
+assert(true, 'after Rematch → Back to editor, View results brings the finished game back');
 await page.getByRole('button', { name: '🔁 Rematch' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rematchNames = await page.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));
@@ -646,8 +688,11 @@ await page.getByRole('button', { name: 'Skip intro' }).click();
 
 // Removing a player mid-game asks first and can be undone.
 await page.getByRole('button', { name: '👥 Players' }).click();
-const removeMsg = await answerDialog(() => page.getByRole('button', { name: 'Remove Player 3' }).click(), true);
-assert(removeMsg.startsWith('Remove Player 3 ($0)?'), 'removing a player mid-game asks first');
+await page.getByRole('button', { name: 'Remove Player 3' }).click();
+const removeAsk = page.locator('.modal .ask');
+await removeAsk.waitFor();
+assert((await removeAsk.innerText()).startsWith('Remove Player 3 ($0)?') && (await page.locator('.panel .p').count()) === 3, 'removing a player mid-game asks first (inline)');
+await removeAsk.getByRole('button', { name: 'Remove', exact: true }).click();
 assert((await page.locator('.panel .p').count()) === 2, 'the removed player leaves the host panel');
 await page.getByRole('button', { name: '↩ Restore' }).click();
 assert((await page.locator('.panel .p').count()) === 3, 'a removed player can be restored');
@@ -702,6 +747,9 @@ assert(await page.getByRole('button', { name: 'Start game ▶' }).isDisabled(), 
 assert(await page.locator('.checks summary').getByText(/things to check/).isVisible(), 'pre-game lists what is unfinished');
 await page.locator('.checks summary').click();
 assert((await page.locator('.checks li', { hasText: 'Daily Double wanted, 0 placed' }).count()) === 1, 'pre-game flags the missing Daily Double');
+await page.locator('.checks li', { hasText: 'Daily Double wanted' }).getByRole('button', { name: '🎲 Place now' }).click();
+await page.getByText('Placed 1 Daily Double in Jeopardy!').waitFor();
+assert((await page.locator('.checks li', { hasText: 'Daily Double wanted' }).count()) === 0, '🎲 Place now places the missing Daily Double');
 await page.getByRole('button', { name: '＋ Add 3 sample players' }).click();
 assert(await page.getByRole('button', { name: 'Start game ▶' }).isEnabled(), 'Start is enabled once there are players');
 await page.getByRole('button', { name: '◀ Back to editor' }).click();

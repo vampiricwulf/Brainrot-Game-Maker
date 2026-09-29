@@ -5,12 +5,6 @@ import type { SavedPlay } from './persist';
 
 export type Screen = 'editor' | 'play';
 
-/** A button shown in the toast (e.g. "Redo" after an undo). */
-export interface ToastAction {
-  label: string;
-  run: () => void;
-}
-
 export const app = $state<{
   screen: Screen;
   game: Game;
@@ -24,7 +18,6 @@ export const app = $state<{
   /** On-screen transient state mirrored to the audience window. */
   live: Live;
   toast: string;
-  toastAction: ToastAction | null;
   /** IndexedDB autosave works in this browser. */
   storageOk: boolean;
 }>({
@@ -36,17 +29,12 @@ export const app = $state<{
   pregame: false,
   live: newLive(),
   toast: '',
-  toastAction: null,
   storageOk: true,
 });
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-export function toast(msg: string, ms = 2500, action: ToastAction | null = null): void {
+export function toast(msg: string, ms = 2500): void {
   app.toast = msg;
-  app.toastAction = action;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    app.toast = '';
-    app.toastAction = null;
-  }, ms);
+  toastTimer = setTimeout(() => (app.toast = ''), ms);
 }

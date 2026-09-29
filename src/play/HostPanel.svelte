@@ -2,7 +2,7 @@
 <script lang="ts">
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, clueName, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
@@ -98,13 +98,7 @@
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const canUndo = $derived(session.scoreLog.some((e) => !e.undone));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
-  const scoring = $derived(
-    !ddWager &&
-      (session.phase === 'clue' ||
-        session.phase === 'board' ||
-        session.phase === 'tiebreaker' ||
-        (session.phase === 'final' && session.finalStep !== 'reveal')),
-  );
+  const scoring = $derived(awardOpen(session));
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
   const showPlayers = $derived(scoring || session.phase === 'end');
   const introLabel = $derived(
@@ -116,7 +110,13 @@
   );
   const timerDefault = $derived(info?.clue.timerSeconds || game.settings.defaultTimerSeconds || 30);
   const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
-  const lastClosedRef = $derived(session.lastClosed && session.used[session.lastClosed] ? findClueRef(game, session.lastClosed) : null);
+  // Only in the round it's from: reopening a tile of another round would change a board nobody is looking at.
+  const lastClosedRef = $derived.by(() => {
+    const ref = session.lastClosed && session.used[session.lastClosed] ? findClueRef(game, session.lastClosed) : null;
+    return ref?.round === session.currentRound ? ref : null;
+  });
+  /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
+  const cancelBlocked = $derived(!ddWager && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
   const awardLabel = $derived.by(() => {
     if (selected.length !== 1) return `＋ Award${selected.length ? ` (${selected.length})` : ''}`;
@@ -165,6 +165,8 @@
           onchange={(e) => {
             const id = e.currentTarget.value;
             e.currentTarget.value = '';
+            // Let go of the keys: shortcuts ignore a focused select, and arrow keys would reopen another tile.
+            e.currentTarget.blur();
             if (id) onreopen(id);
           }}
         >
@@ -191,7 +193,12 @@
       <button
         class="small ghost"
         onclick={oncancelclue}
-        title={ddWager ? 'Esc: the question never showed, so the tile stays on the board' : 'Shift+Esc: back to the board without using up this tile'}
+        disabled={cancelBlocked}
+        title={cancelBlocked
+          ? 'Points were given for this clue: undo them first, or use Done ▶ board'
+          : ddWager
+            ? 'Esc: the question never showed, so the tile stays on the board'
+            : 'Shift+Esc: back to the board without using up this tile'}
       >↩ Cancel (keep tile)</button>
     {:else if session.phase === 'final'}
       <b>{finalName(game)}</b>
@@ -337,7 +344,10 @@
     <span class="spacer"></span>
     {#if session.phase === 'board'}
       <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
-      <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} />
+      <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
+      {#key session.currentRound}
+        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} />
+      {/key}
       <span class="divider" aria-hidden="true"></span>
     {/if}
     <button onclick={onaudience} class:on={dual} title="A opens or focuses it">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>

@@ -2,7 +2,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { finalName, formatPoints, getClue, newId, type ClueRef } from '../lib/model';
   import {
-    applyScore, backToBoard, backToFinalReveal, backToLastRound, clueName, clueReason, currentClueInfo, ddShowQuestion, describeStep,
+    applyScore, awardOpen, backToBoard, backToFinalReveal, backToLastRound, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
     redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
   } from '../lib/session';
@@ -286,6 +286,13 @@
     app.live.timer = null;
   }
 
+  /** Back to the board without using up the tile (a misclick), unless points were already given for it. */
+  function cancelClue(): void {
+    if (session.dd?.stage !== 'splash' && info && clueScored(session, info.clue.id))
+      return toast('Points were given for this clue: undo them first (Ctrl+Z), or use ▦ Done ▶ board', 4000);
+    back(true);
+  }
+
   /** Put a used tile back on the board, or mark one as played. */
   function toggleTile(clueId: string): void {
     const ref = findClueRef(game, clueId);
@@ -320,6 +327,8 @@
 
   /** Same players (names and colors) at 0 and a fresh board, via the pre-game screen. */
   function rematch(): void {
+    // Until the rematch starts, the finished game stays viewable from the editor ("View results").
+    app.resumable = { game: $state.snapshot(game), session: $state.snapshot(session), savedAt: Date.now() };
     const s = newSession(game);
     s.players = session.players.map(({ id, name, color }) => ({ id, name, color, startScore: 0 }));
     selected = [];
@@ -379,7 +388,8 @@
   function doUndo(): void {
     const events = undo(session);
     if (!events.length) return toast('Nothing to undo');
-    toast(`Undid ${describeStep(session, events, sym)}`, 5000, { label: '↷ Redo', run: doRedo });
+    // No Redo button in the toast: it sits over the host's nav row. ↷ Redo is next to ↶ Undo (or Ctrl+Shift+Z).
+    toast(`Undid ${describeStep(session, events, sym)}`, 4000);
   }
 
   function doRedo(): void {
@@ -387,10 +397,16 @@
     if (events.length) toast(`Redid ${describeStep(session, events, sym)}`);
   }
 
+  /** Players added by "＋ Add 3 sample players", by id → their sample name. */
+  const samples = new Map<string, string>();
+
   function start(): void {
     if (!session.players.length) return;
-    // A game without a saved roster keeps these players for next time.
-    if (!app.game.players.length) app.game.players = session.players.map(({ id, name, color }) => ({ id, name, color }));
+    // A game without a saved roster keeps these players for next time: only if the editor holds this same game
+    // (after resuming an older save it may not), and not the sample players unless they were renamed.
+    const roster = session.players.filter((p) => samples.get(p.id) !== p.name);
+    if (app.game.id === game.id && !app.game.players.length && roster.length)
+      app.game.players = roster.map(({ id, name, color }) => ({ id, name, color }));
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;
     app.pregame = false;
@@ -414,30 +430,38 @@
     return out;
   });
 
-  /** Scatter the missing Daily Doubles now (in this game and in the editor's copy, so they're kept). */
+  /**
+   * Scatter the missing Daily Doubles now (in this game and in the editor's copy, so they're kept).
+   * The ones placed by hand stay where they are.
+   */
   function placeDailyDoubles(ri: number): void {
     const r = game.rounds[ri];
-    const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1);
-    const types = new Map(r.categories.flatMap((c) => c.clues.map((cl) => [cl.id, cl.type] as const)));
+    const dds = () => r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'dailyDouble').map((cl) => cl.id));
+    const before = new Set(dds());
+    const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
+    const added = new Set(dds().filter((id) => !before.has(id)));
     for (const c of app.game.rounds.find((x) => x.id === r.id)?.categories ?? [])
-      for (const cl of c.clues) cl.type = types.get(cl.id) ?? cl.type;
+      for (const cl of c.clues) if (added.has(cl.id) && cl.type === 'standard') cl.type = 'dailyDouble';
     toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
   }
 
   function addSamplePlayers(): void {
     for (const name of ['Alex', 'Sam', 'Jordan']) {
       if (session.players.length >= game.settings.maxPlayers) break;
-      session.players.push({ id: newId(), name, color: nextFreeColor(session.players.map((p) => p.color)), startScore: 0 });
+      const id = newId();
+      samples.set(id, name);
+      session.players.push({ id, name, color: nextFreeColor(session.players.map((p) => p.color)), startScore: 0 });
     }
   }
 
   // ---------- Players mid-game ----------
 
+  /** Player whose ✕ was pressed in the Players dialog: it asks inline (a browser dialog would show on stream). */
+  let removing = $state<string | null>(null);
+  const removingPlayer = $derived(session.players.find((p) => p.id === removing));
+
   function removeFromGame(id: string): void {
-    const p = session.players.find((x) => x.id === id);
-    if (!p) return;
-    const msg = `Remove ${p.name} (${formatPoints(score(session, id), sym)})? Their points leave the scoreboard. You can restore them from this dialog.`;
-    if (!confirm(msg)) return;
+    removing = null;
     removePlayer(session, id);
     selected = selected.filter((x) => x !== id);
   }
@@ -478,7 +502,8 @@
 
     switch (k) {
       case 'enter':
-        award(e.shiftKey ? -1 : 1);
+        // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
+        if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;
       case 'r':
         revealToggle();
@@ -488,7 +513,8 @@
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
         // Shift+Esc cancels: back to the board without using up the tile.
-        else if (session.phase === 'clue') back(e.shiftKey);
+        else if (session.phase === 'clue' && e.shiftKey) cancelClue();
+        else if (session.phase === 'clue') back();
         break;
       case 'd':
         if (app.live.overlay?.kind !== 'dice' || Date.now() >= overlayDoneAt(app.live.overlay)) rollDice(app.live, session, lastDice);
@@ -665,7 +691,7 @@
         onwrong={(id) => award(-1, [id], session.dd?.wager ?? info?.value ?? 0)}
         onreveal={revealToggle}
         onback={() => back()}
-        oncancelclue={() => back(true)}
+        oncancelclue={cancelClue}
         onreopen={toggleTile}
         onundo={doUndo}
         onredo={doRedo}
@@ -680,7 +706,7 @@
         onfinalstep={finalStep}
         ontiebreakerdone={() => ((session.phase = 'end'), (app.live.timer = null))}
         onlog={() => (showLog = !showLog)}
-        onplayers={() => (showPlayers = true)}
+        onplayers={() => ((removing = null), (showPlayers = true))}
         {dual}
         onaudience={toggleAudience}
         oncloseoverlay={closeOverlay}
@@ -711,7 +737,18 @@
       <div class="modal" role="dialog" aria-modal="true" aria-label="Players">
         <h2>Players</h2>
         <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
-        <PlayerList bind:players={session.players} max={game.settings.maxPlayers} inGame onremove={removeFromGame} />
+        <PlayerList bind:players={session.players} max={game.settings.maxPlayers} inGame onremove={(id) => (removing = id)} />
+        {#if removingPlayer}
+          {@const p = removingPlayer}
+          <div class="ask" role="alert">
+            <span>
+              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? Their points leave the scoreboard. You can restore them
+              here.
+            </span>
+            <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
+            <button class="small" onclick={() => (removing = null)}>Keep</button>
+          </div>
+        {/if}
         {#if session.removedPlayers?.length}
           <div class="removed">
             <span class="muted small">Removed this game:</span>
@@ -872,5 +909,14 @@
     border: 2px solid;
     border-radius: 8px;
     padding: 3px 3px 3px 8px;
+  }
+  .ask {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--warn);
+    border-radius: 8px;
   }
 </style>

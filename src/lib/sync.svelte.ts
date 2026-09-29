@@ -176,6 +176,8 @@ export async function openAudienceWindow(): Promise<boolean> {
     return true;
   }
   if (nativeWin) return true;
+  // Connected over the channel only (e.g. an audience page opened separately): it's open, just not ours to focus.
+  if (audience.open && viaChannel) return true;
   const url = location.href.split('#')[0] + AUDIENCE_HASH;
   win = window.open(url, 'jb-audience', 'popup=yes,width=1280,height=760');
   sentMedia.clear();

@@ -3,7 +3,7 @@
   click ("12 clues left · go to …? Yes"), so a stray click or a double-click never jumps ahead on stream.
 -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { finalName, playableClues, type Game, type Session } from '../../lib/model';
 
   let { game, session, onprev, onnext }: { game: Game; session: Session; onprev: () => void; onnext: () => void } = $props();
@@ -22,15 +22,19 @@
   let askedAt = $state(0);
   let asking = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let cancelBtn = $state<HTMLButtonElement>();
   onDestroy(() => clearTimeout(timer));
 
-  function next(): void {
+  async function next(): Promise<void> {
     if (Date.now() - shownAt < GUARD_MS) return;
     if (done) return onnext();
     asking = true;
     askedAt = Date.now();
     clearTimeout(timer);
     timer = setTimeout(() => (asking = false), 4000);
+    // The clicked button is gone: keep keyboard focus in the row, on the harmless choice.
+    await tick();
+    cancelBtn?.focus();
   }
 
   function yes(): void {
@@ -46,7 +50,7 @@
     <!-- Short, so it fits where the two round buttons were (the row doesn't re-wrap under the host's cursor). -->
     <span class="ask" title="Go to {target} with {left} clue{left === 1 ? '' : 's'} not played?">{left} clue{left === 1 ? '' : 's'} left · go on?</span>
     <button class="primary small" onclick={yes}>Yes</button>
-    <button class="small" onclick={() => ((asking = false), clearTimeout(timer))}>Cancel</button>
+    <button class="small" bind:this={cancelBtn} onclick={() => ((asking = false), clearTimeout(timer))}>Cancel</button>
   {:else}
     <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
     <button class={done ? 'primary' : 'ghost'} onclick={next} title={done ? '' : `${left} clue${left === 1 ? '' : 's'} not played yet`}>

@@ -46,6 +46,13 @@ try {
   assert(await aud.evaluate(() => window.opener === null), 'audience page has no opener');
   await aud.locator('.board .header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
   assert(true, 'audience connects over the BroadcastChannel and shows the board');
+  // A only opens or focuses: with an audience already connected over the channel, it opens no second window.
+  let extraPages = 0;
+  context.on('page', () => extraPages++);
+  await host.bringToFront();
+  await host.keyboard.press('a');
+  await host.waitForTimeout(500);
+  assert(extraPages === 0, 'A opens no second audience window while one is connected over the channel');
 
   await host.locator('.board .tile').first().click();
   await aud.locator('.full').waitFor();
