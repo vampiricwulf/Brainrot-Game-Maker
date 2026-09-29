@@ -4,6 +4,7 @@
   import { categoryLabel, finalName, formatPoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
+  import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
   import FinalControls from './host/FinalControls.svelte';
@@ -47,6 +48,7 @@
     onhide,
     onexit,
     onaudience,
+    onsound,
     oncloseoverlay,
   }: {
     game: Game;
@@ -89,6 +91,8 @@
     onhide: () => void;
     onexit: () => void;
     onaudience: () => void;
+    /** Open the streaming-sound help (Test sound, output device). */
+    onsound: () => void;
     oncloseoverlay: () => void;
   } = $props();
 
@@ -219,6 +223,7 @@
     <ToolsControls {game} {session} onclose={oncloseoverlay} />
   {/if}
 
+  <SoundWarnings {dual} onhelp={onsound} />
   <MediaControls {dual} />
 
   {#if session.phase === 'board' && session.intro}
@@ -351,6 +356,7 @@
       <span class="divider" aria-hidden="true"></span>
     {/if}
     <button onclick={onaudience} class:on={dual} title="A opens or focuses it">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+    <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
     <button onclick={onlog} title="L">📜 Log</button>
     <button onclick={onplayers}>👥 Players</button>
     <button onclick={onhide} title="H">Hide controls</button>

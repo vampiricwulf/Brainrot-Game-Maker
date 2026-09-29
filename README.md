@@ -105,6 +105,9 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
      full-screen, and **click it once** so it's allowed to play sound. The host window shows the answer, notes, standings and
      all controls. Allow popups for the file if the browser asks.
 
+   **🔊 Sound for Discord / OBS…** has a **Test sound** button and the steps to get the game's sound onto your stream
+   (see [Streaming the sound](#streaming-the-sound-discord-obs)).
+
    The pre-game screen also lists **things to check** (blank clues, a missing Daily Double with **🎲 Place now**, which
    adds only the missing ones, missing media…). They're only warnings: **Start game** works as soon as there's a player.
 2. The round intro plays: title card → tiles fill in → press `N` to reveal each category (or **Skip intro**).
@@ -181,6 +184,54 @@ slides, even deleted or reordered rounds). Starting a new game while one is save
 | `A` | Open / focus the audience window (it never closes it; the 📺 button does, after asking) |
 | `H` / `F` / `?` | Hide host controls / full-screen / show all shortcuts |
 
+## Streaming the sound (Discord, OBS)
+
+In dual mode all game sound plays in the **audience window** and the host window stays silent; in single-window mode the
+host window plays it. **🔊 Sound** in the host panel (or **🔊 Sound for Discord / OBS…** before the game) opens the sound
+help:
+
+- **▶ Test sound** plays a short chime in the window that plays the sound and says what happened: "Sound played in the
+  audience window", or "Blocked: click the audience window once" (browsers only let a window play sound after it was
+  clicked once). While the audience window can't play sound, or a game sound was blocked there, the host panel says so,
+  whatever is on screen.
+- **Game audio output** sends the game's sound to another device, e.g. a virtual cable (VB-CABLE) that OBS captures with
+  an *Audio Output Capture*. In Chrome, Edge and the desktop app, **List my speakers** asks for microphone access only so
+  the browser shows the speakers' names (nothing is recorded); Firefox uses its own **Choose speaker…** picker. The choice
+  is remembered on this computer and covers game sounds, slide video/audio, wheel/dice media and the test chime.
+  YouTube videos and "Open link" pop-ups can't be moved: they always play on the default device. If the chosen device is
+  unplugged, the sound falls back to the default device and the host is told. Hidden in browsers that can't do this.
+- Step-by-step help for **Discord on Windows**, **OBS**, **Mac** and **Linux**. The short version for Discord: use the
+  Discord desktop app, **Share Your Screen › Applications**, pick the audience window ("*game name* · Audience", or the
+  browser window showing it) with **Sound** on, then press Test sound and ask a viewer. Still silent: in Discord's
+  **Voice & Video › Screen Share**, flip "Use an experimental method to capture audio from applications" and restart
+  Discord, or share the whole screen with sound.
+
+**In the desktop app** the game's sound is played by Microsoft Edge WebView2's helper processes, not by the app's own
+`.exe`, and Discord and OBS capture sound per program. So:
+
+- Start it normally: running it **as administrator** or with a **compatibility setting** makes WebView2 start its
+  processes outside the app, where Discord and OBS can't find them. The host window then shows a red warning.
+- Opening it a second time just brings the running app to the front.
+- The audience window may play sound right away (no "click once" needed).
+- **Discord audio fix** (experimental, off by default; in the 🔊 Sound help) starts WebView2 with its audio inside its main
+  process, a direct child of the app, which per-program capture may pick up. It needs a restart (**↻ Restart now**). It's
+  saved as the empty file `discord-audio-fix` in `%APPDATA%\com.jeopardybuilder.brainrot\`; if the app ever fails to start
+  with it, the app starts without it (deleting that file also turns it off).
+
+**Trying the audio fix without the app's setting** (e.g. on an older build): close Jeopardy Builder, open a Command Prompt
+and run the two lines below; for the second one, drag the `.exe` into the Command Prompt window to paste its path, then
+press Enter. WebView2 adds this variable to the app's own switches and only keeps the last `--disable-features`, so it
+must repeat the full list:
+
+```bat
+set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AudioServiceOutOfProcess --autoplay-policy=no-user-gesture-required
+"C:\Users\you\Downloads\jeopardy-builder-portable.exe"
+```
+
+It works if Task Manager (Details tab, with the "Command line" column) no longer shows an `msedgewebview2.exe` whose
+command line contains `--utility-sub-type=audio.mojom.AudioService`. Then go live in Discord on the audience window (it's
+listed as "*game name* · Audience") with Sound on and check that a viewer hears Test sound.
+
 ## Desktop app (experimental)
 
 The same app can be wrapped as a native Windows program with [Tauri](https://tauri.app) (`src-tauri/`):
@@ -192,7 +243,9 @@ The same app can be wrapped as a native Windows program with [Tauri](https://tau
 
 Every push to `main` builds the `.exe` in CI and attaches it to the **Latest** release. In the desktop app,
 **📺 Audience window** opens a second app window (capture it in OBS; `F` or a double-click makes it full-screen on its
-monitor), the "Open on YouTube" fallback opens its own window, and closing the host window quits the app.
+monitor), the "Open on YouTube" fallback opens its own window, and closing the host window quits the app. Opening
+the app again brings the running one to the front. For Discord/OBS sound, see
+[Streaming the sound](#streaming-the-sound-discord-obs).
 
 ## Development
 
@@ -201,7 +254,7 @@ npm install
 npm run dev        # dev server with hot reload
 npm run build      # → dist/index.html (single self-contained file)
 npm run check      # type-check (svelte-check)
-npm test           # unit tests (scoring, undo, Daily Double, Final, dice, wheel, roll-off)
+npm test           # unit tests (scoring, undo, Daily Double, Final, dice, wheel, roll-off, sound helpers)
 npm run test:e2e   # drives the built file from file:// in Chromium (build first)
 ```
 
@@ -217,6 +270,8 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/lib/tools.ts`, `overlay.ts` | Dice, weighted wheel, roll-off, score effects; the full-screen tool overlays |
 | `src/lib/live.ts`, `sync.svelte.ts` | On-screen transient state (pops, timer, sounds, overlays) and host ⇄ audience window sync |
 | `src/lib/media.svelte.ts`, `mediactl.svelte.ts` | Media store (blobs + IndexedDB) and playback control / YouTube helpers |
+| `src/lib/audio.ts`, `audioout.svelte.ts` | Game sound: test chime (a generated WAV), blocked-sound reports, Game audio output (`setSinkId`) |
+| `src/lib/desktop.svelte.ts` | Desktop app only: the Discord audio fix setting, restart, the "running as administrator" check |
 | `src/lib/pack.ts`, `export.ts` | `.jbr` packs and standalone HTML export |
 | `src/lib/imageedit.ts`, `theme.ts` | Image-editor canvas pipeline; theme presets |
 | `src/lib/editing.ts`, `autofit.ts` | Slide and image editor helpers (undo history, placement, crop geometry); shrink-to-fit text |
@@ -224,3 +279,4 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media) |
 | `src/play/` | Play UI (audience view, board, host panel, tools) |
 | `src/audience/` | The audience window app |
+| `src-tauri/` | The desktop app (window handling, single instance, the Discord audio fix's WebView2 switches) |

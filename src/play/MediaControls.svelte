@@ -1,7 +1,7 @@
 <!-- Host playback controls for media on the current slide (spec §6.7). -->
 <script lang="ts">
   import { fmtTime, localMedia, openMediaPopup, remoteMedia, type MediaState } from '../lib/mediactl.svelte';
-  import { audience, mediaCommand } from '../lib/sync.svelte';
+  import { mediaCommand } from '../lib/sync.svelte';
   import { toast } from '../lib/app.svelte';
 
   let { dual }: { dual: boolean } = $props();
@@ -20,9 +20,7 @@
 
 {#if items.length}
   <div class="mc">
-    {#if dual && !audience.activated}
-      <div class="warn">⚠ Click the audience window once so it can play sound.</div>
-    {/if}
+    <!-- "Click the audience window once" is in SoundWarnings: it applies to every sound, not only slide media. -->
     {#each items as [id, m] (id)}
       <div class="item" class:failed={m.failed}>
         <span class="ic" title={m.label}>{icon[m.kind]}</span>
@@ -107,7 +105,6 @@
   .on {
     background: var(--accent) !important;
   }
-  .warn,
   .msg,
   .blocked {
     color: var(--warn);
