@@ -10,7 +10,10 @@
   import HostPanel from './HostPanel.svelte';
   import ScoreLog from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
-  import { audience, closeAudienceWindow, openAudienceWindow, pushGame, pushLive, pushSession } from '../lib/sync.svelte';
+  import { audience, closeAudienceWindow, mediaCommand, openAudienceWindow, pushGame, pushLive, pushSession } from '../lib/sync.svelte';
+  import { localMedia, openMediaPopup, remoteMedia } from '../lib/mediactl.svelte';
+  import { registerGameFonts } from '../lib/fonts';
+  import { onMount } from 'svelte';
 
   let { onexit }: { onexit: () => void } = $props();
 
@@ -41,6 +44,16 @@
     const l = $state.snapshot(app.live);
     if (audience.open) pushLive(l);
   });
+
+  onMount(() => {
+    registerGameFonts(game);
+  });
+
+  /** The first controllable media element on screen (for the Space / ← → / M / Y shortcuts). */
+  function firstMedia(): [string, { paused: boolean; muted: boolean; openUrl?: string }] | undefined {
+    const src = dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror');
+    return src[0];
+  }
 
   function toggleAudience(): void {
     if (audience.open) closeAudienceWindow();
@@ -166,6 +179,27 @@
       case 'a':
         toggleAudience();
         break;
+      case ' ': {
+        const m = firstMedia();
+        if (m) mediaCommand({ el: m[0], op: 'toggle' });
+        break;
+      }
+      case 'arrowleft':
+      case 'arrowright': {
+        const m = firstMedia();
+        if (m) mediaCommand({ el: m[0], op: 'seekBy', value: k === 'arrowleft' ? -5 : 5 });
+        break;
+      }
+      case 'm': {
+        const m = firstMedia();
+        if (m) mediaCommand({ el: m[0], op: 'muted', value: !m[1].muted });
+        break;
+      }
+      case 'y': {
+        const m = firstMedia();
+        if (m?.[1].openUrl) openMediaPopup(m[1].openUrl);
+        break;
+      }
       default:
         return;
     }

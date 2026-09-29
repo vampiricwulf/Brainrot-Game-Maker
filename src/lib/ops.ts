@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { newCategory, newClue, newId, type Round } from './model';
+import { newCategory, newClue, newId, type Game, type Round, type Slide, type TextEl } from './model';
 
 export function setRowCount(round: Round, rows: number): void {
   rows = Math.max(1, Math.min(10, Math.floor(rows)));
@@ -49,4 +49,44 @@ export function scaleValues(round: Round, factor: number): void {
 /** Deep copy of plain game data (works on Svelte state proxies, unlike structuredClone). */
 export function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
+}
+
+// ---------- Slide text styles ----------
+
+const STYLE_KEYS = [
+  'font', 'size', 'weight', 'italic', 'underline', 'uppercase', 'color', 'align', 'vAlign', 'lineHeight',
+  'letterSpacing', 'stroke', 'shadow', 'glow', 'background', 'autoFit',
+] as const;
+
+export function copyTextStyle(from: TextEl, to: TextEl): void {
+  for (const k of STYLE_KEYS) (to as unknown as Record<string, unknown>)[k] = clone(from[k]);
+}
+
+/**
+ * Copy a text element's style to the main text of other slides.
+ * scope: `${'round' | 'game'}-${'q' | 'a' | 'qa'}`. Returns how many slides changed.
+ */
+export function applyTextStyle(game: Game, round: Round | null, from: TextEl, scope: string): number {
+  const [where, which] = scope.split('-');
+  const rounds = where === 'game' || !round ? game.rounds : [round];
+  const slides: Slide[] = [];
+  for (const r of rounds)
+    for (const c of r.categories)
+      for (const cl of c.clues) {
+        if (which.includes('q')) slides.push(cl.questionSlide);
+        if (which.includes('a')) slides.push(cl.answerSlide);
+      }
+  if (where === 'game') {
+    if (which.includes('q')) slides.push(game.final.questionSlide);
+    if (which.includes('a')) slides.push(game.final.answerSlide);
+  }
+  let n = 0;
+  for (const s of slides) {
+    const t = s.elements.find((e): e is TextEl => e.kind === 'text');
+    if (t && t !== from) {
+      copyTextStyle(from, t);
+      n++;
+    }
+  }
+  return n;
 }

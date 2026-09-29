@@ -2,6 +2,7 @@
 <script lang="ts">
   import { clueValue, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit } from '../lib/autofit';
+  import { mediaUrls } from '../lib/media.svelte';
 
   let { game, session, onpick }: { game: Game; session: Session; onpick?: (ref: ClueRef) => void } = $props();
   const round = $derived(game.rounds[session.currentRound]);
@@ -30,7 +31,16 @@
           onclick={() => onpick?.({ round: session.currentRound, cat: ci, row })}
           aria-label="{cat.title} for {clueValue(round, row, clue)}"
         >
-          {#if !used}<span>{sym}{clueValue(round, row, clue)}</span>{/if}
+          {#if !used}
+            {#if clue.tileFace?.image && mediaUrls[clue.tileFace.image]}
+              <img src={mediaUrls[clue.tileFace.image]} alt="" draggable="false" />
+            {/if}
+            {#if clue.tileFace?.text}
+              <span class="face" use:autofit={{ size: 84, enabled: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>
+            {:else if !clue.tileFace?.image}
+              <span>{sym}{clueValue(round, row, clue)}</span>
+            {/if}
+          {/if}
         </button>
       {/each}
     {/each}
@@ -80,6 +90,25 @@
   }
   .tile:hover:not(:disabled) {
     filter: brightness(1.25);
+  }
+  .tile {
+    position: relative;
+  }
+  .tile img {
+    position: absolute;
+    inset: 6px;
+    width: calc(100% - 12px);
+    height: calc(100% - 12px);
+    object-fit: contain;
+  }
+  .face {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
   }
   .tile.used {
     background: var(--tile-used);

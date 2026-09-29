@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
   import { clueValue, slideText, type Round } from '../lib/model';
+  import { slideHasContent } from '../lib/usage';
   import { addCategory, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import ClueEditor from './ClueEditor.svelte';
 
@@ -73,14 +74,18 @@
       {#each round.categories as cat, ci (cat.id)}
         {@const clue = cat.clues[row]}
         {@const q = slideText(clue.questionSlide).trim()}
-        {@const a = slideText(clue.answerSlide).trim()}
+        {@const a = slideHasContent(clue.answerSlide)}
+        {@const kinds = [...new Set(clue.questionSlide.elements.map((e) => e.kind).filter((k) => k !== 'text'))]}
         <button class="tile" class:empty={clue.empty} onclick={() => (editing = { cat: ci, row })}>
           <span class="val">
             {clue.empty ? 'EMPTY' : `${sym}${clueValue(round, row, clue)}`}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}
           </span>
           {#if !clue.empty}
-            <span class="q" class:missing={!q}>{q || 'No question yet'}</span>
+            <span class="q" class:missing={!q && !kinds.length}>{q || (kinds.length ? '' : 'No question yet')}</span>
+            {#if kinds.length}
+              <span class="kinds">{kinds.map((k) => ({ image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
+            {/if}
             {#if !a}<span class="missing small">No answer</span>{/if}
           {/if}
         </button>
@@ -178,6 +183,9 @@
     line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  .kinds {
+    font-size: 13px;
   }
   .missing {
     color: var(--warn);

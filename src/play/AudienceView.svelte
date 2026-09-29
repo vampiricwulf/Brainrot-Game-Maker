@@ -7,7 +7,7 @@
   import { textOn } from '../lib/colors';
   import { formatPoints, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, standings } from '../lib/session';
-  import SlideView from '../lib/SlideView.svelte';
+  import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
   import ScoreBar from './ScoreBar.svelte';
   import type { Live } from '../lib/live';
@@ -42,7 +42,7 @@
 {:else if session.phase === 'clue' && info}
   {#key `${info.clue.id}-${session.revealed}`}
     <div class="full" in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}>
-      <SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} />
+      <SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />
     </div>
   {/key}
 {:else if session.phase === 'final'}
@@ -52,9 +52,9 @@
         <div class="final-label">FINAL JEOPARDY!</div>
         <SlideView slide={finalCategorySlide} />
       {:else if session.finalStep === 'question'}
-        <SlideView slide={game.final.questionSlide} />
+        <SlideView slide={game.final.questionSlide} {role} />
       {:else}
-        <SlideView slide={game.final.answerSlide} />
+        <SlideView slide={game.final.answerSlide} {role} />
       {/if}
     </div>
   {/key}

@@ -7,12 +7,18 @@
   import SetupPanel from './SetupPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
+  import MediaLibrary from './MediaLibrary.svelte';
+  import { registerGameFonts } from '../lib/fonts';
+  import { allEmbeds, slideHasContent } from '../lib/usage';
 
   let { onplay }: { onplay: () => void } = $props();
 
-  // 'setup' | 'final' | round index
-  let tab = $state<'setup' | 'final' | number>(0);
+  // 'setup' | 'final' | 'media' | round index
+  let tab = $state<'setup' | 'final' | 'media' | number>(0);
   const game = $derived(app.game);
+  $effect(() => {
+    registerGameFonts(game);
+  });
 
   function addRound(): void {
     const n = game.rounds.length;
@@ -66,12 +72,14 @@
     const out: string[] = [];
     if (game.players.length === 0) out.push('No players yet (you can also add them before starting).');
     game.rounds.forEach((r) => {
-      const missingQ = playableClues(r).filter((c) => !slideText(c.questionSlide).trim()).length;
-      const missingA = playableClues(r).filter((c) => !slideText(c.answerSlide).trim()).length;
+      const missingQ = playableClues(r).filter((c) => !slideHasContent(c.questionSlide)).length;
+      const missingA = playableClues(r).filter((c) => !slideHasContent(c.answerSlide)).length;
       if (missingQ) out.push(`${r.name}: ${missingQ} clue(s) with no question`);
       if (missingA) out.push(`${r.name}: ${missingA} clue(s) with no answer`);
     });
-    if (game.final.enabled && !slideText(game.final.questionSlide).trim()) out.push('Final Jeopardy has no question');
+    if (game.final.enabled && !slideHasContent(game.final.questionSlide)) out.push('Final Jeopardy has no question');
+    const online = allEmbeds(game).length;
+    if (online) out.push(`${online} online media link(s): need internet during the game`);
     return out;
   });
 </script>
@@ -104,6 +112,7 @@
         <button class:active={tab === i} onclick={() => (tab = i)}>{round.name || `Round ${i + 1}`}</button>
       {/each}
       <button class="ghost" onclick={addRound}>＋ Add round</button>
+      <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
       <div class="navlabel muted">End</div>
       <button class:active={tab === 'final'} onclick={() => (tab = 'final')}>
         Final Jeopardy {game.final.enabled ? '' : '(off)'}
@@ -124,6 +133,8 @@
         <SetupPanel />
       {:else if tab === 'final'}
         <FinalEditor />
+      {:else if tab === 'media'}
+        <MediaLibrary />
       {:else if game.rounds[tab]}
         {#key game.rounds[tab].id}
           <RoundEditor round={game.rounds[tab]} canDelete={game.rounds.length > 1} ondelete={() => removeRound(tab as number)} />

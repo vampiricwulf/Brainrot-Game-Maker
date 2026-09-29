@@ -37,6 +37,18 @@ export interface ElementBase {
   opacity: number;
   zIndex: number;
   locked?: boolean;
+  /** Plays when the slide appears. */
+  entrance?: Entrance;
+}
+
+export type EntranceType = 'fade' | 'pop' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'typewriter' | 'shake' | 'spin';
+
+export interface Entrance {
+  type: EntranceType;
+  /** Seconds after the slide appears. */
+  delay: number;
+  /** Seconds. */
+  duration: number;
 }
 
 export interface TextEl extends ElementBase {
@@ -61,11 +73,84 @@ export interface TextEl extends ElementBase {
   autoFit: boolean;
 }
 
-// Image, video, audio, shape and embed elements arrive in milestone M3.
-export type SlideElement = TextEl;
+export type Fit = 'contain' | 'cover' | 'fill';
+
+export interface ImageEl extends ElementBase {
+  kind: 'image';
+  media: Id;
+  fit: Fit;
+  /** Result of the image editor (M6); shown instead of `media` when set. */
+  editedMedia?: Id;
+  edits?: ImageEdits;
+  radius?: number;
+}
+
+/** Playback options shared by video, audio and online embeds. */
+export interface Playback {
+  autoplay: boolean;
+  loop: boolean;
+  muted: boolean;
+  /** Seconds. */
+  startAt?: number;
+  endAt?: number;
+  /** 0..1 */
+  volume: number;
+}
+
+export interface VideoEl extends ElementBase, Playback {
+  kind: 'video';
+  media: Id;
+  fit: Fit;
+}
+
+export interface AudioEl extends ElementBase, Playback {
+  kind: 'audio';
+  media: Id;
+  /** Show a speaker icon on the slide (otherwise the audio is invisible). */
+  visible: boolean;
+}
+
+export type ShapeType = 'rect' | 'ellipse' | 'line' | 'arrow';
+
+export interface ShapeEl extends ElementBase {
+  kind: 'shape';
+  shape: ShapeType;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  radius: number;
+}
+
+export type EmbedKind = 'youtube' | 'remoteVideo' | 'remoteAudio' | 'remoteImage';
+
+/** Online media: needs internet during the game. */
+export interface EmbedEl extends ElementBase, Playback {
+  kind: 'embed';
+  url: string;
+  embedKind: EmbedKind;
+}
+
+export type SlideElement = TextEl | ImageEl | VideoEl | AudioEl | ShapeEl | EmbedEl;
+export type ElementKind = SlideElement['kind'];
+
+/** Non-destructive image edits (M6). */
+export interface ImageEdits {
+  crop?: { x: number; y: number; w: number; h: number };
+  rotate: number;
+  flipH: boolean;
+  flipV: boolean;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  hue: number;
+  blur: number;
+  grayscale: number;
+  sepia: number;
+  invert: number;
+}
 
 export interface Slide {
-  background: { color?: string; gradient?: string };
+  background: { color?: string; gradient?: string; image?: Id; fit?: 'cover' | 'contain' };
   elements: SlideElement[];
 }
 
@@ -102,6 +187,8 @@ export interface Clue {
   answerSlide: Slide;
   hostNotes?: string;
   timerSeconds?: number | null;
+  /** Shown on the board tile instead of the value. */
+  tileFace?: { text?: string; image?: Id };
   /** Blank tile, not playable. */
   empty?: boolean;
 }
@@ -187,40 +274,68 @@ export interface Session {
 
 export const DEFAULT_VALUES = [200, 400, 600, 800, 1000];
 
-export function textSlide(text = ''): Slide {
+function base(x: number, y: number, w: number, h: number): ElementBase {
+  return { id: newId(), x, y, w, h, rotation: 0, opacity: 1, zIndex: 0 };
+}
+
+export function newTextEl(text = '', box = { x: 120, y: 90, w: SLIDE_W - 240, h: SLIDE_H - 180 }): TextEl {
   return {
-    background: {},
-    elements: [
-      {
-        kind: 'text',
-        id: newId(),
-        x: 120,
-        y: 90,
-        w: SLIDE_W - 240,
-        h: SLIDE_H - 180,
-        rotation: 0,
-        opacity: 1,
-        zIndex: 0,
-        text,
-        font: 'Korinna, "ITC Korinna", Georgia, "Times New Roman", serif',
-        size: 110,
-        weight: 700,
-        italic: false,
-        underline: false,
-        uppercase: true,
-        color: '#ffffff',
-        align: 'center',
-        vAlign: 'middle',
-        lineHeight: 1.2,
-        letterSpacing: 0,
-        shadow: { color: 'rgba(0,0,0,0.85)', x: 6, y: 6, blur: 0 },
-        autoFit: true,
-      },
-    ],
+    ...base(box.x, box.y, box.w, box.h),
+    kind: 'text',
+    text,
+    font: "'Libre Baskerville', Georgia, serif",
+    size: 110,
+    weight: 700,
+    italic: false,
+    underline: false,
+    uppercase: true,
+    color: '#ffffff',
+    align: 'center',
+    vAlign: 'middle',
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    shadow: { color: '#000000', x: 6, y: 6, blur: 0 },
+    autoFit: true,
   };
 }
 
-/** The primary text of a slide (the first text element); used by the simple M1 editor. */
+const PLAYBACK: Playback = { autoplay: true, loop: false, muted: false, volume: 1 };
+
+export function newImageEl(media: Id, w = 960, h = 540): ImageEl {
+  return { ...base((SLIDE_W - w) / 2, (SLIDE_H - h) / 2, w, h), kind: 'image', media, fit: 'contain' };
+}
+
+export function newVideoEl(media: Id): VideoEl {
+  return { ...base(240, 135, 1440, 810), ...PLAYBACK, kind: 'video', media, fit: 'contain' };
+}
+
+export function newAudioEl(media: Id): AudioEl {
+  return { ...base(SLIDE_W - 220, SLIDE_H - 220, 140, 140), ...PLAYBACK, kind: 'audio', media, visible: false };
+}
+
+export function newShapeEl(shape: ShapeType): ShapeEl {
+  const line = shape === 'line' || shape === 'arrow';
+  return {
+    ...base(660, line ? 510 : 290, 600, line ? 60 : 500),
+    kind: 'shape',
+    shape,
+    fill: line ? 'transparent' : '#ffcc00',
+    stroke: line ? '#ffffff' : '#000000',
+    strokeWidth: line ? 12 : 0,
+    radius: 0,
+  };
+}
+
+export function newEmbedEl(url: string, embedKind: EmbedKind): EmbedEl {
+  const box = embedKind === 'remoteAudio' ? base(SLIDE_W - 220, SLIDE_H - 220, 140, 140) : base(240, 135, 1440, 810);
+  return { ...box, ...PLAYBACK, kind: 'embed', url, embedKind };
+}
+
+export function textSlide(text = ''): Slide {
+  return { background: {}, elements: [newTextEl(text)] };
+}
+
+/** The primary text of a slide (its first text element). */
 export function slideText(slide: Slide): string {
   return slide.elements.find((e) => e.kind === 'text')?.text ?? '';
 }
@@ -228,7 +343,7 @@ export function slideText(slide: Slide): string {
 export function setSlideText(slide: Slide, text: string): void {
   const el = slide.elements.find((e) => e.kind === 'text');
   if (el) el.text = text;
-  else slide.elements.push(textSlide(text).elements[0]);
+  else slide.elements.push(newTextEl(text));
 }
 
 export function newClue(): Clue {

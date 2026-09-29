@@ -1,0 +1,78 @@
+/* Bundled fonts (SIL Open Font License, via @fontsource), latin subset, inlined into the single HTML file. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('../node_modules/@fontsource/oswald/files/oswald-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/anton/files/anton-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/bebas-neue/files/bebas-neue-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Comic Neue';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('../node_modules/@fontsource/comic-neue/files/comic-neue-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/libre-baskerville/files/libre-baskerville-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('../node_modules/@fontsource/libre-baskerville/files/libre-baskerville-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bangers';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/bangers/files/bangers-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Permanent Marker';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fontsource/permanent-marker/files/permanent-marker-latin-400-normal.woff2') format('woff2');
+}

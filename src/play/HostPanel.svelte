@@ -3,6 +3,7 @@
   import { textOn } from '../lib/colors';
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { currentClueInfo, roundComplete, score, setScore } from '../lib/session';
+  import MediaControls from './MediaControls.svelte';
 
   let {
     game,
@@ -92,6 +93,8 @@
       <b>Game over</b>
     {/if}
   </div>
+
+  <MediaControls {dual} />
 
   {#if scoring}
     <div class="players">

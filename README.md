@@ -10,7 +10,10 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 1. Build it (see below), or grab a built `jeopardy-builder.html`.
 2. Double-click the file to open it in Chrome, Edge or Firefox.
 3. **Editor**: set up players (unique colors), rounds (any number, 1–10 categories × 1–10 questions, any values),
-   and clues (question + answer + optional host notes). Work is autosaved in the browser. **Save** downloads a `.jbr`
+   and clues. Each question and answer is a freeform 16:9 slide: add text boxes (fonts, outline, shadow, glow,
+   background box, entrance animations), images, video, audio, shapes, and YouTube/online links. Drag to move, pull
+   handles to resize or rotate, drop files straight onto the slide, Ctrl+C/Ctrl+V between slides, Ctrl+Z to undo.
+   Tiles can show custom text or an image instead of the value. The **🖼 Media** tab lists every file with usage counts. Work is autosaved in the browser. **Save** downloads a `.jbr`
    game pack (the game plus all its media) that you can **Open** later. **Export JSON** gives a text-only copy.
 4. **▶ Play**: confirm the players, pick a display mode, then start.
    - **Single window**: the top of the window is what viewers see. The host controls sit below it (`H` hides them).
@@ -30,6 +33,8 @@ The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change |
 | `L` | Score log (undo/restore any single change) |
 | `A` | Open/close the audience window |
+| `Space` / `←` `→` / `M` | Play/pause, seek ±5 s, mute the slide's video/audio |
+| `Y` | Open the slide's YouTube/online media in its own window (fallback if it won't embed) |
 | `H` | Hide/show host controls |
 | `F` | Full-screen |
 

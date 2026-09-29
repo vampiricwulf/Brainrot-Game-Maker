@@ -1,12 +1,18 @@
 <!-- A fixed 1920×1080 logical canvas, scaled and letterboxed to fit its container. -->
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { setContext, type Snippet } from 'svelte';
   import { SLIDE_H, SLIDE_W } from './model';
 
   let { children, background = '#000' }: { children: Snippet; background?: string } = $props();
   let w = $state(0);
   let h = $state(0);
   const scale = $derived(Math.min(w / SLIDE_W, h / SLIDE_H) || 0);
+  // Children (e.g. the slide editor's drag handles) convert screen pixels to stage pixels with this.
+  setContext('stage', {
+    get scale() {
+      return scale;
+    },
+  });
 </script>
 
 <div class="frame" bind:clientWidth={w} bind:clientHeight={h}>

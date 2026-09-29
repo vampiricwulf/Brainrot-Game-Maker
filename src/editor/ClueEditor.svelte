@@ -1,15 +1,30 @@
 <script lang="ts">
-  import { app } from '../lib/app.svelte';
-  import type { Round } from '../lib/model';
-  import SlideTextEditor from './SlideTextEditor.svelte';
+  import { app, toast } from '../lib/app.svelte';
+  import { mediaUrls } from '../lib/media.svelte';
+  import { applyTextStyle } from '../lib/ops';
+  import type { Round, SlideElement, TextEl } from '../lib/model';
+  import SlideEditor from './slide/SlideEditor.svelte';
+  import MediaPicker from './slide/MediaPicker.svelte';
 
-  let { round, pos = $bindable(), onclose }: { round: Round; pos: { cat: number; row: number }; onclose: () => void } = $props();
+  let {
+    round,
+    pos = $bindable(),
+    onclose,
+    oneditimage,
+  }: {
+    round: Round;
+    pos: { cat: number; row: number };
+    onclose: () => void;
+    oneditimage?: (el: SlideElement) => void;
+  } = $props();
 
   const cat = $derived(round.categories[pos.cat]);
   const clue = $derived(cat?.clues[pos.row]);
   const sym = $derived(app.game.settings.currencySymbol);
   const rows = $derived(round.values.length);
   const cats = $derived(round.categories.length);
+  let side = $state<'q' | 'a'>('q');
+  let facePicker = $state(false);
 
   // Walk clues column by column (down a category, then on to the next one).
   function step(d: number): void {
@@ -18,17 +33,26 @@
     pos = { cat: Math.floor(idx / rows), row: idx % rows };
   }
 
+  function typing(e: Event): boolean {
+    return !!(e.target as HTMLElement)?.closest?.('input, textarea, select');
+  }
+
   function onkey(e: KeyboardEvent): void {
-    if (e.key === 'Escape') onclose();
+    if (e.key === 'Escape' && !typing(e) && !facePicker) onclose();
     if (e.altKey && e.key === 'ArrowRight') step(1);
     if (e.altKey && e.key === 'ArrowLeft') step(-1);
+  }
+
+  function applyStyle(el: TextEl, scope: string): void {
+    const n = applyTextStyle(app.game, round, el, scope);
+    toast(`Style applied to ${n} slide${n === 1 ? '' : 's'}`);
   }
 </script>
 
 <svelte:window onkeydown={onkey} />
 
 {#if clue}
-  <div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
+  <div class="backdrop" role="presentation">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Edit clue">
       <header>
         <div>
@@ -51,21 +75,45 @@
             value={clue.value ?? ''}
             oninput={(e) => (clue.value = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
           />
-          <span class="muted small">blank = row default</span>
         </label>
+        <label class="check" title="Show this on the board tile instead of the value">
+          Tile shows
+          <input
+            class="face"
+            placeholder="the value"
+            value={clue.tileFace?.text ?? ''}
+            oninput={(e) => (clue.tileFace = { ...clue.tileFace, text: e.currentTarget.value || undefined })}
+          />
+        </label>
+        <div class="pop">
+          {#if clue.tileFace?.image}
+            <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" />
+            <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image">✕</button>
+          {:else}
+            <button class="small" onclick={() => (facePicker = true)} title="Show an image on the tile">🖼 Tile image</button>
+          {/if}
+          {#if facePicker}
+            <MediaPicker
+              kind="image"
+              onpick={(id) => ((clue.tileFace = { ...clue.tileFace, image: id }), (facePicker = false))}
+              onclose={() => (facePicker = false)}
+            />
+          {/if}
+        </div>
       </div>
 
       {#if !clue.empty}
-        {#key clue.id}
-          <div class="slides">
-            <SlideTextEditor slide={clue.questionSlide} label="Question (shown to players)" placeholder="This meme was born in 2016…" />
-            <SlideTextEditor slide={clue.answerSlide} label="Answer (hidden until you reveal it)" placeholder="What is…?" />
-          </div>
-          <label class="field notes">
-            Host notes (never shown on stream)
-            <textarea rows="2" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
-          </label>
+        <div class="tabs" role="tablist">
+          <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question (shown to players)</button>
+          <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer (hidden until revealed)</button>
+        </div>
+        {#key `${clue.id}-${side}`}
+          <SlideEditor slide={side === 'q' ? clue.questionSlide : clue.answerSlide} onapplystyle={applyStyle} {oneditimage} />
         {/key}
+        <label class="field notes">
+          Host notes (never shown on stream)
+          <textarea rows="2" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
+        </label>
       {/if}
     </div>
   </div>
@@ -79,19 +127,19 @@
     display: grid;
     place-items: center;
     z-index: 100;
-    padding: 16px;
+    padding: 12px;
   }
   .modal {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
-    width: min(1100px, 100%);
+    width: min(1400px, 100%);
     max-height: 100%;
     overflow: auto;
-    padding: 16px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
   }
   header {
     display: flex;
@@ -110,14 +158,30 @@
   .opts input[type='number'] {
     width: 100px;
   }
-  .slides {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+  .face {
+    width: 140px;
   }
-  @media (max-width: 760px) {
-    .slides {
-      grid-template-columns: 1fr;
-    }
+  .pop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .thumb {
+    height: 30px;
+    border-radius: 4px;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabs button {
+    border-radius: 6px 6px 0 0;
+  }
+  .tabs button.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
   }
 </style>
