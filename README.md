@@ -98,9 +98,7 @@ unplayable media, and online links. Click an item to jump to the tab that fixes 
 5. **▦ Done ▶ board** (`Esc`) marks the tile used. Right after a correct answer, that player becomes the picker (★).
    Opened the wrong tile? **↩ Cancel (keep tile)** (`Shift+Esc`) goes back without using it up (so does `Esc` on the Daily
    Double splash); once points were given for the clue, undo them first. A used tile of the current round can be put back
-   with **right-click** on the host's board, **↶ Reopen** in the host panel, or **Reopen tile** in the 📜 Log. Closing and
-   reopening tiles is also on **↶ Undo** (`Ctrl+Z`), in order with score changes: right after scoring a clue and going back
-   to the board, the first `Ctrl+Z` puts the tile back and the second takes the points back.
+   with **right-click** on the host's board, **↶ Reopen** in the host panel, or **Reopen tile** in the 📜 Log.
 6. **Next round ▶** / **Final Jeopardy! ▶** / **End game ▶** sit on the right of the host panel. With tiles left they ask inline first
    ("12 clues left · go on? Yes"). **◀ Prev round**, or going back to a round later, never replays its intro.
 
@@ -153,7 +151,7 @@ slides, even deleted or reordered rounds). Starting a new game while one is save
 | `D` / `W` / `O` / `S` | Roll dice again / spin the wheel / roll-off / scoreboard |
 | `Space` / `←` `→` / `M` | Play/pause, seek ±5 s, mute the slide's media |
 | `Y` | Open YouTube/online media in its own window |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last change: a score change (a whole multi-player award at once), or a tile closed or reopened |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change (a whole multi-player award at once) |
 | `L` | Score & roll log |
 | `A` | Open / focus the audience window (it never closes it; the 📺 button does, after asking) |
 | `H` / `F` / `?` | Hide host controls / full-screen / show all shortcuts |

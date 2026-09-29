@@ -2,7 +2,7 @@
 <script lang="ts">
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, canUndo as undoable, clueName, clueScored, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
@@ -96,7 +96,7 @@
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived(game.rounds[session.currentRound]);
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
-  const canUndo = $derived(undoable(session));
+  const canUndo = $derived(session.scoreLog.some((e) => !e.undone));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
@@ -323,7 +323,7 @@
         <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}), then Award ⏎ / Deduct ⇧⏎</span>
       {/if}
       <span class="spacer"></span>
-      <button onclick={onundo} disabled={!canUndo} title="Undo the last score change or tile closed (Ctrl+Z)">↶ Undo</button>
+      <button onclick={onundo} disabled={!canUndo} title="Ctrl+Z">↶ Undo</button>
       <button onclick={onredo} disabled={!session.redoStack.length} title="Ctrl+Shift+Z">↷ Redo</button>
     </div>
   {/if}

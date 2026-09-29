@@ -4,7 +4,7 @@ import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToFinalReveal, backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
-  toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName, undoLast, redoLast, canUndo,
+  toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName,
 } from './session';
 import { applyAction } from './tools';
 
@@ -533,67 +533,3 @@ describe('resume with edits', () => {
 function getClueId(game: ReturnType<typeof newGame>, ref: { round: number; cat: number; row: number }): string {
   return game.rounds[ref.round].categories[ref.cat].clues[ref.row].id;
 }
-
-describe('undo covers tiles too', () => {
-  function play() {
-    const { game, session, a } = setup();
-    const ref = { round: 0, cat: 0, row: 0 };
-    const id = game.rounds[0].categories[0].clues[0].id;
-    openClue(session, ref, game);
-    applyScore(session, game, [a], 200, 'x', id);
-    backToBoard(session, game);
-    return { game, session, a, id };
-  }
-
-  it('undoes in time order: the tile closed after scoring comes back first, then the points', () => {
-    const { session, a, id } = play();
-    expect(session.used[id]).toBe(true);
-    expect(undoLast(session)).toMatchObject({ kind: 'tile' });
-    expect(session.used[id]).toBeUndefined();
-    expect(score(session, a)).toBe(200);
-    expect(undoLast(session)).toMatchObject({ kind: 'score' });
-    expect(score(session, a)).toBe(0);
-    expect(undoLast(session)).toBeNull();
-    expect(canUndo(session)).toBe(false);
-  });
-
-  it('redoes in the reverse order', () => {
-    const { session, a, id } = play();
-    undoLast(session);
-    undoLast(session);
-    expect(redoLast(session)).toMatchObject({ kind: 'score' });
-    expect(score(session, a)).toBe(200);
-    expect(session.used[id]).toBeUndefined();
-    expect(redoLast(session)).toMatchObject({ kind: 'tile' });
-    expect(session.used[id]).toBe(true);
-    expect(session.lastClosed).toBe(id);
-    expect(redoLast(session)).toBeNull();
-  });
-
-  it('undoes a tile reopened (or marked played) by hand', () => {
-    const { session, id } = play();
-    toggleUsed(session, id);
-    expect(session.used[id]).toBeUndefined();
-    undoLast(session);
-    expect(session.used[id]).toBe(true);
-  });
-
-  it('a new tile change clears redo, like a new score change', () => {
-    const { game, session, a, id } = play();
-    undoLast(session);
-    expect(session.redoStack).toHaveLength(1);
-    toggleUsed(session, game.rounds[0].categories[1].clues[0].id);
-    expect(session.redoStack).toHaveLength(0);
-    expect(redoLast(session)).toBeNull();
-    expect(score(session, a)).toBe(200);
-    expect(session.used[id]).toBeUndefined();
-  });
-
-  it('a score change after the tile is undone first', () => {
-    const { game, session, a, id } = play();
-    applyScore(session, game, [a], 50, 'late');
-    undoLast(session);
-    expect(score(session, a)).toBe(200);
-    expect(session.used[id]).toBe(true);
-  });
-});

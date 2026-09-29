@@ -4,7 +4,7 @@
   import {
     applyScore, awardOpen, backToBoard, backToFinalReveal, backToLastRound, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
-    redoLast, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undoLast,
+    redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
   } from '../lib/session';
   import { newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
@@ -385,26 +385,16 @@
     finalJudge(session, game, id, right);
   }
 
-  /** "Memes $200" for a tile in the undo history. */
-  function tileName(clueId: string): string {
-    const ref = findClueRef(game, clueId);
-    return ref ? clueName(game, ref) : 'A tile';
-  }
-
-  /** Undo the latest score change or tile closed/reopened, whichever came last. */
   function doUndo(): void {
-    const step = undoLast(session);
-    if (!step) return toast('Nothing to undo');
+    const events = undo(session);
+    if (!events.length) return toast('Nothing to undo');
     // No Redo button in the toast: it sits over the host's nav row. ↷ Redo is next to ↶ Undo (or Ctrl+Shift+Z).
-    if (step.kind === 'score') toast(`Undid ${describeStep(session, step.events, sym)}`, 4000);
-    else toast(step.event.used ? `Undid: ${tileName(step.event.clueId)} is back on the board` : `Undid: ${tileName(step.event.clueId)} is played again`, 4000);
+    toast(`Undid ${describeStep(session, events, sym)}`, 4000);
   }
 
   function doRedo(): void {
-    const step = redoLast(session);
-    if (!step) return;
-    if (step.kind === 'score') toast(`Redid ${describeStep(session, step.events, sym)}`);
-    else toast(step.event.used ? `Redid: ${tileName(step.event.clueId)} marked as played` : `Redid: ${tileName(step.event.clueId)} is back on the board`);
+    const events = redo(session);
+    if (events.length) toast(`Redid ${describeStep(session, events, sym)}`);
   }
 
   /** Players added by "＋ Add 3 sample players", by id → their sample name. */

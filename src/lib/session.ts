@@ -1,6 +1,6 @@
 // Runtime game logic: scores, score log with undo/redo, used tiles, round flow.
 // Pure functions over plain objects so they're easy to test and to autosave.
-import { categoryLabel, clueValue, finalName, formatPoints, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session, type TileEvent } from './model';
+import { categoryLabel, clueValue, finalName, formatPoints, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -96,10 +96,7 @@ export function undo(session: Session): ScoreEvent[] {
 export function redo(session: Session): ScoreEvent[] {
   const events: ScoreEvent[] = [];
   while (session.redoStack.length) {
-    const top = session.redoStack[session.redoStack.length - 1];
-    // A tile change sits under this step: it's redoLast's to redo, never drop it here.
-    if (session.tileLog?.some((t) => t.id === top)) break;
-    const e = session.scoreLog.find((x) => x.id === top);
+    const e = session.scoreLog.find((x) => x.id === session.redoStack[session.redoStack.length - 1]);
     // Undo pushes a step's ids together, so stop at the first id from another step.
     if (e && events.length && stepOf(e) !== stepOf(events[0])) break;
     session.redoStack.pop();
@@ -247,7 +244,6 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
   if (closed) {
     session.used[closed] = true;
     session.lastClosed = closed;
-    logTile(session, closed, true);
   }
   session.currentClue = null;
   session.revealed = false;
@@ -258,76 +254,13 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
 
 /** Mark a tile used, or put a used tile back on the board. Returns whether it's used now. */
 export function toggleUsed(session: Session, clueId: string): boolean {
-  const used = !session.used[clueId];
-  setUsed(session, clueId, used);
-  logTile(session, clueId, used);
-  return used;
-}
-
-function setUsed(session: Session, clueId: string, used: boolean): void {
-  if (used) session.used[clueId] = true;
-  else {
+  if (session.used[clueId]) {
     delete session.used[clueId];
     if (session.lastClosed === clueId) session.lastClosed = null;
+    return false;
   }
-}
-
-/** Record a tile change for Undo. Like a new score change, it clears Redo. */
-function logTile(session: Session, clueId: string, used: boolean): void {
-  // Assign first, then read back: pushing onto `session.tileLog ??= []` would miss the state proxy.
-  if (!session.tileLog) session.tileLog = [];
-  session.tileLog.push({ id: newId(), ts: Date.now(), clueId, used, after: session.scoreLog.length });
-  session.redoStack = [];
-}
-
-function lastWhere<T>(list: T[], pred: (x: T) => boolean): T | undefined {
-  for (let i = list.length - 1; i >= 0; i--) if (pred(list[i])) return list[i];
-  return undefined;
-}
-
-export type UndoStep = { kind: 'score'; events: ScoreEvent[] } | { kind: 'tile'; event: TileEvent };
-
-/**
- * Undo the latest change, whichever it was: a score step (see undo) or a tile closed or reopened. So
- * after "award, then back to the board", the first Undo reopens the tile and the second takes the points back.
- */
-export function undoLast(session: Session): UndoStep | null {
-  const here = new Set(session.players.map((p) => p.id));
-  let lastScore = -1;
-  for (let i = session.scoreLog.length - 1; i >= 0 && lastScore < 0; i--) {
-    const e = session.scoreLog[i];
-    if (!e.undone && here.has(e.playerId)) lastScore = i;
-  }
-  const lastTile = lastWhere(session.tileLog ?? [], (t) => !t.undone);
-  if (lastTile && lastTile.after > lastScore) {
-    lastTile.undone = true;
-    setUsed(session, lastTile.clueId, !lastTile.used);
-    session.redoStack.push(lastTile.id);
-    return { kind: 'tile', event: lastTile };
-  }
-  const events = undo(session);
-  return events.length ? { kind: 'score', events } : null;
-}
-
-/** Redo what undoLast took back most recently. */
-export function redoLast(session: Session): UndoStep | null {
-  const top = session.redoStack.at(-1);
-  const tile = top ? session.tileLog?.find((t) => t.id === top) : undefined;
-  if (tile) {
-    session.redoStack.pop();
-    tile.undone = false;
-    setUsed(session, tile.clueId, tile.used);
-    if (tile.used) session.lastClosed = tile.clueId;
-    return { kind: 'tile', event: tile };
-  }
-  const events = redo(session);
-  return events.length ? { kind: 'score', events } : null;
-}
-
-/** Is there anything for undoLast to take back? */
-export function canUndo(session: Session): boolean {
-  const here = new Set(session.players.map((p) => p.id));
-  return session.scoreLog.some((e) => !e.undone && here.has(e.playerId)) || !!session.tileLog?.some((t) => !t.undone);
+  session.used[clueId] = true;
+  return true;
 }
 
 export function roundComplete(session: Session, game: Game, roundIndex = session.currentRound): boolean {
