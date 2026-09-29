@@ -310,6 +310,7 @@ await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(3) });
 await page.locator('.insp').getByText('Autoplay when the slide appears').waitFor();
 await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
 assert(true, 'audio added with autoplay off');
+await page.locator('.insp').getByLabel('Show a speaker icon on the slide').check();
 await page.getByRole('tab', { name: /Answer/ }).click();
 await typeOnSlide('Who is Pepe?');
 await shot('1-clue-editor');
@@ -686,6 +687,16 @@ await page.locator('.mc .item button').first().click();
 await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('⏸'));
 assert(true, 'audio plays from the host controls');
 await page.locator('.mc .item button').first().click();
+await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('▶'));
+// The sound's icon on the slide plays and pauses it; it doesn't reveal the answer.
+const soundIcon = page.locator('.stage-box .full button.icon');
+await soundIcon.click();
+await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('⏸'));
+assert((await page.getByText('Who is Pepe?').count()) === 0, "clicking the slide's sound icon plays it, without revealing the answer");
+await page.waitForTimeout(500); // past the double-click guard
+await soundIcon.click();
+await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('▶'));
+assert((await page.getByText('Who is Pepe?').count()) === 0, 'clicking it again pauses it');
 assert((await page.getByText('Who is Pepe?').count()) === 0, 'answer is not in the page before reveal');
 
 await page.keyboard.press('1');

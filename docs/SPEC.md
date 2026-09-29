@@ -406,6 +406,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - Autoplay respects the per-element setting. **Browser autoplay policy**: autoplay is allowed after
   the host's first click, so "Start game" counts as that click.
 - Keyboard: `Space` play/pause, `←/→` seek ±5 s, `M` mute.
+- On the stage, clicking a video or a sound's speaker icon plays or pauses it (in dual mode, in the audience window)
+  instead of revealing the answer. The host sees ⏸ on a playing sound's icon; the audience sees the plain icon.
 
 ### 6.8 Host keyboard shortcuts (defaults; rebindable later)
 | Key | Action |

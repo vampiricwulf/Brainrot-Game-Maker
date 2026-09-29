@@ -2,7 +2,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { AudioEl, EmbedEl, VideoEl } from '../model';
-  import { openMediaPopup, registerMedia, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
+  import { localMedia, openMediaPopup, registerMedia, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
+  import { mediaCommand } from '../sync.svelte';
   import { applySink } from '../audioout.svelte';
 
   let {
@@ -27,6 +28,9 @@
   const showIcon = $derived(isAudio && (mode === 'edit' || (el.kind === 'audio' ? el.visible : true)));
   /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
   const hostView = $derived(mode === 'edit' || role === 'mirror');
+  /** In play, the host clicks a sound's icon or a video to play or pause it (not to reveal the answer). */
+  const clickable = $derived(mode === 'play' && role !== 'audience');
+  const playing = $derived(clickable && localMedia[el.id]?.paused === false);
 
   let node = $state<HTMLVideoElement | HTMLAudioElement>();
   let failed = $state(false);
@@ -121,6 +125,12 @@
     if (mode === 'play' && node) updateMedia(el.id, { paused: node.paused, volume: node.volume, muted: node.muted });
   }
 
+  /** Played through the host's controls, so the audience window follows along. */
+  function toggle(e: MouseEvent): void {
+    e.stopPropagation();
+    mediaCommand({ el: el.id, op: 'toggle' });
+  }
+
   function onerror(): void {
     failed = true;
     if (mode === 'play') updateMedia(el.id, { failed: true });
@@ -146,11 +156,21 @@
 {:else if isAudio}
   <audio bind:this={node} {src} preload="auto" onloadedmetadata={onmeta} ontimeupdate={ontime} onended={onended}
     onplay={onstate} onpause={onstate} onvolumechange={onstate} onerror={onerror}></audio>
-  {#if showIcon}
+  {#if showIcon && clickable}
+    <button
+      class="icon"
+      class:playing
+      onpointerdown={(e) => e.stopPropagation()}
+      onclick={toggle}
+      title={`${playing ? 'Pause' : 'Play'} ${label}`}
+      aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}
+    >{playing && role === 'mirror' ? '⏸' : '🔊'}</button>
+  {:else if showIcon}
     <div class="icon" class:ghost={mode === 'edit' && el.kind === 'audio' && !el.visible} title={label}>🔊</div>
   {/if}
 {:else}
-  <!-- svelte-ignore a11y_media_has_caption -->
+  <!-- The host's media controls (and Space) do the same as a click, so no key handler here. -->
+  <!-- svelte-ignore a11y_media_has_caption, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
   <video
     bind:this={node}
     {src}
@@ -165,6 +185,10 @@
     onpause={onstate}
     onvolumechange={onstate}
     onerror={onerror}
+    class:clickable
+    onpointerdown={clickable ? (e) => e.stopPropagation() : undefined}
+    onclick={clickable ? toggle : undefined}
+    title={clickable ? `${playing ? 'Pause' : 'Play'} ${label}` : undefined}
   ></video>
 {/if}
 
@@ -175,6 +199,9 @@
     display: block;
     background: transparent;
   }
+  video.clickable {
+    cursor: pointer;
+  }
   .icon {
     width: 100%;
     height: 100%;
@@ -183,6 +210,18 @@
     font-size: 90px;
     background: rgba(0, 0, 0, 0.45);
     border-radius: 50%;
+  }
+  button.icon {
+    padding: 0;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  button.icon:hover {
+    background: rgba(0, 0, 0, 0.65);
+  }
+  button.icon.playing {
+    outline: 4px solid rgba(255, 255, 255, 0.7);
   }
   .icon.ghost {
     opacity: 0.5;
