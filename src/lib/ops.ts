@@ -59,14 +59,15 @@ const STYLE_KEYS = [
 ] as const;
 
 export function copyTextStyle(from: TextEl, to: TextEl): void {
-  for (const k of STYLE_KEYS) (to as unknown as Record<string, unknown>)[k] = clone(from[k]);
+  // Optional effects (outline, glow, background box) are undefined when off; clone() can't copy that.
+  for (const k of STYLE_KEYS) (to as unknown as Record<string, unknown>)[k] = from[k] === undefined ? undefined : clone(from[k]);
 }
 
 /**
- * Copy a text element's style to the main text of other slides.
- * scope: `${'round' | 'game'}-${'q' | 'a' | 'qa'}`. Returns how many slides changed.
+ * The main text elements that "Use this style elsewhere" would restyle (never `from` itself).
+ * scope: `${'round' | 'game'}-${'q' | 'a' | 'qa'}`.
  */
-export function applyTextStyle(game: Game, round: Round | null, from: TextEl, scope: string): number {
+export function textStyleTargets(game: Game, round: Round | null, from: TextEl, scope: string): TextEl[] {
   const [where, which] = scope.split('-');
   const rounds = where === 'game' || !round ? game.rounds : [round];
   const slides: Slide[] = [];
@@ -80,13 +81,24 @@ export function applyTextStyle(game: Game, round: Round | null, from: TextEl, sc
     if (which.includes('q')) slides.push(game.final.questionSlide);
     if (which.includes('a')) slides.push(game.final.answerSlide);
   }
-  let n = 0;
+  const out: TextEl[] = [];
   for (const s of slides) {
     const t = s.elements.find((e): e is TextEl => e.kind === 'text');
-    if (t && t !== from) {
-      copyTextStyle(from, t);
-      n++;
-    }
+    if (t && t !== from) out.push(t);
   }
-  return n;
+  return out;
+}
+
+/** Copy `from`'s style onto `targets`. Returns a function that puts their previous styles back. */
+export function restyle(from: TextEl, targets: TextEl[]): () => void {
+  const before = targets.map((t) => clone(t));
+  for (const t of targets) copyTextStyle(from, t);
+  return () => targets.forEach((t, i) => copyTextStyle(before[i], t));
+}
+
+/** Copy a text element's style to the main text of other slides. Returns how many slides changed. */
+export function applyTextStyle(game: Game, round: Round | null, from: TextEl, scope: string): number {
+  const targets = textStyleTargets(game, round, from, scope);
+  for (const t of targets) copyTextStyle(from, t);
+  return targets.length;
 }
