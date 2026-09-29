@@ -10,6 +10,7 @@
   import { currentClueInfo, score, standings, tiedLeaders } from '../lib/session';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
+  import { autoPlay } from '../lib/audioout.svelte';
   import type { Live, StageAction } from '../lib/live';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
@@ -230,9 +231,10 @@
   {/each}
 </div>
 
+<!-- Game sound cue: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
 {#if role !== 'mirror' && live.sound && mediaUrls[live.sound.media]}
   {#key live.sound.nonce}
-    <audio src={mediaUrls[live.sound.media]} autoplay></audio>
+    <audio use:autoPlay={mediaUrls[live.sound.media]}></audio>
   {/key}
 {/if}
 </div>

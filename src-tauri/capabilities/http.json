@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "http",
-  "description": "Native downloads of online media links, from the host window only: any web address on any port except this computer's own (localhost). Redirects are checked too (plugins.http.scopeRedirects in tauri.conf.json).",
+  "description": "Native downloads of online media links, from the host window only: any web address on any port except localhost, 127.0.0.1, [::1] and 0.0.0.0. The deny list compares addresses as written (other loopback, network or link-local addresses, and names that resolve to this computer, aren't caught). Redirects are checked too (plugins.http.scopeRedirects in tauri.conf.json).",
   "windows": [
     "main"
   ],

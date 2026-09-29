@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import type { AudioEl, EmbedEl, VideoEl } from '../model';
   import { openMediaPopup, registerMedia, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
+  import { applySink } from '../audioout.svelte';
 
   let {
     el,
@@ -28,6 +29,8 @@
   let node = $state<HTMLVideoElement | HTMLAudioElement>();
   let failed = $state(false);
   let loop = false;
+  /** Routed to the chosen audio output (Game audio output) before it first plays. */
+  let sinkReady: Promise<void> = Promise.resolve();
 
   function start(): number {
     return el.startAt ?? 0;
@@ -36,7 +39,7 @@
   function tryPlay(): void {
     const n = node;
     if (!n) return;
-    n.play().catch((err: DOMException) => {
+    sinkReady.then(() => n.play()).catch((err: DOMException) => {
       // Autoplay with sound blocked: fall back to muted playback and tell the host.
       if (err?.name === 'NotAllowedError' && !n.muted) {
         n.muted = true;
@@ -52,6 +55,7 @@
     loop = el.loop;
     n.volume = Math.max(0, Math.min(1, el.volume));
     n.muted = role === 'mirror' || el.muted;
+    if (role !== 'mirror') sinkReady = applySink(n);
     registerMedia(
       el.id,
       role,

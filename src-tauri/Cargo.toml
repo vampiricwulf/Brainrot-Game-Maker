@@ -8,13 +8,18 @@ edition = "2021"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+serde_json = "1"
 tauri = { version = "2", features = [] }
+# A second launch focuses the running app instead of starting a copy that shares its WebView2 processes.
+tauri-plugin-single-instance = "2"
 # Native downloads of online media links (no CORS limits). "unsafe-headers" lets a download leave out
 # the Origin header the plugin would otherwise add, so it looks like a normal browser download.
 # Keep the same major.minor as @tauri-apps/plugin-http in package.json: `tauri build` refuses mismatches.
 tauri-plugin-http = { version = "~2.7", features = ["unsafe-headers"] }
-# Used by tauri::generate_context!() to embed the plugins section of tauri.conf.json.
-serde_json = "1"
+
+# Detects running as administrator, which makes Discord/OBS miss the game's sound.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading"] }
 
 [profile.release]
 strip = true

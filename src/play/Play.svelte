@@ -19,7 +19,19 @@
   import HostPanel from './HostPanel.svelte';
   import ScoreLog from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
-  import { audience, closeAudienceWindow, mediaCommand, openAudienceWindow, pushGame, pushLive, pushSession } from '../lib/sync.svelte';
+  import AudioHelp from './AudioHelp.svelte';
+  import SoundWarnings from './host/SoundWarnings.svelte';
+  import { watchSinks } from '../lib/audioout.svelte';
+  import {
+    audience,
+    audienceTitle,
+    closeAudienceWindow,
+    mediaCommand,
+    openAudienceWindow,
+    pushGame,
+    pushLive,
+    pushSession,
+  } from '../lib/sync.svelte';
   import { localMedia, openMediaPopup, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
@@ -45,6 +57,8 @@
   let showPlayers = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
+  /** The streaming-sound help (Test sound, output device, Discord/OBS steps). */
+  let showSound = $state(false);
   /** P was pressed: the next 1–9 sets the picker. */
   let pickerPending = $state(false);
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
@@ -85,6 +99,8 @@
 
   onMount(() => {
     registerGameFonts(game);
+    // Game audio output: route every sound this window plays (single-window mode) to the chosen device.
+    const offSinks = watchSinks();
     // Time's up watcher (the host is the single source of truth for expiry).
     const id = setInterval(() => {
       const t = app.live.timer;
@@ -97,6 +113,7 @@
     }, 150);
     return () => {
       clearInterval(id);
+      offSinks();
       for (const t of pending) clearTimeout(t);
       pending.clear();
     };
@@ -122,7 +139,7 @@
 
   /** Open the audience window, or bring it to the front if it's already open. Never closes it. */
   async function openAudience(): Promise<void> {
-    if (!(await openAudienceWindow()))
+    if (!(await openAudienceWindow(audienceTitle(game))))
       toast(
         inTauri()
           ? "Couldn't open the audience window. Try again, or use single-window mode."
@@ -467,7 +484,7 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (app.pregame || showPlayers || showKeys) return;
+    if (app.pregame || showPlayers || showKeys || showSound) return;
     const t = e.target as HTMLElement;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'.
     if (t.closest('input, textarea, select, [contenteditable]')) return;
@@ -623,6 +640,11 @@
         <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
       </button>
     </div>
+    <SoundWarnings {dual} onhelp={() => (showSound = true)} />
+    <div class="row">
+      <button class="small" onclick={() => (showSound = true)}>🔊 Sound for Discord / OBS…</button>
+      <span class="muted small">Test the sound, pick where it plays, and see how to stream it.</span>
+    </div>
 
     {#if checks.length}
       <details class="checks">
@@ -709,6 +731,7 @@
         onplayers={() => ((removing = null), (showPlayers = true))}
         {dual}
         onaudience={toggleAudience}
+        onsound={() => (showSound = true)}
         oncloseoverlay={closeOverlay}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20)}
         onhide={() => (hideControls = true)}
@@ -767,6 +790,10 @@
       </div>
     </div>
   {/if}
+{/if}
+<!-- Before the game too (from the display settings) and during it (🔊 Sound in the host panel). -->
+{#if showSound}
+  <AudioHelp {dual} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
 {/if}
 
 <style>
