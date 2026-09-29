@@ -425,6 +425,18 @@ export interface ClueRef {
   row: number;
 }
 
+/** A tile marked played or put back on the board. */
+export interface TileEvent {
+  id: Id;
+  ts: number;
+  clueId: Id;
+  /** The tile's state after the change. */
+  used: boolean;
+  /** How many score events were logged before it (orders it against score changes, whatever the clock says). */
+  after: number;
+  undone?: boolean;
+}
+
 export interface Session {
   gameId: Id;
   players: Player[];
@@ -455,7 +467,9 @@ export interface Session {
   currentClue: ClueRef | null;
   revealed: boolean;
   scoreLog: ScoreEvent[];
-  /** Event ids undone by Undo, most recent last; cleared by any new score change. */
+  /** Tiles closed (marked played) or reopened, so Undo can take those back too, in order with score changes. */
+  tileLog?: TileEvent[];
+  /** Score and tile event ids undone by Undo, most recent last; cleared by any new score or tile change. */
   redoStack: Id[];
   currentPickerId?: Id;
 }

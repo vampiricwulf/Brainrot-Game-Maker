@@ -20,7 +20,7 @@
     ['← / →', 'Seek the media back / forward 5 s'],
     ['M', 'Mute / unmute the media'],
     ['Y', 'Open YouTube / online media in its own window'],
-    ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo the last score change (a whole multi-player award at once)'],
+    ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo the last change: a score change (a whole multi-player award at once) or a tile closed or reopened'],
     ['L', 'Score & roll log'],
     ['A', 'Open / focus the audience window (never closes it)'],
     ['H', 'Hide / show the host controls'],
