@@ -1,5 +1,6 @@
 // Transient on-screen state shared between the host and the audience window (not saved with the game).
-import { newId } from './model';
+import { newId, type DicePreset, type Id, type WheelSegment } from './model';
+import type { DiceRoll, RollOffRound } from './tools';
 
 /** A short "+400 Alex" badge that floats up on the audience view after a score change. */
 export interface Pop {
@@ -25,14 +26,64 @@ export interface SoundCue {
   nonce: string;
 }
 
+/**
+ * Full-screen tool overlay (spec §5.6/§6.6). Results are decided when the host acts; both windows animate
+ * the same timestamps, so the audience sees exactly what the host sees.
+ */
+export type Overlay =
+  | {
+      kind: 'wheel';
+      nonce: string;
+      name: string;
+      wheelId?: Id;
+      segments: WheelSegment[];
+      /** Resting rotation (degrees) before/after the current spin. */
+      rotation: number;
+      spin: { from: number; to: number; startedAt: number; duration: number } | null;
+      /** Index into segments of the landed slice. */
+      result: number | null;
+      tagged?: Id[];
+    }
+  | {
+      kind: 'dice';
+      nonce: string;
+      name: string;
+      preset: DicePreset;
+      /** null until the host rolls. */
+      roll: DiceRoll | null;
+      startedAt: number;
+      duration: number;
+      tagged?: Id[];
+    }
+  | {
+      kind: 'rolloff';
+      nonce: string;
+      sides: number;
+      rounds: RollOffRound[];
+      ranking: Id[];
+      winner: Id;
+      startedAt: number;
+      roundMs: number;
+    }
+  | { kind: 'scoreboard'; nonce: string };
+
 export interface Live {
   pops: Pop[];
   timer: TimerState | null;
   sound: SoundCue | null;
+  overlay: Overlay | null;
 }
 
 export function newLive(): Live {
-  return { pops: [], timer: null, sound: null };
+  return { pops: [], timer: null, sound: null, overlay: null };
+}
+
+/** When a tool overlay's animation finishes (ms timestamp). */
+export function overlayDoneAt(o: Overlay): number {
+  if (o.kind === 'wheel') return o.spin ? o.spin.startedAt + o.spin.duration : 0;
+  if (o.kind === 'dice') return o.roll ? o.startedAt + o.duration : 0;
+  if (o.kind === 'rolloff') return o.startedAt + o.rounds.length * o.roundMs;
+  return 0;
 }
 
 export function timerRemaining(t: TimerState, now = Date.now()): number {

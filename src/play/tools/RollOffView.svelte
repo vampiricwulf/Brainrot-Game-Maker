@@ -1,0 +1,114 @@
+<!-- "Who goes first": everyone rolls in their color; tied leaders re-roll until one winner remains. -->
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import type { Overlay } from '../../lib/live';
+  import type { Session } from '../../lib/model';
+  import { textOn } from '../../lib/colors';
+  import Die from './Die.svelte';
+
+  let { o, session }: { o: Extract<Overlay, { kind: 'rolloff' }>; session: Session } = $props();
+  let now = $state(Date.now());
+  onMount(() => {
+    const id = setInterval(() => (now = Date.now()), 70);
+    return () => clearInterval(id);
+  });
+
+  const ROLL = 1300;
+  const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
+  const elapsed = $derived(now - o.startedAt);
+  const roundIdx = $derived(Math.min(o.rounds.length - 1, Math.floor(elapsed / o.roundMs)));
+  const round = $derived(o.rounds[roundIdx]);
+  const rolling = $derived(elapsed - roundIdx * o.roundMs < ROLL);
+  const done = $derived(elapsed >= (o.rounds.length - 1) * o.roundMs + ROLL + 300);
+  const top = $derived(Math.max(...round.players.map((p) => round.rolls[p])));
+  const tied = $derived(!rolling && !done && round.players.filter((p) => round.rolls[p] === top).length > 1);
+  const winner = $derived(byId[o.winner]);
+
+  function shown(pid: string, i: number): string {
+    if (rolling) return String(1 + ((Math.floor(now / 70) * 7919 + i * 104729) % o.sides));
+    return String(round.rolls[pid]);
+  }
+</script>
+
+<div class="wrap">
+  <div class="title">{roundIdx === 0 ? 'Who goes first?' : 'Tiebreak roll!'}</div>
+  <div class="row">
+    {#each round.players as pid, i (pid)}
+      {@const p = byId[pid]}
+      <div class="pl" class:lead={!rolling && round.rolls[pid] === top} class:out={!rolling && round.rolls[pid] !== top}>
+        <Die value={shown(pid, i)} sides={o.sides} color={p?.color ?? '#fff'} {rolling} size={round.players.length > 5 ? 160 : 200} />
+        <div class="nm" style:background={p?.color} style:color={p ? textOn(p.color) : undefined}>{p?.name ?? '?'}</div>
+      </div>
+    {/each}
+  </div>
+  {#if tied}<div class="msg">Tie! Re-rolling…</div>{/if}
+  {#if done && winner}
+    <div class="win" in:fly={{ y: 60, duration: 400 }}>
+      <span style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> goes first!
+    </div>
+  {/if}
+</div>
+
+<style>
+  .wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 60px;
+  }
+  .title {
+    font-family: var(--value-font);
+    font-size: 90px;
+    font-weight: 900;
+    color: #ffcc00;
+    text-shadow: 6px 6px 0 #000;
+  }
+  .row {
+    display: flex;
+    gap: 50px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    transition: opacity 0.3s, scale 0.3s;
+  }
+  .pl.lead {
+    scale: 1.12;
+  }
+  .pl.out {
+    opacity: 0.4;
+  }
+  .nm {
+    font-family: var(--board-font);
+    font-size: 44px;
+    font-weight: 800;
+    padding: 4px 20px;
+    border-radius: 12px;
+  }
+  .msg {
+    font-size: 70px;
+    font-weight: 900;
+    color: #fff;
+    font-family: var(--value-font);
+  }
+  .win {
+    font-family: var(--value-font);
+    font-size: 96px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 6px 6px 0 #000;
+  }
+  .win span {
+    padding: 0 26px;
+    border-radius: 16px;
+    text-shadow: none;
+  }
+</style>

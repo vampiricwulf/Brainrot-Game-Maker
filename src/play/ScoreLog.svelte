@@ -5,15 +5,34 @@
   let { session, sym, onclose }: { session: Session; sym: string; onclose: () => void } = $props();
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const events = $derived([...session.scoreLog].reverse());
+  const rolls = $derived([...(session.rollLog ?? [])].reverse());
+  let tab = $state<'scores' | 'rolls'>('scores');
+  const icon = { wheel: '🎡', dice: '🎲', rolloff: '🏁' } as const;
+  const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 </script>
 
 <aside>
   <header class="row">
-    <b>Score log</b>
-    <span class="muted">{session.scoreLog.length} changes</span>
+    <button class="tab" class:on={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({session.scoreLog.length})</button>
+    <button class="tab" class:on={tab === 'rolls'} onclick={() => (tab = 'rolls')}>Rolls ({session.rollLog?.length ?? 0})</button>
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose}>✕</button>
   </header>
+  {#if tab === 'rolls'}
+    <div class="list">
+      {#each rolls as r (r.id)}
+        <div class="roll">
+          <div><span>{icon[r.source]}</span> <b>{r.name}</b> <span class="muted small">{time(r.ts)}</span></div>
+          <div>{r.result}</div>
+          {#if r.playerIds?.length}
+            <div class="small">For: {r.playerIds.map((id) => byId[id]?.name ?? '?').join(', ')}</div>
+          {/if}
+        </div>
+      {:else}
+        <div class="muted">No spins or rolls yet.</div>
+      {/each}
+    </div>
+  {:else}
   <div class="list">
     {#each events as e (e.id)}
       {@const p = byId[e.playerId]}
@@ -28,6 +47,7 @@
       <div class="muted">No score changes yet.</div>
     {/each}
   </div>
+  {/if}
 </aside>
 
 <style>
@@ -43,6 +63,19 @@
     display: flex;
     flex-direction: column;
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.4);
+  }
+  .tab.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .roll {
+    padding: 6px 8px;
+    background: var(--panel-2);
+    border-radius: 6px;
+  }
+  .small {
+    font-size: 12px;
   }
   header {
     padding: 12px;

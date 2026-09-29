@@ -122,6 +122,28 @@ await page.locator('.canvas .card').waitFor();
 assert(true, 'YouTube link added (editor shows a thumbnail card)');
 await page.getByRole('button', { name: 'Done' }).click();
 
+// A weighted "Punishment Wheel" (Bankrupt is ~certain) with a score effect, used by the 5th tile.
+await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
+await page.getByRole('button', { name: '＋ New wheel' }).click();
+await page.getByLabel('Wheel name').fill('Punishment Wheel');
+await page.getByLabel('Spin (s)').fill('1');
+const segs = page.locator('.seg');
+await segs.nth(3).locator('button').last().click();
+await segs.nth(2).locator('button').last().click();
+await segs.nth(0).locator('input.label').fill('Bankrupt');
+await segs.nth(0).locator('.w input').fill('100000');
+await segs.nth(0).getByRole('button', { name: /More/ }).click();
+await segs.nth(0).getByLabel(/Affects score/).check();
+await segs.nth(0).locator('.more select').selectOption('setScore');
+await segs.nth(1).locator('input.label').fill('Sing a song');
+assert((await segs.count()) === 2, 'wheel editor: slices added/removed, weights and score effect set');
+await page.getByRole('button', { name: 'Jeopardy!' }).first().click();
+await page.locator('.tile').nth(4).click();
+await page.getByLabel('Type').selectOption('wheel');
+await page.getByLabel('Which wheel').selectOption({ label: 'Punishment Wheel' });
+await page.getByRole('button', { name: 'Done' }).click();
+assert((await page.locator('.tile').nth(4).innerText()).includes('🎡'), 'tile marked as a wheel tile');
+
 // A Daily Double on the 4th tile.
 await page.locator('.tile').nth(3).click();
 await page.getByLabel('Type').selectOption('dailyDouble');
@@ -216,6 +238,25 @@ if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
 await page.getByRole('button', { name: '📺 Close audience window' }).click();
 assert(aud.isClosed(), 'audience window closes from the host');
 
+// Wheel tile: the wheel opens full-screen; spin lands on the heavy slice; its score effect can be skipped.
+await page.locator('.board .tile').nth(4).click();
+await page.locator('.ov .wheel').waitFor();
+assert(true, 'wheel tile opens the wheel overlay');
+await page.getByRole('button', { name: 'Spin!' }).click();
+await page.locator('.tc .result').waitFor({ timeout: 8000 });
+assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
+await page.locator('.ov .card').waitFor();
+assert((await page.locator('.ov .card .label').innerText()) === 'Bankrupt', 'result card revealed on screen');
+await page.locator('.tc .chip', { hasText: 'Player 3' }).first().click();
+await page.locator('.ac').waitFor();
+await page.locator('.ac').getByRole('button', { name: 'Skip' }).click();
+assert((await scoreOf(0)) === '$550', 'skipping the score effect changes nothing');
+await shot('10-wheel');
+await page.keyboard.press('Escape');
+await page.locator('.ov').waitFor({ state: 'detached' });
+await page.keyboard.press('Escape');
+await page.locator('.board').waitFor();
+
 // Daily Double: splash, wager (TV cap), then the question with the wager prefilled.
 await page.locator('.board .tile').nth(3).click();
 await page.locator('.dd-text').waitFor();
@@ -268,6 +309,56 @@ await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
 assert(true, 'co-winners declared on the winner screen');
 await shot('9-winner');
+
+// Tools work any time: wheel from the launcher with a confirmed score effect (undoable).
+await page.getByRole('button', { name: '🎡 Wheel' }).click();
+await page.getByRole('button', { name: 'Punishment Wheel' }).click();
+await page.getByRole('button', { name: 'Spin!' }).click();
+await page.locator('.ac').waitFor({ timeout: 8000 });
+const deltaText = await page.locator('.ac .delta').first().innerText();
+await page.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
+assert(/−\$850/.test(deltaText), `bankrupt previews the change (${deltaText}) and applies on Confirm`);
+await page.keyboard.press('Escape');
+await page.keyboard.press('Control+z');
+assert(await page.getByText('$850').first().isVisible(), 'score effect is undoable like any score change');
+
+// Dice: quick 2d6 shows a total.
+await page.getByRole('button', { name: '🎲 Dice' }).click();
+await page.getByRole('button', { name: '2d6' }).click();
+await page.getByText(/^Total: \d+$/).waitFor({ timeout: 5000 });
+assert(true, 'quick 2d6 roll shows the total');
+await page.keyboard.press('Escape');
+
+// Roll-off: everyone rolls; the winner becomes the current picker.
+await page.keyboard.press('o');
+await page.getByText(/goes first!/).waitFor({ timeout: 20000 });
+const winnerName = (await page.locator('.win span').innerText()).trim();
+await page.keyboard.press('Escape');
+await page.getByRole('button', { name: '📜 Log' }).click();
+await page.getByRole('button', { name: /Rolls \(/ }).click();
+const rollsText = await page.locator('aside .list').innerText();
+assert(rollsText.includes('goes first') && rollsText.includes('Punishment Wheel') && rollsText.includes('2d6'), 'roll log lists the wheel, dice and roll-off');
+assert(rollsText.includes('For: Player 3'), 'roll log keeps the "who it was for" tag');
+await page.keyboard.press('Escape');
+await page.getByRole('button', { name: '📊 Scores' }).click();
+await page.locator('.ov .sb').waitFor();
+assert(true, 'scoreboard overlay toggles on');
+await page.getByRole('button', { name: '📊 Scores' }).click();
+await page.waitForTimeout(300);
+const pickerName = await page.evaluate(
+  () =>
+    new Promise((res) => {
+      const q = indexedDB.open('keyval-store');
+      q.onsuccess = () => {
+        const g = q.result.transaction('keyval').objectStore('keyval').get('playSession');
+        g.onsuccess = () => {
+          const s = g.result.session;
+          res(s.players.find((p) => p.id === s.currentPickerId)?.name);
+        };
+      };
+    }),
+);
+assert(pickerName === winnerName, `roll-off winner (${winnerName}) is the current picker (${pickerName})`);
 
 // .jbr round trip: save the pack, start a new game, open the pack again.
 await page.getByRole('button', { name: 'Exit' }).click();

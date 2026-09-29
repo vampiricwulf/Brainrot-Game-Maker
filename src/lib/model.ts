@@ -201,10 +201,69 @@ export interface Clue {
   answerSlide: Slide;
   hostNotes?: string;
   timerSeconds?: number | null;
+  /** For wheel / dice clue types. */
+  wheelId?: Id;
+  diceId?: Id;
   /** Shown on the board tile instead of the value. */
   tileFace?: { text?: string; image?: Id };
   /** Blank tile, not playable. */
   empty?: boolean;
+}
+
+// ---------- Wheels & dice (spec §4, §5.6) ----------
+
+/** Optional score effect of a wheel slice / die face. Always confirmed by the host before it applies. */
+export type ScoreAction =
+  | { kind: 'addPoints'; amount: number }
+  | { kind: 'addRollTimes'; multiplier: number }
+  | { kind: 'multiplyScore'; factor: number }
+  | { kind: 'setScore'; amount: number }
+  | { kind: 'steal'; amount: number | 'all' }
+  | { kind: 'swapScores' };
+
+/** What a wheel slice or die face means. Most are free-form (punishments, dares, prompts…), not points. */
+export interface Outcome {
+  label: string;
+  /** Longer text shown big on reveal. */
+  details?: string;
+  /** Image/GIF/video/audio shown or played on reveal. */
+  media?: Id;
+  /** Countdown started on reveal (e.g. a 30-second punishment). */
+  timerSeconds?: number;
+  scoreAction?: ScoreAction;
+}
+
+export interface WheelSegment extends Outcome {
+  id: Id;
+  color: string;
+  /** Relative size and landing chance. */
+  weight: number;
+}
+
+export interface WheelPreset {
+  id: Id;
+  name: string;
+  segments: WheelSegment[];
+  spinDurationMs: number;
+  /** Each slice can only land once per game (the host can restore them). */
+  removeAfterLanding: boolean;
+}
+
+export interface Die {
+  id: Id;
+  sides: number;
+  count: number;
+  /** One per side; otherwise faces are the numbers 1..sides. */
+  customFaces?: Outcome[];
+}
+
+export interface DicePreset {
+  id: Id;
+  name: string;
+  dice: Die[];
+  showTotal: boolean;
+  /** Map a total range to an outcome ("2–4: take a sip"). */
+  totalOutcomes?: { id: Id; min: number; max: number; outcome: Outcome }[];
 }
 
 export interface Category {
@@ -240,6 +299,8 @@ export interface Game {
   final: FinalRound;
   media: MediaRef[];
   audio: GameAudio;
+  wheels: WheelPreset[];
+  dice: DicePreset[];
   /** Optional clue used to break a tie at the end. */
   tiebreaker?: { questionSlide: Slide; answerSlide: Slide; hostNotes?: string };
 }
@@ -277,6 +338,16 @@ export interface ScoreEvent {
   undone?: boolean;
 }
 
+export interface RollEvent {
+  id: Id;
+  ts: number;
+  source: 'wheel' | 'dice' | 'rolloff';
+  name: string;
+  result: string;
+  /** Optional "who this was for" tag. */
+  playerIds?: Id[];
+}
+
 export interface ClueRef {
   round: number;
   cat: number;
@@ -300,6 +371,10 @@ export interface Session {
   tiebreakerRevealed?: boolean;
   /** The host declared the tied leaders co-winners. */
   coWinners?: boolean;
+  /** Every spin / roll (no score impact). */
+  rollLog?: RollEvent[];
+  /** Wheel slices already used when "remove after landing" is on: wheelId → segment ids. */
+  removedSegments?: Record<Id, Id[]>;
   currentClue: ClueRef | null;
   revealed: boolean;
   scoreLog: ScoreEvent[];
@@ -425,6 +500,8 @@ export function newGame(): Game {
     final: { enabled: true, category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 },
     media: [],
     audio: {},
+    wheels: [],
+    dice: [],
   };
 }
 
@@ -457,6 +534,8 @@ export function migrateGame(data: Game): Game {
   g.final = { ...d.final, ...(data.final ?? {}) };
   g.media ??= [];
   g.audio ??= {};
+  g.wheels ??= [];
+  g.dice ??= [];
   g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
   return g;
 }

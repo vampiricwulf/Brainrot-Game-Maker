@@ -16,6 +16,7 @@
   import ScoreBar from './ScoreBar.svelte';
   import TimerDisplay from './TimerDisplay.svelte';
   import Confetti from './Confetti.svelte';
+  import ToolOverlay from './tools/ToolOverlay.svelte';
 
   let {
     game,
@@ -153,6 +154,10 @@
 
 {#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board')}
   <TimerDisplay timer={live.timer} />
+{/if}
+
+{#if live.overlay}
+  <ToolOverlay o={live.overlay} {game} {session} {role} />
 {/if}
 
 <div class="pops" style:bottom={session.phase === 'board' ? '270px' : '40px'}>

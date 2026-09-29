@@ -71,8 +71,23 @@
           <select bind:value={clue.type} disabled={clue.empty}>
             <option value="standard">Standard</option>
             <option value="dailyDouble">⭐ Daily Double</option>
+            <option value="wheel">🎡 Wheel</option>
+            <option value="dice">🎲 Dice</option>
           </select>
         </label>
+        {#if clue.type === 'wheel'}
+          <select bind:value={clue.wheelId} aria-label="Which wheel">
+            <option value={undefined}>Choose a wheel…</option>
+            {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+          </select>
+          {#if !app.game.wheels.length}<span class="muted small">Make one in the 🎡 Wheels & Dice tab</span>{/if}
+        {:else if clue.type === 'dice'}
+          <select bind:value={clue.diceId} aria-label="Which dice">
+            <option value={undefined}>Choose dice…</option>
+            {#each app.game.dice as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+          </select>
+          {#if !app.game.dice.length}<span class="muted small">Make some in the 🎡 Wheels & Dice tab</span>{/if}
+        {/if}
         <label class="check"><input type="checkbox" bind:checked={clue.empty} /> Empty tile (not playable)</label>
         <label class="check">
           Value
@@ -121,6 +136,12 @@
         </div>
       </div>
 
+      {#if clue.type === 'wheel' || clue.type === 'dice'}
+        <p class="muted small hint">
+          When this tile is picked, the {clue.type} appears full-screen for the host to {clue.type === 'wheel' ? 'spin' : 'roll'}. The question slide
+          below is optional; it shows after the {clue.type} is closed.
+        </p>
+      {/if}
       {#if !clue.empty}
         <div class="tabs" role="tablist">
           <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question (shown to players)</button>
@@ -176,6 +197,9 @@
   }
   .opts input[type='number'] {
     width: 100px;
+  }
+  .hint {
+    margin: 0;
   }
   .secs {
     width: 70px;

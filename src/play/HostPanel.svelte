@@ -8,6 +8,8 @@
   import DDControls from './host/DDControls.svelte';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
+  import ToolsControls from './host/ToolsControls.svelte';
+  import { app } from '../lib/app.svelte';
   import type { Snippet } from 'svelte';
 
   let {
@@ -36,6 +38,7 @@
     onhide,
     onexit,
     onaudience,
+    oncloseoverlay,
   }: {
     game: Game;
     session: Session;
@@ -63,6 +66,7 @@
     onhide: () => void;
     onexit: () => void;
     onaudience: () => void;
+    oncloseoverlay: () => void;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -134,6 +138,10 @@
     <span class="spacer"></span>
     <TimerControls defaultSeconds={timerDefault} />
   </div>
+
+  {#if app.live.overlay}
+    <ToolsControls {game} {session} onclose={oncloseoverlay} />
+  {/if}
 
   <MediaControls {dual} />
 
@@ -258,8 +266,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 55vh;
-    overflow-y: auto;
+    /* No overflow clipping: tool menus pop upward out of the panel. The stage above shrinks instead. */
   }
   .val {
     color: var(--value);

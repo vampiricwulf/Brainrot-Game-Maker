@@ -5,7 +5,10 @@
     applyScore, backToBoard, clueReason, currentClueInfo, ddShowQuestion, finalNext, goToRound, introNext, openClue, redo,
     reveal, skipIntro, startIntro, undo,
   } from '../lib/session';
-  import { playSound, startTimer, timerRemaining, toggleTimer } from '../lib/live';
+  import { overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer } from '../lib/live';
+  import { openDice, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
+  import type { DicePreset } from '../lib/model';
+  import ToolLauncher from './host/ToolLauncher.svelte';
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
   import AudienceView from './AudienceView.svelte';
@@ -116,10 +119,47 @@
   function pick(ref: ClueRef): void {
     openClue(session, ref, game);
     selected = [];
-    amount = currentClueInfo(session, game)?.value ?? null;
+    const c = currentClueInfo(session, game);
+    amount = c?.value ?? null;
     app.live.timer = null;
+    app.live.overlay = null;
     if (session.dd) playSound(app.live, game.audio.dailyDouble);
-    else autoTimer();
+    else if (c?.clue.type === 'wheel') {
+      const w = game.wheels.find((x) => x.id === c.clue.wheelId);
+      if (w) openWheel(app.live, session, w);
+      else toast('This tile has no wheel chosen');
+    } else if (c?.clue.type === 'dice') {
+      const d = game.dice.find((x) => x.id === c.clue.diceId);
+      if (d) openDice(app.live, d);
+      else toast('This tile has no dice chosen');
+    } else autoTimer();
+  }
+
+  // ---------- Tools (dice / wheel / roll-off) ----------
+  let lastDice: DicePreset = quickDice(6, 1, 'd6');
+  $effect(() => {
+    const o = app.live.overlay;
+    if (o?.kind === 'dice') lastDice = o.preset;
+  });
+
+  function rolloff(ids: string[], sides: number): void {
+    startRollOff(app.live, session, ids, sides);
+    const o = app.live.overlay;
+    if (o?.kind !== 'rolloff') return;
+    const winner = o.winner;
+    const nonce = o.nonce;
+    setTimeout(() => {
+      // Only if that roll-off is still the one on screen (or was closed after finishing).
+      if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) session.currentPickerId = winner;
+    }, overlayDoneAt(o) - Date.now() + 200);
+  }
+
+  function closeOverlay(): void {
+    const o = app.live.overlay;
+    if (o?.kind === 'rolloff' && Date.now() >= overlayDoneAt(o)) session.currentPickerId = o.winner;
+    app.live.overlay = null;
+    // A wheel/dice tile shows its question (if any) once the tool is closed.
+    if (session.phase === 'clue') autoTimer();
   }
 
   function ddShow(playerId: string, wager: number): void {
@@ -234,7 +274,25 @@
       case 'escape':
       case 'b':
         if (showLog) showLog = false;
+        else if (app.live.overlay) closeOverlay();
         else if (session.phase === 'clue') back();
+        break;
+      case 'd':
+        if (app.live.overlay?.kind !== 'dice' || Date.now() >= overlayDoneAt(app.live.overlay)) rollDice(app.live, session, lastDice);
+        break;
+      case 'w': {
+        const o = app.live.overlay;
+        if (o?.kind === 'wheel') {
+          if (Date.now() >= overlayDoneAt(o)) spinWheel(app.live, session, game);
+        } else if (game.wheels[0]) openWheel(app.live, session, game.wheels[0]);
+        else toast('No saved wheels: use the 🎡 Wheel button for a quick one');
+        break;
+      }
+      case 'o':
+        rolloff(session.players.map((p) => p.id), game.settings.rollOffDie || 20);
+        break;
+      case 's':
+        toggleScoreboard(app.live);
         break;
       case 'n':
         if (session.phase === 'board' && session.intro) intro();
@@ -356,9 +414,15 @@
         onplayers={() => (showPlayers = true)}
         {dual}
         onaudience={toggleAudience}
+        oncloseoverlay={closeOverlay}
+        onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20)}
         onhide={() => (hideControls = true)}
         onexit={() => confirm('Leave this game? Progress is kept until you start a new game.') && onexit()}
-      />
+      >
+        {#snippet tools()}
+          <ToolLauncher {game} {session} onrolloff={rolloff} />
+        {/snippet}
+      </HostPanel>
     {/if}
   </div>
   {#if showLog}

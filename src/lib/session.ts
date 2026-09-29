@@ -38,13 +38,15 @@ export function applyScore(
   amount: number,
   reason: string,
   clueId?: string,
+  /** Skip the no-negative-scores clamp (for deliberate effects like "Bankrupt" or swaps). */
+  exact = false,
 ): ScoreEvent[] {
   if (!Number.isFinite(amount) || amount === 0) return [];
   const events: ScoreEvent[] = [];
   for (const playerId of playerIds) {
     if (!session.players.some((p) => p.id === playerId)) continue;
     let delta = amount;
-    if (!game.settings.allowNegativeScores && delta < 0) {
+    if (!exact && !game.settings.allowNegativeScores && delta < 0) {
       delta = Math.max(delta, -Math.max(0, score(session, playerId)));
       if (delta === 0) continue;
     }
