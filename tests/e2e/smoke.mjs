@@ -1005,6 +1005,22 @@ await page.getByText(/^Total: \d+$/).waitFor({ timeout: 5000 });
 assert(true, 'quick 2d6 roll shows the total');
 await page.keyboard.press('Escape');
 
+// The built-in player wheel: a slice per player; the host can make the winner the picker.
+await page.getByRole('button', { name: '🎡 Wheel' }).click();
+await page.getByRole('button', { name: '🎯 Pick a player' }).click();
+const slices = await page.locator('.stage-box svg text').allTextContents();
+assert(slices.join() === 'Player 1,Player 2,Player 3', `the player wheel has a slice per player (${slices.join(', ')})`);
+await page.getByRole('button', { name: 'Spin!' }).click();
+const makePicker = page.getByRole('button', { name: /^★ Make .+ the picker$/ });
+const pickedWheel = page.getByText(/^★ .+ picks the next clue\.$/);
+await makePicker.or(pickedWheel).waitFor({ timeout: 10000 });
+const wheelPick = (await page.locator('.tc .result b').innerText()).trim();
+if (await makePicker.count()) await makePicker.click();
+await page.getByText(`★ ${wheelPick} picks the next clue.`).waitFor();
+const pickerIdx = await page.locator('.panel .p').evaluateAll((els) => els.findIndex((e) => e.classList.contains('picker')));
+assert(pickerIdx >= 0 && (await page.locator('.panel .p').nth(pickerIdx).innerText()).includes(wheelPick), `the wheel landed on ${wheelPick}, who is now the picker`);
+await page.keyboard.press('Escape');
+
 // Roll-off: everyone rolls; the winner becomes the current picker.
 await page.keyboard.press('o');
 await page.getByText(/goes first!/).waitFor({ timeout: 20000 });
@@ -1013,7 +1029,7 @@ await page.keyboard.press('Escape');
 await page.getByRole('button', { name: '📜 Log' }).click();
 await page.getByRole('button', { name: /Rolls \(/ }).click();
 const rollsText = await page.locator('aside .list').innerText();
-assert(rollsText.includes('goes first') && rollsText.includes('Punishment Wheel') && rollsText.includes('2d6'), 'roll log lists the wheel, dice and roll-off');
+assert(rollsText.includes('goes first') && rollsText.includes('Punishment Wheel') && rollsText.includes('2d6') && rollsText.includes('Pick a player'), 'roll log lists the wheels, dice and roll-off');
 assert(rollsText.includes('For: Player 3'), 'roll log keeps the "who it was for" tag');
 await page.keyboard.press('Escape');
 await page.getByRole('button', { name: '📊 Scores' }).click();

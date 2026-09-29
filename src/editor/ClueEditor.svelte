@@ -3,7 +3,7 @@
   import { app } from '../lib/app.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { setSlideText, slideText, type Round, type TextEl } from '../lib/model';
+  import { PLAYER_WHEEL, setSlideText, slideText, type Round, type TextEl } from '../lib/model';
   import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
@@ -95,9 +95,10 @@
         {#if clue.type === 'wheel'}
           <select bind:value={clue.wheelId} aria-label="Which wheel">
             <option value={undefined}>Choose a wheel…</option>
+            <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
             {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
           </select>
-          {#if !app.game.wheels.length}<span class="muted small">Make one in the 🎡 Wheels & Dice tab</span>{/if}
+          {#if !app.game.wheels.length}<span class="muted small">Make your own in the 🎡 Wheels & Dice tab</span>{/if}
         {:else if clue.type === 'dice'}
           <select bind:value={clue.diceId} aria-label="Which dice">
             <option value={undefined}>Choose dice…</option>

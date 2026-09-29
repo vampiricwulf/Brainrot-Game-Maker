@@ -3,7 +3,7 @@
   import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, Session } from '../../lib/model';
-  import { openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
+  import { openPlayerWheel, openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
   import { parseDice, QUICK_DICE } from '../../lib/tools';
 
   let { game, session, onrolloff }: { game: Game; session: Session; onrolloff: (ids: string[], sides: number) => void } = $props();
@@ -52,10 +52,15 @@
     <button onclick={() => (menu = menu === 'wheel' ? null : 'wheel')}>🎡 Wheel</button>
     {#if menu === 'wheel'}
       <div class="menu">
+        <button
+          class="small item"
+          disabled={session.players.length < 2}
+          title={session.players.length < 2 ? 'Needs at least two players' : 'A wheel of the players, in their colors'}
+          onclick={() => ((menu = null), openPlayerWheel(app.live, session))}>🎯 Pick a player</button>
         {#each game.wheels as w (w.id)}
           <button class="small item" onclick={() => ((menu = null), openWheel(app.live, session, w))}>{w.name}</button>
         {:else}
-          <div class="muted small">No saved wheels yet: make them in the editor's 🎡 tab, or use a quick one:</div>
+          <div class="muted small">No saved wheels yet: make them in the editor's 🎡 tab, or use a quick one.</div>
         {/each}
         <div class="muted small">Quick wheel (one option per line)</div>
         <textarea rows="4" bind:value={quickList} placeholder={'Sing a song\nDo 10 push-ups\nSkip'}></textarea>

@@ -33,6 +33,11 @@
   const lastRoll = $derived(session.rollLog?.at(-1));
   const removed = $derived(o?.kind === 'wheel' && o.wheelId ? (session.removedSegments?.[o.wheelId]?.length ?? 0) : 0);
 
+  /** The player the "Pick a player" wheel landed on. */
+  const picked = $derived(
+    o?.kind === 'wheel' && o.players && o.result !== null && o.spin ? session.players.find((p) => p.id === o.segments[o.result!]?.id) : undefined,
+  );
+
   function tag(id: string): void {
     if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !lastRoll) return;
     const cur = lastRoll.playerIds ?? [];
@@ -65,7 +70,17 @@
       {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}
       <button onclick={onclose} title="Esc">Close</button>
     </div>
-    {#if (o.kind === 'wheel' || o.kind === 'dice') && resultText && !busy}
+    {#if picked && !busy}
+      <div class="row">
+        {#if session.currentPickerId === picked.id}
+          <span class="muted small">★ {picked.name} picks the next clue.</span>
+        {:else}
+          <button class="small" onclick={() => (session.currentPickerId = picked.id)} title="Mark them as the player who picks the next clue">
+            ★ Make {picked.name} the picker
+          </button>
+        {/if}
+      </div>
+    {:else if (o.kind === 'wheel' || o.kind === 'dice') && resultText && !busy && !(o.kind === 'wheel' && o.players)}
       <div class="row">
         <span class="muted small">This was for (optional, goes in the roll log):</span>
         {#each session.players as p (p.id)}

@@ -18,6 +18,25 @@ export function openWheel(live: Live, session: Session, wheel: WheelPreset): voi
   };
 }
 
+/** One slice per player, in their colors. */
+function playerSegments(session: Session): WheelSegment[] {
+  return session.players.map((p) => ({ id: p.id, label: p.name, color: p.color, weight: 1 }));
+}
+
+/** The built-in "Pick a player" wheel: lands on one of the current players. */
+export function openPlayerWheel(live: Live, session: Session): void {
+  live.overlay = {
+    kind: 'wheel',
+    nonce: newId(),
+    name: 'Pick a player',
+    players: true,
+    segments: playerSegments(session),
+    rotation: 0,
+    spin: null,
+    result: null,
+  };
+}
+
 /** A throwaway wheel from a plain list of options. */
 export function openQuickWheel(live: Live, labels: string[]): void {
   live.overlay = {
@@ -36,6 +55,8 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   if (!o || o.kind !== 'wheel') return;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
   if (preset) o.segments = JSON.parse(JSON.stringify(activeSegments(session, preset))) as WheelSegment[];
+  // Players added, renamed or removed since the wheel opened.
+  if (o.players) o.segments = playerSegments(session);
   if (!o.segments.length) return;
   const index = weightedIndex(o.segments.map((s) => s.weight));
   const from = o.rotation;
@@ -44,9 +65,10 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   o.spin = { from, to, startedAt: Date.now(), duration };
   o.rotation = to;
   o.result = index;
-  o.tagged = undefined;
   const seg = o.segments[index];
-  logRoll(session, 'wheel', o.name, seg.label);
+  // The player wheel's result is a player: the roll log says who it was for.
+  o.tagged = o.players ? [seg.id] : undefined;
+  logRoll(session, 'wheel', o.name, seg.label, o.players ? [seg.id] : undefined);
   if (preset?.removeAfterLanding) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];

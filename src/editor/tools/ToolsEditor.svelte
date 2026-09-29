@@ -23,7 +23,10 @@
 </script>
 
 <h2>Wheels & Dice</h2>
-<p class="muted">Saved with the game. The host can spin or roll any of them during play, and a tile can be a wheel or dice tile.</p>
+<p class="muted">
+  Saved with the game. The host can spin or roll any of them during play, and a tile can be a wheel or dice tile.
+  There's also a built-in <b>🎯 Pick a player</b> wheel with a slice for each player, in their colors.
+</p>
 
 <div class="layout">
   <nav>

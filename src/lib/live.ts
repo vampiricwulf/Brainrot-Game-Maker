@@ -39,6 +39,8 @@ export type Overlay =
       nonce: string;
       name: string;
       wheelId?: Id;
+      /** The built-in "Pick a player" wheel: one slice per player (slice id = player id). */
+      players?: boolean;
       segments: WheelSegment[];
       /** Resting rotation (degrees) before/after the current spin. */
       rotation: number;

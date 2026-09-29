@@ -303,6 +303,9 @@ export interface WheelSegment extends Outcome {
   weight: number;
 }
 
+/** The built-in wheel of the current players (not saved in `game.wheels`); a wheel tile can use it by this id. */
+export const PLAYER_WHEEL = 'players';
+
 export interface WheelPreset {
   id: Id;
   name: string;

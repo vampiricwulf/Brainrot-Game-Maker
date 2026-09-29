@@ -2,7 +2,7 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { finalName, playableClues, type Game } from './model';
+import { finalName, playableClues, PLAYER_WHEEL, type Game } from './model';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
 
 export interface Problem {
@@ -29,7 +29,7 @@ export function validate(game: Game): Problem[] {
     if (noQ) out.push({ text: `${r.name}: ${noQ} clue(s) with no question`, tab: i, level: 'warn' });
     if (noA) out.push({ text: `${r.name}: ${noA} clue(s) with no answer`, tab: i, level: 'warn' });
     const broken = tools.filter((c) =>
-      c.type === 'wheel' ? !game.wheels.some((w) => w.id === c.wheelId) : !game.dice.some((d) => d.id === c.diceId),
+      c.type === 'wheel' ? c.wheelId !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === c.wheelId) : !game.dice.some((d) => d.id === c.diceId),
     ).length;
     if (broken) out.push({ text: `${r.name}: ${broken} wheel/dice tile(s) with nothing chosen`, tab: i, level: 'warn' });
   });

@@ -1,13 +1,13 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { finalName, formatPoints, getClue, newId, type ClueRef } from '../lib/model';
+  import { finalName, formatPoints, getClue, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToFinalReveal, backToLastRound, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
     redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
   } from '../lib/session';
   import { newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
-  import { openDice, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
+  import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { validate } from '../lib/validate';
   import { nextFreeColor } from '../lib/colors';
@@ -194,7 +194,8 @@
     if (session.dd) playSound(app.live, game.audio.dailyDouble);
     else if (c?.clue.type === 'wheel') {
       const w = game.wheels.find((x) => x.id === c.clue.wheelId);
-      if (w) openWheel(app.live, session, w);
+      if (c.clue.wheelId === PLAYER_WHEEL) openPlayerWheel(app.live, session);
+      else if (w) openWheel(app.live, session, w);
       else toast('This tile has no wheel chosen');
     } else if (c?.clue.type === 'dice') {
       const d = game.dice.find((x) => x.id === c.clue.diceId);
