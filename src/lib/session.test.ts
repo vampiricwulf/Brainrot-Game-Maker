@@ -251,9 +251,10 @@ describe('undo as one step', () => {
     const { game, session, a, b, c } = setup();
     applyScore(session, game, [a], 50, 'earlier');
     applyScore(session, game, [a, b, c], 200, 'x');
-    expect(undo(session)).toHaveLength(3);
+    expect(undo(session).map((e) => e.playerId)).toEqual([a, b, c]);
     expect([score(session, a), score(session, b), score(session, c)]).toEqual([50, 0, 0]);
-    expect(redo(session)).toHaveLength(3);
+    // Back in the order they happened, as undo gave them.
+    expect(redo(session).map((e) => e.playerId)).toEqual([a, b, c]);
     expect([score(session, a), score(session, b), score(session, c)]).toEqual([250, 200, 200]);
     // Two undos take back both steps; one redo brings back only the earlier one.
     undo(session);
