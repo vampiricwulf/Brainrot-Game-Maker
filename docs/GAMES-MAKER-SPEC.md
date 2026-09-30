@@ -1,6 +1,6 @@
 # Brainrot Games Maker: specification
 
-Status: draft 1 (2026-09-30). This extends [`SPEC.md`](SPEC.md), which stays the reference for everything the
+Status: draft 2 (2026-09-30), with every draft-1 question answered. This extends [`SPEC.md`](SPEC.md), which stays the reference for everything the
 Jeopardy modes do today. Nothing is removed: the Jeopardy board, Final Jeopardy, slides, media, wheels, dice, timers,
 sounds, the audience window, the desktop app and every file format keep working.
 
@@ -12,7 +12,7 @@ sounds, the audience window, the desktop app and every file format keep working.
 4. [The rename](#4-the-rename)
 5. [Architecture: a toolset plus round modes](#5-architecture-a-toolset-plus-round-modes)
 6. [Round modes: Jeopardy board and Final Jeopardy](#6-round-modes-jeopardy-board-and-final-jeopardy)
-7. [Round mode: Adventure (the RPG map)](#7-round-mode-adventure-the-rpg-map)
+7. [Round mode: RPG (the map game)](#7-round-mode-rpg-the-map-game)
 8. [Editor changes](#8-editor-changes)
 9. [Host controls in play](#9-host-controls-in-play)
 10. [What the audience sees](#10-what-the-audience-sees)
@@ -27,12 +27,12 @@ sounds, the audience window, the desktop app and every file format keep working.
 ## 1. Goals
 
 - **One program for many game shows.** "Jeopardy Builder" becomes **Brainrot Games Maker**. A game is a list of
-  rounds, and each round picks a **mode**: *Jeopardy board*, *Final Jeopardy*, or the new *Adventure* mode. More modes
+  rounds, and each round picks a **mode**: *Jeopardy board*, *Final Jeopardy*, or the new *RPG* mode. More modes
   can be added later without touching the others.
 - **The existing features become a shared toolset** that every mode uses: players and scores, slides and the slide
   editor, media, wheels, dice, the roll-off, timers, sounds, pop-up overlays, the score log with undo, the audience
   window and the theme.
-- **Adventure mode** hosts the kind of improvised RPG that Magic The Noah runs:
+- **RPG mode** hosts the kind of improvised RPG that Magic The Noah runs:
   - The host builds a world of **screens**, like Legend of Zelda's flip-screens, arranged on **maps**. There is one
     primary map of connected screens, plus any number of maps that aren't connected to it (dungeons, shops,
     interiors, a "Shadow Realm").
@@ -43,8 +43,7 @@ sounds, the audience window, the desktop app and every file format keep working.
 - **The rule of funny.** Nothing happens without the host, and the host can override anything at any time: teleport
   anyone anywhere, edit any number, invent an item, add an object mid-show, rewrite a price, or undo.
 - **The host is the only operator.** Players talk over voice or chat. There are two windows, as today: host controls,
-  and the audience view that OBS or Discord captures. Nothing in the design should rule out a player-facing view
-  later (§14).
+  and the audience view that OBS or Discord captures. A player-facing view is out of scope.
 
 ## 2. Decisions so far
 
@@ -59,7 +58,15 @@ These are the answers to the questions asked while writing this spec.
 | Object triggers | Objects can trigger **wheels and dice**, **question/clue slides**, **sounds, videos and pop-up slides**, and **stat and inventory changes**. |
 | Avatars | An **image per player**, a **fallback token** (colored circle with initials), and **equipment shown on the avatar**. |
 | Operators | **Host only**, with two windows. |
-| Rename | **Keep everything working**: old `.jbr` packs and exported HTML files still open; the desktop app carries its autosave, media and settings over from the old folders; a new file extension from then on. |
+| Rename | **Keep everything working**: old `.jbr` packs and exported HTML files still open; the desktop app carries its autosave, media and settings over from the old folders. New packs use **`.brainrot`**. |
+| Mode name | The map-based mode is called **RPG** (`mode: 'rpg'`). |
+| Next mode | A **Board game** mode (Magic The Noah's spin-to-move loop) comes **next after RPG** (§7.13). |
+| Old games with Final Jeopardy switched off | **Dropped** on upgrade. |
+| Player info on stream | **A stats strip always, plus a full player sheet the host pops up on demand.** |
+| Big shows | Past 12 players, the strip shows **only the focused party**. The scoreboard overlay shows everyone. |
+| Music | Map and screen music **cross-fades**. The same track carries on without restarting. |
+| Player view | **Out of scope.** Host-only for good, so nothing is designed for a player-facing view. |
+| Logo | **New icon and wordmark made for the rename**, in the app's current colors (it can be swapped later). |
 
 ## 3. Research summary
 
@@ -127,10 +134,10 @@ because video pages couldn't be opened from the research environment.
 | Desktop exe | `jeopardy-builder-portable.exe` | `brainrot-games-maker-portable.exe` |
 | Tauri `productName` / crate name | Jeopardy Builder / `jeopardy-builder` | Brainrot Games Maker / `brainrot-games-maker` |
 | Tauri identifier (sets the data folders) | `com.jeopardybuilder.brainrot` | `com.brainrotgames.maker` (see §4.3) |
-| Game pack extension | `.jbr` | **`.bgm`**, with `.jbr` still opened forever (see §14 Q1 for alternatives) |
+| Game pack extension | `.jbr` | **`.brainrot`**, with `.jbr` still opened forever |
 | Clipboard type for slide items | `application/x-jeopardy-slide-items` | `application/x-brainrot-slide-items`; the old one is still read |
 | Default round names | "Jeopardy!", "Double Jeopardy!", "Final Jeopardy!" | Unchanged: they name the Jeopardy modes, not the program |
-| App icon | "Jeopardy" artwork | New artwork (§14 Q8) |
+| App icon | "Jeopardy" artwork | A new icon and wordmark in the app's current colors |
 
 The Jeopardy modes keep their Jeopardy wording. Only the program's own name changes.
 
@@ -204,7 +211,7 @@ Already mode-agnostic today:
 - **Windows:** audience window, sync, audio output, the Discord audio fix.
 - **Screens:** the theme's score bar and fonts, the end screen, ties and rematch.
 
-New tools that every mode can use (built for Adventure, but not tied to it):
+New tools that every mode can use (built for RPG mode, but not tied to it):
 
 - **Stats:** host-defined player fields (§7.7). A Jeopardy game can use them too (e.g. "lives").
 - **Items and inventory** (§7.8).
@@ -218,7 +225,7 @@ New tools that every mode can use (built for Adventure, but not tied to it):
 ### 5.2 Round modes
 
 ```ts
-type RoundMode = 'board' | 'final' | 'adventure';
+type RoundMode = 'board' | 'final' | 'rpg';   // 'boardgame' next (§7.13)
 
 interface RoundBase {
   id: Id;
@@ -227,7 +234,7 @@ interface RoundBase {
   intro?: RoundIntro;          // title card (all modes); board-only steps live on the board round
   hostNotes?: string;
 }
-type Round = BoardRound | FinalRound | AdventureRound;
+type Round = BoardRound | FinalRound | RpgRound;
 ```
 
 Each mode is a module that registers the same set of parts. The rest of the app never branches on the mode itself.
@@ -235,7 +242,7 @@ Each mode is a module that registers the same set of parts. The rest of the app 
 ```ts
 interface ModeModule<R extends Round, S> {
   mode: RoundMode;
-  label: string;                                   // "Jeopardy board", "Final Jeopardy", "Adventure"
+  label: string;                                   // "Jeopardy board", "Final Jeopardy", "RPG"
   newRound(game: Game): R;
   newState(game: Game, round: R, session: Session): S;   // runtime state, kept per round in the session
   // Editor
@@ -272,7 +279,7 @@ interface Session {
   phase: 'round' | 'end';                          // mode sub-states move into modeState
   introducedRounds?: number[];
   rounds: Record<Id, unknown>;                     // modeState per round id (board: used tiles, open clue, DD…)
-  worlds?: Record<Id, WorldState>;                 // Adventure state per world, shared by every round that uses it
+  worlds?: Record<Id, WorldState>;                 // RPG state per world, shared by every round that uses it
   stats?: Record<Id /*player*/, Record<Id /*field*/, StatValue>>;
   inventories?: Record<Id /*player*/, InventoryEntry[]>;
   currentPickerId?: Id;
@@ -288,7 +295,7 @@ interface Session {
 
 ### 5.4 Round order and navigation
 
-- The editor's nav lists rounds in play order with a mode icon: 🟦 board, ⭐ final, 🗺 adventure. Rounds can be
+- The editor's nav lists rounds in play order with a mode icon: 🟦 board, ⭐ final, 🗺 RPG. Rounds can be
   reordered, duplicated, and have their mode chosen when created (§8.1).
 - In play, **RoundNav** moves to the previous or next round. The **round picker** lets the host jump to any round,
   because the rule of funny allows playing out of order. Leaving a round keeps its state, so coming back resumes it.
@@ -319,14 +326,14 @@ interface Session {
 The tiebreaker stays an **end-screen tool**: an optional question and answer at game level (`game.tiebreaker`).
 Ties only matter at the end.
 
-## 7. Round mode: Adventure (the RPG map)
+## 7. Round mode: RPG (the map game)
 
 ### 7.1 Concepts
 
 | Term | Meaning |
 |---|---|
-| **World** | A self-contained adventure: maps, screens, items, shops, stat fields. Stored at game level (`game.worlds`), so several rounds can share one world. Example: Adventure, then a Jeopardy break, then back to the adventure, with everything where it was left. |
-| **Adventure round** | A round in `adventure` mode. It points at a world and says where the party starts (or continues from). |
+| **World** | A self-contained adventure: maps, screens, items, shops, stat fields. Stored at game level (`game.worlds`), so several rounds can share one world. Example: an RPG round, then a Jeopardy break, then back to the adventure, with everything where it was left. |
+| **RPG round** | A round in `rpg` mode. It points at a world and says where the party starts (or continues from). |
 | **Map** | A grid of screens. Each world has one **primary map** and any number of **other maps** (dungeons, shops, interiors, the Shadow Realm). They are usually unconnected, and doorways link them. A map can be one screen (a shop interior). |
 | **Screen** | One cell of a map: a slide (background plus elements) with classes on its objects. It is what the audience sees when the party is there. |
 | **Object** | A slide element with an optional **class** (doorway, item, NPC…) and class data. Plain elements are scenery. |
@@ -357,7 +364,7 @@ interface WorldMap {
     style: 'thumbnails' | 'tiles';   // screen snapshots, or colored tiles with names and icons
   };
   transition: 'slide' | 'fade' | 'cut';   // default screen-to-screen transition on this map
-  music?: Id;                        // optional looping background sound for the map
+  music?: Id;                        // optional looping background sound; cross-fades when it changes
 }
 interface Screen {
   id: Id; name: string;              // shown to the host; to the audience only if chosen
@@ -428,8 +435,8 @@ type ObjectRole =
 ### 7.4 Round setup
 
 ```ts
-interface AdventureRound extends RoundBase {
-  mode: 'adventure';
+interface RpgRound extends RoundBase {
+  mode: 'rpg';
   world: Id;
   start: 'continue' | { at: ScreenRef; spawn?: Id };   // continue = wherever players were in this world
   showMapOnStart?: boolean;
@@ -515,7 +522,7 @@ interface Avatar {                         // how the token is drawn in play
   - give it a temporary label ("🐸 cursed").
 - **Also on avatars:**
   - Score pops and stat changes float up from the avatar.
-  - The **player wheel** and the **roll-off** also work in adventure rounds.
+  - The **player wheel** and the **roll-off** also work in RPG rounds.
 
 ### 7.7 Character sheets (stats)
 
@@ -568,8 +575,9 @@ interface InventoryEntry { id: Id; item: Id | null; name?: string; qty: number; 
   - give, take, transfer, drop onto the current screen (it becomes an item object there), pick up;
   - use (runs `onUse` after confirmation), equip/unequip;
   - edit quantity or notes, rename.
-- **The audience** sees inventories on the player sheet overlay, and optionally as icons on the HUD. Individual
-  items can be marked "secret" so only the host sees them.
+- **The audience** sees inventories on the **player sheet overlay**, which the host pops up for one player at a time
+  (key I, or the card's 📺 button): a big card with the avatar, all non-hidden stats and the inventory. Items can also
+  show as icons on the HUD. Individual items can be marked "secret" so only the host sees them.
 
 ### 7.9 Shops
 
@@ -659,24 +667,39 @@ type Who = 'party' | 'selected' | 'picker' | 'ask' | Id;           // 'ask' = th
 - **Map editing in play:** the host can reveal or hide screens one at a time (click → Reveal/Hide), reveal the whole
   map (the Zelda "Map item"), or reset knowledge.
 
+### 7.13 Next: Board game mode (outline)
+
+This is Magic The Noah's other big format. It comes after RPG mode and gets its own detailed spec then. It reuses the
+RPG toolset: avatars, stats, items, shops, actions, wheels and the host-confirmed action card.
+
+- **Board:** a slide with **spaces** placed on it. Each space is a classed object with an index, and the spaces are
+  linked in a loop or a path. Paths can fork, and forks ask the host which way to go.
+- **Turns:** a turn order (roll-off or set by hand). On a turn, the active player spins a movement wheel or rolls
+  dice, and their avatar steps along the spaces. The move animates, and the host confirms or edits the count first.
+- **Spaces:** each carries actions. Examples: Start gives +2 gold when passed, a Goblin space costs 1 gold or a Bad
+  Wheel spin, and a Shop space opens a shop. "When passed" and "when landed on" are separate action lists.
+- **Off-board zones:** a Shadow Realm-style area where players are sent and stuck until they escape. It can be another
+  board, or an RPG screen.
+- **Win conditions:** secret or public, set by the host. They are notes plus an optional "check" the host runs by hand.
+
 ## 8. Editor changes
 
 ### 8.1 Nav and rounds
 
 - The **Rounds** list shows the mode icon next to each round's name.
-- **＋ Add round** asks for the mode: 🟦 Jeopardy board, ⭐ Final Jeopardy, 🗺 Adventure. Rounds can be dragged to
+- **＋ Add round** asks for the mode: 🟦 Jeopardy board, ⭐ Final Jeopardy, 🗺 RPG. Rounds can be dragged to
   reorder, duplicated, or have their mode changed (only while empty).
 - New nav entries appear only when they're used:
-  - **🌍 Worlds:** shows once there is an adventure round or a world.
+  - **🌍 Worlds:** shows once there is an RPG round or a world.
   - **📊 Stats & Items:** the stat fields; the item catalog also lives per world.
 - **Setup & Players** gains avatars (§7.6) and starting stats.
-- The checklist gains adventure checks:
+- The checklist gains RPG checks:
   - a doorway with no target;
   - a screen unreachable from the start, shown as info only, because it may be intentional (e.g. the Shadow Realm);
   - shops with no stock;
   - items used but not in the catalog;
   - missing avatar images;
-  - an adventure round with no world or start.
+  - an RPG round with no world or start.
 
 ### 8.2 World editor
 
@@ -712,7 +735,7 @@ type Who = 'party' | 'selected' | 'picker' | 'ask' | Id;           // 'ask' = th
 
 ## 9. Host controls in play
 
-### 9.1 Adventure host panel
+### 9.1 RPG host panel
 
 It is laid out around the stage the host already has:
 
@@ -754,7 +777,7 @@ Everything the host can do without prep:
 - Everything improvised belongs to the game in progress. **"Keep in game"** copies improvised objects or screens into
   the authored world, so they are saved for next time.
 
-### 9.4 Keys (adventure rounds)
+### 9.4 Keys (RPG rounds)
 
 | Key | Action |
 |---|---|
@@ -763,7 +786,7 @@ Everything the host can do without prep:
 | M | Show/hide the audience map |
 | Tab / Shift+Tab | Next/previous party (focus) |
 | I | Open the selected player's sheet |
-| O | Open the shop for the current screen (roll-off moves to Shift+O in adventure rounds) |
+| O | Open the shop for the current screen (roll-off moves to Shift+O in RPG rounds) |
 | P then 1–9 | Make player N the picker (as today) |
 | 1–9 | Select players (as today) |
 | Enter / Shift+Enter | Award/deduct score (as today) |
@@ -794,14 +817,15 @@ Every action also has a button, so a Stream Deck or other hotkey device can send
 
 ## 10. What the audience sees
 
-In an adventure round, from back to front:
+In an RPG round, from back to front:
 
 1. **The focused screen:** the slide, with no hidden objects, regions or spawn points. In split view, 2–4 screens,
    each with its party's label.
 2. **Avatars** with nameplates, equipment, status and floating pops.
 3. **The HUD:** a strip at the bottom or top, following the theme's score-bar setting. It shows each player's avatar,
    name, score (if the game uses score) and their "HUD" stats as counters, bars or hearts. Status tags appear as
-   chips. It scales down for many players, and with more than 12 players the HUD shows only the focused party.
+   chips. It scales down for many players. With more than 12 players the HUD shows only the focused party, and the
+   scoreboard overlay shows everyone.
 4. **Map overlay** when shown (§7.12).
 5. **Shop overlay, player sheet overlay, pop-up slides and question slides.**
 6. **Shared overlays:** wheels, dice, roll-off, scoreboard, timer, score pops and confetti.
@@ -816,8 +840,7 @@ In an adventure round, from back to front:
 - **v1 → v2 steps:**
   1. Every round gets `mode: 'board'`.
   2. If `final.enabled`, a `mode: 'final'` round is appended with the same name, category, slides and time. If it
-     isn't enabled, the final data is dropped. An open question is whether to keep it as a disabled round instead
-     (§14 Q4).
+     isn't enabled, the final data is dropped (decided in §2).
   3. `tiebreaker` stays where it is.
   4. `settings.finalTimerSeconds` and `settings.finalAllowNonPositive` move onto the final round.
 - **Saved games in progress** (`playSession`) are migrated too:
@@ -830,12 +853,12 @@ In an adventure round, from back to front:
 
 ### 11.2 Packs and exports
 
-- Packs keep their layout (`game.json` plus `media/`) with the new extension (`.bgm`). **Open…** accepts `.bgm`,
-  `.jbr`, `.zip` and `.json`.
-- The desktop app registers no file associations. A double-click association is optional later (§14 Q1).
-- **Exported HTML** works the same. Player-only mode supports every mode, including adventure (the host still needs
+- Packs keep their layout (`game.json` plus `media/`) with the new extension (`.brainrot`). **Open…** accepts
+  `.brainrot`, `.jbr`, `.zip` and `.json`.
+- The desktop app registers no file associations. It is a portable exe with no installer, so there is nothing to register them.
+- **Exported HTML** works the same. Player-only mode supports every mode, including RPG rounds (the host still needs
   the host view, which the export includes).
-- **Media in adventure rounds** (screens, avatars, item icons, map icons, shop backdrops) is counted by each mode's
+- **Media in RPG rounds** (screens, avatars, item icons, map icons, shop backdrops) is counted by each mode's
   `mediaRefs` and `slides`, so it is packed, pruned and reported missing like everything else.
 
 ### 11.3 Size and performance
@@ -855,10 +878,11 @@ Each milestone is shippable on its own and keeps every existing test green.
 | M2 | **Round modes (no behavior change)** | The `ModeModule` interface; board rounds move behind it; session state per round; round picker; v2 format and migration with tests. |
 | M3 | **Final as a round** | The final becomes a `final`-mode round that can be placed anywhere; FinalEditor becomes a round editor; the old "Final" nav item goes; saves and sessions are migrated. |
 | M4 | **Toolset additions** | Stat fields (Stats tab, player cards, HUD); items and inventory; pop-up slide; action runner with confirmation; the global action log with undo; cover card; element names, classes, `hidden` and host notes. |
-| M5 | **Adventure: build** | Worlds, maps, screens; world map editor with exits and warps; screen editor with the Class section, Region, Draw (path) and Spawn tools; item catalog with CSV; avatars in Setup. |
-| M6 | **Adventure: play** | Positions, parties, 8-way movement, doorways, transitions, focus and split view, preview/on air, drag avatars, the object action card, knowledge states, map overlay (full/discovered/hidden, exit arrows), keys. |
+| M5 | **RPG: build** | Worlds, maps, screens; world map editor with exits and warps; screen editor with the Class section, Region, Draw (path) and Spawn tools; item catalog with CSV; avatars in Setup. |
+| M6 | **RPG: play** | Positions, parties, 8-way movement, doorways, transitions, focus and split view, preview/on air, drag avatars, the object action card, knowledge states, map overlay (full/discovered/hidden, exit arrows), keys. |
 | M7 | **Shops and economy** | Shops, pools, shop overlay, buy/sell/haggle, score↔currency convert, currency objects, equipment on avatars. |
-| M8 | **Improvising and polish** | Drop-to-add objects, add screen live, "Keep in game", screen variants, NPC stats and Compare, wheel outcomes with actions, map music, performance with many screens and players. |
+| M8 | **Improvising and polish** | Drop-to-add objects, add screen live, "Keep in game", screen variants, NPC stats and Compare, wheel outcomes with actions, map and screen music with cross-fades, performance with many screens and players. |
+| M9 | **Board game mode** | The spin-to-move mode in §7.13, reusing the RPG mode's avatars, stats, items, shops and actions. |
 
 ## 13. Testing
 
@@ -882,30 +906,14 @@ Each milestone is shippable on its own and keeps every existing test green.
   - dual-window checks:
     - the audience window never shows hidden objects, regions, host notes, undiscovered screens or secret items;
     - preview never changes the audience;
-  - a Jeopardy → adventure → Jeopardy → final game with state kept across rounds;
+  - a Jeopardy → RPG → Jeopardy → final game with state kept across rounds;
   - opening old `.jbr` packs and old exported HTML;
   - the desktop data-folder move, with a stand-in native side as today, plus Rust unit tests for the move itself.
 - **Every existing test stays green** at every milestone. The renames update test strings in M1 only.
 
 ## 14. Open questions
 
-1. **Pack extension.** `.bgm` is short but is also used for "background music" files in some tools. Alternatives:
-   `.brainrot`, `.bgmpack`, `.brgm`. Should the desktop app register it for double-click opening?
-2. **The mode's name.** This spec calls the RPG mode **Adventure**. Other options: "RPG", "Quest", "World map".
-3. **Board-game loop.** Magic The Noah's other big format is spin-to-move around a loop of spaces, with Start
-   giving +2 gold and Goblin spaces. An Adventure map can fake it, but a dedicated **Board game** mode with spaces
-   and movement by wheel or dice may be worth a spec of its own. Should it be next after Adventure?
-4. **A disabled Final.** Should the v1 → v2 migration keep a disabled Final Jeopardy as a round that is switched off
-   (no data lost), or drop it?
-5. **Player sheets on stream.** Should the audience see a full sheet overlay (all public stats plus inventory) on
-   demand, as proposed, or only the HUD?
-6. **Many players.** With 32 players (his biggest show), should the HUD page through players, show only the focused
-   party, or show only avatars?
-7. **Music.** Per-map and per-screen looping music is proposed. Should it cross-fade between screens, or just switch?
-8. **Icon and look.** New app icon and title-card artwork for "Brainrot Games Maker". Is there a logo or color scheme
-   in mind?
-9. **Player view (later).** Players see nothing but the stream for now. Should the design reserve a player-facing
-   read-only view (their sheet and inventory on a phone), or is that out of scope for good?
+All of draft 1's questions are answered and recorded in §2. New questions will be added here as work starts.
 
 ## 15. Sources
 
