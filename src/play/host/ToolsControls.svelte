@@ -5,12 +5,12 @@
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
-  import { rollDice, spinWheel } from '../../lib/overlay';
+  import { addWheel, removeWheel, rollDice, spinWheel } from '../../lib/overlay';
   import { describeRoll } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
-  import { newId, type Action } from '../../lib/model';
+  import { newId, PLAYER_WHEEL, type Action } from '../../lib/model';
   import { describeAction, needsPlayers, runAction } from '../../lib/actions';
   import { toast } from '../../lib/app.svelte';
   import { rpgNow } from '../rpg/hostops';
@@ -24,6 +24,8 @@
   });
   const busy = $derived(!!o && now < overlayDoneAt(o));
   let actionDone = $state<string | null>(null);
+  /** Score effects of the other wheels already applied or dismissed (by spin and wheel). */
+  let doneKeys = $state<string[]>([]);
 
   const outcome = $derived.by((): Outcome | undefined => {
     if (o?.kind === 'wheel' && o.result !== null && o.spin) return o.segments[o.result];
@@ -31,12 +33,21 @@
     return undefined;
   });
   const resultText = $derived.by(() => {
-    if (o?.kind === 'wheel' && o.result !== null && o.spin) return o.segments[o.result].label;
+    if (o?.kind === 'wheel' && o.spin && (o.result !== null || o.extra?.length))
+      return [o.result !== null ? o.segments[o.result]?.label : '', ...(o.extra ?? []).map((w) => (w.result !== null ? w.segments[w.result]?.label : ''))]
+        .filter(Boolean)
+        .join(' · ');
     if (o?.kind === 'dice' && o.roll) return describeRoll(o.roll);
     return '';
   });
   const actionKey = $derived(o && 'nonce' in o ? `${o.nonce}-${o.kind === 'wheel' ? o.spin?.startedAt : o.kind === 'dice' ? o.startedAt : ''}` : '');
   const lastRoll = $derived(session.rollLog?.at(-1));
+  /** This spin's roll-log entries (one per wheel spun together). */
+  const spinRolls = $derived(o?.kind === 'wheel' && o.extra?.length ? (session.rollLog ?? []).slice(-(1 + o.extra.length)) : lastRoll ? [lastRoll] : []);
+  /** The other wheels spun with this one, once they've landed. */
+  const extraResults = $derived(
+    o?.kind === 'wheel' ? (o.extra ?? []).flatMap((w) => (w.spin && w.result !== null && w.segments[w.result] ? [{ w, seg: w.segments[w.result] }] : [])) : [],
+  );
   const removed = $derived(o?.kind === 'wheel' && o.wheelId ? (session.removedSegments?.[o.wheelId]?.length ?? 0) : 0);
 
   /** The player the "Pick a player" wheel landed on. */
@@ -46,7 +57,8 @@
 
   /** A slice's action button: for the players it was tagged for (or the one the player wheel picked), else the selected. */
   function runOutcome(a: Action): void {
-    const chosen = picked ? [picked.id] : (lastRoll?.playerIds ?? []);
+    const fromWheel = extraResults.find((r) => r.w.players)?.seg.id;
+    const chosen = picked ? [picked.id] : lastRoll?.playerIds?.length ? lastRoll.playerIds : fromWheel ? [fromWheel] : [];
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
     toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a), 3000);
@@ -55,8 +67,10 @@
   function tag(id: string): void {
     if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !lastRoll) return;
     const cur = lastRoll.playerIds ?? [];
-    lastRoll.playerIds = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-    o.tagged = lastRoll.playerIds;
+    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+    // Every wheel spun together goes in the log for the same players.
+    for (const r of spinRolls) r.playerIds = next;
+    o.tagged = next;
   }
 </script>
 
@@ -69,6 +83,25 @@
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => (o.editing = !o.editing)} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{o.pool ? ' (edited)' : ''}
         </button>
+        {#each o.extra ?? [] as w (w.key)}
+          <span class="xw">＋ {w.name}<button class="ghost tiny" disabled={busy} onclick={() => removeWheel(app.live, w.key)} aria-label="Stop spinning {w.name}">✕</button></span>
+        {/each}
+        <select
+          class="small"
+          aria-label="Spin another wheel too"
+          disabled={busy}
+          title="Spin several wheels at once"
+          onchange={(e) => {
+            const id = e.currentTarget.value;
+            e.currentTarget.value = '';
+            e.currentTarget.blur();
+            if (id) addWheel(app.live, session, game, id);
+          }}
+        >
+          <option value="">＋ Spin another wheel too…</option>
+          {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+          <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
+        </select>
         {#if removed}
           <button class="ghost small" onclick={() => o.wheelId && session.removedSegments && (session.removedSegments[o.wheelId] = [])}>
             Restore {removed} used slice{removed === 1 ? '' : 's'}
@@ -105,6 +138,30 @@
         <span class="muted small">{outcome.label}:</span>
         {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a)}>{describeAction(game, a)}</button>{/each}
       </div>
+    {/if}
+    {#if !busy}
+      {#each extraResults as r (r.w.key)}
+        {#if r.seg.actions?.length || r.seg.scoreAction || r.seg.timerSeconds}
+          <div class="row">
+            <span class="muted small">{r.w.name} → {r.seg.label}:</span>
+            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a)}>{describeAction(game, a)}</button>{/each}
+            {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
+          </div>
+          {#if r.seg.scoreAction && !doneKeys.includes(`${actionKey}-${r.w.key}`)}
+            {#key `${actionKey}-${r.w.key}`}
+              <ActionCard
+                action={r.seg.scoreAction}
+                {game}
+                {session}
+                reason={`Wheel: ${r.w.name} → ${r.seg.label}`}
+                rollTotal={0}
+                defaultTargets={lastRoll?.playerIds ?? []}
+                ondone={() => (doneKeys = [...doneKeys, `${actionKey}-${r.w.key}`])}
+              />
+            {/key}
+          {/if}
+        {/if}
+      {/each}
     {/if}
     {#if o.kind === 'shop'}
       <ShopControls {game} {session} shopId={o.shopId} {selected} />
@@ -172,6 +229,22 @@
   }
   .small {
     font-size: 12px;
+  }
+  .xw {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 2px 1px 8px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    font-size: 12px;
+  }
+  .tiny {
+    font-size: 10px;
+    padding: 0 4px;
+  }
+  select.small {
+    padding: 2px 6px;
   }
   .result {
     max-width: 50%;

@@ -22,6 +22,7 @@
     selected = $bindable(),
     amount = $bindable(),
     rpgObject = $bindable(null),
+    rpgMap = $bindable(false),
     dual,
     pickerPending = false,
     finishArmed = false,
@@ -61,6 +62,8 @@
     amount: number | null;
     /** RPG rounds: the object whose card is open (clicked on the stage). */
     rpgObject?: string | null;
+    /** RPG rounds: the full map (jump anywhere) is open. */
+    rpgMap?: boolean;
     dual: boolean;
     /** P was pressed and the next number key picks the picker. */
     pickerPending?: boolean;
@@ -264,7 +267,7 @@
   {/if}
 
   {#if session.phase === 'rpg'}
-    <RpgHost {game} {session} bind:selected bind:object={rpgObject} {dual} />
+    <RpgHost {game} {session} bind:selected bind:object={rpgObject} bind:mapOpen={rpgMap} {dual} />
   {/if}
 
   {#if session.phase === 'end'}

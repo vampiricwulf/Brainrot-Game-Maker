@@ -3,7 +3,7 @@
 import { newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type Game, type Session, type Who, type World, type WorldState } from './model';
 import { sendTo, spaceById } from './boardgame';
 import { playSound, startTimer, type Live } from './live';
-import { openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
+import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
 import { applyScore } from './session';
 import { activeParty, moveTo, override } from './rpg';
@@ -65,8 +65,10 @@ export function describeAction(game: Game, a: Action): string {
       return `${a.op === 'give' ? 'Give' : 'Take'} ${a.qty} ${itemDef(game, a.item)?.name ?? 'item'}`;
     case 'score':
       return `${a.amount >= 0 ? '+' : '−'}${game.settings.currencySymbol}${Math.abs(a.amount)}`;
-    case 'wheel':
-      return a.wheel === PLAYER_WHEEL ? 'Spin: Pick a player' : `Spin ${game.wheels.find((w) => w.id === a.wheel)?.name ?? 'wheel'}`;
+    case 'wheel': {
+      const name = (id: string) => (id === PLAYER_WHEEL ? 'Pick a player' : (game.wheels.find((w) => w.id === id)?.name ?? 'wheel'));
+      return `Spin ${[a.wheel, ...(a.also ?? [])].map(name).join(' + ')}`;
+    }
     case 'dice':
       return `Roll ${a.dice}`;
     case 'popup':
@@ -131,6 +133,7 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
         if (!w) return 'That wheel no longer exists';
         openWheel(live, session, w);
       }
+      for (const id of a.also ?? []) addWheel(live, session, game, id);
       return text;
     }
     case 'dice': {

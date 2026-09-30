@@ -613,7 +613,8 @@ export type Who = 'party' | 'selected' | 'picker' | 'ask' | 'all';
 /** Something the host can run (from an object, an item's "Use", a wheel slice…). Always shown to the host first. */
 export type Action = { id: Id } & (
   | { do: 'move'; to: ScreenRef; who?: Who }
-  | { do: 'wheel'; wheel: Id }
+  /** `also`: more wheels spun together with it. */
+  | { do: 'wheel'; wheel: Id; also?: Id[] }
   | { do: 'dice'; dice: string }
   | { do: 'popup'; slide: Slide }
   | { do: 'question'; question: Slide; answer: Slide; value?: number }

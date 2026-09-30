@@ -1,6 +1,6 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { newId, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
-import type { Live } from './live';
+import { newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
+import type { ExtraWheel, Live } from './live';
 import {
   activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, spinTarget, weightedIndex,
   type PoolSlice,
@@ -93,6 +93,56 @@ export function resetWheelEdits(o: WheelOverlay, session: Session, game: Game): 
   o.tagged = undefined;
 }
 
+/** Add another wheel to spin together with the one on screen (a saved wheel, or the player wheel). */
+export function addWheel(live: Live, session: Session, game: Game, wheelId: string): void {
+  const o = live.overlay;
+  if (!o || o.kind !== 'wheel') return;
+  const preset = game.wheels.find((w) => w.id === wheelId);
+  const players = wheelId === PLAYER_WHEEL;
+  if (!preset && !players) return;
+  const w: ExtraWheel = {
+    key: newId(),
+    name: preset?.name ?? 'Pick a player',
+    wheelId: preset?.id,
+    players: players || undefined,
+    segments: preset ? copy(activeSegments(session, preset)) : playerSegments(session),
+    rotation: 0,
+    spin: null,
+    result: null,
+  };
+  o.extra = [...(o.extra ?? []), w];
+}
+
+export function removeWheel(live: Live, key: string): void {
+  const o = live.overlay;
+  if (o?.kind !== 'wheel') return;
+  o.extra = (o.extra ?? []).filter((w) => w.key !== key);
+  if (!o.extra.length) o.extra = undefined;
+}
+
+/** Spin one extra wheel (no per-run edits: those are for the main wheel). */
+function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: number): void {
+  const preset = w.wheelId ? game.wheels.find((x) => x.id === w.wheelId) : undefined;
+  if (preset) w.segments = copy(activeSegments(session, preset));
+  else if (w.players) w.segments = playerSegments(session);
+  if (!w.segments.length) return;
+  const index = weightedIndex(w.segments.map((s) => s.weight));
+  const from = w.rotation;
+  const to = spinTarget(w.segments, index, from);
+  // A little later than the others each, so they land one after another.
+  w.spin = { from, to, startedAt, duration: preset?.spinDurationMs ?? 5000 };
+  w.rotation = to;
+  w.result = index;
+  const seg = w.segments[index];
+  logRoll(session, 'wheel', w.name, seg.label, w.players ? [seg.id] : undefined);
+  if (preset?.removeAfterLanding) {
+    session.removedSegments ??= {};
+    session.removedSegments[preset.id] ??= [];
+    const list = session.removedSegments[preset.id];
+    if (!list.includes(seg.id)) list.push(seg.id);
+  }
+}
+
 export function spinWheel(live: Live, session: Session, game: Game): void {
   const o = live.overlay;
   if (!o || o.kind !== 'wheel') return;
@@ -110,7 +160,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   } else if (preset) o.segments = copy(activeSegments(session, preset));
   // Players added, renamed or removed since the wheel opened.
   else if (o.players) o.segments = playerSegments(session);
-  if (!o.segments.length) return;
+  if (!o.segments.length) return spinExtras(o, session, game);
   const index = weightedIndex(o.segments.map((s) => s.weight));
   const from = o.rotation;
   const to = spinTarget(o.segments, index, from);
@@ -128,6 +178,12 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
     const list = session.removedSegments[preset.id];
     if (!list.includes(seg.id)) list.push(seg.id);
   }
+  spinExtras(o, session, game);
+}
+
+/** The wheels spun together with the main one, each starting a moment after the last. */
+function spinExtras(o: WheelOverlay, session: Session, game: Game): void {
+  (o.extra ?? []).forEach((w, i) => spinExtra(w, session, game, Date.now() + (i + 1) * 400));
 }
 
 /** Show dice waiting to be rolled (used by dice clues so the host decides when). */

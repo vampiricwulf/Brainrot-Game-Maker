@@ -193,6 +193,8 @@
 
 <style>
   .rpg {
+    /* Its own layers: avatars and the strip stay under tool overlays (wheels, pop-ups) and the cover. */
+    isolation: isolate;
     position: absolute;
     inset: 0;
     overflow: hidden;

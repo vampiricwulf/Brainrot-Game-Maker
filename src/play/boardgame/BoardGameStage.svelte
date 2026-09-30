@@ -115,6 +115,8 @@
     overflow: hidden;
   }
   .bg {
+    /* Its own layers: avatars and the strip stay under tool overlays (wheels, pop-ups) and the cover. */
+    isolation: isolate;
     background: #000;
   }
   .tok {

@@ -89,6 +89,40 @@ try {
   await page.waitForTimeout(200);
   assert((await where()).includes('Start'), 'Alt+← moves west');
 
+  // The full map (J): pick a screen, then move the party there; a double-click moves at once.
+  await page.keyboard.press('j');
+  const full = page.getByRole('dialog', { name: 'Full map' });
+  await full.waitFor();
+  await full.getByRole('button', { name: 'Overworld · Screen B1' }).click();
+  await full.getByRole('button', { name: /^▶ Move Party here$/ }).click();
+  await page.waitForTimeout(200);
+  assert((await where()).includes('Screen B1'), 'the full map jumps the party to the picked screen');
+  await page.getByRole('button', { name: '⤢ Full map' }).click();
+  await full.getByRole('button', { name: 'Overworld · Start' }).dblclick();
+  await page.waitForTimeout(200);
+  assert((await where()).includes('Start') && !(await full.isVisible()), 'double-clicking a screen jumps straight there and closes the map');
+  await page.keyboard.press('j');
+  await full.waitFor();
+  await page.keyboard.press('Escape');
+  assert(!(await full.isVisible()), 'Esc closes the full map');
+
+  // Several wheels at once: the player wheel twice, spun together.
+  await page.getByRole('button', { name: '🎡 Wheel' }).click();
+  await page.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
+  await page.getByLabel('Spin another wheel too').selectOption({ label: '🎯 Pick a player' });
+  assert((await page.locator('.stage .many .cell').count()) === 2, 'a second wheel appears next to the first');
+  if (process.env.SHOTS) await page.keyboard.press('j').then(async () => {
+    await page.getByRole('dialog', { name: 'Full map' }).getByRole('button', { name: 'Overworld · Screen B1' }).click();
+    await page.screenshot({ path: `${process.env.SHOTS}/rpg-fullmap.png` });
+    await page.keyboard.press('Escape');
+  });
+  await page.locator('.tc').getByRole('button', { name: 'Spin!' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 12000 });
+  assert(true, 'both wheels land, each showing its result');
+  assert((await page.locator('.tc .result').innerText()).includes(' · '), 'the host sees both results');
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-wheels.png` });
+  await page.keyboard.press('Escape');
+
   // The secret Potion is in the host's list: reveal it, then pick it up.
   await page.locator('.rh .objs').getByRole('button', { name: /Potion/ }).click();
   const card = page.getByRole('dialog', { name: 'Object: Potion' });

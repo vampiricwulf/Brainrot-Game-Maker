@@ -9,6 +9,7 @@
   import { newId, type Dir8, type Game, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import { activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, newVariant, screenElements, screenAt } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
+  import MapJump from './MapJump.svelte';
   import { lastAction, logged } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
@@ -20,8 +21,9 @@
     session,
     selected = $bindable(),
     object = $bindable(),
+    mapOpen = $bindable(false),
     dual,
-  }: { game: Game; session: Session; selected: string[]; object: string | null; dual: boolean } = $props();
+  }: { game: Game; session: Session; selected: string[]; object: string | null; mapOpen?: boolean; dual: boolean } = $props();
 
   const now = $derived(rpgNow(game, session));
   const world = $derived(now.world);
@@ -230,7 +232,11 @@
       </div>
 
       <div class="mapbox">
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} onpick={(ref) => (picked = ref)} />
+        <div class="row mini-head">
+          <span class="spacer"></span>
+          <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere">⤢ Full map</button>
+        </div>
+        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} {picked} onpick={(ref) => (picked = ref)} />
         {#if picked && pickedFound}
           <div class="row pick">
             <span>→ <b>{pickedFound.screen.name}</b></span>
@@ -296,6 +302,9 @@
       </div>
     {/if}
   </div>
+  {#if mapOpen}
+    <MapJump {game} {session} {world} {st} {selected} onclose={() => (mapOpen = false)} />
+  {/if}
   {#if live}
     <LiveScreenEditor {world} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
   {/if}
@@ -369,6 +378,9 @@
   }
   .pick {
     font-size: 12px;
+  }
+  .mini-head {
+    gap: 4px;
   }
   .side {
     flex: 1 1 320px;

@@ -23,6 +23,7 @@
     ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo the last change: a score (a whole multi-player award at once) or an RPG move, stat, item or reveal'],
     ['RPG: Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],
     ['RPG: Alt+Q W E A D Z X C / Alt+arrows', 'Move the party (laptop keys)'],
+    ['RPG: J', 'The full map: pick any screen and jump the party (or some players) there'],
     ['RPG: G', 'Regroup everyone here'],
     ['RPG: M', 'Map on screen'],
     ['RPG: I', 'Show the selected player’s sheet (again: the next selected, then close)'],

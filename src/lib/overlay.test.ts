@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { newLive } from './live';
+import { newLive, overlayDoneAt } from './live';
 import { newGame, PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { editWheel, openPlayerWheel, openWheel, resetWheelEdits, spinWheel, wheelPool } from './overlay';
+import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, wheelPool } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
 import { validate } from './validate';
@@ -116,3 +116,29 @@ describe('editing a wheel for one spin', () => {
     expect(w.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
   });
 });
+
+describe('several wheels at once', () => {
+  it('spins every wheel together, each landing on its own slice, and logs each result', () => {
+    const { game, session, live } = withPlayers();
+    const good = newWheel('Good Wheel');
+    const bad = newWheel('Bad Wheel');
+    game.wheels = [good, bad];
+    openWheel(live, session, good);
+    addWheel(live, session, game, bad.id);
+    addWheel(live, session, game, PLAYER_WHEEL);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    expect(o.extra?.map((w) => w.name)).toEqual(['Bad Wheel', 'Pick a player']);
+    spinWheel(live, session, game);
+    expect(o.result).not.toBeNull();
+    expect(o.extra!.every((w) => w.result !== null && w.spin)).toBe(true);
+    expect(o.extra![1].segments[o.extra![1].result!].id).toMatch(/^[abc]$/);
+    expect(session.rollLog?.map((r) => r.name)).toEqual(['Good Wheel', 'Bad Wheel', 'Pick a player']);
+    // The overlay is done when the last wheel stops.
+    expect(overlayDoneAt(o)).toBe(Math.max(o.spin!.startedAt + o.spin!.duration, ...o.extra!.map((w) => w.spin!.startedAt + w.spin!.duration)));
+    removeWheel(live, o.extra![0].key);
+    removeWheel(live, o.extra![0].key);
+    expect(o.extra).toBeUndefined();
+  });
+});
+

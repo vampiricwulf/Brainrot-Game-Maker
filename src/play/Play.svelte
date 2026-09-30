@@ -70,6 +70,8 @@
   let finishArmed = $state(false);
   /** RPG rounds: the object whose card is open in the host panel. */
   let rpgObject = $state<string | null>(null);
+  /** RPG rounds: the host's full map is open (J). */
+  let rpgMap = $state(false);
   /** Which log each combined Undo went to, so Redo goes back the same way. */
   let undoneKinds: ('score' | 'action')[] = [];
 
@@ -578,7 +580,7 @@
 
   function onkey(e: KeyboardEvent): void {
     // The live screen editor (RPG) has its own keys.
-    if (app.pregame || showPlayers || showKeys || showSound || app.editGame) return;
+    if (app.pregame || showPlayers || showKeys || showSound || app.editGame || rpgMap) return;
     const t = e.target as HTMLElement;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'.
     if (t.closest('input, textarea, select, [contenteditable]')) return;
@@ -614,9 +616,10 @@
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'm', 'i', 'b'].includes(k)) {
+    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'm', 'i', 'b', 'j'].includes(k)) {
       e.preventDefault();
-      if (k === 'g') regroupAll(game, session);
+      if (k === 'j') rpgMap = true;
+      else if (k === 'g') regroupAll(game, session);
       else if (k === 'm') toggleMap(game, session);
       else if (k === 'b') app.live.cover = !app.live.cover;
       else if (app.live.overlay?.kind === 'sheet') {
@@ -846,6 +849,7 @@
         bind:selected
         bind:amount
         bind:rpgObject
+        bind:rpgMap
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}

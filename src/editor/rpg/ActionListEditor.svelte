@@ -145,10 +145,23 @@
           <input type="number" bind:value={a.amount} aria-label="Points" class="n" />
           {@render who(a)}
         {:else if a.do === 'wheel'}
-          <select bind:value={a.wheel} aria-label="Wheel">
-            <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
-            {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
-          </select>
+          {#each [a.wheel, ...(a.also ?? [])] as id, wi (wi)}
+            {#if wi > 0}<span class="small muted">+</span>{/if}
+            <select
+              value={id}
+              aria-label={wi ? `Wheel ${wi + 1}` : 'Wheel'}
+              onchange={(e) => {
+                const v = e.currentTarget.value;
+                if (wi === 0) a.wheel = v;
+                else if (a.also) a.also[wi - 1] = v;
+              }}
+            >
+              <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
+              {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+            </select>
+            {#if wi > 0}<button class="ghost tiny" onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))} aria-label="Remove wheel {wi + 1}">✕</button>{/if}
+          {/each}
+          <button class="small" onclick={() => (a.also = [...(a.also ?? []), game.wheels[0]?.id ?? PLAYER_WHEEL])} title="Spin several wheels at once">＋ Wheel</button>
         {:else if a.do === 'dice'}
           <input bind:value={a.dice} aria-label="Dice" placeholder="d20, 2d6…" list="dice-presets" />
           <datalist id="dice-presets">{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist>

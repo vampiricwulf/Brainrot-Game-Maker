@@ -15,6 +15,9 @@
     audience,
     focus,
     onpick,
+    only,
+    big = false,
+    picked = null,
   }: {
     world: World;
     st: WorldState | undefined;
@@ -22,9 +25,15 @@
     audience: boolean;
     focus?: ScreenRef | null;
     onpick?: (ref: ScreenRef, screen: Screen) => void;
+    /** Show just this map (the host's minimap, or one tab of the full map). */
+    only?: string;
+    /** The host's full map: bigger cells and names. */
+    big?: boolean;
+    /** A screen the host picked (outlined). */
+    picked?: ScreenRef | null;
   } = $props();
 
-  const maps = $derived(audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps);
+  const maps = $derived((audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps).filter((m) => !only || m.id === only));
   const stateOf = (m: WorldMap, s: Screen) => (audience ? mapState(st, m, s) : (st?.knowledge[s.id] ?? 'unknown'));
   /** Screens by cell, per map (big maps look each cell up once instead of searching the list). */
   const cells = $derived(new Map(maps.map((m) => [m.id, new Map(m.screens.map((s) => [`${s.col},${s.row}`, s]))])));
@@ -52,7 +61,7 @@
   }
 </script>
 
-<div class="maps" class:audience>
+<div class="maps" class:audience class:big>
   {#each maps as m (m.id)}
     <div class="map">
       <div class="title">{m.name}</div>
@@ -67,6 +76,7 @@
               <button
                 class="cell {k}"
                 class:cur
+                class:picked={sameRef(picked, { map: m.id, screen: s.id })}
                 class:click={!!onpick}
                 style:background={bg}
                 style:color={textOn(bg)}
@@ -154,6 +164,25 @@
     border-color: #ffcc00;
     box-shadow: 0 0 0 3px #ffcc00;
     z-index: 1;
+  }
+  .cell.picked {
+    outline: 3px dashed #fff;
+    outline-offset: -6px;
+  }
+  .big .cell {
+    font-size: 14px;
+    border-width: 3px;
+    min-height: 44px;
+  }
+  .big .dot {
+    width: 14px;
+    height: 14px;
+  }
+  .big .cell.none {
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+  }
+  .big .title {
+    display: none;
   }
   .cell.click {
     cursor: pointer;

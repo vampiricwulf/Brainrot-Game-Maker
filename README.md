@@ -198,7 +198,10 @@ the picker), **📊 Scores** overlay. These show full-screen on the audience vie
 **roll log**. Score effects only apply when you press **Confirm**. **✎ Edit wheel** (or ✎ next to a wheel in the menu)
 changes the wheel on screen for this spin only: switch slices or players off, change their chances (the % shows), rename,
 recolor or add slices. The saved wheel stays as it is unless you press **💾 Save as new wheel…** or **Overwrite "name"**.
-After the player wheel lands, **★ Make X the picker** hands them the board.
+After the player wheel lands, **★ Make X the picker** hands them the board. **＋ Spin another wheel too…** adds more wheels
+(saved ones or the player wheel) to spin together: they show side by side, one Spin spins them all, and each lands on its
+own slice with its own buttons and score effect. An object's, space's or item's "Spin a wheel" action can also name
+several wheels (＋ Wheel).
 
 **Final round** (renameable): category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
 music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. In the
@@ -213,8 +216,10 @@ for chat; tied players share a medal), or **🔁 Rematch** with the same players
 
 **RPG rounds**: the stage shows the party's screen, the players' avatars (with worn gear) and the stats strip; the
 host panel has a **movement pad** (also numpad, or Alt+Q/W/E/A/D/Z/X/C and Alt+arrows), the parties (**✂ Split off
-selected**, **🤝 Regroup**, **▦ Split view** to show every party at once), a host map (click a screen, then **Move party
-here**), 🗺 **Map** and ⏸ **Cover** for the audience, and a card for every player: stats ±, inventory (equip, use, give,
+selected**, **🤝 Regroup**, **▦ Split view** to show every party at once), a minimap of the current map (click a screen,
+then **Move party here**) that **⤢ expands to the full map** (or `J`): every map, big, with a preview of the picked
+screen and buttons to move the party, only the selected players, another party or everyone there (double-click jumps
+straight there), 🗺 **Map** and ⏸ **Cover** for the audience, and a card for every player: stats ±, inventory (equip, use, give,
 drop on the screen, remove), 📺 their sheet on screen, and converting score to or from a currency. Click an object on
 the stage (or in **Objects here**, which includes secret ones) for its card: go through a doorway, pick up an item, talk,
 shop, its action buttons, NPC stats, reveal/hide and remove. Drag an avatar to move it on its screen. Viewers never see
@@ -262,6 +267,7 @@ slides, even deleted or reordered rounds). Starting a new game while one is save
 | `Y` | Open YouTube/online media in its own window |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last change: a score (a whole multi-player award at once) or an RPG move, stat, item or reveal |
 | RPG: numpad / `Alt`+`Q W E A D Z X C` / `Alt`+arrows | Move the party (numpad 5 regroups) |
+| RPG: `J` | The full map: pick any screen and jump there |
 | RPG: `G` / `M` / `I` / `B` | Regroup / map on screen / the selected player's sheet / cover the screen |
 | Board game: `D` / `N` | Roll (or spin) to move / next player's turn |
 | `L` | Score & roll log |
