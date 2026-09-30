@@ -4,7 +4,18 @@
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { score } from '../lib/session';
 
-  let { game, session, onpicker }: { game: Game; session: Session; onpicker?: (id: string) => void } = $props();
+  let {
+    game,
+    session,
+    onpicker,
+    host = false,
+  }: {
+    game: Game;
+    session: Session;
+    onpicker?: (id: string) => void;
+    /** The host's copy: right-clicking a plate gives that player's menu. */
+    host?: boolean;
+  } = $props();
   const sym = $derived(game.settings.currencySymbol);
 </script>
 
@@ -15,6 +26,7 @@
       class="plate"
       class:picker={session.currentPickerId === p.id}
       style:--c={p.color}
+      data-player-id={host ? p.id : undefined}
       disabled={!onpicker}
       onclick={() => onpicker?.(p.id)}
       title={onpicker ? 'Click to make this player the current picker' : undefined}

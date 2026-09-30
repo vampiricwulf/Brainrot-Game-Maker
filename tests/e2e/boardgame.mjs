@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, dragBy } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -154,6 +154,30 @@ try {
   await page.locator('.stage .zone-players').waitFor();
   assert((await page.locator('.stage .zone-players').innerText()).includes('Player 2'), 'the zone can be put on screen, with its players');
 
+  // On the stage: a click on a token selects the player, a token dragged onto a space sends them there, and a click on
+  // a space opens its card (Esc closes it).
+  await page.getByLabel('On screen').selectOption({ label: '📺 The board' });
+  const token1 = page.locator('.stage .on-board[data-player="Player 1"]');
+  await token1.click();
+  assert((await page.locator('.bh .pc.on').count()) === 1, 'clicking a token selects that player');
+  await token1.click();
+  await dragBy(page, token1, page.locator('.stage [data-space]').nth(4));
+  assert((await toast()) === 'Player 1 → Space 5', 'a token dragged onto a space sends them there');
+  await page.locator('.stage [data-space]').nth(1).click();
+  const card = page.getByRole('dialog', { name: 'Space: Space 2' });
+  await card.waitFor();
+  await page.keyboard.press('Escape');
+  assert(!(await card.count()), 'clicking a space opens its card, and Esc closes it');
+  // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
+  await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
+  assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'clicking a name in the turn order makes it their turn');
+  const firstChip = await page.locator('.bh .ord').first().boundingBox();
+  await dragBy(page, page.locator('.bh .ord', { hasText: 'Player 2' }), { x: firstChip.x + 4, y: firstChip.y + firstChip.height / 2 });
+  const order = () => page.locator('.bh .ord .nm').allInnerTexts();
+  assert((await order()).join() === 'Player 2,Player 1' && (await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'a turn-order chip dragged before another moves there, and the turn stays');
+  await page.keyboard.press('Control+z');
+  assert((await order()).join() === 'Player 1,Player 2', 'one Ctrl+Z puts the order back');
+
   // One space a turn: the players pick the way (no dice).
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
@@ -176,6 +200,8 @@ try {
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
   const ways = await page.locator('.bh .move button.good').allInnerTexts();
   assert(ways.join('|') === '→ Space 4|→ Space 7', `at a fork the host picks the way (${ways.join(', ')})`);
+  await page.locator('.stage [data-space]').nth(6).click();
+  assert((await toast()).includes('Landed on Space 7'), 'or clicks it on the stage');
 
   // A game opened over the board (here an earlier save of it, with the same ids) brings back none of its undo steps.
   await page.getByRole('button', { name: 'Exit' }).click();

@@ -82,7 +82,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, dragBy } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -1008,6 +1008,15 @@ await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
 await page.locator('.spot').waitFor();
 assert((await page.locator('.spot-wager').innerText()).includes('???'), 'wager hidden until shown');
 const rows = page.locator('.fj .pl');
+// The reveal order: a row dragged by its grip above another moves up; Alt+↓ on its name moves it back down.
+const revealOrder = () => page.locator('.fj .pl .name').allInnerTexts();
+const revealed = await revealOrder();
+const topRow = await rows.nth(0).boundingBox();
+await dragBy(page, rows.nth(1).locator('.grip'), { x: topRow.x + 40, y: topRow.y + 3 });
+assert((await revealOrder()).join() === [...revealed].reverse().join(), 'a reveal row dragged above another moves up');
+await page.locator('.fj .pl .name').first().focus();
+await page.keyboard.press('Alt+ArrowDown');
+assert((await revealOrder()).join() === revealed.join(), 'Alt+↓ on its name moves it back down');
 await rows.nth(0).getByRole('button', { name: '✔ Right' }).click();
 // N moves the spotlight on; it never ends the game while players are unjudged.
 await page.keyboard.press('n');
@@ -1223,6 +1232,15 @@ await page.getByRole('button', { name: 'Skip intro' }).click();
 
 // Removing a player mid-game asks first and can be undone.
 await page.getByRole('button', { name: '👥 Players' }).click();
+// A row dragged by its grip goes above another (and with it the player's number key), and back.
+const playerRows = page.locator('.modal .player');
+const chipNames = () => page.locator('.panel .p .sel').allInnerTexts();
+const firstRow = await playerRows.nth(0).boundingBox();
+await dragBy(page, playerRows.nth(2).locator('.grip'), { x: firstRow.x + 40, y: firstRow.y + 3 });
+assert((await chipNames())[0].includes('Player 3'), 'a row dragged in 👥 Players reorders the players (and their number keys)');
+const lastRow = await playerRows.nth(2).boundingBox();
+await dragBy(page, playerRows.nth(0).locator('.grip'), { x: lastRow.x + 40, y: lastRow.y + lastRow.height - 3 });
+assert((await chipNames())[2].includes('Player 3'), 'and dragged below the last row, back at the end');
 await page.getByRole('button', { name: 'Remove Player 3' }).click();
 const removeAsk = page.locator('.modal .ask');
 await removeAsk.waitFor();

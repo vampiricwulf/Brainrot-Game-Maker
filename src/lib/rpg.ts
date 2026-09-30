@@ -239,19 +239,24 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const n = players.length;
   // Along the edge they came in from (a column for east/west, a row otherwise).
   const vertical = via === 'e' || via === 'w';
-  players.forEach((id, i) => {
-    const off = (i - (n - 1) / 2) * (AVATAR + 20);
-    const x = vertical ? cx : cx + off;
-    const y = vertical ? cy + off : cy;
-    const prev = st.positions[id];
-    st.positions[id] = {
-      ...prev,
-      map: to.map,
-      screen: to.screen,
-      x: Math.round(Math.max(AVATAR / 2, Math.min(SLIDE_W - AVATAR / 2, x))),
-      y: Math.round(Math.max(AVATAR / 2, Math.min(SLIDE_H - AVATAR / 2, y))),
-    };
-  });
+  const spots = (shift: number) =>
+    players.map((_, i) => {
+      const off = (i - (n - 1) / 2) * (AVATAR + 20) + shift;
+      const x = vertical ? cx : cx + off;
+      const y = vertical ? cy + off : cy;
+      return { x: Math.round(Math.max(AVATAR / 2, Math.min(SLIDE_W - AVATAR / 2, x))), y: Math.round(Math.max(AVATAR / 2, Math.min(SLIDE_H - AVATAR / 2, y))) };
+    });
+  // Not on top of anyone already standing there (joining their party, say): the line moves along, one way or the other.
+  const others = Object.entries(st.positions)
+    .filter(([id, p]) => p.screen === to.screen && !p.hidden && !players.includes(id))
+    .map(([, p]) => p);
+  const clear = (row: { x: number; y: number }[]) => row.every((a) => others.every((o) => Math.abs(a.x - o.x) >= AVATAR || Math.abs(a.y - o.y) >= AVATAR));
+  let row = spots(0);
+  for (let k = 1; k <= 12 && !clear(row); k++) {
+    const next = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * (AVATAR + 20));
+    if (clear(next)) row = next;
+  }
+  players.forEach((id, i) => (st.positions[id] = { ...st.positions[id], map: to.map, screen: to.screen, ...row[i] }));
 }
 
 /** Move players (default: the active party) to a screen, by a side or a warp/doorway. */
@@ -336,16 +341,50 @@ export function regroup(game: Game, st: WorldState, world: World, allPlayers: st
   st.parties = [keep];
   st.active = keep.id;
   st.split = false;
-  keep.name = 'Party';
+  if (!keep.named) keep.name = 'Party';
   if (at) {
     const away = allPlayers.filter((id) => !sameRef(st.positions[id], at));
     if (away.length) place(game, st, world, away, at, null);
   }
 }
 
+/** Parties are numbered (a lone one is just "Party"), except the ones the host named. */
 function renameParties(st: WorldState): void {
-  if (st.parties.length === 1) st.parties[0].name = 'Party';
-  else st.parties.forEach((p, i) => (p.name = `Party ${i + 1}`));
+  st.parties.forEach((p, i) => {
+    if (!p.named) p.name = st.parties.length === 1 ? 'Party' : `Party ${i + 1}`;
+  });
+}
+
+/** The host names a party ("Red team"): it keeps that name. */
+export function nameParty(st: WorldState, partyId: string, name: string): void {
+  const party = st.parties.find((p) => p.id === partyId);
+  if (!party) return;
+  party.name = name;
+  party.named = true;
+}
+
+/**
+ * Players join a party: the ones standing elsewhere go to its screen, all of them leave their own party (which goes
+ * once it's empty) and the audience follows the party they joined.
+ */
+export function joinParty(game: Game, st: WorldState, world: World, players: string[], partyId: string): void {
+  const party = st.parties.find((p) => p.id === partyId);
+  const at = partyScreen(st, party);
+  const who = players.filter((id) => !party?.members.includes(id));
+  if (!party || !at || !who.length) return;
+  const to = { map: at.map, screen: at.screen };
+  const away = who.filter((id) => !sameRef(st.positions[id], to));
+  if (away.length) {
+    place(game, st, world, away, to, null);
+    discover(st, world, to);
+    st.lastMove = { dir: 'warp', at: Date.now() };
+  }
+  for (const p of st.parties) p.members = p.members.filter((m) => !who.includes(m));
+  party.members.push(...who);
+  st.parties = st.parties.filter((p) => p.members.length);
+  st.active = party.id;
+  if (st.parties.length < 2) st.split = false;
+  renameParties(st);
 }
 
 /** Each distinct screen with players on it (for split view), active party first. */

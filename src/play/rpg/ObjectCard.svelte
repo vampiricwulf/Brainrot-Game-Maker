@@ -8,8 +8,9 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
   import { activeParty, audienceSees, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
-  import { addStat, currencyFields, formatStat, giveItem, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
+  import { formatStat, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
+  import { objectName, pickUp as pickUpNow, removeObject } from './hostops';
 
   let {
     el,
@@ -44,7 +45,7 @@
   const picked = $derived(chosen ?? (ctx.selected.length ? ctx.selected : null));
   const who = $derived(picked ?? here);
   const whoNames = $derived(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(', ') || 'nobody');
-  const title = $derived(el.name || role?.class || 'Object');
+  const title = $derived(objectName(el));
   const locked = $derived(o?.locked ?? role?.locked ?? false);
   const npcStats = $derived(o?.stats ?? role?.stats ?? []);
 
@@ -99,7 +100,8 @@
   }
 
   function take(): void {
-    logged(session, `Remove ${title}`, () => (override(st, el.id).taken = true));
+    const said = removeObject(game, session, el.id);
+    if (said) toast(said, 3000);
     onclose();
   }
 
@@ -121,15 +123,7 @@
 
   function pickUp(): void {
     if (!who.length) return void toast('Pick who picks it up');
-    const target = who[0];
-    logged(session, `${session.players.find((p) => p.id === target)?.name} picks up ${title}`, () => {
-      if (role?.class === 'item') giveItem(game, session, target, role.item ?? null, role.qty ?? 1, role.item ? undefined : title);
-      else if (role?.class === 'currency') {
-        const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0];
-        if (f) addStat(game, session, target, f, role.amount ?? 0);
-      }
-      override(st, el.id).taken = true;
-    });
+    pickUpNow(game, session, st, el, who[0]);
     onclose();
   }
 
@@ -254,8 +248,8 @@
   {/if}
   <div class="row">
     <button class="small" onclick={() => setShown(!seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
-    <button class="small ghost" onclick={take} title="Take it off the screen (undoable)">🗑 Remove</button>
-    <span class="muted small">Drag avatars on the stage to move them.</span>
+    <button class="small ghost" onclick={take} title="Take it off the screen (Delete; undoable)">🗑 Remove</button>
+    <span class="muted small">Drag avatars on the stage to move them{role?.class === 'item' || role?.class === 'currency' ? ', or this onto one to pick it up' : ''}.</span>
   </div>
 </div>
 

@@ -13,3 +13,17 @@ export async function addClassicRounds(page) {
   }
   await page.locator('nav > button.round-tab').first().click();
 }
+
+/**
+ * Drag in small steps (the browser's own drag and drop needs a few moves to start) from the middle of one thing to the
+ * middle of another, or to a point ({ x, y }).
+ */
+export async function dragBy(page, from, to) {
+  const a = await from.boundingBox();
+  const b = to.x !== undefined ? to : await to.boundingBox().then((r) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 }));
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+}

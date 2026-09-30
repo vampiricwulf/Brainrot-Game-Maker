@@ -1,12 +1,13 @@
 <!--
   A world's maps as grids of screens. The audience's version shows only what its map settings allow (whole map, or
   discovered screens), with arrows for open ways out that lead somewhere unknown. The host's version shows
-  everything and can be clicked.
+  everything and can be clicked; the players on a screen can be dragged to another one.
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
   import type { Player, Screen, ScreenRef, World, WorldMap, WorldState } from '../../lib/model';
   import { DIR_ARROW, DIR_VEC, DIRS, exitOf, mapState, mapVisible, sameRef } from '../../lib/rpg';
+  import { dropHover, dropTarget } from '../dragdrop.svelte';
 
   let {
     world,
@@ -20,6 +21,7 @@
     fit = false,
     picked = null,
     onmenu,
+    onmove,
   }: {
     world: World;
     st: WorldState | undefined;
@@ -37,6 +39,8 @@
     picked?: ScreenRef | null;
     /** Host: a screen was right-clicked. */
     onmenu?: (e: MouseEvent, ref: ScreenRef, screen: Screen) => void;
+    /** Host: the players on a screen were dragged onto another one. */
+    onmove?: (from: ScreenRef, to: ScreenRef) => void;
   } = $props();
 
   const maps = $derived((audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps).filter((m) => !only || m.id === only));
@@ -54,6 +58,37 @@
     return out;
   });
 
+  /** The players on a screen being dragged (their dots follow the pointer) to another screen. */
+  let dotDrag = $state<{ from: ScreenRef; colors: string[]; sx: number; sy: number; x: number; y: number; moved: boolean } | null>(null);
+
+  function dotsDown(e: PointerEvent, from: ScreenRef, here: Player[]): void {
+    if (!onmove || !here.length || e.button !== 0) return;
+    dotDrag = { from, colors: here.map((p) => p.color), sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false };
+  }
+
+  /** The screen under the pointer (on this map or any other), when it isn't the one the players are on. */
+  function screenOver(e: PointerEvent): ScreenRef | null {
+    const t = dropTarget(e.clientX, e.clientY, '[data-screen]');
+    return t && dotDrag && t.dataset.screen !== dotDrag.from.screen ? { map: t.dataset.map!, screen: t.dataset.screen! } : null;
+  }
+
+  function dotsMove(e: PointerEvent): void {
+    if (!dotDrag) return;
+    const moved = dotDrag.moved || Math.abs(e.clientX - dotDrag.sx) + Math.abs(e.clientY - dotDrag.sy) > 4;
+    dotDrag = { ...dotDrag, x: e.clientX, y: e.clientY, moved };
+    const to = moved ? screenOver(e) : null;
+    dropHover.at = to ? `screen:${to.screen}` : null;
+  }
+
+  function dotsUp(e: PointerEvent): void {
+    const d = dotDrag;
+    const to = d?.moved ? screenOver(e) : null;
+    dotDrag = null;
+    if (!d?.moved) return;
+    dropHover.at = null;
+    if (to) onmove?.(d.from, to);
+  }
+
   /** Audience arrows: open ways out of a known screen whose destination is still unknown to viewers. */
   function arrows(m: WorldMap, s: Screen) {
     if (!audience || !m.showExits) return [];
@@ -66,6 +101,8 @@
     });
   }
 </script>
+
+<svelte:window onpointermove={dotsMove} onpointerup={dotsUp} />
 
 <div class="maps" class:audience class:big class:fit>
   {#each maps as m (m.id)}
@@ -86,22 +123,29 @@
               {#if s && k}
                 {@const bg = s.slide.background.color ?? '#2f6b3a'}
                 {@const cur = sameRef(focus, { map: m.id, screen: s.id })}
+                {@const here = byScreen.get(s.id) ?? []}
+                {@const grab = !!onmove && !!here.length}
                 <button
                   class="cell {k}"
                   class:cur
                   class:picked={sameRef(picked, { map: m.id, screen: s.id })}
                   class:click={!!onpick}
+                  class:grab
+                  class:drop-on={dropHover.at === `screen:${s.id}`}
                   style:background={bg}
                   style:color={textOn(bg)}
                   disabled={!onpick}
+                  data-map={m.id}
+                  data-screen={s.id}
                   onclick={() => onpick?.({ map: m.id, screen: s.id }, s)}
+                  onpointerdown={grab ? (e) => dotsDown(e, { map: m.id, screen: s.id }, here) : undefined}
                   oncontextmenu={onmenu ? (e) => onmenu(e, { map: m.id, screen: s.id }, s) : undefined}
-                  title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}`}
+                  title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}${grab ? ' · drag the players to another screen to move them' : ''}`}
                   aria-label={audience ? undefined : `${m.name} · ${s.name}`}
                 >
                   {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
                   <span class="dots">
-                    {#each byScreen.get(s.id) ?? [] as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
+                    {#each here as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
                   </span>
                   {#each arrows(m, s) as d (d)}
                     <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
@@ -117,6 +161,11 @@
     </div>
   {/each}
 </div>
+{#if dotDrag?.moved}
+  <div class="dots ghost" style:left="{dotDrag.x}px" style:top="{dotDrag.y}px" aria-hidden="true">
+    {#each dotDrag.colors as c, i (i)}<span class="dot" style:background={c}></span>{/each}
+  </div>
+{/if}
 
 <style>
   .maps {
@@ -205,6 +254,15 @@
     outline: 3px dashed #fff;
     outline-offset: -6px;
   }
+  .cell.grab {
+    cursor: grab;
+  }
+  /* Where dragged players (dots, or an avatar from the stage) would go. */
+  .cell.drop-on {
+    outline: 3px dashed #ffcc00;
+    outline-offset: 2px;
+    z-index: 2;
+  }
   .big .cell {
     font-size: 14px;
     border-width: 3px;
@@ -245,6 +303,20 @@
     height: 9px;
     border-radius: 50%;
     border: 1px solid #000;
+  }
+  /* The dragged players' dots, at the pointer. */
+  .ghost {
+    position: fixed;
+    z-index: 300;
+    transform: translate(-50%, -50%);
+    padding: 4px 6px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+  }
+  .ghost .dot {
+    width: 14px;
+    height: 14px;
   }
   .audience .dot {
     width: 18px;

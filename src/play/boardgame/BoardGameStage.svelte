@@ -1,12 +1,14 @@
 <!--
   What a board-game round shows (games-maker spec §7.13): the board with its spaces, the players' tokens stepping
-  along them, whose turn it is, who is stuck in an off-board zone, and the stats strip. Or a zone's own screen.
+  along them, whose turn it is, who is stuck in an off-board zone, and the stats strip. Or a zone's own screen. The
+  host's copy takes clicks (a token selects its player, a space opens its card or, at a fork, is the way to go) and
+  drags (a token onto a space or a zone sends its player there).
 -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { getContext, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { textOn } from '../../lib/colors';
-  import { currentPlayer, fanOut, HOP_MS, shownSpace, spaceById } from '../../lib/boardgame';
+  import { currentPlayer, fanOut, HOP_MS, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import type { Game, Session } from '../../lib/model';
@@ -14,9 +16,27 @@
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { wornItems } from '../../lib/toolset';
   import StatsStrip from '../rpg/StatsStrip.svelte';
+  import { dropHover, dropTarget } from '../dragdrop.svelte';
   import { boardNow } from './bgops';
 
-  let { game, session, role }: { game: Game; session: Session; role: MediaRole } = $props();
+  let {
+    game,
+    session,
+    role,
+    selected = [],
+    ontoken,
+    onspace,
+  }: {
+    game: Game;
+    session: Session;
+    role: MediaRole;
+    /** Host: the selected players (ringed in the host's copy in dual mode, never on stream). */
+    selected?: string[];
+    /** Host: a token was clicked (no drop), or dragged onto a space or a zone. */
+    ontoken?: (playerId: string, to?: { space?: string; zone?: string }) => void;
+    /** Host: a space was clicked. */
+    onspace?: (spaceId: string) => void;
+  } = $props();
   const now_ = $derived(boardNow(game, session));
   const round = $derived(now_.round);
   const bs = $derived(now_.bs);
@@ -70,6 +90,56 @@
     return out;
   });
   const inZone = (id: string) => session.players.filter((p) => bs?.positions[p.id]?.zone === id);
+  /** The host's copy in dual mode: the selection, and the spaces to pick at a fork, are marked (never on stream). */
+  const mirror = $derived(role === 'mirror');
+  const ways = $derived(mirror && round && bs ? (waysNow(round, bs)?.ways ?? []) : []);
+
+  const stage = getContext<{ scale: number } | undefined>('stage');
+  /** A token being dragged by the host: where it is now on the board. */
+  let drag = $state<{ id: string; sx: number; sy: number; ox: number; oy: number; x: number; y: number; moved: boolean } | null>(null);
+
+  function tokenDown(e: PointerEvent, t: { id: string; x: number; y: number }): void {
+    if (!ontoken || e.button !== 0) return;
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Synthetic pointers can't be captured; the drag still works over the stage.
+    }
+    drag = { id: t.id, sx: e.clientX, sy: e.clientY, ox: t.x, oy: t.y, x: t.x, y: t.y, moved: false };
+  }
+
+  /** The space or zone a dragged token is over. */
+  const tokenOver = (e: PointerEvent) => dropTarget(e.clientX, e.clientY, '[data-space], [data-zone]', e.currentTarget as Element);
+  const where = (t: HTMLElement | null) => (t?.dataset.space ? { space: t.dataset.space } : t?.dataset.zone ? { zone: t.dataset.zone } : undefined);
+
+  function tokenMove(e: PointerEvent): void {
+    if (!drag) return;
+    const s = stage?.scale || 1;
+    const moved = drag.moved || Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4;
+    drag = { ...drag, x: Math.round(drag.ox + (e.clientX - drag.sx) / s), y: Math.round(drag.oy + (e.clientY - drag.sy) / s), moved };
+    const to = moved ? where(tokenOver(e)) : undefined;
+    dropHover.at = to?.space ? `space:${to.space}` : to?.zone ? `zone:${to.zone}` : null;
+  }
+
+  function tokenUp(e: PointerEvent): void {
+    const d = drag;
+    drag = null;
+    dropHover.at = null;
+    if (!d) return;
+    if (!d.moved) return ontoken?.(d.id);
+    // Anywhere else, it goes back where it was.
+    const to = where(tokenOver(e));
+    if (to) ontoken?.(d.id, to);
+  }
+
+  /** A click on a space (the host's copy). */
+  function boardClick(e: MouseEvent): void {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-space]')?.dataset.space;
+    if (id) onspace?.(id);
+  }
+
+  const lit = $derived(dropHover.at?.startsWith('space:') ? dropHover.at.slice(6) : null);
 </script>
 
 <div class="bg">
@@ -86,13 +156,29 @@
         </div>
       {/key}
     {:else}
-      <div class="layer">
+      <div class="layer" class:clickable={!!onspace} onclick={onspace ? boardClick : undefined} role="presentation">
         <SlideView slide={round.slide} mode="play" {role} fallbackBg="#1d5e3a" />
-        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} />
+        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} />
         {#each tokens as t (t.id)}
           {@const p = session.players.find((x) => x.id === t.id)}
+          {@const d = drag?.id === t.id ? drag : null}
           {#if p}
-            <div class="tok on-board" class:current={t.id === turnId} style:left="{t.x}px" style:top="{t.y}px" data-player={p.name} data-player-id={p.id}>
+            <div
+              class="tok on-board"
+              class:current={t.id === turnId}
+              class:grab={!!ontoken}
+              class:dragging={!!d?.moved}
+              class:picked={mirror && selected.includes(p.id)}
+              class:drop-on={dropHover.at === `player:${p.id}`}
+              style:left="{d ? d.x : t.x}px"
+              style:top="{d ? d.y : t.y}px"
+              data-player={p.name}
+              data-player-id={p.id}
+              onpointerdown={(e) => tokenDown(e, t)}
+              onpointermove={tokenMove}
+              onpointerup={tokenUp}
+              role="presentation"
+            >
               <AvatarToken player={p} size={t.small ? 64 : 84} worn={wornItems(game, session, p.id)} name={false} />
             </div>
           {/if}
@@ -106,16 +192,21 @@
       {/if}
       {#if round.winPublic && round.winNotes}<div class="win">🏆 {round.winNotes}</div>{/if}
       <span class="spacer"></span>
-      {#if round.zones.some((z) => inZone(z.id).length) && !zone}
+      <!-- While the host drags a token in their own copy (dual mode), every zone is there to drop it on. -->
+      {#if (round.zones.some((z) => inZone(z.id).length) || (mirror && drag?.moved)) && !zone}
         <div class="zones">
           {#each round.zones as z (z.id)}
-            {#if inZone(z.id).length}<div class="zone">🌀 {z.name}: {inZone(z.id).map((p) => p.name).join(', ')}</div>{/if}
+            {#if inZone(z.id).length || (mirror && drag?.moved)}
+              <div class="zone" class:target={!!ontoken} class:drop-on={dropHover.at === `zone:${z.id}`} data-zone={z.id}>
+                🌀 {z.name}{inZone(z.id).length ? `: ${inZone(z.id).map((p) => p.name).join(', ')}` : ''}
+              </div>
+            {/if}
           {/each}
         </div>
       {/if}
     </div>
     {#if bar !== 'hidden'}
-      <div class="strip bar-{bar}" bind:clientHeight={stripH}><StatsStrip {game} {session} players={session.players} /></div>
+      <div class="strip bar-{bar}" bind:clientHeight={stripH}><StatsStrip {game} {session} players={session.players} host={!!ontoken} /></div>
     {/if}
   {:else}
     <div class="empty">Starting…</div>
@@ -151,6 +242,34 @@
   .on-board.current {
     z-index: 11;
     filter: drop-shadow(0 0 12px #ffcc00);
+  }
+  .on-board.grab {
+    cursor: grab;
+    touch-action: none;
+  }
+  /* Following the pointer (no easing behind it). */
+  .on-board.dragging {
+    cursor: grabbing;
+    transition: none;
+    z-index: 12;
+  }
+  /* Selected (the host's copy in dual mode only), or what a dragged item would go to. */
+  .on-board.picked::before,
+  .on-board.drop-on::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    border: 6px solid #ffcc00;
+    box-shadow: 0 0 18px #ffcc00;
+    pointer-events: none;
+  }
+  .on-board.drop-on::before {
+    border-style: dashed;
+    border-color: #fff;
+  }
+  .layer.clickable :global([data-space]) {
+    cursor: pointer;
   }
   .zone-players {
     position: absolute;
@@ -189,6 +308,14 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  /* The host can drop tokens on the zones (the labels row lets every other click through). */
+  .zone.target {
+    pointer-events: auto;
+  }
+  .zone.drop-on {
+    outline: 5px dashed #ffcc00;
+    outline-offset: 3px;
   }
   .zone,
   .win {

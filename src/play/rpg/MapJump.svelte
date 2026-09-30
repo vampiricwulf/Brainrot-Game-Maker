@@ -1,14 +1,18 @@
 <!--
   The host's full map (J, or ⤢ on the minimap): every map of the world, big. Pick a screen to see it, then move the
-  party (or only the selected players, or another party) there. Double-click a screen to move the party at once.
+  party (or only the selected players, or another party) there. Double-click a screen to move the party at once,
+  right-click it to choose who goes, or drag a screen's players onto another. Opened to send some players (from their
+  menu), it moves those instead.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
   import { toast } from '../../lib/app.svelte';
-  import type { Game, ScreenRef, Session, World, WorldState } from '../../lib/model';
+  import { showMenu } from '../../lib/menustate.svelte';
+  import type { Game, Screen, ScreenRef, Session, World, WorldState } from '../../lib/model';
   import { activeParty, findIn, focusRef, moveTo, screenElements, screenSlide } from '../../lib/rpg';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { logged } from '../../lib/toolset';
+  import { moveChoices, partyOn, sendPlayers } from './hostops';
   import MapView from './MapView.svelte';
 
   let {
@@ -17,8 +21,18 @@
     world,
     st,
     selected,
+    send = null,
     onclose,
-  }: { game: Game; session: Session; world: World; st: WorldState; selected: string[]; onclose: () => void } = $props();
+  }: {
+    game: Game;
+    session: Session;
+    world: World;
+    st: WorldState;
+    selected: string[];
+    /** Opened to send these players somewhere (their name for the buttons), instead of the party. */
+    send?: { players: string[]; label: string } | null;
+    onclose: () => void;
+  } = $props();
 
   const here = $derived(focusRef(st));
   // Opens on the party's map; the tabs change it from there.
@@ -26,6 +40,8 @@
   let picked = $state<ScreenRef | null>(null);
   const found = $derived(picked ? findIn(world, picked) : null);
   const party = $derived(activeParty(st));
+  /** Who the main button and a double-click move: the players it was opened for, else the followed party. */
+  const who = $derived(send?.label ?? party?.name ?? 'the party');
   const there = $derived(found ? session.players.filter((p) => st.positions[p.id]?.screen === found.screen.id) : []);
   let lastClick = { id: '', at: 0 };
 
@@ -37,7 +53,24 @@
     const again = lastClick.id === ref.screen && now - lastClick.at < 400;
     lastClick = { id: ref.screen, at: now };
     picked = ref;
-    if (again) go();
+    if (again) go(send?.players, send?.label);
+  }
+
+  /** Right-click a screen: choose who goes there. */
+  function menu(e: MouseEvent, ref: ScreenRef, screen: Screen): void {
+    picked = ref;
+    showMenu(e, [
+      { heading: screen.name },
+      ...(send ? [{ label: `▶ Move ${send.label} here`, onclick: () => go(send.players, send.label) }, { sep: true as const }] : []),
+      ...moveChoices(session, st, selected, go),
+    ]);
+  }
+
+  /** The players on a screen were dragged onto another: their party goes (the followed one, if it's there). */
+  function moveDots(from: ScreenRef, to: ScreenRef): void {
+    const pt = partyOn(st, from.screen);
+    const text = pt && sendPlayers(game, session, pt.members, to, { label: pt.name });
+    if (text) toast(text);
   }
 
   /** Move the party (or these players) to the picked screen, then close. */
@@ -74,12 +107,14 @@
         {/each}
       </div>
       <span class="spacer"></span>
-      <span class="muted small">Click a screen, then choose who goes. Double-click to move {party?.name ?? 'the party'} there.</span>
+      <span class="muted small">
+        {send ? `Sending ${send.label}: click a screen, then Move.` : 'Click a screen, then choose who goes.'} Double-click to move {who} there.
+      </span>
       <button onclick={onclose} title="Esc / J">✕ Close</button>
     </div>
     <div class="body">
       <div class="grid">
-        <MapView {world} {st} players={session.players} audience={false} focus={here} only={mapId} big {picked} onpick={pick} />
+        <MapView {world} {st} players={session.players} audience={false} focus={here} only={mapId} big {picked} onpick={pick} onmenu={menu} onmove={moveDots} />
       </div>
       <aside class="side">
         {#if found && picked}
@@ -94,18 +129,25 @@
             {#if there.length}· here: {there.map((p) => p.name).join(', ')}{/if}
           </span>
           {#if found.screen.hostNotes}<span class="notes">📝 {found.screen.hostNotes}</span>{/if}
-          <button class="primary" onclick={() => go()}>▶ Move {party?.name ?? 'party'} here</button>
-          {#if selected.length}
-            <button onclick={() => go(selected, `${selected.length} selected`)}>Only the selected ({selected.length})</button>
-          {/if}
-          {#each st.parties.filter((pt) => pt.id !== party?.id) as pt (pt.id)}
-            <button onclick={() => go(pt.members, pt.name)}>Move {pt.name} here</button>
-          {/each}
-          {#if st.parties.length > 1}
-            <button onclick={() => go(session.players.map((p) => p.id), 'Everyone')}>Everyone here</button>
+          {#if send}
+            <button class="primary" onclick={() => go(send.players, send.label)}>▶ Move {send.label} here</button>
+          {:else}
+            <button class="primary" onclick={() => go()}>▶ Move {party?.name ?? 'party'} here</button>
+            {#if selected.length}
+              <button onclick={() => go(selected, `${selected.length} selected`)}>Only the selected ({selected.length})</button>
+            {/if}
+            {#each st.parties.filter((pt) => pt.id !== party?.id) as pt (pt.id)}
+              <button onclick={() => go(pt.members, pt.name)}>Move {pt.name} here</button>
+            {/each}
+            {#if st.parties.length > 1}
+              <button onclick={() => go(session.players.map((p) => p.id), 'Everyone')}>Everyone here</button>
+            {/if}
           {/if}
         {:else}
-          <p class="muted small">Pick a screen on the map. The yellow outline is where {party?.name ?? 'the party'} is now; faded screens aren’t discovered yet.</p>
+          <p class="muted small">
+            Pick a screen on the map{send ? ` to send ${send.label} there` : ''}. The yellow outline is where {party?.name ?? 'the party'} is now; faded screens aren’t
+            discovered yet.
+          </p>
         {/if}
       </aside>
     </div>

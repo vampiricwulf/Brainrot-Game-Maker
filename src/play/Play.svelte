@@ -24,11 +24,17 @@
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, redoFrom, undoAction, type Undone } from '../lib/toolset';
-  import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap, type RpgAsk, type StagePoint } from './rpg/hostops';
+  import {
+    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, stepParty, toggleMap,
+    type AvatarDrop, type RpgAsk, type StagePoint,
+  } from './rpg/hostops';
   import { showMenu } from '../lib/menustate.svelte';
-  import { ensureBoard, sendTo } from '../lib/boardgame';
-  import { audienceSees, ensureWorld, override } from '../lib/rpg';
-  import { boardNow, rollMover, turnNow } from './boardgame/bgops';
+  import { ensureBoard, waysNow } from '../lib/boardgame';
+  import { ensureWorld, override } from '../lib/rpg';
+  import { boardNow, moveNow, rollMover, runSpace, sendNow, turnNow } from './boardgame/bgops';
+  import { playerMenu } from './playermenu';
+  import { playerCards } from './rpg/PlayerCard.svelte';
+  import { dragDone, dropHover, itemDrag } from './dragdrop.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { ActionEvent, Dir8 } from '../lib/model';
@@ -85,6 +91,12 @@
   let rpgMap = $state(false);
   /** RPG rounds: a name or text the host panel is asking for (right-clicking the stage asks for text there). */
   let rpgAsk = $state<RpgAsk | null>(null);
+  /** RPG rounds: the full map was opened to send these players somewhere (from their menu). */
+  let rpgMapSend = $state<{ players: string[]; label: string } | null>(null);
+  /** Board-game rounds: the space whose card is open in the host panel (clicked on the stage). */
+  let bgSpace = $state<string | null>(null);
+  /** The player whose score the host panel is asking for (✎ Set the score… in their menu). */
+  let editingScore = $state<string | null>(null);
   /** What each combined Undo took back (from the score log or the action log), so Redo goes back the same way. */
   const undone: Undone[] = [];
 
@@ -133,10 +145,11 @@
     app.onAir = hideControls && !dual;
     return () => (app.onAir = false);
   });
-  // An RPG round's question (a new screen's name…) is for that round only.
+  // An RPG round's question (a new screen's name…) and a board game's space card are for that round only.
   $effect(() => {
     void session.currentRound;
     rpgAsk = null;
+    bgSpace = null;
   });
   // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
   // catches up at once, not only when the round is next visited.
@@ -568,6 +581,45 @@
     logged(session, `Move ${name}`, () => Object.assign(override(st, id), at));
   }
 
+  /** An item or a pile of currency on the stage was dropped on a player: they pick it up. */
+  function objectPicked(id: string, playerId: string): void {
+    const found = objectAt(game, session, id);
+    if (!found) return;
+    toast(pickUp(game, session, found.st, found.el, playerId), 3000);
+    if (rpgObject === id) rpgObject = null;
+  }
+
+  /** Take an object off the stage (the Delete key, its menu): its card closes. */
+  function removeObj(id: string): void {
+    const said = removeObject(game, session, id);
+    if (said) toast(said, 3000);
+    if (rpgObject === id) rpgObject = null;
+  }
+
+  // ---------- Dragging an inventory item from a player's card onto the stage ----------
+
+  /** The player an item dragged over the stage would go to (their avatar, token or card on the stats strip). */
+  const itemTo = (e: DragEvent) => (e.target as HTMLElement).closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
+
+  function itemOver(e: DragEvent): void {
+    const d = itemDrag.now;
+    if (!d) return;
+    const to = itemTo(e);
+    // On a player: they get it. On an RPG screen: it's dropped there.
+    if ((to && to !== d.from) || (!to && session.phase === 'rpg')) e.preventDefault();
+    dropHover.at = to && to !== d.from ? `player:${to}` : null;
+  }
+
+  function itemDrop(e: DragEvent): void {
+    const d = itemDrag.now;
+    const to = itemTo(e);
+    dragDone();
+    if (!d) return;
+    e.preventDefault();
+    const said = to ? to !== d.from && giveEntry(game, session, d.from, to, d.entryId, d.n) : dropEntry(game, session, d.from, d.entryId, d.n, stagePoint(e));
+    if (said) toast(said, 3000);
+  }
+
   // ---------- Right-click on the stage (host) ----------
 
   /** Stage coordinates (1920×1080) of a pointer event over the stage: in an RPG round, on the screen under it (split view has several). */
@@ -579,8 +631,30 @@
     return pane ? { ...at, screen: { map: pane.dataset.map!, screen: pane.dataset.screen! } } : at;
   }
 
-  const sheet = (id: string) => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id });
   const toggleSelect = (id: string) => (selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+  /** Right-click a player anywhere in the host's window (the stage, the host panel): their menu. */
+  function playerMenuAt(e: MouseEvent): void {
+    if (e.defaultPrevented) return;
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
+    if (!id || !session.players.some((p) => p.id === id)) return;
+    // What it asks of the host panel brings the controls back when they're hidden.
+    showMenu(
+      e,
+      playerMenu(
+        {
+          game,
+          session,
+          selected,
+          toggle: toggleSelect,
+          setScore: (who) => ((hideControls = false), (editingScore = who)),
+          sendTo: (players, label) => ((hideControls = false), (rpgMapSend = { players, label }), (rpgMap = true)),
+          openCard: (who) => ((hideControls = false), (playerCards.open = true), (playerCards.flash = who)),
+        },
+        id,
+      ),
+    );
+  }
 
   function stageMenu(e: MouseEvent): void {
     if (e.defaultPrevented) return;
@@ -588,33 +662,11 @@
     const objId = t.closest<HTMLElement>('[data-object]')?.dataset.object;
     const playerId = t.closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
     const spaceId = t.closest<HTMLElement>('[data-space]')?.dataset.space;
-    const who = playerId ? session.players.find((p) => p.id === playerId) : undefined;
+    if (playerId && session.players.some((p) => p.id === playerId)) return playerMenuAt(e);
     if (session.phase === 'rpg') {
       const { st } = rpgNow(game, session);
       if (!st) return;
-      if (objId) {
-        const found = objectAt(game, session, objId);
-        if (!found) return;
-        const name = found.el.name || found.el.role?.class || 'Object';
-        const shown = audienceSees(found.el, st.objects[objId]);
-        return showMenu(e, [
-          { heading: name },
-          { label: '🗂 Open its card', onclick: () => ((hideControls = false), (rpgObject = objId)) },
-          { label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, objId).shown = !shown)) },
-          { sep: true },
-          { label: '🗑 Remove', danger: true, onclick: () => logged(session, `Remove ${name}`, () => (override(st, objId).taken = true)) },
-        ]);
-      }
-      if (who) {
-        const pos = st.positions[who.id];
-        return showMenu(e, [
-          { heading: who.name },
-          { label: selected.includes(who.id) ? 'Deselect' : 'Select', onclick: () => toggleSelect(who.id) },
-          { label: '📺 Show their sheet', onclick: () => sheet(who.id) },
-          { label: pos?.down ? '💫 Gets up' : '💫 Knocked out', onclick: () => logged(session, `${who.name} ${pos?.down ? 'gets up' : 'is knocked out'}`, () => (st.positions[who.id].down = !pos?.down)) },
-          { label: '🫥 Hide their avatar', onclick: () => logged(session, `${who.name} hidden`, () => (st.positions[who.id].hidden = true)) },
-        ]);
-      }
+      if (objId) return showMenu(e, objectMenu(game, session, objId, { open: () => ((hideControls = false), (rpgObject = objId)), removed: (text) => toast(text, 3000) }));
       const at = stagePoint(e);
       return showMenu(e, [
         // The host panel asks for the text (with the controls hidden, they come back for it).
@@ -628,28 +680,19 @@
       const { round, bs } = boardNow(game, session);
       if (!round || !bs) return;
       const turnId = bs.order[bs.turn];
-      const turnName = playerName(session, turnId);
-      if (who) {
-        return showMenu(e, [
-          { heading: who.name },
-          { label: '🎲 Make it their turn', disabled: turnId === who.id, onclick: () => logged(session, `${who.name}'s turn`, () => ((bs.turn = bs.order.indexOf(who.id)), (bs.fork = undefined))) },
-          { label: selected.includes(who.id) ? 'Deselect' : 'Select', onclick: () => toggleSelect(who.id) },
-          { label: '📺 Show their sheet', onclick: () => sheet(who.id) },
-          { sep: true },
-          ...round.zones.map((z) => ({ label: `🌀 Send to ${z.name}`, onclick: () => logged(session, `${who.name} → ${z.name}`, () => sendTo(bs, [who.id], { zone: z.id })) })),
-          { label: '🏁 Send to Start', onclick: () => logged(session, `${who.name} → Start`, () => sendTo(bs, [who.id], { space: (round.start ?? round.spaces[0]?.id) })) },
-        ]);
-      }
       if (spaceId) {
         const sp = round.spaces.find((s) => s.id === spaceId);
         if (!sp) return;
         const movers = selected.length ? selected : turnId ? [turnId] : [];
+        const them = selected.length ? `the selected (${selected.length})` : playerName(session, turnId);
         return showMenu(e, [
           { heading: sp.name },
+          { label: '🗂 Open its card', onclick: () => ((hideControls = false), (bgSpace = sp.id)) },
+          { label: `📍 Put ${them} here`, disabled: !movers.length, onclick: () => sendNow(game, session, movers, { space: sp.id }) },
           {
-            label: `📍 Put ${selected.length ? `the selected (${selected.length})` : turnName} here`,
-            disabled: !movers.length,
-            onclick: () => logged(session, `${movers.map((m) => playerName(session, m)).join(', ')} → ${sp.name}`, () => sendTo(bs, movers, { space: sp.id })),
+            label: `▶ Run its landing actions for ${them}`,
+            disabled: !movers.length || !sp.onLand?.length,
+            onclick: () => toast(runSpace(game, session, app.live, sp, movers), 3000),
           },
           {
             label: '👁 Reveal this space',
@@ -663,14 +706,36 @@
     return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
   }
 
-  /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
-  function avatarAct(id: string, at?: { x: number; y: number }): void {
+  /**
+   * An avatar on the stage was clicked (selected), or dragged: to a spot on its screen, to another screen (a map's, a
+   * split-view pane, or off an edge with a way out) or onto a party. Selected, the rest of the selection goes with it.
+   */
+  function avatarAct(id: string, drop?: AvatarDrop): void {
     const { st } = rpgNow(game, session);
-    if (!at || !st?.positions[id]) {
-      selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
-      return;
-    }
-    logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], at));
+    if (!drop || !st?.positions[id]) return void toggleSelect(id);
+    if ('spot' in drop) return logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], drop.spot));
+    const who = selected.includes(id) ? selected.filter((x) => st.positions[x]) : [id];
+    const said = 'party' in drop ? joinPartyNow(game, session, who, drop.party) : sendPlayers(game, session, who, drop.to, drop);
+    if (said) toast(said, 3000);
+  }
+
+  // ---------- Board games: tokens and spaces on the stage ----------
+
+  /** A token was clicked (selected), or dragged onto a space or a zone (sent there, with the rest of the selection). */
+  function tokenAct(id: string, to?: { space?: string; zone?: string }): void {
+    if (!to) return void toggleSelect(id);
+    const said = sendNow(game, session, selected.includes(id) ? selected : [id], to);
+    if (said) toast(said, 3000);
+  }
+
+  /** A space was clicked: at a fork (or on a one-space board) a way on, the same as its button; otherwise its card. */
+  function spaceAct(id: string): void {
+    const { round, bs } = boardNow(game, session);
+    const w = round && bs ? waysNow(round, bs) : null;
+    if (w?.ways.includes(id)) {
+      toast(moveNow(game, session, w.steps, id, w.playerId), 3000);
+      app.live.overlay = null;
+    } else bgSpace = bgSpace === id ? null : id;
   }
 
   /** Players added by "＋ Add 3 sample players", by id → their sample name. */
@@ -832,6 +897,7 @@
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
         else if (rpgObject) rpgObject = null;
+        else if (bgSpace) bgSpace = null;
         // Shift+Esc cancels: back to the board without using up the tile.
         else if (session.phase === 'clue' && e.shiftKey) cancelClue();
         else if (session.phase === 'clue') back();
@@ -912,6 +978,12 @@
         if (m?.[1].openUrl && !openMediaPopup(m[1].openUrl)) toast(POPUP_FAILED, 5000);
         break;
       }
+      case 'delete':
+      case 'backspace':
+        // The RPG object whose card is open comes off the screen (Ctrl+Z brings it back).
+        if (session.phase === 'rpg' && rpgObject) removeObj(rpgObject);
+        else return;
+        break;
       default:
         return;
     }
@@ -985,14 +1057,15 @@
     </div>
   </div>
 {:else}
-  <div class="play" class:hidden={hideControls}>
+  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. -->
+  <div class="play" class:hidden={hideControls} oncontextmenu={playerMenuAt} role="presentation">
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
       <div
         class="stage-box"
         role="presentation"
-        ondragover={(e) => session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault()}
-        ondrop={dropOnStage}
+        ondragover={(e) => (itemDrag.now ? itemOver(e) : session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault())}
+        ondrop={(e) => (itemDrag.now ? itemDrop(e) : dropOnStage(e))}
         oncontextmenu={stageMenu}
       >
         <Stage>
@@ -1011,6 +1084,10 @@
             onobject={(id) => (rpgObject = id)}
             onavatar={avatarAct}
             onobjectmove={objectMoved}
+            onpickup={objectPicked}
+            ontoken={tokenAct}
+            onspace={spaceAct}
+            {selected}
             onshopbuy={(item) => app.live.overlay?.kind === 'shop' && shopBuy(game, session, app.live.overlay, selected, item)}
           />
         </Stage>
@@ -1030,6 +1107,9 @@
         bind:rpgObject
         bind:rpgMap
         bind:rpgAsk
+        bind:rpgMapSend
+        bind:bgSpace
+        bind:editingScore
         bind:wagerLimitsOff
         bind:timerSeconds
         {pickerPending}

@@ -5,8 +5,25 @@
   import { score } from '../../lib/session';
   import { formatStat, statFields, statValue } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
+  import { dropHover } from '../dragdrop.svelte';
 
-  let { game, session, players, showScore = true }: { game: Game; session: Session; players: Player[]; showScore?: boolean } = $props();
+  let {
+    game,
+    session,
+    players,
+    showScore = true,
+    host = false,
+    draggable = false,
+  }: {
+    game: Game;
+    session: Session;
+    players: Player[];
+    showScore?: boolean;
+    /** The host's copy: right-clicking a card gives that player's menu, and a dragged item or object lights it up. */
+    host?: boolean;
+    /** The host's copy of an RPG round: a card can be dragged onto a party (they join it). */
+    draggable?: boolean;
+  } = $props();
   const fields = $derived(statFields(game).filter((f) => f.audience === 'hud'));
   // Smaller cards when there's a lot on them. Up to 6 players stay on one row (cards shrink to fit): a second row
   // would cover the bottom of the screen.
@@ -14,9 +31,18 @@
   const oneRow = $derived(players.length <= 6);
 </script>
 
-<div class="strip" class:compact class:one-row={oneRow}>
+<div class="strip" class:compact class:one-row={oneRow} role="list">
   {#each players as p (p.id)}
-    <div class="card" style:--c={p.color}>
+    <div
+      class="card"
+      class:drop-on={host && dropHover.at === `player:${p.id}`}
+      style:--c={p.color}
+      data-player-id={host ? p.id : undefined}
+      role="listitem"
+      draggable={draggable ? 'true' : undefined}
+      ondragstart={draggable ? (e) => e.dataTransfer?.setData('text/x-player', p.id) : undefined}
+      title={draggable ? 'Right-click for their menu · drag onto a party to join it' : undefined}
+    >
       <Avatar player={p} size={compact ? 44 : 64} />
       <div class="info">
         <div class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</div>
@@ -69,6 +95,13 @@
     background: rgba(0, 0, 0, 0.65);
     border: 3px solid var(--c);
     color: #fff;
+  }
+  .card[draggable='true'] {
+    cursor: grab;
+  }
+  .card.drop-on {
+    outline: 6px dashed #fff;
+    outline-offset: 4px;
   }
   .info {
     display: flex;
