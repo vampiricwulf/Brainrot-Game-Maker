@@ -80,6 +80,7 @@
   import LayerMenu from './LayerMenu.svelte';
   import { lockedNote, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
+  import { placeElement, take } from '../../lib/nav.svelte';
 
   let {
     slide,
@@ -152,6 +153,25 @@
   const editView = $derived(hidden.length ? { ...slide, elements: slide.elements.filter((e) => !hidden.includes(e.id)) } : slide);
 
   const single = $derived(selected.length === 1 ? slide.elements.find((e) => e.id === selected[0]) : undefined);
+  // Items an undo took away are no longer selected (or hidden).
+  $effect(() => {
+    const ids = new Set(slide.elements.map((e) => e.id));
+    untrack(() => {
+      if (selected.some((id) => !ids.has(id))) selected = selected.filter((id) => ids.has(id));
+      if (hidden.some((id) => !ids.has(id))) hidden = hidden.filter((id) => ids.has(id));
+    });
+  });
+  // An undo or redo that changed an item on this slide selects it.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    const id = place && placeElement(place);
+    untrack(() => {
+      if (!id || previewing || !slide.elements.some((e) => e.id === id)) return;
+      selected = [id];
+      activate();
+    });
+  });
   const topZ = () => Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1;
 
   // ---------- Which editor takes the keyboard ----------

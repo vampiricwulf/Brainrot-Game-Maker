@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
+  import { take } from '../lib/nav.svelte';
   import { downloadText, pickFile } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allActions, worldObjects } from '../lib/refs';
@@ -16,6 +17,12 @@
   const game = $derived(app.game);
   let iconFor = $state<string | null>(null);
   let openItem = $state<string | null>(null);
+  // An undo or redo of an item's settings opens them.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab === 'stats' && place.item) openItem = place.item;
+  });
 
   function addField(f: StatField): void {
     game.statFields = [...(game.statFields ?? []), f];
@@ -137,7 +144,7 @@
     <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Custom stat</button>
   </div>
   {#each game.statFields ?? [] as f (f.id)}
-    <div class="field-row">
+    <div class="field-row" data-place="stat:{f.id}">
       <input class="name" bind:value={f.name} aria-label="Stat name" />
       <select bind:value={f.type} aria-label="{f.name} type">
         <option value="number">Number</option>
@@ -258,7 +265,7 @@
     <button class="ghost small" onclick={exportCsv} disabled={!game.items?.length}>Export CSV</button>
   </div>
   {#each game.items ?? [] as it (it.id)}
-    <div class="item">
+    <div class="item" data-place="item:{it.id}">
       <div class="item-row">
         <div class="pop">
           <button class="icon" onclick={() => (iconFor = it.id)} aria-label="Icon for {it.name}" title="Icon">
@@ -314,7 +321,7 @@
   {#each game.shops ?? [] as s (s.id)}
     <!-- What the shop charges: with its currency stat deleted, that's the first currency (or points). -->
     {@const cur = shopCurrency(game, s)}
-    <div class="shop">
+    <div class="shop" data-place="shop:{s.id}">
       <div class="row">
         <input class="name" bind:value={s.name} aria-label="Shop name" />
         <label class="small">

@@ -6,6 +6,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
+  import { take } from '../../lib/nav.svelte';
   import { SnapshotHistory } from '../../lib/editing';
   import { showMenu } from '../../lib/menustate.svelte';
   import { clampToBoard, newBoardSpace, nextSpaceName, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
@@ -31,6 +32,22 @@
   let linking = $state(false);
   let pickingIcon = $state(false);
   let zoneSlide = $state<string | null>(null);
+
+  // An undo or redo here shows the view it changed: the space selected, the backdrop, the zone (and its screen).
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab !== 'round' || place.round !== untrack(() => round.id) || !place.part) return;
+    const part = place.part;
+    if (part.kind === 'space') {
+      view = 'spaces';
+      selId = part.space;
+    } else if (part.kind === 'backdrop') view = 'backdrop';
+    else if (part.kind === 'zone') {
+      view = 'zones';
+      if (part.inSlide) zoneSlide = part.zone;
+    }
+  });
 
   let boxW = $state(0);
   const scale = $derived(boxW / SLIDE_W || 1);
@@ -366,7 +383,7 @@
     <div class="zones">
       <p class="muted small">Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's actions or the host panel.</p>
       {#each round.zones as z (z.id)}
-        <div class="row zone">
+        <div class="row zone" data-place="zone:{z.id}">
           <input bind:value={z.name} aria-label="Zone name" />
           <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
           <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>

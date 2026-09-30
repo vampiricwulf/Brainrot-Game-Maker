@@ -127,6 +127,7 @@
       class:drop-after={dropAt?.id === el.id && dropAt.after}
       class:dragging={dragId === el.id}
       data-layer={el.id}
+      data-place="el:{el.id}"
       role="listitem"
       draggable="true"
       ondragstart={(e) => {

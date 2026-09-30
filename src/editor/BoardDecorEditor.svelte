@@ -22,6 +22,7 @@
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
   import { lockedNote, type LayerAction } from '../lib/layerlabel';
+  import { placeElement, take } from '../lib/nav.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
 
@@ -41,6 +42,21 @@
   const single = $derived(selected.length === 1 ? decor.find((d) => d.id === selected[0]) : undefined);
   const imageEl = $derived(decor.find((d) => d.id === editingImage) as ImageEl | undefined);
   const others = $derived(boardRounds(game).filter((r) => r.id !== round.id));
+  // Images an undo took away are no longer selected (or hidden).
+  $effect(() => {
+    const ids = new Set(decor.map((d) => d.id));
+    untrack(() => {
+      if (selected.some((id) => !ids.has(id))) selected = selected.filter((id) => ids.has(id));
+      if (hidden.some((id) => !ids.has(id))) hidden = hidden.filter((id) => ids.has(id));
+    });
+  });
+  // An undo or redo that changed an image here selects it.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    const id = place && placeElement(place);
+    if (id && untrack(() => decor.some((d) => d.id === id))) selected = [id];
+  });
 
   // The board as it looks at the start of this round, minus anything hidden while editing.
   const session = $derived.by(() => {

@@ -76,6 +76,7 @@
     role={ondown ? 'button' : undefined}
     aria-label={ondown ? `Space ${s.name}` : undefined}
     data-space={s.id}
+    data-place="space:{s.id}"
   >
     {#if h}
       <span class="q">?</span>

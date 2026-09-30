@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { showMenu } from '../lib/menustate.svelte';
+  import { take } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
   import { categoryLabel, clueValue, slideText, type BoardRound } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
@@ -12,7 +14,19 @@
   import MediaPicker from './slide/MediaPicker.svelte';
 
   let { round }: { round: BoardRound } = $props();
-  let editing = $state<{ cat: number; row: number } | null>(null);
+  /** The clue open in the clue editor, by ids (an undo that puts a category back moves the others along). */
+  let open = $state<{ category: string; clue: string } | null>(null);
+  /** Where it is now; null once it's gone (undone), which closes the editor. */
+  const editing = $derived.by(() => {
+    if (!open) return null;
+    const cat = round.categories.findIndex((c) => c.id === open!.category);
+    const row = cat < 0 ? -1 : round.categories[cat].clues.findIndex((c) => c.id === open!.clue);
+    return row < 0 ? null : { cat, row };
+  });
+  function openAt(cat: number, row: number): void {
+    const c = round.categories[cat];
+    open = c?.clues[row] ? { category: c.id, clue: c.clues[row].id } : null;
+  }
   let decorOpen = $state(false);
   let catPicker = $state<number | null>(null);
   let dropTarget = $state<string | null>(null);
@@ -59,6 +73,19 @@
     }
     if (ids.length > 1) toast(`Set ${n} tile images`);
   }
+
+  // An undo or redo here: open the clue or the board images it changed, or close them to show the board.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab !== 'round' || place.round !== round.id) return;
+    const part = place.part;
+    untrack(() => {
+      decorOpen = part?.kind === 'decor';
+      if (part?.kind !== 'clue') open = null;
+      else if (open?.clue !== part.clue) open = { category: part.category, clue: part.clue };
+    });
+  });
 
   function over(e: DragEvent, key: string): void {
     if (!hasFiles(e)) return;
@@ -115,7 +142,7 @@
   </button>
 </div>
 
-<div class="values">
+<div class="values" data-place="values:{round.id}">
   <span class="muted">Row values</span>
   {#each round.values as _, i}
     <input type="number" bind:value={round.values[i]} aria-label="Row {i + 1} value" />
@@ -149,6 +176,7 @@
       <div
         class="cat"
         class:drop={dropTarget === `c${ci}`}
+        data-place="category:{cat.id}"
         ondragover={(e) => over(e, `c${ci}`)}
         ondragleave={() => dropTarget === `c${ci}` && (dropTarget = null)}
         ondrop={(e) => dropOnCategory(e, ci)}
@@ -217,11 +245,12 @@
           class="tile"
           class:empty={clue.empty}
           class:drop={dropTarget === `t${ci}-${row}`}
-          onclick={() => (editing = { cat: ci, row })}
+          data-place="clue:{clue.id}"
+          onclick={() => openAt(ci, row)}
           oncontextmenu={(e) =>
             showMenu(e, [
               { heading: `${categoryLabel(cat) || `Category ${ci + 1}`} · ${sym}${clueValue(round, row, clue)}` },
-              { label: '✎ Edit clue', onclick: () => (editing = { cat: ci, row }) },
+              { label: '✎ Edit clue', onclick: () => openAt(ci, row) },
               {
                 label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
                 disabled: clue.empty,
@@ -255,7 +284,7 @@
 </div>
 
 {#if editing}
-  <ClueEditor {round} bind:pos={editing} onclose={() => (editing = null)} />
+  <ClueEditor {round} bind:pos={() => editing!, (p) => openAt(p.cat, p.row)} onclose={() => (open = null)} />
 {/if}
 {#if decorOpen}
   <BoardDecorEditor {round} onclose={() => (decorOpen = false)} />

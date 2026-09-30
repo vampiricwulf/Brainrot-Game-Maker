@@ -4,7 +4,9 @@
   ✎ Edit screen to lay out its picture and objects.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
+  import { take } from '../../lib/nav.svelte';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { toast } from '../../lib/app.svelte';
@@ -33,6 +35,17 @@
   /** Which look of the screen is being edited (null: its own slide). */
   let lookId = $state<string | null>(null);
   let musicFor = $state<'map' | 'screen' | null>(null);
+
+  // An undo or redo in this world shows its map with the screen selected, or the screen (or look) being edited.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab !== 'world' || place.world !== untrack(() => world.id) || !place.map) return;
+    mapId = place.map;
+    if (place.screen) selId = place.screen;
+    lookId = place.inSlide ? (place.look ?? null) : lookId;
+    editing = !!(place.inSlide && place.screen);
+  });
 
   const map = $derived(world.maps.find((m) => m.id === mapId) ?? world.maps[0]);
   const sel = $derived(map?.screens.find((s) => s.id === selId));
@@ -152,7 +165,7 @@
   <div class="we">
     <div class="tabs" role="tablist" aria-label="Maps">
       {#each world.maps as m, i (m.id)}
-        <button role="tab" class:on={m.id === map?.id} aria-selected={m.id === map?.id} onclick={() => ((mapId = m.id), (selId = null))}>
+        <button role="tab" class:on={m.id === map?.id} aria-selected={m.id === map?.id} data-place="map:{m.id}" onclick={() => ((mapId = m.id), (selId = null))}>
           {i === 0 ? '🗺' : '🏠'} {m.name}
         </button>
       {/each}
@@ -213,6 +226,7 @@
                 <button
                   class="cell screen"
                   class:sel={s.id === selId}
+                  data-place="screen:{s.id}"
                   class:bn={blockedSide(s, 'n')}
                   class:be={blockedSide(s, 'e')}
                   class:bs={blockedSide(s, 's')}

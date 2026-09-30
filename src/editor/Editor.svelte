@@ -3,7 +3,7 @@
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
   import { clone, reidRound } from '../lib/ops';
@@ -31,7 +31,9 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
-  import { arriving, history, mark, redo, undo } from '../lib/history.svelte';
+  import { arriving, history, mark, onApplied, redo, undo } from '../lib/history.svelte';
+  import { goTo, take, type Place } from '../lib/nav.svelte';
+  import { rpgRounds } from '../lib/rpg';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
   import HistoryNotice from './HistoryNotice.svelte';
 
@@ -46,6 +48,40 @@
   $effect(() => {
     document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
   });
+
+  // Where an undo or redo changed something: that tab (the parts inside it open the rest, see nav.svelte.ts).
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place) untrack(() => show(place));
+  });
+  function show(place: Place): void {
+    if (place.tab === 'round') {
+      const i = game.rounds.findIndex((r) => r.id === place.round);
+      if (i >= 0) tab = i;
+    } else if (place.tab === 'world') {
+      // The round on screen if it plays that world, else the first round that does (a world no round plays stays put).
+      const on = typeof tab === 'number' ? game.rounds[tab] : undefined;
+      const playing = rpgRounds(game).filter((r) => r.world === place.world);
+      const r = playing.find((x) => x === on) ?? playing[0];
+      if (r) tab = game.rounds.indexOf(r);
+    } else if (place.tab !== 'title' && place.tab !== 'history') tab = place.tab;
+  }
+
+  // The round on screen stays on screen when an undo puts back (or takes away) a round before it.
+  let shownRound: string | undefined;
+  $effect(() => {
+    shownRound = typeof tab === 'number' ? game.rounds[tab]?.id : undefined;
+  });
+  onMount(() =>
+    onApplied((e, dir, via) => {
+      const i = game.rounds.findIndex((r) => r.id === shownRound);
+      if (typeof tab === 'number' && i >= 0) tab = i;
+      // Then on to where it changed (a jump in the History list shows there).
+      const place = dir < 0 ? e.undoPlace : e.place;
+      if (via !== 'list' && place) goTo(place);
+    }),
+  );
 
   /** Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last. */
   function addRound(mode: RoundMode): void {
@@ -289,7 +325,7 @@
 
 <div class="editor">
   <header>
-    <input class="title" bind:value={game.title} aria-label="Game title" />
+    <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
     <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
     <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
     <button onclick={newFile}>New</button>
@@ -360,6 +396,7 @@
         <button
           class="round-tab"
           class:active={tab === i}
+          data-place="round:{round.id}"
           onclick={() => (tab = i)}
           oncontextmenu={(e) =>
             showMenu(e, [

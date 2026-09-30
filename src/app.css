@@ -84,3 +84,10 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   /* Messages only: clicks go through to what's underneath (in play, the host's nav row). */
   pointer-events: none;
 }
+
+/* Where an undo or redo changed something, for a moment (nav.svelte.ts). */
+.flash { animation: flash 1.2s ease-out; }
+@keyframes flash {
+  0%, 35% { outline: 3px solid var(--accent); outline-offset: 2px; }
+  100% { outline: 3px solid transparent; outline-offset: 2px; }
+}

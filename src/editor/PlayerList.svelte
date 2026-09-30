@@ -61,7 +61,7 @@
 
 <div class="players">
   {#each players as p, i (p.id)}
-    <div class="player">
+    <div class="player" data-place="player:{p.id}">
       <span class="num muted">{i + 1}</span>
       <input
         type="color"

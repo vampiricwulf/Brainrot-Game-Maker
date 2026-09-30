@@ -155,7 +155,7 @@
   <div class="grid">
     {#each game.media as m (m.id)}
       {@const n = usage.get(m.id) ?? 0}
-      <div class="card" class:unused={!n}>
+      <div class="card" class:unused={!n} data-place="media:{m.id}">
         <div class="thumb">
           {#if m.kind === 'image' && mediaUrls[m.id]}
             <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />

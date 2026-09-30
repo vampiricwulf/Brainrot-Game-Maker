@@ -1,12 +1,19 @@
 <!-- The tiebreaker clue: optional, played from the end screen when players are tied for first. -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
+  import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { textSlide, type TextEl } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   let tbSide = $state<'q' | 'a'>('q');
+  // An undo or redo here shows the side it changed.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab === 'tiebreaker' && place.side) tbSide = place.side;
+  });
   const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));
 </script>
 

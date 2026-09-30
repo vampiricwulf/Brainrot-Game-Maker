@@ -1,6 +1,7 @@
 <!-- Editor tab: saved wheels and dice (spec §5.6). -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
+  import { take } from '../../lib/nav.svelte';
   import { newId } from '../../lib/model';
   import { newDice, newWheel } from '../../lib/tools';
   import WheelEditor from './WheelEditor.svelte';
@@ -8,6 +9,12 @@
 
   const game = $derived(app.game);
   let sel = $state<string | null>(null);
+  // An undo or redo here opens the wheel or dice it changed.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab === 'tools' && (place.wheel || place.dice)) sel = place.wheel ?? place.dice ?? null;
+  });
   const wheel = $derived(game.wheels.find((w) => w.id === sel));
   const dice = $derived(game.dice.find((d) => d.id === sel));
 
@@ -32,7 +39,7 @@
   <nav>
     <div class="head muted">🎡 Wheels</div>
     {#each game.wheels as w (w.id)}
-      <button class:active={sel === w.id} onclick={() => (sel = w.id)}>{w.name}</button>
+      <button class:active={sel === w.id} data-place="wheel:{w.id}" onclick={() => (sel = w.id)}>{w.name}</button>
     {/each}
     <button
       class="ghost"
@@ -43,7 +50,7 @@
       }}>＋ New wheel</button>
     <div class="head muted">🎲 Dice</div>
     {#each game.dice as d (d.id)}
-      <button class:active={sel === d.id} onclick={() => (sel = d.id)}>{d.name}</button>
+      <button class:active={sel === d.id} data-place="dice:{d.id}" onclick={() => (sel = d.id)}>{d.name}</button>
     {/each}
     <button
       class="ghost"
