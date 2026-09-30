@@ -10,9 +10,9 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import { isRpg, SLIDE_H, SLIDE_W, type Game, type Screen, type ScreenRef, type Session } from '../../lib/model';
   import SlideView from '../../lib/slide/SlideView.svelte';
-  import Avatar from '../../lib/rpg/Avatar.svelte';
+  import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
-  import { inventory, itemDef } from '../../lib/toolset';
+  import { wornItems } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
@@ -126,13 +126,6 @@
     else onobject?.(d.id);
   }
 
-  /** Items a player has equipped that are worn (they show on the avatar). */
-  const worn = (playerId: string) =>
-    inventory(session, playerId)
-      .filter((e) => e.equipped)
-      .map((e) => itemDef(game, e.item))
-      .filter((d): d is NonNullable<typeof d> => !!d?.wearable);
-  const GEAR = { head: '🎩', hand: '🗡', body: '🛡', badge: '⭐' } as const;
 </script>
 
 {#snippet screenPane(ref: ScreenRef, screen: Screen)}
@@ -183,13 +176,7 @@
       onpointerup={avatarUp}
       role="presentation"
     >
-      <Avatar player={p} size={120} />
-      <div class="nameplate" style:background={p.color}>{p.name}</div>
-      {#each worn(p.id) as w, i (i)}
-        <span class="gear {w.wearable?.slot}" title={w.name}>
-          {#if w.icon && mediaUrls[w.icon]}<img src={mediaUrls[w.icon]} alt="" />{:else}{GEAR[w.wearable?.slot ?? 'badge']}{/if}
-        </span>
-      {/each}
+      <AvatarToken player={p} size={120} worn={wornItems(game, session, p.id)} />
     </div>
   {/each}
 {/snippet}
@@ -316,42 +303,6 @@
   .avatar.down {
     filter: grayscale(1) brightness(0.7);
     transform: translate(-50%, -50%) rotate(90deg);
-  }
-  .nameplate {
-    margin-top: -10px;
-    padding: 2px 12px;
-    border-radius: 8px;
-    border: 3px solid #000;
-    color: #fff;
-    font: 26px 'Anton', 'Oswald', sans-serif;
-    text-shadow: 1px 1px 0 #000;
-    white-space: nowrap;
-  }
-  .gear {
-    position: absolute;
-    font-size: 44px;
-    line-height: 1;
-  }
-  .gear img {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-  }
-  .gear.head {
-    top: -34px;
-  }
-  .gear.hand {
-    right: -30px;
-    top: 40px;
-  }
-  .gear.body {
-    left: -30px;
-    top: 40px;
-  }
-  .gear.badge {
-    right: -18px;
-    top: -10px;
-    font-size: 34px;
   }
   .strip {
     position: absolute;

@@ -31,6 +31,23 @@ try {
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
   await page.getByRole('button', { name: '＋ Item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
+  // A hat, drawn right on an avatar: it goes where it was drawn, and the preview shows it.
+  await page.getByRole('button', { name: '＋ Item', exact: true }).click();
+  await page.getByLabel('Item name').nth(1).fill('Hat');
+  await page.getByLabel('Hat worn on').selectOption('head');
+  await page.getByRole('button', { name: '🖌 Draw it…' }).click();
+  const hatPad = page.getByRole('dialog', { name: 'Draw Hat on the avatar' });
+  const hb = await hatPad.getByLabel('Drawing area').boundingBox();
+  await hatPad.getByRole('button', { name: '⬟ Filled shape' }).click();
+  await page.mouse.move(hb.x + hb.width * 0.42, hb.y + hb.height * 0.2);
+  await page.mouse.down();
+  for (const [fx, fy] of [[0.58, 0.2], [0.55, 0.05], [0.45, 0.05]]) await page.mouse.move(hb.x + hb.width * fx, hb.y + hb.height * fy, { steps: 4 });
+  await page.mouse.up();
+  await hatPad.getByRole('button', { name: 'Insert drawing' }).click();
+  await page.locator('.worn .preview .gear img').waitFor();
+  const hatY = +(await page.getByLabel('Up or down').inputValue());
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-hat-editor.png` });
+  assert(hatY < -0.3, `the drawn hat sits on top of the avatar (${hatY})`);
   await page.getByRole('button', { name: '＋ Shop' }).click();
   await page.getByRole('button', { name: '＋ Something to sell' }).click();
   await page.locator('label', { hasText: 'Buys back at' }).locator('input').fill('50');
@@ -133,6 +150,7 @@ try {
   const pad = page.getByRole('dialog', { name: 'Draw on Start' });
   await pad.waitFor();
   const padBox = await pad.getByLabel('Drawing area').boundingBox();
+  assert((await pad.locator('.pad-token').count()) === 2, 'the drawpad shows the players where they stand');
   const stroke = async (pts) => {
     await page.mouse.move(padBox.x + padBox.width * pts[0][0], padBox.y + padBox.height * pts[0][1]);
     await page.mouse.down();
@@ -180,6 +198,13 @@ try {
   await liveEd.getByRole('button', { name: 'Done' }).click();
   assert(await page.getByRole('button', { name: 'Object: Lava' }).isVisible(), 'after editing it is still on the stage');
   await page.keyboard.press('Escape');
+
+  // Give Player 1 the hat and equip it: it shows on their avatar.
+  await page.locator('.rh .pc').first().getByLabel('Give Player 1 an item').selectOption({ label: 'Hat' });
+  await page.locator('.rh .pc').first().getByRole('button', { name: 'Equip' }).click();
+  await page.locator('.rpg .avatar .gear img').first().waitFor();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-hat-stage.png` });
+  assert(true, 'an equipped hat shows on the avatar on stage');
 
   // The secret Potion is in the host's list: reveal it, then pick it up.
   await page.locator('.rh .objs').getByRole('button', { name: /Potion/ }).click();

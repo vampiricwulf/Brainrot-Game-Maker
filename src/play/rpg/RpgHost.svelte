@@ -12,9 +12,10 @@
   import MapJump from './MapJump.svelte';
   import DrawPad from '../../editor/slide/DrawPad.svelte';
   import Stage from '../../lib/Stage.svelte';
+  import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { addMediaFile } from '../../lib/media.svelte';
-  import { lastAction, logged } from '../../lib/toolset';
+  import { lastAction, logged, wornItems } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard from './PlayerCard.svelte';
@@ -346,7 +347,16 @@
     {@const scr = here.screen}
     <DrawPad title="Draw on {scr.name}" oninsert={insertDrawing} oncancel={() => (drawpad = false)}>
       {#snippet backdrop()}
-        <Stage><SlideView slide={{ ...screenSlide(st, scr), elements: screenElements(st, scr, false) }} mode="edit" fallbackBg="#2f6b3a" /></Stage>
+        <Stage>
+          <SlideView slide={{ ...screenSlide(st, scr), elements: screenElements(st, scr, false) }} mode="edit" fallbackBg="#2f6b3a" />
+          <!-- The players where they stand, so a drawing can go over or around them. -->
+          {#each session.players.filter((pl) => st.positions[pl.id]?.screen === scr.id && !st.positions[pl.id]?.hidden) as pl (pl.id)}
+            {@const pos = st.positions[pl.id]}
+            <div class="pad-token" style:left="{pos.x}px" style:top="{pos.y}px">
+              <AvatarToken player={pl} size={120} worn={wornItems(game, session, pl.id)} />
+            </div>
+          {/each}
+        </Stage>
       {/snippet}
     </DrawPad>
   {/if}
@@ -426,6 +436,10 @@
   }
   .pick {
     font-size: 12px;
+  }
+  .pad-token {
+    position: absolute;
+    transform: translate(-50%, -50%);
   }
   .mini-head {
     gap: 4px;

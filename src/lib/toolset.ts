@@ -1,7 +1,7 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
 import { applyScore, score } from './session';
-import { formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Session, type Shop, type StatField, type StatValue } from './model';
+import { formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Session, type Shop, type StatField, type StatValue, type Wearable } from './model';
 
 // ---------- Stats ----------
 
@@ -324,3 +324,28 @@ export function redoAction(session: Session): ActionEvent | null {
   session.actionLog.push({ ...e, before, after: undefined });
   return e;
 }
+
+// ---------- Worn items ----------
+
+/** Where each slot's items go on the avatar by default (avatar sizes from its center). */
+export const SLOT_PLACE: Record<Wearable['slot'], { x: number; y: number; w: number }> = {
+  head: { x: 0, y: -0.52, w: 0.7 },
+  hand: { x: 0.55, y: 0.2, w: 0.45 },
+  body: { x: 0, y: 0.38, w: 0.8 },
+  badge: { x: 0.42, y: -0.38, w: 0.3 },
+};
+
+/** A worn item's placement, with the slot's defaults filled in. */
+export function wornPlace(w: Wearable): { x: number; y: number; w: number; rotate: number; behind: boolean } {
+  const d = SLOT_PLACE[w.slot];
+  return { x: w.x ?? d.x, y: w.y ?? d.y, w: w.w ?? d.w, rotate: w.rotate ?? 0, behind: !!w.behind };
+}
+
+/** The worn items a player has equipped (their catalog entries). */
+export function wornItems(game: Game, session: Session, playerId: string): ItemDef[] {
+  return inventory(session, playerId)
+    .filter((e) => e.equipped)
+    .map((e) => itemDef(game, e.item))
+    .filter((d): d is ItemDef => !!d?.wearable);
+}
+

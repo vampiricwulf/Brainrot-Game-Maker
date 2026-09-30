@@ -10,6 +10,9 @@ import {
   logged,
   newStatField,
   redoAction,
+  wornItems,
+  wornPlace,
+  SLOT_PLACE,
   SCORE_CURRENCY,
   shopCurrency,
   sell,
@@ -161,6 +164,21 @@ describe('shops that charge points', () => {
     // No currency stat in the game: points.
     game.statFields = [];
     expect(shopCurrency(game, { ...shop, currency: undefined })).toBe('score');
+  });
+});
+
+describe('worn items', () => {
+  it('sit where their slot puts them unless placed, and only equipped ones are worn', () => {
+    const { game, session } = setup();
+    const sword = game.items!.find((i) => i.id === 'sword')!;
+    expect(wornPlace(sword.wearable!)).toEqual({ ...SLOT_PLACE.hand, rotate: 0, behind: false });
+    sword.wearable = { slot: 'hand', x: 0.1, w: 1.2, rotate: 45, behind: true };
+    expect(wornPlace(sword.wearable)).toEqual({ x: 0.1, y: SLOT_PLACE.hand.y, w: 1.2, rotate: 45, behind: true });
+    giveItem(game, session, 'a', 'sword', 1);
+    giveItem(game, session, 'a', 'potion', 1);
+    expect(wornItems(game, session, 'a')).toEqual([]);
+    inventory(session, 'a').find((e) => e.item === 'sword')!.equipped = true;
+    expect(wornItems(game, session, 'a').map((d) => d.id)).toEqual(['sword']);
   });
 });
 

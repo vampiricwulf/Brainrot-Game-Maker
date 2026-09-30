@@ -579,12 +579,28 @@ export interface ItemDef {
   /** Several of it make one entry with a count (coins, potions), otherwise each one is its own entry. */
   stackable: boolean;
   /** Worn items show on the player's avatar. */
-  wearable?: { slot: 'head' | 'hand' | 'body' | 'badge' };
+  wearable?: Wearable;
   /** Only the host sees it in inventories. */
   secret?: boolean;
   hostNotes?: string;
   /** What "Use" does (always confirmed by the host). */
   onUse?: Action[];
+}
+
+/**
+ * How a worn item shows on the avatar: its picture (else the item's icon) and where, in avatar sizes from the
+ * avatar's center (x: right, y: down, w: width), so it fits any avatar size. Missing values use the slot's defaults.
+ */
+export interface Wearable {
+  slot: 'head' | 'hand' | 'body' | 'badge';
+  image?: Id;
+  x?: number;
+  y?: number;
+  w?: number;
+  /** Degrees. */
+  rotate?: number;
+  /** Drawn behind the avatar (a cape, wings). */
+  behind?: boolean;
 }
 
 export interface InventoryEntry {

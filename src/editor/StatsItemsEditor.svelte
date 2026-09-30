@@ -5,11 +5,12 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
   import { downloadText, pickFile } from '../lib/fileio';
-  import { newId, type ItemDef, type Shop, type StatField } from '../lib/model';
+  import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, SCORE_CURRENCY } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import ActionListEditor from './rpg/ActionListEditor.svelte';
+  import WornLookEditor from './WornLookEditor.svelte';
 
   const game = $derived(app.game);
   let iconFor = $state<string | null>(null);
@@ -219,7 +220,12 @@
         <label class="check small"><input type="checkbox" bind:checked={it.stackable} /> Stacks</label>
         <select
           value={it.wearable?.slot ?? ''}
-          onchange={(e) => (it.wearable = e.currentTarget.value ? { slot: e.currentTarget.value as 'head' } : undefined)}
+          onchange={(e) => {
+            const slot = e.currentTarget.value as Wearable['slot'] | '';
+            // Changing the slot keeps the picture; its position goes back to the new slot's.
+            it.wearable = slot ? { slot, image: it.wearable?.image } : undefined;
+            if (slot) openItem = it.id;
+          }}
           aria-label="{it.name} worn on"
         >
           <option value="">Not worn</option>
@@ -238,6 +244,11 @@
           <label class="field">Host notes (what it really does)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
           <div class="muted small">"Use" in play runs:</div>
           <ActionListEditor bind:actions={it.onUse} />
+          {#if it.wearable}
+            {@const worn = it as ItemDef & { wearable: Wearable }}
+            <div class="muted small">Worn look (how it shows on the avatar when equipped):</div>
+            <WornLookEditor item={worn} />
+          {/if}
         </div>
       {/if}
     </div>

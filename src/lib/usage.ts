@@ -109,6 +109,7 @@ export function extraMediaRefs(game: Game): string[] {
   for (const p of game.players) if (p.avatar) out.push(p.avatar);
   for (const it of game.items ?? []) {
     if (it.icon) out.push(it.icon);
+    if (it.wearable?.image) out.push(it.wearable.image);
     for (const a of it.onUse ?? []) if (a.do === 'sound') out.push(a.media);
   }
   for (const w of game.worlds ?? [])

@@ -4,8 +4,8 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import { formatPoints, type Game, type Session } from '../../lib/model';
   import { score } from '../../lib/session';
-  import { entryName, formatStat, inventory, itemDef, statFields, statValue } from '../../lib/toolset';
-  import Avatar from '../../lib/rpg/Avatar.svelte';
+  import { entryName, formatStat, inventory, itemDef, statFields, statValue, wornItems } from '../../lib/toolset';
+  import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
 
   let { game, session, playerId }: { game: Game; session: Session; playerId: string } = $props();
   const p = $derived(session.players.find((x) => x.id === playerId));
@@ -16,7 +16,7 @@
 {#if p}
   <div class="sheet" style:--c={p.color}>
     <div class="head">
-      <Avatar player={p} size={220} />
+      <AvatarToken player={p} size={220} worn={wornItems(game, session, p.id)} name={false} />
       <div>
         <div class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</div>
         <div class="score">{formatPoints(score(session, p.id), game.settings.currencySymbol)}</div>
