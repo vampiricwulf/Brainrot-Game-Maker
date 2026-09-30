@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { addMediaFile, getBlob, mediaUrls, pruneMedia, registerBlob, restoreStash, stashMedia } from './media.svelte';
 import { newGame } from './model';
-import { saveDraft, watchWrites } from './persist';
+import { saveEditor, watchWrites } from './persist';
+import type { SavedHistory } from './history.svelte';
 
 // There's no IndexedDB here, so every write to storage fails (as when a browser's storage is full or blocked).
 vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -22,7 +23,8 @@ describe('adding files', () => {
     const game = newGame();
     const ref = await addMediaFile(game, new File(['png'], 'pic.png', { type: 'image/png' }));
     expect(game.media).toEqual([ref]);
-    await saveDraft(game);
+    const history: SavedHistory = { v: 1, gameId: game.id, rev: 'r', origin: { kind: 'new', label: 'New game', ts: 0 }, ids: [], index: 0, trimmed: 0, marks: [] };
+    await saveEditor({ draft: game, history, steps: [], dropped: [] });
     expect(failed).toHaveLength(2);
     watchWrites(() => {});
   });

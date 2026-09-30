@@ -65,6 +65,22 @@ export interface Origin {
   ts: number;
 }
 
+/** A step as it's stored with the draft (without what only means something on this page). */
+export type StoredStep = Omit<HistoryEntry, 'target' | 'focusSession'>;
+
+/** The rest of the history, stored with the draft (persist.ts): which steps, where it is, its marks. */
+export interface SavedHistory {
+  v: 1;
+  gameId: string;
+  /** The draft it was written with. */
+  rev: string;
+  origin: Origin;
+  ids: string[];
+  index: number;
+  trimmed: number;
+  marks: Mark[];
+}
+
 export interface StepOptions {
   /** Where to show the step when its ops alone can't say (a restyle across 12 slides). */
   place?: Place;
@@ -136,8 +152,11 @@ let generation = 0;
 let group: { label: string | null; opts: StepOptions } = { label: null, opts: {} };
 /** A name for the next step (nameStep). */
 let named: { label: string; opts: StepOptions } | null = null;
-/** Where the next game that arrives comes from (New, Open…). */
-let next: Omit<Origin, 'ts'> | null = null;
+/** Where the next game that arrives comes from (New, Open…), and its history when it was saved with it. */
+let next: { origin: Omit<Origin, 'ts'>; saved?: { saved: SavedHistory; steps: StoredStep[] } } | null = null;
+/** Steps new or changed since the history was last saved, and the ones gone since. */
+const unsaved = new Set<string>();
+const gone = new Set<string>();
 /** Files' bytes swapped in the step being made (attachBlobSwap). */
 let swaps: BlobSwap[] = [];
 /** Unused files that only dropped steps held are cleaned up a little later. */
@@ -149,9 +168,9 @@ const notifyFns = new Set<(e: HistoryEntry) => void>();
 
 const focused = (): Element | null => (typeof document === 'undefined' ? null : document.activeElement);
 
-/** The next game to arrive (New, Open…) starts its history from this. */
-export function arriving(origin: Omit<Origin, 'ts'>): void {
-  next = origin;
+/** The next game to arrive (New, Open…) starts its history from this, or goes on with the history saved with it. */
+export function arriving(origin: Omit<Origin, 'ts'>, saved?: { saved: SavedHistory; steps: StoredStep[] }): void {
+  next = { origin, saved };
 }
 
 /** Start the history over a game that arrived (the draft at the start, New, Open…), watched by `w`. */
@@ -161,7 +180,16 @@ export function startHistory(g: Game, w: GameWatch): void {
   game = g;
   watch = w;
   base = w.value();
-  restart(next ?? { kind: 'reopened', label: 'Reopened this game' });
+  restart(next?.origin ?? { kind: 'reopened', label: 'Reopened this game' });
+  const saved = next?.saved;
+  if (saved) {
+    // Steps from before the reload are closed to typing on.
+    h.entries = saved.steps.map((e) => ({ ...e, sealed: true }));
+    h.index = Math.min(saved.saved.index, h.entries.length);
+    h.origin = saved.saved.origin;
+    h.marks = saved.saved.marks;
+    h.trimmed = saved.saved.trimmed;
+  }
   next = null;
   groups = 0;
   generation++;
@@ -170,7 +198,7 @@ export function startHistory(g: Game, w: GameWatch): void {
 }
 
 function restart(origin: Omit<Origin, 'ts'>): void {
-  released(h.entries);
+  left(h.entries);
   swaps = [];
   h.entries = [];
   h.index = 0;
@@ -257,26 +285,28 @@ function merge(e: HistoryEntry, before: Game, after: Game): boolean {
   const rest = h.entries.slice(0, -1);
   if (!ops.length) {
     // Back to how it was: no step at all.
-    released([top]);
+    left([top]);
     h.entries = rest;
     h.index = rest.length;
     return true;
   }
   const media = mediaIdsIn(ops);
   h.entries = [...rest, { ...top, ...describe(ops, before, after, null), end: e.end, ops, size: opsSize(ops), media: media.length ? media : undefined }];
+  unsaved.add(top.id);
   return true;
 }
 
 function add(e: HistoryEntry): void {
   // A new step drops the undone ones (and the marks among them).
-  released(h.entries.slice(h.index));
+  left(h.entries.slice(h.index));
+  unsaved.add(e.id);
   let entries = [...h.entries.slice(0, h.index), e];
   let marks = h.index < h.entries.length ? h.marks.filter((m) => m.at <= h.index) : h.marks;
   let bytes = entries.reduce((n, x) => n + x.size, 0);
   let drop = 0;
   while (entries.length - drop > MAX_STEPS || (bytes > MAX_BYTES && entries.length - drop > KEEP_NEWEST)) bytes -= entries[drop++].size;
   if (drop) {
-    released(entries.slice(0, drop));
+    left(entries.slice(0, drop));
     h.origin = { kind: 'older', label: "Older steps weren't kept", ts: entries[drop - 1].end };
     h.trimmed += drop;
     entries = entries.slice(drop);
@@ -429,11 +459,40 @@ export function heldMedia(entries: readonly Pick<HistoryEntry, 'media' | 'blobs'
   return ids;
 }
 
-/** Steps left the history: files only they held are cleaned up a little later (unless a step holds them again). */
-function released(gone: readonly HistoryEntry[]): void {
-  if (!gone.some((e) => e.media || e.blobs)) return;
+/**
+ * Steps left the history: they're deleted from storage with the next save, and files only they held are cleaned up a
+ * little later (unless a step holds them again).
+ */
+function left(steps: readonly HistoryEntry[]): void {
+  for (const e of steps) {
+    unsaved.delete(e.id);
+    gone.add(e.id);
+  }
+  if (!steps.some((e) => e.media || e.blobs)) return;
   clearTimeout(pruning);
   pruning = setTimeout(() => pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia()), PRUNE_MS);
+}
+
+/**
+ * What to store of the history with the draft written now (`rev` marks that draft): the steps new or changed since
+ * the last time, and the ones gone since.
+ */
+export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[]; dropped: string[] } {
+  const steps = h.entries.filter((e) => unsaved.has(e.id)).map(({ target: _t, focusSession: _f, ...e }) => e);
+  const history: SavedHistory = {
+    v: 1,
+    gameId: game?.id ?? '',
+    rev,
+    origin: h.origin,
+    ids: h.entries.map((e) => e.id),
+    index: h.index,
+    trimmed: h.trimmed,
+    marks: h.marks,
+  };
+  const dropped = [...gone];
+  unsaved.clear();
+  gone.clear();
+  return { history, steps, dropped };
 }
 
 /** Forget every step. */

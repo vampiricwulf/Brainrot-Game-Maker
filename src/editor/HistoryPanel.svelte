@@ -200,7 +200,7 @@
     </div>
   </div>
   <p class="foot muted">
-    {history.trimmed ? `Older steps weren't kept (the history keeps the last ${MAX_STEPS} steps).` : `The history keeps the last ${MAX_STEPS} steps.`}
+    {history.trimmed ? `Older steps weren't kept (the history keeps the last ${MAX_STEPS} steps).` : `The history keeps the last ${MAX_STEPS} steps and survives a reload.`}
     {#if kept.n}
       {kept.n === 1 ? 'A removed file' : `${kept.n} removed files`} ({formatBytes(kept.bytes)}) {kept.n === 1 ? 'is' : 'are'} kept so
       {kept.n === 1 ? 'its step' : 'their steps'} can be undone.

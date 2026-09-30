@@ -18,6 +18,7 @@ import {
   startHistory,
   step,
   stepAsync,
+  toSave,
   undo,
 } from './history.svelte';
 import { watchGame, type GameWatch } from './watch.svelte';
@@ -495,5 +496,55 @@ describe('undo history: files', () => {
     expect(history.entries[2]).toMatchObject({ ops: [], place: { tab: 'media', media: 'pic' } });
     undo();
     expect(getBlob('pic')).toBe(fresh);
+  });
+});
+
+describe('undo history: saved with the draft', () => {
+  it('stores each step once, again when typing goes on in it, and deletes the ones gone', async () => {
+    toSave('r0');
+    const box = field('title');
+    focus(win, box);
+    g.title = 'A';
+    await seen();
+    vi.advanceTimersByTime(700);
+    step(null, () => (g.rounds[0].name = 'R'));
+    let s = toSave('r1');
+    expect(s.steps.map((e) => e.label)).toEqual(['Renamed the game “A”', 'Renamed round “R”']);
+    expect(s.history).toMatchObject({ v: 1, gameId: g.id, rev: 'r1', index: 2, ids: history.entries.map((e) => e.id) });
+    // Nothing on this page (the field typed in) is stored.
+    expect(s.steps.every((e) => !('target' in e))).toBe(true);
+    expect(toSave('r2').steps).toEqual([]);
+    undo();
+    step(null, () => (g.rounds[0].name = 'Q'));
+    s = toSave('r3');
+    expect(s.steps.map((e) => e.label)).toEqual(['Renamed round “Q”']);
+    expect(s.dropped).toHaveLength(1);
+    clear();
+    expect(toSave('r4').dropped).toHaveLength(2);
+  });
+
+  it('goes on with a saved history when the game arrives with it', () => {
+    step(null, () => (g.title = 'One'));
+    step(null, () => (g.title = 'Two'));
+    mark('saved', 'Saved');
+    undo();
+    const { history: saved } = toSave('rev');
+    const steps = history.entries.map(({ target: _t, focusSession: _f, ...e }) => ({ ...e, sealed: false }));
+    // After a reload: the same game, from the draft written with that history.
+    const again = live(JSON.parse(JSON.stringify($state.snapshot(g))));
+    const w2 = watchGame(again);
+    arriving({ kind: 'reopened', label: 'Reopened “One”' }, { saved, steps });
+    startHistory(again, w2);
+    expect(history.entries.map((e) => e.label)).toEqual(['Renamed the game “One”', 'Renamed the game “Two”']);
+    expect(history.entries.every((e) => e.sealed)).toBe(true);
+    expect(history.index).toBe(1);
+    expect(history.origin).toMatchObject({ kind: 'opened' });
+    expect(history.marks).toHaveLength(1);
+    redo();
+    expect(again.title).toBe('Two');
+    undo();
+    undo();
+    expect(again.title).toBe('Brainrot Night');
+    w2.destroy();
   });
 });
