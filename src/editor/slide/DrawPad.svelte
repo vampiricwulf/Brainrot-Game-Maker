@@ -152,11 +152,17 @@
     if (png) oninsert(png, box);
   }
 
+  /** Cancel (Esc, the Cancel button): ask before throwing a drawing away. */
+  function cancel(): void {
+    if (strokes.length && !confirm('Throw away this drawing?')) return;
+    oncancel();
+  }
+
   function key(e: KeyboardEvent): void {
     const typing = (e.target as HTMLElement).closest?.('input, textarea, select');
     // The pad has its own keys: nothing reaches the game underneath.
     e.stopImmediatePropagation();
-    if (e.key === 'Escape') return oncancel();
+    if (e.key === 'Escape') return cancel();
     if (typing) return;
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') {
@@ -180,7 +186,7 @@
       <b>🖌 {title}</b>
       <span class="muted small">Draw the whole thing, as many strokes as it takes, then Insert.</span>
       <span class="spacer"></span>
-      <button class="ghost" onclick={oncancel}>Cancel</button>
+      <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={insert} disabled={!strokes.length || busy}>Insert drawing</button>
     </div>
     <div class="row tools" role="toolbar" aria-label="Drawing tools">
@@ -225,6 +231,9 @@
     z-index: 160;
     background: rgba(0, 0, 0, 0.6);
     display: grid;
+    /* A viewport-sized track so the modal's max-height: 100% resolves against the window. */
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     place-items: center;
     padding: 16px;
   }
@@ -271,7 +280,9 @@
   }
   .pad {
     position: relative;
-    width: 100%;
+    /* As big as fits both ways: the window's height less the rows above it. */
+    width: min(100%, calc((100dvh - 150px) * 16 / 9));
+    margin-inline: auto;
     aspect-ratio: 16 / 9;
     border-radius: 6px;
     overflow: hidden;

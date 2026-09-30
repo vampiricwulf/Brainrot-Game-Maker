@@ -1,4 +1,4 @@
-<!-- The open right-click menu (see contextmenu.svelte.ts): kept on screen, closed by a click elsewhere, Esc or scrolling. -->
+<!-- The open right-click menu (see menustate.svelte.ts): kept on screen, closed by a click elsewhere, Esc or scrolling. -->
 <script lang="ts">
   import { tick } from 'svelte';
   import { closeMenu, contextMenu } from './menustate.svelte';

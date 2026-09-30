@@ -43,7 +43,7 @@
       <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
     </label>
     <label class="check">
-      <input type="checkbox" bind:checked={s.finalAllowNonPositive} /> Players with $0 or less can play the final round
+      <input type="checkbox" bind:checked={s.finalAllowNonPositive} /> Players with a score of 0 or less can play the final round
     </label>
     <label class="field">
       Points symbol
@@ -157,9 +157,5 @@
   }
   .pop {
     position: relative;
-  }
-  .pop :global(.picker) {
-    left: auto;
-    right: 0;
   }
 </style>

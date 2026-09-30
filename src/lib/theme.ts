@@ -97,6 +97,15 @@ export function presetTheme(p: ThemePreset): Theme {
   return { preset: p, ...PRESETS[p].theme };
 }
 
+/** What a preset sets: its colors and fonts (applying one keeps the images and where the score bar goes). */
+const PRESET_LOOK = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'boardFont', 'valueFont', 'glow', 'scoreBarBg'] as const;
+
+/** Some of the theme's colors or fonts no longer match its preset. */
+export function presetEdited(t: Theme): boolean {
+  const p = PRESETS[t.preset]?.theme;
+  return !!p && PRESET_LOOK.some((k) => t[k].toLowerCase() !== p[k].toLowerCase());
+}
+
 /** CSS custom properties for a theme (inherit into Board, ScoreBar, slides…). */
 export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string {
   const th = t ?? presetTheme('classic');

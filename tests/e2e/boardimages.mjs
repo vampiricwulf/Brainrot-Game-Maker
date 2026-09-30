@@ -146,6 +146,12 @@ try {
   await rows.filter({ hasText: 'through.png' }).getByRole('button', { name: 'Hide while editing' }).click();
   assert((await modal.locator('.canvas .layer.above img').count()) === 1, 'hide-while-editing hides it in the preview');
   await rows.filter({ hasText: 'through.png' }).getByRole('button', { name: 'Show while editing' }).click();
+  // Delete can be undone (Ctrl+Z), like in the slide editor.
+  await rows.filter({ hasText: 'through.png' }).locator('.name').click();
+  await page.keyboard.press('Delete');
+  assert((await rows.count()) === 2 && (await modal.locator('.notice').innerText()).includes('Deleted image'), 'Delete removes a board image and says so');
+  await page.keyboard.press('Control+z');
+  assert((await order()) === 'through.png,behind.png,blocker.png', `Ctrl+Z puts it back where it was (${await order()})`);
   await shot('bi-2-decor-editor');
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();

@@ -138,7 +138,7 @@
         hint="Add from a link: the game saves a copy when the site allows it, e.g. https://files.catbox.moe/abc123.mp3"
       />
     </div>
-    <button disabled={!unused.length} onclick={() => confirm(`Remove ${unused.length} unused file(s)?`) && remove(unused.map((m) => m.id))}>
+    <button disabled={!unused.length} onclick={() => confirm(`Remove ${unused.length} unused file${unused.length === 1 ? '' : 's'}?`) && remove(unused.map((m) => m.id))}>
       🧹 Remove unused ({unused.length})
     </button>
   </div>

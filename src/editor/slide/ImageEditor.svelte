@@ -79,8 +79,8 @@
   });
 
   // ---------- Undo / redo ----------
-  let history: string[] = [];
-  let future: string[] = [];
+  let history = $state<string[]>([]);
+  let future = $state<string[]>([]);
   function commit(): void {
     history.push(JSON.stringify(edits));
     if (history.length > 60) history.shift();
@@ -336,8 +336,8 @@
       {/if}
       {#if source?.mime === 'image/gif'}<span class="warn small">Editing a GIF makes it a still image.</span>{/if}
       <span class="spacer"></span>
-      <button class="ghost" onclick={undo} title="Ctrl+Z">↶ Undo</button>
-      <button class="ghost" onclick={redo} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
+      <button class="ghost" onclick={undo} disabled={!history.length} title="Ctrl+Z">↶ Undo</button>
+      <button class="ghost" onclick={redo} disabled={!future.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
       <button class="ghost" onclick={resetAll}>Reset all</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
       <button onclick={cancel} title="Esc">Cancel</button>

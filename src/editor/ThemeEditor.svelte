@@ -4,9 +4,9 @@
   import { fontChoices } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
-  import { isBoard, newId } from '../lib/model';
+  import { isBoard, newId, newRound } from '../lib/model';
   import { newSession } from '../lib/session';
-  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetTheme, type ThemePreset } from '../lib/theme';
+  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, type Theme, type ThemePreset } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -16,24 +16,33 @@
   const fonts = $derived(fontChoices(game));
   let picking = $state<'bg' | 'banner' | null>(null);
 
+  // The preview shows the first Jeopardy board, or a sample board while the game has none (not added to the game).
+  const sample = newRound('Jeopardy!', 6);
+  const shown = $derived(game.rounds.some(isBoard) ? game : { ...game, rounds: [sample] });
+
   // A pretend game in progress for the preview.
   const demo = $derived.by(() => {
-    const s = newSession(game);
+    const s = newSession(shown);
     if (!s.players.length)
       s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({ id: newId(), name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: [1200, 400, -200][i] }));
-    // The preview shows the first Jeopardy board.
-    s.currentRound = Math.max(0, game.rounds.findIndex(isBoard));
-    const r = game.rounds[s.currentRound];
+    s.currentRound = Math.max(0, shown.rounds.findIndex(isBoard));
+    const r = shown.rounds[s.currentRound];
     if (isBoard(r)) r.categories.forEach((c, ci) => ci % 2 === 0 && c.clues[0] && (s.used[c.clues[0].id] = true));
     s.currentPickerId = s.players[0]?.id;
     return s;
   });
   const live = newLive();
 
+  // A preset replaces every color and font, so it offers an Undo until the theme changes again.
+  let undoPreset = $state<{ label: string; before: Theme; after: string } | null>(null);
+  const canUndoPreset = $derived(!!undoPreset && JSON.stringify(t) === undoPreset.after);
+
   function applyPreset(p: ThemePreset): void {
+    const before = $state.snapshot(t) as Theme;
     // A preset changes colors and fonts, not the images or layout.
     const { boardImage, banner, bannerHeight, bannerFit, scoreBar } = t;
     game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar };
+    undoPreset = { label: PRESETS[p].label, before, after: JSON.stringify(game.theme) };
   }
 
   const COLORS: [keyof typeof t, string][] = [
@@ -53,10 +62,16 @@
       {#each Object.entries(PRESETS) as [key, p]}
         <button class="preset" class:on={t.preset === key} onclick={() => applyPreset(key as ThemePreset)}>
           <span class="sw" style:background={p.theme.tile} style:color={p.theme.value} style:font-family={p.theme.valueFont}>$400</span>
-          {p.label}
+          {p.label}{t.preset === key && presetEdited(t) ? ' (edited)' : ''}
         </button>
       {/each}
     </div>
+    {#if canUndoPreset && undoPreset}
+      <div class="row undo-preset" role="status">
+        <span class="muted small">🎨 Theme set to {undoPreset.label}</span>
+        <button class="small" onclick={() => ((game.theme = undoPreset!.before), (undoPreset = null))}>Undo</button>
+      </div>
+    {/if}
 
     <h4>Colors</h4>
     <div class="grid">
@@ -145,7 +160,7 @@
 
   <div class="preview">
     <Stage>
-      <AudienceView {game} session={demo} {live} role="mirror" />
+      <AudienceView game={shown} session={demo} {live} role="mirror" />
     </Stage>
   </div>
 </div>
@@ -182,6 +197,9 @@
   .preset.on {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
+  }
+  .undo-preset {
+    margin-top: 8px;
   }
   .sw {
     display: grid;
