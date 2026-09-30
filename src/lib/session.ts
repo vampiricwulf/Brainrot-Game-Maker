@@ -1,11 +1,12 @@
 // Runtime game logic: scores, score log with undo/redo, used tiles, round flow.
 // Pure functions over plain objects so they're easy to test and to autosave.
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isFinal, newId, playableClues, type BoardRound, type ClueRef, type FinalRound, type Game, type Player, type Round, type ScoreEvent, type Session } from './model';
+import { ensureWorld } from './rpg';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isFinal, isRpg, newId, playableClues, type BoardRound, type ClueRef, type FinalRound, type Game, type Player, type Round, type ScoreEvent, type Session } from './model';
 
 export function newSession(game: Game): Session {
   return {
     gameId: game.id,
-    players: game.players.map((p) => ({ id: p.id, name: p.name, color: p.color, startScore: 0 })),
+    players: game.players.map((p) => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, startScore: 0 })),
     used: {},
     currentRound: 0,
     phase: 'board',
@@ -226,7 +227,7 @@ export function toggleReveal(session: Session): void {
 /** The host panel's award row is up: not on a Daily Double splash, the final reveals or the end screen. */
 export function awardOpen(session: Session): boolean {
   if (session.phase === 'clue') return session.dd?.stage !== 'splash';
-  return session.phase === 'board' || session.phase === 'tiebreaker' || (session.phase === 'final' && session.finalStep !== 'reveal');
+  return session.phase === 'board' || session.phase === 'rpg' || session.phase === 'tiebreaker' || (session.phase === 'final' && session.finalStep !== 'reveal');
 }
 
 /** Points were given (and not undone) for this clue. */
@@ -340,6 +341,12 @@ export function goToRound(session: Session, game: Game, index: number): void {
     startFinal(session, game, round);
     return;
   }
+  if (isRpg(round)) {
+    session.intro = null;
+    session.phase = 'rpg';
+    ensureWorld(session, game, round);
+    return;
+  }
   session.phase = 'board';
   // Only the first visit to a round plays its intro: going back (or returning) shows the board straight away.
   if (changed) {
@@ -360,6 +367,9 @@ export function backToLastRound(session: Session, game: Game): void {
   if (isFinal(round)) {
     startFinal(session, game, round);
     if (session.final && Object.keys(session.final.results).length) session.finalStep = 'reveal';
+  } else if (isRpg(round)) {
+    session.phase = 'rpg';
+    ensureWorld(session, game, round);
   } else session.phase = 'board';
 }
 

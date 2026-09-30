@@ -33,11 +33,14 @@
     onfit?: (id: string, r: FitResult) => void;
   } = $props();
 
-  const sorted = $derived([...slide.elements].sort((a, b) => a.zIndex - b.zIndex));
+  /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
+  const hostSees = $derived(mode === 'edit' || role === 'mirror');
+  // Secret objects and hotspots are the host's alone: viewers (and OBS) never get them drawn at all.
+  const hiddenFromViewers = (el: SlideElement) => el.secret || (el.kind === 'shape' && el.hotspot);
+  const sorted = $derived([...slide.elements].filter((e) => hostSees || !hiddenFromViewers(e)).sort((a, b) => a.zIndex - b.zIndex));
   const mainText = $derived(slide.elements.find((e) => e.kind === 'text')?.id);
   const bgImage = $derived(slide.background.image ? mediaUrls[slide.background.image] : undefined);
-  /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
-  const hostView = $derived(mode === 'edit' || role === 'mirror');
+  const hostView = $derived(hostSees);
 
   function label(el: SlideElement): string {
     if (el.kind === 'embed') return embedName(el.embedKind, el.url);
@@ -65,6 +68,9 @@
     {@const anim = mode === 'play' ? el.entrance : undefined}
     <div
       class="el {anim ? `anim anim-${anim.type}` : ''}"
+      class:secret={el.secret}
+      class:hotspot={el.kind === 'shape' && el.hotspot}
+      data-el={el.id}
       style:left="{el.x}px"
       style:top="{el.y}px"
       style:width="{el.w}px"
@@ -127,6 +133,16 @@
   .el {
     position: absolute;
     box-sizing: border-box;
+  }
+  /* Host only (viewers never get these): faded, with a dashed outline. */
+  .el.secret {
+    opacity: 0.45 !important;
+    outline: 3px dashed rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+  }
+  .el.hotspot {
+    outline: 3px dashed #ffcc00;
+    background: rgba(255, 204, 0, 0.12);
   }
   img {
     width: 100%;

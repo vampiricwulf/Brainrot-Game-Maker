@@ -3,12 +3,15 @@
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
   import { newId } from '../lib/model';
   import { toast } from '../lib/app.svelte';
+  import Avatar from '../lib/rpg/Avatar.svelte';
+  import MediaPicker from './slide/MediaPicker.svelte';
 
   interface P {
     id: string;
     name: string;
     color: string;
     startScore?: number;
+    avatar?: string;
   }
   let {
     players = $bindable(),
@@ -16,6 +19,7 @@
     showScores = false,
     inGame = false,
     onremove,
+    avatars = false,
   }: {
     players: P[];
     max?: number;
@@ -24,7 +28,11 @@
     inGame?: boolean;
     /** Replaces the plain removal (e.g. to ask first and keep the player restorable mid-game). */
     onremove?: (id: string) => void;
+    /** Offer a picture per player (RPG avatars, player sheets). */
+    avatars?: boolean;
   } = $props();
+  /** The player whose avatar picker is open. */
+  let picking = $state<string | null>(null);
 
   function add(): void {
     if (players.length >= max) return;
@@ -61,6 +69,17 @@
         onchange={(e) => setColor(p, e.currentTarget.value, e.currentTarget)}
         aria-label="Color for {p.name}"
       />
+      {#if avatars}
+        <div class="pop">
+          <button class="ghost av-btn" onclick={() => (picking = p.id)} aria-label="Picture for {p.name}" title="Avatar picture (RPG rounds, player sheets)">
+            <Avatar player={p} size={30} />
+          </button>
+          {#if picking === p.id}
+            <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
+          {/if}
+        </div>
+        {#if p.avatar}<button class="ghost small" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Use the colored token">✕🖼</button>{/if}
+      {/if}
       <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} />
       <span class="chip" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
@@ -113,5 +132,13 @@
   }
   .score input {
     width: 90px;
+  }
+  .pop {
+    position: relative;
+  }
+  .av-btn {
+    padding: 0;
+    border-radius: 50%;
+    line-height: 0;
   }
 </style>

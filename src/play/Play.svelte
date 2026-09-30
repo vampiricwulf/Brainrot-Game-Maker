@@ -22,6 +22,9 @@
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
+  import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
+  import { regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import type { Dir8 } from '../lib/model';
   import {
     audience,
     audienceTitle,
@@ -63,6 +66,10 @@
   let pickerPending = $state(false);
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
   let finishArmed = $state(false);
+  /** RPG rounds: the object whose card is open in the host panel. */
+  let rpgObject = $state<string | null>(null);
+  /** Which log each combined Undo went to, so Redo goes back the same way. */
+  let undoneKinds: ('score' | 'action')[] = [];
 
   const sym = $derived(game.settings.currencySymbol);
   const dual = $derived(audience.open);
@@ -230,6 +237,12 @@
 
   /** Reveal or hide the answer (R / the host button / clicking the slide). */
   function revealToggle(): void {
+    // A question pop-up (from an RPG object or a wheel slice) reveals its own answer.
+    const o = app.live.overlay;
+    if (o?.kind === 'popup' && o.answer) {
+      o.revealed = !o.revealed;
+      return;
+    }
     const wasFinalQuestion = session.phase === 'final' && session.finalStep === 'question';
     toggleReveal(session);
     if (answerShowing(session)) {
@@ -274,7 +287,8 @@
     if (!o) return;
     const busy = Date.now() < overlayDoneAt(o);
     if (busy) return;
-    if (o.kind === 'wheel' && !o.spin) spinWheel(app.live, session, game);
+    if (o.kind === 'popup' && o.answer && !o.revealed) o.revealed = true;
+    else if (o.kind === 'wheel' && !o.spin) spinWheel(app.live, session, game);
     else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
     else closeOverlay();
   }
@@ -407,16 +421,62 @@
     finalJudge(session, game, id, right);
   }
 
+  /** The newest score step not undone (for choosing between the score log and the action log). */
+  function lastScoreTs(): number {
+    const here = new Set(session.players.map((p) => p.id));
+    for (let i = session.scoreLog.length - 1; i >= 0; i--) {
+      const e = session.scoreLog[i];
+      if (!e.undone && here.has(e.playerId)) return e.ts;
+    }
+    return -1;
+  }
+
+  /** Ctrl+Z undoes whichever came last: a score change or an RPG action (move, stat, item, reveal…). */
   function doUndo(): void {
+    const a = lastAction(session);
+    if (a && a.ts >= lastScoreTs()) {
+      undoAction(session);
+      undoneKinds.push('action');
+      return toast(`Undid ${a.text}`, 4000);
+    }
     const events = undo(session);
     if (!events.length) return toast('Nothing to undo');
+    undoneKinds.push('score');
     // No Redo button in the toast: it sits over the host's nav row. ↷ Redo is next to ↶ Undo (or Ctrl+Shift+Z).
     toast(`Undid ${describeStep(session, events, sym)}`, 4000);
   }
 
   function doRedo(): void {
+    const kind = undoneKinds.pop() ?? (session.actionRedo?.length ? 'action' : 'score');
+    if (kind === 'action') {
+      const a = redoAction(session);
+      if (a) return toast(`Redid ${a.text}`);
+    }
     const events = redo(session);
     if (events.length) toast(`Redid ${describeStep(session, events, sym)}`);
+  }
+
+  // ---------- RPG rounds ----------
+
+  const NUMPAD: Record<string, Dir8> = { Numpad8: 'n', Numpad9: 'ne', Numpad6: 'e', Numpad3: 'se', Numpad2: 's', Numpad1: 'sw', Numpad4: 'w', Numpad7: 'nw' };
+  const ALTKEY: Record<string, Dir8> = {
+    q: 'nw', w: 'n', e: 'ne', a: 'w', d: 'e', z: 'sw', x: 's', c: 'se', arrowup: 'n', arrowdown: 's', arrowleft: 'w', arrowright: 'e',
+  };
+
+  function rpgStep(d: Dir8): void {
+    const why = stepParty(game, session, d);
+    if (why) toast(why);
+    rpgObject = null;
+  }
+
+  /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
+  function avatarAct(id: string, at?: { x: number; y: number }): void {
+    const { st } = rpgNow(game, session);
+    if (!at || !st?.positions[id]) {
+      selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+      return;
+    }
+    logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], at));
   }
 
   /** Players added by "＋ Add 3 sample players", by id → their sample name. */
@@ -432,6 +492,8 @@
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;
     app.pregame = false;
+    // A game can open with a Final or an RPG round: those start through goToRound (no board intro).
+    if (!isBoard(game.rounds[0])) return goToRound(session, game, 0);
     startIntro(session, game);
     if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
   }
@@ -513,7 +575,37 @@
       doRedo();
       return;
     }
+    if (session.phase === 'rpg' && !e.ctrlKey && !e.metaKey) {
+      const d = NUMPAD[e.code] ?? (e.altKey ? ALTKEY[k] : undefined);
+      if (d) {
+        e.preventDefault();
+        rpgStep(d);
+        return;
+      }
+      if (e.code === 'Numpad5') {
+        e.preventDefault();
+        regroupAll(game, session);
+        return;
+      }
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'm', 'i', 'b'].includes(k)) {
+      e.preventDefault();
+      if (k === 'g') regroupAll(game, session);
+      else if (k === 'm') toggleMap(game, session);
+      else if (k === 'b') app.live.cover = !app.live.cover;
+      else if (app.live.overlay?.kind === 'sheet') {
+        // I again: the next selected player's sheet, then closed.
+        const at = selected.indexOf(app.live.overlay.playerId);
+        const next = selected[at + 1];
+        app.live.overlay = next ? { kind: 'sheet', nonce: newId(), playerId: next } : null;
+      } else {
+        const id = selected[0] ?? session.players[0]?.id;
+        if (id) app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id };
+      }
+      return;
+    }
 
     if (/^[1-9]$/.test(e.key)) {
       const p = session.players[+e.key - 1];
@@ -537,6 +629,7 @@
       case 'b':
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
+        else if (rpgObject) rpgObject = null;
         // Shift+Esc cancels: back to the board without using up the tile.
         else if (session.phase === 'clue' && e.shiftKey) cancelClue();
         else if (session.phase === 'clue') back();
@@ -699,6 +792,8 @@
             }}
             onpicker={(id) => (session.currentPickerId = session.currentPickerId === id ? undefined : id)}
             onact={stageAct}
+            onobject={(id) => (rpgObject = id)}
+            onavatar={avatarAct}
           />
         </Stage>
       </div>
@@ -714,6 +809,7 @@
         {session}
         bind:selected
         bind:amount
+        bind:rpgObject
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}

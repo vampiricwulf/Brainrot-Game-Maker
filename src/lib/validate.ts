@@ -2,7 +2,8 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { isFinal, playableClues, PLAYER_WHEEL, roundName, type Game } from './model';
+import { isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type Game } from './model';
+import { rpgProblems } from './rpg';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
 
 export interface Problem {
@@ -24,6 +25,10 @@ export function validate(game: Game): Problem[] {
     if (isFinal(round)) {
       if (!slideHasContent(round.questionSlide)) out.push({ text: `${name} has no question`, tab: i, level: 'warn' });
       if (!slideHasContent(round.answerSlide)) out.push({ text: `${name} has no answer`, tab: i, level: 'warn' });
+      return;
+    }
+    if (isRpg(round)) {
+      out.push(...rpgProblems(game, round, name, i));
       return;
     }
     const r = { ...round, name };

@@ -47,7 +47,7 @@
 </script>
 
 <script lang="ts">
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, tick, untrack, type Snippet } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
   import { clipboard } from '../../lib/clipboard.svelte';
@@ -63,6 +63,7 @@
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
+  import DrawLayer from './DrawLayer.svelte';
   import Inspector from './Inspector.svelte';
   import MediaPicker from './MediaPicker.svelte';
   import LinkField from '../LinkField.svelte';
@@ -79,6 +80,8 @@
     placeholder,
     badge,
     fill = false,
+    objectsection,
+    tools,
   }: {
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
@@ -91,6 +94,10 @@
     badge?: string;
     /** Fill the parent's height and fit the canvas to both width and height (the clue editor). */
     fill?: boolean;
+    /** Extra inspector settings for the selected item (RPG screens: class, secret, host notes). */
+    objectsection?: Snippet<[SlideElement]>;
+    /** Extra toolbar buttons (RPG screens: spawn point, items). `add` puts an element on the slide. */
+    tools?: Snippet<[(el: SlideElement) => void]>;
   } = $props();
   let editingImage = $state<string | null>(null);
   const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
@@ -100,6 +107,8 @@
   let picker = $state<MediaKind | null>(null);
   let replacing = $state<string | null>(null);
   let shapeMenu = $state(false);
+  /** ✏ Draw is on: the next drag on the canvas draws a line. */
+  let drawing = $state(false);
   /** The 🌐 Link box: the link it started with (pasted or dropped) and where the item goes. */
   let linkBox = $state<{ initial: string; at?: { x: number; y: number }; key: number } | null>(null);
   let linkKey = 0;
@@ -285,6 +294,38 @@
       return;
     }
     await addMedia(kind, id);
+  }
+
+  /** A finished freehand stroke (slide coordinates) becomes a 'path' shape sized to fit it. */
+  function addDrawing(pts: [number, number][], closed: boolean): void {
+    drawing = false;
+    const pad = 6;
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const x = Math.min(...xs) - pad;
+    const y = Math.min(...ys) - pad;
+    const w = Math.max(20, Math.max(...xs) - x + pad);
+    const h = Math.max(20, Math.max(...ys) - y + pad);
+    const el = newShapeEl('path');
+    Object.assign(el, {
+      x,
+      y,
+      w,
+      h,
+      points: pts.map(([px, py]) => [+((px - x) / w).toFixed(4), +((py - y) / h).toFixed(4)] as [number, number]),
+      closed,
+      fill: closed ? '#ffcc00' : 'transparent',
+      stroke: '#ffffff',
+      strokeWidth: 8,
+    });
+    add(el);
+  }
+
+  function addHotspot(): void {
+    shapeMenu = false;
+    const el = newShapeEl('rect');
+    Object.assign(el, { hotspot: true, fill: 'transparent', strokeWidth: 0, name: 'Hotspot' });
+    add(el);
   }
 
   function addShape(shape: ShapeType): void {
@@ -673,6 +714,8 @@
             <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
             <button onclick={() => addShape('line')}>― Line</button>
             <button onclick={() => addShape('arrow')}>➝ Arrow</button>
+            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw; hold Shift when letting go to close the shape">✏ Draw</button>
+            <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
           </div>
         {/if}
       </div>
@@ -714,6 +757,7 @@
           </div>
         {/if}
       </div>
+      {#if tools}{@render tools((el: SlideElement) => add(el))}{/if}
       <span class="sep"></span>
       <label class="bg" title="Slide background color">
         BG
@@ -807,6 +851,7 @@
               }}
               ondblclick={(el) => (el.kind === 'text' ? focusText(false) : el.kind === 'image' && (editingImage = el.id))}
             />
+            {#if drawing}<DrawLayer ondone={addDrawing} oncancel={() => (drawing = false)} />{/if}
           {/if}
         </Stage>
         {#if previewing}
@@ -867,6 +912,7 @@
           }}
           oneditimage={single.kind === 'image' ? () => (editingImage = single!.id) : undefined}
           onedit={edit}
+          {objectsection}
         />
         {#if picker && replacing === single.id}
           <div class="pop-anchor"><MediaPicker kind={picker} onpick={picked} onclose={() => ((picker = null), (replacing = null))} /></div>

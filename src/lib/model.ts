@@ -53,6 +53,14 @@ export interface ElementBase {
   locked?: boolean;
   /** Plays when the slide appears. */
   entrance?: Entrance;
+  /** What the host calls it ("Old Man", "Locked door"): shown in the Layers list and on its action card. */
+  name?: string;
+  /** RPG screens: what the object is (doorway, item, NPC…) and what it can do. Absent = scenery. */
+  role?: ObjectRole;
+  /** Hidden from the audience until the host reveals it (the host sees it faded). */
+  secret?: boolean;
+  /** Never shown on stream. */
+  hostNotes?: string;
 }
 
 export type EntranceType = 'fade' | 'pop' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'typewriter' | 'shake' | 'spin';
@@ -124,7 +132,7 @@ export interface AudioEl extends ElementBase, Playback {
   visible: boolean;
 }
 
-export type ShapeType = 'rect' | 'ellipse' | 'line' | 'arrow';
+export type ShapeType = 'rect' | 'ellipse' | 'line' | 'arrow' | 'path';
 
 export interface ShapeEl extends ElementBase {
   kind: 'shape';
@@ -133,6 +141,12 @@ export interface ShapeEl extends ElementBase {
   stroke: string;
   strokeWidth: number;
   radius: number;
+  /** 'path': the drawn line, as points inside the box (0–1 of its width and height). */
+  points?: [number, number][];
+  /** 'path': join the last point back to the first (a filled shape). */
+  closed?: boolean;
+  /** A hotspot: never drawn for the audience (the host sees its outline). Turns part of a picture into a doorway, shop… */
+  hotspot?: boolean;
 }
 
 /**
@@ -223,6 +237,10 @@ export interface PlayerTemplate {
   name: string;
   /** Hex color, unique among players. */
   color: string;
+  /** Picture for RPG avatars and player sheets (otherwise a colored token with initials). */
+  avatar?: Id;
+  /** Starting stat values that differ from the fields' defaults ("all mammals start with 4 gold"). */
+  stats?: Record<Id, StatValue>;
 }
 
 export interface GameSettings {
@@ -345,7 +363,7 @@ export interface Category {
 }
 
 /** How a round plays. Each game is a list of rounds, and each round picks its mode. */
-export type RoundMode = 'board' | 'final';
+export type RoundMode = 'board' | 'final' | 'rpg';
 
 /** A Jeopardy board: categories of clues with values. */
 export interface BoardRound {
@@ -384,10 +402,11 @@ export interface FinalRound {
   hostNotes?: string;
 }
 
-export type Round = BoardRound | FinalRound;
+export type Round = BoardRound | FinalRound | RpgRound;
 
 export const isBoard = (r: Round | undefined | null): r is BoardRound => r?.mode === 'board';
 export const isFinal = (r: Round | undefined | null): r is FinalRound => r?.mode === 'final';
+export const isRpg = (r: Round | undefined | null): r is RpgRound => r?.mode === 'rpg';
 
 /** Game format version (bumped when saved games need converting; see migrateGame). */
 export const GAME_VERSION = 2;
@@ -405,6 +424,13 @@ export interface Game {
   wheels: WheelPreset[];
   dice: DicePreset[];
   theme: Theme;
+  /** Host-defined player stats (HP, Gold, Vibes…), used by RPG rounds and shown on the stats strip. */
+  statFields?: StatField[];
+  /** The item catalog (RPG pick-ups, shops, inventories). */
+  items?: ItemDef[];
+  shops?: Shop[];
+  /** RPG worlds (maps of screens). Rounds in RPG mode play one of them. */
+  worlds?: World[];
   /** Optional clue used to break a tie at the end. */
   tiebreaker?: { questionSlide: Slide; answerSlide: Slide; hostNotes?: string };
 }
@@ -432,6 +458,7 @@ export interface Player {
   id: Id;
   name: string;
   color: string;
+  avatar?: Id;
   /** Score before any logged events (normally 0; set when editing a player's starting score). */
   startScore: number;
 }
@@ -476,7 +503,7 @@ export interface Session {
   currentRound: number;
   /** Rounds whose intro has already played, so revisiting a round never replays it. */
   introducedRounds?: number[];
-  phase: 'board' | 'clue' | 'final' | 'tiebreaker' | 'end';
+  phase: 'board' | 'clue' | 'final' | 'rpg' | 'tiebreaker' | 'end';
   /** Round intro sequence in progress (spec §6.3 step 0). */
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
   /** Daily Double in progress for the open clue. */
@@ -500,6 +527,239 @@ export interface Session {
   /** Event ids undone by Undo, most recent last; cleared by any new score change. */
   redoStack: Id[];
   currentPickerId?: Id;
+  /** Player stats (host-defined fields), by player then field. */
+  stats?: Record<Id, Record<Id, StatValue>>;
+  /** What each player carries. */
+  inventories?: Record<Id, InventoryEntry[]>;
+  /** RPG state per world (shared by every round that uses the world). */
+  worlds?: Record<Id, WorldState>;
+  /** Shop stock left, by shop (or stock pool) then item; null = unlimited. */
+  stock?: Record<Id, Record<Id, number | null>>;
+  /** Everything the host did besides scoring (moves, stats, items, reveals…), newest last, for undo. */
+  actionLog?: ActionEvent[];
+  actionRedo?: ActionEvent[];
+}
+
+// ---------- Toolset: stats, items, shops, actions (games-maker spec §5.1, §7.7–7.10) ----------
+
+export type StatValue = number | string | boolean | string[];
+
+export interface StatField {
+  id: Id;
+  name: string;
+  type: 'number' | 'text' | 'checkbox' | 'tags';
+  /** Starting value for every player (a player can override it in Setup). */
+  start?: StatValue;
+  min?: number;
+  max?: number;
+  /** Numbers: how the audience sees it. */
+  display?: 'counter' | 'bar' | 'hearts';
+  /** A currency: shops charge it and currency objects add to it. */
+  currency?: boolean;
+  /** Shown before the number, e.g. "🪙" or "$". */
+  symbol?: string;
+  /** Where the audience sees it: the stats strip, only the full player sheet, or never (host only). */
+  audience: 'hud' | 'sheet' | 'hidden';
+  color?: string;
+}
+
+export interface ItemDef {
+  id: Id;
+  name: string;
+  icon?: Id;
+  description?: string;
+  price?: number;
+  /** Several of it make one entry with a count (coins, potions), otherwise each one is its own entry. */
+  stackable: boolean;
+  /** Worn items show on the player's avatar. */
+  wearable?: { slot: 'head' | 'hand' | 'body' | 'badge' };
+  /** Only the host sees it in inventories. */
+  secret?: boolean;
+  hostNotes?: string;
+  /** What "Use" does (always confirmed by the host). */
+  onUse?: Action[];
+}
+
+export interface InventoryEntry {
+  id: Id;
+  /** A catalog item, or null for one made up mid-show (then `name` says what it is). */
+  item: Id | null;
+  name?: string;
+  qty: number;
+  equipped?: boolean;
+  notes?: string;
+}
+
+export interface Shop {
+  id: Id;
+  name: string;
+  /** The currency stat it charges. */
+  currency?: Id;
+  stock: { item: Id; price?: number; qty: number | null }[];
+  /** Shops with the same pool share their stock (e.g. the Village shop and the Shadow Realm shop). */
+  pool?: string;
+}
+
+/** Who an action applies to when it runs: the moving party, the selected players, the picker, or the host picks. */
+export type Who = 'party' | 'selected' | 'picker' | 'ask' | 'all';
+
+/** Something the host can run (from an object, an item's "Use", a wheel slice…). Always shown to the host first. */
+export type Action = { id: Id } & (
+  | { do: 'move'; to: ScreenRef; who?: Who }
+  | { do: 'wheel'; wheel: Id }
+  | { do: 'dice'; dice: string }
+  | { do: 'popup'; slide: Slide }
+  | { do: 'question'; question: Slide; answer: Slide; value?: number }
+  | { do: 'sound'; media: Id }
+  | { do: 'stat'; field: Id; op: 'add' | 'set'; amount: number; who?: Who }
+  | { do: 'item'; item: Id; qty: number; op: 'give' | 'take'; who?: Who }
+  | { do: 'score'; amount: number; who?: Who }
+  | { do: 'reveal' | 'hide'; object?: Id; screen?: ScreenRef }
+  | { do: 'timer'; seconds: number }
+  | { do: 'shop'; shop: Id }
+  | { do: 'note'; text: string }
+);
+export type ActionKind = Action['do'];
+
+/** One undoable step in the action log: the RPG state before (and after, once undone) as JSON. */
+export interface ActionEvent {
+  id: Id;
+  ts: number;
+  text: string;
+  before: string;
+  after?: string;
+}
+
+// ---------- RPG mode: worlds, maps, screens, objects (games-maker spec §7) ----------
+
+export type Dir8 = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+
+export interface ScreenRef {
+  map: Id;
+  screen: Id;
+}
+
+/** How one side of a screen differs from the grid (by default a side leads to the screen next to it). */
+export type ExitRule = { kind: 'blocked'; note?: string } | { kind: 'warp'; to: ScreenRef };
+
+export interface Screen {
+  id: Id;
+  name: string;
+  col: number;
+  row: number;
+  slide: Slide;
+  exits?: Partial<Record<Dir8, ExitRule>>;
+  hostNotes?: string;
+  /** Looping music while the party is here (overrides the map's). */
+  music?: Id;
+}
+
+export interface WorldMap {
+  id: Id;
+  name: string;
+  cols: number;
+  rows: number;
+  screens: Screen[];
+  /** What the audience's map shows: every screen, only discovered ones, or nothing. */
+  visibility: 'full' | 'discovered' | 'hidden';
+  /** Show arrows for open ways out of known screens, without saying where they lead. */
+  showExits: boolean;
+  /** Moving to a screen also marks its neighbors discovered. */
+  revealNeighbors: boolean;
+  /** Allow diagonal moves (NE, SE, SW, NW). */
+  diagonals: boolean;
+  /** Walking off one edge comes back on the opposite edge. */
+  wrap: boolean;
+  transition: 'slide' | 'fade' | 'cut';
+  music?: Id;
+}
+
+export interface World {
+  id: Id;
+  name: string;
+  /** maps[0] is the primary map; the rest (dungeons, shops, the Shadow Realm) are joined by doorways. */
+  maps: WorldMap[];
+}
+
+export type ObjectClass = 'doorway' | 'item' | 'currency' | 'npc' | 'shop' | 'hazard' | 'interactable' | 'spawn' | 'blocker';
+
+/** What an object on an RPG screen is. Fields apply by class (the rest are ignored). */
+export interface ObjectRole {
+  class: ObjectClass;
+  /** doorway: where it leads. */
+  to?: ScreenRef;
+  /** doorway: arrive at this object on the other side (e.g. its spawn point); default: the screen's first spawn point. */
+  arrive?: Id;
+  /** doorway: locked (the host can still open it). */
+  locked?: boolean;
+  /** item: which catalog item and how many. */
+  item?: Id;
+  qty?: number;
+  /** currency: which stat and how much. */
+  field?: Id;
+  amount?: number;
+  /** npc / shop: the shop it opens. */
+  shop?: Id;
+  /** npc: its own numbers (power, HP…), editable during the game. */
+  stats?: { name: string; value: number }[];
+  /** npc / interactable: a slide shown when talked to or used. */
+  dialogue?: Slide;
+  /** Buttons on its action card (always confirmed by the host). */
+  actions?: Action[];
+}
+
+export interface RpgRound {
+  id: Id;
+  name: string;
+  mode: 'rpg';
+  /** The world played (worlds are shared, so a later round can continue the same adventure). */
+  world: Id;
+  /** Where the party starts, if the world hasn't been played yet (default: the primary map's first screen). */
+  start?: ScreenRef;
+  hostNotes?: string;
+}
+
+/** A player's avatar on a screen. */
+export interface Position extends ScreenRef {
+  x: number;
+  y: number;
+  /** Knocked out, shown grey and tipped over. */
+  down?: boolean;
+  hidden?: boolean;
+}
+
+export interface Party {
+  id: Id;
+  name: string;
+  members: Id[];
+}
+
+/** Changes to an object during the game (the authored slide never changes). */
+export interface ObjectOverride {
+  taken?: boolean;
+  /** Revealed (true) or hidden (false) from the audience, overriding `secret`. */
+  shown?: boolean;
+  x?: number;
+  y?: number;
+  locked?: boolean;
+  stats?: { name: string; value: number }[];
+}
+
+export interface WorldState {
+  positions: Record<Id, Position>;
+  parties: Party[];
+  /** The party the audience follows and the pad moves. */
+  active: Id;
+  /** Show every party's screen side by side (split party). */
+  split?: boolean;
+  /** 'visited' screens were stood on; 'discovered' ones are known but not visited. */
+  knowledge: Record<Id, 'discovered' | 'visited'>;
+  objects: Record<Id, ObjectOverride>;
+  /** Objects the host added during the game, by screen id. */
+  added: Record<Id, SlideElement[]>;
+  mapShown: boolean;
+  /** Which way the last move went (for the flip-screen transition). */
+  lastMove?: { dir: Dir8 | 'warp'; at: number };
 }
 
 // ---------- Factories ----------

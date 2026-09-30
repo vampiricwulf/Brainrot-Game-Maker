@@ -9,8 +9,10 @@
   import { describeRoll } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
+  import ShopControls from './ShopControls.svelte';
+  import { newId } from '../../lib/model';
 
-  let { game, session, onclose }: { game: Game; session: Session; onclose: () => void } = $props();
+  let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
   let now = $state(Date.now());
   onMount(() => {
@@ -67,6 +69,19 @@
       {:else if o.kind === 'rolloff'}
         <b>🏁 Who goes first</b>
         {#if !busy}<span>{session.players.find((p) => p.id === o.winner)?.name} picks first.</span>{:else}<span class="muted">Rolling…</span>{/if}
+      {:else if o.kind === 'popup'}
+        <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
+        {#if o.value}<span class="muted small">worth {o.value}</span>{/if}
+        {#if o.answer}
+          <button class:primary={!o.revealed} onclick={() => (o.revealed = !o.revealed)} title="R">{o.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}</button>
+        {/if}
+      {:else if o.kind === 'sheet'}
+        {@const i = session.players.findIndex((p) => p.id === o.playerId)}
+        <b>📺 {session.players[i]?.name ?? 'Player'}'s sheet</b>
+        <button class="small" disabled={i <= 0} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i - 1].id })}>◀</button>
+        <button class="small" disabled={i >= session.players.length - 1} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i + 1].id })}>▶</button>
+      {:else if o.kind === 'shop'}
+        <b>🛒 {game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}</b>
       {:else}
         <b>📊 Scoreboard on screen</b>
       {/if}
@@ -74,6 +89,9 @@
       {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}
       <button onclick={onclose} title="Esc">Close</button>
     </div>
+    {#if o.kind === 'shop'}
+      <ShopControls {game} {session} shopId={o.shopId} {selected} />
+    {/if}
     {#if o.kind === 'wheel' && o.editing}
       {#key o.nonce}<WheelEdit {o} {game} {session} disabled={busy} />{/key}
     {/if}

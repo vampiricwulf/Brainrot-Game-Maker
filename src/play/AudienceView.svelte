@@ -18,6 +18,7 @@
   import TimerDisplay from './TimerDisplay.svelte';
   import Confetti from './Confetti.svelte';
   import ToolOverlay from './tools/ToolOverlay.svelte';
+  import RpgStage from './rpg/RpgStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
   import { boardLayout, themeStyle } from '../lib/theme';
 
@@ -30,6 +31,8 @@
     onunmark,
     onpicker,
     onact,
+    onobject,
+    onavatar,
   }: {
     game: Game;
     session: Session;
@@ -42,6 +45,10 @@
     onpicker?: (id: string) => void;
     /** Host clicked the stage (only passed in the host's window, never the audience window). */
     onact?: (a: StageAction) => void;
+    /** RPG rounds, host only: an object on the stage was clicked. */
+    onobject?: (elId: string) => void;
+    /** RPG rounds, host only: an avatar was dragged (or clicked). */
+    onavatar?: (playerId: string, at?: { x: number; y: number }) => void;
   } = $props();
   const act = (a: StageAction) => onact?.(a);
 
@@ -181,6 +188,8 @@
       {/if}
     </div>
   {/key}
+{:else if session.phase === 'rpg'}
+  <RpgStage {game} {session} {role} {onobject} {onavatar} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
   {#key session.tiebreakerRevealed}
     <div
@@ -219,7 +228,7 @@
   </div>
 {/if}
 
-{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board')}
+{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board' || session.phase === 'rpg')}
   <TimerDisplay timer={live.timer} />
 {/if}
 
@@ -235,6 +244,13 @@
   {/each}
 </div>
 
+<!-- Panic button: viewers see only the cover card (the host's copy shows it faded, to keep working underneath). -->
+{#if live.cover}
+  <div class="cover" class:host={role === 'mirror'}>
+    <div class="cover-card">⏸ Be right back</div>
+  </div>
+{/if}
+
 <!-- Game sound cue: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
 {#if role !== 'mirror' && live.sound && mediaUrls[live.sound.media]}
   {#key live.sound.nonce}
@@ -246,6 +262,23 @@
 <style>
   .theme {
     display: contents;
+  }
+  .cover {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle, #1a2bd6, #000);
+  }
+  .cover.host {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .cover-card {
+    font: 120px 'Anton', 'Oswald', sans-serif;
+    color: #ffcc00;
+    text-shadow: 6px 6px 0 #000;
   }
   /* Board screen, back to front: background, images behind the tiles, banner + board, score bar, images on top. */
   .board-screen {

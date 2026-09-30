@@ -9,6 +9,9 @@
   import WheelView from './WheelView.svelte';
   import DiceView from './DiceView.svelte';
   import RollOffView from './RollOffView.svelte';
+  import SlideView from '../../lib/slide/SlideView.svelte';
+  import PlayerSheet from '../rpg/PlayerSheet.svelte';
+  import ShopView from '../rpg/ShopView.svelte';
 
   let {
     o,
@@ -27,6 +30,12 @@
       <DiceView {o} {game} {role} />
     {:else if o.kind === 'rolloff'}
       <RollOffView {o} {session} />
+    {:else if o.kind === 'popup'}
+      <div class="popup"><SlideView slide={o.revealed && o.answer ? o.answer : o.slide} mode="play" {role} /></div>
+    {:else if o.kind === 'sheet'}
+      <PlayerSheet {game} {session} playerId={o.playerId} />
+    {:else if o.kind === 'shop'}
+      <ShopView {game} {session} shopId={o.shopId} />
     {:else if o.kind === 'scoreboard'}
       <div class="sb">
         <h1>Scores</h1>
@@ -51,6 +60,10 @@
   }
   .clickable {
     cursor: pointer;
+  }
+  .popup {
+    position: absolute;
+    inset: 0;
   }
   .sb {
     position: absolute;

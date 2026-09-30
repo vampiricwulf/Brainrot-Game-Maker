@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { isBoard, isFinal, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
+  import { isBoard, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
   import { clone, reidRound } from '../lib/ops';
+  import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
   import { pickFile, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
@@ -13,6 +14,8 @@
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
   import TiebreakerEditor from './TiebreakerEditor.svelte';
+  import StatsItemsEditor from './StatsItemsEditor.svelte';
+  import RpgRoundEditor from './rpg/RpgRoundEditor.svelte';
   import RoundActions from './RoundActions.svelte';
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
@@ -26,7 +29,7 @@
   let { onplay }: { onplay: () => void } = $props();
 
   // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | round index
-  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | number>(0);
+  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | number>(0);
   let addMenu = $state(false);
   const game = $derived(app.game);
   $effect(() => {
@@ -42,7 +45,8 @@
     let at = game.rounds.length;
     if (mode !== 'final') while (at > 0 && isFinal(game.rounds[at - 1])) at--;
     let round: Round;
-    if (mode === 'final') round = newFinalRound(game.rounds.some(isFinal) ? `Final round ${game.rounds.filter(isFinal).length + 1}` : 'Final Jeopardy!');
+    if (mode === 'rpg') round = newRpgRound(game, game.rounds.some(isRpg) ? `Adventure ${game.rounds.filter(isRpg).length + 1}` : 'Adventure');
+    else if (mode === 'final') round = newFinalRound(game.rounds.some(isFinal) ? `Final round ${game.rounds.filter(isFinal).length + 1}` : 'Final Jeopardy!');
     else {
       const boards = game.rounds.slice(0, at).filter(isBoard);
       const prev = boards[boards.length - 1];
@@ -206,7 +210,7 @@
       <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
-        <button class:active={tab === i} onclick={() => (tab = i)} title={ROUND_MODES[round.mode].label}>
+        <button class="round-tab" class:active={tab === i} onclick={() => (tab = i)} title={ROUND_MODES[round.mode].label}>
           <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
         </button>
       {/each}
@@ -224,6 +228,7 @@
       </div>
       <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
+      <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
       <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
       <div class="navlabel muted">End</div>
       <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')}>
@@ -245,6 +250,8 @@
     <main>
       {#if tab === 'setup'}
         <SetupPanel />
+      {:else if tab === 'stats'}
+        <StatsItemsEditor />
       {:else if tab === 'tiebreaker'}
         <TiebreakerEditor />
       {:else if tab === 'media'}
@@ -269,6 +276,8 @@
             <RoundEditor {round} />
           {:else if isFinal(round)}
             <FinalEditor {round} />
+          {:else if isRpg(round)}
+            <RpgRoundEditor {round} />
           {/if}
         {/key}
       {/if}

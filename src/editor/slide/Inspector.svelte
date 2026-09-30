@@ -1,5 +1,6 @@
 <!-- Property panel for the selected slide element. -->
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
   import type { EntranceType, Game, SlideElement, TextEl } from '../../lib/model';
@@ -21,6 +22,7 @@
     onuploadfont,
     oneditimage,
     onedit,
+    objectsection,
   }: {
     el: SlideElement;
     game: Game;
@@ -39,6 +41,8 @@
     oneditimage?: () => void;
     /** Makes a discrete change (locking) by calling `change`, so an undo history can record it as one step. */
     onedit?: (change: () => void) => void;
+    /** Extra settings for the item (RPG screens: its class, secret, host notes). */
+    objectsection?: Snippet<[SlideElement]>;
   } = $props();
   const edit = (change: () => void) => (onedit ? onedit(change) : change());
   /** The selected image/video/audio file, when it plays from the internet (a live link). */
@@ -224,17 +228,23 @@
     </section>
   {:else if el.kind === 'shape'}
     <section>
-      <h4>Shape</h4>
-      <label class="field">
-        Type
-        <select bind:value={el.shape}>
-          <option value="rect">Rectangle</option>
-          <option value="ellipse">Ellipse</option>
-          <option value="line">Line</option>
-          <option value="arrow">Arrow</option>
-        </select>
-      </label>
-      {#if el.shape === 'rect' || el.shape === 'ellipse'}
+      <h4>{el.hotspot ? 'Hotspot' : el.shape === 'path' ? 'Drawing' : 'Shape'}</h4>
+      {#if el.hotspot}
+        <p class="hint">Invisible to viewers (you see its outline). Give it a class below to make this part of the picture a doorway, a shop, a trap…</p>
+      {:else if el.shape === 'path'}
+        <label class="check"><input type="checkbox" bind:checked={el.closed} /> Closed (a filled shape)</label>
+      {:else}
+        <label class="field">
+          Type
+          <select bind:value={el.shape}>
+            <option value="rect">Rectangle</option>
+            <option value="ellipse">Ellipse</option>
+            <option value="line">Line</option>
+            <option value="arrow">Arrow</option>
+          </select>
+        </label>
+      {/if}
+      {#if !el.hotspot && (el.shape === 'rect' || el.shape === 'ellipse' || (el.shape === 'path' && el.closed))}
         <div class="grid2">
           <label class="field">
             Fill
@@ -246,10 +256,12 @@
           {#if el.shape === 'rect'}<label class="field">Corners<input type="number" min="0" bind:value={el.radius} /></label>{/if}
         </div>
       {/if}
-      <div class="grid2">
-        <label class="field">{el.shape === 'line' || el.shape === 'arrow' ? 'Color' : 'Border'}<input type="color" bind:value={el.stroke} /></label>
-        <label class="field">Thickness<input type="number" min="0" max="100" bind:value={el.strokeWidth} /></label>
-      </div>
+      {#if !el.hotspot}
+        <div class="grid2">
+          <label class="field">{el.shape === 'line' || el.shape === 'arrow' || el.shape === 'path' ? 'Color' : 'Border'}<input type="color" bind:value={el.stroke} /></label>
+          <label class="field">Thickness<input type="number" min="0" max="100" bind:value={el.strokeWidth} /></label>
+        </div>
+      {/if}
     </section>
   {:else if el.kind === 'video' || el.kind === 'audio' || el.kind === 'embed'}
     <section>
@@ -296,6 +308,8 @@
       {/if}
     </section>
   {/if}
+
+  {#if objectsection}{@render objectsection(el)}{/if}
 
   <section>
     <h4>Entrance animation</h4>

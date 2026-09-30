@@ -19,7 +19,7 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 const nav = () => page.locator('nav > button, nav .add > button').allInnerTexts();
-const roundNames = async () => (await page.locator('nav > button[title]').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
+const roundNames = async () => (await page.locator('nav > button.round-tab').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -111,7 +111,7 @@ try {
   await p2.waitForFunction(() => document.querySelector('input.title')?.value === 'Old Game', null, { timeout: 5000 }).catch(() => {
     throw new Error('the old game did not open: ' + alerts.join(' | '));
   });
-  const oldRounds = (await p2.locator('nav > button[title]').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
+  const oldRounds = (await p2.locator('nav > button.round-tab').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
   assert(oldRounds.join('|') === 'Classic|Old Final', `an old game's Final becomes its last round (${oldRounds.join(', ')})`);
   await p2.getByRole('button', { name: 'Old Final' }).click();
   assert((await p2.getByLabel('Category').inputValue()) === 'History' && (await p2.getByLabel('Think time (seconds)').inputValue()) === '40', 'with its category and think time');

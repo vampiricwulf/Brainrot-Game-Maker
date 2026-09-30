@@ -11,9 +11,10 @@ export function lockedNote(n: number, noun = 'item'): string {
 }
 
 export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
-const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow' };
+const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow', path: 'Drawing' };
 
 export function layerLabel(el: SlideElement, game: Game): string {
+  if (el.name?.trim()) return el.name.trim();
   switch (el.kind) {
     case 'text':
       return el.text.trim().split('\n')[0].slice(0, 60) || 'Empty text';
@@ -22,7 +23,7 @@ export function layerLabel(el: SlideElement, game: Game): string {
     case 'audio':
       return game.media.find((m) => m.id === el.media)?.name ?? (el.kind === 'image' ? 'Image' : el.kind === 'video' ? 'Video' : 'Audio');
     case 'shape':
-      return SHAPES[el.shape];
+      return el.hotspot ? 'Hotspot' : SHAPES[el.shape];
     case 'embed':
       return embedName(el.embedKind, el.url);
   }

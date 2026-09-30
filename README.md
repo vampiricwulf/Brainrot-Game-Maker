@@ -23,11 +23,13 @@ its autosave, media and settings from the old Jeopardy Builder folders to the ne
 | Tab | What it's for |
 |---|---|
 | ⚙ **Setup & Players** | Default players (name + unique color), rules (negative scores, quick ✔/✘ buttons, points symbol), timers, round intro, and game **sounds** (round intro, Daily Double, time's up, Final think music, winner). |
-| **Rounds** (one tab each; **＋ Add round** asks for the mode) | A game is a list of rounds, and each picks a **mode**: 🟦 **Jeopardy board** or ⭐ **Final Jeopardy** (more modes are coming, see the games-maker spec). Every round has a bar to **move it earlier/later**, **⧉ Duplicate** or **delete** it, so a Final can go in the middle of the game or appear twice. **Jeopardy board:** 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
+| **Rounds** (one tab each; **＋ Add round** asks for the mode) | A game is a list of rounds, and each picks a **mode**: 🟦 **Jeopardy board**, ⭐ **Final Jeopardy** or 🗺 **RPG** (a board-game mode is coming, see the games-maker spec). Every round has a bar to **move it earlier/later**, **⧉ Duplicate** or **delete** it, so a Final can go in the middle of the game or appear twice. **Jeopardy board:** 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
 | 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, a **banner image above the board** (height and fit), and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
 | 🖼 **Media** | Every file in the game, with usage counts and "remove unused". Files that play from the internet show 🌐 and their site, with **Save a copy** and **Check link**. Also **Paste a link** to add one, and a list of online players (YouTube, Google Drive's player). **Replace…** swaps in another file everywhere it's used; a file missing from this browser (e.g. after opening a `.json`, which has no media) is flagged, with **🔗 Replace file…** on it and **🔗 Find missing files…** to put back many at once by file name. |
 | **Final Jeopardy rounds** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides, think time and host notes. |
+| **RPG rounds** | A **world** of maps, each a grid of **screens** (slides). Add screens on the grid, set each side's exit (auto, blocked with a reason, or a warp to any screen), and per map: what the audience map shows (whole map / discovered / hidden), whether it shows open directions without saying where they lead, diagonal moves, wrapping edges, the move transition and music. **✎ Edit screen** is the slide editor plus object tools: 🚩 **Arrival** points, 📦 **Items** from the catalog, ✏ **Draw** and ⬚ **Hotspot** in the Shape menu. Any element can be an **object**: a name, a class (doorway, item, currency, NPC, shop, hazard, interactable, spawn, blocker), **Secret** (hidden until revealed), host notes, a dialogue slide and **action buttons** (move, spin a wheel, roll dice, pop up a slide or question, play a sound, change a stat, give/take items or points, reveal/hide, timer, open a shop, a note). Worlds are shared, so a later round can continue the same adventure. |
+| 📊 **Stats & Items** | **Stats** every player has (numbers as counters, bars or hearts, text, checkboxes, tags), with presets (HP, Gold…), a start value, per-player starting values, and where viewers see them (the stats strip, only the player sheet, or never). A number can be a **currency** (separate from the score). **Items** (icon, price, stackable, worn on the avatar, secret, what "Use" does), with CSV import/export. **Shops** sell items for a currency, with stock (or unlimited), and shops with the same pool share it. |
 | **Tiebreaker** (under End) | An optional **tiebreaker clue** for ties at the end. |
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
@@ -208,6 +210,17 @@ wager steps (wagers are kept, also when coming back to it later). **Ties** offer
 for chat; tied players share a medal), or **🔁 Rematch** with the same players at 0 (until it starts, the editor still offers
 **View results** for the finished game).
 
+**RPG rounds**: the stage shows the party's screen, the players' avatars (with worn gear) and the stats strip; the
+host panel has a **movement pad** (also numpad, or Alt+Q/W/E/A/D/Z/X/C and Alt+arrows), the parties (**✂ Split off
+selected**, **🤝 Regroup**, **▦ Split view** to show every party at once), a host map (click a screen, then **Move party
+here**), 🗺 **Map** and ⏸ **Cover** for the audience, and a card for every player: stats ±, inventory (equip, use, give,
+drop on the screen, remove), 📺 their sheet on screen, and converting score to or from a currency. Click an object on
+the stage (or in **Objects here**, which includes secret ones) for its card: go through a doorway, pick up an item, talk,
+shop, its action buttons, NPC stats, reveal/hide and remove. Drag an avatar to move it on its screen. Viewers never see
+secret objects, hotspots, arrival points or host notes. Every change goes in the log, so **Ctrl+Z** undoes whichever
+came last, a score or an RPG change. A shop on screen has buyer chips and item buttons in the host panel; short of money,
+the host can sell anyway, give it free or charge another price.
+
 **Players mid-game**: 👥 Players can add, rename or recolor players. Removing one asks first, and they can be restored
 with their score (and their Final wager) from the same dialog.
 
@@ -232,7 +245,9 @@ slides, even deleted or reordered rounds). Starting a new game while one is save
 | `D` / `W` / `O` / `S` | Roll dice again / spin the wheel / roll-off / scoreboard |
 | `Space` / `←` `→` / `M` | Play/pause, seek ±5 s, mute the slide's media |
 | `Y` | Open YouTube/online media in its own window |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last score change (a whole multi-player award at once) |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo the last change: a score (a whole multi-player award at once) or an RPG move, stat, item or reveal |
+| RPG: numpad / `Alt`+`Q W E A D Z X C` / `Alt`+arrows | Move the party (numpad 5 regroups) |
+| RPG: `G` / `M` / `I` / `B` | Regroup / map on screen / the selected player's sheet / cover the screen |
 | `L` | Score & roll log |
 | `A` | Open / focus the audience window (it never closes it; the 📺 button does, after asking) |
 | `H` / `F` / `?` | Hide host controls / full-screen / show all shortcuts |
@@ -390,6 +405,9 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/lib/imageedit.ts`, `theme.ts` | Image-editor canvas pipeline; theme presets |
 | `src/lib/editing.ts`, `autofit.ts` | Slide and image editor helpers (undo history, placement, crop geometry); shrink-to-fit text |
 | `src/lib/layers.ts` | Layers: hit testing (what's under the pointer, what a drag-to-select box touches), Alt+click stepping, restacking |
+| `src/lib/toolset.ts`, `actions.ts` | Stats, inventories, shops and the action log (undo for everything that isn't score); running object/item actions |
+| `src/lib/rpg.ts` | RPG worlds: exits, movement, parties, discovery, what viewers may see |
+| `src/editor/rpg/`, `src/play/rpg/` | The world and screen editors; the RPG stage, host panel, map, stats strip, player sheet and shop |
 | `src/editor/` | Editor UI (rounds, clue & slide editor, image editor, wheels & dice, theme, media, `LinkField` for pasted links) |
 | `src/play/` | Play UI (audience view, board, host panel, tools) |
 | `src/audience/` | The audience window app |

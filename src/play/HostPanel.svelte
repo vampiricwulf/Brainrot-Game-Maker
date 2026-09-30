@@ -11,6 +11,7 @@
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
   import RoundNav from './host/RoundNav.svelte';
+  import RpgHost from './rpg/RpgHost.svelte';
   import { app } from '../lib/app.svelte';
   import type { Snippet } from 'svelte';
 
@@ -19,6 +20,7 @@
     session,
     selected = $bindable(),
     amount = $bindable(),
+    rpgObject = $bindable(null),
     dual,
     pickerPending = false,
     finishArmed = false,
@@ -56,6 +58,8 @@
     session: Session;
     selected: string[];
     amount: number | null;
+    /** RPG rounds: the object whose card is open (clicked on the stage). */
+    rpgObject?: string | null;
     dual: boolean;
     /** P was pressed and the next number key picks the picker. */
     pickerPending?: boolean;
@@ -104,11 +108,12 @@
   const round = $derived(game.rounds[session.currentRound]);
   const finalRound = $derived(currentFinal(session, game));
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
-  const canUndo = $derived(session.scoreLog.some((e) => !e.undone));
+  const canUndo = $derived(session.scoreLog.some((e) => !e.undone) || !!session.actionLog?.length);
+  const canRedo = $derived(!!session.redoStack.length || !!session.actionRedo?.length);
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
-  const showPlayers = $derived(scoring || session.phase === 'end');
+  const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg');
   const introLabel = $derived(
     session.intro?.stage === 'title'
       ? 'Show board ▶'
@@ -211,6 +216,9 @@
     {:else if session.phase === 'final'}
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       <span class="muted">{session.finalStep}</span>
+    {:else if session.phase === 'rpg'}
+      <b>{round?.name}</b>
+      <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       <span class="muted">Award the winner with the scoring buttons, then go back to the results.</span>
@@ -224,7 +232,7 @@
   </div>
 
   {#if app.live.overlay}
-    <ToolsControls {game} {session} onclose={oncloseoverlay} />
+    <ToolsControls {game} {session} {selected} onclose={oncloseoverlay} />
   {/if}
 
   <SoundWarnings {dual} onhelp={onsound} />
@@ -245,6 +253,10 @@
 
   {#if session.phase === 'final'}
     <FinalControls {game} {session} armed={finishArmed} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
+  {/if}
+
+  {#if session.phase === 'rpg'}
+    <RpgHost {game} {session} bind:selected bind:object={rpgObject} {dual} />
   {/if}
 
   {#if session.phase === 'end'}
@@ -333,7 +345,7 @@
       {/if}
       <span class="spacer"></span>
       <button onclick={onundo} disabled={!canUndo} title="Ctrl+Z">↶ Undo</button>
-      <button onclick={onredo} disabled={!session.redoStack.length} title="Ctrl+Shift+Z">↷ Redo</button>
+      <button onclick={onredo} disabled={!canRedo} title="Ctrl+Shift+Z">↷ Redo</button>
     </div>
   {/if}
 
@@ -351,7 +363,7 @@
     {/if}
     {@render tools?.()}
     <span class="spacer"></span>
-    {#if session.phase === 'board'}
+    {#if session.phase === 'board' || session.phase === 'rpg'}
       <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
       <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
       {#key session.currentRound}

@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, categoryLabel, isBoard, roundName, type EmbedEl, type Game, type Slide } from './model';
+import { boardRounds, categoryLabel, isBoard, isFinal, roundName, type Action, type EmbedEl, type Game, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -17,14 +17,36 @@ export function allSlides(game: Game): SlideRef[] {
           const where = `${roundName(r, ri)} · ${categoryLabel(c)} #${i + 1}`;
           out.push({ slide: cl.questionSlide, where: `${where} (question)` }, { slide: cl.answerSlide, where: `${where} (answer)` });
         });
-    else {
+    else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
       out.push({ slide: r.answerSlide, where: `${roundName(r, ri)} (answer)` });
     }
   });
+  // RPG worlds: every screen, and the slides objects and actions show (dialogue, pop-ups, questions).
+  for (const w of game.worlds ?? [])
+    for (const m of w.maps)
+      for (const sc of m.screens) {
+        const where = `${w.name} · ${m.name} · ${sc.name}`;
+        out.push({ slide: sc.slide, where });
+        for (const el of sc.slide.elements) {
+          if (el.role?.dialogue) out.push({ slide: el.role.dialogue, where: `${where} · ${el.name || 'object'} (dialogue)` });
+          for (const s of actionSlides(el.role?.actions)) out.push({ slide: s, where: `${where} · ${el.name || 'object'}` });
+        }
+      }
+  for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
   if (game.tiebreaker) {
     out.push({ slide: game.tiebreaker.questionSlide, where: 'Tiebreaker (question)' });
     out.push({ slide: game.tiebreaker.answerSlide, where: 'Tiebreaker (answer)' });
+  }
+  return out;
+}
+
+/** Slides inside a list of actions (pop-ups and questions). */
+function actionSlides(actions: Action[] | undefined): Slide[] {
+  const out: Slide[] = [];
+  for (const a of actions ?? []) {
+    if (a.do === 'popup') out.push(a.slide);
+    if (a.do === 'question') out.push(a.question, a.answer);
   }
   return out;
 }
@@ -73,6 +95,20 @@ export function extraMediaRefs(game: Game): string[] {
     for (const die of d.dice) for (const f of die.customFaces ?? []) if (f.media) out.push(f.media);
     for (const t of d.totalOutcomes ?? []) if (t.outcome.media) out.push(t.outcome.media);
   }
+  // RPG: avatars, item icons, map and screen music, and sounds that actions play.
+  for (const p of game.players) if (p.avatar) out.push(p.avatar);
+  for (const it of game.items ?? []) {
+    if (it.icon) out.push(it.icon);
+    for (const a of it.onUse ?? []) if (a.do === 'sound') out.push(a.media);
+  }
+  for (const w of game.worlds ?? [])
+    for (const m of w.maps) {
+      if (m.music) out.push(m.music);
+      for (const sc of m.screens) {
+        if (sc.music) out.push(sc.music);
+        for (const el of sc.slide.elements) for (const a of el.role?.actions ?? []) if (a.do === 'sound') out.push(a.media);
+      }
+    }
   return out;
 }
 

@@ -1,5 +1,5 @@
 // Transient on-screen state shared between the host and the audience window (not saved with the game).
-import { newId, type DicePreset, type Id, type WheelSegment } from './model';
+import { newId, type DicePreset, type Id, type Slide, type WheelSegment } from './model';
 import type { DiceRoll, PoolSlice, RollOffRound } from './tools';
 
 /** What a host click on the stage asks for (the host's view decides what it means right now). */
@@ -74,13 +74,21 @@ export type Overlay =
       startedAt: number;
       roundMs: number;
     }
-  | { kind: 'scoreboard'; nonce: string };
+  | { kind: 'scoreboard'; nonce: string }
+  /** A slide shown over whatever is on air (a sign, dialogue, a jump-scare); with `answer`, a question to reveal. */
+  | { kind: 'popup'; nonce: string; slide: Slide; answer?: Slide; revealed?: boolean; value?: number; title?: string }
+  /** One player's full sheet: avatar, stats, inventory. */
+  | { kind: 'sheet'; nonce: string; playerId: Id }
+  /** A shop's wares and prices. */
+  | { kind: 'shop'; nonce: string; shopId: Id };
 
 export interface Live {
   pops: Pop[];
   timer: TimerState | null;
   sound: SoundCue | null;
   overlay: Overlay | null;
+  /** Panic button: the audience sees only the cover card. */
+  cover?: boolean;
 }
 
 export function newLive(): Live {

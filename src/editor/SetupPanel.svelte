@@ -29,7 +29,7 @@
 <section>
   <h2>Players</h2>
   <p class="muted">The default roster. You can still change players before and during a game.</p>
-  <PlayerList bind:players={app.game.players} max={s.maxPlayers} />
+  <PlayerList bind:players={app.game.players} max={s.maxPlayers} avatars />
 </section>
 
 <section>
