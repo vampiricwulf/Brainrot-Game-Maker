@@ -8,17 +8,28 @@
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { toast } from '../../lib/app.svelte';
-  import { newId, type Dir8, type Screen, type World, type WorldMap } from '../../lib/model';
+  import { newId, type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
-  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newVariant, newWorldMap, screenAt } from '../../lib/rpg';
+  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, freshObjectIds, newScreen, newVariant, newWorldMap, sameRef, screenAt } from '../../lib/rpg';
   import MediaPicker from '../slide/MediaPicker.svelte';
   import ScreenEditor from './ScreenEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
 
-  let { world }: { world: World } = $props();
+  let {
+    world,
+    editing = $bindable(false),
+    start,
+    onstart,
+  }: {
+    world: World;
+    /** A screen is open in the screen editor (the round's settings above step aside for it). */
+    editing?: boolean;
+    /** Where the party starts, and making a screen the start. */
+    start?: ScreenRef | null;
+    onstart?: (ref: ScreenRef) => void;
+  } = $props();
   let mapId = $state<string | null>(null);
   let selId = $state<string | null>(null);
-  let editing = $state(false);
   /** Which look of the screen is being edited (null: its own slide). */
   let lookId = $state<string | null>(null);
   let musicFor = $state<'map' | 'screen' | null>(null);
@@ -71,7 +82,9 @@
     copy.col = spot[0];
     copy.row = spot[1];
     copy.exits = undefined;
-    for (const el of copy.slide.elements) el.id = newId();
+    // Its own objects and looks: taking the copy's Potion leaves the original's, and its Chest reveals its own Potion.
+    for (const v of copy.variants ?? []) v.id = newId();
+    freshObjectIds([copy.slide, ...(copy.variants ?? []).map((v) => v.slide)]);
     map.screens.push(copy);
     selId = copy.id;
   }
@@ -98,9 +111,19 @@
     s.exits = Object.keys(exits).length ? exits : undefined;
   }
 
-  function resize(cols: number, rows: number): void {
+  function removeLook(s: Screen, v: ScreenVariant): void {
+    if (!confirm(`Delete the look "${v.name}" of ${s.name}?`)) return;
+    s.variants = s.variants?.filter((x) => x.id !== v.id);
+    if (lookId === v.id) lookId = null;
+  }
+
+  function resize(cols: number, rows: number, field: HTMLInputElement): void {
     const outside = map.screens.filter((s) => s.col >= cols || s.row >= rows);
-    if (outside.length && !confirm(`${outside.length} screen(s) are outside the new size and will be deleted. Go on?`)) return;
+    if (outside.length && !confirm(`${outside.length} screen(s) are outside the new size and will be deleted. Go on?`)) {
+      // Kept the old size: show it again in the field.
+      field.value = String(field.name === 'cols' ? map.cols : map.rows);
+      return;
+    }
     map.screens = map.screens.filter((s) => s.col < cols && s.row < rows);
     map.cols = cols;
     map.rows = rows;
@@ -109,6 +132,7 @@
   const blockedSide = (s: Screen, d: Dir8) => s.exits?.[d]?.kind === 'blocked';
   const warpSide = (s: Screen, d: Dir8) => s.exits?.[d]?.kind === 'warp';
   const doorways = (s: Screen) => s.slide.elements.filter((e) => e.role?.class === 'doorway');
+  const isStart = (s: Screen) => sameRef(start, { map: map.id, screen: s.id });
   const screenName = (ref?: { map: string; screen: string }) => {
     const m = world.maps.find((x) => x.id === ref?.map);
     const s = m?.screens.find((x) => x.id === ref?.screen);
@@ -121,7 +145,6 @@
     <div class="row">
       <button onclick={() => (editing = false)}>◀ Back to the map</button>
       <b>{map.name} · {sel.name}{look ? ` (${look.name})` : ''}</b>
-      <span class="muted small">Give items a class in the inspector's Object section (doorway, item, character…).</span>
     </div>
     {#key `${sel.id}:${lookId}`}<div class="se-wrap"><ScreenEditor {world} screen={sel} slide={look?.slide} /></div>{/key}
   </div>
@@ -141,8 +164,12 @@
         <summary>Map settings: {map.name} ({map.cols}×{map.rows})</summary>
         <div class="grid">
           <label class="field">Name<input bind:value={map.name} /></label>
-          <label class="field">Columns<input type="number" min="1" max="16" value={map.cols} onchange={(e) => resize(Math.max(1, Math.min(16, +e.currentTarget.value)), map.rows)} /></label>
-          <label class="field">Rows<input type="number" min="1" max="16" value={map.rows} onchange={(e) => resize(map.cols, Math.max(1, Math.min(16, +e.currentTarget.value)))} /></label>
+          <label class="field">
+            Columns<input type="number" name="cols" min="1" max="16" value={map.cols} onchange={(e) => resize(Math.max(1, Math.min(16, +e.currentTarget.value)), map.rows, e.currentTarget)} />
+          </label>
+          <label class="field">
+            Rows<input type="number" name="rows" min="1" max="16" value={map.rows} onchange={(e) => resize(map.cols, Math.max(1, Math.min(16, +e.currentTarget.value)), e.currentTarget)} />
+          </label>
           <label class="field">
             Audience sees
             <select bind:value={map.visibility} aria-label="Audience sees">
@@ -198,6 +225,7 @@
                       { heading: s.name },
                       { label: '✎ Edit screen', onclick: () => ((lookId = null), (editing = true)) },
                       { label: '⧉ Duplicate', onclick: () => duplicateScreen(s) },
+                      ...(onstart ? [{ label: '🏁 Make it the start', onclick: () => onstart({ map: map.id, screen: s.id }), disabled: isStart(s) }] : []),
                       { label: '＋ Look (a copy)', onclick: () => (s.variants = [...(s.variants ?? []), newVariant(undefined, s, `Look ${(s.variants?.length ?? 0) + 2}`)]) },
                       { sep: true },
                       { label: '🗑 Delete screen', danger: true, onclick: () => removeScreen(s) },
@@ -208,6 +236,7 @@
                 >
                   <div class="thumb"><Stage><SlideView slide={s.slide} mode="edit" /></Stage></div>
                   <span class="nm">{s.name}</span>
+                  {#if isStart(s)}<span class="start" title="The party starts here">🏁</span>{/if}
                   {#if doorways(s).length || DIRS.some((d) => warpSide(s, d))}<span class="door" title="Has doorways or warps">🚪</span>{/if}
                 </button>
               {:else}
@@ -231,13 +260,20 @@
               <button class="small" onclick={() => duplicateScreen(sel)}>⧉ Duplicate</button>
               <button class="ghost small" onclick={() => removeScreen(sel)}>Delete</button>
             </div>
+            {#if onstart}
+              <div class="row">
+                <button class="small" onclick={() => onstart({ map: map.id, screen: sel.id })} disabled={isStart(sel)}>
+                  🏁 {isStart(sel) ? 'The party starts here' : 'Make it the start'}
+                </button>
+              </div>
+            {/if}
             <div class="looks">
               <span class="muted small" title="Other looks for the same place, switched in play (the village, on fire)">Other looks:</span>
-              {#each sel.variants ?? [] as v, i (v.id)}
+              {#each sel.variants ?? [] as v (v.id)}
                 <span class="look">
                   <input bind:value={v.name} aria-label="Look name" />
-                  <button class="small" onclick={() => ((lookId = v.id), (editing = true))}>✎</button>
-                  <button class="ghost small" onclick={() => sel.variants?.splice(i, 1)} aria-label="Delete look {v.name}">✕</button>
+                  <button class="small" onclick={() => ((lookId = v.id), (editing = true))} aria-label="Edit look {v.name}" title="Edit this look">✎</button>
+                  <button class="ghost small" onclick={() => removeLook(sel, v)} aria-label="Delete look {v.name}">✕</button>
                 </span>
               {/each}
               <button class="small" onclick={() => (sel.variants = [...(sel.variants ?? []), newVariant(undefined, sel, `Look ${(sel.variants?.length ?? 0) + 2}`)])}>
@@ -330,7 +366,9 @@
     gap: 4px;
     flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 4px;
+  }
+  .tabs button {
+    border-radius: 6px 6px 0 0;
   }
   .tabs button.on {
     background: var(--accent);
@@ -427,6 +465,12 @@
     top: 4px;
     font-size: 14px;
   }
+  .start {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    font-size: 14px;
+  }
   .side {
     display: flex;
     flex-direction: column;
@@ -452,11 +496,12 @@
   .pop {
     position: relative;
   }
+  /* The window's height below the header and the round's row of buttons (the round's settings step aside). */
   .screen-edit {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    height: calc(100vh - 170px);
+    height: calc(100vh - 130px);
   }
   .se-wrap {
     flex: 1;

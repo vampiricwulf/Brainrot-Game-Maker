@@ -78,7 +78,8 @@
     <div class="preview">
       <Stage>
         <div class="bg"></div>
-        {#if test}{#key test.nonce}<DiceView o={test} game={app.game} role="mirror" />{/key}{/if}
+        <!-- Before a test roll: the dice waiting to be rolled, as viewers see them. -->
+        {#key test?.nonce}<DiceView o={test ?? { kind: 'dice', nonce: 'p', name: preset.name, preset, roll: null, startedAt: 0, duration: 0 }} game={app.game} role="mirror" />{/key}
       </Stage>
     </div>
     <button onclick={testRoll}>🎲 Test roll</button>
@@ -111,6 +112,7 @@
   }
   .face {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     align-items: flex-start;
   }

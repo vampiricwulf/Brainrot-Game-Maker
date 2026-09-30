@@ -79,7 +79,7 @@
             <button class="ghost tiny" onclick={() => r.stats?.splice(i, 1)} aria-label="Remove stat">✕</button>
           </div>
         {/each}
-        <button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button>
+        <div class="row"><button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button></div>
         {#if r.stats?.length}<label class="check small"><input type="checkbox" bind:checked={r.statsShown} /> Viewers see its stats</label>{/if}
       </div>
       <div class="row">
@@ -119,6 +119,14 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  /* Like the inspector's other section headings. */
+  h4 {
+    margin: 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
   }
   .row {
     display: flex;

@@ -4,10 +4,22 @@
   import SlideEditor from '../slide/SlideEditor.svelte';
 
   let { slide, title, onclose }: { slide: Slide; title: string; onclose: () => void } = $props();
+  let box = $state<HTMLDivElement>();
+
+  /** Esc closes it (the slide editor takes an Esc that deselects first), unless it's for a picker open inside. */
+  function key(e: KeyboardEvent): void {
+    if (e.key !== 'Escape' || (e.target as HTMLElement).closest?.('input, textarea, select')) return;
+    const dialogs = document.querySelectorAll('[role="dialog"]');
+    if (dialogs[dialogs.length - 1] !== box) return;
+    e.stopImmediatePropagation();
+    onclose();
+  }
 </script>
 
+<svelte:window onkeydown={key} />
+
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-label={title}>
+  <div class="modal" role="dialog" aria-label={title} bind:this={box}>
     <div class="row">
       <b>{title}</b>
       <span class="spacer"></span>

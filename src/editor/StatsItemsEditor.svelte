@@ -6,6 +6,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { downloadText, pickFile } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
+  import { allActions, worldObjects } from '../lib/refs';
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, SCORE_CURRENCY } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -36,6 +37,17 @@
     if (!confirm(`Delete "${it.name}" from the catalog?`)) return;
     game.items = (game.items ?? []).filter((x) => x.id !== it.id);
     for (const s of game.shops ?? []) s.stock = s.stock.filter((x) => x.item !== it.id);
+    // Objects that were it are picked up by their own name now; buttons that gave or took it have nothing chosen.
+    for (const w of game.worlds ?? []) for (const el of worldObjects(w)) if (el.role?.class === 'item' && el.role.item === it.id) el.role.item = undefined;
+    for (const a of allActions(game)) if (a.do === 'item' && a.item === it.id) a.item = '';
+  }
+
+  /** Tags are typed as a list: "poisoned, cursed". */
+  const tagList = (v: string) => v.split(',').map((t) => t.trim()).filter(Boolean);
+
+  /** A shop's next thing to sell: the first item it doesn't sell yet (each item once, with its own price and stock). */
+  function unstocked(s: Shop): ItemDef | undefined {
+    return game.items?.find((it) => !s.stock.some((x) => x.item === it.id));
   }
 
   function addShop(): void {
@@ -133,20 +145,30 @@
         <option value="checkbox">Yes/no</option>
         <option value="tags">Tags</option>
       </select>
-      {#if f.type === 'number'}
-        <label class="small">Start<input type="number" class="n" value={Number(f.start ?? 0)} oninput={(e) => (f.start = +e.currentTarget.value)} /></label>
-        <label class="small">Min<input type="number" class="n" value={f.min ?? ''} oninput={(e) => (f.min = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
-        <label class="small">Max<input type="number" class="n" value={f.max ?? ''} oninput={(e) => (f.max = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
-        <select bind:value={f.display} aria-label="{f.name} shown as">
-          <option value="counter">Number</option>
-          <option value="bar">Bar</option>
-          <option value="hearts">Hearts</option>
-        </select>
-        <label class="check small"><input type="checkbox" bind:checked={f.currency} /> Currency</label>
-        <input class="sym" bind:value={f.symbol} placeholder="🪙" aria-label="{f.name} symbol" title="Shown before the number" />
-      {:else if f.type === 'text'}
-        <label class="small">Start<input value={String(f.start ?? '')} oninput={(e) => (f.start = e.currentTarget.value)} /></label>
-      {/if}
+      <!-- What the type needs wraps inside its own column, so every row's audience, color and ✕ line up. -->
+      <div class="by-type">
+        {#if f.type === 'number'}
+          <label class="small">Start<input type="number" class="n" value={Number(f.start ?? 0)} oninput={(e) => (f.start = +e.currentTarget.value)} /></label>
+          <label class="small">Min<input type="number" class="n" value={f.min ?? ''} oninput={(e) => (f.min = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+          <label class="small">Max<input type="number" class="n" value={f.max ?? ''} oninput={(e) => (f.max = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+          <select bind:value={f.display} aria-label="{f.name} shown as">
+            <option value="counter">Number</option>
+            <option value="bar">Bar</option>
+            <option value="hearts">Hearts</option>
+          </select>
+          <label class="check small"><input type="checkbox" bind:checked={f.currency} /> Currency</label>
+          <input class="sym" bind:value={f.symbol} placeholder={f.currency ? '🪙' : 'Symbol'} aria-label="{f.name} symbol" title="Shown before the number, e.g. 🪙 or $" />
+        {:else if f.type === 'text'}
+          <label class="small">Start<input value={String(f.start ?? '')} oninput={(e) => (f.start = e.currentTarget.value)} /></label>
+        {:else if f.type === 'checkbox'}
+          <label class="check small"><input type="checkbox" checked={f.start === true} onchange={(e) => (f.start = e.currentTarget.checked)} /> Starts as yes</label>
+        {:else}
+          <label class="small">
+            Start
+            <input value={Array.isArray(f.start) ? f.start.join(', ') : ''} oninput={(e) => (f.start = tagList(e.currentTarget.value))} placeholder="e.g. poisoned, cursed" />
+          </label>
+        {/if}
+      </div>
       <select bind:value={f.audience} aria-label="{f.name} audience">
         <option value="hud">On the stats strip</option>
         <option value="sheet">Only on the player sheet</option>
@@ -186,6 +208,35 @@
                       placeholder={String(f.start ?? '')}
                       value={p.stats?.[f.id] ?? ''}
                       oninput={(e) => (p.stats = { ...(p.stats ?? {}), [f.id]: e.currentTarget.value })}
+                      aria-label="{p.name} starting {f.name}"
+                    />
+                  {:else if f.type === 'checkbox'}
+                    {@const own = p.stats?.[f.id]}
+                    <select
+                      value={own === undefined ? '' : own ? 'yes' : 'no'}
+                      onchange={(e) => {
+                        const v = e.currentTarget.value;
+                        p.stats = { ...(p.stats ?? {}) };
+                        if (v === '') delete p.stats[f.id];
+                        else p.stats[f.id] = v === 'yes';
+                      }}
+                      aria-label="{p.name} starting {f.name}"
+                    >
+                      <option value="">({f.start === true ? 'yes' : 'no'})</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  {:else}
+                    {@const own = p.stats?.[f.id]}
+                    <input
+                      placeholder={Array.isArray(f.start) ? f.start.join(', ') : ''}
+                      value={Array.isArray(own) ? own.join(', ') : ''}
+                      oninput={(e) => {
+                        const v = e.currentTarget.value;
+                        p.stats = { ...(p.stats ?? {}) };
+                        if (!v.trim()) delete p.stats[f.id];
+                        else p.stats[f.id] = tagList(v);
+                      }}
                       aria-label="{p.name} starting {f.name}"
                     />
                   {/if}
@@ -243,7 +294,7 @@
           <label class="field">Description (on its card)<textarea rows="2" bind:value={it.description}></textarea></label>
           <label class="field">Host notes (what it really does)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
           <div class="muted small">"Use" in play runs:</div>
-          <ActionListEditor bind:actions={it.onUse} />
+          <ActionListEditor bind:actions={it.onUse} world={game.worlds?.[0]} />
           {#if it.wearable}
             {@const worn = it as ItemDef & { wearable: Wearable }}
             <div class="muted small">Worn look (how it shows on the avatar when equipped):</div>
@@ -259,7 +310,7 @@
 
 <section>
   <h3>Shops</h3>
-  <button onclick={addShop}>＋ Shop</button>
+  <div class="row"><button onclick={addShop}>＋ Shop</button></div>
   {#each game.shops ?? [] as s (s.id)}
     <div class="shop">
       <div class="row">
@@ -297,7 +348,8 @@
             <tr>
               <td>
                 <select bind:value={st.item} aria-label="Item for sale">
-                  {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
+                  <!-- Each item once per shop: the ones other rows sell are greyed out. -->
+                  {#each game.items ?? [] as it (it.id)}<option value={it.id} disabled={it.id !== st.item && s.stock.some((x) => x.item === it.id)}>{it.name}</option>{/each}
                 </select>
               </td>
               <td><label class="small">Price<input type="number" class="n" value={st.price ?? ''} placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)} oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label></td>
@@ -311,7 +363,17 @@
           {/each}
         </tbody>
       </table>
-      <button class="small" disabled={!game.items?.length} onclick={() => game.items?.[0] && s.stock.push({ item: game.items[0].id, qty: null })}>＋ Something to sell</button>
+      <div class="row">
+        <button
+          class="small"
+          disabled={!unstocked(s)}
+          onclick={() => {
+            const next = unstocked(s);
+            if (next) s.stock.push({ item: next.id, qty: null });
+          }}
+          title={unstocked(s) ? undefined : game.items?.length ? 'It sells every item already' : 'Add items first'}>＋ Something to sell</button
+        >
+      </div>
     </div>
   {/each}
 </section>
@@ -345,6 +407,17 @@
     padding: 4px 0;
     border-bottom: 1px solid var(--border);
   }
+  /* Name, type, what the type needs, audience, color, ✕: the same columns on every row. */
+  .field-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  }
+  .by-type {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
   .name {
     width: 170px;
   }
@@ -352,7 +425,7 @@
     width: 64px;
   }
   .sym {
-    width: 44px;
+    width: 72px;
   }
   .pool {
     width: 110px;

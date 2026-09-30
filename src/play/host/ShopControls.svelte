@@ -67,10 +67,11 @@
   </div>
   <div class="row">
     <span class="muted small">Buy (or click it on the stage):</span>
-    {#each shop.stock as s (s.item)}
+    <!-- (An item listed twice, in a save from before the editor prevented it, shows once.) -->
+    {#each shop.stock as s, i (i)}
       {@const def = itemDef(game, s.item)}
       {@const left = stockLeft(session, shop, s.item)}
-      {#if def}
+      {#if def && shop.stock.findIndex((x) => x.item === s.item) === i}
         <span class="ware">
           <button class="small" disabled={left !== null && left <= 0} onclick={() => purchase(s.item)} title="Buy one for the buyer">
             {def.name} · {formatPrice(game, shop, shopPrice(game, shop, s.item))}{left !== null ? ` (${left})` : ''}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, type BoardGameRound, type Game } from './model';
 import { newSession } from './session';
-import { waysOn, ensureBoard, movePlayer, newBoardGameRound, newBoardSpace, nextTurn, sendTo, shownSpace, HOP_MS, walk, currentPlayer, boardGameProblems } from './boardgame';
+import { waysOn, ensureBoard, movePlayer, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, sendTo, shownSpace, HOP_MS, walk, currentPlayer, boardGameProblems } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
 function setup(): { game: Game; round: BoardGameRound; ids: string[] } {
@@ -102,6 +102,25 @@ describe('board game: moving', () => {
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
     round.spaces.at(-1)!.next = [];
     expect(boardGameProblems(game, round, 'Board', 1)[0].text).toContain('Shortcut lead nowhere');
+  });
+
+  it('flags Send to buttons whose space or zone was deleted', () => {
+    const { game, round, ids } = setup();
+    round.spaces[4].onLand = [
+      { id: 'z', do: 'goto', zone: 'shadow', who: 'ask' },
+      { id: 's', do: 'goto', space: ids[7], who: 'ask' },
+    ];
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    round.zones = [];
+    round.spaces = round.spaces.filter((s) => s.id !== ids[7]);
+    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toContain('Board: 2 button(s) on spaces point nowhere');
+  });
+
+  it('names new spaces with a number no space has yet', () => {
+    const { round } = setup();
+    expect(nextSpaceName(round)).toBe('Space 14'); // 12 around the loop, plus the shortcut
+    round.spaces = round.spaces.filter((s) => s.name !== 'Space 3' && s.name !== 'Shortcut');
+    expect(nextSpaceName(round)).toBe('Space 13');
   });
 });
 

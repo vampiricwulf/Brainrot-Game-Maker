@@ -4,12 +4,14 @@
   decided, and how to win.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
+  import { SnapshotHistory } from '../../lib/editing';
   import { showMenu } from '../../lib/menustate.svelte';
-  import { clampToBoard, newBoardSpace, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
+  import { clampToBoard, newBoardSpace, nextSpaceName, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
-  import { newId, SLIDE_H, SLIDE_W, textSlide, type BoardGameRound, type BoardSpace } from '../../lib/model';
+  import { newId, SLIDE_H, SLIDE_W, textSlide, type BoardGameRound, type BoardSpace, type BoardZone } from '../../lib/model';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
   import SlideModal from '../rpg/SlideModal.svelte';
@@ -31,6 +33,48 @@
   const scale = $derived(boxW / SLIDE_W || 1);
   let drag: { id: string; dx: number; dy: number; moved: boolean } | null = null;
   let canvas = $state<HTMLDivElement>();
+
+  // ---------- Undo (Ctrl+Z / Ctrl+Shift+Z): the spaces, their links and buttons, the start and the zones ----------
+  // Like the slide editor: edits are grouped into one step after a pause, a delete or a finished drag at once.
+  const snap = () => JSON.stringify({ spaces: round.spaces, zones: round.zones, start: round.start ?? null });
+  const hist = untrack(() => new SnapshotHistory(snap()));
+  let hv = $state(0);
+  let pending = $state(false);
+  $effect(() => {
+    const now = snap();
+    pending = now !== hist.last;
+    if (!pending) return;
+    const t = setTimeout(() => !drag && commit(), 400);
+    return () => clearTimeout(t);
+  });
+  const canUndo = $derived(hv >= 0 && (pending || hist.undoStack.length > 0));
+  const canRedo = $derived(hv >= 0 && !pending && hist.redoStack.length > 0);
+
+  function commit(): void {
+    if (hist.commit(snap())) hv++;
+    pending = false;
+  }
+  function restore(s: string | null): void {
+    hv++;
+    if (s === null) return;
+    const d = JSON.parse(s) as { spaces: BoardSpace[]; zones: BoardZone[]; start: string | null };
+    round.spaces = d.spaces;
+    round.zones = d.zones;
+    round.start = d.start ?? undefined;
+    pending = false;
+    linking = false;
+  }
+  const undo = () => restore(hist.undo(snap()));
+  const redo = () => restore(hist.redo(snap()));
+
+  // "Deleted Space 3 · Undo" on the board, until the next change.
+  let notice = $state<{ text: string; at: number } | null>(null);
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  function tell(text: string): void {
+    notice = { text, at: hv };
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => (notice = null), 6000);
+  }
 
   function toBoard(e: PointerEvent): { x: number; y: number } {
     const r = canvas!.getBoundingClientRect();
@@ -76,7 +120,7 @@
 
   function addSpaceAt(at: { x: number; y: number }): void {
     const p = clampToBoard(at.x, at.y);
-    const s = newBoardSpace(p.x, p.y, `Space ${round.spaces.length + 1}`, SPACE_COLORS[round.spaces.length % SPACE_COLORS.length]);
+    const s = newBoardSpace(p.x, p.y, nextSpaceName(round), SPACE_COLORS[round.spaces.length % SPACE_COLORS.length]);
     // Inserted after the selected space: it takes over the selected space's links (so a loop stays a loop).
     if (sel) {
       s.next = [...sel.next];
@@ -108,20 +152,43 @@
       ]);
   }
 
-  /** Delete / Backspace removes the selected space (not while typing in a field). */
+  /**
+   * Delete / Backspace removes the selected space, Ctrl+Z / Ctrl+Shift+Z undo and redo. Not while typing in a field,
+   * nor while a dialog is open over the board (a pop-up slide being edited, a picker): those keys are its own.
+   */
   function key(e: KeyboardEvent): void {
-    if (view !== 'spaces' || !sel) return;
+    if (e.defaultPrevented || document.querySelector('[role="dialog"]')) return;
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
-    if (e.key === 'Delete' || e.key === 'Backspace') {
+    const k = e.key.toLowerCase();
+    // (The backdrop's slide editor has undo of its own.)
+    if (view !== 'backdrop' && (e.ctrlKey || e.metaKey) && (k === 'z' || k === 'y')) {
+      e.preventDefault();
+      if (k === 'y' || e.shiftKey) redo();
+      else undo();
+      return;
+    }
+    if (view !== 'spaces' || !sel) return;
+    if (k === 'delete' || k === 'backspace') {
       e.preventDefault();
       removeSpace(sel);
-    } else if (e.key === 'Escape') {
+    } else if (k === 'escape') {
       linking = false;
       selId = null;
     }
   }
 
+  /** Buttons that sent players to a deleted space or zone point nowhere now (the checklist says so). */
+  function unlinkGotos(to: { space?: string; zone?: string }): void {
+    for (const x of round.spaces)
+      for (const a of [...(x.onPass ?? []), ...(x.onLand ?? [])]) {
+        if (a.do !== 'goto') continue;
+        if (to.space && a.space === to.space) a.space = undefined;
+        if (to.zone && a.zone === to.zone) a.zone = undefined;
+      }
+  }
+
   function removeSpace(s: BoardSpace): void {
+    commit();
     // Spaces that led here now lead where it led (when it had one way on).
     for (const p of previousOf(round, s.id)) {
       p.next = p.next.filter((n) => n !== s.id);
@@ -129,13 +196,23 @@
     }
     round.spaces = round.spaces.filter((x) => x.id !== s.id);
     if (round.start === s.id) round.start = undefined;
+    unlinkGotos({ space: s.id });
     selId = null;
+    commit();
+    tell(`Deleted ${s.name}`);
   }
 
   function addZone(): void {
-    const slide = textSlide(`Shadow Realm`);
+    const name = round.zones.length ? `Zone ${round.zones.length + 1}` : 'Shadow Realm';
+    const slide = textSlide(name);
     slide.background = { color: '#2a0845' };
-    round.zones = [...round.zones, { id: newId(), name: round.zones.length ? `Zone ${round.zones.length + 1}` : 'Shadow Realm', slide }];
+    round.zones = [...round.zones, { id: newId(), name, slide }];
+  }
+
+  function removeZone(z: BoardZone): void {
+    if (!confirm(`Delete the zone "${z.name}" and its screen?`)) return;
+    round.zones = round.zones.filter((x) => x.id !== z.id);
+    unlinkGotos({ zone: z.id });
   }
 
   const zone = $derived(round.zones.find((z) => z.id === zoneSlide));
@@ -168,7 +245,7 @@
     <label class="field">
       Start
       <select bind:value={round.start} aria-label="Start space">
-        <option value={undefined}>{round.spaces[0]?.name ?? '—'} (first)</option>
+        <option value={undefined}>— first space —</option>
         {#each round.spaces as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
       </select>
     </label>
@@ -191,6 +268,8 @@
       {#if linking}<span class="warn small">Click the space {sel?.name} should lead to (again to unlink)…</span>{/if}
       <span class="spacer"></span>
       <span class="muted small">Drag spaces to move them.</span>
+      <button class="ghost small" onclick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+      <button class="ghost small" onclick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
     </div>
     <div class="main">
       <div class="canvas-box" bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
@@ -201,13 +280,23 @@
           onpointerdown={boardDown}
           oncontextmenu={boardMenu}
           onpointermove={boardMove}
-          onpointerup={() => (drag = null)}
+          onpointerup={() => {
+            // A finished drag is one undo step.
+            if (drag?.moved) commit();
+            drag = null;
+          }}
           role="application"
           aria-label="Board"
         >
           <div class="backdrop"><SlideView slide={round.slide} mode="edit" fallbackBg="#1d5e3a" /></div>
           <BoardSpaces {round} selected={selId} ondown={spaceDown} />
         </div>
+        {#if notice && notice.at === hv && !pending}
+          <div class="notice" role="status">
+            <span>{notice.text}</span>
+            <button class="small" onclick={() => ((notice = null), undo())}>Undo</button>
+          </div>
+        {/if}
       </div>
       <aside class="side">
         {#if sel}
@@ -260,7 +349,10 @@
             <button class="ghost small" onclick={() => removeSpace(sel)}>Delete space</button>
           </div>
         {:else}
-          <p class="muted small">Click a space to set it up, or click the board to add one. New spaces go after the selected space, so you can draw the path in order.</p>
+          <p class="muted small">
+            Click a space to set it up. Ctrl+click (⌘+click) the board to add one, or right-click → Add a space here. New spaces go after
+            the selected space, so you can draw the path in order.
+          </p>
         {/if}
       </aside>
     </div>
@@ -269,15 +361,15 @@
   {:else}
     <div class="zones">
       <p class="muted small">Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's actions or the host panel.</p>
-      {#each round.zones as z, i (z.id)}
+      {#each round.zones as z (z.id)}
         <div class="row zone">
           <input bind:value={z.name} aria-label="Zone name" />
           <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
           <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>
-          <button class="ghost small" onclick={() => round.zones.splice(i, 1)} aria-label="Delete zone {z.name}">✕</button>
+          <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}">✕</button>
         </div>
       {/each}
-      <button onclick={addZone}>＋ Zone</button>
+      <div class="row"><button onclick={addZone}>＋ Zone</button></div>
     </div>
   {/if}
 </div>
@@ -311,8 +403,16 @@
   .tabs {
     display: flex;
     gap: 4px;
+    border-bottom: 1px solid var(--border);
   }
-  .tabs .on,
+  .tabs button {
+    border-radius: 6px 6px 0 0;
+  }
+  .tabs button.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
   .on {
     border-color: var(--accent);
     background: rgba(79, 124, 255, 0.2);
@@ -330,6 +430,21 @@
     overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 6px;
+  }
+  .notice {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    translate: -50% 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 8px 6px 14px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
   }
   .canvas {
     position: absolute;

@@ -2,9 +2,23 @@
 <script lang="ts">
   import type { ScreenRef, World } from '../../lib/model';
 
-  let { world, value, onchange, label = 'Leads to' }: { world: World; value: ScreenRef | undefined; onchange: (ref: ScreenRef | undefined) => void; label?: string } =
-    $props();
+  let {
+    world,
+    value,
+    onchange,
+    label = 'Leads to',
+    none = '— choose —',
+  }: {
+    world: World;
+    value: ScreenRef | undefined;
+    onchange: (ref: ScreenRef | undefined) => void;
+    label?: string;
+    /** The empty choice (e.g. what happens when none is chosen). */
+    none?: string;
+  } = $props();
   const map = $derived(world.maps.find((m) => m.id === value?.map) ?? world.maps[0]);
+  // A screen deleted since shows as the empty choice (not a blank box).
+  const screen = $derived(map?.screens.find((s) => s.id === value?.screen));
 </script>
 
 <div class="sp">
@@ -21,10 +35,10 @@
   </select>
   <select
     aria-label="{label}: screen"
-    value={value?.map === map?.id ? value?.screen : ''}
+    value={screen?.id ?? ''}
     onchange={(e) => map && onchange(e.currentTarget.value ? { map: map.id, screen: e.currentTarget.value } : undefined)}
   >
-    <option value="">— choose —</option>
+    <option value="">{none}</option>
     {#each map?.screens ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
   </select>
 </div>

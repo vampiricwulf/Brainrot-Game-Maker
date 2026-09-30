@@ -56,8 +56,9 @@
           <button class="ghost small" onclick={() => (outcome.media = undefined)}>✕</button>
         {/if}
         {#each ['image', 'video', 'audio'] as const as k}
+          {@const what = k === 'image' ? 'a picture' : k === 'video' ? 'a video' : 'a sound'}
           <div class="pop">
-            <button class="small" onclick={() => (picking = k)}>{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button>
+            <button class="small" onclick={() => (picking = k)} title="Add {what}" aria-label="Add {what}">{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button>
             {#if picking === k}
               <MediaPicker kind={k} onpick={(id) => ((outcome.media = id), (picking = null))} onclose={() => (picking = null)} />
             {/if}
@@ -109,7 +110,12 @@
 </div>
 
 <style>
+  /* Its label row sits in the row around it (a wheel slice, a die face), and "More" goes on a line of its own under
+     that row, full width, when the row wraps. */
   .oe {
+    display: contents;
+  }
+  .oe > .row {
     flex: 1;
     min-width: 0;
   }
@@ -121,7 +127,9 @@
     color: var(--accent);
   }
   .more {
-    margin: 6px 0 4px;
+    order: 1;
+    flex-basis: 100%;
+    margin: 0 0 4px;
     padding: 8px;
     border-left: 2px solid var(--border);
     display: flex;

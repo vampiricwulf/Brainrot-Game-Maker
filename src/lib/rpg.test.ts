@@ -9,6 +9,7 @@ import {
   ensureWorld,
   exitOf,
   focusRef,
+  freshObjectIds,
   mapState,
   moveTo,
   newRpgRound,
@@ -16,6 +17,7 @@ import {
   newWorld,
   occupiedScreens,
   regroup,
+  rpgProblems,
   screenAt,
   screenElements,
   splitParty,
@@ -189,6 +191,27 @@ describe('RPG: improvising', () => {
     expect(screenElements(st, a1, true)[0].id).toBe(fire.slide.elements[0].id);
   });
 
+  it('points a copied look’s Reveal and Hide buttons at its own copies', () => {
+    const { world } = setup();
+    const a1 = world.maps[0].screens[0];
+    const potion = newTextEl('Potion');
+    const chest = newShapeEl('rect');
+    chest.role = { class: 'interactable', actions: [{ id: 'r', do: 'reveal', object: potion.id }] };
+    a1.slide.elements.push(potion, chest);
+    const look = newVariant(undefined, a1, 'Look 2');
+    const [p2, c2] = look.slide.elements;
+    expect(p2.id).not.toBe(potion.id);
+    expect(c2.role?.actions?.[0]).toMatchObject({ do: 'reveal', object: p2.id });
+    // A duplicated screen: its own slide and every look, sharing one set of new ids.
+    a1.variants = [look];
+    const copy = JSON.parse(JSON.stringify(a1)) as typeof a1;
+    freshObjectIds([copy.slide, ...copy.variants!.map((v) => v.slide)]);
+    const [cp, cc] = copy.slide.elements;
+    expect([cp.id, cc.id]).not.toContain(potion.id);
+    expect(cc.role?.actions?.[0]).toMatchObject({ object: cp.id });
+    expect(copy.variants![0].slide.elements[1].role?.actions?.[0]).toMatchObject({ object: copy.variants![0].slide.elements[0].id });
+  });
+
   it('adds a screen beside the current one, growing the map past its edge', () => {
     const { world } = setup();
     const m = world.maps[0];
@@ -220,6 +243,33 @@ describe('RPG: improvising', () => {
     // Kept again: replaced, not duplicated.
     keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st);
     expect(editor.worlds![0].maps[0].screens.filter((s) => s.id === d1.id)).toHaveLength(1);
+  });
+});
+
+describe('RPG: things pointing at deleted screens, items and shops', () => {
+  it('won’t step through a way out whose screen was deleted, and the checklist lists it', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const a1 = world.maps[0].screens[0];
+    a1.exits = { n: { kind: 'warp', to: at(world, 'Counter') } };
+    world.maps[1].screens = [];
+    expect(step(game, st, world, 'n')).toContain('leads nowhere');
+    expect(nameOf(world, focusRef(st))).toBe('A1');
+    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toContain('Quest: 1 way(s) out lead nowhere');
+  });
+
+  it('lists objects whose item or buttons point nowhere', () => {
+    const { game, world, round } = setup();
+    game.items = [{ id: 'potion', name: 'Potion', stackable: true }];
+    const pile = newTextEl('Potion');
+    pile.role = { class: 'item', item: 'potion' };
+    const sign = newShapeEl('rect');
+    sign.role = { class: 'interactable', actions: [{ id: 'm', do: 'move', to: at(world, 'B2') }] };
+    world.maps[0].screens[0].slide.elements.push(pile, sign);
+    expect(rpgProblems(game, round, 'Quest', 0)).toEqual([]);
+    game.items = [];
+    world.maps[0].screens = world.maps[0].screens.filter((s) => s.name !== 'B2');
+    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toEqual(['Quest: 2 object(s) with a button or setting that points nowhere']);
   });
 });
 

@@ -1,6 +1,7 @@
 <!-- Edit a list of actions (an object's buttons, an item's "Use"). Each becomes a button the host presses in play. -->
 <script lang="ts">
   import { editedGame } from '../../lib/app.svelte';
+  import { showMenu } from '../../lib/menustate.svelte';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
@@ -24,7 +25,7 @@
   } = $props();
 
   const game = $derived(editedGame());
-  let adding = $state(false);
+  const numbers = $derived(statFields(game).filter((f) => f.type === 'number'));
   let editing = $state<{ action: Action; which: 'slide' | 'question' | 'answer' } | null>(null);
   let pickingSound = $state<string | null>(null);
 
@@ -49,10 +50,10 @@
 
   function make(kind: ActionKind): Action | null {
     const id = newId();
-    const firstField = statFields(game)[0]?.id ?? '';
     switch (kind) {
       case 'stat':
-        return { id, do: 'stat', field: firstField, op: 'add', amount: -1, who: 'ask' };
+        // Only number stats can go up or down.
+        return { id, do: 'stat', field: numbers[0]?.id ?? '', op: 'add', amount: -1, who: 'ask' };
       case 'item':
         return { id, do: 'item', item: game.items?.[0]?.id ?? '', qty: 1, op: 'give', who: 'ask' };
       case 'score':
@@ -86,7 +87,6 @@
   }
 
   function add(kind: ActionKind): void {
-    adding = false;
     const a = make(kind);
     if (!a) return;
     actions = [...(actions ?? []), a];
@@ -95,6 +95,21 @@
   function remove(id: string): void {
     actions = (actions ?? []).filter((a) => a.id !== id);
     if (!actions.length) actions = undefined;
+  }
+
+  /** The kinds of action, under the button (kept on screen, closed by Esc or a click elsewhere, like a right-click menu). */
+  function openMenu(e: MouseEvent): void {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    showMenu(
+      new MouseEvent('click', { clientX: r.left, clientY: r.bottom + 2 }),
+      // Board spaces send players to a space (there are no screens); Reveal / Hide need objects on the same screen.
+      KINDS.filter(([k]) => (k === 'goto' ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(([k, l]) => ({
+        label: l,
+        onclick: () => add(k),
+        disabled: k === 'move' && !world?.maps[0]?.screens[0],
+        hint: k === 'move' && !world?.maps[0]?.screens[0] ? 'Add an RPG round (a world of screens) first' : undefined,
+      })),
+    );
   }
 
   function move(i: number, d: number): void {
@@ -129,7 +144,8 @@
       <div class="fields">
         {#if a.do === 'stat'}
           <select bind:value={a.field} aria-label="Stat">
-            {#each statFields(game).filter((f) => f.type === 'number') as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
+            {#if !numbers.some((f) => f.id === a.field)}<option value={a.field}>{numbers.length ? '— choose —' : 'Add a number stat in 📊 Stats & Items'}</option>{/if}
+            {#each numbers as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
           <select bind:value={a.op} aria-label="Change"><option value="add">add</option><option value="set">set to</option></select>
           <input type="number" bind:value={a.amount} aria-label="Amount" class="n" />
@@ -138,6 +154,7 @@
           <select bind:value={a.op} aria-label="Give or take"><option value="give">Give</option><option value="take">Take</option></select>
           <input type="number" min="1" bind:value={a.qty} aria-label="How many" class="n" />
           <select bind:value={a.item} aria-label="Item">
+            {#if !game.items?.some((it) => it.id === a.item)}<option value={a.item}>{game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>{/if}
             {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
           </select>
           {@render who(a)}
@@ -188,17 +205,20 @@
           {@render who(a)}
         {:else if a.do === 'reveal' || a.do === 'hide'}
           <select bind:value={a.object} aria-label="Object">
+            {#if !objects.some((o) => o.id === a.object)}<option value={a.object}>— choose —</option>{/if}
             {#each objects as o (o.id)}<option value={o.id}>{o.name || o.kind}</option>{/each}
           </select>
         {:else if a.do === 'shop'}
           <select bind:value={a.shop} aria-label="Shop">
+            {#if !game.shops?.some((s) => s.id === a.shop)}<option value={a.shop}>{game.shops?.length ? '— choose —' : 'Add a shop in 📊 Stats & Items'}</option>{/if}
             {#each game.shops ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
           </select>
         {:else if a.do === 'timer'}
           <input type="number" min="1" bind:value={a.seconds} aria-label="Seconds" class="n" /> <span class="small muted">seconds</span>
         {:else if a.do === 'goto'}
+          {@const to = a.zone ? `z:${a.zone}` : `s:${a.space ?? ''}`}
           <select
-            value={a.zone ? `z:${a.zone}` : `s:${a.space ?? ''}`}
+            value={to}
             onchange={(e) => {
               const [k, v] = [e.currentTarget.value.slice(0, 1), e.currentTarget.value.slice(2)];
               a.space = k === 's' ? v : undefined;
@@ -206,6 +226,7 @@
             }}
             aria-label="Send to"
           >
+            {#if !(a.zone ? board?.zones.some((z) => z.id === a.zone) : board?.spaces.some((sp) => sp.id === a.space))}<option value={to}>— choose —</option>{/if}
             {#each board?.spaces ?? [] as sp (sp.id)}<option value="s:{sp.id}">{sp.name}</option>{/each}
             {#each board?.zones ?? [] as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
           </select>
@@ -216,15 +237,8 @@
       </div>
     </div>
   {/each}
-  <div class="pop">
-    <button class="small" onclick={() => (adding = !adding)} aria-expanded={adding}>＋ Add action</button>
-    {#if adding}
-      <div class="menu" role="menu">
-        {#each KINDS.filter(([k]) => (k === 'goto' ? !!board : k === 'move' ? !board : true)) as [k, l] (k)}
-          <button role="menuitem" class="small" disabled={(k === 'move' && !world) || (k === 'goto' && !board)} onclick={() => add(k)}>{l}</button>
-        {/each}
-      </div>
-    {/if}
+  <div class="row">
+    <button class="small" onclick={openMenu} aria-haspopup="menu">＋ Add action</button>
   </div>
 </div>
 
@@ -233,11 +247,14 @@
   {#if e.action.do === 'popup'}
     <SlideModal slide={e.action.slide} title="Pop-up slide" onclose={() => (editing = null)} />
   {:else if e.action.do === 'question'}
-    <SlideModal
-      slide={e.which === 'answer' ? e.action.answer : e.action.question}
-      title={e.which === 'answer' ? 'Answer slide' : 'Question slide (Done, then edit the answer)'}
-      onclose={() => (editing = e.which === 'question' ? { ...e, which: 'answer' } : null)}
-    />
+    <!-- A fresh editor for the answer, with the answer slide's own undo history. -->
+    {#key e.which}
+      <SlideModal
+        slide={e.which === 'answer' ? e.action.answer : e.action.question}
+        title={e.which === 'answer' ? 'Answer slide' : 'Question slide (Done, then edit the answer)'}
+        onclose={() => (editing = e.which === 'question' ? { ...e, which: 'answer' } : null)}
+      />
+    {/key}
   {/if}
 {/if}
 
@@ -278,23 +295,5 @@
   }
   .pop {
     position: relative;
-  }
-  .menu {
-    position: absolute;
-    z-index: 70;
-    top: 100%;
-    left: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    min-width: 200px;
-  }
-  .menu button {
-    text-align: left;
   }
 </style>

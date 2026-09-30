@@ -6,9 +6,12 @@
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
   // handles keyboard shortcuts, copy and paste (and becoming active clears the other's selection),
   // so a shortcut never reaches a slide that's out of sight. None does while an image editor is open.
+  // A slide opened in a dialog from an editor's inspector (an RPG character's dialogue) is an editor inside it.
   interface Instance {
     clear(): void;
+    parent?: Instance;
   }
+  const EDITOR = Symbol('slide editor');
   const instances = new Set<Instance>();
   let active: Instance | null = null;
   let imageEditors = 0;
@@ -48,7 +51,7 @@
 
 <script lang="ts">
   import { pathShape } from '../../lib/draw';
-  import { onMount, tick, untrack, type Snippet } from 'svelte';
+  import { getContext, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
   import { clipboard } from '../../lib/clipboard.svelte';
@@ -146,18 +149,26 @@
   const topZ = () => Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1;
 
   // ---------- Which editor takes the keyboard ----------
-  const me: Instance = { clear: () => (selected = []) };
+  const me: Instance = { clear: () => (selected = []), parent: getContext<Instance | undefined>(EDITOR) };
+  setContext(EDITOR, me);
+  const opener = (i: Instance) => {
+    for (let p = me.parent; p; p = p.parent) if (p === i) return true;
+    return false;
+  };
   function activate(): void {
     if (active === me) return;
+    // A slide opened from this one is in charge while its dialog is open (clicks in the dialog reach both).
+    if ([...instances].some((i) => i.parent === me)) return;
     active = me;
-    for (const i of instances) if (i !== me) i.clear();
+    // The editor it was opened from keeps its selection: the dialog belongs to what's selected there.
+    for (const i of instances) if (i !== me && !opener(i)) i.clear();
   }
   function inCharge(): boolean {
     return imageEditors === 0 && (active === me || (!active && instances.size === 1));
   }
   onMount(() => {
     instances.add(me);
-    if (!active || vacated) activate();
+    if (!active || vacated || me.parent) activate();
     vacated = false;
     registerGameFonts(game);
     return () => {
