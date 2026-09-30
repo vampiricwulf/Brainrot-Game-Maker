@@ -42,7 +42,7 @@
 
 <SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill>
   {#snippet objectsection(el: SlideElement)}
-    <ObjectPanel {el} {world} {screen} />
+    <ObjectPanel {el} {world} slide={slide ?? screen.slide} />
   {/snippet}
   {#snippet tools(add: (el: SlideElement) => void)}
     <button onclick={() => add(spawnPoint())} title="Where players appear when they arrive on this screen (never shown to viewers)">🚩 Arrival</button>

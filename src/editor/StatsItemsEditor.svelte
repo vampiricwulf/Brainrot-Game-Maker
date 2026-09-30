@@ -42,7 +42,7 @@
     for (const a of allActions(game)) if (a.do === 'item' && a.item === it.id) a.item = '';
   }
 
-  /** Tags are typed as a list: "poisoned, cursed". */
+  /** Tags are typed as a list, "poisoned, cursed" (read when the field is left, so a comma being typed stays put). */
   const tagList = (v: string) => v.split(',').map((t) => t.trim()).filter(Boolean);
 
   /** A shop's next thing to sell: the first item it doesn't sell yet (each item once, with its own price and stock). */
@@ -165,7 +165,7 @@
         {:else}
           <label class="small">
             Start
-            <input value={Array.isArray(f.start) ? f.start.join(', ') : ''} oninput={(e) => (f.start = tagList(e.currentTarget.value))} placeholder="e.g. poisoned, cursed" />
+            <input value={Array.isArray(f.start) ? f.start.join(', ') : ''} onchange={(e) => (f.start = tagList(e.currentTarget.value))} placeholder="e.g. poisoned, cursed" />
           </label>
         {/if}
       </div>
@@ -231,7 +231,7 @@
                     <input
                       placeholder={Array.isArray(f.start) ? f.start.join(', ') : ''}
                       value={Array.isArray(own) ? own.join(', ') : ''}
-                      oninput={(e) => {
+                      onchange={(e) => {
                         const v = e.currentTarget.value;
                         p.stats = { ...(p.stats ?? {}) };
                         if (!v.trim()) delete p.stats[f.id];

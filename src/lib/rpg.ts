@@ -446,7 +446,8 @@ export function newVariant(st: WorldState | undefined, screen: Screen, name: str
 export function freshObjectIds(slides: Slide[]): void {
   const ids = new Map<string, string>();
   for (const el of slides.flatMap((sl) => sl.elements)) {
-    ids.set(el.id, newId());
+    // (Looks from older saves can share an object with the screen's own slide: the copies share theirs.)
+    if (!ids.has(el.id)) ids.set(el.id, newId());
     el.id = ids.get(el.id)!;
   }
   for (const el of slides.flatMap((sl) => sl.elements))

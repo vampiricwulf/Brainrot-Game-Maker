@@ -30,10 +30,11 @@
       e.stopImmediatePropagation();
       return closeMenu();
     }
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    if (!e.key.startsWith('Arrow')) return;
     // The arrows are the menu's (not a nudge for what's selected in a slide editor underneath).
     e.preventDefault();
     e.stopImmediatePropagation();
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const buttons = [...(box?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
     buttons[(at + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus();

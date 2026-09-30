@@ -210,6 +210,12 @@ describe('RPG: improvising', () => {
     expect([cp.id, cc.id]).not.toContain(potion.id);
     expect(cc.role?.actions?.[0]).toMatchObject({ object: cp.id });
     expect(copy.variants![0].slide.elements[1].role?.actions?.[0]).toMatchObject({ object: copy.variants![0].slide.elements[0].id });
+    // A look from an older save shares the screen's own objects: in the copy, they share the new ones.
+    const own = JSON.parse(JSON.stringify(a1.slide)) as typeof a1.slide;
+    const old = JSON.parse(JSON.stringify(a1.slide)) as typeof a1.slide;
+    freshObjectIds([own, old]);
+    expect(old.elements.map((e) => e.id)).toEqual(own.elements.map((e) => e.id));
+    expect(own.elements[1].role?.actions?.[0]).toMatchObject({ object: own.elements[0].id });
   });
 
   it('adds a screen beside the current one, growing the map past its edge', () => {
