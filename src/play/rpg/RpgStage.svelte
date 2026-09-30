@@ -5,7 +5,7 @@
   drawn.
 -->
 <script lang="ts">
-  import { getContext } from 'svelte';
+  import { getContext, onDestroy } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -14,7 +14,7 @@
   import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { wornItems } from '../../lib/toolset';
-  import { dropHover, dropTarget } from '../dragdrop.svelte';
+  import { dragGhost, dropHover, dropTarget } from '../dragdrop.svelte';
   import { avatarSpot, wayOffEdge, type AvatarDrop } from './hostops';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
@@ -90,8 +90,14 @@
   }
 
   const stage = getContext<{ scale: number } | undefined>('stage');
-  /** The stats strip, which a dropped avatar stays clear of. */
+  /** The stage, and its stats strip (a dropped avatar stays clear of it). */
+  let rpgEl = $state<HTMLElement>();
   let stripEl = $state<HTMLElement>();
+  // Leaving the round mid-drag leaves nothing lit up or following the pointer.
+  onDestroy(() => {
+    dragGhost.now = null;
+    dropHover.at = null;
+  });
 
   /** The dragged thing keeps the pointer, even over the host panel (a screen on the minimap, a party's chip). */
   function capture(e: PointerEvent): void {
@@ -129,12 +135,18 @@
     const t = avatarOver(e);
     const screen = t?.dataset.screen;
     dropHover.at = t?.dataset.party ? `party:${t.dataset.party}` : screen && screen !== st?.positions[drag.id]?.screen ? `screen:${screen}` : null;
+    // Off the stage (over the host panel): a copy follows the pointer.
+    const r = rpgEl?.getBoundingClientRect();
+    const off = !!r && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+    const player = session.players.find((p) => p.id === drag?.id);
+    dragGhost.now = off && player ? { x: e.clientX, y: e.clientY, player } : null;
   }
 
   function avatarUp(e: PointerEvent): void {
     const d = drag;
     drag = null;
     dropHover.at = null;
+    dragGhost.now = null;
     const pos = d && st?.positions[d.id];
     if (!d || !pos || !world) return;
     if (!d.moved) return onavatar?.(d.id);
@@ -257,7 +269,7 @@
   {/each}
 {/snippet}
 
-<div class="rpg" class:split>
+<div class="rpg" class:split bind:this={rpgEl}>
   {#if world && st}
     {#each panes as ref, i (ref.screen)}
       {@const found = findIn(world, ref)}

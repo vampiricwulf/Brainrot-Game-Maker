@@ -155,7 +155,7 @@
       </label>
     {:else if session.finalStep === 'reveal'}
       <span class="muted">
-        Go one by one: spotlight → show wager → mark right or wrong. Reorder by dragging (or ▲▼, Alt+↑/↓).
+        Go one by one: spotlight → show wager → mark right or wrong. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓).
         <span class="small">Keys: N shows the wager, then the next player · C right · X wrong.</span>
       </span>
       <div class="order" role="list" aria-label="Reveal order" bind:this={orderEl}>
@@ -172,16 +172,21 @@
             style:--c={p?.color}
             data-row={id}
             role="listitem"
-            draggable="true"
-            ondragstart={(e) => rows.start(e, id)}
             ondragover={(e) => rows.over(e, id)}
             ondrop={(e) => {
               const m = rows.drop(e, f.order);
               if (m) move(f.order[m.from], m.to - m.from);
             }}
-            ondragend={() => rows.end()}
           >
-            <span class="grip" aria-hidden="true">⋮⋮</span>
+            <!-- Only the grip drags: a press on Right or Wrong that moves a little is still a press. -->
+            <span
+              class="grip"
+              draggable="true"
+              ondragstart={(e) => rows.start(e, id, (e.currentTarget as HTMLElement).parentElement)}
+              ondragend={() => rows.end()}
+              aria-hidden="true"
+              title="Drag to change the order">⋮⋮</span
+            >
             <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier">▲</button>
             <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later">▼</button>
             <button

@@ -304,11 +304,11 @@
     border-radius: 50%;
     border: 1px solid #000;
   }
-  /* The dragged players' dots, at the pointer. */
+  /* The dragged players' dots, beside the pointer (the screen under it stays in sight). */
   .ghost {
     position: fixed;
     z-index: 300;
-    transform: translate(-50%, -50%);
+    transform: translate(6px, 6px);
     padding: 4px 6px;
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.7);

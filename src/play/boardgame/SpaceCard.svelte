@@ -82,7 +82,7 @@
   {/if}
   {#if !space.onLand?.length && !space.onPass?.length}<span class="muted small">No buttons on this space.</span>{/if}
   <div class="row">
-    <button class="small" disabled={!who.length} onclick={() => sendNow(game, session, who, { space: space.id })}>
+    <button class="small" disabled={!who.length || who.every((id) => bs.positions[id]?.space === space.id)} onclick={() => sendNow(game, session, who, { space: space.id })}>
       📍 Put {selected.length ? `the selected (${selected.length})` : playerName(session, turnId)} here
     </button>
     <span class="muted small">or drag a token onto it</span>

@@ -34,7 +34,8 @@
   import { boardNow, moveNow, rollMover, runSpace, sendNow, turnNow } from './boardgame/bgops';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
-  import { dragDone, dropHover, itemDrag } from './dragdrop.svelte';
+  import { dragDone, dragGhost, dropHover, itemDrag } from './dragdrop.svelte';
+  import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { ActionEvent, Dir8 } from '../lib/model';
@@ -688,7 +689,11 @@
         return showMenu(e, [
           { heading: sp.name },
           { label: '🗂 Open its card', onclick: () => ((hideControls = false), (bgSpace = sp.id)) },
-          { label: `📍 Put ${them} here`, disabled: !movers.length, onclick: () => sendNow(game, session, movers, { space: sp.id }) },
+          {
+            label: `📍 Put ${them} here`,
+            disabled: !movers.length || movers.every((m) => bs.positions[m]?.space === sp.id),
+            onclick: () => sendNow(game, session, movers, { space: sp.id }),
+          },
           {
             label: `▶ Run its landing actions for ${them}`,
             disabled: !movers.length || !sp.onLand?.length,
@@ -1066,6 +1071,7 @@
         role="presentation"
         ondragover={(e) => (itemDrag.now ? itemOver(e) : session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault())}
         ondrop={(e) => (itemDrag.now ? itemDrop(e) : dropOnStage(e))}
+        ondragleave={() => itemDrag.now && (dropHover.at = null)}
         oncontextmenu={stageMenu}
       >
         <Stage>
@@ -1096,6 +1102,12 @@
         <HostInfo {game} {session} />
       {/if}
     </div>
+    {#if dragGhost.now}
+      <!-- An avatar dragged off the stage (over the host panel), by the pointer. -->
+      <div class="drag-ghost" style:left="{dragGhost.now.x}px" style:top="{dragGhost.now.y}px" aria-hidden="true">
+        <Avatar player={dragGhost.now.player} size={44} />
+      </div>
+    {/if}
     {#if hideControls}
       <button class="show-controls" onclick={() => (hideControls = false)} title="H">Show controls</button>
     {:else}
@@ -1287,6 +1299,15 @@
     .modes {
       grid-template-columns: 1fr;
     }
+  }
+  /* Beside the pointer, like a dragged file: what's under the pointer stays in sight. */
+  .drag-ghost {
+    position: fixed;
+    z-index: 300;
+    transform: translate(6px, 6px);
+    opacity: 0.9;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
   }
   .show-controls {
     position: fixed;

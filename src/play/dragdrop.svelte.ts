@@ -6,6 +6,12 @@
 export const dropHover = $state<{ at: string | null }>({ at: null });
 
 /**
+ * An avatar dragged off the stage (onto the minimap or a party's chip): the stage clips it, so a small copy follows the
+ * pointer over the host panel (window coordinates).
+ */
+export const dragGhost = $state<{ now: { x: number; y: number; player: { name: string; color: string; avatar?: string } } | null }>({ now: null });
+
+/**
  * An inventory item being dragged from a player's card (browser drag and drop, which can't read what's dragged until
  * the drop): whose it is, which entry, and how many go (the card's amount box).
  */
