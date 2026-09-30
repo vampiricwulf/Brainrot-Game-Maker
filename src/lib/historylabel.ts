@@ -1,10 +1,11 @@
 // What a step in the undo history is called and where it happened ("Renamed category “Memes”" in Round 1 › Memes),
 // worked out from its ops (historyops.ts), and the place in the editor that shows it. Pure: unit-tested in
 // historylabel.test.ts.
-import { opPath, type Op, type Seg } from './historyops';
+import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel } from './layerlabel';
 import { categoryLabel, clueValue, formatPoints, roundName, type Action, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
 import { ROUND_MODES } from './modes';
+import { OBJECT_CLASSES } from './rpg';
 import { PRESETS, type ThemePreset } from './theme';
 
 export type Side = 'q' | 'a';
@@ -105,7 +106,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     owned = true;
     const a = byId<Action>(list, path[i]);
     if (!a) return;
-    reached(i + 1, 'button', '', undefined, false);
+    reached(i + 1, 'action', '', undefined, false);
     if (a.do === 'popup' && path[i + 1] === 'slide') {
       at.crumbs.push('pop-up');
       slide(a.slide, i + 2, placeFor);
@@ -347,6 +348,15 @@ const FIELDS: Record<string, string> = {
   imageFit: 'image fit',
   showTitleOverImage: 'name over the image',
   editedMedia: 'edited image',
+  wheelId: 'wheel',
+  diceId: 'dice',
+  to: 'destination',
+  next: 'links',
+  onUse: 'actions',
+  onLand: 'landing actions',
+  onPass: 'passing actions',
+  variants: 'looks',
+  statFields: 'stats',
 };
 /** Fields that are words people type: a change says what they say now. */
 const TEXTS = new Set(['text', 'category', 'hostNotes', 'details', 'description', 'label', 'winNotes', 'notes']);
@@ -397,27 +407,87 @@ function primary(ops: readonly Op[]): Op {
   return best ?? ops[0];
 }
 
+const isList = (v: unknown): v is Obj[] => Array.isArray(v) && v.length > 0 && v.every((x) => typeof (x as Obj)?.id === 'string');
+const none = (v: unknown) => v === undefined || (Array.isArray(v) && !v.length);
+
+/**
+ * A list given to something that had none (the first stat of a game, a screen's first look) as the insert of its first
+ * element, with how many it has; a list taken away as the delete. Null for any other op.
+ */
+function asList(op: Op): { op: Op; n: number } | null {
+  if (op.t !== 'set') return null;
+  const p = [...op.p, op.k];
+  if (isList(op.a) && none(op.b)) return { op: { t: 'ins', p, i: 0, id: op.a[0].id as string, v: op.a[0] as Json }, n: op.a.length };
+  if (isList(op.b) && none(op.a)) return { op: { t: 'del', p, i: 0, id: op.b[0].id as string, v: op.b[0] as Json }, n: op.b.length };
+  return null;
+}
+
+/** Every change is inside the thing `op` changes or around it (typing a question also makes its tile playable). */
+function related(ops: readonly Op[], op: Op): boolean {
+  const mine = op.p.join('/');
+  const inside = (a: string, b: string) => a === b || (!!b && a.startsWith(b + '/'));
+  return ops.every((o) => inside(o.p.join('/'), mine) || inside(mine, o.p.join('/')));
+}
+
+/** The path every op's change is under. */
+function commonPath(ops: readonly Op[]): Seg[] {
+  let common = opPath(ops[0]);
+  for (const op of ops) {
+    const path = opPath(op);
+    let i = 0;
+    while (i < common.length && i < path.length && common[i] === path[i]) i++;
+    common = common.slice(0, i);
+  }
+  return common;
+}
+
+/**
+ * Where a step that changed several separate things shows: the place that has them all (the board, for Daily Doubles
+ * placed across it; the players, for players added together). Null for a change to one thing, and for items on one
+ * slide or screens on one map, which are shown (and selected) themselves.
+ */
+function widePath(ops: readonly Op[], op: Op, alike: number): Seg[] | null {
+  const several = op.t === 'set' ? !related(ops, op) : op.t !== 'ord' && (alike > 1 || ops.filter((o) => o.t === op.t).length > 1);
+  if (!several) return null;
+  const path = commonPath(ops);
+  const last = path[path.length - 1];
+  return path.length && last !== 'elements' && last !== 'decor' && last !== 'screens' ? path : null;
+}
+
 /** Name and places of a step. An editor's own label wins; the places always come from the ops. */
-export function describe(ops: readonly Op[], before: Game, after: Game, explicit?: string | null): Described {
-  const op = primary(ops);
+export function describe(all: readonly Op[], before: Game, after: Game, explicit?: string | null): Described {
+  // A file added with what shows it (a picture put on a slide, an image edited): that is what the step did, and where.
+  const shown = all.filter((o) => opPath(o)[0] !== 'media');
+  const ops = shown.length ? shown : all;
+  const first = primary(ops);
+  const list = asList(first);
+  const op = list?.op ?? first;
   const moved = op.t === 'ord' ? movedIds(op.b, op.a) : [];
   const path = op.t === 'ord' && moved.length === 1 ? [...op.p, moved[0]] : opPath(op);
   const at = placeAt(op.t === 'del' ? before : after, path);
+  const alike = list?.n ?? ops.filter((o) => o.t === op.t && o.p.join() === op.p.join()).length;
   let place = at.place;
   let undoPlace = at.place;
+  let crumbs = at.crumbs;
   if (op.t === 'ins') undoPlace = placeAt(before, op.p).place;
   if (op.t === 'del') place = placeAt(after, op.p).place;
-  const label = explicit || labelOf(ops, op, at, moved, before, after);
+  const wide = widePath(ops, op, alike);
+  if (wide) {
+    const [a, b] = [placeAt(after, wide), placeAt(before, wide)];
+    place = a.place ?? place;
+    undoPlace = b.place ?? undoPlace;
+    crumbs = (op.t === 'del' ? b : a).crumbs;
+  }
+  const label = explicit || labelOf(ops, op, at, moved, alike, before, after);
   // Where it is doesn't say again what the label names ("Edited question “Who is Pepe?”" in Round 1 › Memes › $400 › Question).
-  const last = at.crumbs[at.crumbs.length - 1];
-  const crumbs = last?.trim() && label.includes(`“${short(last)}”`) ? at.crumbs.slice(0, -1) : at.crumbs;
+  const last = crumbs[crumbs.length - 1];
+  if (last?.trim() && label.includes(`“${short(last)}”`)) crumbs = crumbs.slice(0, -1);
   return { label, icon: at.icon, where: crumbs.join(' › '), place, undoPlace };
 }
 
-function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], before: Game, after: Game): string {
+function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: number, before: Game, after: Game): string {
   if (op.t === 'ins' || op.t === 'del') {
     const verb = op.t === 'ins' ? 'Added' : at.noun === 'file' ? 'Removed' : 'Deleted';
-    const alike = ops.filter((o) => o.t === op.t && o.p.join() === op.p.join()).length;
     return alike > 1 ? `${verb} ${alike} ${plural(at.noun)}` : `${verb} ${what(at)}`;
   }
   if (op.t === 'ord') {
@@ -430,10 +500,6 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], before: Ga
   const v = (op as Op & { t: 'set' }).a;
   const keys = new Set(sets.map((o) => o.k));
   const things = new Set(sets.map((o) => o.p.join('/')));
-  // Changes inside one thing and around it (typing a question also makes its tile playable) are one thing's change.
-  const mine = op.p.join('/');
-  const inside = (a: string, b: string) => a === b || (!!b && a.startsWith(b + '/'));
-  const related = [...things].every((t) => inside(t, mine) || inside(mine, t));
   const only = (...allowed: Seg[]) => [...keys].every((x) => allowed.includes(x));
   const top = opPath(op)[0];
 
@@ -468,7 +534,16 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], before: Ga
   if (only('x', 'y', 'w', 'h')) return several ? `Resized ${things.size} items` : `Resized ${what(at)}`;
   if (only('rotation')) return several ? `Rotated ${things.size} items` : `Rotated ${what(at)}`;
   if (only('zIndex')) return 'Restacked items';
-  if (several && !related) return `${ops.length} changes`;
+  // (Changes inside one thing and around it are one thing's change.)
+  if (several && !related(ops, op)) return `${ops.length} changes`;
+  // An object made a doorway, a character… (or scenery again).
+  const role = sets.find((o) => (o.k === 'role' && o.p.length === at.depth) || (o.k === 'class' && o.p[o.p.length - 1] === 'role'));
+  if (role) {
+    const cls = role.k === 'role' ? ((role.a as Obj | undefined)?.class ?? '') : role.a;
+    const kind = (OBJECT_CLASSES.find(([c]) => c === cls)?.[1] ?? String(cls)).replace(/^\S+\s/, '').toLowerCase();
+    const who = at.name.trim() ? `“${short(at.name)}”` : `the ${nounOf(at)}`;
+    return cls ? `Made ${who} ${/^[aeiou]/.test(kind) ? 'an' : 'a'} ${kind}` : `Made ${who} ${kind}`;
+  }
 
   if (at.noun === 'row values') return 'Changed the row values';
   const own = op.p.length === at.depth;

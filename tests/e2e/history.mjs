@@ -1,6 +1,7 @@
 // The editor's one undo history: Ctrl+Z / Ctrl+Y go where each change is (and say so), a text box's own undo comes
-// first, the 🕘 History tab jumps anywhere, deleting needs no confirm, removed and replaced files come back, the
-// history survives a reload, a game opened starts afresh, and changes made while hosting are steps too.
+// first, the 🕘 History tab jumps anywhere (asking first when it's far), deleting needs no confirm, removed and
+// replaced files come back, the history survives a reload, a game opened starts afresh, and changes made while
+// hosting are steps too.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -243,6 +244,21 @@ try {
   assert((await rows.count()) === 1 && (await rows.first().innerText()).includes('📂 Opened “Untitled Game”'), 'a game opened has only where it was opened in its history');
   await key('Control+z');
   assert((await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()) && (await rows.count()) === 1, 'and nothing to undo');
+
+  // ---------- A long jump asks first, right under the step clicked ----------
+  await page.locator('nav button.round-tab').first().click();
+  for (let i = 0; i < 11; i++) {
+    await page.getByTitle('Double every row value').click();
+    await page.getByTitle('Halve every row value').click();
+  }
+  await historyTab.click();
+  await page.locator('.hist .hr.origin .pick').click();
+  const ask = page.locator('.hist .hr.origin + .ask');
+  assert((await ask.innerText()).startsWith('Go back 22 steps'), 'going back more than 20 steps asks first, under the step clicked');
+  await page.waitForTimeout(450);
+  await ask.getByRole('button', { name: 'Go back 22 steps' }).click();
+  await page.waitForTimeout(250);
+  assert((await page.locator('.hist .hr.undone').count()) === 22 && !(await ask.count()), 'and goes back once asked');
 
   assert(dialogs.length === 1 && dialogs[0].includes('It replaces this game'), `the only browser dialog was Open's (${dialogs.join(' | ')})`);
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

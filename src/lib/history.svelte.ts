@@ -208,10 +208,21 @@ function restart(origin: Omit<Origin, 'ts'>): void {
   h.origin = { ...origin, ts: Date.now() };
 }
 
+/**
+ * A checkbox shown for the first time fills in an option the game doesn't have yet as false (Svelte's binding does):
+ * the game was like that already, so it isn't a change.
+ */
+const fillIn = (o: Op) => o.t === 'set' && o.b === undefined && o.a === false;
+
 /** The watcher saw a change. */
 function changed(): void {
-  if (!watch || watch.value() === base) return;
+  if (!watch || !base) return;
+  const now = watch.value();
+  if (now === base) return;
   if (!h.pending) {
+    // Only options filled in as something opened (a clue, a space): nothing to undo, and nothing going on either (an
+    // undo's note stays up while it shows where the step was).
+    if (diff(base, now).every(fillIn)) return void (base = now);
     h.pending = true;
     since = Date.now();
     pendingTarget = focused();
@@ -245,9 +256,8 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
   h.pending = false;
   if (after === before && !blobs.length) return;
   base = after;
-  // A checkbox shown for the first time fills in an option the game doesn't have yet as false (Svelte's binding
-  // does): the game was like that already, so it isn't a step.
-  const ops = diff(before, after).filter((o) => !(o.t === 'set' && o.b === undefined && o.a === false));
+  // (Options filled in as they're shown aren't part of it, see fillIn.)
+  const ops = diff(before, after).filter((o) => !fillIn(o));
   if (!ops.length && !blobs.length) return;
   // (A file replaced by one with the same name and size changes only its bytes.)
   const file: Place = { tab: 'media', media: blobs[0]?.id };

@@ -29,6 +29,13 @@
     sel = copy.id;
   }
 
+  /** Delete on a wheel or dice in the list deletes it (the note at the bottom offers Undo). */
+  function onDelete(e: KeyboardEvent, remove: () => void): void {
+    if (e.key !== 'Delete' || e.repeat) return;
+    e.preventDefault();
+    remove();
+  }
+
   // Deleting is done at once: the note at the bottom offers Undo.
   function removeWheel(id: string, name: string): void {
     step(`Deleted wheel “${name}”`, () => (game.wheels = game.wheels.filter((w) => w.id !== id)), { notify: true });
@@ -50,7 +57,9 @@
   <nav>
     <div class="head muted">🎡 Wheels</div>
     {#each game.wheels as w (w.id)}
-      <button class:active={sel === w.id} data-place="wheel:{w.id}" onclick={() => (sel = w.id)}>{w.name}</button>
+      <button class:active={sel === w.id} data-place="wheel:{w.id}" onclick={() => (sel = w.id)} onkeydown={(e) => onDelete(e, () => removeWheel(w.id, w.name))}>
+        {w.name}
+      </button>
     {/each}
     <button
       class="ghost"
@@ -61,7 +70,9 @@
       }}>＋ New wheel</button>
     <div class="head muted">🎲 Dice</div>
     {#each game.dice as d (d.id)}
-      <button class:active={sel === d.id} data-place="dice:{d.id}" onclick={() => (sel = d.id)}>{d.name}</button>
+      <button class:active={sel === d.id} data-place="dice:{d.id}" onclick={() => (sel = d.id)} onkeydown={(e) => onDelete(e, () => removeDice(d.id, d.name))}>
+        {d.name}
+      </button>
     {/each}
     <button
       class="ghost"

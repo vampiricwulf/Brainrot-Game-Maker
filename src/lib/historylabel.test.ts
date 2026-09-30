@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
 import { describe as describeStep, placeAt, short } from './historylabel';
-import { newImageEl, newTextEl, type BoardRound, type FinalRound, type Game, type TextEl } from './model';
+import { newImageEl, newTextEl, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
 import { jeopardyGame } from './testgame';
-import { newRpgRound, newScreen } from './rpg';
+import { newRpgRound, newScreen, newVariant } from './rpg';
 import { newWheel } from './tools';
+import { newStatField } from './toolset';
 
 function sample(): Game {
   const g = jeopardyGame();
@@ -159,6 +160,59 @@ describe('step labels', () => {
     expect(step((g) => (final(g).hostNotes = '')).label).toBe('Cleared the host notes');
     expect(step((g) => (board(g).categories[0].clues[0].timerSeconds = 20)).label).toBe('Changed timer of clue “$200”');
     expect(step((g) => ((g.title = 'X'), (g.rounds[0].name = 'Y'))).label).toBe('2 changes');
+  });
+
+  it('names the first of a kind added as an add (the game had no list of them yet)', () => {
+    const stat = step((g) => (g.statFields = [newStatField('HP')]));
+    const id = stat.after.statFields![0].id;
+    expect(stat).toMatchObject({ label: 'Added stat “HP”', where: 'Stats & Items', place: { tab: 'stats', stat: id }, undoPlace: { tab: 'stats' } });
+    const items = step((g) => (g.items = ['Potion', 'Hat', 'Key'].map((name) => ({ id: name, name, stackable: true }))));
+    expect(items).toMatchObject({ label: 'Added 3 items', where: 'Stats & Items', place: { tab: 'stats' } });
+    const look = step((g) => (screens(g)[1].variants = [newVariant(undefined, screens(g)[1], 'Night')]));
+    expect(look.label).toBe('Added look “Night”');
+    expect(look.place).toMatchObject({ screen: screens(look.after)[1].id, look: screens(look.after)[1].variants![0].id });
+    expect(step((g) => (screens(g)[1].slide.elements[1].role!.dialogue = undefined)).label).toBe('Changed dialogue of object “Old Man”');
+  });
+
+  it("names an object's class", () => {
+    const el = (g: Game) => screens(g)[1].slide.elements;
+    expect(step((g) => (el(g)[0].role = { class: 'doorway' })).label).toBe('Made “Welcome” a doorway');
+    expect(step((g) => (el(g)[1].role!.class = 'interactable')).label).toBe('Made “Old Man” an interactable');
+    expect(step((g) => (el(g)[1].role = undefined)).label).toBe('Made “Old Man” scenery');
+    expect(step((g) => (el(g)[1].role!.to = { map: 'm', screen: 's' })).label).toBe('Changed destination of object “Old Man”');
+  });
+
+  it('shows a step that changed several separate things where they all are', () => {
+    const dds = step((g) => {
+      board(g).categories[0].clues[3].type = 'dailyDouble';
+      board(g).categories[4].clues[2].type = 'dailyDouble';
+    }, 'Placed Daily Doubles at random');
+    expect(dds).toMatchObject({ where: 'Jeopardy!', place: { tab: 'round', round: dds.after.rounds[0].id } });
+    const one = step((g) => {
+      board(g).categories[1].clues[3].type = 'dailyDouble';
+      board(g).categories[1].clues[4].type = 'dailyDouble';
+    });
+    expect(one.place).toEqual({ tab: 'round', round: one.after.rounds[0].id, part: { kind: 'category', category: board(one.after).categories[1].id } });
+    const players = step((g) => (g.players = [1, 2].map((n) => ({ id: `p${n}`, name: `Player ${n}`, color: '#fff' }))), 'Saved the players from the show');
+    expect(players).toMatchObject({ where: 'Setup › Players', place: { tab: 'setup' } });
+    // Items on one slide are shown themselves (and selected together).
+    const items = step((g) => ((screens(g)[1].slide.elements[0].x += 10), (screens(g)[1].slide.elements[1].x += 10)));
+    expect(items.place).toMatchObject({ element: screens(items.after)[1].slide.elements[0].id });
+  });
+
+  it('shows a file added with the picture using it where the picture is', () => {
+    const file = { id: 'm2', name: 'pepe-edited.png', mime: 'image/png', size: 1, kind: 'image' as const };
+    const edited = step((g) => {
+      g.media.push(file);
+      (screens(g)[1].slide.elements[1] as ImageEl).editedMedia = 'm2';
+    }, 'Edited image');
+    const npc = screens(edited.after)[1].slide.elements[1];
+    expect(edited).toMatchObject({ where: 'World 1 › Overworld › Town › Old Man', undoPlace: { element: npc.id } });
+    const put = step((g) => {
+      g.media.push(file);
+      board(g).categories[0].clues[0].questionSlide.elements.push({ ...newImageEl('m2'), id: 'img' });
+    });
+    expect(put).toMatchObject({ label: 'Added image “pepe-edited.png”', place: { part: { kind: 'clue', element: 'img' } } });
   });
 
   it('lets an editor name the step, keeping the places from the ops', () => {

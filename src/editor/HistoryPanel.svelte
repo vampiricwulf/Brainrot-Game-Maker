@@ -3,6 +3,7 @@
   (dimmed) above "● Now". Click a step to go back (or forward) to just after it; Go there shows where it changed.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { clear, heldMedia, history, jumpTo, MAX_STEPS, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
   import { formatBytes, getBlob } from '../lib/media.svelte';
@@ -82,12 +83,13 @@
     return { n: blobs.size, bytes: [...blobs].reduce((a, b) => a + b.size, 0) };
   });
 
-  /** A jump is waiting for "Go back 34 steps?" to be answered. */
+  /** A jump is waiting for "Go back 34 steps?" to be answered (asked under the step clicked). */
   let asking = $state<{ n: number; text: string; ok: string } | null>(null);
   let clearing = $state(false);
 
   /** Go to the game as it was just after entries[n - 1] (0: where the history starts). */
   function pick(n: number): void {
+    asking = null;
     const moved = n - history.index;
     if (Math.abs(moved) <= ASK_OVER) return void jumpTo(n);
     const when = minute(n ? history.entries[n - 1].end : history.origin.ts);
@@ -95,6 +97,22 @@
       moved < 0
         ? { n, text: `Go back ${-moved} steps, to ${when}?`, ok: `Go back ${-moved} steps` }
         : { n, text: `Redo ${moved} steps, up to ${when}?`, ok: `Redo ${moved} steps` };
+  }
+
+  // (A question about a jump goes once the history moves some other way: its count would be wrong.)
+  $effect(() => {
+    void [history.index, history.entries];
+    untrack(() => (asking = null));
+  });
+
+  /** The question shows in full, under the step clicked (the list can be long). */
+  const inView = (el: HTMLElement) => el.scrollIntoView({ block: 'nearest' });
+
+  function jumpAsked(): void {
+    if (!asking) return;
+    const { n } = asking;
+    asking = null;
+    jumpTo(n);
   }
 
   /** Show where a step changed things, as the game is now. */
@@ -151,15 +169,16 @@
       />
     </div>
   {/if}
-  {#if asking}
-    {@const ask = asking}
-    <div class="ask">
-      <InlineAsk text={ask.text} ok={ask.ok} onok={() => ((asking = null), jumpTo(ask.n))} oncancel={() => (asking = null)} />
-    </div>
-  {/if}
 
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="list" bind:this={list} onkeydown={onkey}>
+    {#snippet ask(n: number)}
+      {#if asking?.n === n}
+        <div class="ask at" use:inView>
+          <InlineAsk text={asking.text} ok={asking.ok} onok={jumpAsked} oncancel={() => (asking = null)} />
+        </div>
+      {/if}
+    {/snippet}
     {#each rows as r (r.key)}
       {#if r.kind === 'now'}
         <div class="now"><span>● Now</span></div>
@@ -189,6 +208,7 @@
             {/if}
           </span>
         </div>
+        {@render ask(r.i + 1)}
       {/if}
     {/each}
     <div class="hr origin" class:current={history.index === 0}>
@@ -202,6 +222,7 @@
         <span class="muted small">{minute(history.origin.ts)}</span>
       </span>
     </div>
+    {@render ask(0)}
   </div>
   <p class="foot muted">
     {history.trimmed ? `Older steps weren't kept (the history keeps the last ${MAX_STEPS} steps).` : `The history keeps the last ${MAX_STEPS} steps and survives a reload.`}
@@ -231,6 +252,9 @@
   }
   .ask {
     margin: 0 0 10px;
+  }
+  .ask.at {
+    margin: 2px 0 6px 46px;
   }
   .list {
     display: flex;

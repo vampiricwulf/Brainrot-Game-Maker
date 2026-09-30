@@ -72,7 +72,8 @@
     } else if (place.tab !== 'title') tab = place.tab;
   }
 
-  // The round on screen stays on screen when an undo puts back (or takes away) a round before it.
+  // The round on screen stays on screen when an undo puts back (or takes away) a round before it; when it takes away
+  // the round itself, its neighbour shows (as when it's deleted).
   let shownRound: string | undefined;
   $effect(() => {
     shownRound = typeof tab === 'number' ? game.rounds[tab]?.id : undefined;
@@ -80,7 +81,7 @@
   onMount(() =>
     onApplied((e, dir, via) => {
       const i = game.rounds.findIndex((r) => r.id === shownRound);
-      if (typeof tab === 'number' && i >= 0) tab = i;
+      if (typeof tab === 'number') tab = i >= 0 ? i : Math.max(0, Math.min(tab, game.rounds.length - 1));
       // Then on to where it changed (the History tab shows it in its list).
       const place = dir < 0 ? e.undoPlace : e.place;
       if (via !== 'list' && tab !== 'history' && place) goTo(place, itemIdsIn(e.ops));
@@ -126,8 +127,10 @@
   function moveRound(i: number, delta: number): void {
     const j = i + delta;
     if (j < 0 || j >= game.rounds.length) return;
-    const [r] = game.rounds.splice(i, 1);
-    game.rounds.splice(j, 0, r);
+    step(`Moved round “${roundName(game.rounds[i], i)}” ${delta < 0 ? 'earlier' : 'later'}`, () => {
+      const [r] = game.rounds.splice(i, 1);
+      game.rounds.splice(j, 0, r);
+    });
     if (tab === i) tab = j;
     else if (tab === j) tab = i;
   }
@@ -235,7 +238,8 @@
   /**
    * Ctrl+Z / Ctrl+Y go through the game's undo history, except in a text field with typing of its own (the field's
    * own undo takes that back first), in a window that isn't about the game (⚙ Settings, ℹ About, Open: nothing
-   * happens), and in the image editor and the drawpad, which undo their own drafts (they take the key first).
+   * happens), and in the image editor and the drawpad, which undo their own drafts (they take the key first; in the
+   * image editor's own boxes and sliders, nothing happens either).
    */
   function undoKey(e: KeyboardEvent, key: 'undo' | 'redo'): void {
     if (e.defaultPrevented || fields.native(e, key)) return;

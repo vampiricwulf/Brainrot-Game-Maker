@@ -219,8 +219,12 @@
           </div>
         {/if}
         <div class="cat-tools">
-          <button class="ghost small" onclick={() => moveCategory(round, ci, ci - 1)} disabled={ci === 0} title="Move left">◀</button>
-          <button class="ghost small" onclick={() => moveCategory(round, ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right">▶</button>
+          <button class="ghost small" onclick={() => step(`Moved category “${categoryLabel(cat)}” left`, () => moveCategory(round, ci, ci - 1))} disabled={ci === 0} title="Move left">◀</button>
+          <button
+            class="ghost small"
+            onclick={() => step(`Moved category “${categoryLabel(cat)}” right`, () => moveCategory(round, ci, ci + 1))}
+            disabled={ci === round.categories.length - 1}
+            title="Move right">▶</button>
           <button
             class="ghost small"
             onclick={() => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci))}

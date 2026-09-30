@@ -208,6 +208,8 @@ describe('undo history: steps', () => {
   it("doesn't count a checkbox filling in an unset option as false", async () => {
     board(g).categories[0].clues[0].empty = false;
     await seen();
+    // Not even a change going on (an undo's note would close at once when the clue it opened fills it in).
+    expect(history.pending).toBe(false);
     vi.advanceTimersByTime(700);
     expect(history.entries).toHaveLength(0);
     board(g).categories[0].clues[1].empty = false;
