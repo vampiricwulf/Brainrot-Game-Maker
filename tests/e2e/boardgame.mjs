@@ -106,6 +106,7 @@ try {
   await page.getByLabel('Steps').fill('2');
   await page.getByRole('button', { name: /^▶ Move Player 1/ }).click();
   assert((await toast()).includes('Landed on Space 3'), 'moving 2 from Start lands on Space 3');
+  assert((await page.getByLabel('Steps').inputValue()) === '', 'the move uses up the count (no second move with the same roll)');
   await page.waitForTimeout(1200);
   const s3 = await tokenOn('Player 1');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-board.png` });
@@ -113,6 +114,10 @@ try {
 
   await page.keyboard.press('n');
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 2'), 'N passes the turn to Player 2');
+  await page.keyboard.press('b');
+  await page.locator('.cover').waitFor();
+  assert(true, 'B covers the screen in a board game too');
+  await page.keyboard.press('b');
   await page.getByLabel('Steps').fill('5');
   await page.getByRole('button', { name: /^▶ Move Player 2/ }).click();
   await page.locator('.fork').waitFor();

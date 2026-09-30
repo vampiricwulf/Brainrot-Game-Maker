@@ -269,6 +269,9 @@ try {
   await page.getByLabel('Add a screen').selectOption('s');
   await page.getByRole('dialog', { name: /Edit New south of Start live/ }).waitFor();
   await page.getByRole('button', { name: 'Done' }).click();
+  await page.keyboard.press('Control+z');
+  assert(await page.getByRole('button', { name: 'Go South', exact: true }).isDisabled(), 'Ctrl+Z takes a screen added live away again');
+  await page.keyboard.press('Control+Shift+z');
   await page.getByRole('button', { name: 'Go South', exact: true }).click();
   await page.waitForTimeout(200);
   assert((await where()).includes('New south of Start'), 'a screen added live can be walked to');

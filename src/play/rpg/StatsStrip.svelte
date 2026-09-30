@@ -8,10 +8,13 @@
 
   let { game, session, players, showScore = true }: { game: Game; session: Session; players: Player[]; showScore?: boolean } = $props();
   const fields = $derived(statFields(game).filter((f) => f.audience === 'hud'));
-  const compact = $derived(players.length > 6);
+  // Smaller cards when there's a lot on them. Up to 6 players stay on one row (cards shrink to fit): a second row
+  // would cover the bottom of the screen.
+  const compact = $derived(players.length > 6 || players.length * (1 + fields.length) > 12);
+  const oneRow = $derived(players.length <= 6);
 </script>
 
-<div class="strip" class:compact>
+<div class="strip" class:compact class:one-row={oneRow}>
   {#each players as p (p.id)}
     <div class="card" style:--c={p.color}>
       <Avatar player={p} size={compact ? 44 : 64} />
@@ -53,9 +56,13 @@
     padding: 10px 16px;
     background: linear-gradient(transparent, rgba(0, 0, 0, 0.75) 30%);
   }
+  .strip.one-row {
+    flex-wrap: nowrap;
+  }
   .card {
     display: flex;
     align-items: center;
+    min-width: 0;
     gap: 8px;
     padding: 6px 12px 6px 6px;
     border-radius: 40px;
@@ -67,6 +74,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+    min-width: 0;
   }
   .name {
     font-family: 'Anton', 'Oswald', sans-serif;
@@ -75,6 +83,10 @@
     padding: 3px 10px;
     border-radius: 6px;
     align-self: flex-start;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .compact .name {
     font-size: 18px;
@@ -101,6 +113,14 @@
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.15);
     overflow: hidden;
+  }
+  .compact .bar {
+    width: 100px;
+    height: 20px;
+  }
+  .compact .lbl {
+    font-size: 13px;
+    line-height: 20px;
   }
   .fill {
     position: absolute;

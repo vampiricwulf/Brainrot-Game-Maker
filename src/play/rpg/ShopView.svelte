@@ -78,7 +78,9 @@
   }
   .wares {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    /* A few wares sit in the middle rather than squeezed to the left. */
+    grid-template-columns: repeat(auto-fit, minmax(320px, 360px));
+    justify-content: center;
     gap: 24px;
     overflow: hidden;
   }
@@ -98,6 +100,8 @@
     color: inherit;
     border: 4px solid transparent;
     cursor: pointer;
+    /* Buttons don't wrap by default: a long name would spill into the next ware. */
+    white-space: normal;
   }
   .ware.buy:hover:not(:disabled) {
     border-color: #ffcc00;

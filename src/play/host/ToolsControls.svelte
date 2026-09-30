@@ -146,7 +146,8 @@
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}
-      <button onclick={onclose} title="Esc">Close</button>
+      <!-- A shop has its own 🚪 Leave shop. -->
+      {#if o.kind !== 'shop'}<button onclick={onclose} title="Esc">Close</button>{/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">

@@ -32,11 +32,12 @@ export function newBoardGameRound(name = 'Board game'): BoardGameRound {
   slide.elements = [];
   slide.background = { color: '#1d5e3a' };
   const spaces: BoardSpace[] = [];
-  // 5 across the top, 1 down each side, 5 back along the bottom… as a rounded loop.
+  // 5 across the top, 1 down each side, 5 back along the bottom… as a rounded loop, clear of the turn banner along
+  // the top and the stats strip along the bottom.
   const pts: [number, number][] = [];
-  for (let i = 0; i < 5; i++) pts.push([360 + i * 300, 220]);
+  for (let i = 0; i < 5; i++) pts.push([360 + i * 300, 300]);
   pts.push([1620, 540]);
-  for (let i = 4; i >= 0; i--) pts.push([360 + i * 300, 860]);
+  for (let i = 4; i >= 0; i--) pts.push([360 + i * 300, 780]);
   pts.push([300, 540]);
   pts.forEach(([x, y], i) => spaces.push(newBoardSpace(x, y, i === 0 ? 'Start' : `Space ${i + 1}`, i === 0 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length])));
   spaces.forEach((s, i) => (s.next = [spaces[(i + 1) % spaces.length].id]));

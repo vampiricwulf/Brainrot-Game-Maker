@@ -76,6 +76,8 @@
 
   // Autosave (spec §5.8 / §6.5). Only after the initial load so a blank game never overwrites a draft.
   const saveDraftSoon = debounce(saveDraft, 500);
+  // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
+  const savePlaySoon = debounce(savePlay, 300);
   // Don't lose the last edits if the tab is closed or hidden right after typing.
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
@@ -119,7 +121,7 @@
   }
 
   onMount(() => {
-    const flush = () => saveDraftSoon.flush();
+    const flush = () => (saveDraftSoon.flush(), savePlaySoon.flush());
     const onvis = () => document.visibilityState === 'hidden' && flush();
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onvis);
@@ -136,7 +138,7 @@
     const game = $state.snapshot(app.playGame);
     const session = $state.snapshot(app.session);
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
-    if (loaded && !app.pregame && game && session) savePlay(game, session);
+    if (loaded && !app.pregame && game && session) savePlaySoon(game, session);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
@@ -199,6 +201,8 @@
 
   /** Leave a game: it stays saved and can be resumed from the editor. A finished game is cleared. */
   function exitPlay(): void {
+    // Written now, so a finished game's clearPlay below comes after it.
+    savePlaySoon.flush();
     const { playGame, session } = app;
     if (playGame && session && !app.pregame) {
       if (session.phase === 'end') {

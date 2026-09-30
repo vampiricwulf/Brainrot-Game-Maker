@@ -1,7 +1,10 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
 import { applyScore, score } from './session';
-import { formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Session, type Shop, type StatField, type StatValue, type Wearable } from './model';
+import {
+  formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField, type StatValue,
+  type Wearable, type WorldMap,
+} from './model';
 
 // ---------- Stats ----------
 
@@ -46,8 +49,13 @@ function clampNum(field: StatField, n: number): number {
   return n;
 }
 
+/** The value a field keeps when set to `value` (a number within its min and max). */
+export function clampStat(field: StatField, value: StatValue): StatValue {
+  return field.type === 'number' ? clampNum(field, Number(value) || 0) : value;
+}
+
 export function setStat(session: Session, playerId: string, field: StatField, value: StatValue): void {
-  const v = field.type === 'number' ? clampNum(field, Number(value) || 0) : value;
+  const v = clampStat(field, value);
   // Assign first, then read back: with Svelte state proxies, `(x ??= {})[k] = v` would write into the raw object.
   session.stats ??= {};
   session.stats[playerId] ??= {};
@@ -262,64 +270,119 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
 
 // ---------- Action log (undo for everything that isn't score) ----------
 
-/** The part of a session the action log can put back. */
-function rpgState(session: Session): string {
-  return JSON.stringify({
-    stats: session.stats ?? {},
-    inventories: session.inventories ?? {},
-    worlds: session.worlds ?? {},
-    boardgames: session.boardgames ?? {},
-    stock: session.stock ?? {},
-    // Points spent or earned inside a step (a purchase in a shop that charges points) undo with it.
-    scoreLog: session.scoreLog,
-    redoStack: session.redoStack,
-  });
+/** The parts of a session the action log can put back. */
+const PARTS = ['stats', 'inventories', 'worlds', 'boardgames', 'stock'] as const;
+
+/**
+ * What a step can change, part by part as JSON: the session's parts, and with `game` each map and screen of the game
+ * being played (improvising changes those: a new screen, a new look, renaming an object on a screen).
+ */
+function capture(session: Session, game?: Game): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of PARTS) out[k] = JSON.stringify(session[k] ?? {});
+  for (const w of game?.worlds ?? [])
+    for (const m of w.maps) {
+      out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
+      for (const s of m.screens) out[`screen:${w.id}/${m.id}/${s.id}`] = JSON.stringify(s);
+    }
+  return out;
 }
 
-function restore(session: Session, json: string): void {
-  const s = JSON.parse(json);
-  session.stats = s.stats;
-  session.inventories = s.inventories;
-  session.worlds = s.worlds;
-  session.boardgames = s.boardgames ?? {};
-  if (s.scoreLog) session.scoreLog = s.scoreLog;
-  if (s.redoStack) session.redoStack = s.redoStack;
-  session.stock = s.stock;
+/** Some parts as one JSON object (null: the part isn't there, like a screen added later). */
+const partsOf = (parts: Record<string, string>, keys: string[]) => `{${keys.map((k) => `${JSON.stringify(k)}:${parts[k] ?? 'null'}`).join(',')}}`;
+
+function restore(session: Session, json: string, game?: Game): void {
+  // Older saves kept the whole score log here too: it's left alone (a step's own points are in its `score`).
+  for (const [k, v] of Object.entries(JSON.parse(json))) {
+    if ((PARTS as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? {} });
+    else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
+  }
+}
+
+/** Put a map's size or a screen back into the game being played (a screen that wasn't there is taken out). */
+function putBack(game: Game | undefined, key: string, v: Pick<WorldMap, 'cols' | 'rows'> | Screen | null): void {
+  const [worldId, mapId, screenId] = key.slice(key.indexOf(':') + 1).split('/');
+  const map = game?.worlds?.find((w) => w.id === worldId)?.maps.find((m) => m.id === mapId);
+  if (!map) return;
+  if (!screenId) return void Object.assign(map, v);
+  const i = map.screens.findIndex((s) => s.id === screenId);
+  if (v && i >= 0) map.screens[i] = v as Screen;
+  else if (v) map.screens.push(v as Screen);
+  else if (i >= 0) map.screens.splice(i, 1);
 }
 
 /** Only the newest steps keep their snapshots (a long show must not grow without bound). */
 const LOG_LIMIT = 300;
 
-/** Run `change` as one undoable step called `text`. */
-export function logged(session: Session, text: string, change: () => void): void {
-  const before = rpgState(session);
-  change();
-  if (rpgState(session) === before) return;
-  session.actionLog ??= [];
-  session.actionLog.push({ id: newId(), ts: Date.now(), text, before });
-  if (session.actionLog.length > LOG_LIMIT) session.actionLog.splice(0, session.actionLog.length - LOG_LIMIT);
-  session.actionRedo = [];
+/** Steps under way: a step inside a step (an item's "Use" running its actions) is part of the outer one. */
+let depth = 0;
+
+/**
+ * Run `change` as one undoable step called `text`. Pass the game being played when the step changes its screens
+ * (improvising), so the undo puts them back too.
+ */
+export function logged(session: Session, text: string, change: () => void, game?: Game): void {
+  if (depth) return change();
+  const done = startStep(session, game);
+  depth++;
+  try {
+    change();
+  } finally {
+    depth--;
+  }
+  done(text);
 }
 
-export function lastAction(session: Session): ActionEvent | undefined {
-  return session.actionLog?.at(-1);
+/**
+ * Start a step that takes a while (the live screen editor): everything changed until `done(text)` is one undoable
+ * step. Nothing is logged if nothing changed. Only the parts that changed are kept.
+ */
+export function startStep(session: Session, game?: Game): (text: string) => void {
+  const before = capture(session, game);
+  const scored = session.scoreLog.length;
+  return (text) => {
+    const now = capture(session, game);
+    const keys = [...new Set([...Object.keys(before), ...Object.keys(now)])].filter((k) => before[k] !== now[k]);
+    // Points spent or earned inside the step (a purchase in a shop that charges points) undo with it.
+    const score = session.scoreLog.slice(scored).map((e) => ({ ...e }));
+    if (!keys.length && !score.length) return;
+    session.actionLog ??= [];
+    session.actionLog.push({ id: newId(), ts: Date.now(), text, round: session.currentRound, before: partsOf(before, keys), ...(score.length ? { score } : {}) });
+    if (session.actionLog.length > LOG_LIMIT) session.actionLog.splice(0, session.actionLog.length - LOG_LIMIT);
+    session.actionRedo = [];
+  };
 }
 
-export function undoAction(session: Session): ActionEvent | null {
+/** The newest step (with `round`: only if it was taken in that round, as "Last:" shows it). */
+export function lastAction(session: Session, round?: number): ActionEvent | undefined {
+  const e = session.actionLog?.at(-1);
+  return round === undefined || e?.round === round ? e : undefined;
+}
+
+/** Undo the newest step. Pass the game being played, so screens changed while improvising are put back too. */
+export function undoAction(session: Session, game?: Game): ActionEvent | null {
   const e = session.actionLog?.pop();
   if (!e) return null;
-  const after = rpgState(session);
-  restore(session, e.before);
+  const after = partsOf(capture(session, game), Object.keys(JSON.parse(e.before)));
+  restore(session, e.before, game);
+  // Its points come off the score log (as they are now, for a redo).
+  const ids = new Set(e.score?.map((x) => x.id));
+  const score = session.scoreLog.filter((x) => ids.has(x.id)).map((x) => ({ ...x }));
+  if (ids.size) {
+    session.scoreLog = session.scoreLog.filter((x) => !ids.has(x.id));
+    session.redoStack = session.redoStack.filter((id) => !ids.has(id));
+  }
   session.actionRedo ??= [];
-  session.actionRedo.push({ ...e, after });
+  session.actionRedo.push({ ...e, after, score: score.length ? score : undefined });
   return e;
 }
 
-export function redoAction(session: Session): ActionEvent | null {
+export function redoAction(session: Session, game?: Game): ActionEvent | null {
   const e = session.actionRedo?.pop();
   if (!e?.after) return null;
-  const before = rpgState(session);
-  restore(session, e.after);
+  const before = partsOf(capture(session, game), Object.keys(JSON.parse(e.after)));
+  restore(session, e.after, game);
+  if (e.score?.length) session.scoreLog.push(...e.score.map((x) => ({ ...x })));
   session.actionLog ??= [];
   session.actionLog.push({ ...e, before, after: undefined });
   return e;

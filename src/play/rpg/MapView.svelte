@@ -17,6 +17,7 @@
     onpick,
     only,
     big = false,
+    fit = false,
     picked = null,
     onmenu,
   }: {
@@ -30,6 +31,8 @@
     only?: string;
     /** The host's full map: bigger cells and names. */
     big?: boolean;
+    /** Fill the box it's in, the whole map showing (scaled to its height too, not only its width). */
+    fit?: boolean;
     /** A screen the host picked (outlined). */
     picked?: ScreenRef | null;
     /** Host: a screen was right-clicked. */
@@ -64,44 +67,52 @@
   }
 </script>
 
-<div class="maps" class:audience class:big>
+<div class="maps" class:audience class:big class:fit>
   {#each maps as m (m.id)}
     <div class="map">
       <div class="title">{m.name}</div>
-      <div class="grid" style:grid-template-columns="repeat({m.cols}, 1fr)" style:aspect-ratio="{m.cols * 16} / {m.rows * 9}">
-        {#each Array.from({ length: m.rows }, (_, r) => r) as r (r)}
-          {#each Array.from({ length: m.cols }, (_, c) => c) as c (c)}
-            {@const s = cells.get(m.id)?.get(`${c},${r}`)}
-            {@const k = s ? stateOf(m, s) : null}
-            {#if s && k}
-              {@const bg = s.slide.background.color ?? '#2f6b3a'}
-              {@const cur = sameRef(focus, { map: m.id, screen: s.id })}
-              <button
-                class="cell {k}"
-                class:cur
-                class:picked={sameRef(picked, { map: m.id, screen: s.id })}
-                class:click={!!onpick}
-                style:background={bg}
-                style:color={textOn(bg)}
-                disabled={!onpick}
-                onclick={() => onpick?.({ map: m.id, screen: s.id }, s)}
-                oncontextmenu={onmenu ? (e) => onmenu(e, { map: m.id, screen: s.id }, s) : undefined}
-                title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}`}
-                aria-label={audience ? undefined : `${m.name} · ${s.name}`}
-              >
-                {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
-                <span class="dots">
-                  {#each byScreen.get(s.id) ?? [] as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
-                </span>
-                {#each arrows(m, s) as d (d)}
-                  <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
-                {/each}
-              </button>
-            {:else}
-              <span class="cell none"></span>
-            {/if}
+      <div class="area">
+        <div
+          class="grid"
+          style:grid-template-columns="repeat({m.cols}, 1fr)"
+          style:aspect-ratio="{m.cols * 16} / {m.rows * 9}"
+          style:--ratio={(m.cols * 16) / (m.rows * 9)}
+          style:--rows={m.rows}
+        >
+          {#each Array.from({ length: m.rows }, (_, r) => r) as r (r)}
+            {#each Array.from({ length: m.cols }, (_, c) => c) as c (c)}
+              {@const s = cells.get(m.id)?.get(`${c},${r}`)}
+              {@const k = s ? stateOf(m, s) : null}
+              {#if s && k}
+                {@const bg = s.slide.background.color ?? '#2f6b3a'}
+                {@const cur = sameRef(focus, { map: m.id, screen: s.id })}
+                <button
+                  class="cell {k}"
+                  class:cur
+                  class:picked={sameRef(picked, { map: m.id, screen: s.id })}
+                  class:click={!!onpick}
+                  style:background={bg}
+                  style:color={textOn(bg)}
+                  disabled={!onpick}
+                  onclick={() => onpick?.({ map: m.id, screen: s.id }, s)}
+                  oncontextmenu={onmenu ? (e) => onmenu(e, { map: m.id, screen: s.id }, s) : undefined}
+                  title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}`}
+                  aria-label={audience ? undefined : `${m.name} · ${s.name}`}
+                >
+                  {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
+                  <span class="dots">
+                    {#each byScreen.get(s.id) ?? [] as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
+                  </span>
+                  {#each arrows(m, s) as d (d)}
+                    <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
+                  {/each}
+                </button>
+              {:else}
+                <span class="cell none"></span>
+              {/if}
+            {/each}
           {/each}
-        {/each}
+        </div>
       </div>
     </div>
   {/each}
@@ -135,6 +146,27 @@
     display: grid;
     gap: 3px;
     width: 100%;
+  }
+  /* Fitted: each map fills its share of the box, as wide as the height allows. */
+  .fit {
+    height: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    flex-wrap: nowrap;
+  }
+  .fit .map {
+    height: 100%;
+  }
+  .fit .area {
+    flex: 1;
+    min-height: 0;
+    container-type: size;
+  }
+  .fit .grid {
+    width: min(100cqw, 100cqh * var(--ratio));
+    margin: 0 auto;
+    /* Even rows, however small the cells get. */
+    grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
   }
   .cell {
     position: relative;
