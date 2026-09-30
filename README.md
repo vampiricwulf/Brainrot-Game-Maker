@@ -57,6 +57,9 @@ Other editor tabs:
 - 🎡 **Wheels & Dice**: weighted wheels and custom dice. Each outcome can carry a score effect or action buttons.
 - 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
 
+**Copy and paste** slide items or whole slides between clues, rounds and even games; their pictures and sounds come
+along.
+
 **Right-click** almost anything for a quick menu. This works on rounds, tiles, map screens, spaces, avatars and items.
 
 **Undo** (`Ctrl+Z`, `Ctrl+Shift+Z` to redo) works in slides, board images and the board game editor. Removing categories or
