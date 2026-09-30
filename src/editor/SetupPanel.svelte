@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
+  import { step } from '../lib/history.svelte';
   import { mediaUrls } from '../lib/media.svelte';
   import type { GameAudio } from '../lib/model';
   import PlayerList from './PlayerList.svelte';
@@ -29,7 +30,17 @@
 <section>
   <h2>Players</h2>
   <p class="muted">The default roster. You can still change players before and during a game.</p>
-  <PlayerList bind:players={app.game.players} max={s.maxPlayers} avatars />
+  <!-- Removing is done at once: the note at the bottom offers Undo. -->
+  <PlayerList
+    bind:players={app.game.players}
+    max={s.maxPlayers}
+    avatars
+    record={(label, fn) => step(label, fn)}
+    onremove={(id) => {
+      const p = app.game.players.find((x) => x.id === id);
+      if (p) step(`Removed ${p.name}`, () => (app.game.players = app.game.players.filter((x) => x.id !== id)), { notify: true });
+    }}
+  />
 </section>
 
 <section>

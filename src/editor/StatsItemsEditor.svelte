@@ -505,9 +505,9 @@
         ondrop={(e) => {
           if (iconDrag) {
             e.preventDefault();
-            const it = game.items?.find((x) => x.id === iconDrag);
+            const it = sells ? game.items?.find((x) => x.id === iconDrag) : undefined;
             iconDrag = null;
-            if (it && sells) stock(s, [it]);
+            if (it) stock(s, [it]);
             return;
           }
           const m = drags.shop.drop(e, listOf('shop').map((x) => x.id));
@@ -562,14 +562,10 @@
                 class:dragging={wares.dragging === wid}
                 ondragover={(e) => {
                   // (A row of another shop isn't dropped here.)
-                  if (s.stock.some((x) => wareId(x) === wares.dragging)) {
-                    e.stopPropagation();
-                    wares.over(e, wid);
-                  }
+                  if (s.stock.some((x) => wareId(x) === wares.dragging)) wares.over(e, wid);
                 }}
                 ondrop={(e) => {
                   if (!wares.dragging || iconDrag) return;
-                  e.stopPropagation();
                   const m = wares.drop(e, s.stock.map(wareId));
                   if (m) moveWare(s, m.from, m.to);
                 }}
@@ -579,10 +575,7 @@
                   <span
                     class="drag-grip"
                     draggable="true"
-                    ondragstart={(e) => {
-                      e.stopPropagation();
-                      wares.start(e, wid, (e.currentTarget as HTMLElement).closest('tr'));
-                    }}
+                    ondragstart={(e) => wares.start(e, wid, (e.currentTarget as HTMLElement).closest('tr'))}
                     ondragend={() => wares.end()}
                     aria-hidden="true"
                     title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span

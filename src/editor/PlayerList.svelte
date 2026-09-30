@@ -1,10 +1,11 @@
 <!--
   Editable player roster with enforced unique colors. Used in Setup, the pre-game screen and the in-game Players
-  dialog. Rows reorder by dragging their ⋮⋮ grip, or with ▲▼.
+  dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; Enter in a name adds the next player.
 -->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
-  import { DragOrder } from '../lib/dragorder.svelte';
+  import { tick } from 'svelte';
+  import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { newId } from '../lib/model';
   import { toast } from '../lib/app.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
@@ -24,6 +25,7 @@
     inGame = false,
     onremove,
     avatars = false,
+    record = (_label, fn) => fn(),
   }: {
     players: P[];
     max?: number;
@@ -34,16 +36,29 @@
     onremove?: (id: string) => void;
     /** Offer a picture per player (RPG avatars, player sheets). */
     avatars?: boolean;
+    /** Makes a change one named step (the editor's undo history). */
+    record?: (label: string, fn: () => void) => void;
   } = $props();
+  let list = $state<HTMLElement>();
   /** The player whose avatar picker is open. */
   let picking = $state<string | null>(null);
 
-  function add(): void {
+  function add(): P | undefined {
     if (players.length >= max) return;
     const color = nextFreeColor(players.map((p) => p.color));
     const p: P = { id: newId(), name: `Player ${players.length + 1}`, color };
     if (showScores) p.startScore = 0;
     players.push(p);
+    return p;
+  }
+
+  /** Enter in a name: the next player, typing in their name (keyboard-first roster entry). */
+  function nameKey(e: KeyboardEvent): void {
+    if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    if (players.length >= max) return void toast(`${max} players at most`);
+    const p = add();
+    if (p) void tick().then(() => list?.querySelector<HTMLInputElement>(`[data-place="player:${p.id}"] input.name`)?.select());
   }
 
   function setColor(p: P, color: string, input: HTMLInputElement): void {
@@ -60,14 +75,17 @@
   function move(i: number, d: number): void {
     const j = i + d;
     if (!d || j < 0 || j >= players.length) return;
-    const [p] = players.splice(i, 1);
-    players.splice(j, 0, p);
+    const p = players[i];
+    record(`Moved player “${p.name}” ${d < 0 ? 'up' : 'down'}`, () => {
+      players.splice(i, 1);
+      players.splice(j, 0, p);
+    });
   }
 
   const rows = new DragOrder();
 </script>
 
-<div class="players" role="list" aria-label="Players">
+<div class="players" role="list" aria-label="Players" bind:this={list}>
   {#each players as p, i (p.id)}
     {@const line = rows.lineAt(p.id)}
     <div
@@ -82,6 +100,7 @@
         const m = rows.drop(e, players.map((x) => x.id));
         if (m) move(m.from, m.to - m.from);
       }}
+      use:rowKeys={{ move: (d) => move(i, d) }}
     >
       <!-- Only the grip drags (dragging over a name box selects its text). -->
       <span
@@ -90,7 +109,7 @@
         ondragstart={(e) => rows.start(e, p.id, (e.currentTarget as HTMLElement).parentElement)}
         ondragend={() => rows.end()}
         aria-hidden="true"
-        title="Drag to reorder{inGame ? ' (the number keys follow the order)' : ''}">⋮⋮</span
+        title="Drag to reorder (or Alt+↑/↓){inGame ? ' (the number keys follow the order)' : ''}">⋮⋮</span
       >
       <span class="num muted">{i + 1}</span>
       <input
@@ -110,7 +129,7 @@
         </div>
         {#if p.avatar}<button class="ghost small" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Use the colored token">✕🖼</button>{/if}
       {/if}
-      <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} />
+      <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
       <span class="chip" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
         <label class="field score">Start score<input type="number" bind:value={p.startScore} /></label>

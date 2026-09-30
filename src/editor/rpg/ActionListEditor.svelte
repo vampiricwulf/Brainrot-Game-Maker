@@ -133,10 +133,12 @@
 
   /** The copied set, after these ones (the ones that can't work here are left out). */
   function paste(): void {
-    const fits = (a: Action) => (a.do === 'goto' ? !!board : a.do === 'move' ? !board && !!world : true);
+    // (The same kinds ＋ Add action offers here.)
+    const fits = (a: Action) =>
+      a.do === 'goto' ? !!board : a.do === 'move' ? !board && !!world?.maps[0]?.screens[0] : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
     const copies = copyActions(clipboard.actions.filter(fits));
     const left = clipboard.actions.length - copies.length;
-    if (!copies.length) return void toast(board ? 'Those buttons don’t work on a board game' : 'Those buttons only work on a board game');
+    if (!copies.length) return void toast('Those buttons can’t work here');
     for (const a of copies) {
       // Spaces and objects of somewhere else: pick them again here.
       if (a.do === 'goto' && !board?.spaces.some((s) => s.id === a.space) && !board?.zones.some((z) => z.id === a.zone)) a.space = a.zone = undefined;
