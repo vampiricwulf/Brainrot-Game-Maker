@@ -3,6 +3,7 @@
   the object clicked on the stage (or every object here), and each player's stats and inventory.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
@@ -22,8 +23,25 @@
     selected = $bindable(),
     object = $bindable(),
     mapOpen = $bindable(false),
+    drawing = $bindable(null),
     dual,
-  }: { game: Game; session: Session; selected: string[]; object: string | null; mapOpen?: boolean; dual: boolean } = $props();
+  }: {
+    game: Game;
+    session: Session;
+    selected: string[];
+    object: string | null;
+    mapOpen?: boolean;
+    /** Draw mode on the stage: the color, and whether strokes close into filled areas. */
+    drawing?: { color: string; closed: boolean } | null;
+    dual: boolean;
+  } = $props();
+  let drawColor = $state('#ffcc00');
+  let drawArea = $state(true);
+  $effect(() => {
+    // Changing the pen while drawing applies to the next stroke.
+    const pen = { color: drawColor, closed: drawArea };
+    untrack(() => drawing && (drawing = pen));
+  });
 
   const now = $derived(rpgNow(game, session));
   const world = $derived(now.world);
@@ -53,6 +71,12 @@
         })
       : [],
   );
+
+  /** The live editor on the screen an object is on (its current look). */
+  function editObject(screen: Screen): void {
+    const v = screen.variants?.find((x) => x.id === st?.variant?.[screen.id]);
+    live = { screen, slide: v?.slide ?? screen.slide, title: `${screen.name}${v ? ` (${v.name})` : ''}` };
+  }
 
   function editLive(): void {
     if (!here) return;
@@ -93,10 +117,11 @@
     if (text && addLive(game, session, liveText(text), `Text: ${text}`)) toast('Added, hidden: reveal it from its card');
   }
 
-  function keep(): void {
-    if (!here || !world) return;
+  /** Copy a screen as it is now (default: the one on air) into the editor's game, so it's there next time. */
+  function keep(ref: ScreenRef | null = here ? { map: here.map.id, screen: here.screen.id } : null): void {
+    if (!ref || !world) return;
     if (app.game.id !== game.id) return void toast('The editor has a different game open, so there’s nowhere to keep it');
-    toast(keepScreen(game, app.game, world.id, { map: here.map.id, screen: here.screen.id }, st), 4000);
+    toast(keepScreen(game, app.game, world.id, ref, st), 4000);
   }
 
   const PAD: (Dir8 | null)[] = ['nw', 'n', 'ne', 'w', null, 'e', 'sw', 's', 'se'];
@@ -202,9 +227,23 @@
         <option value="+">＋ New look (a copy)…</option>
       </select>
       <button class="small" onclick={addText} title="Type text onto the screen">＋ Text</button>
+      <button
+        class="small"
+        class:on={!!drawing}
+        aria-pressed={!!drawing}
+        onclick={() => (drawing = drawing ? null : { color: drawColor, closed: drawArea })}
+        title="Draw on the stage: each stroke becomes an object (an area, a path, a wall…) you can make an item, a zone, a hazard…"
+      >
+        ✏ Draw
+      </button>
+      {#if drawing}
+        <input type="color" bind:value={drawColor} aria-label="Pen color" class="pen" />
+        <label class="check small"><input type="checkbox" bind:checked={drawArea} /> Filled area</label>
+        <span class="muted small">Draw on the stage · Esc stops</span>
+      {/if}
       <span class="muted small">or drop a picture on the stage</span>
       <span class="spacer"></span>
-      <button class="small" onclick={keep} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
+      <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
         💾 Keep in game
       </button>
     </div>
@@ -250,7 +289,7 @@
       <div class="side">
         {#if obj}
           {#key obj.el.id}
-            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} onclose={() => (object = null)} />
+            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={() => keep({ map: obj.map.id, screen: obj.screen.id })} />
           {/key}
         {:else}
           <div class="muted small">Objects here (or click one on the stage):</div>
@@ -306,7 +345,7 @@
     <MapJump {game} {session} {world} {st} {selected} onclose={() => (mapOpen = false)} />
   {/if}
   {#if live}
-    <LiveScreenEditor {world} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
+    <LiveScreenEditor {world} {st} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
   {/if}
 {:else}
   <div class="muted">This RPG round has no world to play (pick one in the editor).</div>
@@ -378,6 +417,11 @@
   }
   .pick {
     font-size: 12px;
+  }
+  .pen {
+    width: 28px;
+    height: 22px;
+    padding: 0;
   }
   .mini-head {
     gap: 4px;

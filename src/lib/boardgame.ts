@@ -88,24 +88,36 @@ export interface Walk {
   fork?: { at: Id; stepsLeft: number };
 }
 
+/** The ways on from a space: its links, not back where the player came from (a two-way link) unless that's the only way. */
+export function waysOn(round: BoardGameRound, at: Id, came?: Id, back = false): Id[] {
+  const here = spaceById(round, at);
+  if (!here) return [];
+  const all = back ? previousOf(round, at).map((s) => s.id) : here.next.filter((id) => spaceById(round, id));
+  const onward = all.filter((id) => id !== came);
+  return onward.length ? onward : all;
+}
+
 /**
  * Step `steps` spaces from `from` (negative: backwards). At a fork the walk stops and asks, unless `choose` says
- * which way to go first (resuming from that fork). A path's dead end stops the walk there.
+ * which way to go first (resuming from that fork). A path's dead end stops the walk there. `came`: the space the
+ * player arrived from, so a two-way link isn't walked straight back.
  */
-export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id): Walk {
+export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id, came?: Id): Walk {
   const path: Id[] = [];
   let at = from;
+  let prev = came;
   const back = steps < 0;
   for (let left = Math.abs(steps); left > 0; left--) {
     const here = spaceById(round, at);
     if (!here) break;
-    const options = back ? previousOf(round, at).map((s) => s.id) : here.next.filter((id) => spaceById(round, id));
+    const options = waysOn(round, at, prev, back);
     let to: Id | undefined;
     if (choose && options.includes(choose) && path.length === 0) to = choose;
     else if (options.length === 1) to = options[0];
     else if (options.length > 1) return { path, fork: { at, stepsLeft: left } };
     if (!to) break;
     path.push(to);
+    prev = at;
     at = to;
   }
   return { path };
@@ -121,12 +133,15 @@ export const HOP_MS = 380;
 export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: Id, steps: number, choose?: Id): string {
   const from = bs.positions[playerId]?.space;
   if (!from) return 'They aren’t on the board (send them to a space first)';
-  const w = walk(round, from, steps, choose);
+  const w = walk(round, from, steps, choose, bs.prev?.[playerId]);
   const prevPassed = bs.fork?.playerId === playerId && bs.last?.playerId === playerId ? bs.last.passed : [];
   bs.fork = w.fork ? { playerId, at: w.fork.at, stepsLeft: w.fork.stepsLeft } : undefined;
   if (w.path.length) {
     bs.positions[playerId] = { space: w.path[w.path.length - 1] };
     bs.hop = { playerId, path: [from, ...w.path], at: Date.now() };
+    const full = [from, ...w.path];
+    bs.prev ??= {};
+    bs.prev[playerId] = full[full.length - 2];
   }
   // A fork's space counts as passed, since the walk goes on from it.
   const passed = [...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))];
@@ -139,7 +154,11 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
 
 /** Put players on a space or in a zone (teleport, "go to the Shadow Realm", "escape"). */
 export function sendTo(bs: BoardGameState, players: Id[], to: { space?: Id; zone?: Id }): void {
-  for (const id of players) bs.positions[id] = to.zone ? { zone: to.zone } : { space: to.space };
+  for (const id of players) {
+    bs.positions[id] = to.zone ? { zone: to.zone } : { space: to.space };
+    // Teleported: any way on is fine.
+    if (bs.prev) delete bs.prev[id];
+  }
   if (bs.fork && players.includes(bs.fork.playerId)) bs.fork = undefined;
 }
 

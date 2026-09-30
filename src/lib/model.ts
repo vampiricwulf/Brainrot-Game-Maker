@@ -520,6 +520,8 @@ export interface Session {
   tiebreakerRevealed?: boolean;
   /** The host declared the tied leaders co-winners. */
   coWinners?: boolean;
+  /** Won the tiebreaker roll-off for first place: ranked above the players tied with them. */
+  rollOffWinner?: Id;
   /** Every spin / roll (no score impact). */
   rollLog?: RollEvent[];
   /** Wheel slices already used when "remove after landing" is on: wheelId → segment ids. */
@@ -699,7 +701,7 @@ export interface World {
   maps: WorldMap[];
 }
 
-export type ObjectClass = 'doorway' | 'item' | 'currency' | 'npc' | 'shop' | 'hazard' | 'interactable' | 'spawn' | 'blocker';
+export type ObjectClass = 'doorway' | 'item' | 'currency' | 'npc' | 'shop' | 'hazard' | 'zone' | 'interactable' | 'spawn' | 'blocker';
 
 /** What an object on an RPG screen is. Fields apply by class (the rest are ignored). */
 export interface ObjectRole {
@@ -1045,8 +1047,11 @@ export interface BoardGameRound {
   spaces: BoardSpace[];
   /** Where everyone starts (default: the first space). */
   start?: Id;
-  /** How a turn's move is decided: dice ("d6", "2d6", a saved dice preset's name) or a saved wheel. */
-  mover: { kind: 'dice'; dice: string } | { kind: 'wheel'; wheel: Id };
+  /**
+   * How a turn's move is decided: dice ("d6", "2d6", a saved dice preset's name), a saved wheel, or 'step': one
+   * space per turn, the player choosing which way.
+   */
+  mover: { kind: 'dice'; dice: string } | { kind: 'wheel'; wheel: Id } | { kind: 'step' };
   zones: BoardZone[];
   /** How to win, shown to the host; public ones are shown on the board too. */
   winNotes?: string;
@@ -1062,6 +1067,8 @@ export interface BoardGameState {
   turn: number;
   /** The move being shown: the spaces stepped through, animated from `at`. */
   hop?: { playerId: Id; path: Id[]; at: number };
+  /** The space each player came from, so a move doesn't turn back along a two-way link. */
+  prev?: Record<Id, Id>;
   /** A move stopped at a fork: the host picks the way, then it goes on. */
   fork?: { playerId: Id; at: Id; stepsLeft: number };
   /** Spaces passed and landed on in the last move, for their action buttons. */

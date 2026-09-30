@@ -7,7 +7,7 @@
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
-  import { audienceSees, findIn, moveTo, override } from '../../lib/rpg';
+  import { activeParty, audienceSees, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
   import { addStat, currencyFields, formatStat, giveItem, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
 
   let {
@@ -17,7 +17,20 @@
     st,
     ctx,
     onclose,
-  }: { el: SlideElement; screen: Screen; world: World; st: WorldState; ctx: RunContext; onclose: () => void } = $props();
+    onedit,
+    onkeep,
+  }: {
+    el: SlideElement;
+    screen: Screen;
+    world: World;
+    st: WorldState;
+    ctx: RunContext;
+    onclose: () => void;
+    /** Open its screen in the live editor (to move, resize, restyle or fully set it up). */
+    onedit?: () => void;
+    /** Keep its screen (with this object) in the editor's game. */
+    onkeep?: () => void;
+  } = $props();
 
   const { game, session } = $derived(ctx);
   const o = $derived(st.objects[el.id]);
@@ -45,6 +58,17 @@
     toast(said.join(' · '), 4000);
   }
 
+  function rename(name: string): void {
+    logged(session, `Rename ${title} to ${name}`, () => (el.name = name || undefined));
+  }
+
+  /** Make it an item, a zone, a hazard…: the rest (actions, dialogue) is set up in the live editor. */
+  function setClass(c: string): void {
+    logged(session, `${title}: ${c || 'scenery'}`, () => {
+      el.role = c ? { ...(el.role ?? {}), class: c as NonNullable<SlideElement['role']>['class'] } : undefined;
+    });
+  }
+
   function toggle(id: string): void {
     chosen = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
   }
@@ -67,7 +91,12 @@
     const to = role?.to;
     if (!to || !findIn(world, to)) return void toast('This doorway leads nowhere yet');
     if (locked && !confirm(`${title} is locked. Go through anyway?`)) return;
-    logged(session, `${players ? whoNames : 'Party'} through ${title}`, () => moveTo(game, st, world, to, { players, arriveAt: role?.arrive }));
+    // "The party" is whoever stands at this doorway (the followed party may be somewhere else).
+    const active = activeParty(st)?.members ?? [];
+    const partyHere = active.some((m) => here.includes(m));
+    const movers = players ?? (partyHere ? undefined : here);
+    const label = players ? whoNames : 'Party';
+    logged(session, `${label} through ${title}`, () => moveTo(game, st, world, to, { players: movers, arriveAt: role?.arrive }));
     onclose();
   }
 
@@ -105,6 +134,14 @@
     <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
   </div>
   {#if el.hostNotes}<div class="notes">📝 {el.hostNotes}</div>{/if}
+  <div class="row setup">
+    <input class="nm" value={el.name ?? ''} placeholder="Name" aria-label="Object name" onchange={(e) => rename(e.currentTarget.value.trim())} />
+    <select value={role?.class ?? ''} onchange={(e) => setClass(e.currentTarget.value)} aria-label="Object class" title="What it is">
+      {#each OBJECT_CLASSES as [v, l, hint] (v)}<option value={v} title={hint}>{l}</option>{/each}
+    </select>
+    {#if onedit}<button class="small" onclick={onedit} title="Move, resize, restyle, or give it actions and dialogue">✎ Edit</button>{/if}
+    {#if onkeep}<button class="small" onclick={onkeep} title="Save its screen, with this, in the game in the editor, so it's there next time">💾 Keep</button>{/if}
+  </div>
   <div class="row who">
     <span class="muted small">For:</span>
     {#each session.players as p (p.id)}
@@ -201,6 +238,14 @@
   }
   .vis.off {
     color: var(--warn);
+  }
+  .setup .nm {
+    flex: 1;
+    min-width: 100px;
+    padding: 2px 6px;
+  }
+  .setup select {
+    padding: 2px 6px;
   }
   .notes {
     font-size: 12px;

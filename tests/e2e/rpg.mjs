@@ -117,11 +117,51 @@ try {
     await page.screenshot({ path: `${process.env.SHOTS}/rpg-fullmap.png` });
     await page.keyboard.press('Escape');
   });
+  // The added wheel can be edited for this spin too.
+  await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
+  assert((await page.locator('.tc', { hasText: 'Spin another wheel' }).innerText()).includes('Editing Pick a player'), 'an added wheel has its own edit box');
+  await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
   await page.locator('.tc').getByRole('button', { name: 'Spin!' }).click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 12000 });
   assert(true, 'both wheels land, each showing its result');
   assert((await page.locator('.tc .result').innerText()).includes(' · '), 'the host sees both results');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-wheels.png` });
+  await page.keyboard.press('Escape');
+
+  // Draw on the stage: the stroke becomes an object (hidden at first) whose card opens to set it up.
+  await page.getByRole('button', { name: '✏ Draw' }).click();
+  const drawBox = await page.locator('.rpg .draw').boundingBox();
+  await page.mouse.move(drawBox.x + drawBox.width * 0.3, drawBox.y + drawBox.height * 0.3);
+  await page.mouse.down();
+  for (const [fx, fy] of [[0.45, 0.3], [0.45, 0.5], [0.3, 0.5], [0.3, 0.32]]) await page.mouse.move(drawBox.x + drawBox.width * fx, drawBox.y + drawBox.height * fy, { steps: 4 });
+  await page.mouse.up();
+  const drawn = page.getByRole('dialog', { name: 'Object: Drawn area' });
+  await drawn.waitFor();
+  assert(true, 'a drawn stroke becomes an object and its card opens');
+  await page.getByRole('button', { name: '✏ Draw' }).click();
+  await drawn.getByLabel('Object name').fill('Lava');
+  await drawn.getByLabel('Object name').press('Enter');
+  await page.getByRole('dialog', { name: 'Object: Lava' }).getByLabel('Object class').selectOption('zone');
+  const lava = page.getByRole('dialog', { name: 'Object: Lava' });
+  await lava.getByRole('button', { name: '👁 Reveal to viewers' }).click();
+  assert((await lava.locator('.cls').innerText()) === 'zone', 'it can be named and made a zone');
+  // Drag it on the stage: it stays where it's dropped.
+  const hit = page.getByRole('button', { name: 'Object: Lava' });
+  const before = await hit.boundingBox();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2 + 60, before.y + before.height / 2 + 30, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  const after = await hit.boundingBox();
+  assert(Math.abs(after.x - before.x - 60) < 6 && Math.abs(after.y - before.y - 30) < 6, 'an object can be dragged on the stage');
+  // ✎ Edit opens its screen in the live editor, with the object there to move or restyle.
+  await lava.getByRole('button', { name: '✎ Edit' }).click();
+  const liveEd = page.getByRole('dialog', { name: /Edit Start.* live/ });
+  await liveEd.waitFor();
+  assert((await liveEd.getByRole('button', { name: /Lava/ }).count()) > 0 || (await liveEd.innerText()).includes('Lava'), 'the live editor has the drawn object');
+  await liveEd.getByRole('button', { name: 'Done' }).click();
+  assert(await page.getByRole('button', { name: 'Object: Lava' }).isVisible(), 'after editing it is still on the stage');
   await page.keyboard.press('Escape');
 
   // The secret Potion is in the host's list: reveal it, then pick it up.

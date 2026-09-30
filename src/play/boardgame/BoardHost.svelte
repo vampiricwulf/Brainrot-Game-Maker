@@ -7,7 +7,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
-  import { currentPlayer, sendTo, spaceById } from '../../lib/boardgame';
+  import { currentPlayer, sendTo, spaceById, waysOn } from '../../lib/boardgame';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import PlayerCard from '../rpg/PlayerCard.svelte';
@@ -25,6 +25,9 @@
   const last = $derived(bs?.last);
   const landed = $derived(round && last?.landed ? spaceById(round, last.landed) : undefined);
   const passed = $derived(round && last ? last.passed.map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s?.onPass?.length) : []);
+  /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
+  const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
+  const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
   const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected });
   const recent = $derived(lastAction(session));
   let steps = $state<number | null>(null);
@@ -125,6 +128,17 @@
 
     <div class="row move">
       <b>🎲 {turnName}’s turn</b>
+      {#if round.mover.kind === 'step'}
+        <!-- One space per turn: the player picks which way. -->
+        {#if !stepWays.length}
+          <span class="muted small">{turnSpace ? 'No way on from here.' : `${turnName} isn’t on the board.`}</span>
+        {:else}
+          <span class="muted small">{stepWays.length > 1 ? 'Which way?' : 'Move to:'}</span>
+          {#each stepWays as w (w)}
+            <button class="good" onclick={() => move(1, w)}>→ {spaceById(round, w)?.name}</button>
+          {/each}
+        {/if}
+      {:else}
       <button onclick={roll} title="D: {round.mover.kind === 'dice' ? round.mover.dice : 'the movement wheel'}">
         {round.mover.kind === 'wheel' ? '🎡 Spin to move' : `🎲 Roll ${round.mover.dice || 'd6'}`}
       </button>
@@ -145,6 +159,7 @@
       </label>
       <button class="good" disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter in the box">▶ Move {turnName} {steps ?? ''}</button>
       <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>◀ Back {steps ?? ''}</button>
+      {/if}
       <span class="spacer"></span>
       <select
         class="small"

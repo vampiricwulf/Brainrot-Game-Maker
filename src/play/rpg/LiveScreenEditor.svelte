@@ -3,12 +3,22 @@
   game keeps running underneath. Changes stay in this game until the host presses 💾 Keep in game.
 -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import { adoptAdded } from '../../lib/rpg';
   import { app } from '../../lib/app.svelte';
-  import type { Screen, Slide, World } from '../../lib/model';
+  import type { Screen, Slide, World, WorldState } from '../../lib/model';
   import ScreenEditor from '../../editor/rpg/ScreenEditor.svelte';
 
-  let { world, screen, slide, title, onclose }: { world: World; screen: Screen; slide: Slide; title: string; onclose: () => void } = $props();
+  let {
+    world,
+    screen,
+    slide,
+    title,
+    st,
+    onclose,
+  }: { world: World; screen: Screen; slide: Slide; title: string; st?: WorldState; onclose: () => void } = $props();
+  // Objects added during play become part of this look, so they can be moved and edited here too.
+  untrack(() => st && adoptAdded(st, screen, slide));
   // The slide editors work on the game being played while this is open (and the host's shortcuts stay off).
   app.editGame = app.playGame;
   onDestroy(() => (app.editGame = null));

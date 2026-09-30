@@ -108,13 +108,14 @@
       Move by
       <select
         aria-label="Move by"
-        value={round.mover.kind === 'wheel' ? round.mover.wheel : 'dice'}
+        value={round.mover.kind === 'wheel' ? round.mover.wheel : round.mover.kind}
         onchange={(e) => {
           const v = e.currentTarget.value;
-          round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : { kind: 'wheel', wheel: v };
+          round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
         }}
       >
         <option value="dice">🎲 Dice</option>
+        <option value="step">👣 One space a turn (pick the way)</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>🎡 {w.name}</option>{/each}
       </select>
     </label>
@@ -184,7 +185,20 @@
           <div class="row">
             <span class="muted small">Leads to:</span>
             {#each sel.next as n (n)}
-              <span class="chip">{spaceById(round, n)?.name ?? '?'} <button class="ghost tiny" onclick={() => (sel.next = sel.next.filter((x) => x !== n))} aria-label="Unlink">✕</button></span>
+              {@const other = spaceById(round, n)}
+              {@const both = !!other?.next.includes(sel.id)}
+              <span class="chip">
+                {both ? '↔' : '→'} {other?.name ?? '?'}
+                <button
+                  class="ghost tiny"
+                  class:on={both}
+                  aria-pressed={both}
+                  onclick={() => other && (other.next = both ? other.next.filter((x) => x !== sel.id) : [...other.next, sel.id])}
+                  aria-label="Both ways with {other?.name}"
+                  title={both ? 'Both ways: click for one way only' : 'Make it both ways (back and forth)'}>⇄</button
+                >
+                <button class="ghost tiny" onclick={() => (sel.next = sel.next.filter((x) => x !== n))} aria-label="Unlink">✕</button>
+              </span>
             {:else}
               <span class="muted small">nothing (the path ends)</span>
             {/each}

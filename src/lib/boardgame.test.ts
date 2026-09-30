@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, type BoardGameRound, type Game } from './model';
 import { newSession } from './session';
-import { ensureBoard, movePlayer, newBoardGameRound, newBoardSpace, nextTurn, sendTo, shownSpace, HOP_MS, walk, currentPlayer, boardGameProblems } from './boardgame';
+import { waysOn, ensureBoard, movePlayer, newBoardGameRound, newBoardSpace, nextTurn, sendTo, shownSpace, HOP_MS, walk, currentPlayer, boardGameProblems } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
 function setup(): { game: Game; round: BoardGameRound; ids: string[] } {
@@ -104,3 +104,37 @@ describe('board game: moving', () => {
     expect(boardGameProblems(game, round, 'Board', 1)[0].text).toContain('Shortcut lead nowhere');
   });
 });
+
+describe('board game: two-way links and one space at a time', () => {
+  /** A line A ↔ B ↔ C, with C also leading on to D. */
+  function line() {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const round = newBoardGameRound('Line');
+    const [A, B, C, D] = ['A', 'B', 'C', 'D'].map((n, i) => newBoardSpace(200 + i * 300, 500, n));
+    A.next = [B.id];
+    B.next = [A.id, C.id];
+    C.next = [B.id, D.id];
+    round.spaces = [A, B, C, D];
+    round.mover = { kind: 'step' };
+    game.rounds.push(round);
+    const session = newSession(game);
+    return { round, bs: ensureBoard(session, game, round), A, B, C, D };
+  }
+
+  it('never walks straight back along a two-way link unless it is the only way', () => {
+    const { round, bs, A, B, C, D } = line();
+    expect(movePlayer(round, bs, 'a', 2)).toBe('Landed on C');
+    expect(waysOn(round, C.id, bs.prev?.a)).toEqual([D.id]);
+    // From D (a dead end) nothing; sent back to B from A's side, the only onward way is C.
+    expect(waysOn(round, B.id, A.id)).toEqual([C.id]);
+    // Teleported: every way is open again.
+    sendTo(bs, ['a'], { space: B.id });
+    expect(waysOn(round, B.id, bs.prev?.a)).toEqual([A.id, C.id]);
+    // One space, picking the way.
+    expect(movePlayer(round, bs, 'a', 1, A.id)).toBe('Landed on A');
+    // At A the only link is back to B, so it may turn around.
+    expect(waysOn(round, A.id, bs.prev?.a)).toEqual([B.id]);
+  });
+});
+

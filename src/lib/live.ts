@@ -69,6 +69,8 @@ export type Overlay =
   | {
       kind: 'rolloff';
       nonce: string;
+      /** 'tiebreak': tied winners roll for the win (default: who goes first). */
+      purpose?: 'first' | 'tiebreak';
       sides: number;
       rounds: RollOffRound[];
       ranking: Id[];
@@ -94,6 +96,8 @@ export interface ExtraWheel {
   rotation: number;
   spin: { from: number; to: number; startedAt: number; duration: number } | null;
   result: number | null;
+  /** Set once the host edits this run of the wheel (like the main wheel's). */
+  pool?: PoolSlice[];
 }
 
 export interface Live {

@@ -1,4 +1,4 @@
-<!-- "Who goes first": everyone rolls in their color; tied leaders re-roll until one winner remains. -->
+<!-- "Who goes first" (or a tiebreaker roll-off for the win): everyone rolls in their color; tied leaders re-roll until one winner remains. -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
@@ -32,7 +32,7 @@
 </script>
 
 <div class="wrap">
-  <div class="title">{roundIdx === 0 ? 'Who goes first?' : 'Tiebreak roll!'}</div>
+  <div class="title">{roundIdx === 0 ? (o.purpose === 'tiebreak' ? 'Tiebreaker roll-off!' : 'Who goes first?') : 'Tiebreak roll!'}</div>
   <div class="row">
     {#each round.players as pid, i (pid)}
       {@const p = byId[pid]}
@@ -45,7 +45,7 @@
   {#if tied}<div class="msg">Tie! Re-rolling…</div>{/if}
   {#if done && winner}
     <div class="win" in:fly={{ y: 60, duration: 400 }}>
-      <span style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> goes first!
+      <span style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> {o.purpose === 'tiebreak' ? 'wins the game!' : 'goes first!'}
     </div>
   {/if}
 </div>

@@ -14,6 +14,7 @@
   import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { inventory, itemDef } from '../../lib/toolset';
   import MapView from './MapView.svelte';
+  import DrawLayer from '../../editor/slide/DrawLayer.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
 
@@ -23,6 +24,9 @@
     role,
     onobject,
     onavatar,
+    onobjectmove,
+    drawing = null,
+    ondraw,
   }: {
     game: Game;
     session: Session;
@@ -31,6 +35,12 @@
     onobject?: (elId: string) => void;
     /** Host: an avatar was dragged to (x, y), or clicked (no position). */
     onavatar?: (playerId: string, at?: { x: number; y: number }) => void;
+    /** Host: an object was dragged to a new spot on its screen. */
+    onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
+    /** Host: draw mode is on (the color, and whether a stroke closes into a filled area). */
+    drawing?: { color: string; closed: boolean } | null;
+    /** Host: a stroke was drawn (null: drawing was cancelled with Esc). */
+    ondraw?: (points: [number, number][] | null, closed: boolean) => void;
   } = $props();
 
   const round = $derived.by(() => {
@@ -94,6 +104,35 @@
     onavatar?.(d.id, d.moved ? { x: Math.max(0, Math.min(SLIDE_W, d.x)), y: Math.max(0, Math.min(SLIDE_H, d.y)) } : undefined);
   }
 
+  /** An object being dragged by the host: where its box is now. */
+  let objDrag = $state<{ id: string; sx: number; sy: number; ox: number; oy: number; x: number; y: number; moved: boolean } | null>(null);
+
+  function objDown(e: PointerEvent, id: string, x: number, y: number): void {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Synthetic pointers can't be captured; the drag still works over the stage.
+    }
+    objDrag = { id, sx: e.clientX, sy: e.clientY, ox: x, oy: y, x, y, moved: false };
+  }
+  function objMove(e: PointerEvent): void {
+    if (!objDrag) return;
+    const s = stage?.scale || 1;
+    const x = Math.round(objDrag.ox + (e.clientX - objDrag.sx) / s);
+    const y = Math.round(objDrag.oy + (e.clientY - objDrag.sy) / s);
+    const moved = objDrag.moved || Math.abs(e.clientX - objDrag.sx) + Math.abs(e.clientY - objDrag.sy) > 4;
+    objDrag = { ...objDrag, x, y, moved };
+  }
+  function objUp(): void {
+    const d = objDrag;
+    objDrag = null;
+    if (!d) return;
+    if (d.moved && onobjectmove) onobjectmove(d.id, { x: d.x, y: d.y });
+    else onobject?.(d.id);
+  }
+
   /** Items a player has equipped that are worn (they show on the avatar). */
   const worn = (playerId: string) =>
     inventory(session, playerId)
@@ -117,16 +156,22 @@
   {#if onobject}
     <!-- Click targets over objects with a name or class (the host's copy only: viewers never get these). -->
     {#each els.filter((e) => e.role || e.name) as el (el.id)}
+      {@const d = objDrag?.id === el.id ? objDrag : null}
       <button
         class="hit"
-        style:left="{el.x}px"
-        style:top="{el.y}px"
+        class:dragging={!!d?.moved}
+        style:left="{d ? d.x : el.x}px"
+        style:top="{d ? d.y : el.y}px"
         style:width="{el.w}px"
         style:height="{el.h}px"
         style:transform="rotate({el.rotation}deg)"
-        onclick={(e) => (e.stopPropagation(), onobject(el.id))}
+        onpointerdown={(e) => objDown(e, el.id, el.x, el.y)}
+        onpointermove={objMove}
+        onpointerup={objUp}
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => e.key === 'Enter' && onobject(el.id)}
         aria-label="Object: {el.name || el.role?.class}"
-        title={el.name || el.role?.class}
+        title="{el.name || el.role?.class}: click for its card, drag to move it"
       ></button>
     {/each}
   {/if}
@@ -168,6 +213,10 @@
           {#key ref.screen}
             <div class="screen" in:enter={{ map: ref.map }}>{@render screenPane(ref, found.screen)}</div>
           {/key}
+          {#if drawing && ondraw && !split}
+            {@const mode = drawing}
+            <DrawLayer ondone={(pts, shift) => ondraw(pts, mode.closed || shift)} oncancel={() => ondraw(null, false)} />
+          {/if}
           {#if split}
             <div class="pane-label">
               {st.parties.find((pt) => pt.members.some((m) => st.positions[m]?.screen === ref.screen))?.name ?? ''}
@@ -233,6 +282,10 @@
     background: transparent;
     cursor: pointer;
     z-index: 5000;
+  }
+  .hit.dragging {
+    outline: 3px dashed #ffcc00;
+    cursor: grabbing;
   }
   .hit:hover {
     outline: 3px solid rgba(255, 204, 0, 0.8);

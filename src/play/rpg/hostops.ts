@@ -1,6 +1,6 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import { isRpg, newImageEl, newTextEl, type Dir8, type Game, type InventoryEntry, type ScreenRef, type Session, type SlideElement } from '../../lib/model';
-import { DIR_NAME, findIn, focusRef, regroup, splitParty, step, worldById } from '../../lib/rpg';
+import { allElements, DIR_NAME, findIn, focusRef, regroup, splitParty, step, worldById } from '../../lib/rpg';
 import { entryName, itemDef, logged } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
 import { newAudioEl, newVideoEl } from '../../lib/model';
@@ -77,7 +77,7 @@ export function objectAt(game: Game, session: Session, elId: string) {
   if (!world || !st) return null;
   for (const map of world.maps)
     for (const screen of map.screens) {
-      const el = screen.slide.elements.find((e) => e.id === elId) ?? st.added[screen.id]?.find((e) => e.id === elId);
+      const el = allElements(st, screen).find((e) => e.id === elId) ?? screen.slide.elements.find((e) => e.id === elId);
       if (el) return { world, st, map, screen, el };
     }
   return null;

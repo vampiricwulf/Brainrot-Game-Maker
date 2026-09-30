@@ -47,6 +47,7 @@
 </script>
 
 <script lang="ts">
+  import { pathShape } from '../../lib/draw';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
@@ -299,25 +300,9 @@
   /** A finished freehand stroke (slide coordinates) becomes a 'path' shape sized to fit it. */
   function addDrawing(pts: [number, number][], closed: boolean): void {
     drawing = false;
-    const pad = 6;
-    const xs = pts.map((p) => p[0]);
-    const ys = pts.map((p) => p[1]);
-    const x = Math.min(...xs) - pad;
-    const y = Math.min(...ys) - pad;
-    const w = Math.max(20, Math.max(...xs) - x + pad);
-    const h = Math.max(20, Math.max(...ys) - y + pad);
-    const el = newShapeEl('path');
-    Object.assign(el, {
-      x,
-      y,
-      w,
-      h,
-      points: pts.map(([px, py]) => [+((px - x) / w).toFixed(4), +((py - y) / h).toFixed(4)] as [number, number]),
-      closed,
-      fill: closed ? '#ffcc00' : 'transparent',
-      stroke: '#ffffff',
-      strokeWidth: 8,
-    });
+    const el = pathShape(pts, closed);
+    // The editor's lines are white (play-time drawings take the host's color).
+    if (!closed) el.stroke = '#ffffff';
     add(el);
   }
 

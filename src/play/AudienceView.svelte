@@ -34,6 +34,9 @@
     onact,
     onobject,
     onavatar,
+    onobjectmove,
+    drawing = null,
+    ondraw,
   }: {
     game: Game;
     session: Session;
@@ -50,6 +53,11 @@
     onobject?: (elId: string) => void;
     /** RPG rounds, host only: an avatar was dragged (or clicked). */
     onavatar?: (playerId: string, at?: { x: number; y: number }) => void;
+    /** RPG rounds, host only: an object was dragged to a new spot. */
+    onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
+    /** RPG rounds, host only: draw mode, and a finished stroke (null: cancelled). */
+    drawing?: { color: string; closed: boolean } | null;
+    ondraw?: (points: [number, number][] | null, closed: boolean) => void;
   } = $props();
   const act = (a: StageAction) => onact?.(a);
 
@@ -190,7 +198,7 @@
     </div>
   {/key}
 {:else if session.phase === 'rpg'}
-  <RpgStage {game} {session} {role} {onobject} {onavatar} />
+  <RpgStage {game} {session} {role} {onobject} {onavatar} {onobjectmove} {drawing} {ondraw} />
 {:else if session.phase === 'boardgame'}
   <BoardGameStage {game} {session} {role} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}

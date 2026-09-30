@@ -7,6 +7,8 @@ import {
 } from './tools';
 
 type WheelOverlay = Extract<NonNullable<Live['overlay']>, { kind: 'wheel' }>;
+/** The main wheel on screen, or one spun together with it: both can be edited for the spin. */
+export type WheelLike = WheelOverlay | ExtraWheel;
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 export function openWheel(live: Live, session: Session, wheel: WheelPreset): void {
@@ -63,7 +65,7 @@ function mergePlayers(pool: PoolSlice[], session: Session): PoolSlice[] {
 }
 
 /** What the host's edit box starts from: this run's edits, else the wheel as it would spin now. */
-export function wheelPool(o: WheelOverlay, session: Session, game: Game): PoolSlice[] {
+export function wheelPool(o: WheelLike, session: Session, game: Game): PoolSlice[] {
   if (o.pool) return copy(o.players ? mergePlayers(o.pool, session) : o.pool);
   if (o.players) return playerSegments(session);
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
@@ -74,23 +76,44 @@ export function wheelPool(o: WheelOverlay, session: Session, game: Game): PoolSl
 }
 
 /** Change this run of the wheel only (the saved wheel stays as it is). Clears the last result. */
-export function editWheel(o: WheelOverlay, pool: PoolSlice[]): void {
+export function editWheel(o: WheelLike, pool: PoolSlice[]): void {
   o.pool = copy(pool);
   o.segments = onSlices(pool);
   o.spin = null;
   o.result = null;
-  o.tagged = undefined;
+  if ('kind' in o) o.tagged = undefined;
 }
 
 /** Back to the wheel as it was opened (players and saved wheels follow their current state). */
-export function resetWheelEdits(o: WheelOverlay, session: Session, game: Game): void {
+export function resetWheelEdits(o: WheelLike, session: Session, game: Game): void {
   o.pool = undefined;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
   if (o.players) o.segments = playerSegments(session);
   else if (preset) o.segments = copy(activeSegments(session, preset));
   o.spin = null;
   o.result = null;
-  o.tagged = undefined;
+  if ('kind' in o) o.tagged = undefined;
+}
+
+/**
+ * The slices a wheel spins with now: this run's edits (players added or removed since still count), else the saved
+ * wheel as it stands (used slices out), else the current players.
+ */
+function spinSegments(o: WheelLike, session: Session, game: Game): WheelSegment[] {
+  const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
+  if (o.pool) {
+    if (o.players) o.pool = mergePlayers(o.pool, session);
+    let segs = onSlices(o.pool);
+    if (preset?.removeAfterLanding) {
+      const removed = new Set(session.removedSegments?.[preset.id] ?? []);
+      const left = segs.filter((s) => !removed.has(s.id));
+      if (left.length) segs = left;
+    }
+    return segs;
+  }
+  if (preset) return copy(activeSegments(session, preset));
+  if (o.players) return playerSegments(session);
+  return o.segments;
 }
 
 /** Add another wheel to spin together with the one on screen (a saved wheel, or the player wheel). */
@@ -123,8 +146,7 @@ export function removeWheel(live: Live, key: string): void {
 /** Spin one extra wheel (no per-run edits: those are for the main wheel). */
 function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: number): void {
   const preset = w.wheelId ? game.wheels.find((x) => x.id === w.wheelId) : undefined;
-  if (preset) w.segments = copy(activeSegments(session, preset));
-  else if (w.players) w.segments = playerSegments(session);
+  w.segments = spinSegments(w, session, game);
   if (!w.segments.length) return;
   const index = weightedIndex(w.segments.map((s) => s.weight));
   const from = w.rotation;
@@ -147,19 +169,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   const o = live.overlay;
   if (!o || o.kind !== 'wheel') return;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
-  if (o.pool) {
-    // An edited run: its own slices and chances. Players added or removed since still count.
-    if (o.players) o.pool = mergePlayers(o.pool, session);
-    let segs = onSlices(o.pool);
-    if (preset?.removeAfterLanding) {
-      const removed = new Set(session.removedSegments?.[preset.id] ?? []);
-      const left = segs.filter((s) => !removed.has(s.id));
-      if (left.length) segs = left;
-    }
-    o.segments = segs;
-  } else if (preset) o.segments = copy(activeSegments(session, preset));
-  // Players added, renamed or removed since the wheel opened.
-  else if (o.players) o.segments = playerSegments(session);
+  o.segments = spinSegments(o, session, game);
   if (!o.segments.length) return spinExtras(o, session, game);
   const index = weightedIndex(o.segments.map((s) => s.weight));
   const from = o.rotation;
@@ -204,12 +214,13 @@ export function quickDice(sides: number, count: number, name = `${count > 1 ? co
   return { id: 'quick', name, showTotal: count > 1, dice: [{ id: 'q', sides, count }] };
 }
 
-export function startRollOff(live: Live, session: Session, playerIds: string[], sides: number): void {
+export function startRollOff(live: Live, session: Session, playerIds: string[], sides: number, purpose: 'first' | 'tiebreak' = 'first'): void {
   if (!playerIds.length) return;
   const plan = planRollOff(playerIds, sides);
   live.overlay = {
     kind: 'rolloff',
     nonce: newId(),
+    purpose,
     sides,
     rounds: plan.rounds,
     ranking: plan.ranking,
@@ -222,8 +233,8 @@ export function startRollOff(live: Live, session: Session, playerIds: string[], 
   logRoll(
     session,
     'rolloff',
-    `Roll-off (d${sides})`,
-    `${name(plan.winner)} goes first · ${first.players.map((p) => `${name(p)} ${first.rolls[p]}`).join(', ')}${plan.rounds.length > 1 ? ` (+${plan.rounds.length - 1} tiebreak)` : ''}`,
+    purpose === 'tiebreak' ? `Tiebreaker roll-off (d${sides})` : `Roll-off (d${sides})`,
+    `${name(plan.winner)} ${purpose === 'tiebreak' ? 'wins' : 'goes first'} · ${first.players.map((p) => `${name(p)} ${first.rolls[p]}`).join(', ')}${plan.rounds.length > 1 ? ` (+${plan.rounds.length - 1} tiebreak)` : ''}`,
     [plan.winner],
   );
 }

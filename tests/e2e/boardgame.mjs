@@ -38,6 +38,14 @@ try {
   await page.getByRole('button', { name: '🔗 Link to…' }).click();
   await page.getByRole('button', { name: 'Space Space 7' }).click();
   assert((await page.locator('.side').innerText()).includes('A fork'), 'linking a second way makes a fork');
+  // Both ways: one line with an arrow at each end.
+  const arrowsBefore = await page.locator('.canvas line[marker-start]').count();
+  await page.getByRole('button', { name: 'Space Space 2' }).click();
+  await page.getByRole('button', { name: 'Both ways with Space 3' }).click();
+  assert((await page.locator('.side').innerText()).includes('↔ Space 3'), 'a link can be made both ways');
+  assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore + 1, 'a two-way link is drawn with arrows at both ends');
+  await page.getByRole('button', { name: 'Both ways with Space 3' }).click();
+  assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore, 'and back to one way');
   // Start gives points when passed.
   await page.getByRole('button', { name: 'Space Start' }).click();
   await page.locator('.side .actions').first().getByRole('button', { name: '＋ Add action' }).click();
@@ -109,6 +117,27 @@ try {
   await page.getByLabel('On screen').selectOption({ label: '📺 Shadow Realm' });
   await page.locator('.stage .zone-players').waitFor();
   assert((await page.locator('.stage .zone-players').innerText()).includes('Player 2'), 'the zone can be put on screen, with its players');
+
+  // One space a turn: the players pick the way (no dice).
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await page.getByLabel('Move by').selectOption('step');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Next round ▶' }).click();
+  await page.waitForTimeout(450);
+  if (await yes.isVisible()) await yes.click();
+  await page.locator('.bh').waitFor();
+  assert(!(await page.getByRole('button', { name: /Roll/ }).count()), 'one-space boards have no dice');
+  await page.locator('.bh .move').getByRole('button', { name: '→ Space 2' }).click();
+  assert((await toast()).includes('Landed on Space 2'), 'a player moves one space');
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
+  const ways = await page.locator('.bh .move button.good').allInnerTexts();
+  assert(ways.join('|') === '→ Space 4|→ Space 7', `at a fork the host picks the way (${ways.join(', ')})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame.png` });

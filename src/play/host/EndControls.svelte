@@ -58,6 +58,11 @@
       <button onclick={() => (session.coWinners = true)}>🤝 Declare co-winners</button>
     </div>
   </div>
+{:else if session.rollOffWinner && session.players.some((p) => p.id === session.rollOffWinner)}
+  <div class="row">
+    <span class="muted">🎲 {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker roll-off.</span>
+    <button class="ghost small" onclick={() => (session.rollOffWinner = undefined)}>Undo</button>
+  </div>
 {:else if session.coWinners}
   <div class="row"><span class="muted">Co-winners declared.</span><button class="ghost small" onclick={() => (session.coWinners = false)}>Undo</button></div>
 {/if}

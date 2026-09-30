@@ -576,7 +576,9 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
 export function tiedLeaders(session: Session): Player[] {
   const ranked = standings(session);
   if (ranked.length < 2 || ranked[0].score !== ranked[1].score) return [];
-  return ranked.filter((r) => r.score === ranked[0].score).map((r) => r.player);
+  const tied = ranked.filter((r) => r.score === ranked[0].score).map((r) => r.player);
+  // Settled by the tiebreaker roll-off (only while its winner is still one of the tied leaders).
+  return tied.some((p) => p.id === session.rollOffWinner) ? [] : tied;
 }
 
 export function startTiebreaker(session: Session): void {
@@ -673,13 +675,16 @@ export function migrateSession(session: Session, game: Game): Session {
 
 /** Players ranked by score, highest first. */
 export function standings(session: Session): { player: Player; score: number }[] {
+  const won = session.rollOffWinner;
   return session.players
     .map((player) => ({ player, score: score(session, player.id) }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || (b.player.id === won ? 1 : 0) - (a.player.id === won ? 1 : 0));
 }
 
 /** Standings with each player's place, equal scores sharing one ("1, 1, 3"). */
 export function places(session: Session): { player: Player; score: number; place: number }[] {
   const ranked = standings(session);
-  return ranked.map((r) => ({ ...r, place: ranked.findIndex((x) => x.score === r.score) + 1 }));
+  // The tiebreaker roll-off's winner has first place alone; the players they were tied with share the next one.
+  const won = (id: string) => id === session.rollOffWinner;
+  return ranked.map((r) => ({ ...r, place: ranked.findIndex((x) => x.score === r.score && won(x.player.id) === won(r.player.id)) + 1 }));
 }

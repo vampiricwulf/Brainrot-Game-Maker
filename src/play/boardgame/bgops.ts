@@ -47,6 +47,7 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
     openWheel(live, session, w);
     return null;
   }
+  if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
   const preset = game.dice.find((d) => d.name === m.dice || d.id === m.dice);
   if (preset) rollDice(live, session, preset);
   else {

@@ -23,7 +23,9 @@
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
-  import { addLive, droppedFile, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { override } from '../lib/rpg';
+  import { pathShape } from '../lib/draw';
   import { rollMover, turnNow } from './boardgame/bgops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { Dir8 } from '../lib/model';
@@ -72,6 +74,8 @@
   let rpgObject = $state<string | null>(null);
   /** RPG rounds: the host's full map is open (J). */
   let rpgMap = $state(false);
+  /** RPG rounds: draw mode on the stage (color, and whether strokes close into filled areas). */
+  let rpgDraw = $state<{ color: string; closed: boolean } | null>(null);
   /** Which log each combined Undo went to, so Redo goes back the same way. */
   let undoneKinds: ('score' | 'action')[] = [];
 
@@ -225,17 +229,28 @@
     if (o?.kind === 'dice') lastDice = o.preset;
   });
 
-  function rolloff(ids: string[], sides: number): void {
-    startRollOff(app.live, session, ids, sides);
+  /** The roll-off's result: who picks first, or (a tiebreaker for tied winners) who wins the game. */
+  /** Roll-offs whose result was already applied (closing one early applies it; the timer then mustn't again). */
+  const rollOffsApplied = new Set<string>();
+
+  function rollOffResult(s: typeof session, o: { nonce: string; winner: string; purpose?: 'first' | 'tiebreak' }): void {
+    if (rollOffsApplied.has(o.nonce)) return;
+    rollOffsApplied.add(o.nonce);
+    if (o.purpose === 'tiebreak') s.rollOffWinner = o.winner;
+    else s.currentPickerId = o.winner;
+  }
+
+  function rolloff(ids: string[], sides: number, purpose: 'first' | 'tiebreak' = 'first'): void {
+    startRollOff(app.live, session, ids, sides, purpose);
     const o = app.live.overlay;
     if (o?.kind !== 'rolloff') return;
-    const winner = o.winner;
     const nonce = o.nonce;
+    const result = { nonce: o.nonce, winner: o.winner, purpose };
     const s = session;
     later(() => {
       // Only in this game, and only if that roll-off is still the one on screen (or was closed after finishing).
       if (app.session !== s) return;
-      if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) s.currentPickerId = winner;
+      if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) rollOffResult(s, result);
     }, overlayDoneAt(o) - Date.now() + 200);
   }
 
@@ -300,7 +315,7 @@
   function closeOverlay(): void {
     const o = app.live.overlay;
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
-    if (o?.kind === 'rolloff') session.currentPickerId = o.winner;
+    if (o?.kind === 'rolloff') rollOffResult(session, o);
     app.live.overlay = null;
     // A wheel/dice tile shows its question (if any) once the tool is closed.
     if (session.phase === 'clue') autoTimer();
@@ -492,6 +507,25 @@
         toast(err instanceof Error ? err.message : String(err), 4000);
       }
     }
+  }
+
+  /** An object on the stage was dragged: it stays there (undoable). */
+  function objectMoved(id: string, at: { x: number; y: number }): void {
+    const { st } = rpgNow(game, session);
+    if (!st) return;
+    const name = objectAt(game, session, id)?.el.name || 'object';
+    logged(session, `Move ${name}`, () => Object.assign(override(st, id), at));
+  }
+
+  /** A stroke drawn on the stage becomes an object (hidden until revealed); its card opens to set it up. */
+  function drawn(points: [number, number][] | null, closed: boolean): void {
+    if (!points || !rpgDraw) {
+      rpgDraw = null;
+      return;
+    }
+    const el = pathShape(points, closed, rpgDraw.color);
+    el.name = closed ? 'Drawn area' : 'Drawing';
+    if (addLive(game, session, el, `Draw ${el.name.toLowerCase()}`)) rpgObject = el.id;
   }
 
   /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
@@ -833,6 +867,9 @@
             onact={stageAct}
             onobject={(id) => (rpgObject = id)}
             onavatar={avatarAct}
+            onobjectmove={objectMoved}
+            drawing={rpgDraw}
+            ondraw={drawn}
           />
         </Stage>
       </div>
@@ -850,6 +887,7 @@
         bind:amount
         bind:rpgObject
         bind:rpgMap
+        bind:rpgDraw
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}
@@ -878,7 +916,7 @@
         onaudience={toggleAudience}
         onsound={() => (showSound = true)}
         oncloseoverlay={closeOverlay}
-        onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20)}
+        onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={() => (hideControls = true)}
         onexit={() =>
           confirm(

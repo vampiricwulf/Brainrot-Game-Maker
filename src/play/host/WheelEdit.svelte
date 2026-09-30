@@ -3,13 +3,12 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
-  import type { Live } from '../../lib/live';
   import { newId, type Game, type Session, type WheelPreset } from '../../lib/model';
-  import { editWheel, resetWheelEdits, wheelPool } from '../../lib/overlay';
+  import { editWheel, resetWheelEdits, wheelPool, type WheelLike } from '../../lib/overlay';
   import { newSegment, onSlices, type PoolSlice } from '../../lib/tools';
 
-  type WheelOverlay = Extract<NonNullable<Live['overlay']>, { kind: 'wheel' }>;
-  let { o, game, session, disabled }: { o: WheelOverlay; game: Game; session: Session; disabled: boolean } = $props();
+  /** The main wheel on screen, or one spun together with it. */
+  let { o, game, session, disabled }: { o: WheelLike; game: Game; session: Session; disabled: boolean } = $props();
 
   let rows = $state<PoolSlice[]>(untrack(() => wheelPool(o, session, game)));
   const preset = $derived(o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined);

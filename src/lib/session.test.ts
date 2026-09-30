@@ -7,7 +7,7 @@ import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToFinalReveal, backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
-  toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName,
+  toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName, standings,
 } from './session';
 import { applyAction } from './tools';
 
@@ -533,3 +533,30 @@ describe('resume with edits', () => {
 function getClueId(game: ReturnType<typeof newGame>, ref: { round: number; cat: number; row: number }): string {
   return board(game, ref.round).categories[ref.cat].clues[ref.row].id;
 }
+
+describe('tiebreaker roll-off', () => {
+  it('makes its winner the winner: first alone, the others they tied with share second', () => {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#e6194b' },
+      { id: 'b', name: 'Bob', color: '#3cb44b' },
+      { id: 'c', name: 'Cat', color: '#4363d8' },
+    ];
+    const session = newSession(game);
+    setScore(session, 'a', 500);
+    setScore(session, 'b', 500);
+    setScore(session, 'c', 100);
+    expect(tiedLeaders(session).map((p) => p.id)).toEqual(['a', 'b']);
+    session.rollOffWinner = 'b';
+    expect(tiedLeaders(session)).toEqual([]);
+    expect(standings(session).map((r) => r.player.id)).toEqual(['b', 'a', 'c']);
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([
+      ['b', 1],
+      ['a', 2],
+      ['c', 3],
+    ]);
+    // Scores changed so the winner isn't tied for first any more: the roll-off no longer counts.
+    setScore(session, 'b', 400);
+    expect(standings(session)[0].player.id).toBe('a');
+  });
+});

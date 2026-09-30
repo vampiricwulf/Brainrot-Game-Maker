@@ -8,6 +8,7 @@ import {
   textSlide,
   type Dir8,
   type Game,
+  type ObjectClass,
   type ObjectOverride,
   type Position,
   type RpgRound,
@@ -211,7 +212,7 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const map = world.maps.find((m) => m.id === to.map);
   const screen = map?.screens.find((s) => s.id === to.screen);
   if (!screen) return;
-  const els = [...screenSlide(st, screen).elements, ...(st.added[screen.id] ?? [])];
+  const els = allElements(st, screen);
   const anchor =
     (arriveAt && els.find((e) => e.id === arriveAt)) || (!via ? els.find((e) => e.role?.class === 'spawn') : undefined);
   let cx = SLIDE_W / 2;
@@ -254,7 +255,34 @@ export function moveTo(
   if (!who.length) return;
   place(game, st, world, who, to, via, arriveAt);
   discover(st, world, to);
+  if (players) regroupAfterMove(st, who, to);
   st.lastMove = { dir: via ?? 'warp', at: Date.now() };
+}
+
+/**
+ * Some players went somewhere on their own (a doorway, a jump, an action): they leave any party they only partly
+ * made up, join a party already standing where they arrived, or else become a party of their own. The audience
+ * follows them. Parties that moved whole are kept as they are.
+ */
+function regroupAfterMove(st: WorldState, moved: string[], to: ScreenRef): void {
+  const set = new Set(moved);
+  const whole = st.parties.find((p) => p.members.length && p.members.every((m) => set.has(m)) && moved.every((m) => p.members.includes(m)));
+  for (const p of st.parties) if (p !== whole) p.members = p.members.filter((m) => !set.has(m));
+  // A party (other than theirs) standing where they arrived takes them in.
+  const there = st.parties.find((p) => p !== whole && p.members.length && p.members.every((m) => sameRef(st.positions[m], to)));
+  let target = whole;
+  if (there) {
+    there.members.push(...moved.filter((m) => !there.members.includes(m)));
+    if (whole) whole.members = [];
+    target = there;
+  } else if (!whole) {
+    target = { id: newId(), name: 'Party', members: [...moved] };
+    st.parties.push(target);
+  }
+  st.parties = st.parties.filter((p) => p.members.length);
+  if (target) st.active = target.id;
+  if (st.parties.length === 1) st.split = false;
+  renameParties(st);
 }
 
 /** Step the active party one screen in a direction. Returns why it couldn't, or null. */
@@ -319,6 +347,21 @@ export function occupiedScreens(st: WorldState): ScreenRef[] {
 
 // ---------- Objects on screens ----------
 
+/** The classes an object can have, for pickers: value, label, what it's for. */
+export const OBJECT_CLASSES: [ObjectClass | '', string, string][] = [
+  ['', 'Scenery', 'Just part of the picture'],
+  ['doorway', '🚪 Doorway', 'Leads to another screen (any map)'],
+  ['item', '📦 Item', 'Can be picked up'],
+  ['currency', '🪙 Currency', 'A pile of gold (or any currency stat)'],
+  ['npc', '🧙 Character', 'Someone to talk to: dialogue, own stats, maybe a shop'],
+  ['shop', '🛒 Shop', 'Opens a shop'],
+  ['hazard', '⚠ Hazard', 'A trap, a pit, a Bad Wheel space…'],
+  ['zone', '🟩 Zone', 'An area (a forest, lava, a safe spot) with buttons of its own'],
+  ['interactable', '✋ Interactable', 'Anything with buttons of its own'],
+  ['spawn', '🚩 Arrival point', 'Where players appear when they come in (never shown)'],
+  ['blocker', '⛔ No-go area', 'Arriving players aren’t placed here (never shown)'],
+];
+
 /** Visible to viewers? Secret objects, hotspots, spawn points and blockers are host-only unless revealed. */
 export function audienceSees(el: SlideElement, o: ObjectOverride | undefined): boolean {
   if (o?.taken) return false;
@@ -335,7 +378,7 @@ export function audienceSees(el: SlideElement, o: ObjectOverride | undefined): b
  */
 export function screenElements(st: WorldState | undefined, screen: Screen, audience: boolean): SlideElement[] {
   const out: SlideElement[] = [];
-  for (const el of [...screenSlide(st, screen).elements, ...(st?.added[screen.id] ?? [])]) {
+  for (const el of allElements(st, screen)) {
     const o = st?.objects[el.id];
     if (o?.taken) continue;
     const seen = audienceSees(el, o);
@@ -343,6 +386,40 @@ export function screenElements(st: WorldState | undefined, screen: Screen, audie
     out.push({ ...el, x: o?.x ?? el.x, y: o?.y ?? el.y, secret: !seen || undefined } as SlideElement);
   }
   return out;
+}
+
+/**
+ * A screen's elements now: its look's, plus objects added during play. An added object that has since been moved
+ * into the screen itself (the live editor does that) counts once.
+ */
+export function allElements(st: WorldState | undefined, screen: Screen): SlideElement[] {
+  const base = screenSlide(st, screen).elements;
+  const added = st?.added[screen.id] ?? [];
+  if (!added.length) return base;
+  const ids = new Set(base.map((e) => e.id));
+  return [...base, ...added.filter((e) => !ids.has(e.id))];
+}
+
+/**
+ * Before the live editor opens a look, objects added during play move into it, so they can be moved, resized and
+ * edited like the rest (their reveal state and other changes are kept by id).
+ */
+export function adoptAdded(st: WorldState, screen: Screen, slide: Slide): void {
+  const added = st.added[screen.id];
+  if (!added?.length) return;
+  const ids = new Set(slide.elements.map((e) => e.id));
+  const top = Math.max(0, ...slide.elements.map((e) => e.zIndex));
+  added.forEach((e, i) => {
+    if (ids.has(e.id)) return;
+    // Where it was dragged to in play is where it goes.
+    const o = st.objects[e.id];
+    slide.elements.push({ ...e, x: o?.x ?? e.x, y: o?.y ?? e.y, zIndex: Math.max(e.zIndex, top + 1 + i) } as SlideElement);
+    if (o) {
+      delete o.x;
+      delete o.y;
+    }
+  });
+  delete st.added[screen.id];
 }
 
 /** The look a screen has now: the variant the host switched to, else its own slide. */
@@ -398,10 +475,19 @@ export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef
   tm.rows = Math.max(tm.rows, found.map.rows);
   const copy = clone(found.screen);
   // Objects added during play become part of the look showing now.
-  const added = clone(st?.added[found.screen.id] ?? []);
+  // Objects added during play (not ones picked up since) become part of the look showing now.
+  const added = clone(st?.added[found.screen.id] ?? []).filter((e) => !st?.objects[e.id]?.taken);
   const v = st?.variant?.[found.screen.id];
   const look = (v && copy.variants?.find((x) => x.id === v)?.slide) || copy.slide;
   look.elements.push(...added.filter((e) => !look.elements.some((x) => x.id === e.id)));
+  // Each object as it is now: where it was dragged to, and whether viewers see it.
+  for (const el of look.elements) {
+    const o = st?.objects[el.id];
+    if (!o) continue;
+    if (o.x !== undefined) el.x = o.x;
+    if (o.y !== undefined) el.y = o.y;
+    if (o.shown !== undefined) el.secret = !o.shown || undefined;
+  }
   const i = tm.screens.findIndex((s) => s.id === copy.id);
   // A different screen already in that cell (added in the editor meanwhile) keeps it: this one is not copied.
   const clash = tm.screens.find((s) => s.col === copy.col && s.row === copy.row && s.id !== copy.id);

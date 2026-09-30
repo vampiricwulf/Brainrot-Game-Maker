@@ -2,7 +2,7 @@
 <script lang="ts">
   import { editedGame } from '../../lib/app.svelte';
   import { textSlide, type ObjectClass, type Screen, type SlideElement, type World } from '../../lib/model';
-  import { findIn } from '../../lib/rpg';
+  import { findIn, OBJECT_CLASSES } from '../../lib/rpg';
   import { currencyFields } from '../../lib/toolset';
   import ActionListEditor from './ActionListEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -12,18 +12,7 @@
   const game = $derived(editedGame());
   let dialogueOpen = $state(false);
 
-  const CLASSES: [ObjectClass | '', string, string][] = [
-    ['', 'Scenery', 'Just part of the picture'],
-    ['doorway', '🚪 Doorway', 'Leads to another screen (any map)'],
-    ['item', '📦 Item', 'Can be picked up'],
-    ['currency', '🪙 Currency', 'A pile of gold (or any currency stat)'],
-    ['npc', '🧙 Character', 'Someone to talk to: dialogue, own stats, maybe a shop'],
-    ['shop', '🛒 Shop', 'Opens a shop'],
-    ['hazard', '⚠ Hazard', 'A trap, a pit, a Bad Wheel space…'],
-    ['interactable', '✋ Interactable', 'Anything with buttons of its own'],
-    ['spawn', '🚩 Arrival point', 'Where players appear when they come in (never shown)'],
-    ['blocker', '⛔ No-go area', 'Arriving players aren’t placed here (never shown)'],
-  ];
+  const CLASSES = OBJECT_CLASSES;
 
   function setClass(c: string): void {
     if (!c) {

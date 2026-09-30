@@ -47,10 +47,12 @@
   {#each round.spaces as a (a.id)}
     {#each a.next as n (n)}
       {@const b = byId.get(n)}
-      {#if b}
+      <!-- A link both ways is one line with an arrow at each end (drawn once, from the space listed first). -->
+      {@const both = !!b?.next.includes(a.id)}
+      {#if b && (!both || round.spaces.indexOf(a) < round.spaces.indexOf(b))}
         {@const l = line(a, b)}
         <line {...l} class="shadow" />
-        <line {...l} class="link" marker-end="url(#bg-arrow)" />
+        <line {...l} class="link" marker-end="url(#bg-arrow)" marker-start={both ? 'url(#bg-arrow)' : undefined} />
       {/if}
     {/each}
   {/each}

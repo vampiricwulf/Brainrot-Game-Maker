@@ -984,6 +984,17 @@ await page.locator('.end h1').waitFor();
 assert((await page.locator('.panel .p').count()) === 3, 'score chips stay on the end screen so scores can be fixed');
 // P1 550+300 = 850 ties P2 850-0 = 850.
 assert(await page.getByText('Tie for first:').isVisible(), 'tie for first is detected');
+// A tiebreaker roll-off says so, and its winner wins the game (Undo puts the tie back).
+await page.getByRole('button', { name: '🎲 Tiebreaker roll-off' }).click();
+await page.locator('.stage .wrap .title', { hasText: 'Tiebreaker roll-off!' }).waitFor();
+assert(!(await page.locator('.stage').innerText()).includes('Who goes first'), 'the tiebreaker roll-off is not "Who goes first"');
+await page.keyboard.press('Escape');
+await page.waitForFunction(() => /Player \d wins!/.test(document.querySelector('.end h1')?.textContent ?? ''));
+const rollWinner = (await page.locator('.end h1').innerText()).replace(/ wins!.*/s, '');
+assert((await page.locator('.panel').innerText()).includes(`${rollWinner} won the tiebreaker roll-off`), `the roll-off's winner (${rollWinner}) wins the game`);
+assert((await page.locator('.end li').first().innerText()).includes(rollWinner), 'and is first in the standings');
+await page.getByRole('button', { name: 'Undo' }).click();
+await page.getByText('Tie for first:').waitFor();
 await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
 assert(true, 'co-winners declared on the winner screen');

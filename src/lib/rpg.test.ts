@@ -212,9 +212,39 @@ describe('RPG: improvising', () => {
     const kept = editor.worlds![0].maps[0].screens.find((s) => s.id === d1.id)!;
     expect(kept.slide.elements.map((e) => e.id)).toEqual([sign.id]);
     expect(editor.worlds![0].maps[0].cols).toBe(4);
+    // Revealed and dragged in play: kept that way.
+    st.objects[sign.id] = { shown: true, x: 50, y: 60 };
+    keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st);
+    const again = editor.worlds![0].maps[0].screens.find((s) => s.id === d1.id)!.slide.elements[0];
+    expect([again.x, again.y, again.secret]).toEqual([50, 60, undefined]);
     // Kept again: replaced, not duplicated.
     keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st);
     expect(editor.worlds![0].maps[0].screens.filter((s) => s.id === d1.id)).toHaveLength(1);
+  });
+});
+
+describe('RPG: some players moving on their own', () => {
+  it('splits them off into their own party, and merges them into a party already there', () => {
+    const { game, session, world, round } = setup();
+    session.players.push({ id: 'c', name: 'Cat', color: '#4363d8', startScore: 0 });
+    const st = ensureWorld(session, game, round)!;
+    // Ann alone through a doorway to the shop: she's a party of her own, and the audience follows her.
+    moveTo(game, st, world, at(world, 'Counter'), { players: ['a'] });
+    expect(st.parties.map((p) => p.members)).toEqual([['b', 'c'], ['a']]);
+    expect(st.parties.map((p) => p.name)).toEqual(['Party 1', 'Party 2']);
+    expect(nameOf(world, focusRef(st))).toBe('Counter');
+    // Bob follows her: he joins her party.
+    moveTo(game, st, world, at(world, 'Counter'), { players: ['b'] });
+    expect(st.parties.map((p) => p.members)).toEqual([['c'], ['a', 'b']]);
+    // Cat, the whole of her party, goes elsewhere: her party stays hers.
+    const cats = st.parties[0].id;
+    moveTo(game, st, world, at(world, 'B2'), { players: ['c'] });
+    expect(st.parties.find((p) => p.members.includes('c'))?.id).toBe(cats);
+    // …and then to the shop too: everyone is one party again.
+    moveTo(game, st, world, at(world, 'Counter'), { players: ['c'] });
+    expect(st.parties.map((p) => p.members)).toEqual([['a', 'b', 'c']]);
+    expect(st.parties[0].name).toBe('Party');
+    expect(st.split).toBe(false);
   });
 });
 

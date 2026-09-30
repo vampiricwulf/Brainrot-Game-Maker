@@ -26,6 +26,9 @@
   let actionDone = $state<string | null>(null);
   /** Score effects of the other wheels already applied or dismissed (by spin and wheel). */
   let doneKeys = $state<string[]>([]);
+  /** The added wheel whose edit box is open (by its key). */
+  let editExtra = $state<string | null>(null);
+  const editedExtra = $derived(o?.kind === 'wheel' ? o.extra?.find((w) => w.key === editExtra) : undefined);
 
   const outcome = $derived.by((): Outcome | undefined => {
     if (o?.kind === 'wheel' && o.result !== null && o.spin) return o.segments[o.result];
@@ -84,7 +87,17 @@
           ✎ Edit wheel{o.pool ? ' (edited)' : ''}
         </button>
         {#each o.extra ?? [] as w (w.key)}
-          <span class="xw">＋ {w.name}<button class="ghost tiny" disabled={busy} onclick={() => removeWheel(app.live, w.key)} aria-label="Stop spinning {w.name}">✕</button></span>
+          <span class="xw" class:on={editExtra === w.key}>
+            ＋ {w.name}{w.pool ? ' (edited)' : ''}
+            <button
+              class="ghost tiny"
+              aria-pressed={editExtra === w.key}
+              onclick={() => (editExtra = editExtra === w.key ? null : w.key)}
+              aria-label="Edit {w.name} for this spin"
+              title="Turn slices off or change their chances for this spin">✎</button
+            >
+            <button class="ghost tiny" disabled={busy} onclick={() => removeWheel(app.live, w.key)} aria-label="Stop spinning {w.name}">✕</button>
+          </span>
         {/each}
         <select
           class="small"
@@ -111,8 +124,10 @@
         <b>🎲 {o.name}</b>
         <button class="primary" disabled={busy} onclick={() => rollDice(app.live, session, o.preset)} title="D">{o.roll ? 'Roll again' : 'Roll!'}</button>
       {:else if o.kind === 'rolloff'}
-        <b>🏁 Who goes first</b>
-        {#if !busy}<span>{session.players.find((p) => p.id === o.winner)?.name} picks first.</span>{:else}<span class="muted">Rolling…</span>{/if}
+        <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : '🏁 Who goes first'}</b>
+        {#if !busy}
+          <span>{session.players.find((p) => p.id === o.winner)?.name} {o.purpose === 'tiebreak' ? 'wins the game.' : 'picks first.'}</span>
+        {:else}<span class="muted">Rolling…</span>{/if}
       {:else if o.kind === 'popup'}
         <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
         {#if o.value}<span class="muted small">worth {o.value}</span>{/if}
@@ -168,6 +183,10 @@
     {/if}
     {#if o.kind === 'wheel' && o.editing}
       {#key o.nonce}<WheelEdit {o} {game} {session} disabled={busy} />{/key}
+    {/if}
+    {#if o.kind === 'wheel' && editedExtra}
+      <div class="muted small">Editing <b>{editedExtra.name}</b>:</div>
+      {#key editedExtra.key}<WheelEdit o={editedExtra} {game} {session} disabled={busy} />{/key}
     {/if}
     {#if picked && !busy}
       <div class="row">
@@ -229,6 +248,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .xw.on {
+    outline: 1px solid var(--accent);
   }
   .xw {
     display: inline-flex;
