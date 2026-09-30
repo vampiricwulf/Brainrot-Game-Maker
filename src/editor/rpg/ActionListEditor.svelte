@@ -1,6 +1,6 @@
 <!-- Edit a list of actions (an object's buttons, an item's "Use"). Each becomes a button the host presses in play. -->
 <script lang="ts">
-  import { app } from '../../lib/app.svelte';
+  import { editedGame } from '../../lib/app.svelte';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
@@ -20,7 +20,7 @@
     objects?: SlideElement[];
   } = $props();
 
-  const game = $derived(app.game);
+  const game = $derived(editedGame());
   let adding = $state(false);
   let editing = $state<{ action: Action; which: 'slide' | 'question' | 'answer' } | null>(null);
   let pickingSound = $state<string | null>(null);

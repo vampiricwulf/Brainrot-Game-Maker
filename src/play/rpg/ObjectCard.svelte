@@ -8,7 +8,7 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
   import { audienceSees, findIn, moveTo, override } from '../../lib/rpg';
-  import { addStat, currencyFields, formatStat, giveItem, itemDef, logged, statFields } from '../../lib/toolset';
+  import { addStat, currencyFields, formatStat, giveItem, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
 
   let {
     el,
@@ -31,6 +31,19 @@
   const title = $derived(el.name || role?.class || 'Object');
   const locked = $derived(o?.locked ?? role?.locked ?? false);
   const npcStats = $derived(o?.stats ?? role?.stats ?? []);
+
+  /** Compare: a player number field against one of the NPC's stats (nothing more: no combat engine). */
+  const numberFields = $derived(statFields(game).filter((f) => f.type === 'number'));
+  let cmpField = $state('');
+  let cmpStat = $state(0);
+  const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? numberFields.find((f) => npcStats.some((s) => s.name === f.name)) ?? numberFields[0]);
+
+  function runAll(): void {
+    const list = role?.actions ?? [];
+    if (list.some(needsPlayers) && !who.length) return void toast('Pick who it’s for first');
+    const said = list.map((a) => runAction({ ...ctx, chosen: who, world, st }, a, `${title}: ${describeAction(game, a)}`));
+    toast(said.join(' · '), 4000);
+  }
 
   function toggle(id: string): void {
     chosen = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
@@ -119,6 +132,7 @@
     {#each role?.actions ?? [] as a (a.id)}
       <button onclick={() => run(a)}>{describeAction(game, a)}</button>
     {/each}
+    {#if (role?.actions?.length ?? 0) > 1}<button class="small" onclick={runAll} title="Every action above, in order">▶ Run all</button>{/if}
   </div>
   {#if npcStats.length}
     <div class="row">
@@ -129,6 +143,27 @@
           <button class="tiny" onclick={() => npcStat(i, 1)} aria-label="{s.name} plus 1">+</button>
         </span>
       {/each}
+    </div>
+  {/if}
+  {#if npcStats.length && numberFields.length}
+    <div class="row cmp">
+      <span class="muted small">Compare</span>
+      <select class="tiny" value={cf?.id} onchange={(e) => (cmpField = e.currentTarget.value)} aria-label="Player stat">
+        {#each numberFields as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
+      </select>
+      <span class="muted small">vs</span>
+      <select class="tiny" bind:value={cmpStat} aria-label="{title} stat">
+        {#each npcStats as s, i (i)}<option value={i}>{s.name}</option>{/each}
+      </select>
+      {#if cf}
+        {#each who as id (id)}
+          {@const pv = statNumber(game, session, id, cf)}
+          {@const nv = npcStats[cmpStat]?.value ?? 0}
+          <span class="vs" class:win={pv > nv} class:lose={pv < nv}>
+            {session.players.find((p) => p.id === id)?.name} {pv} vs {nv}
+          </span>
+        {/each}
+      {/if}
     </div>
   {/if}
   <div class="row">
@@ -186,6 +221,18 @@
     border-radius: 6px;
     background: var(--panel-2);
     font-size: 12px;
+  }
+  .vs {
+    font-size: 12px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--panel-2);
+  }
+  .vs.win {
+    color: var(--good);
+  }
+  .vs.lose {
+    color: var(--bad);
   }
   .tiny {
     font-size: 11px;

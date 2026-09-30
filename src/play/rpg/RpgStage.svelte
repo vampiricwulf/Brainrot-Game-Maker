@@ -11,7 +11,7 @@
   import { isRpg, SLIDE_H, SLIDE_W, type Game, type Screen, type ScreenRef, type Session } from '../../lib/model';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import Avatar from '../../lib/rpg/Avatar.svelte';
-  import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, worldById } from '../../lib/rpg';
+  import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { inventory, itemDef } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
@@ -105,7 +105,15 @@
 
 {#snippet screenPane(ref: ScreenRef, screen: Screen)}
   {@const els = screenElements(st, screen, !hostCopy)}
-  <SlideView slide={{ ...screen.slide, elements: els }} mode="play" {role} fallbackBg="#2f6b3a" />
+  <SlideView slide={{ ...screenSlide(st, screen), elements: els }} mode="play" {role} fallbackBg="#2f6b3a" />
+  {#each els.filter((e) => e.role?.statsShown) as el (el.id)}
+    {@const stats = st?.objects[el.id]?.stats ?? el.role?.stats ?? []}
+    {#if stats.length}
+      <div class="npc-stats" style:left="{el.x + el.w / 2}px" style:top="{el.y}px">
+        {#each stats as s, i (i)}<span>{s.name} <b>{s.value}</b></span>{/each}
+      </div>
+    {/if}
+  {/each}
   {#if onobject}
     <!-- Click targets over objects with a name or class (the host's copy only: viewers never get these). -->
     {#each els.filter((e) => e.role || e.name) as el (el.id)}
@@ -226,6 +234,24 @@
   }
   .hit:hover {
     outline: 3px solid rgba(255, 204, 0, 0.8);
+  }
+  .npc-stats {
+    position: absolute;
+    transform: translate(-50%, -110%);
+    display: flex;
+    gap: 10px;
+    padding: 4px 14px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 3px solid #ffcc00;
+    color: #fff;
+    font: 30px 'Anton', 'Oswald', sans-serif;
+    white-space: nowrap;
+    z-index: 5500;
+    pointer-events: none;
+  }
+  .npc-stats b {
+    color: #ffcc00;
   }
   .avatar {
     position: absolute;

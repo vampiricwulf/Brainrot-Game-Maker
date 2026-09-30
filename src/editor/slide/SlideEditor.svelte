@@ -48,7 +48,7 @@
 
 <script lang="ts">
   import { onMount, tick, untrack, type Snippet } from 'svelte';
-  import { app, toast } from '../../lib/app.svelte';
+  import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
   import { clipboard } from '../../lib/clipboard.svelte';
   import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
@@ -102,7 +102,7 @@
   let editingImage = $state<string | null>(null);
   const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
 
-  const game = $derived(app.game);
+  const game = $derived(editedGame());
   let selected = $state<string[]>([]);
   let picker = $state<MediaKind | null>(null);
   let replacing = $state<string | null>(null);

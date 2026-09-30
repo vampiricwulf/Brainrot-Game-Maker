@@ -13,7 +13,7 @@ const context = await browser.newContext({ viewport: { width: 1500, height: 1000
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('dialog', (d) => d.accept());
+page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept(d.defaultValue() || 'Beware of the goose') : d.accept()));
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
@@ -30,6 +30,9 @@ try {
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
   await page.getByRole('button', { name: '＋ Item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
+  await page.getByRole('button', { name: '＋ Shop' }).click();
+  await page.getByRole('button', { name: '＋ Something to sell' }).click();
+  await page.locator('label', { hasText: 'Buys back at' }).locator('input').fill('50');
 
   // An RPG round: its world starts with one screen; add one to the east.
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -67,7 +70,7 @@ try {
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'the secret Potion is not drawn for viewers');
 
   // Move: the pad, then numpad and Alt keys.
-  await page.getByRole('button', { name: 'Go East' }).click();
+  await page.getByRole('button', { name: 'Go East', exact: true }).click();
   await page.waitForTimeout(200);
   assert((await where()).includes('Screen B1'), 'the pad moves the party east');
   await page.keyboard.press('Numpad4');
@@ -123,6 +126,41 @@ try {
   await page.locator('.cover').waitFor();
   assert(true, 'B covers the screen');
   await page.keyboard.press('b');
+
+  // Improvising: typed text starts hidden; a new look; a new screen to the south; keep it in the game.
+  await page.getByRole('button', { name: '＋ Text' }).click();
+  await page.locator('.rh .objs').getByRole('button', { name: /Beware of the goose/ }).waitFor();
+  assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('goose'), 'typed text is added hidden from viewers');
+  await page.getByLabel('Look').selectOption('+');
+  await page.getByRole('dialog', { name: /Edit Start \(New look\) live/ }).waitFor();
+  assert(true, 'a new look opens in the live editor');
+  await page.getByRole('button', { name: 'Done' }).click();
+  assert((await page.getByLabel('Look').locator('option:checked').innerText()).includes('New look'), 'the screen now shows the new look');
+  await page.getByLabel('Add a screen').selectOption('s');
+  await page.getByRole('dialog', { name: /Edit New south of Start live/ }).waitFor();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Go South', exact: true }).click();
+  await page.waitForTimeout(200);
+  assert((await where()).includes('New south of Start'), 'a screen added live can be walked to');
+  await page.getByRole('button', { name: '💾 Keep in game' }).click();
+  await page.getByText('Kept “New south of Start” in the game').waitFor();
+  assert(true, 'Keep in game copies it to the editor');
+
+  // A shop from the Shop menu: buy, then sell back.
+  await page.getByLabel('Open a shop').selectOption({ index: 1 });
+  await page.locator('.shop').waitFor();
+  const shopTc = page.locator('.tc', { hasText: 'Buyer:' });
+  const potions = async () =>
+    (await firstCard.locator('.it .nm').allInnerTexts()).filter((t) => t.startsWith('Potion')).reduce((n, t) => n + Number(t.match(/×(\d+)/)?.[1] ?? 1), 0);
+  await shopTc.getByRole('button', { name: /^Potion ·/ }).click();
+  await shopTc.getByText('Short by 🪙1 for Potion.').waitFor();
+  assert(true, 'short of gold, the host is asked');
+  await shopTc.getByRole('button', { name: 'Sell anyway' }).click();
+  assert((await potions()) === 2, 'selling anyway adds it to the buyer’s inventory');
+  assert((await shopTc.innerText()).includes('Player 1 🪙-1'), 'and their gold goes below zero');
+  await shopTc.getByRole('button', { name: /^Potion( ×\d+)? →/ }).first().click();
+  assert((await potions()) === 1, 'selling back takes one away');
+  await page.keyboard.press('Escape');
 
   // The player sheet.
   await page.keyboard.press('i');

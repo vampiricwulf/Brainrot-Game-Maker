@@ -26,7 +26,18 @@
 
   const maps = $derived(audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps);
   const stateOf = (m: WorldMap, s: Screen) => (audience ? mapState(st, m, s) : (st?.knowledge[s.id] ?? 'unknown'));
-  const here = (s: Screen) => players.filter((p) => st?.positions[p.id]?.screen === s.id && !st?.positions[p.id]?.hidden);
+  /** Screens by cell, per map (big maps look each cell up once instead of searching the list). */
+  const cells = $derived(new Map(maps.map((m) => [m.id, new Map(m.screens.map((s) => [`${s.col},${s.row}`, s]))])));
+  /** Players by screen. */
+  const byScreen = $derived.by(() => {
+    const out = new Map<string, Player[]>();
+    for (const p of players) {
+      const pos = st?.positions[p.id];
+      if (!pos || pos.hidden) continue;
+      out.set(pos.screen, [...(out.get(pos.screen) ?? []), p]);
+    }
+    return out;
+  });
 
   /** Audience arrows: open ways out of a known screen whose destination is still unknown to viewers. */
   function arrows(m: WorldMap, s: Screen) {
@@ -48,7 +59,7 @@
       <div class="grid" style:grid-template-columns="repeat({m.cols}, 1fr)" style:aspect-ratio="{m.cols * 16} / {m.rows * 9}">
         {#each Array.from({ length: m.rows }, (_, r) => r) as r (r)}
           {#each Array.from({ length: m.cols }, (_, c) => c) as c (c)}
-            {@const s = m.screens.find((x) => x.col === c && x.row === r)}
+            {@const s = cells.get(m.id)?.get(`${c},${r}`)}
             {@const k = s ? stateOf(m, s) : null}
             {#if s && k}
               {@const bg = s.slide.background.color ?? '#2f6b3a'}
@@ -66,7 +77,7 @@
               >
                 {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
                 <span class="dots">
-                  {#each here(s) as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
+                  {#each byScreen.get(s.id) ?? [] as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
                 </span>
                 {#each arrows(m, s) as d (d)}
                   <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>

@@ -13,7 +13,9 @@ import {
   type RpgRound,
   type Screen,
   type ScreenRef,
+  type ScreenVariant,
   type Session,
+  type Slide,
   type SlideElement,
   type World,
   type WorldMap,
@@ -209,7 +211,7 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const map = world.maps.find((m) => m.id === to.map);
   const screen = map?.screens.find((s) => s.id === to.screen);
   if (!screen) return;
-  const els = [...screen.slide.elements, ...(st.added[screen.id] ?? [])];
+  const els = [...screenSlide(st, screen).elements, ...(st.added[screen.id] ?? [])];
   const anchor =
     (arriveAt && els.find((e) => e.id === arriveAt)) || (!via ? els.find((e) => e.role?.class === 'spawn') : undefined);
   let cx = SLIDE_W / 2;
@@ -333,7 +335,7 @@ export function audienceSees(el: SlideElement, o: ObjectOverride | undefined): b
  */
 export function screenElements(st: WorldState | undefined, screen: Screen, audience: boolean): SlideElement[] {
   const out: SlideElement[] = [];
-  for (const el of [...screen.slide.elements, ...(st?.added[screen.id] ?? [])]) {
+  for (const el of [...screenSlide(st, screen).elements, ...(st?.added[screen.id] ?? [])]) {
     const o = st?.objects[el.id];
     if (o?.taken) continue;
     const seen = audienceSees(el, o);
@@ -341,6 +343,72 @@ export function screenElements(st: WorldState | undefined, screen: Screen, audie
     out.push({ ...el, x: o?.x ?? el.x, y: o?.y ?? el.y, secret: !seen || undefined } as SlideElement);
   }
   return out;
+}
+
+/** The look a screen has now: the variant the host switched to, else its own slide. */
+export function screenSlide(st: WorldState | undefined, screen: Screen): Slide {
+  const v = st?.variant?.[screen.id];
+  return (v && screen.variants?.find((x) => x.id === v)?.slide) || screen.slide;
+}
+
+/** A new look for a screen, copied from the one showing now. */
+export function newVariant(st: WorldState | undefined, screen: Screen, name: string): ScreenVariant {
+  const v: ScreenVariant = { id: newId(), name, slide: JSON.parse(JSON.stringify(screenSlide(st, screen))) };
+  // Fresh element ids, so taking or moving an object in one look doesn't change the other.
+  for (const el of v.slide.elements) el.id = newId();
+  return v;
+}
+
+/** An empty screen next to `at` in direction `dir`, if that cell is free and on the grid. */
+export function addScreenBeside(map: WorldMap, at: Screen, dir: Dir8, name?: string): Screen | null {
+  const [dx, dy] = DIR_VEC[dir];
+  const col = at.col + dx;
+  const row = at.row + dy;
+  if (col < 0 || row < 0 || screenAt(map, col, row)) return null;
+  // Grow the map when the new screen is past its edge.
+  map.cols = Math.max(map.cols, col + 1);
+  map.rows = Math.max(map.rows, row + 1);
+  const s = newScreen(col, row, name);
+  s.slide.background = { ...at.slide.background };
+  map.screens.push(s);
+  return s;
+}
+
+/**
+ * "Keep in game": copy a screen as it is in the game being played (its looks, and the objects added during play)
+ * into another copy of the game, adding its world or map there if they're missing. Returns what it did.
+ */
+export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef, st: WorldState | undefined): string {
+  const w = from.worlds?.find((x) => x.id === worldId);
+  const found = w && findIn(w, ref);
+  if (!w || !found) return 'That screen is gone';
+  const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
+  to.worlds ??= [];
+  let tw = to.worlds.find((x) => x.id === w.id);
+  if (!tw) {
+    tw = { ...clone(w), maps: [] };
+    to.worlds.push(tw);
+  }
+  let tm = tw.maps.find((m) => m.id === found.map.id);
+  if (!tm) {
+    tm = { ...clone(found.map), screens: [] };
+    tw.maps.push(tm);
+  }
+  tm.cols = Math.max(tm.cols, found.map.cols);
+  tm.rows = Math.max(tm.rows, found.map.rows);
+  const copy = clone(found.screen);
+  // Objects added during play become part of the look showing now.
+  const added = clone(st?.added[found.screen.id] ?? []);
+  const v = st?.variant?.[found.screen.id];
+  const look = (v && copy.variants?.find((x) => x.id === v)?.slide) || copy.slide;
+  look.elements.push(...added.filter((e) => !look.elements.some((x) => x.id === e.id)));
+  const i = tm.screens.findIndex((s) => s.id === copy.id);
+  // A different screen already in that cell (added in the editor meanwhile) keeps it: this one is not copied.
+  const clash = tm.screens.find((s) => s.col === copy.col && s.row === copy.row && s.id !== copy.id);
+  if (clash) return `${tm.name} already has “${clash.name}” in that spot in the editor`;
+  if (i >= 0) tm.screens[i] = copy;
+  else tm.screens.push(copy);
+  return `Kept “${copy.name}” in the game`;
 }
 
 export function override(st: WorldState, id: string): ObjectOverride {

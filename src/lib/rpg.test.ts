@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newShapeEl, newTextEl, type Game, type RpgRound, type Session, type World } from './model';
 import {
+  addScreenBeside,
   audienceSees,
+  keepScreen,
+  newVariant,
+  screenSlide,
   ensureWorld,
   exitOf,
   focusRef,
@@ -169,3 +173,48 @@ describe('RPG: what the audience sees', () => {
     expect(mapState(st, m, b1)).toBe('discovered');
   });
 });
+
+describe('RPG: improvising', () => {
+  it('switches a screen to another look, copied with fresh object ids', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const a1 = world.maps[0].screens[0];
+    a1.slide.elements.push(newTextEl('Village'));
+    const fire = newVariant(st, a1, 'On fire');
+    a1.variants = [fire];
+    expect(fire.slide.elements[0].id).not.toBe(a1.slide.elements[0].id);
+    expect(screenSlide(st, a1)).toBe(a1.slide);
+    st.variant = { [a1.id]: fire.id };
+    expect(screenSlide(st, a1)).toBe(fire.slide);
+    expect(screenElements(st, a1, true)[0].id).toBe(fire.slide.elements[0].id);
+  });
+
+  it('adds a screen beside the current one, growing the map past its edge', () => {
+    const { world } = setup();
+    const m = world.maps[0];
+    const c1 = screenAt(m, 2, 0)!;
+    expect(addScreenBeside(m, c1, 'w')).toBeNull(); // B1 is there
+    const d1 = addScreenBeside(m, c1, 'e', 'D1')!;
+    expect([d1.col, d1.row, m.cols]).toEqual([3, 0, 4]);
+    expect(exitOf(m, c1, 'e').kind).toBe('open');
+    expect(addScreenBeside(m, screenAt(m, 0, 0)!, 'n')).toBeNull(); // off the top
+  });
+
+  it('keeps a screen from the game being played in the editor’s copy, with the objects added in play', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const editor = JSON.parse(JSON.stringify(game)) as Game;
+    const m = world.maps[0];
+    const d1 = addScreenBeside(m, screenAt(m, 2, 0)!, 'e', 'D1')!;
+    const sign = newTextEl('Improvised');
+    st.added[d1.id] = [sign];
+    expect(keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st)).toBe('Kept “D1” in the game');
+    const kept = editor.worlds![0].maps[0].screens.find((s) => s.id === d1.id)!;
+    expect(kept.slide.elements.map((e) => e.id)).toEqual([sign.id]);
+    expect(editor.worlds![0].maps[0].cols).toBe(4);
+    // Kept again: replaced, not duplicated.
+    keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st);
+    expect(editor.worlds![0].maps[0].screens.filter((s) => s.id === d1.id)).toHaveLength(1);
+  });
+});
+

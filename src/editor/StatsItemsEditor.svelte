@@ -260,6 +260,18 @@
           </select>
         </label>
         <label class="small" title="Shops with the same pool name share their stock">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>
+        <label class="small" title="Players can sell items here for this share of the price (blank: it doesn't buy things back)">
+          Buys back at
+          <input
+            type="number"
+            class="n"
+            min="0"
+            max="100"
+            value={s.buysBack ? Math.round(s.buysBack.rate * 100) : ''}
+            placeholder="—"
+            oninput={(e) => (s.buysBack = e.currentTarget.value === '' ? undefined : { rate: Math.max(0, +e.currentTarget.value) / 100 })}
+          />%
+        </label>
         <span class="spacer"></span>
         <button class="ghost small" onclick={() => confirm(`Delete "${s.name}"?`) && (game.shops = (game.shops ?? []).filter((x) => x.id !== s.id))}>Delete shop</button>
       </div>

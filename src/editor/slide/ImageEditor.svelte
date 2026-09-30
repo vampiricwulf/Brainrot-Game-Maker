@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
-  import { app, toast } from '../../lib/app.svelte';
+  import { toast, editedGame } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
   import { newId, type ImageEdits, type ImageEl } from '../../lib/model';
   import { aspectCrop } from '../../lib/editing';
@@ -17,7 +17,7 @@
 
   let { el, onclose }: { el: ImageEl; onclose: () => void } = $props();
 
-  const game = app.game;
+  const game = editedGame();
   const source = $derived(game.media.find((m) => m.id === el.media));
   let edits = $state<ImageEdits>(untrack(() => ({ ...defaultEdits(), ...JSON.parse(JSON.stringify(el.edits ?? {})) })));
   // What the edits were when the editor opened: closing with anything else asks first. (Opening the

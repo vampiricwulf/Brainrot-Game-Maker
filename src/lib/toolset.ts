@@ -201,6 +201,27 @@ export function buy(
   return { ok: true, text: `${who} bought ${itemDef(game, itemId)?.name ?? 'an item'}${cost && cur ? ` for ${formatStat(cur, cost)}` : ''}` };
 }
 
+/** What a shop pays for an item it buys back (null = it doesn't). */
+export function sellPrice(game: Game, shop: Shop, itemId: string | null): number | null {
+  if (!shop.buysBack || !itemId) return null;
+  return Math.floor(shopPrice(game, shop, itemId) * shop.buysBack.rate);
+}
+
+/** A player sells one of an inventory entry back to a shop: they get the currency, the shop's stock goes up. */
+export function sell(game: Game, session: Session, shop: Shop, playerId: string, entryId: string): { ok: true; text: string } | { ok: false; error: string } {
+  const e = inventory(session, playerId).find((x) => x.id === entryId);
+  if (!e) return { ok: false, error: 'They don’t have that any more' };
+  const price = sellPrice(game, shop, e.item);
+  if (price === null) return { ok: false, error: `${shop.name} doesn’t buy things back` };
+  const cur = statFields(game).find((f) => f.id === shop.currency) ?? currencyFields(game)[0];
+  takeItem(session, playerId, e.item, 1);
+  if (cur && price) addStat(game, session, playerId, cur, price);
+  const left = stockLeft(session, shop, e.item!);
+  if (left !== null && shop.stock.some((x) => x.item === e.item)) setStock(session, shop, e.item!, left + 1);
+  const who = session.players.find((p) => p.id === playerId)?.name ?? 'Someone';
+  return { ok: true, text: `${who} sold ${entryName(game, e)}${cur && price ? ` for ${formatStat(cur, price)}` : ''}` };
+}
+
 // ---------- Action log (undo for everything that isn't score) ----------
 
 /** The part of a session the action log can put back. */

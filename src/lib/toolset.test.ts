@@ -10,6 +10,7 @@ import {
   logged,
   newStatField,
   redoAction,
+  sell,
   setStat,
   statValue,
   stockLeft,
@@ -104,6 +105,20 @@ describe('shops', () => {
     buy(game, session, village, 'a', 'sword');
     expect(stockLeft(session, realm, 'sword')).toBe(0);
     expect(buy(game, session, realm, 'a', 'sword')).toEqual({ ok: false, error: 'Sold out' });
+  });
+
+  it('buys things back for a share of the price, and restocks them', () => {
+    const { game, session } = setup();
+    const s = { ...shop('village'), buysBack: { rate: 0.5 } };
+    buy(game, session, s, 'a', 'sword');
+    const sword = inventory(session, 'a').find((e) => e.item === 'sword')!;
+    expect(sell(game, session, s, 'a', sword.id)).toEqual({ ok: true, text: 'Ann sold Sword for 🪙6' });
+    expect(statValue(game, session, 'a', game.statFields![1])).toBe(14);
+    expect(countItem(session, 'a', 'sword')).toBe(0);
+    expect(stockLeft(session, s, 'sword')).toBe(1);
+    giveItem(game, session, 'a', 'potion', 1);
+    const potion = inventory(session, 'a')[0];
+    expect(sell(game, session, shop('other'), 'a', potion.id)).toEqual({ ok: false, error: 'other doesn’t buy things back' });
   });
 });
 

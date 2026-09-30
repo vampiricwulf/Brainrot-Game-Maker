@@ -1,12 +1,13 @@
 <!-- One RPG screen: the slide editor with an Object section for classes, plus arrival points and catalog items. -->
 <script lang="ts">
-  import { app } from '../../lib/app.svelte';
-  import { newImageEl, newShapeEl, newTextEl, type Screen, type SlideElement, type World } from '../../lib/model';
+  import { editedGame } from '../../lib/app.svelte';
+  import { newImageEl, newShapeEl, newTextEl, type Screen, type Slide, type SlideElement, type World } from '../../lib/model';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import ObjectPanel from './ObjectPanel.svelte';
 
-  let { world, screen }: { world: World; screen: Screen } = $props();
-  const game = $derived(app.game);
+  /** `slide`: one of the screen's other looks, edited instead of its own slide. */
+  let { world, screen, slide }: { world: World; screen: Screen; slide?: Slide } = $props();
+  const game = $derived(editedGame());
   let itemsOpen = $state(false);
 
   function spawnPoint(): SlideElement {
@@ -27,7 +28,7 @@
   }
 </script>
 
-<SlideEditor slide={screen.slide} placeholder="Click to type" fill>
+<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill>
   {#snippet objectsection(el: SlideElement)}
     <ObjectPanel {el} {world} {screen} />
   {/snippet}

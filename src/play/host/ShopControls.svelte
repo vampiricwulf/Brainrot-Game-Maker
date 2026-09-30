@@ -6,7 +6,7 @@
   import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { Game, Session } from '../../lib/model';
-  import { buy, currencyFields, formatStat, itemDef, logged, setStock, shopPrice, statFields, statNumber, stockLeft } from '../../lib/toolset';
+  import { buy, currencyFields, entryName, inventory, sell, sellPrice, formatStat, itemDef, logged, setStock, shopPrice, statFields, statNumber, stockLeft } from '../../lib/toolset';
 
   let { game, session, shopId, selected }: { game: Game; session: Session; shopId: string; selected: string[] } = $props();
   const shop = $derived(game.shops?.find((s) => s.id === shopId));
@@ -29,6 +29,14 @@
       toast(result.text, 3000);
     } else if (result.error === 'Sold out') toast(`${itemDef(game, item)?.name} is sold out`);
     else short = { item, error: result.error };
+  }
+
+  function sellEntry(entryId: string): void {
+    if (!shop || !buyer) return;
+    const s = shop;
+    let result: ReturnType<typeof sell> | undefined;
+    logged(session, 'Shop: sell', () => (result = sell(game, session, s, buyer, entryId)));
+    if (result) toast(result.ok ? result.text : result.error, 3000);
   }
 
   function otherPrice(item: string): void {
@@ -73,6 +81,18 @@
       {/if}
     {/each}
   </div>
+  {#if shop.buysBack}
+    {@const sellable = inventory(session, buyer).filter((e) => sellPrice(game, shop, e.item) !== null)}
+    <div class="row">
+      <span class="muted small">Sell ({Math.round(shop.buysBack.rate * 100)}%):</span>
+      {#each sellable as e (e.id)}
+        {@const pr = sellPrice(game, shop, e.item) ?? 0}
+        <button class="small" onclick={() => sellEntry(e.id)}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''} → {cur ? formatStat(cur, pr) : pr}</button>
+      {:else}
+        <span class="muted small">Nothing to sell.</span>
+      {/each}
+    </div>
+  {/if}
   {#if short}
     {@const it = short.item}
     <div class="row warn">

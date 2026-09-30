@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, categoryLabel, isBoard, isFinal, roundName, type Action, type EmbedEl, type Game, type Slide } from './model';
+import { boardRounds, categoryLabel, isBoard, isFinal, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -26,13 +26,16 @@ export function allSlides(game: Game): SlideRef[] {
   for (const w of game.worlds ?? [])
     for (const m of w.maps)
       for (const sc of m.screens) {
-        const where = `${w.name} · ${m.name} · ${sc.name}`;
-        out.push({ slide: sc.slide, where });
-        for (const el of sc.slide.elements) {
-          if (el.role?.dialogue) out.push({ slide: el.role.dialogue, where: `${where} · ${el.name || 'object'} (dialogue)` });
-          for (const s of actionSlides(el.role?.actions)) out.push({ slide: s, where: `${where} · ${el.name || 'object'}` });
+        for (const look of [{ name: '', slide: sc.slide }, ...(sc.variants ?? [])]) {
+          const where = `${w.name} · ${m.name} · ${sc.name}${look.name ? ` (${look.name})` : ''}`;
+          out.push({ slide: look.slide, where });
+          for (const el of look.slide.elements) {
+            if (el.role?.dialogue) out.push({ slide: el.role.dialogue, where: `${where} · ${el.name || 'object'} (dialogue)` });
+            for (const s of actionSlides(el.role?.actions)) out.push({ slide: s, where: `${where} · ${el.name || 'object'}` });
+          }
         }
       }
+  for (const { name, outcome: o } of allOutcomes(game)) for (const s of actionSlides(o.actions)) out.push({ slide: s, where: `${name}: ${o.label}` });
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
   if (game.tiebreaker) {
     out.push({ slide: game.tiebreaker.questionSlide, where: 'Tiebreaker (question)' });
@@ -106,9 +109,11 @@ export function extraMediaRefs(game: Game): string[] {
       if (m.music) out.push(m.music);
       for (const sc of m.screens) {
         if (sc.music) out.push(sc.music);
-        for (const el of sc.slide.elements) for (const a of el.role?.actions ?? []) if (a.do === 'sound') out.push(a.media);
+        for (const look of [sc.slide, ...(sc.variants ?? []).map((v) => v.slide)])
+          for (const el of look.elements) for (const a of el.role?.actions ?? []) if (a.do === 'sound') out.push(a.media);
       }
     }
+  for (const { outcome } of allOutcomes(game)) for (const a of outcome.actions ?? []) if (a.do === 'sound') out.push(a.media);
   return out;
 }
 
@@ -127,4 +132,15 @@ export function onlineCount(game: Game): number {
 /** Does a slide show anything besides empty text? */
 export function slideHasContent(slide: Slide): boolean {
   return slide.elements.some((e) => e.kind !== 'text' || e.text.trim() !== '');
+}
+
+/** Every wheel slice, die face and dice-total outcome in the game. */
+export function allOutcomes(game: Game): { name: string; outcome: Outcome }[] {
+  const out: { name: string; outcome: Outcome }[] = [];
+  for (const w of game.wheels) for (const o of w.segments) out.push({ name: w.name, outcome: o });
+  for (const d of game.dice) {
+    for (const die of d.dice) for (const f of die.customFaces ?? []) out.push({ name: d.name, outcome: f });
+    for (const t of d.totalOutcomes ?? []) out.push({ name: d.name, outcome: t.outcome });
+  }
+  return out;
 }

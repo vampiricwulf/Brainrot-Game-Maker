@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { app, toast } from '../lib/app.svelte';
+  import { app, toast, editedGame } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, addMediaLink, canPlay, formatBytes, type LinkAdded } from '../lib/media.svelte';
   import { isAbort, LinkError } from '../lib/download';
   import { DRIVE_SHARE_HINT, driveUrls, isLinkProblem, linkMessages, parseMediaLink, type LinkKind, type MediaLink } from '../lib/links';
@@ -78,7 +78,7 @@
     const ctl = (controller = new AbortController());
     busy = { loaded: 0 };
     try {
-      const added = await addMediaLink(app.game, link, kind, {
+      const added = await addMediaLink(editedGame(), link, kind, {
         signal: ctl.signal,
         onprogress: (loaded, total) => (busy = { loaded, total }),
         confirmBig: (bytes, known) =>
@@ -140,7 +140,7 @@
     const file = await pickFile(ACCEPT[want ?? 'any']);
     if (!file) return;
     try {
-      const ref = await addMediaFile(app.game, file, file.name, { source: drive?.link.source });
+      const ref = await addMediaFile(editedGame(), file, file.name, { source: drive?.link.source });
       drive = null;
       text = '';
       onmedia(ref, null);

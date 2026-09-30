@@ -20,6 +20,8 @@ export const app = $state<{
   toast: string;
   /** IndexedDB autosave works in this browser. */
   storageOk: boolean;
+  /** Set while the host edits the game being played (a screen live): the slide editors work on it instead. */
+  editGame: Game | null;
 }>({
   screen: 'editor',
   game: newGame(),
@@ -30,7 +32,13 @@ export const app = $state<{
   live: newLive(),
   toast: '',
   storageOk: true,
+  editGame: null,
 });
+
+/** The game the editing components change: the one being played while it's edited live, else the editor's. */
+export function editedGame(): Game {
+  return app.editGame ?? app.game;
+}
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export function toast(msg: string, ms = 2500): void {

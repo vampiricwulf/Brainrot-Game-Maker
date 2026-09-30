@@ -1,6 +1,6 @@
 <!-- RPG screens: what the selected item is (its class), what it does, and whether viewers see it. -->
 <script lang="ts">
-  import { app } from '../../lib/app.svelte';
+  import { editedGame } from '../../lib/app.svelte';
   import { textSlide, type ObjectClass, type Screen, type SlideElement, type World } from '../../lib/model';
   import { findIn } from '../../lib/rpg';
   import { currencyFields } from '../../lib/toolset';
@@ -9,7 +9,7 @@
   import SlideModal from './SlideModal.svelte';
 
   let { el, world, screen }: { el: SlideElement; world: World; screen: Screen } = $props();
-  const game = $derived(app.game);
+  const game = $derived(editedGame());
   let dialogueOpen = $state(false);
 
   const CLASSES: [ObjectClass | '', string, string][] = [
@@ -91,6 +91,7 @@
           </div>
         {/each}
         <button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button>
+        {#if r.stats?.length}<label class="check small"><input type="checkbox" bind:checked={r.statsShown} /> Viewers see its stats</label>{/if}
       </div>
       <div class="row">
         <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? 'Edit dialogue slide…' : '＋ Dialogue slide'}</button>

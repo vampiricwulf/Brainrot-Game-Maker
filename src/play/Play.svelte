@@ -23,7 +23,8 @@
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
-  import { regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { addLive, droppedFile, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { Dir8 } from '../lib/model';
   import {
     audience,
@@ -469,6 +470,27 @@
     rpgObject = null;
   }
 
+  /** Files dropped on the stage in an RPG round become hidden objects on the screen the audience follows. */
+  async function dropOnStage(e: DragEvent): Promise<void> {
+    if (session.phase !== 'rpg' || !e.dataTransfer?.files.length) return;
+    e.preventDefault();
+    const box = (e.currentTarget as HTMLElement).querySelector('.stage')?.getBoundingClientRect();
+    const at = box
+      ? { x: ((e.clientX - box.left) / box.width) * SLIDE_W, y: ((e.clientY - box.top) / box.height) * SLIDE_H }
+      : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    for (const file of Array.from(e.dataTransfer.files)) {
+      try {
+        const el = await droppedFile(game, file, at);
+        if (addLive(game, session, el, `Added ${el.name}`)) {
+          rpgObject = el.id;
+          toast(`Added ${el.name}, hidden: reveal it from its card`, 3000);
+        }
+      } catch (err) {
+        toast(err instanceof Error ? err.message : String(err), 4000);
+      }
+    }
+  }
+
   /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
   function avatarAct(id: string, at?: { x: number; y: number }): void {
     const { st } = rpgNow(game, session);
@@ -554,7 +576,8 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (app.pregame || showPlayers || showKeys || showSound) return;
+    // The live screen editor (RPG) has its own keys.
+    if (app.pregame || showPlayers || showKeys || showSound || app.editGame) return;
     const t = e.target as HTMLElement;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'.
     if (t.closest('input, textarea, select, [contenteditable]')) return;
@@ -778,7 +801,12 @@
 {:else}
   <div class="play" class:hidden={hideControls}>
     <div class="stage-area" class:dual>
-      <div class="stage-box">
+      <div
+        class="stage-box"
+        role="presentation"
+        ondragover={(e) => session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault()}
+        ondrop={dropOnStage}
+      >
         <Stage>
           <AudienceView
             {game}

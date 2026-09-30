@@ -9,7 +9,7 @@
   import { toast } from '../../lib/app.svelte';
   import { newId, type Dir8, type Screen, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
-  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newWorldMap, screenAt } from '../../lib/rpg';
+  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newVariant, newWorldMap, screenAt } from '../../lib/rpg';
   import MediaPicker from '../slide/MediaPicker.svelte';
   import ScreenEditor from './ScreenEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -18,10 +18,13 @@
   let mapId = $state<string | null>(null);
   let selId = $state<string | null>(null);
   let editing = $state(false);
+  /** Which look of the screen is being edited (null: its own slide). */
+  let lookId = $state<string | null>(null);
   let musicFor = $state<'map' | 'screen' | null>(null);
 
   const map = $derived(world.maps.find((m) => m.id === mapId) ?? world.maps[0]);
   const sel = $derived(map?.screens.find((s) => s.id === selId));
+  const look = $derived(sel?.variants?.find((v) => v.id === lookId));
 
   function addMap(): void {
     const m = newWorldMap(`Area ${world.maps.length}`, 3, 3, false);
@@ -116,10 +119,10 @@
   <div class="screen-edit">
     <div class="row">
       <button onclick={() => (editing = false)}>◀ Back to the map</button>
-      <b>{map.name} · {sel.name}</b>
+      <b>{map.name} · {sel.name}{look ? ` (${look.name})` : ''}</b>
       <span class="muted small">Give items a class in the inspector's Object section (doorway, item, character…).</span>
     </div>
-    {#key sel.id}<div class="se-wrap"><ScreenEditor {world} screen={sel} /></div>{/key}
+    {#key `${sel.id}:${lookId}`}<div class="se-wrap"><ScreenEditor {world} screen={sel} slide={look?.slide} /></div>{/key}
   </div>
 {:else}
   <div class="we">
@@ -207,9 +210,22 @@
             <h4>Screen</h4>
             <label class="field">Name<input bind:value={sel.name} /></label>
             <div class="row">
-              <button class="primary" onclick={() => (editing = true)}>✎ Edit screen</button>
+              <button class="primary" onclick={() => ((lookId = null), (editing = true))}>✎ Edit screen</button>
               <button class="small" onclick={() => duplicateScreen(sel)}>⧉ Duplicate</button>
               <button class="ghost small" onclick={() => removeScreen(sel)}>Delete</button>
+            </div>
+            <div class="looks">
+              <span class="muted small" title="Other looks for the same place, switched in play (the village, on fire)">Other looks:</span>
+              {#each sel.variants ?? [] as v, i (v.id)}
+                <span class="look">
+                  <input bind:value={v.name} aria-label="Look name" />
+                  <button class="small" onclick={() => ((lookId = v.id), (editing = true))}>✎</button>
+                  <button class="ghost small" onclick={() => sel.variants?.splice(i, 1)} aria-label="Delete look {v.name}">✕</button>
+                </span>
+              {/each}
+              <button class="small" onclick={() => (sel.variants = [...(sel.variants ?? []), newVariant(undefined, sel, `Look ${(sel.variants?.length ?? 0) + 2}`)])}>
+                ＋ Look (a copy)
+              </button>
             </div>
             <div class="row nudge">
               <span class="muted small">Move:</span>
@@ -274,6 +290,19 @@
 {/if}
 
 <style>
+  .looks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .look {
+    display: inline-flex;
+    gap: 2px;
+  }
+  .look input {
+    width: 110px;
+  }
   .we {
     display: flex;
     flex-direction: column;

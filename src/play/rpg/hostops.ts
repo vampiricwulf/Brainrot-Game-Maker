@@ -2,6 +2,8 @@
 import { isRpg, newImageEl, newTextEl, type Dir8, type Game, type InventoryEntry, type ScreenRef, type Session, type SlideElement } from '../../lib/model';
 import { DIR_NAME, findIn, focusRef, regroup, splitParty, step, worldById } from '../../lib/rpg';
 import { entryName, itemDef, logged } from '../../lib/toolset';
+import { addMediaFile } from '../../lib/media.svelte';
+import { newAudioEl, newVideoEl } from '../../lib/model';
 
 /** The RPG round being played, its world and the world's state (all undefined outside an RPG round). */
 export function rpgNow(game: Game, session: Session) {
@@ -79,6 +81,39 @@ export function objectAt(game: Game, session: Session, elId: string) {
       if (el) return { world, st, map, screen, el };
     }
   return null;
+}
+
+/** Put an improvised object on the screen the audience follows. It starts hidden (the host reveals it). */
+export function addLive(game: Game, session: Session, el: SlideElement, text: string): boolean {
+  const { st } = rpgNow(game, session);
+  const at = st && focusRef(st);
+  if (!st || !at) return false;
+  el.secret = true;
+  logged(session, text, () => {
+    st.added[at.screen] ??= [];
+    st.added[at.screen].push(el);
+  });
+  return true;
+}
+
+/** Text typed onto the stage. */
+export function liveText(text: string): SlideElement {
+  const el = { ...newTextEl(text), size: 72, w: 1200, h: 200, x: 360, y: 440 };
+  el.name = text.length > 24 ? `${text.slice(0, 24)}…` : text;
+  return el;
+}
+
+/** A file dropped on the stage: added to the game being played, then shown where it was dropped. */
+export async function droppedFile(game: Game, file: File, at: { x: number; y: number }): Promise<SlideElement> {
+  const ref = await addMediaFile(game, file);
+  const el = ref.kind === 'image' ? newImageEl(ref.id, 480, 480) : ref.kind === 'video' ? newVideoEl(ref.id) : ref.kind === 'audio' ? newAudioEl(ref.id) : null;
+  if (!el) throw new Error(`“${file.name}” can’t go on a screen`);
+  if (el.kind !== 'audio') {
+    el.x = Math.round(at.x - el.w / 2);
+    el.y = Math.round(at.y - el.h / 2);
+  }
+  el.name = ref.name;
+  return el;
 }
 
 export { findIn, focusRef };

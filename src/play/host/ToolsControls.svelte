@@ -10,7 +10,10 @@
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
-  import { newId } from '../../lib/model';
+  import { newId, type Action } from '../../lib/model';
+  import { describeAction, needsPlayers, runAction } from '../../lib/actions';
+  import { toast } from '../../lib/app.svelte';
+  import { rpgNow } from '../rpg/hostops';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
@@ -24,7 +27,7 @@
 
   const outcome = $derived.by((): Outcome | undefined => {
     if (o?.kind === 'wheel' && o.result !== null && o.spin) return o.segments[o.result];
-    if (o?.kind === 'dice' && o.roll) return o.roll.totalOutcome ?? o.roll.dice.find((d) => d.face?.scoreAction || d.face?.timerSeconds)?.face;
+    if (o?.kind === 'dice' && o.roll) return o.roll.totalOutcome ?? o.roll.dice.find((d) => d.face?.scoreAction || d.face?.timerSeconds || d.face?.actions?.length)?.face;
     return undefined;
   });
   const resultText = $derived.by(() => {
@@ -40,6 +43,14 @@
   const picked = $derived(
     o?.kind === 'wheel' && o.players && o.result !== null && o.spin ? session.players.find((p) => p.id === o.segments[o.result!]?.id) : undefined,
   );
+
+  /** A slice's action button: for the players it was tagged for (or the one the player wheel picked), else the selected. */
+  function runOutcome(a: Action): void {
+    const chosen = picked ? [picked.id] : (lastRoll?.playerIds ?? []);
+    if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
+    const { world, st } = rpgNow(game, session);
+    toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a), 3000);
+  }
 
   function tag(id: string): void {
     if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !lastRoll) return;
@@ -89,6 +100,12 @@
       {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}
       <button onclick={onclose} title="Esc">Close</button>
     </div>
+    {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
+      <div class="row">
+        <span class="muted small">{outcome.label}:</span>
+        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a)}>{describeAction(game, a)}</button>{/each}
+      </div>
+    {/if}
     {#if o.kind === 'shop'}
       <ShopControls {game} {session} shopId={o.shopId} {selected} />
     {/if}

@@ -6,13 +6,14 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
-  import type { Dir8, Game, ScreenRef, Session } from '../../lib/model';
-  import { activeParty, DIR_ARROW, DIR_NAME, DIRS, exitOf, findIn, focusRef, moveTo, screenElements } from '../../lib/rpg';
+  import { newId, type Dir8, type Game, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
+  import { activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, newVariant, screenElements, screenAt } from '../../lib/rpg';
+  import LiveScreenEditor from './LiveScreenEditor.svelte';
   import { lastAction, logged } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard from './PlayerCard.svelte';
-  import { focusParty, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap } from './hostops';
+  import { addLive, focusParty, liveText, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap } from './hostops';
 
   let {
     game,
@@ -35,6 +36,66 @@
   /** A screen picked on the host map, waiting for "Move here". */
   let picked = $state<ScreenRef | null>(null);
   const pickedFound = $derived(picked && world ? findIn(world, picked) : null);
+
+  /** The screen (and which of its looks) open in the live editor. */
+  let live = $state<{ screen: Screen; slide: Slide; title: string } | null>(null);
+  const variantId = $derived(here && st?.variant?.[here.screen.id]);
+  /** Directions with room for a new screen next to this one. */
+  const freeDirs = $derived(
+    here
+      ? DIRS.filter((d) => {
+          const [dx, dy] = DIR_VEC[d];
+          const c = here.screen.col + dx;
+          const r = here.screen.row + dy;
+          return c >= 0 && r >= 0 && !screenAt(here.map, c, r);
+        })
+      : [],
+  );
+
+  function editLive(): void {
+    if (!here) return;
+    const v = here.screen.variants?.find((x) => x.id === variantId);
+    live = { screen: here.screen, slide: v?.slide ?? here.screen.slide, title: `${here.screen.name}${v ? ` (${v.name})` : ''}` };
+  }
+
+  function addScreen(d: Dir8): void {
+    if (!here) return;
+    const s = addScreenBeside(here.map, here.screen, d, `New ${DIR_NAME[d].toLowerCase()} of ${here.screen.name}`);
+    if (!s) return void toast('There’s already a screen that way');
+    toast(`Added “${s.name}”: the party can go ${DIR_NAME[d].toLowerCase()} now`, 3000);
+    live = { screen: s, slide: s.slide, title: s.name };
+  }
+
+  function setLook(v: string): void {
+    if (!here || !st) return;
+    const screen = here.screen;
+    if (v === '+') {
+      const name = prompt('Name of the new look (e.g. On fire):', 'New look')?.trim();
+      if (!name) return;
+      const look = newVariant(st, screen, name);
+      screen.variants = [...(screen.variants ?? []), look];
+      logged(session, `${screen.name}: ${name}`, () => ((st.variant ??= {}), (st.variant[screen.id] = look.id)));
+      live = { screen, slide: screen.variants.at(-1)!.slide, title: `${screen.name} (${name})` };
+      return;
+    }
+    const name = screen.variants?.find((x) => x.id === v)?.name ?? 'the original look';
+    logged(session, `${screen.name}: ${name}`, () => {
+      st.variant ??= {};
+      if (v) st.variant[screen.id] = v;
+      else delete st.variant[screen.id];
+    });
+  }
+
+  function addText(): void {
+    const text = prompt('Text to put on the screen (hidden until you reveal it):')?.trim();
+    if (text && addLive(game, session, liveText(text), `Text: ${text}`)) toast('Added, hidden: reveal it from its card');
+  }
+
+  function keep(): void {
+    if (!here || !world) return;
+    if (app.game.id !== game.id) return void toast('The editor has a different game open, so there’s nowhere to keep it');
+    toast(keepScreen(game, app.game, world.id, { map: here.map.id, screen: here.screen.id }, st), 4000);
+  }
 
   const PAD: (Dir8 | null)[] = ['nw', 'n', 'ne', 'w', null, 'e', 'sw', 's', 'se'];
 
@@ -84,9 +145,65 @@
         <button class="small" onclick={() => regroupAll(game, session)} title="G: everyone back together, here">🤝 Regroup</button>
         <button class="small" class:on={st.split} onclick={() => (st.split = !st.split)} title="Show every party's screen at once">▦ Split view</button>
       {/if}
+      {#if game.shops?.length}
+        <select
+          class="small"
+          aria-label="Open a shop"
+          onchange={(e) => {
+            const id = e.currentTarget.value;
+            e.currentTarget.value = '';
+            e.currentTarget.blur();
+            if (id) app.live.overlay = { kind: 'shop', nonce: newId(), shopId: id };
+          }}
+        >
+          <option value="">🛒 Shop…</option>
+          {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
+        </select>
+      {/if}
       <button class="small" class:on={st.mapShown} onclick={() => toggleMap(game, session)} title="M: the map on screen">🗺 Map</button>
       <button class="small" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="B: viewers see only a 'Be right back' card">
         ⏸ Cover
+      </button>
+    </div>
+
+    <div class="row improv">
+      <span class="muted small">Improvise:</span>
+      <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>
+      <select
+        class="small"
+        aria-label="Add a screen"
+        disabled={!freeDirs.length}
+        onchange={(e) => {
+          const d = e.currentTarget.value as Dir8;
+          e.currentTarget.value = '';
+          e.currentTarget.blur();
+          if (d) addScreen(d);
+        }}
+      >
+        <option value="">＋ Screen…</option>
+        {#each freeDirs as d (d)}<option value={d}>{DIR_ARROW[d]} {DIR_NAME[d]}</option>{/each}
+      </select>
+      <select
+        class="small"
+        aria-label="Look"
+        value={variantId ?? ''}
+        onchange={(e) => {
+          const v = e.currentTarget.value;
+          e.currentTarget.value = variantId ?? '';
+          e.currentTarget.blur();
+          setLook(v);
+        }}
+        title="Other looks for this screen (the village, on fire)"
+      >
+        <option value="">🎭 Original look</option>
+        {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
+        <option value="+">＋ New look (a copy)…</option>
+      </select>
+      <button class="small" onclick={addText} title="Type text onto the screen">＋ Text</button>
+      <span class="muted small">or drop a picture on the stage</span>
+      <span class="spacer"></span>
+      <button class="small" onclick={keep} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
+        💾 Keep in game
       </button>
     </div>
 
@@ -179,6 +296,9 @@
       </div>
     {/if}
   </div>
+  {#if live}
+    <LiveScreenEditor {world} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
+  {/if}
 {:else}
   <div class="muted">This RPG round has no world to play (pick one in the editor).</div>
 {/if}
@@ -210,6 +330,10 @@
   .on {
     border-color: var(--accent);
     background: rgba(79, 124, 255, 0.25);
+  }
+  .top select,
+  .improv select {
+    padding: 2px 6px;
   }
   .main {
     display: flex;

@@ -312,6 +312,8 @@ export interface Outcome {
   /** Countdown started on reveal (e.g. a 30-second punishment). */
   timerSeconds?: number;
   scoreAction?: ScoreAction;
+  /** Buttons shown when it lands (move, give an item, change a stat…), run only when the host presses them. */
+  actions?: Action[];
 }
 
 export interface WheelSegment extends Outcome {
@@ -598,6 +600,8 @@ export interface Shop {
   stock: { item: Id; price?: number; qty: number | null }[];
   /** Shops with the same pool share their stock (e.g. the Village shop and the Shadow Realm shop). */
   pool?: string;
+  /** Players can sell items here for this share of the price (0.5 = half). */
+  buysBack?: { rate: number };
 }
 
 /** Who an action applies to when it runs: the moving party, the selected players, the picker, or the host picks. */
@@ -652,6 +656,14 @@ export interface Screen {
   hostNotes?: string;
   /** Looping music while the party is here (overrides the map's). */
   music?: Id;
+  /** Other looks for the same place ("the village, on fire"); the host switches between them in play. */
+  variants?: ScreenVariant[];
+}
+
+export interface ScreenVariant {
+  id: Id;
+  name: string;
+  slide: Slide;
 }
 
 export interface WorldMap {
@@ -702,6 +714,8 @@ export interface ObjectRole {
   shop?: Id;
   /** npc: its own numbers (power, HP…), editable during the game. */
   stats?: { name: string; value: number }[];
+  /** npc: viewers see its stats as a badge over it. */
+  statsShown?: boolean;
   /** npc / interactable: a slide shown when talked to or used. */
   dialogue?: Slide;
   /** Buttons on its action card (always confirmed by the host). */
@@ -758,6 +772,8 @@ export interface WorldState {
   /** Objects the host added during the game, by screen id. */
   added: Record<Id, SlideElement[]>;
   mapShown: boolean;
+  /** The variant each screen is showing (by screen id; none = the screen's own slide). */
+  variant?: Record<Id, Id>;
   /** Which way the last move went (for the flip-screen transition). */
   lastMove?: { dir: Dir8 | 'warp'; at: number };
 }

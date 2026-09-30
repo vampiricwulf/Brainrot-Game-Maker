@@ -4,12 +4,13 @@
   import { imgFallback, mediaUrls } from '../../lib/media.svelte';
   import type { MediaKind, Outcome, ScoreAction } from '../../lib/model';
   import MediaPicker from '../slide/MediaPicker.svelte';
+  import ActionListEditor from '../rpg/ActionListEditor.svelte';
 
   let { outcome, placeholder = 'Label' }: { outcome: Outcome; placeholder?: string } = $props();
   let open = $state(false);
   let picking = $state<MediaKind | null>(null);
   const media = $derived(outcome.media ? app.game.media.find((m) => m.id === outcome.media) : undefined);
-  const extras = $derived(!!(outcome.details || outcome.media || outcome.timerSeconds || outcome.scoreAction));
+  const extras = $derived(!!(outcome.details || outcome.media || outcome.timerSeconds || outcome.scoreAction || outcome.actions?.length));
 
   const ACTIONS: [ScoreAction['kind'], string][] = [
     ['addPoints', '+/− points'],
@@ -101,6 +102,8 @@
           {/if}
         </div>
       {/if}
+      <div class="muted small">Buttons when it lands (the host presses them): move, stats, items, pop-ups…</div>
+      <ActionListEditor bind:actions={outcome.actions} world={app.game.worlds?.[0]} />
     </div>
   {/if}
 </div>
