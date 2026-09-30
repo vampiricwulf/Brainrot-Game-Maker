@@ -14,6 +14,7 @@
   import { describeAction, needsPlayers, runAction } from '../../lib/actions';
   import { toast } from '../../lib/app.svelte';
   import { rpgNow } from '../rpg/hostops';
+  import { setPicker } from '../../lib/toolset';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
@@ -201,7 +202,7 @@
         {#if session.currentPickerId === picked.id}
           <span class="muted small">★ {picked.name} picks the next clue.</span>
         {:else}
-          <button class="small" onclick={() => (session.currentPickerId = picked.id)} title="Mark them as the player who picks the next clue">
+          <button class="small" onclick={() => setPicker(session, picked.id)} title="Mark them as the player who picks the next clue">
             ★ Make {picked.name} the picker
           </button>
         {/if}

@@ -34,7 +34,10 @@ export type AudienceEvent =
   // A game sound played or was blocked (test: the nonce of a Test sound), or the chosen output is missing there.
   | SoundReport;
 
-export type AudienceMsg = { type: 'hello' } | { type: 'audience-event'; event: AudienceEvent } | { type: 'bye' };
+/** A key pressed in the audience window, for the host's shortcuts (the host clicked it to allow sound, and kept typing). */
+export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'>;
+
+export type AudienceMsg = { type: 'hello' } | { type: 'audience-event'; event: AudienceEvent } | { type: 'key'; key: AudienceKey } | { type: 'bye' };
 
 /** Envelope on the BroadcastChannel (it also reaches other same-origin tabs, so say who's talking). */
 export type ChannelMsg = { from: 'host'; msg: HostMsg } | { from: 'audience'; msg: AudienceMsg };
@@ -155,9 +158,20 @@ function fromAudience(msg: AudienceMsg): void {
       if (ev.kind === 'sound' && ev.ok) audience.activated = true;
       onSound(ev);
     }
+  } else if (msg?.type === 'key') {
+    keyHandler?.(msg.key);
   } else if (msg?.type === 'bye' && !win) {
     markClosed();
   }
+}
+
+let keyHandler: ((key: AudienceKey) => void) | null = null;
+/** Keys pressed in the audience window go to `fn` (Play's shortcuts). Returns the function that stops it. */
+export function onAudienceKey(fn: (key: AudienceKey) => void): () => void {
+  keyHandler = fn;
+  return () => {
+    if (keyHandler === fn) keyHandler = null;
+  };
 }
 
 if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH) {

@@ -13,7 +13,23 @@
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
   import { boardNow, busyZones, moveNow, playerName, rollMover, turnNow } from './bgops';
 
-  let { game, session, selected = $bindable(), dual }: { game: Game; session: Session; selected: string[]; dual: boolean } = $props();
+  let {
+    game,
+    session,
+    selected = $bindable(),
+    steps = $bindable(null),
+    dual,
+    onhistory,
+  }: {
+    game: Game;
+    session: Session;
+    selected: string[];
+    /** The steps to move, typed or rolled (Enter moves them too). */
+    steps?: number | null;
+    dual: boolean;
+    /** Open the 📜 Log's history. */
+    onhistory?: () => void;
+  } = $props();
 
   const now_ = $derived(boardNow(game, session));
   const round = $derived(now_.round);
@@ -34,7 +50,6 @@
   const recent = $derived(lastAction(session, session.currentRound));
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
-  let steps = $state<number | null>(null);
   const showPlayers = $derived(cardsShown());
 
   // A new turn starts with no count: the last player's roll isn't theirs.
@@ -137,10 +152,7 @@
       {/each}
       <button class="ghost small" onclick={shuffle}>🔀 Shuffle</button>
       <span class="spacer"></span>
-      <button class="small" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="B: viewers see only a 'Be right back' card">
-        ⏸ Cover
-      </button>
-      <button class="small" onclick={() => turnNow(game, session, -1)}>◀ Previous turn</button>
+      <button class="small" onclick={() => turnNow(game, session, -1)} title="Shift+N">◀ Previous turn</button>
       <button class="primary" onclick={() => turnNow(game, session, 1)} title="N">Next turn ▶</button>
     </div>
 
@@ -175,7 +187,7 @@
           }}
         />
       </label>
-      <button class="good" disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter in the box">▶ Move {turnName} {steps ?? ''}</button>
+      <button class="good" disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">▶ Move {turnName} {steps ?? ''}</button>
       <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>◀ Back {steps ?? ''}</button>
       {/if}
       <span class="spacer"></span>
@@ -255,7 +267,7 @@
         {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}
       {/if}
       <span class="spacer"></span>
-      {#if recent}<span class="muted small last" title="Ctrl+Z undoes it">Last: {recent.text}</span>{/if}
+      {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {recent.text}</button>{/if}
       <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} Players</button>
     </div>
     {#if showPlayers}
@@ -295,10 +307,6 @@
     border-radius: 8px;
     font-size: 12px;
   }
-  .on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.25);
-  }
   .ord .nm {
     padding: 1px 6px;
     border-radius: 4px;
@@ -324,10 +332,16 @@
     font-size: 12px;
   }
   .last {
+    padding: 0;
+    border: none;
+    background: none;
     max-width: 300px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .last:hover {
+    text-decoration: underline;
   }
   .cards {
     display: flex;

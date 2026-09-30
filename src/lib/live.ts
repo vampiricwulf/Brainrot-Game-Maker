@@ -158,6 +158,21 @@ export function toggleTimer(live: Live): void {
   }
 }
 
+/**
+ * Give the countdown `seconds` more (negative: take them away, down to none left) without restarting it. Time added
+ * after it ran out starts it again.
+ */
+export function addTime(live: Live, seconds: number): void {
+  const t = live.timer;
+  if (!t) return;
+  if (t.expired) {
+    if (seconds <= 0) return;
+    Object.assign(t, { total: t.elapsed + seconds, startedAt: Date.now(), expired: false });
+    return;
+  }
+  t.total += Math.max(seconds, -timerRemaining(t));
+}
+
 export function playSound(live: Live, media: string | undefined): void {
   live.sound = media ? { media, nonce: newId() } : null;
 }

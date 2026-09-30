@@ -16,7 +16,9 @@
   import RpgHost from './rpg/RpgHost.svelte';
   import type { RpgAsk } from './rpg/hostops';
   import BoardHost from './boardgame/BoardHost.svelte';
+  import type { LogTab } from './ScoreLog.svelte';
   import { app } from '../lib/app.svelte';
+  import { setPicker } from '../lib/toolset';
   import type { Snippet } from 'svelte';
 
   let {
@@ -29,6 +31,9 @@
     rpgAsk = $bindable(null),
     wagerLimitsOff = $bindable(false),
     timerSeconds = $bindable(null),
+    bgSteps = $bindable(null),
+    undoText = null,
+    redoText = null,
     dual,
     pickerPending = false,
     finishArmed = false,
@@ -77,6 +82,11 @@
     wagerLimitsOff?: boolean;
     /** Seconds typed in the timer box (T uses them too). */
     timerSeconds?: number | null;
+    /** Board-game rounds: the steps to move (Enter moves them too). */
+    bgSteps?: number | null;
+    /** What ↶ Undo would take back next (null: nothing), and ↷ Redo bring back. */
+    undoText?: string | null;
+    redoText?: string | null;
     dual: boolean;
     /** P was pressed and the next number key picks the picker. */
     pickerPending?: boolean;
@@ -112,7 +122,8 @@
     ontiebreaker: () => void;
     ontiebreakerdone: () => void;
     onrolloff?: (ids: string[]) => void;
-    onlog: () => void;
+    /** Open or close the 📜 Log (with a tab: open it on that tab). */
+    onlog: (tab?: LogTab) => void;
     onplayers: () => void;
     onhide: () => void;
     onexit: () => void;
@@ -127,8 +138,6 @@
   const round = $derived(game.rounds[session.currentRound]);
   const finalRound = $derived(currentFinal(session, game));
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
-  const canUndo = $derived(session.scoreLog.some((e) => !e.undone) || !!session.actionLog?.length);
-  const canRedo = $derived(!!session.redoStack.length || !!session.actionRedo?.length);
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
@@ -254,8 +263,8 @@
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
       <span class="muted hint">
-        {round?.mode === 'boardgame' && round.mover.kind === 'step' ? 'Pick the way (→ buttons)' : 'D rolls or spins, then ▶ Move'} · N next turn · click a player's
-        name to select them
+        {round?.mode === 'boardgame' && round.mover.kind === 'step' ? 'Pick the way (→ buttons, or Enter when there’s one)' : 'D rolls or spins, then ▶ Move (Enter)'} · N
+        next turn (Shift+N back) · click a player's name to select them
       </span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
@@ -296,11 +305,13 @@
   {/if}
 
   {#if session.phase === 'boardgame'}
-    <div class="mode-host"><BoardHost {game} {session} bind:selected {dual} /></div>
+    <div class="mode-host"><BoardHost {game} {session} bind:selected bind:steps={bgSteps} {dual} onhistory={() => onlog('history')} /></div>
   {/if}
 
   {#if session.phase === 'rpg'}
-    <div class="mode-host"><RpgHost {game} {session} bind:selected bind:object={rpgObject} bind:mapOpen={rpgMap} bind:ask={rpgAsk} {dual} /></div>
+    <div class="mode-host">
+      <RpgHost {game} {session} bind:selected bind:object={rpgObject} bind:mapOpen={rpgMap} bind:ask={rpgAsk} {dual} onhistory={() => onlog('history')} />
+    </div>
   {/if}
 
   {#if session.phase === 'end'}
@@ -324,7 +335,7 @@
               { label: on ? 'Deselect' : 'Select', onclick: () => toggle(p.id), disabled: !scoring },
               {
                 label: session.currentPickerId === p.id ? '★ No picker' : '★ Make the picker',
-                onclick: () => (session.currentPickerId = session.currentPickerId === p.id ? undefined : p.id),
+                onclick: () => setPicker(session, session.currentPickerId === p.id ? undefined : p.id),
               },
               { label: '✎ Set the score…', onclick: () => (editingScore = p.id) },
             ])}
@@ -400,13 +411,10 @@
         − Deduct
       </button>
       {#if selected.length}
-        <button class="ghost" onclick={() => (selected = [])}>Clear selection</button>
+        <button class="ghost" onclick={() => (selected = [])} title="Esc">Clear selection</button>
       {:else}
-        <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}), then Award ⏎ / Deduct ⇧⏎</span>
+        <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}, 0 for everyone), then Award ⏎ / Deduct ⇧⏎</span>
       {/if}
-      <span class="spacer"></span>
-      <button onclick={onundo} disabled={!canUndo} title="Ctrl+Z">↶ Undo</button>
-      <button onclick={onredo} disabled={!canRedo} title="Ctrl+Shift+Z">↷ Redo</button>
     </div>
   {/if}
 
@@ -436,8 +444,26 @@
     {/if}
     <button onclick={onaudience} class:on={dual} title="A opens or focuses it">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
     <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
-    <button onclick={onlog} title="L">📜 Log</button>
+    <!-- Right-click either one for the whole history. Kept together when the row wraps. -->
+    <span class="pair">
+      <button
+        onclick={onundo}
+        oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
+        disabled={!undoText}
+        title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ Undo</button
+      >
+      <button
+        onclick={onredo}
+        oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
+        disabled={!redoText}
+        title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
+      >
+    </span>
+    <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
     <button onclick={onplayers}>👥 Players</button>
+    <button class="cover-toggle" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
+      ⏸ Cover
+    </button>
     <button onclick={onhide} title="H">Hide controls</button>
     {#if askExit}
       <InlineAsk
@@ -570,6 +596,15 @@
   }
   .award input {
     width: 110px;
+  }
+  /* ⏸ Cover while viewers see the card (not every .on: a selected player's chip is one too). */
+  .cover-toggle.on {
+    border-color: var(--accent);
+    background: rgba(79, 124, 255, 0.25);
+  }
+  .pair {
+    display: flex;
+    gap: inherit;
   }
   .divider {
     width: 1px;

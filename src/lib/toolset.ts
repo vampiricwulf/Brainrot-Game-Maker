@@ -2,8 +2,8 @@
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
 import { applyScore, score, stepOf } from './session';
 import {
-  formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField, type StatValue,
-  type Wearable, type WorldMap,
+  formatPoints, newId, type ActionEvent, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
+  type StatValue, type Wearable, type WorldMap,
 } from './model';
 
 // ---------- Stats ----------
@@ -273,13 +273,27 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
 /** The parts of a session the action log can put back. */
 const PARTS = ['stats', 'inventories', 'worlds', 'boardgames', 'stock'] as const;
 
+/** The host's own choices a step can put back as they were: the picker, how a tie for first was settled, the players. */
+const HOST = ['currentPickerId', 'coWinners', 'rollOffWinner', 'players', 'removedPlayers'] as const;
+
+/** Every Final round's state (the one being played, and the ones put away), one per round. */
+function finalStates(session: Session): FinalState[] {
+  const all = [session.final, ...Object.values(session.finals ?? {}).map((s) => s.state)];
+  return all.filter((f, i): f is FinalState => !!f?.roundId && all.findIndex((x) => x?.roundId === f.roundId) === i);
+}
+
 /**
- * What a step can change, part by part as JSON: the session's parts, and with `game` each map and screen of the game
- * being played (improvising changes those: a new screen, a new look, renaming an object on a screen).
+ * What a step can change, part by part as JSON: the session's parts and the host's choices, and with `game` each map
+ * and screen of the game being played (improvising changes those: a new screen, a new look, renaming an object on a
+ * screen). Tiles go one by one: closing a clue marks its tile played outside any step, so a step only puts back the
+ * tiles it changed itself. A Final keeps who plays, the reveal order and the wagers (its results follow the score log).
  */
 function capture(session: Session, game?: Game): Record<string, string> {
   const out: Record<string, string> = {};
   for (const k of PARTS) out[k] = JSON.stringify(session[k] ?? {});
+  for (const k of HOST) out[k] = JSON.stringify(session[k] ?? null);
+  for (const id in session.used) out[`used:${id}`] = 'true';
+  for (const f of finalStates(session)) out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers });
   for (const w of game?.worlds ?? [])
     for (const m of w.maps) {
       out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
@@ -303,13 +317,35 @@ function restore(session: Session, json: string, game?: Game): void {
       const now = session[k as (typeof PARTS)[number]] as Record<string, Record<string, unknown>> | undefined;
       for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id]) part[id][f] = now[id][f];
       Object.assign(session, { [k]: part });
-    } else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
+    } else if ((HOST as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? undefined });
+    else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);
+    else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers'> | null);
+    else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
   }
   // Viewers keep following the party they were (switched outside any step) while it's still there, and with one party
   // left there's no split view.
   for (const [id, st] of Object.entries(session.worlds ?? {})) {
     if (st.parties.some((p) => p.id === followed[id])) st.active = followed[id];
     if (st.parties.length < 2) st.split = false;
+  }
+}
+
+/** Mark a tile played again, or put it back on the board. */
+function putTile(session: Session, clueId: string, used: boolean): void {
+  if (used) session.used[clueId] = true;
+  else {
+    delete session.used[clueId];
+    if (session.lastClosed === clueId) session.lastClosed = null;
+  }
+}
+
+/** Put back who plays a Final, its reveal order and its wagers. The spotlight moves on if its player is out. */
+function putFinal(session: Session, roundId: string, v: Pick<FinalState, 'players' | 'order' | 'wagers'> | null): void {
+  if (!v) return;
+  for (const f of [session.final, ...Object.values(session.finals ?? {}).map((s) => s.state)]) {
+    if (f?.roundId !== roundId) continue;
+    Object.assign(f, { players: v.players, order: v.order, wagers: v.wagers });
+    if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
   }
 }
 
@@ -419,6 +455,13 @@ export function redoFrom(session: Session, undone: Undone[]): 'score' | 'action'
     if (u.log === 'action' ? session.actionRedo?.at(-1)?.id === u.id : !!top && stepOf(top) === u.id) return u.log;
   }
   return session.actionRedo?.length ? 'action' : session.redoStack.length ? 'score' : undefined;
+}
+
+/** Make a player the one who picks the next clue (undefined: nobody), as a step. `how` goes after it: " (roll-off)". */
+export function setPicker(session: Session, playerId: string | undefined, how = ''): void {
+  if (session.currentPickerId === playerId) return;
+  const who = session.players.find((p) => p.id === playerId)?.name;
+  logged(session, who ? `${who} picks next${how}` : 'No picker', () => (session.currentPickerId = playerId));
 }
 
 // ---------- Worn items ----------

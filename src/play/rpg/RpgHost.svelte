@@ -33,6 +33,7 @@
     mapOpen = $bindable(false),
     ask = $bindable(null),
     dual,
+    onhistory,
   }: {
     game: Game;
     session: Session;
@@ -42,6 +43,8 @@
     /** A name or text being asked for (＋ Screen, a new look, ＋ Text, or text right-clicked onto the stage). */
     ask?: RpgAsk | null;
     dual: boolean;
+    /** Open the 📜 Log's history. */
+    onhistory?: () => void;
   } = $props();
   /** The drawpad is open (drawing an object for the screen on air). */
   let drawpad = $state(false);
@@ -262,9 +265,6 @@
         </select>
       {/if}
       <button class="small" class:on={st.mapShown} onclick={() => toggleMap(game, session)} title="M: the map on screen">🗺 Map</button>
-      <button class="small" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="B: viewers see only a 'Be right back' card">
-        ⏸ Cover
-      </button>
     </div>
 
     <div class="row improv">
@@ -396,7 +396,7 @@
               <span class="muted small">None on this screen.</span>
             {/each}
           </div>
-          {#if last}<div class="muted small last" title="Ctrl+Z undoes it">Last: {last.text}</div>{/if}
+          {#if last}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {last.text}</button>{/if}
         {/if}
       </div>
     </div>
@@ -556,9 +556,18 @@
     border-style: dashed;
   }
   .last {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .last:hover {
+    text-decoration: underline;
   }
   .cards {
     display: flex;

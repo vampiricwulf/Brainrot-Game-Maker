@@ -479,6 +479,8 @@ export interface ScoreEvent {
   replaces?: Id;
   /** A Final judgment: marked right or wrong (older saves go by the sign of `delta`; a 0 wager changes nothing). */
   right?: boolean;
+  /** The round it was given in (the 📜 Log's history groups by round). */
+  round?: number;
 }
 
 export interface RollEvent {

@@ -29,8 +29,9 @@
     live,
     role = 'single',
     onpick,
-    onunmark,
+    ontilemenu,
     onpicker,
+    onspotlight,
     onact,
     onobject,
     onavatar,
@@ -43,9 +44,11 @@
     /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
     role?: MediaRole;
     onpick?: (ref: ClueRef) => void;
-    /** Host only: put a used tile back on the board (right-click). */
-    onunmark?: (ref: ClueRef) => void;
+    /** Host only: a tile was right-clicked (its menu: open it, skip it, put it back). */
+    ontilemenu?: (e: MouseEvent, ref: ClueRef) => void;
     onpicker?: (id: string) => void;
+    /** Host only, in the Final reveals: a score plate was clicked (spotlight that player). */
+    onspotlight?: (id: string) => void;
     /** Host clicked the stage (only passed in the host's window, never the audience window). */
     onact?: (a: StageAction) => void;
     /** RPG rounds, host only: an object on the stage was clicked. */
@@ -125,7 +128,7 @@
         onclick={() => session.intro && act('intro')}
         role="presentation"
       >
-        <Board {game} {session} {onpick} {onunmark} />
+        <Board {game} {session} {onpick} {ontilemenu} />
       </div>
       {#if layout.score}
         <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px"><ScoreBar {game} {session} {onpicker} /></div>
@@ -203,7 +206,7 @@
             {/key}
           {/if}
         </div>
-        <div class="score-area"><ScoreBar {game} {session} /></div>
+        <div class="score-area"><ScoreBar {game} {session} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" /></div>
       {/if}
     </div>
   {/key}

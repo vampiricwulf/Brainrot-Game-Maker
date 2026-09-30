@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app } from '../../lib/app.svelte';
-  import { startTimer, timerRemaining, toggleTimer } from '../../lib/live';
+  import { addTime, startTimer, timerRemaining, toggleTimer } from '../../lib/live';
 
   /** custom: the seconds typed in the box (bound, so T uses them too). */
   let { defaultSeconds, custom = $bindable(null) }: { defaultSeconds: number; custom?: number | null } = $props();
@@ -20,6 +20,9 @@
   {#if t}
     <b class="left" class:done={t.expired}>{t.expired ? "Time's up" : `${left}s`}</b>
     <button class="small" onclick={() => toggleTimer(app.live)} disabled={t.expired} title="T">{t.startedAt === null ? '▶' : '⏸'}</button>
+    <!-- Change the time left without starting over. -->
+    <button class="small ghost" onclick={() => addTime(app.live, -10)} disabled={t.expired} title="10 seconds less">−10</button>
+    <button class="small ghost" onclick={() => addTime(app.live, 10)} title="10 seconds more (Shift+T)">+10</button>
     <button class="small ghost" onclick={() => startTimer(app.live, t.total)} title="Restart">↺</button>
     <button class="small ghost" onclick={() => (app.live.timer = null)} title="Hide timer">✕</button>
   {:else}

@@ -54,7 +54,7 @@ export function applyScore(
       delta = Math.max(delta, -Math.max(0, score(session, playerId)));
       if (delta === 0) continue;
     }
-    const e: ScoreEvent = { id: newId(), ts: Date.now(), playerId, delta, reason, clueId, batchId };
+    const e: ScoreEvent = { id: newId(), ts: Date.now(), playerId, delta, reason, clueId, batchId, round: session.currentRound };
     session.scoreLog.push(e);
     events.push(e);
   }
@@ -73,7 +73,7 @@ export function setScore(session: Session, playerId: string, value: number): voi
   const delta = value - score(session, playerId);
   if (!delta) return;
   // Manual edits bypass the no-negative clamp: the host typed the number on purpose.
-  session.scoreLog.push({ id: newId(), ts: Date.now(), playerId, delta, reason: 'Manual edit' });
+  session.scoreLog.push({ id: newId(), ts: Date.now(), playerId, delta, reason: 'Manual edit', round: session.currentRound });
   clearRedo(session);
 }
 
@@ -213,6 +213,32 @@ export function restorePlayer(session: Session, playerId: string): void {
     const order = [...f.order, playerId];
     f.order = session.finalStep === 'reveal' ? order : order.sort((x, y) => score(session, x) - score(session, y));
   }
+}
+
+/**
+ * What one change in the in-game Players dialog did, for the undo history: "Renamed Player 1 to Alice", "Added Sam",
+ * "Swapped Alice and Sam"… `before` and `after` are the players and the removed players around it.
+ */
+export function rosterChange(
+  before: { players: Player[]; removed?: Player[] },
+  after: { players: Player[]; removed?: Player[] },
+): string {
+  const was = new Map([...(before.removed ?? []), ...before.players].map((p) => [p.id, p]));
+  const inBefore = new Set(before.players.map((p) => p.id));
+  const inAfter = new Set(after.players.map((p) => p.id));
+  const name = (p: Player) => p.name.trim() || 'a player';
+  const gone = before.players.find((p) => !inAfter.has(p.id));
+  if (gone) return `Removed ${name(gone)}`;
+  const back = after.players.find((p) => !inBefore.has(p.id));
+  if (back) return `${was.has(back.id) ? 'Restored' : 'Added'} ${name(back)}`;
+  for (const p of after.players) {
+    const old = was.get(p.id);
+    if (old && old.name !== p.name) return `Renamed ${name(old)} to ${name(p)}`;
+    if (old && old.color !== p.color) return `New color for ${name(p)}`;
+  }
+  const moved = after.players.filter((p, i) => before.players[i]?.id !== p.id);
+  if (moved.length === 2) return `Swapped ${name(moved[0])} and ${name(moved[1])}`;
+  return moved.length ? 'Reordered the players' : 'Changed the players';
 }
 
 // ---------- Flow ----------
@@ -596,6 +622,15 @@ export function finalAdvance(session: Session): 'shown' | 'next' | 'waiting' | '
   return 'next';
 }
 
+/** Shift+N during the reveal: spotlight the player before the spotlit one (their wager stays as it is). */
+export function finalBack(session: Session): boolean {
+  const f = session.final;
+  const i = f?.current ? f.order.indexOf(f.current) : -1;
+  if (!f || i <= 0) return false;
+  f.current = f.order[i - 1];
+  return true;
+}
+
 /** Players in the final reveal who haven't been marked right or wrong yet. */
 export function finalUnjudged(session: Session): string[] {
   const f = session.final;
@@ -624,7 +659,7 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
   let [e] = applyScore(session, game, [playerId], right ? wager : -wager, finalName(round), tag);
   // Nothing to add or take (a 0 wager, or no points left to lose): logged all the same, so Undo takes it back too.
   if (!e) {
-    e = { id: newId(), ts: Date.now(), playerId, delta: 0, reason: finalName(round), clueId: tag };
+    e = { id: newId(), ts: Date.now(), playerId, delta: 0, reason: finalName(round), clueId: tag, round: session.currentRound };
     session.scoreLog.push(e);
     clearRedo(session);
   }
