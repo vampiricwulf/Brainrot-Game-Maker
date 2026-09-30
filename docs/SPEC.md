@@ -92,7 +92,6 @@ GameSettings {
   roundIntro: { titleCard: boolean, tileFill: boolean, categoryReveal: 'click' | 'auto' | 'off' }  // all on/'click' by default
   timesUpAudio?: MediaRef           // optional user sound when a timer hits 0
   maxPlayers: 8
-  displayMode: 'dual' | 'single'    // default for this game; toggleable live
   currencySymbol: string            // "$", "", "pts", "🧠", ...
 }
 
@@ -319,6 +318,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    set the current picker by hand.
 
 ### 6.2 Display modes (toggleable live)
+The mode isn't saved with the game: it's dual while the audience window is open.
+
 - **Dual window (default for streaming)**
   - *Host window*: board, host-only info (answer preview, host notes, clue value, and type indicator,
     including Daily Doubles before they are revealed), scoring panel, media controls, timer controls, and tools.

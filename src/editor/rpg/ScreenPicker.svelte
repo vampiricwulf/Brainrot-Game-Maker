@@ -17,7 +17,7 @@
     none?: string;
   } = $props();
   const map = $derived(world.maps.find((m) => m.id === value?.map) ?? world.maps[0]);
-  // A screen deleted since shows as the empty choice (not a blank box).
+  // A screen (or map) deleted since says so (not a blank box).
   const screen = $derived(map?.screens.find((s) => s.id === value?.screen));
 </script>
 
@@ -35,10 +35,11 @@
   </select>
   <select
     aria-label="{label}: screen"
-    value={screen?.id ?? ''}
+    value={screen?.id ?? value?.screen ?? ''}
     onchange={(e) => map && onchange(e.currentTarget.value ? { map: map.id, screen: e.currentTarget.value } : undefined)}
   >
     <option value="">{none}</option>
+    {#if value && !screen}<option value={value.screen}>⚠ Deleted screen — pick another</option>{/if}
     {#each map?.screens ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
   </select>
 </div>

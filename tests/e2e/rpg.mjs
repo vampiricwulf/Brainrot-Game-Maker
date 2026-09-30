@@ -51,6 +51,8 @@ try {
   await page.getByRole('button', { name: '＋ Shop' }).click();
   await page.getByRole('button', { name: '＋ Something to sell' }).click();
   await page.locator('label', { hasText: 'Buys back at' }).locator('input').fill('50');
+  // A second shop, deleted below.
+  await page.getByRole('button', { name: '＋ Shop' }).click();
 
   // An RPG round: its world starts with one screen; add one to the east.
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -61,9 +63,28 @@ try {
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
+  await page.getByRole('button', { name: '📦 Item ▾' }).click();
+  assert((await page.getByRole('menu').count()) === 0, '📦 Item ▾ closes on a second click');
+  await page.getByRole('button', { name: '📦 Item ▾' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
   await page.getByText('Secret (hidden until revealed)').click();
   await page.getByRole('button', { name: '🚩 Arrival' }).click();
+  // A character selling from Shop 2: once that shop is deleted, its Shop box says so (not a blank box).
+  await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+  await page.getByRole('button', { name: '▭ Rectangle' }).click();
+  await page.getByLabel('Object class').selectOption('npc');
+  await page.getByLabel('Shop', { exact: true }).selectOption({ label: 'Shop 2' });
+  await page.getByRole('button', { name: '◀ Back to the map' }).click();
+  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: 'Delete shop' }).nth(1).click();
+  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  await page.getByRole('button', { name: 'Screen Start' }).click();
+  await page.getByRole('button', { name: '✎ Edit screen' }).click();
+  const canvasBox = await page.locator('.canvas').boundingBox();
+  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  const shopShown = await page.getByLabel('Shop', { exact: true }).locator('option:checked').innerText();
+  assert(shopShown === '⚠ Deleted shop — pick another', `a character's deleted shop says so (${shopShown})`);
+  await page.keyboard.press('Delete');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
   // Play it: two players, straight to the adventure.

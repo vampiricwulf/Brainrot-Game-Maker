@@ -1,7 +1,7 @@
 <!-- One RPG screen: the slide editor with an Object section for classes, plus arrival points and catalog items. -->
 <script lang="ts">
   import { editedGame } from '../../lib/app.svelte';
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { dropMenu } from '../../lib/menustate.svelte';
   import { newImageEl, newShapeEl, newTextEl, type Screen, type Slide, type SlideElement, type World } from '../../lib/model';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import ObjectPanel from './ObjectPanel.svelte';
@@ -27,12 +27,11 @@
     return el;
   }
 
-  /** The catalog's items, under the button (kept on screen, closed by Esc or a click elsewhere, like a right-click menu). */
+  /** The catalog's items, under the button (a second click, Esc or a click elsewhere closes it). */
   function itemMenu(e: MouseEvent, add: (el: SlideElement) => void): void {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const items = game.items ?? [];
-    showMenu(
-      new MouseEvent('click', { clientX: r.left, clientY: r.bottom + 2 }),
+    dropMenu(
+      e,
       items.length
         ? items.map((it) => ({ label: it.name, onclick: () => add(itemObject(it.id)) }))
         : [{ label: 'No items yet: add them in 📊 Stats & Items', onclick: () => {}, disabled: true }],

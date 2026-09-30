@@ -64,7 +64,15 @@ try {
   assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore, 'and back to one way');
   // Start gives points when passed.
   await page.getByRole('button', { name: 'Space Start' }).click();
-  await page.locator('.side .actions').first().getByRole('button', { name: '＋ Add action' }).click();
+  // Its menu closes on a second click, like the other menus, and on Esc (the focus goes back to the button).
+  const addAction = page.locator('.side .actions').first().getByRole('button', { name: '＋ Add action' });
+  await addAction.click();
+  await addAction.click();
+  assert((await page.getByRole('menu').count()) === 0, '＋ Add action closes on a second click');
+  await addAction.click();
+  await page.keyboard.press('Escape');
+  assert((await page.getByRole('menu').count()) === 0 && (await addAction.evaluate((b) => b === document.activeElement)), 'and on Esc, back to its button');
+  await addAction.click();
   await page.getByRole('menuitem', { name: /Change the score/ }).click();
   await page.locator('.side .actions').first().getByLabel('Points').fill('100');
   await page.locator('.side .actions').first().getByLabel('Who').selectOption('party');
@@ -168,6 +176,28 @@ try {
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
   const ways = await page.locator('.bh .move button.good').allInnerTexts();
   assert(ways.join('|') === '→ Space 4|→ Space 7', `at a fork the host picks the way (${ways.join(', ')})`);
+
+  // A game opened over the board (here an earlier save of it, with the same ids) brings back none of its undo steps.
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('button', { name: /Board game/ }).click();
+  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON' }).click()]);
+  const saved = resolve('test-results/boardgame-save.json');
+  await json.saveAs(saved);
+  await page.getByRole('button', { name: 'Space Space 5' }).click();
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(500);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
+  await chooser.setFiles(saved);
+  await page.getByText(/^Opened "/).waitFor();
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(300);
+  assert(
+    (await page.getByRole('button', { name: /^Space / }).count()) === 12 && (await page.getByRole('button', { name: 'Undo', exact: true }).isDisabled()),
+    'a game opened over the board starts its undo afresh (Ctrl+Z brings back nothing from before)',
+  );
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame.png` });

@@ -460,10 +460,12 @@ await page.getByRole('button', { name: '🌐 Link' }).click();
 await page.locator('.canvas').click({ position: { x: 3, y: 3 } });
 await page.keyboard.press('Escape');
 assert((await page.locator('.linkbox').count()) === 0 && (await clueOpen()), 'Esc closes the link box, not the clue');
-// The drawpad keeps its keys: E picks its eraser, and Delete doesn't reach the text box selected behind it.
+// The drawpad deselects the slide (nothing selected sits behind it) and keeps its keys: E picks its eraser, and
+// Delete doesn't reach the slide.
 await page.locator('.canvas .hit').last().click();
 await page.getByRole('button', { name: '◼ Shape ▾' }).click();
 await page.getByRole('button', { name: '🖌 Drawpad…' }).click();
+assert((await page.locator('.canvas .handle').count()) === 0, 'opening the drawpad clears the slide selection');
 await page.keyboard.press('e');
 await page.keyboard.press('Delete');
 assert((await page.getByRole('button', { name: '🧽 Eraser' }).getAttribute('aria-pressed')) === 'true', 'E in the drawpad picks its eraser');
@@ -705,6 +707,9 @@ await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click
 await page.locator('.tile').nth(4).click();
 await page.getByLabel('Type').selectOption('wheel');
 await page.getByLabel('Which wheel').selectOption({ label: 'Punishment Wheel' });
+await page.getByLabel('Empty tile (not playable)').check();
+assert(await page.getByLabel('Which wheel').isDisabled(), 'an empty tile disables its wheel picker like its other fields');
+await page.getByLabel('Empty tile (not playable)').uncheck();
 await page.getByRole('button', { name: 'Done' }).click();
 assert((await page.locator('.tile').nth(4).innerText()).includes('🎡'), 'tile marked as a wheel tile');
 

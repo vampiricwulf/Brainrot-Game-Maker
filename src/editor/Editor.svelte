@@ -365,55 +365,59 @@
     </nav>
 
     <main>
-      {#if tab === 'setup'}
-        <SetupPanel />
-      {:else if tab === 'stats'}
-        <StatsItemsEditor />
-      {:else if tab === 'tiebreaker'}
-        <TiebreakerEditor />
-      {:else if tab === 'media'}
-        <MediaLibrary />
-      {:else if tab === 'tools'}
-        <ToolsEditor />
-      {:else if tab === 'theme'}
-        <ThemeEditor />
-      {:else if game.rounds[tab]}
-        {@const i = tab}
-        {@const round = game.rounds[i]}
-        {#key round.id}
-          <RoundActions
-            {round}
-            index={i}
-            count={game.rounds.length}
-            onmove={(d) => moveRound(i, d)}
-            onduplicate={() => duplicateRound(i)}
-            ondelete={() => removeRound(i)}
-          />
-          {#if isBoard(round)}
-            <RoundEditor {round} />
-          {:else if isFinal(round)}
-            <FinalEditor {round} />
-          {:else if isRpg(round)}
-            <RpgRoundEditor {round} />
-          {:else if isBoardGame(round)}
-            <BoardGameEditor {round} />
-          {/if}
-        {/key}
-      {:else if !game.rounds.length}
-        <div class="first-round">
-          <h2>Add your first round</h2>
-          <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
-          <div class="modes">
-            {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
-              <button class="mode" onclick={() => addRound(mode as RoundMode)}>
-                <span class="icon" aria-hidden="true">{m.icon}</span>
-                <b>{m.label}</b>
-                <span class="muted small">{m.hint}</span>
-              </button>
-            {/each}
+      <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
+           (another save of the same game has the same round ids). -->
+      {#key game}
+        {#if tab === 'setup'}
+          <SetupPanel />
+        {:else if tab === 'stats'}
+          <StatsItemsEditor />
+        {:else if tab === 'tiebreaker'}
+          <TiebreakerEditor />
+        {:else if tab === 'media'}
+          <MediaLibrary />
+        {:else if tab === 'tools'}
+          <ToolsEditor />
+        {:else if tab === 'theme'}
+          <ThemeEditor />
+        {:else if game.rounds[tab]}
+          {@const i = tab}
+          {@const round = game.rounds[i]}
+          {#key round.id}
+            <RoundActions
+              {round}
+              index={i}
+              count={game.rounds.length}
+              onmove={(d) => moveRound(i, d)}
+              onduplicate={() => duplicateRound(i)}
+              ondelete={() => removeRound(i)}
+            />
+            {#if isBoard(round)}
+              <RoundEditor {round} />
+            {:else if isFinal(round)}
+              <FinalEditor {round} />
+            {:else if isRpg(round)}
+              <RpgRoundEditor {round} />
+            {:else if isBoardGame(round)}
+              <BoardGameEditor {round} />
+            {/if}
+          {/key}
+        {:else if !game.rounds.length}
+          <div class="first-round">
+            <h2>Add your first round</h2>
+            <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
+            <div class="modes">
+              {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
+                <button class="mode" onclick={() => addRound(mode as RoundMode)}>
+                  <span class="icon" aria-hidden="true">{m.icon}</span>
+                  <b>{m.label}</b>
+                  <span class="muted small">{m.hint}</span>
+                </button>
+              {/each}
+            </div>
           </div>
-        </div>
-      {/if}
+        {/if}
+      {/key}
     </main>
   </div>
 </div>

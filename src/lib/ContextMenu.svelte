@@ -28,7 +28,10 @@
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopImmediatePropagation();
-      return closeMenu();
+      const from = contextMenu.open.from;
+      closeMenu();
+      // A menu dropped from a button gives it the focus back.
+      return from?.focus();
     }
     if (!e.key.startsWith('Arrow')) return;
     // The arrows are the menu's (not a nudge for what's selected in a slide editor underneath).
@@ -41,9 +44,10 @@
   }
 </script>
 
+<!-- A press on the button a menu dropped from leaves it to that button's click, which closes it (see dropMenu). -->
 <svelte:window
   onkeydowncapture={key}
-  onpointerdown={(e) => contextMenu.open && !box?.contains(e.target as Node) && closeMenu()}
+  onpointerdown={(e) => contextMenu.open && !box?.contains(e.target as Node) && !contextMenu.open.from?.contains(e.target as Node) && closeMenu()}
   onblur={closeMenu}
   onresize={closeMenu}
   onwheel={() => contextMenu.open && closeMenu()}

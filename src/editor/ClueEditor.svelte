@@ -95,15 +95,19 @@
           </select>
         </label>
         {#if clue.type === 'wheel'}
-          <select bind:value={clue.wheelId} aria-label="Which wheel">
+          <select bind:value={clue.wheelId} disabled={clue.empty} aria-label="Which wheel">
             <option value={undefined}>Choose a wheel…</option>
+            {#if clue.wheelId && clue.wheelId !== PLAYER_WHEEL && !app.game.wheels.some((w) => w.id === clue.wheelId)}
+              <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
+            {/if}
             <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
             {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
           </select>
           {#if !app.game.wheels.length}<span class="muted small">Make your own in the 🎡 Wheels & Dice tab</span>{/if}
         {:else if clue.type === 'dice'}
-          <select bind:value={clue.diceId} aria-label="Which dice">
+          <select bind:value={clue.diceId} disabled={clue.empty} aria-label="Which dice">
             <option value={undefined}>Choose dice…</option>
+            {#if clue.diceId && !app.game.dice.some((d) => d.id === clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
             {#each app.game.dice as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
           </select>
           {#if !app.game.dice.length}<span class="muted small">Make some in the 🎡 Wheels & Dice tab</span>{/if}
@@ -159,7 +163,7 @@
         </div>
       </div>
 
-      {#if clue.type === 'wheel' || clue.type === 'dice'}
+      {#if !clue.empty && (clue.type === 'wheel' || clue.type === 'dice')}
         <p class="muted small hint">
           When this tile is picked, the {clue.type} appears full-screen for the host to {clue.type === 'wheel' ? 'spin' : 'roll'}. The question slide
           below is optional; it shows after the {clue.type} is closed.
