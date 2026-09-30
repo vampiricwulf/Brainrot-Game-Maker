@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, dragBy } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -181,6 +181,29 @@ try {
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(250);
   assert((await page.locator('.cell.screen.sel').getAttribute('aria-label')) === 'Screen Screen C1', 'its ↶ Undo brings it back, selected');
+  // Screens drag on the grid: to an empty cell, or onto another screen to swap them (the 🏁 goes with its screen).
+  const screenAt = (c, r) => page.locator(`.grid-map [data-cell="${c},${r}"]`).getAttribute('aria-label');
+  const undoTitle = () => header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  await dragBy(page, page.getByRole('button', { name: 'Screen Screen C1' }), page.getByRole('button', { name: 'Add a screen at column 4, row 1' }));
+  assert((await screenAt(3, 0)) === 'Screen Screen C1' && (await undoTitle()).startsWith('Undo: Moved screen “Screen C1” to D1'), 'a screen dragged to an empty cell moves there, one step');
+  await dragBy(page, page.getByRole('button', { name: 'Screen Start' }), page.getByRole('button', { name: 'Screen Screen B1' }));
+  const swapped = (await screenAt(1, 0)) === 'Screen Start' && (await screenAt(0, 0)) === 'Screen Screen B1';
+  assert(swapped && (await page.locator('[data-cell="1,0"] .start').count()) === 1, 'a screen dropped on another swaps them, and the start goes with it');
+  assert((await undoTitle()).startsWith('Undo: Swapped screens “Start” and “Screen B1”'), `a swap is one step (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(250);
+  assert((await screenAt(0, 0)) === 'Screen Start' && (await notice.innerText()).startsWith('↶ Undid Swapped screens'), 'Ctrl+Z swaps them back');
+  // Delete deletes the selected screen (no question asked), and Ctrl+Z brings it back selected.
+  await page.getByRole('button', { name: 'Screen Screen C1' }).click();
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(200);
+  assert(
+    !(await page.getByRole('button', { name: 'Screen Screen C1' }).count()) && (await notice.innerText()).startsWith('Deleted screen “Screen C1”') && !dialogs.length,
+    'the Delete key deletes the selected screen, with a note',
+  );
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(250);
+  assert((await page.locator('.cell.screen.sel').getAttribute('aria-label')) === 'Screen Screen C1', 'Ctrl+Z brings it back, selected');
 
   // ---------- Removed and replaced files ----------
   await page.getByRole('button', { name: /🖼 Media/ }).click();
