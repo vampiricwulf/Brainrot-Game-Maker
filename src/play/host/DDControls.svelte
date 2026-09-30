@@ -22,6 +22,7 @@
   let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? session.players[0]?.id ?? ''));
   let wager = $state<number | null>(null);
   let override = $state(false);
+  let wagerBox = $state<HTMLInputElement>();
   const sym = $derived(game.settings.currencySymbol);
   const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
   const valid = $derived(wager !== null && wager >= 0 && (override || wager <= cap));
@@ -37,7 +38,11 @@
         style:border-color={p.color}
         style:background={playerId === p.id ? p.color : undefined}
         style:color={playerId === p.id ? textOn(p.color) : undefined}
-        onclick={() => (playerId = p.id)}
+        onclick={() => {
+          playerId = p.id;
+          // Their wager next: typed digits would otherwise select players.
+          wagerBox?.focus();
+        }}
       >
         {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
@@ -51,6 +56,7 @@
         type="number"
         min="0"
         bind:value={wager}
+        bind:this={wagerBox}
         autofocus
         onkeydown={(e) => {
           if (e.key === 'Enter' && valid) onshow(playerId, wager!);

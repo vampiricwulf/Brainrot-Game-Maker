@@ -341,8 +341,10 @@ try {
   await page.locator('.rh').getByRole('textbox', { name: 'Text', exact: true }).fill('Beware of the goose');
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: '＋ Add text' }).click();
+  await page.getByRole('dialog', { name: 'Object: Beware of the goose' }).waitFor();
+  assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('goose'), 'typed text is added hidden from viewers, and its card opens');
+  await page.keyboard.press('Escape');
   await page.locator('.rh .objs').getByRole('button', { name: /Beware of the goose/ }).waitFor();
-  assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('goose'), 'typed text is added hidden from viewers');
   await page.getByLabel('Look').selectOption('+');
   assert((await page.getByRole('textbox', { name: 'Look name' }).inputValue()) === 'New look', 'a new look asks for its name (New look to start with)');
   await page.getByRole('textbox', { name: 'Look name' }).press('Enter');

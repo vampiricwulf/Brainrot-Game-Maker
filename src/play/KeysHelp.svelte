@@ -5,7 +5,7 @@
     ['1 – 9', 'Select / deselect player N for scoring (in the Final reveals: spotlight the Nth player)'],
     ['0', 'Select everyone, or no one'],
     ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
-    ['R', 'Reveal the answer'],
+    ['R', 'Reveal the answer (again: hide it)'],
     ['Esc / B', 'Close the log or the tool overlay, go back to the board (the tile is used up), or clear the selection'],
     ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given for it)'],
     ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back on the board'],
@@ -26,7 +26,7 @@
     ['M', 'Mute / unmute the media'],
     ['Y', 'Open YouTube / online media in its own window'],
     [
-      'Ctrl+Z / Ctrl+Shift+Z',
+      'Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y',
       'Undo / redo the last change: a score (a whole multi-player award at once), an RPG or board-game move, stat, item or reveal, a tile marked played or put back, the picker, the turn order, a change in 👥 Players or in the Final’s players, order and wagers',
     ],
     ['RPG: Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],

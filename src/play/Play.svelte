@@ -1081,9 +1081,9 @@
       const n = +e.key;
       const reveal = session.phase === 'final' && session.finalStep === 'reveal' ? session.final : undefined;
       if (pickerPending) {
+        // P then a number with no such player (0 among them) just ends the P.
         const p = session.players[n - 1];
-        if (!p) return;
-        setPicker(session, p.id);
+        if (p) setPicker(session, p.id);
       } else if (reveal && n) {
         // The final reveals: spotlight the Nth player in the reveal order (N shows their wager).
         if (!reveal.order[n - 1]) return;
