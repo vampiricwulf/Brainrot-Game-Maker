@@ -2,6 +2,19 @@
   One player's card in the RPG host panel: stats (±), inventory (equip, use, give, drop, remove), their sheet on
   screen, knocked out, and converting score to or from a currency. Every change is one undoable step.
 -->
+<script module lang="ts">
+  /** The host folded or unfolded the players' cards (null: not yet). */
+  export const playerCards = $state<{ open: boolean | null }>({ open: null });
+
+  /**
+   * The players' cards show in the RPG and board game host panels: as the host last chose, in any round of the show,
+   * else only on a tall window (on a short one the stage needs the room).
+   */
+  export function cardsShown(): boolean {
+    return playerCards.open ?? window.innerHeight >= 900;
+  }
+</script>
+
 <script lang="ts">
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
@@ -14,6 +27,7 @@
     transferEntry,
   } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
+  import InlineAsk from '../host/InlineAsk.svelte';
   import { droppedObject } from './hostops';
 
   let {
@@ -66,14 +80,22 @@
     logged(session, `${name}: ${f.name} = ${Array.isArray(value) ? value.join(', ') : value}`, () => setStat(session, p.id, f, value));
   }
 
+  // "Something else…" and Use ask inline (a browser dialog would show on stream).
+  /** "Something else…" was picked: the made-up item's name is being typed. */
+  let naming = $state(false);
+  /** The item whose Use is being asked about. */
+  let using = $state<string | null>(null);
+
   function giveNew(itemId: string): void {
     if (!itemId) return;
-    if (itemId === '*') {
-      const n = prompt('Name of the item (made up on the spot):')?.trim();
-      if (n) logged(session, `${name} gets ${n}`, () => giveItem(game, session, p.id, null, 1, n));
-      return;
-    }
+    if (itemId === '*') return void (naming = true);
     logged(session, `${name} gets ${itemDef(game, itemId)?.name}`, () => giveItem(game, session, p.id, itemId, 1));
+  }
+
+  /** An item made up on the spot (not one of the game's items). */
+  function giveMadeUp(n: string): void {
+    naming = false;
+    logged(session, `${name} gets ${n}`, () => giveItem(game, session, p.id, null, 1, n));
   }
 
   function change(entryId: string, text: string, fn: (list: typeof items, i: number) => void): void {
@@ -87,9 +109,9 @@
   function use(entryId: string): void {
     const e = items.find((x) => x.id === entryId);
     const def = itemDef(game, e?.item);
+    using = null;
     if (!e || !def?.onUse?.length) return;
     const actions = def.onUse;
-    if (!confirm(`${name} uses ${def.name}:\n${actions.map((a) => '• ' + describeAction(game, a)).join('\n')}\n\nUse it up?`)) return;
     const ctx = { game, session, live: app.live, world, st, board, bs, selected, chosen: [p.id] };
     let said: string[] = [];
     // One undoable step: what it does, and using it up.
@@ -189,43 +211,48 @@
     {/if}
     <button class="tiny" title="Show {p.name}'s sheet on screen (I)" onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: p.id })}>📺</button>
   </div>
-  {#each fields as f (f.id)}
-    {@const v = statValue(game, session, p.id, f)}
-    <div class="row stat">
-      <span class="k" title={f.audience === 'hidden' ? 'Host only' : f.audience === 'sheet' ? 'On the player sheet' : 'On the stats strip'}>
-        {f.name}{f.audience === 'hidden' ? ' 🔒' : ''}
-      </span>
-      {#if f.type === 'number'}
-        <button class="tiny" onclick={() => bump(f.id, -1)} aria-label="{p.name} {f.name} minus 1">−</button>
-        <input
-          class="num"
-          type="number"
-          value={v}
-          aria-label="{p.name} {f.name}"
-          onchange={(e) => {
-            set(f.id, e.currentTarget.value);
-            // Kept within min and max: the box shows what it became (even when that's what it was).
-            e.currentTarget.value = String(statValue(game, session, p.id, f));
-          }}
-          onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-        />
-        <button class="tiny" onclick={() => bump(f.id, 1)} aria-label="{p.name} {f.name} plus 1">+</button>
-        {#if f.max !== undefined}<span class="muted small">/ {f.max}</span>{/if}
-      {:else if f.type === 'checkbox'}
-        <input type="checkbox" checked={!!v} onchange={(e) => set(f.id, e.currentTarget.checked)} aria-label="{p.name} {f.name}" />
-      {:else if f.type === 'tags'}
-        <input
-          class="txt"
-          value={Array.isArray(v) ? v.join(', ') : ''}
-          placeholder="tag, tag"
-          aria-label="{p.name} {f.name}"
-          onchange={(e) => set(f.id, e.currentTarget.value.split(',').map((t) => t.trim()).filter(Boolean))}
-        />
-      {:else}
-        <input class="txt" value={String(v)} aria-label="{p.name} {f.name}" onchange={(e) => set(f.id, e.currentTarget.value)} />
-      {/if}
+  {#if fields.length}
+    <!-- Two stats a line (name, value, name, value), so a card stays short. -->
+    <div class="stats">
+      {#each fields as f (f.id)}
+        {@const v = statValue(game, session, p.id, f)}
+        <span class="k" title="{f.name}: {f.audience === 'hidden' ? 'host only' : f.audience === 'sheet' ? 'on the player sheet' : 'on the stats strip'}">
+          {f.name}{f.audience === 'hidden' ? ' 🔒' : ''}
+        </span>
+        <span class="v">
+          {#if f.type === 'number'}
+            <button class="tiny" onclick={() => bump(f.id, -1)} aria-label="{p.name} {f.name} minus 1">−</button>
+            <input
+              class="sn"
+              type="number"
+              value={v}
+              aria-label="{p.name} {f.name}"
+              onchange={(e) => {
+                set(f.id, e.currentTarget.value);
+                // Kept within min and max: the box shows what it became (even when that's what it was).
+                e.currentTarget.value = String(statValue(game, session, p.id, f));
+              }}
+              onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            />
+            <button class="tiny" onclick={() => bump(f.id, 1)} aria-label="{p.name} {f.name} plus 1">+</button>
+            {#if f.max !== undefined}<span class="muted small">/{f.max}</span>{/if}
+          {:else if f.type === 'checkbox'}
+            <input type="checkbox" checked={!!v} onchange={(e) => set(f.id, e.currentTarget.checked)} aria-label="{p.name} {f.name}" />
+          {:else if f.type === 'tags'}
+            <input
+              class="txt"
+              value={Array.isArray(v) ? v.join(', ') : ''}
+              placeholder="tag, tag"
+              aria-label="{p.name} {f.name}"
+              onchange={(e) => set(f.id, e.currentTarget.value.split(',').map((t) => t.trim()).filter(Boolean))}
+            />
+          {:else}
+            <input class="txt" value={String(v)} aria-label="{p.name} {f.name}" onchange={(e) => set(f.id, e.currentTarget.value)} />
+          {/if}
+        </span>
+      {/each}
     </div>
-  {/each}
+  {/if}
   <div class="inv">
     {#each items as e (e.id)}
       {@const def = itemDef(game, e.item)}
@@ -240,7 +267,7 @@
             ...(def?.wearable
               ? [{ label: e.equipped ? 'Unequip' : 'Equip', onclick: () => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped)) }]
               : []),
-            ...(def?.onUse?.length ? [{ label: 'Use', onclick: () => use(e.id) }] : []),
+            ...(def?.onUse?.length ? [{ label: 'Use…', onclick: () => (using = e.id) }] : []),
             { sep: true as const },
             ...session.players.filter((x) => x.id !== p.id).map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
             ...(pos ? [{ label: '⬇ Drop it here', onclick: () => drop(e.id) }] : []),
@@ -258,7 +285,7 @@
               {e.equipped ? 'Unequip' : 'Equip'}
             </button>
           {/if}
-          {#if def?.onUse?.length}<button class="tiny" onclick={() => use(e.id)}>Use</button>{/if}
+          {#if def?.onUse?.length}<button class="tiny" class:on={using === e.id} onclick={() => (using = e.id)}>Use</button>{/if}
           {#if e.qty > 1}
             <input
               class="qty"
@@ -287,6 +314,14 @@
           <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" onclick={() => remove(e.id)}>✕</button>
         </span>
       </div>
+      {#if using === e.id && def?.onUse?.length}
+        <InlineAsk
+          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a)).join(', ')}. {def.wearable ? 'Use it?' : 'Use it up?'}"
+          ok="Use"
+          onok={() => use(e.id)}
+          oncancel={() => (using = null)}
+        />
+      {/if}
     {/each}
     <select
       class="tiny add"
@@ -301,6 +336,9 @@
       {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
       <option value="*">Something else…</option>
     </select>
+    {#if naming}
+      <InlineAsk field="Name of the item" ok="Give" onok={giveMadeUp} oncancel={() => (naming = false)} />
+    {/if}
   </div>
   {#if currencies.length}
     <div class="row conv">
@@ -324,8 +362,8 @@
     padding: 5px;
     border: 2px solid var(--c);
     border-radius: 8px;
-    min-width: 220px;
-    flex: 0 1 260px;
+    min-width: 250px;
+    flex: 0 1 300px;
     font-size: 12px;
   }
   .pc.on {
@@ -347,17 +385,46 @@
   .score {
     font-weight: 700;
   }
+  .stats {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 3px 4px;
+    align-items: center;
+  }
   .k {
-    min-width: 60px;
+    max-width: 64px;
     opacity: 0.85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The second stat on a line stands apart from the first. */
+  .k:nth-child(4n + 3) {
+    margin-left: 6px;
+  }
+  .v {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
   }
   .num {
     width: 64px;
     padding: 1px 4px;
   }
+  /* A stat's number: − and + do what the box's spinners would, so they're hidden (they'd cover the number). */
+  .sn {
+    flex: 1;
+    min-width: 30px;
+    padding: 1px 3px;
+    appearance: textfield;
+  }
+  .sn::-webkit-inner-spin-button {
+    display: none;
+  }
   .txt {
     flex: 1;
-    min-width: 80px;
+    min-width: 0;
     padding: 1px 4px;
   }
   .tiny {

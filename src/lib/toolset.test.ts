@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newId, newTextEl, type Game, type Session, type Shop } from './model';
-import { applyScore, newSession, score, setScore, toggleStep } from './session';
+import { applyScore, newSession, redo, score, setScore, stepOf, toggleEvent, toggleStep, undo } from './session';
 import { addScreenBeside, newWorld } from './rpg';
 import {
   addStat,
@@ -14,6 +14,8 @@ import {
   logged,
   newStatField,
   redoAction,
+  redoFrom,
+  type Undone,
   wornItems,
   wornPlace,
   SLOT_PLACE,
@@ -248,6 +250,70 @@ describe('action log', () => {
     expect([map.screens.map((s) => s.name), map.cols]).toEqual([['Start'], 1]);
     redoAction(session, game);
     expect(map.screens.map((s) => s.name)).toEqual(['Start', 'Beach']);
+  });
+});
+
+describe('Undo and Redo in play (the score log and the action log together)', () => {
+  /** Ctrl+Z as Play does it: the newest of the two logs, noting which. */
+  function undoLast(session: Session, undone: Undone[]): void {
+    const a = lastAction(session);
+    const s = session.scoreLog.filter((e) => !e.undone).at(-1);
+    if (a && (!s || a.ts >= s.ts)) undone.push({ log: 'action', id: undoAction(session)!.id });
+    else undone.push({ log: 'score', id: stepOf(undo(session)[0]) });
+  }
+
+  it('redoes back the way the Undos went', () => {
+    const { game, session } = setup();
+    const hp = game.statFields![0];
+    const undone: Undone[] = [];
+    applyScore(session, game, ['a'], 100, 'Clue 1');
+    logged(session, 'Ann hurt', () => addStat(game, session, 'a', hp, -1));
+    session.actionLog!.at(-1)!.ts++; // (steps a millisecond apart, as they are in play)
+    // The step goes first, then the award: Redo brings back the award, then the step.
+    for (let i = 0; i < 2; i++) undoLast(session, undone);
+    expect(redoFrom(session, undone)).toBe('score');
+    redo(session);
+    expect(redoFrom(session, undone)).toBe('action');
+    redoAction(session);
+    expect(redoFrom(session, undone)).toBeUndefined();
+  });
+
+  it('skips what a change since has made stale', () => {
+    const { game, session } = setup();
+    const hp = game.statFields![0];
+    const undone: Undone[] = [];
+    const [first] = applyScore(session, game, ['a'], 100, 'Clue 1');
+    logged(session, 'Ann hurt', () => addStat(game, session, 'a', hp, -1));
+    session.actionLog!.at(-1)!.ts++;
+    applyScore(session, game, ['b'], 200, 'Clue 2');
+    session.scoreLog.at(-1)!.ts += 2;
+    for (let i = 0; i < 3; i++) undoLast(session, undone);
+    // The score log's Restore brings Clue 1 back: next come the step, then Clue 2 (not Clue 1 twice, or Clue 2 first).
+    toggleEvent(session, first.id);
+    expect(redoFrom(session, undone)).toBe('action');
+    redoAction(session);
+    expect(redoFrom(session, undone)).toBe('score');
+    redo(session);
+    expect([score(session, 'a'), score(session, 'b'), statValue(game, session, 'a', hp)]).toEqual([100, 200, 9]);
+    // Undo both, then a new step: the undone step can't come back, only the score change.
+    undoLast(session, undone);
+    undoLast(session, undone);
+    logged(session, 'Bob hurt', () => addStat(game, session, 'b', hp, -1));
+    expect(redoFrom(session, undone)).toBe('score');
+    expect(undone).toEqual([]);
+    // A new score change: nothing at all.
+    undoLast(session, undone);
+    applyScore(session, game, ['a'], 5, 'Oops');
+    expect([redoFrom(session, undone), undone.length]).toEqual([undefined, 0]);
+  });
+
+  it('with nothing to go by (after a reload), redoes the action log first', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a'], 100, 'Clue 1');
+    logged(session, 'Ann hurt', () => addStat(game, session, 'a', game.statFields![0], -1));
+    undoAction(session);
+    undo(session);
+    expect(redoFrom(session, [])).toBe('action');
   });
 });
 

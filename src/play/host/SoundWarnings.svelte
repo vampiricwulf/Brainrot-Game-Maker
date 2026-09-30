@@ -2,13 +2,21 @@
 <script lang="ts">
   import { audience, sound } from '../../lib/sync.svelte';
   import { audioOut } from '../../lib/audioout.svelte';
-  import { captureProblem, desktop, restartApp } from '../../lib/desktop.svelte';
+  import { captureProblem, desktop, RESTART_ASK, restartApp } from '../../lib/desktop.svelte';
+  import InlineAsk from './InlineAsk.svelte';
 
   let { dual, onhelp }: { dual: boolean; onhelp: () => void } = $props();
 
   const capture = captureProblem();
   const missing = $derived(dual ? sound.outputMissing : audioOut.missing);
   let retryError = $state('');
+  /** "Try it again" was pressed: it asks inline (a browser dialog would show on stream). */
+  let askRetry = $state(false);
+
+  async function retry(): Promise<void> {
+    askRetry = false;
+    retryError = (await restartApp(true)) ?? '';
+  }
 </script>
 
 {#if capture}
@@ -22,9 +30,13 @@
 {#if desktop.fixSaved && desktop.fixCrashed}
   <div class="w bad" role="alert">
     ⚠ The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound.
-    <button class="small ghost" onclick={async () => (retryError = (await restartApp(true)) ?? '')} disabled={desktop.restarting}>
-      {desktop.restarting ? 'Restarting…' : '↻ Try it again'}
-    </button>
+    {#if askRetry && !desktop.restarting}
+      <InlineAsk text={RESTART_ASK} ok="↻ Restart" onok={retry} oncancel={() => (askRetry = false)} />
+    {:else}
+      <button class="small ghost" onclick={() => (askRetry = true)} disabled={desktop.restarting}>
+        {desktop.restarting ? 'Restarting…' : '↻ Try it again'}
+      </button>
+    {/if}
     <button class="small ghost" onclick={onhelp}>🔊 Help</button>
     {#if retryError}<span>{retryError}</span>{/if}
   </div>

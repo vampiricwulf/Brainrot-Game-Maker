@@ -9,6 +9,7 @@
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
   import { activeParty, audienceSees, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
   import { addStat, currencyFields, formatStat, giveItem, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
+  import InlineAsk from '../host/InlineAsk.svelte';
 
   let {
     el,
@@ -102,10 +103,13 @@
     onclose();
   }
 
-  function goThrough(players?: string[]): void {
+  /** Going through while it's locked asks first, inline (a browser dialog would show on stream): who'd go. */
+  let lockedAsk = $state<{ players?: string[] } | null>(null);
+
+  function goThrough(players?: string[], anyway = false): void {
     const to = role?.to;
     if (!to || !findIn(world, to)) return void toast('This doorway leads nowhere yet');
-    if (locked && !confirm(`${title} is locked. Go through anyway?`)) return;
+    if (locked && !anyway) return void (lockedAsk = { players });
     // "The party" is whoever stands at this doorway (the followed party may be somewhere else).
     const active = activeParty(st)?.members ?? [];
     const partyHere = active.some((m) => here.includes(m));
@@ -195,6 +199,10 @@
     {/each}
     {#if (role?.actions?.length ?? 0) > 1}<button class="small" onclick={runAll} title="Every action above, in order">▶ Run all</button>{/if}
   </div>
+  {#if lockedAsk && locked}
+    {@const a = lockedAsk}
+    <InlineAsk text="{title} is locked. Go through anyway?" ok="🚪 Go through" onok={() => goThrough(a.players, true)} oncancel={() => (lockedAsk = null)} />
+  {/if}
   {#if npcStats.length}
     <div class="row">
       {#each npcStats as s, i (i)}

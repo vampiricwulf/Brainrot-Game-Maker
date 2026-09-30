@@ -20,8 +20,9 @@
   import { lastAction, logged, wornItems } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
-  import PlayerCard from './PlayerCard.svelte';
-  import { addLive, focusParty, liveText, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap } from './hostops';
+  import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
+  import InlineAsk from '../host/InlineAsk.svelte';
+  import { addLive, focusParty, liveText, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap, type RpgAsk } from './hostops';
 
   let {
     game,
@@ -29,6 +30,7 @@
     selected = $bindable(),
     object = $bindable(),
     mapOpen = $bindable(false),
+    ask = $bindable(null),
     dual,
   }: {
     game: Game;
@@ -36,6 +38,8 @@
     selected: string[];
     object: string | null;
     mapOpen?: boolean;
+    /** A name or text being asked for (＋ Screen, a new look, ＋ Text, or text right-clicked onto the stage). */
+    ask?: RpgAsk | null;
     dual: boolean;
   } = $props();
   /** The drawpad is open (drawing an object for the screen on air). */
@@ -63,7 +67,7 @@
   const obj = $derived(object ? objectAt(game, session, object) : null);
   const objects = $derived(here && st ? screenElements(st, here.screen, false).filter((e) => e.role || e.name) : []);
   const last = $derived(lastAction(session, session.currentRound));
-  let showPlayers = $state(true);
+  const showPlayers = $derived(cardsShown());
   /** A screen picked on the host map, waiting for "Move here". */
   let picked = $state<ScreenRef | null>(null);
   const pickedFound = $derived(picked && world ? findIn(world, picked) : null);
@@ -86,13 +90,15 @@
       : [],
   );
 
-  // Moving on (the pad, the map, a doorway, an action) closes the card of an object left behind.
+  // Moving on (the pad, the map, a doorway, an action) closes the card of an object left behind, and a question
+  // about the screen left behind.
   let cardScreen = untrack(() => here?.screen.id);
   $effect(() => {
     const at = here?.screen.id;
     if (at === cardScreen) return;
     cardScreen = at;
     if (untrack(() => obj && obj.screen.id !== at)) object = null;
+    ask = null;
   });
 
   /** The live editor on the screen an object is on (its current look). */
@@ -107,11 +113,9 @@
     live = { screen: here.screen, slide: v?.slide ?? here.screen.slide, title: `${here.screen.name}${v ? ` (${v.name})` : ''}` };
   }
 
-  function addScreen(d: Dir8): void {
+  function addScreen(d: Dir8, name: string): void {
+    ask = null;
     if (!here) return;
-    // Viewers see a visited screen's name on the map.
-    const name = prompt('Name of the new screen (viewers see it on the map once visited):', `New ${DIR_NAME[d].toLowerCase()} of ${here.screen.name}`)?.trim();
-    if (!name) return;
     const { map, screen } = here;
     let id = '';
     logged(session, `Add ${name}`, () => (id = addScreenBeside(map, screen, d, name)?.id ?? ''), game);
@@ -123,27 +127,30 @@
     live = { screen: s, slide: s.slide, title: s.name };
   }
 
+  /** A copy of this screen's look, under a new name: it's put on, and opens in the live editor. */
+  function newLook(name: string): void {
+    ask = null;
+    if (!here || !st) return;
+    const screen = here.screen;
+    const look = newVariant(st, screen, name);
+    // One step: undoing it takes the new look away again, not only back to the old one.
+    logged(
+      session,
+      `${screen.name}: ${name}`,
+      () => {
+        screen.variants = [...(screen.variants ?? []), look];
+        st.variant ??= {};
+        st.variant[screen.id] = look.id;
+      },
+      game,
+    );
+    live = { screen, slide: screen.variants!.at(-1)!.slide, title: `${screen.name} (${name})` };
+  }
+
   function setLook(v: string): void {
     if (!here || !st) return;
     const screen = here.screen;
-    if (v === '+') {
-      const name = prompt('Name of the new look (e.g. On fire):', 'New look')?.trim();
-      if (!name) return;
-      const look = newVariant(st, screen, name);
-      // One step: undoing it takes the new look away again, not only back to the old one.
-      logged(
-        session,
-        `${screen.name}: ${name}`,
-        () => {
-          screen.variants = [...(screen.variants ?? []), look];
-          st.variant ??= {};
-          st.variant[screen.id] = look.id;
-        },
-        game,
-      );
-      live = { screen, slide: screen.variants!.at(-1)!.slide, title: `${screen.name} (${name})` };
-      return;
-    }
+    if (v === '+') return void (ask = { what: 'look' });
     const name = screen.variants?.find((x) => x.id === v)?.name ?? 'the original look';
     logged(session, `${screen.name}: ${name}`, () => {
       st.variant ??= {};
@@ -152,9 +159,17 @@
     });
   }
 
-  function addText(): void {
-    const text = prompt('Text to put on the screen (hidden until you reveal it):')?.trim();
-    if (text && addLive(game, session, liveText(game, session, text), `Text: ${text}`)) toast('Added, hidden: reveal it from its card');
+  /** Typed text goes on the screen hidden: where the stage was right-clicked (its card opens), else clear of the avatars. */
+  function addText(text: string, at?: { x: number; y: number }): void {
+    ask = null;
+    const el = liveText(game, session, text);
+    if (at) {
+      el.x = Math.round(at.x - el.w / 2);
+      el.y = Math.round(at.y - el.h / 2);
+    }
+    if (!addLive(game, session, el, `Text: ${text}`)) return;
+    if (at) object = el.id;
+    else toast('Added, hidden: reveal it from its card');
   }
 
   /** Copy a screen as it is now (default: the one on air) into the editor's game, so it's there next time. */
@@ -258,7 +273,7 @@
           const d = e.currentTarget.value as Dir8;
           e.currentTarget.value = '';
           e.currentTarget.blur();
-          if (d) addScreen(d);
+          if (d) ask = { what: 'screen', dir: d };
         }}
       >
         <option value="">＋ Screen…</option>
@@ -280,7 +295,7 @@
         {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
         <option value="+">＋ New look (a copy)…</option>
       </select>
-      <button class="small" onclick={addText} title="Type text onto the screen">＋ Text</button>
+      <button class="small" onclick={() => (ask = { what: 'text' })} title="Type text onto the screen">＋ Text</button>
       <button
         class="small"
         onclick={() => (drawpad = true)}
@@ -294,6 +309,32 @@
         💾 Keep in game
       </button>
     </div>
+    {#if ask && here}
+      {@const a = ask}
+      <!-- Fresh for every question, so a new one starts with its own text. -->
+      {#key a}
+        {#if a.what === 'screen'}
+          <InlineAsk
+            text="Name of the new screen {DIR_ARROW[a.dir]} (viewers see it on the map once visited):"
+            field="Screen name"
+            value="New {DIR_NAME[a.dir].toLowerCase()} of {here.screen.name}"
+            ok="＋ Add screen"
+            onok={(name) => addScreen(a.dir, name)}
+            oncancel={() => (ask = null)}
+          />
+        {:else if a.what === 'look'}
+          <InlineAsk text="Name of the new look (e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
+        {:else}
+          <InlineAsk
+            text="Text to put {a.at ? 'here' : 'on the screen'} (hidden until you reveal it):"
+            field="Text"
+            ok="＋ Add text"
+            onok={(text) => addText(text, a.at)}
+            oncancel={() => (ask = null)}
+          />
+        {/if}
+      {/key}
+    {/if}
 
     <div class="main">
       <div class="pad" role="group" aria-label="Move the party">
@@ -355,7 +396,7 @@
     </div>
 
     <div class="row">
-      <button class="ghost small" onclick={() => (showPlayers = !showPlayers)} aria-expanded={showPlayers}>
+      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>
         {showPlayers ? '▾' : '▸'} Players: stats & inventory
       </button>
       {#each session.players as pl, i (pl.id)}

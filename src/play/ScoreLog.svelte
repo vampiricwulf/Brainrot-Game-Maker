@@ -33,6 +33,10 @@
   const icon = { wheel: '🎡', dice: '🎲', rolloff: '🏁' } as const;
   const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const name = (id: string) => (byId[id] ? byId[id].name + (removed.has(id) ? ' (removed)' : '') : '(removed player)');
+  /** "+$200", "−$200", or "$0" (a Final judgment with nothing wagered). */
+  const amount = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${sym}${Math.abs(d).toLocaleString()}`;
+  /** A Final judgment says which it was. */
+  const judged = (e: ScoreEvent) => (e.right === undefined ? '' : e.right ? ' ✔' : ' ✘');
 </script>
 
 <aside>
@@ -68,8 +72,8 @@
           <div class="ev" class:undone={first.undone}>
             <span class="dot" style:background={p?.color ?? '#666'}></span>
             <span class="who">{name(first.playerId)}</span>
-            <span class="delta" class:neg={first.delta < 0}>{first.delta > 0 ? '+' : '−'}{sym}{Math.abs(first.delta).toLocaleString()}</span>
-            <span class="why muted">{first.reason} · {time(first.ts)}</span>
+            <span class="delta" class:neg={first.delta < 0}>{amount(first.delta)}</span>
+            <span class="why muted">{first.reason}{judged(first)} · {time(first.ts)}</span>
             <button class="small ghost" onclick={() => toggleEvent(session, first.id)}>{first.undone ? 'Restore' : 'Undo'}</button>
           </div>
         {:else}
@@ -90,7 +94,7 @@
               <div class="ev sub" class:undone={e.undone}>
                 <span class="dot" style:background={p?.color ?? '#666'}></span>
                 <span class="who">{name(e.playerId)}</span>
-                <span class="delta" class:neg={e.delta < 0}>{e.delta > 0 ? '+' : '−'}{sym}{Math.abs(e.delta).toLocaleString()}</span>
+                <span class="delta" class:neg={e.delta < 0}>{amount(e.delta)}</span>
                 <button class="small ghost" onclick={() => toggleEvent(session, e.id)}>{e.undone ? 'Restore' : 'Undo'}</button>
               </div>
             {/each}

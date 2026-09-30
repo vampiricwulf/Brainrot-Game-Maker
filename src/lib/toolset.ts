@@ -1,6 +1,6 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
-import { applyScore, score } from './session';
+import { applyScore, score, stepOf } from './session';
 import {
   formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField, type StatValue,
   type Wearable, type WorldMap,
@@ -386,6 +386,25 @@ export function redoAction(session: Session, game?: Game): ActionEvent | null {
   session.actionLog ??= [];
   session.actionLog.push({ ...e, before, after: undefined });
   return e;
+}
+
+/** What one Undo in play (Ctrl+Z: a score change or a step, whichever came last) took back, by its step id. */
+export interface Undone {
+  log: 'score' | 'action';
+  id: string;
+}
+
+/**
+ * Which log the next Redo in play takes from, going back the way the Undos went (`undone`, newest last): it's taken
+ * off `undone`, with any newer ones that can't be redone any more (a new change since, the score log's own Undo or
+ * Restore). With nothing to go by (after a reload), the action log goes first.
+ */
+export function redoFrom(session: Session, undone: Undone[]): 'score' | 'action' | undefined {
+  const top = session.scoreLog.find((x) => x.id === session.redoStack.at(-1));
+  for (let u = undone.pop(); u; u = undone.pop()) {
+    if (u.log === 'action' ? session.actionRedo?.at(-1)?.id === u.id : !!top && stepOf(top) === u.id) return u.log;
+  }
+  return session.actionRedo?.length ? 'action' : session.redoStack.length ? 'score' : undefined;
 }
 
 // ---------- Worn items ----------

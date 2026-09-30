@@ -66,6 +66,15 @@ try {
   await host.keyboard.press('Escape');
   await aud.locator('.board .tile.used').first().waitFor();
   assert(true, 'used tile shows in the audience window');
+  // A file dropped on the audience window is ignored: the browser would open it in place of the stream.
+  const dropIgnored = await aud.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(['x'], 'cat.png', { type: 'image/png' }));
+    const events = ['dragover', 'drop'].map((type) => new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }));
+    for (const e of events) document.querySelector('.aud').dispatchEvent(e);
+    return events.every((e) => e.defaultPrevented);
+  });
+  assert(dropIgnored, 'a file dropped on the audience window is ignored');
 
   await host.close({ runBeforeUnload: true });
   await aud.getByText('Host window closed').waitFor({ timeout: 8000 });

@@ -1012,6 +1012,12 @@ assert(true, 'N shows the spotlit player’s wager');
 await page.keyboard.press('x');
 await shot('8-final-reveal');
 assert((await page.locator('.spot-result').innerText()).includes('WRONG'), 'X marks the spotlit player wrong');
+// Their wager was 0, and Undo still takes the judgment back (WRONG leaves the screen).
+await page.keyboard.press('Control+z');
+await page.locator('.spot-result').waitFor({ state: 'detached' });
+assert(true, 'Undo takes back the judgment of a 0 wager too');
+await page.keyboard.press('x');
+await page.locator('.spot-result').waitFor();
 await page.keyboard.press('n');
 await page.locator('.fj .armed').waitFor();
 assert((await page.locator('.end h1').count()) === 0, 'with everyone judged, the first N only arms finishing');

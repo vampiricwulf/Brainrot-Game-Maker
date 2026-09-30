@@ -146,9 +146,15 @@
     send({ type: 'audience-event', event: { kind: 'activation', active: true } });
   }
 
+  /** A file dropped on this window is ignored: the browser would open it in place of the stream. */
+  function ignoreFiles(e: DragEvent): void {
+    if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+  }
 </script>
 
 <svelte:window
+  ondragover={ignoreFiles}
+  ondrop={ignoreFiles}
   onmousemove={poke}
   onkeydown={(e) => {
     // A key press (not Shift, Ctrl, Alt or Esc) counts as the click that allows sound, too.

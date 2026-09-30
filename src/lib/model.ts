@@ -477,6 +477,8 @@ export interface ScoreEvent {
   batchId?: Id;
   /** A Final re-judge: the earlier judgment's event it took the place of (undoing this brings that one back). */
   replaces?: Id;
+  /** A Final judgment: marked right or wrong (older saves go by the sign of `delta`; a 0 wager changes nothing). */
+  right?: boolean;
 }
 
 export interface RollEvent {

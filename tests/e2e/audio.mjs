@@ -373,6 +373,14 @@ try {
       [event, payload],
     );
   const fixWarning = (page, text) => page.getByRole('alert').filter({ hasText: text });
+  /** A restart button asks first, inline (a browser dialog would show on stream): answer ↻ Restart. */
+  async function restartVia(box, button) {
+    await box.getByRole('button', { name: button }).click();
+    await box.getByText('Restart Brainrot Games Maker now? Everything is saved').waitFor();
+    // The ask ignores the second half of a double-click on the button.
+    await box.page().waitForTimeout(450);
+    await box.getByRole('button', { name: '↻ Restart', exact: true }).click();
+  }
   const FAILED_WARNING = "The Discord audio fix didn't start this time";
   const CRASHED_WARNING = 'The Discord audio fix was turned off for this run because WebView2 crashed with it';
 
@@ -427,6 +435,12 @@ try {
     assert(true, 'switching it back needs no restart');
     await fix.uncheck();
     await help.getByRole('button', { name: '↻ Restart now' }).click();
+    await help.locator('.ia').getByRole('button', { name: 'Cancel' }).click();
+    assert(
+      (await calls(page, 'restart_app')).length === 0 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1,
+      'Restart now asks first, in the help (Cancel: no restart)',
+    );
+    await restartVia(help, '↻ Restart now');
     await page.waitForFunction(() => window.__calls.some(([c]) => c === 'restart_app'), null, { timeout: 5000 });
     assert(true, 'Restart now restarts the app (after asking)');
     if (shots) await page.screenshot({ path: `${shots}/audio-desktop.png` });
@@ -515,7 +529,7 @@ try {
     await help.getByText("The fix didn't start this time").waitFor();
     assert((await warning.count()) === 1, 'ticking it again brings both back');
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: false }, { on: true }]), 'both changes are saved');
-    await help.getByRole('button', { name: '↻ Restart now' }).click();
+    await restartVia(help, '↻ Restart now');
     await called(page, 'restart_app');
     assert(true, 'Restart now restarts the app');
     if (shots) await page.screenshot({ path: `${shots}/audio-fix-failed.png` });
@@ -539,14 +553,14 @@ try {
     assert((await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0, 'it doesn’t offer a plain restart (that would start without it again)');
     // A try that fails (the crash note couldn't be removed) says why, and the button works again.
     await failOnce(page, 'retry_audio_fix', "Couldn't save the setting: access denied");
-    await help.getByRole('button', { name: '↻ Try it again' }).click();
+    await restartVia(help, '↻ Try it again');
     await help.getByText("Couldn't save the setting: access denied").waitFor();
     assert(
       (await calls(page, 'retry_audio_fix')).length === 0 && (await help.getByRole('button', { name: '↻ Try it again' }).isEnabled()),
       'a failed try says why and can be repeated',
     );
     await help.getByRole('button', { name: 'Close' }).click();
-    await warning.getByRole('button', { name: '↻ Try it again' }).click();
+    await restartVia(warning, '↻ Try it again');
     await called(page, 'retry_audio_fix');
     assert(true, "the host warning's Try it again restarts with the fix (retry_audio_fix)");
     await context.close();

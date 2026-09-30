@@ -12,7 +12,9 @@
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
   import RoundNav from './host/RoundNav.svelte';
+  import InlineAsk from './host/InlineAsk.svelte';
   import RpgHost from './rpg/RpgHost.svelte';
+  import type { RpgAsk } from './rpg/hostops';
   import BoardHost from './boardgame/BoardHost.svelte';
   import { app } from '../lib/app.svelte';
   import type { Snippet } from 'svelte';
@@ -24,6 +26,7 @@
     amount = $bindable(),
     rpgObject = $bindable(null),
     rpgMap = $bindable(false),
+    rpgAsk = $bindable(null),
     wagerLimitsOff = $bindable(false),
     timerSeconds = $bindable(null),
     dual,
@@ -68,6 +71,8 @@
     rpgObject?: string | null;
     /** RPG rounds: the full map (jump anywhere) is open. */
     rpgMap?: boolean;
+    /** RPG rounds: a name or text being asked for (text right-clicked onto the stage too). */
+    rpgAsk?: RpgAsk | null;
     /** Final wagers: "Ignore the limits" is ticked. */
     wagerLimitsOff?: boolean;
     /** Seconds typed in the timer box (T uses them too). */
@@ -163,7 +168,6 @@
   let editingScore = $state<string | null>(null);
   /** Exit was pressed: it asks inline (a browser dialog would show on stream). */
   let askExit = $state(false);
-  let askedExitAt = 0;
 
   function toggle(id: string): void {
     selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
@@ -294,7 +298,7 @@
   {/if}
 
   {#if session.phase === 'rpg'}
-    <div class="mode-host"><RpgHost {game} {session} bind:selected bind:object={rpgObject} bind:mapOpen={rpgMap} {dual} /></div>
+    <div class="mode-host"><RpgHost {game} {session} bind:selected bind:object={rpgObject} bind:mapOpen={rpgMap} bind:ask={rpgAsk} {dual} /></div>
   {/if}
 
   {#if session.phase === 'end'}
@@ -434,14 +438,16 @@
     <button onclick={onplayers}>👥 Players</button>
     <button onclick={onhide} title="H">Hide controls</button>
     {#if askExit}
-      <span class="ask">
-        {session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : 'Leave this game? You can resume it from the editor.'}
-      </span>
-      <!-- The second half of a double-click on Exit doesn't count as the answer. -->
-      <button class="bad small" onclick={() => Date.now() - askedExitAt > 400 && onexit()}>Leave</button>
-      <button class="small" onclick={() => (askExit = false)}>Stay</button>
+      <InlineAsk
+        text={session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : 'Leave this game? You can resume it from the editor.'}
+        ok="Leave"
+        cancel="Stay"
+        danger
+        onok={onexit}
+        oncancel={() => (askExit = false)}
+      />
     {:else}
-      <button class="ghost" onclick={() => ((askExit = true), (askedExitAt = Date.now()))}>Exit</button>
+      <button class="ghost" onclick={() => (askExit = true)}>Exit</button>
     {/if}
   </div>
 </div>
@@ -548,11 +554,6 @@
   }
   .award input {
     width: 110px;
-  }
-  .ask {
-    color: var(--warn);
-    font-weight: 600;
-    font-size: 12px;
   }
   .divider {
     width: 1px;

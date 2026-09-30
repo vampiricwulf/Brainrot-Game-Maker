@@ -10,7 +10,7 @@
   import { currentPlayer, sendTo, spaceById, waysOn } from '../../lib/boardgame';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
-  import PlayerCard from '../rpg/PlayerCard.svelte';
+  import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
   import { boardNow, busyZones, moveNow, playerName, rollMover, turnNow } from './bgops';
 
   let { game, session, selected = $bindable(), dual }: { game: Game; session: Session; selected: string[]; dual: boolean } = $props();
@@ -33,7 +33,7 @@
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
   let steps = $state<number | null>(null);
-  let showPlayers = $state(true);
+  const showPlayers = $derived(cardsShown());
 
   // A new turn starts with no count: the last player's roll isn't theirs.
   $effect(() => {
@@ -254,7 +254,7 @@
       {/if}
       <span class="spacer"></span>
       {#if recent}<span class="muted small last" title="Ctrl+Z undoes it">Last: {recent.text}</span>{/if}
-      <button class="ghost small" onclick={() => (showPlayers = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} Players</button>
+      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} Players</button>
     </div>
     {#if showPlayers}
       <div class="cards">

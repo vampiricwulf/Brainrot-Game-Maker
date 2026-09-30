@@ -18,6 +18,12 @@ export function rpgNow(game: Game, session: Session) {
   return { round, world, st };
 }
 
+/**
+ * A name or some text the RPG host panel is asking for, inline (a browser dialog would show on stream): a new screen
+ * that way, a new look for this screen, or text for the screen (`at`: where the stage was right-clicked).
+ */
+export type RpgAsk = { what: 'screen'; dir: Dir8 } | { what: 'look' } | { what: 'text'; at?: { x: number; y: number } };
+
 /** Step the active party. Returns what to tell the host when it couldn't. */
 export function stepParty(game: Game, session: Session, dir: Dir8): string | null {
   const { world, st } = rpgNow(game, session);
