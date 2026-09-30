@@ -91,6 +91,9 @@
 {/snippet}
 
 <div class="insp">
+  <!-- RPG screens: what the item is comes first (the rest is how it looks). -->
+  {#if objectsection}{@render objectsection(el)}{/if}
+
   {#if el.kind === 'text'}
     <section>
       <h4>Text box</h4>
@@ -310,8 +313,6 @@
       {/if}
     </section>
   {/if}
-
-  {#if objectsection}{@render objectsection(el)}{/if}
 
   <section>
     <h4>Entrance animation</h4>

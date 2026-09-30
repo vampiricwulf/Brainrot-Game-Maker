@@ -26,6 +26,8 @@
 
   const R = 58;
   const hidden = (s: BoardSpace) => audience && !!s.secret && !revealed.includes(s.id);
+  /** The number in a space's name ("Space 4" → 4), drawn in it: its place in the list would disagree after a delete. */
+  const number = (s: BoardSpace) => /(\d+)$/.exec(s.name)?.[1];
   const byId = $derived(new Map(round.spaces.map((s) => [s.id, s])));
 
   /** A link from a to b, stopping at the edge of each circle. */
@@ -57,7 +59,7 @@
     {/each}
   {/each}
 </svg>
-{#each round.spaces as s, i (s.id)}
+{#each round.spaces as s (s.id)}
   {@const h = hidden(s)}
   {@const bg = h ? '#555' : s.color}
   <div
@@ -79,8 +81,8 @@
       <span class="q">?</span>
     {:else if s.icon && mediaUrls[s.icon]}
       <img src={mediaUrls[s.icon]} alt="" />
-    {:else}
-      <span class="n">{i + 1}</span>
+    {:else if number(s)}
+      <span class="n">{number(s)}</span>
     {/if}
     {#if !h}<span class="label">{s.name}</span>{/if}
   </div>

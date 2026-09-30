@@ -5,6 +5,7 @@ import { sendTo, spaceById } from './boardgame';
 import { playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
+import { actionProblem } from './refs';
 import { applyScore } from './session';
 import { activeParty, moveTo, override } from './rpg';
 import { addStat, giveItem, itemDef, logged, setStat, statFields, takeItem } from './toolset';
@@ -101,6 +102,9 @@ export function describeAction(game: Game, a: Action): string {
 export function runAction(ctx: RunContext, a: Action, label?: string): string {
   const { game, session, live } = ctx;
   const text = label ?? describeAction(game, a);
+  // What it points at was deleted (or never chosen): say so instead of doing something odd.
+  const gone = actionProblem(game, a, ctx);
+  if (gone) return gone;
   switch (a.do) {
     case 'stat': {
       const f = statFields(game).find((x) => x.id === a.field);

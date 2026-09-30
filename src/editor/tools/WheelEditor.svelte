@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { WheelPreset } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
-  import { newSegment, segmentAngles, spinTarget, weightedIndex } from '../../lib/tools';
+  import { newSegment, parseQuickWheel, segmentAngles, spinTarget, weightedIndex } from '../../lib/tools';
   import { app } from '../../lib/app.svelte';
   import Stage from '../../lib/Stage.svelte';
   import WheelView from '../../play/tools/WheelView.svelte';
@@ -56,11 +56,12 @@
     </div>
     <details>
       <summary class="muted small">Add many at once (one per line)</summary>
-      <textarea rows="4" bind:value={paste} placeholder={'Sing a song\nDo 10 push-ups\nSpeak in rhymes'}></textarea>
+      <textarea rows="4" bind:value={paste} placeholder={'Sing a song x3\nDo 10 push-ups\nSpeak in rhymes\n(x3 = three times as likely)'}></textarea>
       <button
         class="small"
         onclick={() => {
-          for (const l of paste.split('\n').map((x) => x.trim()).filter(Boolean)) wheel.segments.push(newSegment(l, wheel.segments.length));
+          // Like the quick wheel in play: "Sing a song x3" is a slice three times the size.
+          for (const o of parseQuickWheel(paste)) wheel.segments.push({ ...newSegment(o.label, wheel.segments.length), weight: o.weight });
           paste = '';
         }}>Add lines</button>
     </details>
@@ -99,8 +100,10 @@
     flex-direction: column;
     gap: 4px;
   }
+  /* A slice's "More" opens on a row of its own under it (full width, not squeezed between the other fields). */
   .seg {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: 6px;
   }

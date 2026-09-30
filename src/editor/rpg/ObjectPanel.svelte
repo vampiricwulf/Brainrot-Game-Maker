@@ -1,14 +1,15 @@
 <!-- RPG screens: what the selected item is (its class), what it does, and whether viewers see it. -->
 <script lang="ts">
   import { editedGame } from '../../lib/app.svelte';
-  import { textSlide, type ObjectClass, type Screen, type SlideElement, type World } from '../../lib/model';
+  import { textSlide, type ObjectClass, type Slide, type SlideElement, type World } from '../../lib/model';
   import { findIn, OBJECT_CLASSES } from '../../lib/rpg';
   import { currencyFields } from '../../lib/toolset';
   import ActionListEditor from './ActionListEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
   import SlideModal from './SlideModal.svelte';
 
-  let { el, world, screen }: { el: SlideElement; world: World; screen: Screen } = $props();
+  /** `slide`: the one being edited (the screen's own, or one of its looks), where Reveal / Hide find the objects. */
+  let { el, world, slide }: { el: SlideElement; world: World; slide: Slide } = $props();
   const game = $derived(editedGame());
   let dialogueOpen = $state(false);
 
@@ -30,7 +31,7 @@
   }
 
   const target = $derived(el.role?.to ? findIn(world, el.role.to) : null);
-  const others = $derived(screen.slide.elements.filter((e) => e.id !== el.id));
+  const others = $derived(slide.elements.filter((e) => e.id !== el.id));
 </script>
 
 <section class="obj">
@@ -60,7 +61,8 @@
       <div class="row">
         <input type="number" min="1" bind:value={r.qty} class="n" aria-label="How many" />
         <select bind:value={r.item} aria-label="Item">
-          {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{:else}<option value={undefined}>Add items in 📊 Stats & Items</option>{/each}
+          {#if !game.items?.some((it) => it.id === r.item)}<option value={r.item}>{game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>{/if}
+          {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
         </select>
       </div>
     {:else if r.class === 'currency'}
@@ -79,7 +81,7 @@
             <button class="ghost tiny" onclick={() => r.stats?.splice(i, 1)} aria-label="Remove stat">✕</button>
           </div>
         {/each}
-        <button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button>
+        <div class="row"><button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button></div>
         {#if r.stats?.length}<label class="check small"><input type="checkbox" bind:checked={r.statsShown} /> Viewers see its stats</label>{/if}
       </div>
       <div class="row">
@@ -119,6 +121,14 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  /* Like the inspector's other section headings. */
+  h4 {
+    margin: 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
   }
   .row {
     display: flex;

@@ -61,7 +61,7 @@ try {
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
-  await page.locator('.menu').getByRole('button', { name: 'Potion' }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
   await page.getByText('Secret (hidden until revealed)').click();
   await page.getByRole('button', { name: '🚩 Arrival' }).click();
   await page.getByRole('button', { name: '◀ Back to the map' }).click();

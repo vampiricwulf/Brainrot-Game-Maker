@@ -12,11 +12,18 @@ import {
   type Id,
   type Session,
 } from './model';
+import { actionProblem } from './refs';
 
 export const SPACE_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#ffe119', '#42d4f4', '#f032e6'];
 
 export function newBoardSpace(x: number, y: number, name = 'Space', color = '#4363d8'): BoardSpace {
   return { id: newId(), name, x: Math.round(x), y: Math.round(y), color, next: [] };
+}
+
+/** A name for a new space: "Space N" with a number no space has yet (after a delete, not a second "Space 12"). */
+export function nextSpaceName(round: BoardGameRound): string {
+  const used = round.spaces.map((s) => Number(/^Space (\d+)$/.exec(s.name)?.[1] ?? 0));
+  return `Space ${Math.max(round.spaces.length, ...used) + 1}`;
 }
 
 /** A new board: a loop of 12 spaces around the edge, starting at Start. */
@@ -189,6 +196,9 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   if (ends.length && round.spaces.length > 1) out.push({ text: `${name}: ${ends.map((s) => s.name).join(', ')} lead nowhere (the path ends there)`, tab, level: 'info' });
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
     out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn' });
+  // A deleted space, zone, item… (or nothing chosen).
+  const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])]).filter((a) => actionProblem(game, a, { board: round })).length;
+  if (nowhere) out.push({ text: `${name}: ${nowhere} button(s) on spaces point nowhere`, tab, level: 'warn' });
   return out;
 }
 

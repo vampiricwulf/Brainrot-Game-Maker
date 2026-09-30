@@ -22,6 +22,7 @@ import {
   type WorldMap,
   type WorldState,
 } from './model';
+import { objectPointsNowhere, worldObjects } from './refs';
 
 // ---------- Building worlds ----------
 
@@ -153,7 +154,8 @@ export function ensureWorld(session: Session, game: Game, round: RpgRound): Worl
   return st;
 }
 
-function startRef(world: World, round: RpgRound): ScreenRef | null {
+/** Where the party starts: the round's start screen, else the primary map's first screen. */
+export function startRef(world: World, round: RpgRound): ScreenRef | null {
   if (round.start && world.maps.some((m) => m.id === round.start!.map && m.screens.some((s) => s.id === round.start!.screen))) return round.start;
   const map = world.maps[0];
   const first = map?.screens[0];
@@ -293,6 +295,7 @@ export function step(game: Game, st: WorldState, world: World, dir: Dir8): strin
   const e = exitOf(found.map, found.screen, dir);
   if (e.kind === 'blocked') return e.note ? `Blocked: ${e.note}` : 'That way is blocked';
   if (e.kind === 'none') return `Nothing to the ${DIR_NAME[dir].toLowerCase()}`;
+  if (e.kind === 'warp' && !findIn(world, e.to)) return 'That way leads nowhere (its screen was deleted)';
   moveTo(game, st, world, e.to, { via: e.kind === 'open' ? dir : null });
   return null;
 }
@@ -431,9 +434,24 @@ export function screenSlide(st: WorldState | undefined, screen: Screen): Slide {
 /** A new look for a screen, copied from the one showing now. */
 export function newVariant(st: WorldState | undefined, screen: Screen, name: string): ScreenVariant {
   const v: ScreenVariant = { id: newId(), name, slide: JSON.parse(JSON.stringify(screenSlide(st, screen))) };
-  // Fresh element ids, so taking or moving an object in one look doesn't change the other.
-  for (const el of v.slide.elements) el.id = newId();
+  freshObjectIds([v.slide]);
   return v;
+}
+
+/**
+ * Copied objects (a new look, a duplicated screen) get fresh ids, so taking or moving one doesn't change the
+ * original, and Reveal / Hide buttons among the copies point at the copies. Doorways' arrival objects are on the
+ * screen they lead to, so they stay as they are.
+ */
+export function freshObjectIds(slides: Slide[]): void {
+  const ids = new Map<string, string>();
+  for (const el of slides.flatMap((sl) => sl.elements)) {
+    // (Looks from older saves can share an object with the screen's own slide: the copies share theirs.)
+    if (!ids.has(el.id)) ids.set(el.id, newId());
+    el.id = ids.get(el.id)!;
+  }
+  for (const el of slides.flatMap((sl) => sl.elements))
+    for (const a of el.role?.actions ?? []) if ((a.do === 'reveal' || a.do === 'hide') && a.object) a.object = ids.get(a.object) ?? a.object;
 }
 
 /** An empty screen next to `at` in direction `dir`, if that cell is free and on the grid. */
@@ -524,14 +542,14 @@ export function rpgProblems(game: Game, round: RpgRound, name: string, tab: numb
   const world = worldById(game, round.world);
   if (!world) return [{ text: `${name}: no world chosen`, tab, level: 'warn' }];
   if (!world.maps.some((m) => m.screens.length)) out.push({ text: `${name}: ${world.name} has no screens`, tab, level: 'warn' });
-  let loose = 0;
-  for (const m of world.maps)
-    for (const s of m.screens)
-      for (const el of s.slide.elements) {
-        const r = el.role;
-        if (r?.class === 'doorway' && !(r.to && findIn(world, r.to))) loose++;
-      }
+  const objects = worldObjects(world);
+  const loose = objects.filter((el) => el.role?.class === 'doorway' && !(el.role.to && findIn(world, el.role.to))).length;
   if (loose) out.push({ text: `${name}: ${loose} doorway(s) lead nowhere`, tab, level: 'warn' });
+  // Sides sent to a screen that was deleted since.
+  const ways = world.maps.flatMap((m) => m.screens.flatMap((s) => DIRS.map((d) => s.exits?.[d]))).filter((r) => r?.kind === 'warp' && !findIn(world, r.to)).length;
+  if (ways) out.push({ text: `${name}: ${ways} way(s) out lead nowhere`, tab, level: 'warn' });
+  const nowhere = objects.filter((el) => objectPointsNowhere(game, el, world)).length;
+  if (nowhere) out.push({ text: `${name}: ${nowhere} object(s) with a button or setting that points nowhere`, tab, level: 'warn' });
   return out;
 }
 
