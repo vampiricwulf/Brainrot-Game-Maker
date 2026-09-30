@@ -6,7 +6,7 @@ const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
-  backToFinalReveal, backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
+  backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName, standings,
 } from './session';
 import { applyAction } from './tools';
@@ -479,10 +479,12 @@ describe('final reveal with N', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 300, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 5; i++) finalNext(session, game);
+    for (let i = 0; i < 4; i++) finalNext(session, game);
+    finalJudge(session, game, a, true);
+    finalNext(session, game);
     expect(session.phase).toBe('end');
-    backToFinalReveal(session, game);
-    expect([session.phase, session.finalStep]).toEqual(['final', 'reveal']);
+    backToLastRound(session, game);
+    expect([session.phase, session.finalStep, session.final?.results[a]]).toEqual(['final', 'reveal', 'right']);
   });
 });
 

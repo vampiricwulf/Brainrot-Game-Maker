@@ -129,12 +129,13 @@ Every change can be undone with `Ctrl+Z`.
 
 ## Saving
 
-- **Save** writes a `.brainrot` pack: the game plus all its media.
+- **Save** (`Ctrl+S`) writes a `.brainrot` pack: the game plus all its media.
   - In the desktop app, saves go in a **BrainrotSaves** folder next to the `.exe`.
   - In a browser, they're downloads.
-- **Open…** lists your saves.
+- **Open…** lists your saves. Dropping a `.brainrot` file on the editor opens it too.
 - **⬇ Export HTML** makes a single, play-only file to share.
-- **⚙ Settings** (next to ℹ About) has these options:
+- Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **⬆ Add files…**.
+- **⚙ Settings** (desktop app, next to ℹ About) has these options:
   - **Autosave** every few minutes. The default is every 5 minutes, keeping the last 3.
   - **Replace the last save** instead of making `Game (2)`, `Game (3)`…
 

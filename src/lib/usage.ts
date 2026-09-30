@@ -77,7 +77,10 @@ export function mediaUsage(game: Game): Map<string, number> {
   for (const r of boardRounds(game)) for (const c of r.categories) for (const cl of c.clues) bump(cl.tileFace?.image);
   const fonts = game.media.filter((m) => m.kind === 'font');
   if (fonts.length) {
-    const used = allSlides(game).flatMap(({ slide }) => slide.elements.flatMap((e) => (e.kind === 'text' ? [e.font] : [])));
+    // Text on slides, text drawn onto pictures (kept to edit it again), and the theme's category and value fonts.
+    const els = [...allSlides(game).flatMap(({ slide }) => slide.elements), ...boardRounds(game).flatMap((r) => r.decor ?? [])];
+    const used = els.flatMap((e) => (e.kind === 'text' ? [e.font] : e.kind === 'image' ? (e.edits?.texts ?? []).map((t) => t.font) : []));
+    used.push(game.theme?.boardFont ?? '', game.theme?.valueFont ?? '');
     for (const f of fonts) {
       const fam = uploadedFamily(f.id);
       const count = used.filter((u) => u.includes(fam)).length;

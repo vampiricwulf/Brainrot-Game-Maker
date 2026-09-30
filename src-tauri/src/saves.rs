@@ -9,15 +9,19 @@ use std::time::UNIX_EPOCH;
 
 pub const FOLDER: &str = "BrainrotSaves";
 
-/// What can be saved (and opened back from the list): game packs, plain JSON games, playable HTML files.
+/// What can be saved: game packs, plain JSON games, playable HTML files.
 const EXTENSIONS: [&str; 4] = ["brainrot", "jbr", "json", "html"];
+
+/// What Open lists: games. An exported .html only plays; it can't be opened for editing.
+const GAMES: [&str; 3] = ["brainrot", "jbr", "json"];
 
 /// A save's file name as the page asked for it, if it's a plain file name (no folders, nothing hidden)
 /// with an allowed extension. The page can't write anywhere else.
 pub fn clean_name(name: &str) -> Option<String> {
     let name = name.trim();
+    // Counted as Windows does (UTF-16 units), so a title in any language fits.
     if name.is_empty()
-        || name.len() > 150
+        || name.encode_utf16().count() > 150
         || name.starts_with('.')
         || name.contains("..")
         || name.chars().any(|c| matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') || c.is_control())
@@ -76,7 +80,14 @@ pub struct SaveInfo {
     pub modified: u64,
 }
 
-/// The saves in a folder, newest first.
+fn is_game(name: &str) -> bool {
+    Path::new(name)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| GAMES.contains(&ext.to_ascii_lowercase().as_str()))
+}
+
+/// The games saved in a folder (not exported .html files), newest first.
 pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
@@ -84,7 +95,7 @@ pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
     let mut out: Vec<SaveInfo> = entries
         .flatten()
         .filter_map(|entry| {
-            let name = clean_name(entry.file_name().to_str()?)?;
+            let name = clean_name(entry.file_name().to_str()?).filter(|name| is_game(name))?;
             let meta = entry.metadata().ok().filter(|m| m.is_file())?;
             let modified = meta
                 .modified()
@@ -112,6 +123,10 @@ mod tests {
     fn only_plain_file_names_with_known_extensions() {
         assert_eq!(clean_name("My Game.brainrot").as_deref(), Some("My Game.brainrot"));
         assert_eq!(clean_name(" Quiz.HTML ").as_deref(), Some("Quiz.HTML"));
+        // 60 letters of any language fit, with " (autosave 12).brainrot" after them.
+        let long = format!("{} (autosave 12).brainrot", "𝒜".repeat(60));
+        assert_eq!(clean_name(&long).as_deref(), Some(long.as_str()));
+        assert_eq!(clean_name(&format!("{}.json", "x".repeat(150))), None);
         for bad in ["", "../x.brainrot", "a/b.json", "a\\b.json", "C:x.json", ".hidden.json", "game.exe", "noext", "x.brainrot\u{0}"] {
             assert_eq!(clean_name(bad), None, "{bad:?}");
         }
@@ -148,6 +163,8 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(20));
         write_save(&dir, "New.brainrot", b"zip").unwrap();
         fs::write(dir.join("notes.txt"), b"x").unwrap();
+        // An exported game plays, but Open can't edit it.
+        write_save(&dir, "New.html", b"<!doctype html>").unwrap();
         let names: Vec<String> = list_saves(&dir).into_iter().map(|s| s.name).collect();
         assert_eq!(names, ["New.brainrot", "Old.json"]);
         assert_eq!(list_saves(&dir.join("missing")), Vec::new());

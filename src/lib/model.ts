@@ -249,7 +249,6 @@ export interface GameSettings {
   deductOnWrong: boolean;
   defaultTimerSeconds: number | null;
   finalTimerSeconds: number;
-  displayMode: 'dual' | 'single';
   currencySymbol: string;
   rollOffDie: number;
   /** After a single-player award, that player becomes the current picker (TV-style). */
@@ -915,7 +914,6 @@ export function newGame(): Game {
       deductOnWrong: true,
       defaultTimerSeconds: null,
       finalTimerSeconds: 30,
-      displayMode: 'single',
       currencySymbol: '$',
       rollOffDie: 20,
       pickerFollowsAward: true,

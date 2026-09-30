@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cleanLink, cssUrl, driveUrls, embedName, embedOpenUrl, imageFallback, isDriveProblem, isLinkProblem, isMediaHost, isWebUrl, linkLifetime,
+  cleanLink, cssUrl, driveUrls, embedName, embedOpenUrl, imageFallback, isLinkProblem, isMediaHost, isWebUrl, linkLifetime,
   linkMessages, nameFromUrl, parseDrive, parseMediaLink, playerFor, youtubeId,
   type LinkKind, type LinkProblem, type LinkProblemCode, type MediaLink,
 } from './links';
@@ -52,8 +52,8 @@ describe('parseDrive', () => {
   it('explains links that are not media files', () => {
     const problem = (link: string) => {
       const r = parseDrive(link);
-      expect(isDriveProblem(r), link).toBe(true);
-      return isDriveProblem(r) ? r.problem : '';
+      expect(isLinkProblem(r), link).toBe(true);
+      return isLinkProblem(r) ? r.problem : '';
     };
     expect(problem('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz0')).toBe('folder');
     expect(problem('https://drive.google.com/drive/u/0/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz0?usp=sharing')).toBe('folder');
@@ -244,7 +244,12 @@ describe('link messages', () => {
     expect(linkMessages.wrongKind('image', 'audio')).toBe('That link is a picture; this spot needs a sound.');
     expect(linkMessages.unreachable('files.catbox.moe')).toContain('VPN');
     expect(linkMessages.unreachable('i.imgur.com')).toContain("Imgur isn't available in the UK.");
-    expect(linkMessages.http('example.com', 404)).toBe("example.com says the file doesn't exist or isn't shared publicly (404).");
+    // A site's error says what went wrong only as far as its status does: a busy or broken site isn't a sharing problem.
+    expect(linkMessages.http('example.com', 404)).toBe("example.com says the file doesn't exist (404). Check the link.");
+    expect(linkMessages.http('example.com', 403)).toBe("example.com says the file isn't shared publicly (403).");
+    expect(linkMessages.http('i.imgur.com', 429)).toBe('i.imgur.com is limiting downloads right now (429). Try again in a minute.');
+    expect(linkMessages.http('files.catbox.moe', 503)).toBe('files.catbox.moe is having trouble right now (503). Try again later.');
+    expect(linkMessages.http('example.com', 400)).toBe("example.com says the file doesn't exist or isn't shared publicly (400).");
   });
 });
 

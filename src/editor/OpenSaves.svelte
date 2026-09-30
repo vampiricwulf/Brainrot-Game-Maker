@@ -1,5 +1,6 @@
 <!-- Desktop app: Open… lists the games in BrainrotSaves (newest first), with Browse… for a file anywhere else. -->
 <script lang="ts">
+  import { toast } from '../lib/app.svelte';
   import { formatBytes } from '../lib/media.svelte';
   import { openDataFolder, type SaveEntry } from '../lib/desktop.svelte';
 
@@ -10,6 +11,17 @@
     onclose,
   }: { saves: SaveEntry[]; onpick: (s: SaveEntry) => void; onbrowse: () => void; onclose: () => void } = $props();
   const when = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
+  // Saves go to Documents when the app's folder can't be written: 📂 shows the folder the newest save is in.
+  const newest = $derived(saves.reduce<SaveEntry | undefined>((a, b) => (!a || b.modified > a.modified ? b : a), undefined));
+  const inDocuments = $derived(saves.filter((s) => s.place === 'documents').length);
+  const where = $derived(
+    !inDocuments ? 'next to the app' : inDocuments === saves.length ? 'in Documents' : 'next to the app, and in Documents',
+  );
+
+  async function showFolder(): Promise<void> {
+    const err = await openDataFolder(newest?.place === 'documents' ? 'saves-documents' : 'saves');
+    if (err) toast(err, 6000);
+  }
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
@@ -19,11 +31,11 @@
     <div class="row">
       <b>Open a game</b>
       <span class="spacer"></span>
-      <button class="ghost small" onclick={() => openDataFolder('saves')} title="Show the BrainrotSaves folder">📂 Saves folder</button>
+      <button class="ghost small" onclick={showFolder} title="Show the BrainrotSaves folder">📂 Saves folder</button>
       <button onclick={onbrowse}>Browse…</button>
       <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
     </div>
-    <p class="muted small">Your saves in BrainrotSaves (next to the app). Browse… opens a game from anywhere else.</p>
+    <p class="muted small">Your saves in BrainrotSaves ({where}). Browse… opens a game from anywhere else.</p>
     <div class="list">
       {#each saves as s (s.place + s.name)}
         <button class="save" onclick={() => onpick(s)}>

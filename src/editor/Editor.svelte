@@ -125,19 +125,46 @@
   }
 
   async function openFile(file: File): Promise<void> {
+    // Like New: asked once the file is chosen (a cancelled picker asks nothing), and not for a game with no rounds yet.
+    if (game.rounds.length && !confirm(`Open "${file.name}"? It replaces this game. Save this one first if you want to keep it.`)) return;
     try {
-      app.game = await openGameFile(file);
+      const opened = await openGameFile(file);
+      // A hand-edited file missing parts the editor needs would break the page: check it before it replaces this game.
+      try {
+        validate(opened);
+      } catch {
+        throw new Error(`"${file.name}" is missing parts a game needs (was it edited by hand?), so it wasn't opened.`);
+      }
+      app.game = opened;
       tab = 0;
       toast(`Opened "${app.game.title}"`);
+      pruneMedia([app.game, app.playGame, app.resumable?.game]);
     } catch (e) {
       alert((e as Error).message);
     }
+  }
+
+  /** A game file dropped anywhere no other part of the editor takes the drop opens, like Open…. */
+  function ondrop(e: DragEvent): void {
+    if (e.defaultPrevented || !e.dataTransfer?.files.length) return;
+    e.preventDefault();
+    const file = Array.from(e.dataTransfer.files).find((f) => /\.(brainrot|jbr|json)$/i.test(f.name));
+    if (file) openFile(file);
+    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide or a tile. A .brainrot game dropped here opens.', 5000);
   }
 
   let saving = $state(false);
   /** Percent done while a pack is built (big games take a few seconds). */
   let packPct = $state<number | null>(null);
   const packProgress = (done: number, total: number) => (packPct = total ? Math.floor((done / total) * 100) : null);
+
+  /** Ctrl+S saves the game (in a browser it would save this app's page instead), except in a dialog: finish that first. */
+  function onkeydown(e: KeyboardEvent): void {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
+    e.preventDefault();
+    if (document.querySelector('[role="dialog"]')) toast('Close this window first, then save (Ctrl+S)');
+    else if (!saving && !e.repeat) save();
+  }
 
   async function save(): Promise<void> {
     saving = true;
@@ -203,12 +230,21 @@
   }
 </script>
 
+<svelte:window {onkeydown} />
+<svelte:document {ondrop} />
+
 <div class="editor">
   <header>
     <input class="title" bind:value={game.title} aria-label="Game title" />
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
-    <button onclick={save} disabled={saving} title="Download a .brainrot game pack (game + all media)">{saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}</button>
+    <button
+      onclick={save}
+      disabled={saving}
+      title={`${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'} · Ctrl+S`}
+    >
+      {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}
+    </button>
     <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
       {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Export HTML'}
     </button>
@@ -227,11 +263,14 @@
     </button>
     <span class="spacer"></span>
     {#if app.storageOk}
-      <span class="muted autosave" title={app.fileAutosave ? `Last autosave file: ${app.fileAutosave.path}` : undefined}>
-        Autosaved {inTauri() ? 'on this PC' : 'in this browser'}{app.fileAutosave ? ` · file ${new Date(app.fileAutosave.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+      <span
+        class="muted autosave saved"
+        title={`Every change is autosaved ${inTauri() ? 'on this PC' : 'in this browser'}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : ''}`}
+      >
+        ✓ Autosaved{app.fileAutosave ? ` · file ${new Date(app.fileAutosave.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
       </span>
     {:else}
-      <span class="autosave warn" title="This browser won't let a file opened from disk store data. Use Save often.">
+      <span class="autosave warn" title={`Changes can't be kept ${inTauri() ? 'on this PC' : 'in this browser'} right now (storage is blocked or full). Use Save often.`}>
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
@@ -433,6 +472,10 @@
   }
   .autosave {
     font-size: 12px;
+  }
+  /* Short, so it stays on one line (the details are in its tooltip). */
+  .saved {
+    white-space: nowrap;
   }
   .data-notice {
     display: flex;

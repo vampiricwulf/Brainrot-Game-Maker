@@ -573,6 +573,8 @@ fn open_popup(
     } else {
         url.to_string()
     };
+    // Unlike the host window's, Tauri's drop handler stays on: nothing in these windows takes drops, so a file dropped
+    // on the audience window by mistake is ignored instead of replacing the page on stream.
     let mut builder = WebviewWindowBuilder::new(
         app,
         format!("popup-{n}"),
@@ -749,6 +751,9 @@ fn build_main(app: &AppHandle, args: Option<&'static str>, page_script: &str) ->
         .min_inner_size(900.0, 600.0)
         // Shown once its webview exists, so a failed start (retried below) never flashes an empty window.
         .visible(false)
+        // The page takes its own drops (files onto slides, tiles and the Media page, dragging layers): on Windows,
+        // Tauri's handler would take every drop instead.
+        .disable_drag_drop_handler()
         .initialization_script(page_script)
         .on_new_window(move |url, features| open_popup(&handle, url, features));
     if let Some(args) = args {

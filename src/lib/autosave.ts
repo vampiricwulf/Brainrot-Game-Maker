@@ -11,9 +11,10 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function nextSlot(title: string, saves: SaveEntry[], keep: number): number {
   const re = new RegExp(`^${escape(safeFilename(title))} \\(autosave (\\d+)\\)\\.brainrot$`);
   const slots = new Map<number, number>();
+  // Both folders count: autosaves go to Documents when the app's folder can't be written. The newest copy of a slot wins.
   for (const s of saves) {
     const n = Number(s.name.match(re)?.[1]);
-    if (s.place === 'app' && n >= 1 && n <= keep) slots.set(n, s.modified);
+    if (n >= 1 && n <= keep) slots.set(n, Math.max(slots.get(n) ?? 0, s.modified));
   }
   for (let n = 1; n <= keep; n++) if (!slots.has(n)) return n;
   return [...slots].sort((a, b) => a[1] - b[1])[0][0];

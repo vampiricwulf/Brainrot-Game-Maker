@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage, type SavedPlay } from './lib/persist';
+  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage, watchWrites, type SavedPlay } from './lib/persist';
   import { openPack } from './lib/pack';
   import { unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
@@ -61,6 +61,18 @@
     loaded = true;
   });
 
+  // A write that fails after the start (the disk or the browser's storage is full) switches the header to "use Save",
+  // saying so once; one that works again switches it back.
+  watchWrites((err) => {
+    if (!loaded) return;
+    if (!err) return void (app.storageOk = true);
+    if (app.storageOk) {
+      const full = err instanceof DOMException && err.name === 'QuotaExceededError';
+      toast(full ? 'Storage is full, so autosave stopped: use Save to keep this game' : 'Autosave stopped working: use Save to keep this game', 8000);
+    }
+    app.storageOk = false;
+  });
+
   // Autosave (spec §5.8 / §6.5). Only after the initial load so a blank game never overwrites a draft.
   const saveDraftSoon = debounce(saveDraft, 500);
   // Don't lose the last edits if the tab is closed or hidden right after typing.
@@ -68,9 +80,17 @@
   let autosaving = false;
   let lastAutosaveAt = Date.now();
   let lastAutosaved = '';
+  // Changes count from the game as it arrives (the draft at the start, Open…, New), so an unchanged game is never
+  // autosaved.
+  $effect(() => {
+    const game = app.game;
+    untrack(() => {
+      lastAutosaved = JSON.stringify($state.snapshot(game));
+      lastAutosaveAt = Date.now();
+    });
+  });
   onMount(() => {
     if (!inTauri()) return;
-    lastAutosaved = JSON.stringify($state.snapshot(app.game));
     const id = setInterval(async () => {
       if (autosaving || !prefs.autosaveMinutes || Date.now() - lastAutosaveAt < prefs.autosaveMinutes * 60_000) return;
       lastAutosaveAt = Date.now();
@@ -91,6 +111,11 @@
     }, 15_000);
     return () => clearInterval(id);
   });
+
+  /** A file dropped outside every drop spot is ignored: the browser would open it in place of the app. */
+  function ignoreFiles(e: DragEvent): void {
+    if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+  }
 
   onMount(() => {
     const flush = () => saveDraftSoon.flush();
@@ -183,6 +208,8 @@
     leavePlay();
   }
 </script>
+
+<svelte:window ondragover={ignoreFiles} ondrop={ignoreFiles} />
 
 {#if !loaded}
   <div class="loading muted">Loading…</div>

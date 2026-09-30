@@ -3,10 +3,10 @@
 // so autosaved drafts keep their media. The .brainrot pack is the portable copy.
 // Media added from an online link is downloaded into the same store when the site allows it; when it
 // doesn't, the MediaRef keeps the link (`url`) and plays straight from the internet.
-import { del, get, keys, set } from 'idb-keyval';
+import { delMany, getMany, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
-import { loadPlay } from './persist';
+import { loadPlay, write } from './persist';
 import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, parseMediaLink, type LinkKind, type MediaLink } from './links';
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
 import { kindOfMime, mimeFromName, soundTwin } from './sniff';
@@ -43,28 +43,28 @@ export function getBlob(id: string): Blob | undefined {
 
 export async function putMedia(id: string, blob: Blob): Promise<void> {
   registerBlob(id, blob);
-  try {
-    await set(KEY(id), blob);
-  } catch {
-    /* storage unavailable: media lives in memory until the game is saved */
-  }
+  // Storage unavailable or full: media lives in memory until the game is saved (the header says so).
+  await write(() => set(KEY(id), blob));
 }
 
 /** Load any of the game's media that isn't in memory yet from IndexedDB. Returns ids still missing. */
 export async function loadGameMedia(game: Game): Promise<string[]> {
   registerLinks(game);
-  const missing: string[] = [];
-  for (const ref of game.media) {
-    if (blobs.has(ref.id) || ref.url) continue;
-    try {
-      const b = await get<Blob>(KEY(ref.id));
-      if (b) registerBlob(ref.id, b);
-      else missing.push(ref.id);
-    } catch {
-      missing.push(ref.id);
-    }
+  const ids = game.media.filter((ref) => !blobs.has(ref.id) && !ref.url).map((ref) => ref.id);
+  if (!ids.length) return [];
+  try {
+    // One read for them all: a big game has hundreds of files.
+    const found = await getMany<Blob>(ids.map(KEY));
+    const missing: string[] = [];
+    ids.forEach((id, i) => {
+      const b = found[i];
+      if (b) registerBlob(id, b);
+      else missing.push(id);
+    });
+    return missing;
+  } catch {
+    return ids;
   }
-  return missing;
 }
 
 /** Held (shared) by every open copy of the app, so one copy can tell whether others are open. */
@@ -99,13 +99,13 @@ export async function pruneMedia(games: (Game | null | undefined)[]): Promise<vo
   const shared = await otherCopiesOpen();
   // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it.
   const saved = (await loadPlay())?.game;
-  // Checked again for every file: media added while this runs must survive.
+  // Checked again once the stored files are listed: media added while this runs must survive.
   const keep = () => new Set([...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []));
   if (!shared) {
     try {
-      for (const k of await keys()) {
-        if (typeof k === 'string' && k.startsWith('media:') && !keep().has(k.slice(6))) await del(k);
-      }
+      const stored = await keys();
+      const used = keep();
+      await delMany(stored.filter((k) => typeof k === 'string' && k.startsWith('media:') && !used.has(k.slice(6))));
     } catch {
       /* ignore */
     }
@@ -150,6 +150,14 @@ export function mimeFor(name: string, mime?: string): string {
   return mime || EXT_MIME[extOf(name)] || 'application/octet-stream';
 }
 
+/** HEIC photos (the iPhone's format): no browser, nor the desktop app, can show them. */
+const isHeic = (name: string, mime: string) => /^image\/hei[cf]/.test(mime) || /^hei[cf]$/.test(extOf(name));
+
+/** Refuse a picture that could never show, rather than add one that stays blank. */
+function refuseHeic(name: string, mime: string): void {
+  if (isHeic(name, mime)) throw new Error(`"${name}" is a HEIC photo (the iPhone's format), which the game can't show. Convert it to JPG or PNG first.`);
+}
+
 export const ACCEPT = {
   image: 'image/*,.svg,.avif',
   video: 'video/*,.mkv,.mov',
@@ -169,6 +177,7 @@ export async function addMediaFile(
   extra: Pick<MediaRef, 'source' | 'expiresAt'> = {},
 ): Promise<MediaRef> {
   const mime = mimeFor(name, file.type);
+  refuseHeic(name, mime);
   const kind = mediaKind(name, mime);
   if (!kind) throw new Error(`"${name}" isn't a supported image, video, audio or font file.`);
   let blob: Blob = file;
@@ -194,6 +203,12 @@ export interface LinkAdded {
 }
 
 const wrongKind = (is: LinkKind, need: MediaKind) => new LinkError({ problem: 'wrong-kind', message: linkMessages.wrongKind(is, need) });
+/** A downloaded file of a type that never shows or plays here (a HEIC photo, an AVI video), or null. */
+function unplayable(mime: string): LinkError | null {
+  if (isHeic('', mime)) return new LinkError({ problem: 'not-media', message: linkMessages.heic });
+  if (mime === 'video/x-msvideo') return new LinkError({ problem: 'not-media', message: linkMessages.avi });
+  return null;
+}
 const cancelled = () => new DOMException('Cancelled', 'AbortError');
 
 /** Explain a failed download, for when the link won't play live either. */
@@ -258,6 +273,8 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
     const kind = kindOfMime(file.mime);
     if (!kind) throw new LinkError({ problem: 'not-media', message: linkMessages.notMedia });
     if (want && kind !== want) throw wrongKind(kind, want);
+    const cant = unplayable(file.mime);
+    if (cant) throw cant;
     const ref = await addMediaFile(game, file.blob, file.name, extra);
     return { ref, saved: true, message: linkMessages.saved(link), warn: false, link };
   } catch (e) {
@@ -307,6 +324,8 @@ export async function saveLinkCopy(game: Game, id: string, job: DownloadJob = {}
   if (twin) mime = twin;
   const kind = kindOfMime(mime);
   if (kind !== ref.kind) throw kind ? wrongKind(kind, ref.kind) : new LinkError({ problem: 'not-media', message: linkMessages.notMedia });
+  const cant = unplayable(mime);
+  if (cant) throw cant;
   await putMedia(id, mime === file.mime ? file.blob : file.blob.slice(0, file.blob.size, mime));
   ref.mime = mime;
   ref.size = file.blob.size;
@@ -334,6 +353,7 @@ export async function replaceMediaFile(game: Game, id: string, file: File): Prom
   const ref = game.media.find((m) => m.id === id);
   if (!ref) throw new Error('That file is no longer in the game.');
   const mime = mimeFor(file.name, file.type);
+  refuseHeic(file.name, mime);
   const kind = mediaKind(file.name, mime);
   if (!kind) throw new Error(`"${file.name}" isn't a supported image, video, audio or font file.`);
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);

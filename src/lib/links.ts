@@ -190,8 +190,6 @@ export function parseDrive(link: string): DriveRef | LinkProblem | null {
   return { problem: 'no-file', message: `That Google Drive link doesn't point to a file. ${DRIVE_SHARE_HINT}` };
 }
 
-export const isDriveProblem = (x: DriveRef | LinkProblem | null): x is LinkProblem => isLinkProblem(x);
-
 const rk = (ref: DriveRef, sep: '?' | '&') => (ref.resourceKey ? `${sep}resourcekey=${encodeURIComponent(ref.resourceKey)}` : '');
 
 /** URLs for a Drive file. Which of these work where is documented on each. */
@@ -239,6 +237,8 @@ export const linkMessages = {
   youtubeOnly: 'YouTube videos can only go on a slide, with the 🌐 Link button.',
   htmlPage: "That link opens a web page, not a picture, video or sound file. Use the site's direct link, or right-click the media and choose Copy image/video address.",
   notMedia: "That link isn't a picture, video or sound the game can play.",
+  heic: "That link is a HEIC photo (the iPhone's format), which the game can't show. Convert it to JPG or PNG, then add the file.",
+  avi: "That link is an AVI video, which the game can't play. Convert it to MP4, then add the file.",
   wrongKind: (is: LinkKind | 'font', need: LinkKind | 'font') =>
     `That link is ${article(KIND_NAME[is])} ${KIND_NAME[is]}; this spot needs ${article(KIND_NAME[need])} ${KIND_NAME[need]}.`,
   hotlink: 'Pixeldrain blocks playing this file from other sites. Download it and add the file.',
@@ -246,7 +246,17 @@ export const linkMessages = {
     `Couldn't reach ${host}. Check that the link opens in your browser.` +
     (/catbox\.moe$/.test(host) ? ' catbox.moe is blocked in the UK and Ireland and by some internet providers; a VPN usually fixes it.' : '') +
     (/imgur\.com$/.test(host) ? " Imgur isn't available in the UK." : ''),
-  http: (host: string, status: number) => `${host} says the file doesn't exist or isn't shared publicly (${status}).`,
+  /** The site answered with an error: what it means depends on the status. */
+  http: (host: string, status: number) =>
+    status === 404 || status === 410
+      ? `${host} says the file doesn't exist (${status}). Check the link.`
+      : status === 401 || status === 403
+        ? `${host} says the file isn't shared publicly (${status}).`
+        : status === 429
+          ? `${host} is limiting downloads right now (${status}). Try again in a minute.`
+          : status >= 500
+            ? `${host} is having trouble right now (${status}). Try again later.`
+            : `${host} says the file doesn't exist or isn't shared publicly (${status}).`,
   saved: (link: MediaLink) => `Saved a copy in your game. It works offline now${link.temporary ? ` (the link itself expires ${link.temporary.when})` : ''}.`,
   /** Added as a live link: the site didn't allow a copy, or (`notSaved`) the user said no to a big file, or it's over 1 GB. */
   live: (link: MediaLink, desktop: boolean, notSaved?: 'declined' | 'too-big') =>
