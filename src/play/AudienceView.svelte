@@ -7,7 +7,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
   import { finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, score, standings, tiedLeaders } from '../lib/session';
+  import { currentClueInfo, currentFinal, places, score, standings, tiedLeaders } from '../lib/session';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
@@ -77,16 +77,26 @@
   const layout = $derived(boardLayout(game.theme, !!bannerUrl));
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
+  const ties = $derived(tiedLeaders(session));
+  /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
+  const tieOpen = $derived(!!ties.length && !session.coWinners);
   const winners = $derived.by(() => {
-    const ties = tiedLeaders(session);
-    if (ties.length && session.coWinners) return ties;
+    if (ties.length) return ties;
     const top = standings(session)[0];
     return top ? [top.player] : [];
   });
 </script>
 
 <div class="theme" style={themeCss}>
-{#if session.phase === 'board'}
+{#if live.pregame}
+  <!-- The host is still on the pre-game screen. -->
+  <div class="full title-card" in:fade={{ duration: 300 }}>
+    <div class="soon">
+      <div class="round-name">{game.title}</div>
+      <div class="soon-text">Starting soon…</div>
+    </div>
+  </div>
+{:else if session.phase === 'board'}
   {#if session.intro?.stage === 'title'}
     <div
       class="full title-card"
@@ -213,11 +223,14 @@
     </div>
   {/key}
 {:else if session.phase === 'end'}
-  {@const ranked = standings(session)}
-  <div class="full end" in:fade={{ duration: 500 }}>
-    <Confetti colors={[...winners.map((w) => w.color), '#ffcc00', '#ffffff']} />
+  {@const ranked = places(session)}
+  <!-- The tiebreaker line takes a row's room. -->
+  <div class="full end" in:fade={{ duration: 500 }} style:--n={ranked.length + (tieOpen ? 1 : 0)}>
+    {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} />{/if}
     <h1>
-      {#if winners.length > 1}
+      {#if tieOpen}
+        Tie for first: {winners.map((w) => w.name).join(' & ')}!
+      {:else if winners.length > 1}
         It's a tie: {winners.map((w) => w.name).join(' & ')}!
       {:else if winners.length}
         {winners[0].name} wins!
@@ -225,10 +238,11 @@
         Game over
       {/if}
     </h1>
+    {#if tieOpen}<div class="end-sub">Tiebreaker coming up…</div>{/if}
     <ol>
-      {#each ranked as { player, score: s }, i (player.id)}
+      {#each ranked as { player, score: s, place }, i (player.id)}
         <li style:--c={player.color} in:fly={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
-          <span class="rank">{i + 1}</span>
+          <span class="rank">{place}</span>
           <span class="nm" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
           <span class="sc">{formatPoints(s, sym)}</span>
         </li>
@@ -271,6 +285,9 @@
 <style>
   .theme {
     display: contents;
+    /* The theme's tile color, lighter and darker: the glow behind title cards, reveals and the end screen. */
+    --tile-light: color-mix(in srgb, var(--tile) 88%, white);
+    --tile-dark: color-mix(in srgb, var(--tile) 35%, black);
   }
   .cover {
     position: absolute;
@@ -278,7 +295,7 @@
     z-index: 100;
     display: grid;
     place-items: center;
-    background: radial-gradient(circle, #1a2bd6, #000);
+    background: radial-gradient(circle, var(--tile-light), #000);
   }
   .cover.host {
     opacity: 0.35;
@@ -286,7 +303,7 @@
   }
   .cover-card {
     font: 120px 'Anton', 'Oswald', sans-serif;
-    color: #ffcc00;
+    color: var(--value);
     text-shadow: 6px 6px 0 #000;
   }
   /* Board screen, back to front: background, images behind the tiles, banner + board, score bar, images on top. */
@@ -353,7 +370,7 @@
   .title-card {
     display: grid;
     place-items: center;
-    background: radial-gradient(circle at 50% 45%, #2a36ff, var(--tile) 50%, #020550);
+    background: radial-gradient(circle at 50% 45%, var(--tile-light), var(--tile) 50%, var(--tile-dark));
   }
   .round-name {
     font-family: var(--value-font);
@@ -366,6 +383,22 @@
     paint-order: stroke fill;
     padding: 0 60px;
     line-height: 1;
+  }
+  .soon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px;
+  }
+  .soon .round-name {
+    font-size: 150px;
+  }
+  .soon-text {
+    font-family: var(--board-font);
+    font-size: 70px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 5px 5px 0 #000;
   }
   .dd {
     display: flex;
@@ -445,9 +478,12 @@
     top: 0;
     width: 1920px;
     height: 850px;
+    /* Room for the round's label above the spotlight card. */
+    padding-top: 110px;
+    box-sizing: border-box;
     display: grid;
     place-items: center;
-    background: radial-gradient(circle at 50% 40%, #1b27ff, var(--tile) 55%, #020550);
+    background: radial-gradient(circle at 50% 40%, var(--tile-light), var(--tile) 55%, var(--tile-dark));
   }
   .spot {
     display: flex;
@@ -493,22 +529,33 @@
     text-shadow: 6px 6px 0 #000;
   }
   .end {
+    /* Up to 6 players fit at full size; with more, everything shrinks so the last one stays on screen. */
+    --k: min(1, calc(6 / var(--n, 1)));
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 70px;
+    padding-top: calc(70px * var(--k));
     color: #fff;
-    background: radial-gradient(circle at 50% 30%, #1b27ff, var(--tile) 45%, #020550);
+    background: radial-gradient(circle at 50% 30%, var(--tile-light), var(--tile) 45%, var(--tile-dark));
   }
   .end h1 {
     position: relative;
     z-index: 6;
     font-family: var(--value-font);
-    font-size: 110px;
-    margin: 0 40px 40px;
+    font-size: calc(110px * var(--k));
+    margin: 0 40px calc(40px * var(--k));
     text-align: center;
     color: var(--value);
     text-shadow: 6px 6px 0 #000;
+  }
+  .end-sub {
+    position: relative;
+    z-index: 6;
+    margin: calc(-20px * var(--k)) 0 calc(30px * var(--k));
+    font-family: var(--board-font);
+    font-size: calc(56px * var(--k));
+    font-weight: 800;
+    text-shadow: 4px 4px 0 #000;
   }
   .end ol {
     position: relative;
@@ -519,18 +566,18 @@
     width: 1100px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: calc(16px * var(--k));
   }
   .end li {
     display: flex;
     align-items: center;
     gap: 24px;
-    font-size: 56px;
+    font-size: calc(56px * var(--k));
     font-weight: 800;
     font-family: var(--board-font);
     background: rgba(0, 0, 0, 0.35);
     border-left: 14px solid var(--c);
-    padding: 10px 24px;
+    padding: calc(10px * var(--k)) 24px;
     border-radius: 10px;
   }
   .rank {

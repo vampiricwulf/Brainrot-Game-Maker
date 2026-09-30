@@ -5,7 +5,18 @@
   import { formatPoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
 
-  let { game, session, onshow }: { game: Game; session: Session; onshow: (playerId: string, wager: number) => void } = $props();
+  let {
+    game,
+    session,
+    onshow,
+    oncancel,
+  }: {
+    game: Game;
+    session: Session;
+    onshow: (playerId: string, wager: number) => void;
+    /** Back to the board, the tile kept (Esc, even in the wager box). */
+    oncancel: () => void;
+  } = $props();
 
   // Initial choice only: whoever is picking (the host can change it).
   let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? session.players[0]?.id ?? ''));
@@ -41,7 +52,10 @@
         min="0"
         bind:value={wager}
         autofocus
-        onkeydown={(e) => e.key === 'Enter' && valid && onshow(playerId, wager!)}
+        onkeydown={(e) => {
+          if (e.key === 'Enter' && valid) onshow(playerId, wager!);
+          else if (e.key === 'Escape') oncancel();
+        }}
       />
     </label>
     <button class="small ghost" onclick={() => (wager = cap)}>True Daily Double ({formatPoints(cap, sym)})</button>
@@ -68,7 +82,7 @@
   .small {
     font-size: 12px;
   }
-  input {
+  input[type='number'] {
     width: 110px;
   }
 </style>

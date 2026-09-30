@@ -66,6 +66,16 @@ async function answerDialog(action, accept) {
   return message ?? '';
 }
 
+/** Exit asks inline (a browser dialog would show on stream): answers Leave and returns what it asked. */
+async function exitGame() {
+  await page.getByRole('button', { name: 'Exit' }).click();
+  const asked = await page.locator('.panel .ask').innerText();
+  // The ask ignores the second half of a double-click on Exit.
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  return asked;
+}
+
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
@@ -983,7 +993,12 @@ await page.getByRole('button', { name: 'Finish game ▶' }).click();
 await page.locator('.end h1').waitFor();
 assert((await page.locator('.panel .p').count()) === 3, 'score chips stay on the end screen so scores can be fixed');
 // P1 550+300 = 850 ties P2 850-0 = 850.
-assert(await page.getByText('Tie for first:').isVisible(), 'tie for first is detected');
+assert(await page.locator('.panel').getByText('Tie for first:').isVisible(), 'tie for first is detected');
+assert(
+  (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player') && (await page.locator('.end canvas').count()) === 0,
+  'the stream shows the tie, not a winner, and no confetti until it is settled',
+);
+assert((await page.locator('.end .rank').allInnerTexts()).join() === '1,1,3', 'the tied players share first place on stream');
 // A tiebreaker roll-off says so, and its winner wins the game (Undo puts the tie back).
 await page.getByRole('button', { name: '🎲 Tiebreaker roll-off' }).click();
 await page.locator('.stage .wrap .title', { hasText: 'Tiebreaker roll-off!' }).waitFor();
@@ -994,7 +1009,7 @@ const rollWinner = (await page.locator('.end h1').innerText()).replace(/ wins!.*
 assert((await page.locator('.panel').innerText()).includes(`${rollWinner} won the tiebreaker roll-off`), `the roll-off's winner (${rollWinner}) wins the game`);
 assert((await page.locator('.end li').first().innerText()).includes(rollWinner), 'and is first in the standings');
 await page.getByRole('button', { name: 'Undo' }).click();
-await page.getByText('Tie for first:').waitFor();
+await page.locator('.panel').getByText('Tie for first:').waitFor();
 await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
 assert(true, 'co-winners declared on the winner screen');
@@ -1065,8 +1080,9 @@ await page.keyboard.press('Escape');
 await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment Wheel, then spin' }).click();
 await editBox.getByLabel(`Include ${punishment[0]}`).uncheck();
 assert((await sliceTexts()).length === punishment.length - 1, 'a saved wheel can lose a slice for this spin');
-nextDialog = (d) => d.accept('Punishment lite');
 await editBox.getByRole('button', { name: '💾 Save as new wheel…' }).click();
+await editBox.getByLabel('Name for the new wheel').fill('Punishment lite');
+await editBox.getByRole('button', { name: '💾 Save', exact: true }).click();
 await page.getByRole('button', { name: 'Overwrite "Punishment lite"' }).waitFor();
 assert(true, 'Save as new wheel makes a saved wheel (and the one on screen becomes it)');
 await page.keyboard.press('Escape');
@@ -1078,7 +1094,11 @@ await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment lite, the
 await editBox.getByRole('button', { name: '＋ Add slice' }).click();
 await editBox.getByLabel('Slice 2 label').fill('Dance');
 await editBox.getByLabel('Slice 2 label').press('Enter');
-await answerDialog(() => editBox.getByRole('button', { name: 'Overwrite "Punishment lite"' }).click(), true);
+const overwriteMsg = await answerDialog(async () => {
+  await editBox.getByRole('button', { name: 'Overwrite "Punishment lite"' }).click();
+  await editBox.getByRole('button', { name: 'Replace', exact: true }).click();
+}, true);
+assert(overwriteMsg === '', 'Overwrite asks inline (no browser dialog on stream)');
 await page.keyboard.press('Escape');
 await (await wheelMenu()).getByRole('button', { name: 'Punishment lite', exact: true }).click();
 assert((await sliceTexts()).join() === [...punishment.slice(1), 'Dance'].join(), 'Overwrite keeps the edits in that saved wheel');
@@ -1165,8 +1185,8 @@ await page.keyboard.press('s');
 await page.keyboard.press('t');
 await page.locator('.ov .sb').waitFor();
 await page.locator('.timer').waitFor();
-const exitMsg = await answerDialog(() => page.getByRole('button', { name: 'Exit' }).click(), true);
-assert(exitMsg.includes('You can resume it'), 'Exit says the game can be resumed');
+const exitMsg = await exitGame();
+assert(exitMsg.includes('You can resume it'), 'Exit says (inline) the game can be resumed');
 await page.getByRole('button', { name: 'Resume game' }).waitFor();
 assert(true, 'after Exit the editor offers to resume the game');
 const replaceMsg = await answerDialog(() => page.getByRole('button', { name: '▶ Play' }).click(), true);
@@ -1182,7 +1202,7 @@ await page.keyboard.press('1');
 await page.keyboard.press('Enter');
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
-await answerDialog(() => page.getByRole('button', { name: 'Exit' }).click(), true);
+await exitGame();
 await page.getByRole('button', { name: 'Resume game' }).waitFor();
 const keepMsg = await answerDialog(() => page.getByRole('button', { name: '▶ Play' }).click(), false);
 assert(keepMsg.includes('can still be resumed') && (await page.getByRole('button', { name: 'Resume game' }).isVisible()), 'cancelling Play keeps the saved game');
@@ -1191,7 +1211,7 @@ await page.reload();
 await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$200' && (await isUsed(0)), 'Exit, reload, Resume: scores and used tiles are kept');
-await answerDialog(() => page.getByRole('button', { name: 'Exit' }).click(), true);
+await exitGame();
 
 // Pack round trip: save the pack, start a new game, open it again (named .jbr, the old extension, which still opens).
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
@@ -1231,7 +1251,7 @@ await tile(0).click();
 await page.locator('.full img').waitFor();
 assert((await page.locator('.full .missing').count()) === 0, 'New keeps the media of the game waiting to be resumed');
 await page.keyboard.press('Escape');
-await answerDialog(() => page.getByRole('button', { name: 'Exit' }).click(), true);
+await exitGame();
 
 const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
 await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: (await import('node:fs')).readFileSync(packPath) });

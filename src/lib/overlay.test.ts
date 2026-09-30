@@ -4,7 +4,7 @@ import { newLive, overlayDoneAt } from './live';
 import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, wheelPool } from './overlay';
+import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, startRollOff, wheelPool } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
 import { validate } from './validate';
@@ -143,3 +143,15 @@ describe('several wheels at once', () => {
   });
 });
 
+describe('roll-off die', () => {
+  it('rolls a d20 for a blank die box and at least a d2, so it never ties forever', () => {
+    const { session, live } = withPlayers();
+    for (const [sides, want] of [[null, 20], [0, 20], [1, 2], [6.7, 6], [5000, 1000]] as const) {
+      startRollOff(live, session, ['a', 'b', 'c'], sides as unknown as number);
+      const o = live.overlay!;
+      if (o.kind !== 'rolloff') throw new Error('no roll-off');
+      expect(o.sides).toBe(want);
+      expect(session.rollLog!.at(-1)!.name).toBe(`Roll-off (d${want})`);
+    }
+  });
+});

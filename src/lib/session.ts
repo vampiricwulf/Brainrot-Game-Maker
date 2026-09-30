@@ -2,7 +2,8 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld } from './rpg';
 import { ensureBoard } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, type BoardRound, type ClueRef, type FinalRound, type Game, type Player, type Round, type ScoreEvent, type Session } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide } from './model';
+import { slideHasContent } from './usage';
 
 export function newSession(game: Game): Session {
   return {
@@ -91,6 +92,7 @@ export function undo(session: Session): ScoreEvent[] {
     e.undone = true;
     session.redoStack.push(e.id);
   }
+  followFinals(session, events);
   return events;
 }
 
@@ -106,6 +108,7 @@ export function redo(session: Session): ScoreEvent[] {
     e.undone = false;
     events.push(e);
   }
+  followFinals(session, events);
   return events;
 }
 
@@ -115,6 +118,28 @@ export function toggleEvent(session: Session, eventId: string): void {
   if (!e) return;
   e.undone = !e.undone;
   session.redoStack = session.redoStack.filter((id) => id !== eventId);
+  followFinals(session, [e]);
+}
+
+/**
+ * Final judgments follow their score changes being undone or restored. Only one judgment per player counts: undoing a
+ * re-judge brings back the one it replaced, and the RIGHT / WRONG on screen is the judgment still counted (or none).
+ */
+function followFinals(session: Session, changed: ScoreEvent[]): void {
+  for (const e of changed) {
+    const f = finalOf(session, e.clueId);
+    if (!f) continue;
+    const judgments = session.scoreLog.filter((x) => x.playerId === e.playerId && x.clueId === e.clueId);
+    // Counted again: the player's other judgments stop counting. Undone: the one it replaced counts again.
+    if (!e.undone) for (const x of judgments) x.undone = x !== e;
+    else if (e.replaces) {
+      const was = judgments.find((x) => x.id === e.replaces);
+      if (was) was.undone = false;
+    }
+    const counted = judgments.filter((x) => !x.undone).at(-1);
+    if (counted) f.results[e.playerId] = counted.delta > 0 ? 'right' : 'wrong';
+    else delete f.results[e.playerId];
+  }
 }
 
 /** A player's name, including players removed mid-game. */
@@ -143,6 +168,7 @@ export function toggleStep(session: Session, step: string): void {
   for (const e of events) e.undone = undoing;
   const ids = new Set(events.map((e) => e.id));
   session.redoStack = session.redoStack.filter((id) => !ids.has(id));
+  followFinals(session, events);
 }
 
 // ---------- Players ----------
@@ -229,6 +255,16 @@ export function toggleReveal(session: Session): void {
 export function awardOpen(session: Session): boolean {
   if (session.phase === 'clue') return session.dd?.stage !== 'splash';
   return session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'tiebreaker' || (session.phase === 'final' && session.finalStep !== 'reveal');
+}
+
+/** Nothing on the slide but empty text. */
+export function blankSlide(slide: Slide): boolean {
+  return !slideHasContent(slide) && !slide.background.image;
+}
+
+/** A wheel or dice tile with nothing to ask (no question or answer): the spin or roll is all there is to it. */
+export function toolOnlyClue(clue: Clue): boolean {
+  return (clue.type === 'wheel' || clue.type === 'dice') && blankSlide(clue.questionSlide) && blankSlide(clue.answerSlide);
 }
 
 /** Points were given (and not undone) for this clue. */
@@ -459,6 +495,13 @@ export function finalTag(roundId: string): string {
   return `final:${roundId}`;
 }
 
+/** The Final round state that score events tagged `tag` belong to (the one being played, or one put away). */
+function finalOf(session: Session, tag: string | undefined): FinalState | undefined {
+  if (!tag?.startsWith('final:')) return undefined;
+  const states = [session.final, ...Object.values(session.finals ?? {}).map((s) => s.state)];
+  return states.find((f) => f?.roundId && finalTag(f.roundId) === tag);
+}
+
 /** The Final round being played. */
 export function currentFinal(session: Session, game: Game): FinalRound | undefined {
   const r = game.rounds[session.currentRound];
@@ -485,6 +528,21 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
 
 export function finalWagerCap(session: Session, playerId: string): number {
   return Math.max(0, score(session, playerId));
+}
+
+/** Players in the Final still without a wager (0 or more), and those over their cap (unless the limits are ignored). */
+export function finalWagerProblems(session: Session, ignoreLimits = false): { missing: string[]; over: string[] } {
+  const wagers = session.final?.wagers ?? {};
+  const ids = session.final?.players ?? [];
+  const missing = ids.filter((id) => !(typeof wagers[id] === 'number' && wagers[id] >= 0));
+  const over = ids.filter((id) => !ignoreLimits && !missing.includes(id) && wagers[id] > finalWagerCap(session, id));
+  return { missing, over };
+}
+
+/** Every wager is in (and within its cap, unless the limits are ignored): the question can be shown. */
+export function finalWagersOk(session: Session, ignoreLimits = false): boolean {
+  const { missing, over } = finalWagerProblems(session, ignoreLimits);
+  return !!session.final && !missing.length && !over.length;
 }
 
 /** The Final's next step. After the reveals: the next round, or the end screen if this Final was the last round. */
@@ -558,16 +616,14 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
   const round = currentFinal(session, game);
   if (!f || !round) return;
   const tag = finalTag(round.id);
-  const prev = f.results[playerId];
-  if (prev) {
-    // Undo the earlier judgment's score change.
-    const e = [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === tag && !x.undone);
-    if (e) e.undone = true;
-  }
+  // Undo the earlier judgment's score change (Undo brings it back).
+  const earlier = f.results[playerId] ? [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === tag && !x.undone) : undefined;
+  if (earlier) earlier.undone = true;
   const wager = f.wagers[playerId] ?? 0;
   f.results[playerId] = right ? 'right' : 'wrong';
   f.shown[playerId] = true;
-  if (wager) applyScore(session, game, [playerId], right ? wager : -wager, finalName(round), tag);
+  const [e] = wager ? applyScore(session, game, [playerId], right ? wager : -wager, finalName(round), tag) : [];
+  if (e && earlier) e.replaces = earlier.id;
 }
 
 // ---------- End of game ----------
@@ -599,11 +655,11 @@ export function clueReason(game: Game, ref: ClueRef): string {
   return `${f.round.name} · ${clueName(game, ref)}`;
 }
 
-/** "Memes $400": a tile's category and value. */
+/** "Memes $1,000": a tile's category and value. */
 export function clueName(game: Game, ref: ClueRef): string {
   const f = getClue(game, ref);
   if (!f) return '';
-  return `${categoryLabel(f.category)} ${game.settings.currencySymbol}${clueValue(f.round, ref.row, f.clue)}`;
+  return `${categoryLabel(f.category)} ${formatPoints(clueValue(f.round, ref.row, f.clue), game.settings.currencySymbol)}`;
 }
 
 /** Where a clue sits on the board, by id. */
@@ -652,11 +708,25 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     const j = to.rounds.findIndex((r) => r.id === from.rounds[i]?.id);
     return j >= 0 ? j : null;
   };
-  session.currentRound = ref?.round ?? roundAt(session.currentRound) ?? Math.min(session.currentRound, Math.max(0, to.rounds.length - 1));
+  const found = ref?.round ?? roundAt(session.currentRound);
+  session.currentRound = found ?? Math.min(session.currentRound, Math.max(0, to.rounds.length - 1));
   if (session.introducedRounds)
     session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);
   if (session.phase === 'tiebreaker' && !to.tiebreaker) session.phase = 'end';
   session.gameId = to.id;
+  if (session.phase === 'end' || session.phase === 'tiebreaker') return;
+  // The round being played was deleted (or the one now in its place is another mode): enter that one properly,
+  // without its intro. With no rounds left, the game is over.
+  if (!to.rounds.length) {
+    session.phase = 'end';
+    return;
+  }
+  const r = to.rounds[session.currentRound];
+  const fits = session.phase === 'final' ? isFinal(r) : session.phase === 'rpg' ? isRpg(r) : session.phase === 'boardgame' ? isBoardGame(r) : isBoard(r);
+  if (found !== null && fits) return;
+  const seen = session.introducedRounds ?? [];
+  if (!seen.includes(session.currentRound)) session.introducedRounds = [...seen, session.currentRound];
+  goToRound(session, to, session.currentRound);
 }
 
 /**

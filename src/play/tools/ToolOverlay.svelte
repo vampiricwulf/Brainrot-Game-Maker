@@ -4,7 +4,7 @@
   import type { Overlay } from '../../lib/live';
   import { formatPoints, type Game, type Session } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
-  import { standings } from '../../lib/session';
+  import { places } from '../../lib/session';
   import { textOn } from '../../lib/colors';
   import WheelView from './WheelView.svelte';
   import DiceView from './DiceView.svelte';
@@ -46,11 +46,12 @@
     {:else if o.kind === 'shop'}
       <ShopView {game} {session} shopId={o.shopId} buyer={o.buyer} onbuy={onshopbuy} />
     {:else if o.kind === 'scoreboard'}
-      <div class="sb">
+      {@const ranked = places(session)}
+      <div class="sb" style:--n={ranked.length}>
         <h1>Scores</h1>
-        {#each standings(session) as { player, score }, i (player.id)}
+        {#each ranked as { player, score, place } (player.id)}
           <div class="line" style:--c={player.color}>
-            <span class="rank">{i + 1}</span>
+            <span class="rank">{place}</span>
             <span class="nm" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
             <span class="sc">{formatPoints(score, game.settings.currencySymbol)}</span>
           </div>
@@ -65,7 +66,8 @@
     position: absolute;
     inset: 0;
     z-index: 40;
-    background: radial-gradient(circle at 50% 50%, rgba(20, 30, 160, 0.92), rgba(0, 0, 20, 0.96));
+    /* The theme's tile color, darkened (see-through), fading to black. */
+    background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--tile) 65%, rgb(0 0 0 / 0.8)), rgba(0, 0, 20, 0.96));
   }
   .clickable {
     cursor: pointer;
@@ -75,19 +77,21 @@
     inset: 0;
   }
   .sb {
+    /* Up to 6 players fit at full size; with more, everything shrinks so the last one stays on screen. */
+    --k: min(1, calc(6 / var(--n, 1)));
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 18px;
-    padding-top: 60px;
+    gap: calc(18px * var(--k));
+    padding-top: calc(60px * var(--k));
   }
   h1 {
-    margin: 0 0 20px;
+    margin: 0 0 calc(20px * var(--k));
     font-family: var(--value-font);
-    font-size: 100px;
-    color: #ffcc00;
+    font-size: calc(100px * var(--k));
+    color: var(--value);
     text-shadow: 6px 6px 0 #000;
   }
   .line {
@@ -96,17 +100,17 @@
     gap: 24px;
     width: 1200px;
     font-family: var(--board-font);
-    font-size: 60px;
+    font-size: calc(60px * var(--k));
     font-weight: 800;
     color: #fff;
     background: rgba(0, 0, 0, 0.4);
     border-left: 16px solid var(--c);
     border-radius: 12px;
-    padding: 8px 24px;
+    padding: calc(8px * var(--k)) 24px;
   }
   .rank {
     width: 60px;
-    color: #ffcc00;
+    color: var(--value);
   }
   .nm {
     padding: 0 20px;

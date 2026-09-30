@@ -136,7 +136,9 @@ try {
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
     watch(aud, 'audience');
     await aud.locator('.board').waitFor();
-    // Nothing clicked in the audience window yet (and no aud.evaluate, which Playwright runs as a click).
+    // Nothing clicked in the audience window yet (and no aud.evaluate, which Playwright runs as a click). Its
+    // "click once" note only shows while the mouse is over it (so it stays off the stream).
+    await aud.mouse.move(200, 200);
     const clickOnce = page.getByText('Click the audience window once so it can play sound');
     assert((await clickOnce.count()) === 1 && (await aud.locator('.activate').count()) === 1, 'before any click or sound, both windows ask for a click');
     await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
@@ -204,6 +206,13 @@ try {
     await aud.getByText('Click anywhere in this window once so it can play sound').waitFor();
     await page.getByText('Click the audience window once so it can play sound').waitFor();
     assert(true, "dual mode: the host warns that the audience window can't play sound yet, with no slide media");
+    // Pre-game: viewers see a "Starting soon" card, not the board (it would give the categories away).
+    assert((await aud.locator('.soon-text').count()) === 1 && (await aud.locator('.board').count()) === 0, 'pre-game: the audience window holds on a "Starting soon" card');
+    // The "click once" note hides when the mouse is still (off the stream), and comes back with the mouse.
+    await aud.waitForTimeout(1700);
+    assert((await aud.locator('.activate').count()) === 0, 'the audience window hides its "click once" note while the mouse is still');
+    await aud.mouse.move(200, 200);
+    await aud.mouse.move(220, 210);
     // Shift or Alt (e.g. Alt+Tab away from it) doesn't let a window play sound.
     await aud.keyboard.press('Shift');
     await aud.keyboard.press('Alt');
@@ -385,7 +394,8 @@ try {
     // The desktop app's audience window connects over the channel and may play sound without a click.
     const aud = watch(await context.newPage(), 'desktop audience');
     await aud.goto(httpUrl + '#audience');
-    await aud.locator('.board').waitFor();
+    // Pre-game: a "Starting soon" card until the host starts.
+    await aud.locator('.soon-text').waitFor();
     await page.waitForTimeout(300);
     assert((await aud.locator('.activate').count()) === 0, 'desktop app: no "click once" banner in the audience window');
     assert((await page.getByText('Click the audience window once').count()) === 0, 'desktop app: the host gets no "click the audience window" warning');

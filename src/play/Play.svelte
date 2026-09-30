@@ -4,7 +4,8 @@
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
-    redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
+    redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo, blankSlide, toolOnlyClue, finalWagersOk,
+    startTiebreaker, roundMaxValue,
   } from '../lib/session';
   import { newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
@@ -41,7 +42,7 @@
     pushLive,
     pushSession,
   } from '../lib/sync.svelte';
-  import { localMedia, openMediaPopup, remoteMedia } from '../lib/mediactl.svelte';
+  import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { onMount } from 'svelte';
@@ -72,6 +73,10 @@
   let pickerPending = $state(false);
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
   let finishArmed = $state(false);
+  /** Final wagers: "Ignore the limits" is ticked, so a wager over its cap doesn't hold up N / Show question. */
+  let wagerLimitsOff = $state(false);
+  /** Seconds typed in the host panel's timer box: T starts that countdown, like its Start button. */
+  let timerSeconds = $state<number | null>(null);
   /** RPG rounds: the object whose card is open in the host panel. */
   let rpgObject = $state<string | null>(null);
   /** RPG rounds: the host's full map is open (J). */
@@ -92,24 +97,30 @@
     pending.add(id);
   }
 
-  // Mirror state to the audience window whenever it changes.
+  // Mirror state to the audience window whenever it changes. Before Start, viewers get a "Starting soon" card and no
+  // session: the board would give away the categories the round intro reveals.
   $effect(() => {
     const g = $state.snapshot(game);
     if (audience.open) pushGame(g);
   });
   $effect(() => {
     const s = $state.snapshot(session);
-    if (audience.open) pushSession(s);
+    if (audience.open && !app.pregame) pushSession(s);
   });
   $effect(() => {
     const l = $state.snapshot(app.live);
-    if (audience.open) pushLive(l);
+    if (audience.open) pushLive(app.pregame ? { ...l, pregame: true } : l);
   });
   // "Press N again to finish" only applies right where it was armed.
   $effect(() => {
     void session.phase;
     void session.finalStep;
     finishArmed = false;
+  });
+  // "Ignore the limits" is for the wagers being entered now, not the next Final's.
+  $effect(() => {
+    void session.phase;
+    wagerLimitsOff = false;
   });
 
   onMount(() => {
@@ -229,10 +240,10 @@
     if (o?.kind === 'dice') lastDice = o.preset;
   });
 
-  /** The roll-off's result: who picks first, or (a tiebreaker for tied winners) who wins the game. */
   /** Roll-offs whose result was already applied (closing one early applies it; the timer then mustn't again). */
   const rollOffsApplied = new Set<string>();
 
+  /** The roll-off's result: who picks first, or (a tiebreaker for tied winners) who wins the game. */
   function rollOffResult(s: typeof session, o: { nonce: string; winner: string; purpose?: 'first' | 'tiebreak' }): void {
     if (rollOffsApplied.has(o.nonce)) return;
     rollOffsApplied.add(o.nonce);
@@ -319,8 +330,11 @@
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
     app.live.overlay = null;
-    // A wheel/dice tile shows its question (if any) once the tool is closed.
-    if (session.phase === 'clue') autoTimer();
+    if (session.phase !== 'clue' || !info) return;
+    // A wheel/dice tile shows its question once the tool is closed, and its countdown starts. One with nothing to ask
+    // is done: no empty slide, no countdown.
+    if (toolOnlyClue(info.clue)) back();
+    else if (!blankSlide(info.clue.questionSlide)) autoTimer();
   }
 
   function ddShow(playerId: string, wager: number): void {
@@ -378,6 +392,13 @@
     app.live.sound = null;
     app.live.overlay = null;
     backToLastRound(session, game);
+  }
+
+  /** The tiebreaker clue, with the Amount ready (the last board's top value): select the winner and ＋ Award. */
+  function tiebreaker(): void {
+    startTiebreaker(session);
+    selected = [];
+    amount = game.rounds.map((_, i) => roundMaxValue(game, i)).filter(Boolean).at(-1) ?? null;
   }
 
   /** Same players (names and colors) at 0 and a fresh board, via the pre-game screen. */
@@ -812,7 +833,7 @@
         if (session.phase === 'boardgame') turnNow(game, session, 1);
         else if (session.phase === 'board' && session.intro) intro();
         else if (session.phase === 'final' && session.finalStep === 'reveal') finalRevealNext();
-        else if (session.phase === 'final' && session.finalStep !== 'wagers') {
+        else if (session.phase === 'final' && (session.finalStep !== 'wagers' || finalWagersOk(session, wagerLimitsOff))) {
           finalNext(session, game);
           finalStep();
         }
@@ -823,7 +844,7 @@
         break;
       case 't':
         if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
-        else startTimer(app.live, clueTimer() ?? (game.settings.defaultTimerSeconds || 30));
+        else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
         break;
       case 'p':
         pickerPending = true;
@@ -858,7 +879,7 @@
       }
       case 'y': {
         const m = firstMedia();
-        if (m?.[1].openUrl) openMediaPopup(m[1].openUrl);
+        if (m?.[1].openUrl && !openMediaPopup(m[1].openUrl)) toast(POPUP_FAILED, 5000);
         break;
       }
       default:
@@ -935,7 +956,8 @@
   </div>
 {:else}
   <div class="play" class:hidden={hideControls}>
-    <div class="stage-area" class:dual>
+    <!-- RPG and board game rounds have a tall host panel: it scrolls, so the stage keeps a floor. -->
+    <div class="stage-area" class:dual class:floor={session.phase === 'rpg' || session.phase === 'boardgame'}>
       <div
         class="stage-box"
         role="presentation"
@@ -977,6 +999,8 @@
         bind:amount
         bind:rpgObject
         bind:rpgMap
+        bind:wagerLimitsOff
+        bind:timerSeconds
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}
@@ -998,6 +1022,7 @@
         onskipintro={() => skipIntro(session)}
         onddshow={ddShow}
         onfinalstep={finalStep}
+        ontiebreaker={tiebreaker}
         ontiebreakerdone={() => ((session.phase = 'end'), (app.live.timer = null))}
         onlog={() => (showLog = !showLog)}
         onplayers={() => ((removing = null), (showPlayers = true))}
@@ -1007,12 +1032,7 @@
         oncloseoverlay={closeOverlay}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={() => (hideControls = true)}
-        onexit={() =>
-          confirm(
-            session.phase === 'end'
-              ? 'Leave the results screen? (Copy the results first if you want to keep them.)'
-              : 'Leave this game? You can resume it from the editor.',
-          ) && onexit()}
+        {onexit}
       >
         {#snippet tools()}
           <ToolLauncher {game} {session} onrolloff={rolloff} />
@@ -1126,6 +1146,9 @@
     flex: 1;
     min-height: 0;
     display: flex;
+  }
+  .stage-area.floor {
+    min-height: 38vh;
   }
   .stage-box {
     flex: 1;

@@ -2,12 +2,13 @@
 <script lang="ts">
   import { textOn } from '../../lib/colors';
   import { formatPoints, roundName, type Game, type Session } from '../../lib/model';
-  import { finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, score } from '../../lib/session';
+  import { finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, score } from '../../lib/session';
 
   let {
     game,
     session,
     armed = false,
+    override = $bindable(false),
     onstep,
     onreveal,
     onback,
@@ -16,6 +17,8 @@
     session: Session;
     /** Everyone is judged and N was pressed once: the next N finishes. */
     armed?: boolean;
+    /** "Ignore the limits" is ticked (bound, so N follows it too). */
+    override?: boolean;
     onstep: () => void;
     onreveal: () => void;
     /** Back to the round before this Final (wagers entered so far are kept). */
@@ -24,14 +27,20 @@
   const f = $derived(session.final);
   const sym = $derived(game.settings.currencySymbol);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
-  let override = $state(false);
+  const problems = $derived(finalWagerProblems(session, override));
+  const wagersOk = $derived(finalWagersOk(session, override));
+  const names = (ids: string[]) => ids.map((id) => byId[id]?.name ?? '?').join(', ');
 
-  const wagersOk = $derived(
-    !!f && f.players.every((id) => {
-      const w = f.wagers[id];
-      return typeof w === 'number' && w >= 0 && (override || w <= finalWagerCap(session, id));
-    }),
-  );
+  const wagerBoxes: HTMLInputElement[] = $state([]);
+
+  /** Enter in a wager box: show the question once every wager is fine, else go to the next box that needs one. */
+  function wagerEnter(i: number): void {
+    if (!f) return;
+    if (wagersOk) return next();
+    const after = [...f.players.slice(i + 1), ...f.players.slice(0, i + 1)];
+    const todo = after.find((id) => problems.missing.includes(id) || problems.over.includes(id));
+    if (todo) wagerBoxes[f.players.indexOf(todo)]?.focus();
+  }
 
   function toggleIn(id: string): void {
     if (!f) return;
@@ -102,7 +111,7 @@
     {:else if session.finalStep === 'wagers'}
       <span class="muted">Enter each wager (only you see these).</span>
       <div class="wagers">
-        {#each f.players as id (id)}
+        {#each f.players as id, i (id)}
           {@const p = byId[id]}
           {@const cap = finalWagerCap(session, id)}
           {@const w = f.wagers[id]}
@@ -114,6 +123,8 @@
               value={w ?? ''}
               class:bad={typeof w === 'number' && !override && w > cap}
               oninput={(e) => (f.wagers[id] = e.currentTarget.value === '' ? (undefined as unknown as number) : +e.currentTarget.value)}
+              onkeydown={(e) => e.key === 'Enter' && wagerEnter(i)}
+              bind:this={wagerBoxes[i]}
             />
             <span class="muted small">max {formatPoints(cap, sym)}</span>
           </label>
@@ -155,6 +166,10 @@
         <button onclick={onreveal} title="R">🙈 Hide answer</button>
       {:else if session.finalStep === 'category' || session.finalStep === 'question'}
         <span class="muted small">Tip: click the screen to continue</span>
+      {:else if session.finalStep === 'wagers' && !wagersOk}
+        <span class="muted small">
+          {problems.missing.length ? `Waiting on: ${names(problems.missing)}` : `Over the max: ${names(problems.over)}`}
+        </span>
       {:else if session.finalStep === 'reveal'}
         {#if armed}
           <span class="armed">Everyone is judged: press N again (or the button) to finish.</span>

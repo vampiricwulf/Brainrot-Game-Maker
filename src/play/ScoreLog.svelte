@@ -37,7 +37,7 @@
 
 <aside>
   <header class="row">
-    <button class="tab" class:on={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({session.scoreLog.length})</button>
+    <button class="tab" class:on={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({steps.length})</button>
     <button class="tab" class:on={tab === 'rolls'} onclick={() => (tab = 'rolls')}>Rolls ({session.rollLog?.length ?? 0})</button>
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose}>✕</button>

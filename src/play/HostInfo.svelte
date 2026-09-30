@@ -1,13 +1,14 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, standings } from '../lib/session';
+  import { currentClueInfo, currentFinal, places, tiedLeaders } from '../lib/session';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
   const finalRound = $derived(currentFinal(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const picker = $derived(session.players.find((p) => p.id === session.currentPickerId));
+  const ties = $derived(session.phase === 'end' && !session.coWinners ? tiedLeaders(session) : []);
 </script>
 
 <div class="info">
@@ -61,13 +62,24 @@
     <div class="label">Answer</div>
     <div class="a">{slideText(game.tiebreaker.answerSlide) || '—'}</div>
   {:else}
-    <div class="meta"><span class="cat">{game.rounds[session.currentRound]?.name ?? ''}</span></div>
-    <div class="label">Picking next</div>
-    <div class="q">{picker ? picker.name : 'Nobody set (press P then a number, or click a name plate)'}</div>
+    {#if session.phase === 'end'}
+      <div class="meta"><span class="cat">Game over</span></div>
+      {#if ties.length}
+        <div class="label">Tie for first</div>
+        <div class="q">{ties.map((p) => p.name).join(', ')}: settle it in the panel below</div>
+      {/if}
+    {:else}
+      <div class="meta"><span class="cat">{game.rounds[session.currentRound]?.name ?? ''}</span></div>
+      {#if session.phase === 'board'}
+        <div class="label">Picking next</div>
+        <div class="q">{picker ? picker.name : 'Nobody set (press P then a number, or click a name plate)'}</div>
+      {/if}
+    {/if}
     <div class="label">Standings</div>
     <ol>
-      {#each standings(session) as { player, score } (player.id)}
-        <li><span class="dot" style:background={player.color}></span>{player.name} <b>{formatPoints(score, sym)}</b></li>
+      <!-- Equal scores share a place, as on stream. -->
+      {#each places(session) as { player, score, place } (player.id)}
+        <li value={place}><span class="dot" style:background={player.color}></span>{player.name} <b>{formatPoints(score, sym)}</b></li>
       {/each}
     </ol>
   {/if}

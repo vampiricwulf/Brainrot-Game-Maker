@@ -144,6 +144,9 @@ export function fmtTime(t: number): string {
 
 export { youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl } from './links';
 
+/** What the host is told when openMediaPopup fails. */
+export const POPUP_FAILED = "Couldn't open the link. If the browser blocked the popup, allow popups for this file.";
+
 /** Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. */
 export function openMediaPopup(url: string): boolean {
   if (!isWebUrl(url)) return false;

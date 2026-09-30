@@ -27,16 +27,28 @@
     rows = wheelPool(o, session, game);
   }
 
+  // Save as and Overwrite ask inline (a browser dialog would show on stream).
+  /** The name typed for "Save as new wheel" (null: not asking). */
+  let saveName = $state<string | null>(null);
+  let askOverwrite = $state(false);
+
   /** A saved wheel goes into the game being played and, when it's the same game, the one in the editor. */
   function keep(change: (g: Game) => void): void {
     change(game);
     if (app.game.id === game.id && app.game !== game) change(app.game);
   }
 
-  function saveAs(): void {
+  function ask(what: 'save' | 'overwrite'): void {
     if (!on.length) return toast('Keep at least one slice on the wheel');
-    const name = prompt('Name for the new wheel:', o.players ? 'Players' : `${o.name} (edited)`)?.trim();
+    saveName = what === 'save' ? (o.players ? 'Players' : `${o.name} (edited)`) : null;
+    askOverwrite = what === 'overwrite';
+  }
+
+  function saveAs(): void {
+    const name = saveName?.trim();
     if (!name) return;
+    if (!on.length) return toast('Keep at least one slice on the wheel');
+    saveName = null;
     const wheel: WheelPreset = {
       id: newId(),
       name,
@@ -55,8 +67,8 @@
   }
 
   function overwrite(): void {
+    askOverwrite = false;
     if (!preset || !on.length) return;
-    if (!confirm(`Replace the slices of "${preset.name}" with these ${on.length}? This changes the wheel for the rest of the game.`)) return;
     const id = preset.id;
     keep((g) => {
       const w = g.wheels.find((x) => x.id === id);
@@ -72,50 +84,52 @@
   <p class="muted small">
     Changes apply to this spin only (until the wheel is closed). {o.players ? 'Players added later join with a normal chance.' : ''}
   </p>
-  <table>
-    <thead>
-      <tr><th>On</th><th></th><th>Slice</th><th>Chance</th><th></th><th></th></tr>
-    </thead>
-    <tbody>
-      {#each rows as s, i (s.id)}
-        <tr class:off={s.off}>
-          <td><input type="checkbox" checked={!s.off} aria-label={`Include ${s.label}`} onchange={(e) => ((s.off = !e.currentTarget.checked), apply())} /></td>
-          <td>
-            {#if o.players}
-              <span class="dot" style:background={s.color}></span>
-            {:else}
-              <input type="color" bind:value={s.color} onchange={apply} aria-label={`Color of ${s.label}`} />
-            {/if}
-          </td>
-          <td>
-            {#if o.players}
-              {s.label}
-            {:else}
-              <input class="label" bind:value={s.label} onchange={apply} aria-label={`Slice ${i + 1} label`} />
-            {/if}
-          </td>
-          <td>
-            <input
-              class="w"
-              type="number"
-              min="0"
-              step="0.5"
-              value={s.weight}
-              aria-label={`Weight of ${s.label}`}
-              title="Relative chance: 2 is twice as likely as 1"
-              onchange={(e) => ((s.weight = Math.max(0, +e.currentTarget.value || 0)), apply())}
-            />
-          </td>
-          <td class="pct">{chance(s)}</td>
-          <td>
-            {#if !o.players}
-              <button class="ghost small" aria-label={`Remove ${s.label}`} onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>✕</button>
-            {/if}
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <div class="slices">
+    <table>
+      <thead>
+        <tr><th>On</th><th></th><th>Slice</th><th>Chance</th><th></th><th></th></tr>
+      </thead>
+      <tbody>
+        {#each rows as s, i (s.id)}
+          <tr class:off={s.off}>
+            <td><input type="checkbox" checked={!s.off} aria-label={`Include ${s.label}`} onchange={(e) => ((s.off = !e.currentTarget.checked), apply())} /></td>
+            <td>
+              {#if o.players}
+                <span class="dot" style:background={s.color}></span>
+              {:else}
+                <input type="color" bind:value={s.color} onchange={apply} aria-label={`Color of ${s.label}`} />
+              {/if}
+            </td>
+            <td>
+              {#if o.players}
+                {s.label}
+              {:else}
+                <input class="label" bind:value={s.label} onchange={apply} aria-label={`Slice ${i + 1} label`} />
+              {/if}
+            </td>
+            <td>
+              <input
+                class="w"
+                type="number"
+                min="0"
+                step="0.5"
+                value={s.weight}
+                aria-label={`Weight of ${s.label}`}
+                title="Relative chance: 2 is twice as likely as 1"
+                onchange={(e) => ((s.weight = Math.max(0, +e.currentTarget.value || 0)), apply())}
+              />
+            </td>
+            <td class="pct">{chance(s)}</td>
+            <td>
+              {#if !o.players}
+                <button class="ghost small" aria-label={`Remove ${s.label}`} onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>✕</button>
+              {/if}
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
   <div class="row">
     {#if !o.players}
       <button class="small" onclick={() => ((rows = [...rows, newSegment(`Option ${rows.length + 1}`, rows.length)]), apply())}>＋ Add slice</button>
@@ -123,11 +137,34 @@
     <button class="small" onclick={() => ((rows = rows.map((s) => ({ ...s, weight: 1 }))), apply())}>Even chances</button>
     <button class="small ghost" onclick={reset}>↺ Undo edits</button>
     <span class="spacer"></span>
-    <button class="small" onclick={saveAs}>💾 Save as new wheel…</button>
+    <button class="small" onclick={() => ask('save')}>💾 Save as new wheel…</button>
     {#if preset}
-      <button class="small" onclick={overwrite}>Overwrite "{preset.name}"</button>
+      <button class="small" onclick={() => ask('overwrite')}>Overwrite "{preset.name}"</button>
     {/if}
   </div>
+  {#if saveName !== null}
+    <div class="row">
+      <!-- svelte-ignore a11y_autofocus -->
+      <input
+        class="label"
+        bind:value={saveName}
+        aria-label="Name for the new wheel"
+        autofocus
+        onkeydown={(e) => {
+          if (e.key === 'Enter') saveAs();
+          else if (e.key === 'Escape') saveName = null;
+        }}
+      />
+      <button class="small primary" onclick={saveAs} disabled={!saveName.trim()}>💾 Save</button>
+      <button class="small" onclick={() => (saveName = null)}>Cancel</button>
+    </div>
+  {:else if askOverwrite && preset}
+    <div class="row">
+      <span class="warn">Replace the slices of "{preset.name}" with these {on.length}? This changes the wheel for the rest of the game.</span>
+      <button class="small bad" onclick={overwrite}>Replace</button>
+      <button class="small" onclick={() => (askOverwrite = false)}>Cancel</button>
+    </div>
+  {/if}
 </fieldset>
 
 <style>
@@ -139,12 +176,14 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: 320px;
+  }
+  .slices {
+    /* A small window keeps its height for the stage: the slices scroll (the buttons below stay in view). */
+    max-height: clamp(100px, 100vh - 600px, 320px);
     overflow: auto;
+    align-self: flex-start;
   }
   table {
-    width: auto;
-    align-self: flex-start;
     border-collapse: collapse;
     font-size: 13px;
   }
@@ -184,6 +223,10 @@
     border-radius: 50%;
   }
   .small {
+    font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
     font-size: 12px;
   }
 </style>

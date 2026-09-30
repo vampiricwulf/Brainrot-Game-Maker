@@ -81,7 +81,7 @@
     font-size: 64px;
     line-height: 1.05;
     font-weight: 900;
-    color: #ffcc00;
+    color: var(--value);
     text-shadow: 5px 5px 0 #000;
   }
   .disc.single {
@@ -111,7 +111,7 @@
     font-family: var(--value-font);
     font-size: calc(var(--size) / 12);
     font-weight: 900;
-    color: #ffcc00;
+    color: var(--value);
     text-shadow: 4px 4px 0 #000;
     text-align: center;
     line-height: 1.05;

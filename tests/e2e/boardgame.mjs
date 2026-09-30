@@ -143,6 +143,8 @@ try {
 
   // One space a turn: the players pick the way (no dice).
   await page.getByRole('button', { name: 'Exit' }).click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Leave', exact: true }).click();
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   await page.getByLabel('Move by').selectOption('step');
   await page.getByRole('button', { name: '▶ Play' }).click();
