@@ -20,6 +20,19 @@ done, the Unreleased lines move under that day's heading.
 
 ### Added
 - This changelog.
+- **Jeopardy board editor**: drag round tabs to reorder them (`Alt`+`↑`/`↓`, `Delete`, `F2`, `Ctrl+D` on a tab); drag a
+  tile onto another to swap the clues (`Ctrl`-drag copies); drag category headers and right-click them to insert,
+  duplicate, clear or delete; arrow keys move around the board, `Enter` opens a clue, `Delete` clears it, `Ctrl+C` /
+  `Ctrl+V` copy a whole clue (across rounds and games); insert, move or delete rows anywhere; `Alt`+arrows in the clue
+  editor go to the clue above, below or beside; the Final and Tiebreaker get quick Question / Answer fields. (84d5e19)
+- **Drop files where they go**: item icons, avatars, space icons, worn looks, theme background and banner, music,
+  sounds, outcome media, the tile image, and any open picker (which also takes a pasted image). (0e2b57e)
+- **⌨ Editor shortcuts sheet** (the ⌨ button next to ℹ About, or `?`). (0e2b57e)
+- 🖼 Media page: rename a file (double-click or `F2`), drop a file on a card to replace it everywhere, select several
+  and remove them with an Undo. (0e2b57e)
+- Slide right-click menus: paste here, paste slide, select all, text here and background on an empty spot; cut, copy,
+  paste, edit image and align on items. Layers can be renamed (`F2`). Board images use the same clipboard as slides.
+  (0e2b57e)
 - **RPG map editor**: drag a screen to move it or swap it with another; `Delete` deletes the selected screens with an
   Undo notice instead of asking; the grid works from the keyboard (arrows, `Enter`, `Alt`+arrows, `Ctrl+D`, `F2`,
   `Esc`); select several with `Shift`/`Ctrl`-click or a box; copy/paste screens; move or copy a screen to another map;
