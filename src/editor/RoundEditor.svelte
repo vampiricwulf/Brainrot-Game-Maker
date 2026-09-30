@@ -162,14 +162,15 @@
     gridEl?.querySelector<HTMLElement>(`[data-tile="${cat},${row}"]`)?.focus();
   }
 
-  /** A clue dragged from another tile: the two swap (with `copy`, a copy of it replaces this one). */
+  /** A clue dragged from another tile: the two swap (with `copy`, a copy of it replaces this one, with Undo when that had something on it). */
   function dropClue(from: TilePos, to: TilePos, copy: boolean): void {
     if (from.cat === to.cat && from.row === to.row) return;
     const clue = round.categories[from.cat].clues[from.row];
     const [a, b] = [tileName(from), tileName(to)];
     if (copy) {
       const c = copyClue(clue);
-      step(`Copied ${a} to ${b}`, () => (round.categories[to.cat].clues[to.row] = c), { place: tilePlace(to.cat, c.id) });
+      const notify = clueHasContent(round.categories[to.cat].clues[to.row]);
+      step(`Copied ${a} to ${b}`, () => (round.categories[to.cat].clues[to.row] = c), { notify, place: tilePlace(to.cat, c.id) });
     } else step(`Swapped ${a} and ${b}`, () => swapClues(round, from, to), { place: tilePlace(to.cat, clue.id) });
     cursor = to;
   }
@@ -189,11 +190,15 @@
     toast(`Copied ${tileName(p)}: paste it on any tile (Ctrl+V)`);
   }
 
-  /** Paste the copied clue over a tile, with fresh ids (and the files it shows, when it came from another game). */
+  /**
+   * Paste the copied clue over a tile, with fresh ids (and the files it shows, when it came from another game). What
+   * was on the tile goes at once: the note at the bottom offers Undo.
+   */
   function pasteTile(p: TilePos): void {
     if (!clipboard.clue) return void toast('Copy a clue first (right-click a tile, or Ctrl+C)');
     const c = copyClue(clipboard.clue);
     const game = app.game;
+    const notify = clueHasContent(round.categories[p.cat].clues[p.row]);
     step(
       `Pasted a clue on ${tileName(p)}`,
       () => {
@@ -201,7 +206,7 @@
           if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
         round.categories[p.cat].clues[p.row] = c;
       },
-      { place: tilePlace(p.cat, c.id) },
+      { notify, place: tilePlace(p.cat, c.id) },
     );
   }
 

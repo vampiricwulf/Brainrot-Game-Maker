@@ -177,7 +177,8 @@
   let renamingRound = $state<string | null>(null);
   function renameRound(round: Round, name: string): void {
     renamingRound = null;
-    if (name.trim() && name.trim() !== roundName(round, game.rounds.indexOf(round))) round.name = name.trim();
+    const n = name.trim();
+    if (n && n !== roundName(round, game.rounds.indexOf(round))) step(null, () => (round.name = n));
     focusRoundTab(round.id);
   }
   const focusAll = (el: HTMLInputElement) => {
