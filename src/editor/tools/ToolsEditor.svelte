@@ -89,12 +89,12 @@
     const n = listOf(kind).length;
     showMenu(e, [
       { heading: item.name },
-      { label: '✎ Rename', onclick: () => (renaming = item.id), hint: 'F2' },
-      { label: '⧉ Duplicate', onclick: () => dup(kind, item), hint: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, hint: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, hint: 'Alt+↓' },
+      { label: '✎ Rename', onclick: () => (renaming = item.id), keys: 'F2' },
+      { label: '⧉ Duplicate', onclick: () => dup(kind, item), keys: 'Ctrl+D' },
+      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
       { sep: true },
-      { label: '🗑 Delete', danger: true, onclick: () => remove(kind, item), hint: 'Delete' },
+      { label: '🗑 Delete', danger: true, onclick: () => remove(kind, item), keys: 'Delete' },
     ]);
   }
 

@@ -140,9 +140,9 @@
     const n = listOf(kind).length;
     showMenu(e, [
       { heading: x.name },
-      { label: '⧉ Duplicate', onclick: () => duplicate(kind, x), hint: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, hint: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, hint: 'Alt+↓' },
+      { label: '⧉ Duplicate', onclick: () => duplicate(kind, x), keys: 'Ctrl+D' },
+      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
       { sep: true },
       { label: `🗑 Delete ${kind}`, danger: true, onclick: () => remove(kind, x) },
     ]);

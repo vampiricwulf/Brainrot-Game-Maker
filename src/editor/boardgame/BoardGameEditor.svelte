@@ -278,7 +278,7 @@
       const list = picked;
       showMenu(e, [
         { heading: `${list.length} spaces` },
-        { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), hint: 'Delete' },
+        { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), keys: 'Delete' },
       ]);
     } else if (s) {
       selectOnly(s.id);
@@ -287,16 +287,16 @@
         { label: '🏁 Make it Start', onclick: () => (round.start = s.id), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
         { label: '🔗 Link it to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
         { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
-        { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), hint: 'Ctrl+D' },
+        { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), keys: 'Ctrl+D' },
         { sep: true },
-        { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s) },
+        { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s), keys: 'Delete' },
       ]);
     } else if (la && lb) linkMenu(e, la, lb);
     else
       showMenu(e, [
         { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) },
-        { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), hint: 'Ctrl+A' },
-        { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length },
+        { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), keys: 'Ctrl+A' },
+        { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
       ]);
   }
 

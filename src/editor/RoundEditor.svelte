@@ -276,7 +276,7 @@
     cursor = p;
     showMenu(e, [
       { heading: tileName(p) },
-      { label: '✎ Edit clue', onclick: () => openAt(p.cat, p.row), hint: 'Enter' },
+      { label: '✎ Edit clue', onclick: () => openAt(p.cat, p.row), keys: 'Enter' },
       {
         label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
         disabled: clue.empty,
@@ -284,9 +284,9 @@
       },
       { label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty', onclick: () => (clue.empty = !clue.empty) },
       { sep: true },
-      { label: '📋 Copy clue', onclick: () => copyTile(p), hint: 'Ctrl+C' },
-      { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, hint: 'Ctrl+V' },
-      { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueHasContent(clue), hint: 'Delete' },
+      { label: '📋 Copy clue', onclick: () => copyTile(p), keys: 'Ctrl+C' },
+      { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, keys: 'Ctrl+V' },
+      { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueHasContent(clue), keys: 'Delete' },
       ...rowItems(p.row),
     ]);
   }

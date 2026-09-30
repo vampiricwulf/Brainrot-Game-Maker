@@ -146,12 +146,12 @@
   function mapMenu(e: MouseEvent, m: WorldMap, i: number): void {
     showMenu(e, [
       { heading: m.name },
-      { label: '✎ Rename', onclick: () => (renaming = m.id), hint: 'F2 or double-click' },
-      { label: '⧉ Duplicate map', onclick: () => copyMap(m), hint: 'Ctrl+D' },
-      { label: '◀ Move earlier', onclick: () => moveMap(i, i - 1), disabled: i === 0, hint: 'Alt+←' },
-      { label: 'Move later ▶', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1, hint: 'Alt+→' },
+      { label: '✎ Rename', onclick: () => (renaming = m.id), keys: 'F2 or double-click' },
+      { label: '⧉ Duplicate map', onclick: () => copyMap(m), keys: 'Ctrl+D' },
+      { label: '◀ Move earlier', onclick: () => moveMap(i, i - 1), disabled: i === 0, keys: 'Alt+←' },
+      { label: 'Move later ▶', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1, keys: 'Alt+→' },
       { sep: true },
-      { label: '🗑 Delete map', danger: true, onclick: () => removeMap(m), disabled: world.maps.length <= 1, hint: 'Delete' },
+      { label: '🗑 Delete map', danger: true, onclick: () => removeMap(m), disabled: world.maps.length <= 1, keys: 'Delete' },
     ]);
   }
 
@@ -371,11 +371,11 @@
     showMenu(e, [
       { heading: several ? `${several.length} screens` : s.name },
       ...(several
-        ? [{ label: '⧉ Duplicate them', onclick: () => duplicateScreens(several) }]
+        ? [{ label: '⧉ Duplicate them', onclick: () => duplicateScreens(several), keys: 'Ctrl+D' }]
         : [
-            { label: '✎ Edit screen', onclick: () => ((lookId = null), (editing = true)) },
-            { label: '⧉ Duplicate', onclick: () => duplicateScreens([s]), hint: 'Ctrl+D' },
-            { label: '📋 Copy screen', onclick: () => copyToClipboard(s), hint: 'Ctrl+C' },
+            { label: '✎ Edit screen', onclick: () => ((lookId = null), (editing = true)), keys: 'Enter' },
+            { label: '⧉ Duplicate', onclick: () => duplicateScreens([s]), keys: 'Ctrl+D' },
+            { label: '📋 Copy screen', onclick: () => copyToClipboard(s), keys: 'Ctrl+C' },
             ...(onstart ? [{ label: '🏁 Make it the start', onclick: () => onstart({ map: map.id, screen: s.id }), disabled: isStart(s) }] : []),
             { label: '＋ Look (a copy)', onclick: () => addLook(s) },
           ]),
@@ -384,7 +384,7 @@
       ...(several ? [] : others.map((m) => ({ label: `⧉ Copy to ${m.name}`, onclick: () => copyAcross(s, m) }))),
       ...lineItems(s.col, s.row),
       { sep: true },
-      { label: several ? `🗑 Delete ${several.length} screens` : '🗑 Delete screen', danger: true, onclick: () => removeScreens(several ?? [s]), hint: 'Delete' },
+      { label: several ? `🗑 Delete ${several.length} screens` : '🗑 Delete screen', danger: true, onclick: () => removeScreens(several ?? [s]), keys: 'Delete' },
     ]);
   }
 
@@ -392,7 +392,7 @@
     cursor = [c, r];
     showMenu(e, [
       { label: '＋ Add a screen here', onclick: () => addScreen(c, r) },
-      { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}” here` : '📋 Paste screen here', onclick: () => paste([c, r]), disabled: !clipboard.screen, hint: 'Ctrl+V' },
+      { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}” here` : '📋 Paste screen here', onclick: () => paste([c, r]), disabled: !clipboard.screen, keys: 'Ctrl+V' },
       ...(sel ? [{ label: `⇄ Move ${sel.name} here`, onclick: () => moveOnGrid([sel], c - sel.col, r - sel.row) }] : []),
       ...lineItems(c, r),
     ]);

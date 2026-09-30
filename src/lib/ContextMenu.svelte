@@ -4,6 +4,9 @@
   import { closeMenu, contextMenu } from './menustate.svelte';
 
   let box = $state<HTMLDivElement>();
+  /** "Ctrl+" reads "⌘" on a Mac. */
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+  const keysText = (k: string) => (mac ? k.replaceAll('Ctrl+', '⌘') : k);
   let pos = $state({ x: 0, y: 0 });
 
   $effect(() => {
@@ -66,7 +69,7 @@
         <div class="heading">{item.heading}</div>
       {:else}
         <button role="menuitem" class:danger={item.danger} disabled={item.disabled} title={item.hint} onclick={() => run(item.onclick)}>
-          {item.label}
+          <span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}
         </button>
       {/if}
     {/each}
@@ -88,6 +91,8 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
   button {
+    display: flex;
+    align-items: center;
     text-align: left;
     border: none;
     background: transparent;
@@ -95,8 +100,17 @@
     border-radius: 5px;
     font-size: 13px;
     white-space: nowrap;
+  }
+  .label {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  kbd {
+    margin-left: auto;
+    padding-left: 16px;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--muted);
   }
   button:hover:not(:disabled),
   button:focus-visible {

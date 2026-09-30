@@ -127,7 +127,7 @@
     if (!list.length) return;
     clipboard.actions = clone(list);
     holdUsedBy(game, clipboard.actions);
-    toast(`Copied ${list.length} button${list.length === 1 ? '' : 's'}: paste them on any object, item, space or slice`);
+    toast(`Copied ${list.length} button${list.length === 1 ? '' : 's'}: paste ${list.length === 1 ? 'it' : 'them'} on any object, item, space or slice`);
   }
 
   /** The copied set, after these ones (the ones that can't work here are left out). */
