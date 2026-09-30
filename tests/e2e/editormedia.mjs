@@ -254,7 +254,7 @@ try {
   assert((await board.locator('.backdrop img, .backdrop [style*="background-image"]').count()) === 0, 'one Ctrl+Z takes it back');
 
   // ---------- ⌨ Shortcuts ----------
-  await page.getByRole('button', { name: '⌨ Shortcuts' }).click();
+  await page.getByRole('button', { name: 'Keyboard shortcuts' }).click();
   const sheet = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' });
   await sheet.waitFor();
   for (const area of ['Clue', 'Slide', 'Map (RPG)', 'Board game', 'Lists']) assert((await sheet.getByRole('heading', { name: area, exact: true }).count()) === 1, `the sheet has ${area}`);
