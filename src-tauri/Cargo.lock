@@ -293,6 +293,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "brainrot-games-maker"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-http",
+ "tauri-plugin-single-instance",
+ "webview2-com",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
 name = "brotli"
 version = "9.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1877,19 +1890,6 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
-]
-
-[[package]]
-name = "jeopardy-builder"
-version = "0.1.0"
-dependencies = [
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-http",
- "tauri-plugin-single-instance",
- "webview2-com",
- "windows-sys 0.60.2",
 ]
 
 [[package]]

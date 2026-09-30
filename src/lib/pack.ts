@@ -1,4 +1,4 @@
-// .jbr game packs: a zip holding game.json + media/<id>.<ext> (spec §8).
+// .brainrot game packs (called .jbr before the rename; same format): a zip holding game.json + media/<id>.<ext> (spec §8).
 import JSZip from 'jszip';
 import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from './media.svelte';
 import { migrateGame, type Game } from './model';
@@ -14,7 +14,7 @@ function mediaPath(ref: { id: string; name: string }): string {
 export type PackProgress = (done: number, total: number) => void;
 
 /**
- * Build the .jbr zip. Media that isn't stored, or that the browser can no longer read, is left out
+ * Build the .brainrot zip. Media that isn't stored, or that the browser can no longer read, is left out
  * and listed in `missing` rather than failing the whole save.
  */
 export async function buildPack(game: Game, onProgress?: PackProgress): Promise<{ blob: Blob; missing: string[] }> {
@@ -41,7 +41,7 @@ export async function buildPack(game: Game, onProgress?: PackProgress): Promise<
 
 export async function savePack(game: Game, onProgress?: PackProgress): Promise<string[]> {
   const { blob, missing } = await buildPack(game, onProgress);
-  downloadBlob(`${safeFilename(game.title)}.jbr`, blob);
+  downloadBlob(`${safeFilename(game.title)}.brainrot`, blob);
   return missing;
 }
 
@@ -50,7 +50,7 @@ export async function openPack(file: Blob): Promise<Game> {
   try {
     zip = await JSZip.loadAsync(file);
   } catch {
-    throw new Error('This file is not a Jeopardy Builder game pack (.jbr).');
+    throw new Error('This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
   }
   const json = zip.file('game.json');
   if (!json) throw new Error('This pack has no game.json inside.');
@@ -66,7 +66,7 @@ export async function openPack(file: Blob): Promise<Game> {
   return game;
 }
 
-/** Open either a .jbr pack or a plain .json game. */
+/** Open a .brainrot pack (or a .jbr from before the rename: same format) or a plain .json game. */
 export async function openGameFile(file: File): Promise<Game> {
   if (/\.json$/i.test(file.name) || file.type === 'application/json') {
     const game = migrateGame(parseGame(await file.text()));

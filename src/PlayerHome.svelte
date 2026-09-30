@@ -23,7 +23,7 @@
 
 <div class="home" {style}>
   <div class="card">
-    <div class="logo">JEOPARDY!</div>
+    <div class="logo">BRAINROT GAMES</div>
     <h1>{game.title}</h1>
     <p class="muted">
       {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{game.final.enabled ? ` · ${finalName(game)}` : ''}
@@ -51,8 +51,8 @@
       class="ghost small"
       onclick={async () => {
         await savePack($state.snapshot(game));
-        toast('Downloaded the .jbr game pack: open it in the Jeopardy Builder to edit');
-      }}>⬇ Download as .jbr (to edit in the builder)</button>
+        toast('Downloaded the .brainrot game pack: open it in the Brainrot Games Maker to edit');
+      }}>⬇ Download as .brainrot (to edit in the builder)</button>
   </div>
 </div>
 

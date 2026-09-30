@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { finalName, newGame, newRound } from '../lib/model';
   import { pickFile, saveGameJson } from '../lib/fileio';
@@ -14,6 +15,7 @@
   import ThemeEditor from './ThemeEditor.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import { inTauri } from '../lib/platform';
+  import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
 
@@ -26,7 +28,7 @@
     registerGameFonts(game);
   });
   $effect(() => {
-    document.title = game.title ? `${game.title} · Jeopardy Builder` : 'Jeopardy Builder';
+    document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
   });
 
   function addRound(): void {
@@ -52,7 +54,7 @@
   }
 
   async function open(): Promise<void> {
-    const file = await pickFile('.jbr,.zip,.json,application/json,application/zip');
+    const file = await pickFile('.brainrot,.jbr,.zip,.json,application/json,application/zip');
     if (!file) return;
     try {
       app.game = await openGameFile(file);
@@ -74,7 +76,7 @@
     try {
       const missing = await savePack($state.snapshot(game), packProgress);
       if (missing.length) alert(`Saved, but these media files were missing and weren't included:\n${missing.join('\n')}`);
-      else toast('Saved game pack (.jbr)');
+      else toast('Saved game pack (.brainrot)');
     } catch (e) {
       alert('Save failed: ' + (e as Error).message);
     } finally {
@@ -115,8 +117,14 @@
       return false;
     }
   }
+  // The first start after the rename moved Jeopardy Builder's folders over: say so once.
+  let movedNotice = $state(false);
+  onMount(() => {
+    if (inTauri()) dataFolders().then((f) => (movedNotice = !!f?.moved));
+  });
   function dismissNotice(): void {
     dataNotice = false;
+    movedNotice = false;
     try {
       localStorage.setItem(NOTICE_KEY, '1');
     } catch {
@@ -130,7 +138,7 @@
     <input class="title" bind:value={game.title} aria-label="Game title" />
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
-    <button onclick={save} disabled={saving} title="Download a .jbr game pack (game + all media)">{saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}</button>
+    <button onclick={save} disabled={saving} title="Download a .brainrot game pack (game + all media)">{saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}</button>
     <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
       {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Export HTML'}
     </button>
@@ -148,9 +156,15 @@
     <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
     <button class="primary" onclick={onplay}>▶ Play</button>
   </header>
-  {#if dataNotice}
+  {#if movedNotice}
     <div class="data-notice" role="status">
-      <span>Jeopardy Builder saves your autosave and media in a folder on this PC.</span>
+      <span>Jeopardy Builder is now <b>Brainrot Games Maker</b>. Your games and media were moved to its new folder.</span>
+      <button class="small" onclick={() => ((about = true), dismissNotice())}>ℹ See where</button>
+      <button class="small ghost" onclick={dismissNotice}>Got it</button>
+    </div>
+  {:else if dataNotice}
+    <div class="data-notice" role="status">
+      <span>Brainrot Games Maker saves your autosave and media in a folder on this PC.</span>
       <button class="small" onclick={() => ((about = true), dismissNotice())}>ℹ See where</button>
       <button class="small ghost" onclick={dismissNotice}>Got it</button>
     </div>

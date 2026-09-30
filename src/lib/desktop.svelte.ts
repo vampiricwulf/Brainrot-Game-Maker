@@ -82,7 +82,7 @@ export async function setAudioFix(on: boolean): Promise<string | null> {
  * the fix again. Resolves to an error message, or null (also when the host says no).
  */
 export async function restartApp(retry = false): Promise<string | null> {
-  if (!confirm('Restart Jeopardy Builder now? Everything is saved: a game in progress can be resumed from the editor.')) return null;
+  if (!confirm('Restart Brainrot Games Maker now? Everything is saved: a game in progress can be resumed from the editor.')) return null;
   desktop.restarting = true;
   try {
     // Lets the last autosave (half a second behind) be written first.
@@ -91,7 +91,7 @@ export async function restartApp(retry = false): Promise<string | null> {
     return null;
   } catch (err) {
     desktop.restarting = false;
-    return typeof err === 'string' ? err : "Couldn't restart. Close Jeopardy Builder and open it again.";
+    return typeof err === 'string' ? err : "Couldn't restart. Close Brainrot Games Maker and open it again.";
   }
 }
 
@@ -104,10 +104,22 @@ export interface DataFolder {
  * Where the desktop app keeps things (see data_folders in src-tauri/src/main.rs): `data` holds the autosave and stored
  * media, `settings` the Discord audio fix's files. Null outside the desktop app or if the app can't say.
  */
-export async function dataFolders(): Promise<{ data: DataFolder; settings: DataFolder } | null> {
+export interface DataFolders {
+  data: DataFolder;
+  settings: DataFolder;
+  /** The folders the app had as Jeopardy Builder, while they still exist (normally moved on the first start). */
+  oldData?: DataFolder;
+  oldSettings?: DataFolder;
+  /** This start moved the old Jeopardy Builder folders over. */
+  moved?: boolean;
+}
+
+export type FolderName = 'data' | 'settings' | 'old-data' | 'old-settings';
+
+export async function dataFolders(): Promise<DataFolders | null> {
   if (!inTauri()) return null;
   try {
-    const f = await invoke<{ data: DataFolder; settings: DataFolder } | null>('data_folders');
+    const f = await invoke<DataFolders | null>('data_folders');
     return f?.data ? f : null;
   } catch (err) {
     console.warn('Could not get the data folders', err);
@@ -116,7 +128,7 @@ export async function dataFolders(): Promise<{ data: DataFolder; settings: DataF
 }
 
 /** Show one of the app's folders in File Explorer. Resolves to an error message, or null. */
-export async function openDataFolder(which: 'data' | 'settings'): Promise<string | null> {
+export async function openDataFolder(which: FolderName): Promise<string | null> {
   try {
     await invoke('open_data_folder', { which });
     return null;

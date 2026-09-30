@@ -3,14 +3,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
-  import { dataFolders, openDataFolder, openLink, type DataFolder } from '../lib/desktop.svelte';
+  import { dataFolders, openDataFolder, openLink, type DataFolders, type FolderName } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const REPO = 'https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot';
+  const REPO = 'https://github.com/vampiricwulf/Brainrot-Game-Maker';
   const desktopApp = inTauri();
-  let folders = $state<{ data: DataFolder; settings: DataFolder } | null>(null);
+  let folders = $state<DataFolders | null>(null);
+  const leftovers = $derived(
+    folders ? ([['old-data', folders.oldData], ['old-settings', folders.oldSettings]] as const).filter(([, f]) => f?.exists && f.path) : [],
+  );
   let modal = $state<HTMLElement>();
 
   onMount(() => {
@@ -26,7 +29,7 @@
     openLink(url).then((ok) => !ok && toast(`Couldn't open the browser: ${url}`));
   }
 
-  async function show(which: 'data' | 'settings'): Promise<void> {
+  async function show(which: FolderName): Promise<void> {
     const err = await openDataFolder(which);
     if (err) toast(err);
   }
@@ -42,16 +45,16 @@
 />
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="About Jeopardy Builder" tabindex="-1" bind:this={modal}>
-    <h2>Jeopardy Builder</h2>
-    <p class="muted">Build Jeopardy-style games with rich slides, then host them for a livestream.</p>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" tabindex="-1" bind:this={modal}>
+    <h2>Brainrot Games Maker</h2>
+    <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>
       <dt>Version</dt>
       <dd>{__APP_VERSION__} ({desktopApp ? 'Windows desktop app' : 'single HTML file'})</dd>
       <dt>Build</dt>
       <dd>{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
       <dt>Source</dt>
-      <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Jeopardy-Builder-Brainrot</a></dd>
+      <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker</a></dd>
       <dt>Updates</dt>
       <dd><a href={`${REPO}/releases/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a></dd>
       <dt>Problems</dt>
@@ -82,9 +85,25 @@
           </div>
           {#if folders.settings.exists}<button class="small" onclick={() => show('settings')}>📂 Open folder</button>{/if}
         </div>
+        {#if leftovers.length}
+          <div class="leftover" role="note">
+            <div class="what">Left over from Jeopardy Builder (the old name)</div>
+            <p class="muted small">
+              This app couldn't move {leftovers.length === 1 ? 'this folder' : 'these folders'} (the old app may have been
+              open, or this app already had data of its own). Look inside, then delete {leftovers.length === 1 ? 'it' : 'them'}
+              when you no longer need {leftovers.length === 1 ? 'it' : 'them'}.
+            </p>
+            {#each leftovers as [which, f] (which)}
+              <div class="folder">
+                <code>{f!.path}</code>
+                <button class="small" onclick={() => show(which)}>📂 Open folder</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
         <p class="muted small">
-          Removing Jeopardy Builder? Delete these folders too. Deleting them while the app is closed starts it fresh:
-          anything not saved as a .jbr (or exported) is lost.
+          Removing Brainrot Games Maker? Delete these folders too. Deleting them while the app is closed starts it fresh:
+          anything not saved as a .brainrot (or exported) is lost.
         </p>
       {:else}
         <p class="muted small">Looking up the folders…</p>
@@ -93,7 +112,7 @@
       <p class="muted">
         The autosave and the media you add are kept in this browser's storage for this file (nothing is uploaded). Another
         browser, or this file in another folder, starts empty. Clearing this browser's site data deletes them, so use
-        <b>Save</b> (.jbr) to keep a copy.
+        <b>Save</b> (.brainrot) to keep a copy.
       </p>
     {/if}
     <div class="end"><button class="primary" onclick={onclose}>Close</button></div>
@@ -158,6 +177,14 @@
   }
   .folder button {
     flex: none;
+  }
+  .leftover {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--warn);
+    border-radius: 8px;
   }
   .what {
     font-weight: 600;

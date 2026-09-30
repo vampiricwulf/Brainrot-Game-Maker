@@ -31,9 +31,11 @@
 use std::ffi::OsStr;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
+
+mod migrate;
 
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{AppHandle, Emitter, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -58,7 +60,7 @@ static ACTIVE_ARGS: OnceLock<&'static str> = OnceLock::new();
 /// restarts the running copy without the fix.
 const NO_AUDIO_FIX_SWITCH: &str = "--no-audio-fix";
 
-/// In the app's settings folder (%APPDATA%\com.jeopardybuilder.brainrot on Windows), the fix is on
+/// In the app's settings folder (%APPDATA%\com.brainrotgames.maker on Windows), the fix is on
 /// unless one of these (empty) files exists. The .txt is what Explorer's New › Text Document makes
 /// when file extensions are hidden.
 const FIX_OFF_FILES: [&str; 2] = ["discord-audio-fix-off", "discord-audio-fix-off.txt"];
@@ -270,16 +272,23 @@ async fn retry_audio_fix(app: AppHandle) -> Result<(), String> {
 
 /// The folders the app writes to, so the host page can say where its data is (nothing is hidden):
 /// `data` is WebView2's data folder, which holds the autosave, stored media and the page's settings
-/// (Tauri's default for the webview: %LOCALAPPDATA%\com.jeopardybuilder.brainrot on Windows);
-/// `settings` holds the Discord audio fix's files (%APPDATA%\com.jeopardybuilder.brainrot), and only
+/// (Tauri's default for the webview: %LOCALAPPDATA%\com.brainrotgames.maker on Windows);
+/// `settings` holds the Discord audio fix's files (%APPDATA%\com.brainrotgames.maker), and only
 /// exists once one was written.
+/// `old-data` and `old-settings` are the folders the app had as Jeopardy Builder, while they still
+/// exist (see migrate.rs).
 fn data_folder(app: &AppHandle, which: &str) -> Option<PathBuf> {
     match which {
         "data" => app.path().app_local_data_dir().ok(),
         "settings" => settings_dir(app),
+        "old-data" => data_folder(app, "data").and_then(|dir| migrate::old_for(&dir)),
+        "old-settings" => settings_dir(app).and_then(|dir| migrate::old_for(&dir)),
         _ => None,
     }
 }
+
+/// This start moved the old Jeopardy Builder folders over (the page says so once).
+static MOVED_OLD_DATA: AtomicBool = AtomicBool::new(false);
 
 #[tauri::command]
 fn data_folders(app: AppHandle) -> serde_json::Value {
@@ -290,7 +299,54 @@ fn data_folders(app: AppHandle) -> serde_json::Value {
             "exists": path.as_ref().is_some_and(|p| p.is_dir()),
         })
     };
-    serde_json::json!({ "data": describe("data"), "settings": describe("settings") })
+    serde_json::json!({
+        "data": describe("data"),
+        "settings": describe("settings"),
+        "oldData": describe("old-data"),
+        "oldSettings": describe("old-settings"),
+        "moved": MOVED_OLD_DATA.load(Ordering::SeqCst),
+    })
+}
+
+/// Before any window exists: move the folders the app had as Jeopardy Builder to the new names. If the
+/// old app is still running (its files are in use), ask to close it and retry; Cancel starts without
+/// the old data, which then stays where it is (ℹ About lists it).
+fn move_old_data(app: &AppHandle) {
+    for which in ["data", "settings"] {
+        let Some(new) = data_folder(app, which) else {
+            continue;
+        };
+        let Some(old) = migrate::old_for(&new) else {
+            continue;
+        };
+        loop {
+            match migrate::move_folder(&old, &new) {
+                Ok(migrate::Outcome::Moved | migrate::Outcome::MovedLeftover) => {
+                    MOVED_OLD_DATA.store(true, Ordering::SeqCst);
+                    break;
+                }
+                Ok(_) => break,
+                Err(err) => {
+                    eprintln!(
+                        "couldn't move {} to {}: {err}",
+                        old.display(),
+                        new.display()
+                    );
+                    #[cfg(windows)]
+                    if ask_retry(&format!(
+                        "Jeopardy Builder is now Brainrot Games Maker, and your games and media need to move \
+                         to its new folder. They can't be moved while the old Jeopardy Builder is open.\n\n\
+                         Close Jeopardy Builder, then click Retry. Cancel starts without them (they stay in \
+                         {}).\n\nDetails: {err}",
+                        old.display()
+                    )) {
+                        continue;
+                    }
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /// Show one of the app's own folders (see data_folder) in the file manager. Only those: the page
@@ -316,7 +372,7 @@ fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
 }
 
 /// The project's own pages (ℹ About's links); `open_link` opens nothing else.
-const REPO_URL: &str = "https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot";
+const REPO_URL: &str = "https://github.com/vampiricwulf/Brainrot-Game-Maker";
 
 fn is_repo_link(url: &str) -> bool {
     url == REPO_URL
@@ -423,7 +479,7 @@ fn open_popup(
 ) -> NewWindowResponse<tauri::Wry> {
     let n = POPUPS.fetch_add(1, Ordering::SeqCst);
     let title = if is_audience(&url) {
-        "Jeopardy Builder · Audience".to_string()
+        "Brainrot Games Maker · Audience".to_string()
     } else {
         url.to_string()
     };
@@ -472,7 +528,7 @@ fn open_popup(
 fn message_box(text: &str) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
     let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
-    let (text, title) = (wide(text), wide("Jeopardy Builder"));
+    let (text, title) = (wide(text), wide("Brainrot Games Maker"));
     // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
     unsafe {
         MessageBoxW(
@@ -481,6 +537,25 @@ fn message_box(text: &str) {
             title.as_ptr(),
             MB_OK | MB_ICONERROR,
         );
+    }
+}
+
+/// A Retry/Cancel message box; true = Retry.
+#[cfg(windows)]
+fn ask_retry(text: &str) -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        MessageBoxW, IDRETRY, MB_ICONWARNING, MB_RETRYCANCEL,
+    };
+    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let (text, title) = (wide(text), wide("Brainrot Games Maker"));
+    // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            text.as_ptr(),
+            title.as_ptr(),
+            MB_RETRYCANCEL | MB_ICONWARNING,
+        ) == IDRETRY
     }
 }
 
@@ -543,11 +618,11 @@ fn watch_for_crash(window: &tauri::WebviewWindow) {
                     let app = app.clone();
                     message_box_later(
                         format!(
-                            "Jeopardy Builder's windows went blank: Microsoft Edge WebView2 stopped while the \
-                             Discord audio fix was on, and Jeopardy Builder couldn't note that to start without \
+                            "Brainrot Games Maker's windows went blank: Microsoft Edge WebView2 stopped while the \
+                             Discord audio fix was on, and Brainrot Games Maker couldn't note that to start without \
                              the fix next time.\n\n\
-                             Jeopardy Builder closes now. Open it again with --no-audio-fix at the end of a \
-                             shortcut's Target, e.g. \"C:\\Users\\you\\Downloads\\jeopardy-builder-portable.exe\" \
+                             Brainrot Games Maker closes now. Open it again with --no-audio-fix at the end of a \
+                             shortcut's Target, e.g. \"C:\\Users\\you\\Downloads\\brainrot-games-maker-portable.exe\" \
                              --no-audio-fix\n\n\
                              Details: {why}"
                         ),
@@ -579,7 +654,7 @@ fn watch_for_crash(window: &tauri::WebviewWindow) {
 fn build_main(app: &AppHandle, args: Option<&'static str>, page_script: &str) -> tauri::Result<()> {
     let handle = app.clone();
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("Jeopardy Builder")
+        .title("Brainrot Games Maker")
         .inner_size(1400.0, 900.0)
         .min_inner_size(900.0, 600.0)
         // Shown once its webview exists, so a failed start (retried below) never flashes an empty window.
@@ -646,8 +721,8 @@ fn tell_start_failed(err: &tauri::Error) {
     eprintln!("the main window didn't start: {err}");
     #[cfg(windows)]
     message_box(&format!(
-        "Jeopardy Builder couldn't open its window: Microsoft Edge WebView2 didn't start.\n\n\
-         Wait a few seconds and open Jeopardy Builder again. If it still won't open, restart your PC.\n\n\
+        "Brainrot Games Maker couldn't open its window: Microsoft Edge WebView2 didn't start.\n\n\
+         Wait a few seconds and open Brainrot Games Maker again. If it still won't open, restart your PC.\n\n\
          Details: {err}"
     ));
 }
@@ -664,8 +739,8 @@ fn fix_off_from_second_launch(app: &AppHandle) {
         #[cfg(windows)]
         message_box_later(
             format!(
-                "Jeopardy Builder couldn't switch the Discord audio fix off.\n\n\
-                 Close Jeopardy Builder (end it in Task Manager if its window is blank), then open it \
+                "Brainrot Games Maker couldn't switch the Discord audio fix off.\n\n\
+                 Close Brainrot Games Maker (end it in Task Manager if its window is blank), then open it \
                  again with --no-audio-fix.\n\n\
                  Details: {why}"
             ),
@@ -720,6 +795,7 @@ fn main() {
         ])
         .setup(|app| {
             let handle = app.handle();
+            move_old_data(handle);
             let plan = plan_start(
                 settings_dir(handle).as_deref(),
                 has_no_fix_switch(std::env::args_os()),
@@ -736,7 +812,7 @@ fn main() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running Jeopardy Builder");
+        .expect("error while running Brainrot Games Maker");
 }
 
 #[cfg(test)]
@@ -807,7 +883,7 @@ mod tests {
     #[test]
     fn saving_off_then_on() {
         let dir = TempDir::new("save");
-        let folder = dir.0.join("com.jeopardybuilder.brainrot");
+        let folder = dir.0.join("com.brainrotgames.maker");
         save_fix_in(&folder, false).expect("save off");
         assert!(
             !fix_wanted_in(&folder),
@@ -839,7 +915,7 @@ mod tests {
     fn crash_marker() {
         let dir = TempDir::new("crash");
         assert!(!crashed_in(&dir.0));
-        let folder = dir.0.join("com.jeopardybuilder.brainrot");
+        let folder = dir.0.join("com.brainrotgames.maker");
         mark_crashed_in(&folder).expect("mark");
         assert!(crashed_in(&folder));
         assert!(

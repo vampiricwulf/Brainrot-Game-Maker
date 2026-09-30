@@ -27,7 +27,7 @@ export function saveGameJson(game: Game): void {
 export function parseGame(text: string): Game {
   const data = JSON.parse(text);
   if (!data || data.version !== 1 || !Array.isArray(data.rounds) || !Array.isArray(data.players)) {
-    throw new Error('This file is not a Jeopardy Builder game.');
+    throw new Error('This file is not a Brainrot Games Maker game.');
   }
   return data as Game;
 }

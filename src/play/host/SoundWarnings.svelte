@@ -13,7 +13,7 @@
 
 {#if capture}
   <div class="w bad" role="alert" title={capture.compat ? `Compatibility setting: ${capture.compat}` : undefined}>
-    ⚠ Jeopardy Builder is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and
+    ⚠ Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and
     start it normally.
     <button class="small ghost" onclick={onhelp}>🔊 Help</button>
   </div>
@@ -30,7 +30,7 @@
   </div>
 {:else if desktop.fixSaved && desktop.fixFailed}
   <div class="w bad" role="alert">
-    ⚠ The Discord audio fix didn't start this time, so Discord may stream no game sound. Restart Jeopardy Builder to try again.
+    ⚠ The Discord audio fix didn't start this time, so Discord may stream no game sound. Restart Brainrot Games Maker to try again.
     <button class="small ghost" onclick={onhelp}>🔊 Help</button>
   </div>
 {/if}

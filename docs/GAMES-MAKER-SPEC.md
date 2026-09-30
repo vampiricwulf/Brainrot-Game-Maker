@@ -128,7 +128,7 @@ because video pages couldn't be opened from the research environment.
 | Thing | Today | New |
 |---|---|---|
 | Product name (window titles, About, README, player home) | Jeopardy Builder | **Brainrot Games Maker** |
-| GitHub repo | `vampiricwulf/Jeopardy-Builder-Brainrot` | `vampiricwulf/Brainrot-Games-Maker` (rename in GitHub settings; GitHub redirects the old URLs) |
+| GitHub repo | `vampiricwulf/Jeopardy-Builder-Brainrot` | `vampiricwulf/Brainrot-Game-Maker` (rename in GitHub settings; GitHub redirects the old URLs) |
 | npm package | `jeopardy-builder-brainrot` | `brainrot-games-maker` |
 | Single-file app download | `jeopardy-builder.html` | `brainrot-games-maker.html` |
 | Desktop exe | `jeopardy-builder-portable.exe` | `brainrot-games-maker-portable.exe` |

@@ -294,8 +294,12 @@ try {
           if (cmd === 'plugin:window|get_all_windows') return windows;
           if (cmd === 'data_folders')
             return {
-              data: { path: 'C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot', exists: true },
-              settings: { path: 'C:\\Users\\Host\\AppData\\Roaming\\com.jeopardybuilder.brainrot', exists: false },
+              data: { path: 'C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker', exists: true },
+              settings: { path: 'C:\\Users\\Host\\AppData\\Roaming\\com.brainrotgames.maker', exists: false },
+              // After the rename: this start moved the old folders, but the old data folder was left behind.
+              ...(o.moved
+                ? { moved: true, oldData: { path: 'C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot', exists: true }, oldSettings: { path: 'x', exists: false } }
+                : {}),
             };
           return null;
         },
@@ -357,7 +361,7 @@ try {
     const context = await desktopContext({ fix: true, active: true, admin: true });
     const page = watch(await context.newPage(), 'desktop');
     await toPregame(page, httpUrl);
-    const banner = 'Jeopardy Builder is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.';
+    const banner = 'Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.';
     assert((await page.getByText(banner).count()) === 1, 'running as administrator: the host shows the warning banner');
     assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'the fix is running: no fix warning');
 
@@ -396,10 +400,10 @@ try {
     );
     assert((await help.getByText(/didn't start this time|crashed/).count()) === 0 && (await help.getByRole('button', { name: /Restart now|Try it again/ }).count()) === 0, 'running as saved: no fix trouble and no restart offered');
     await fix.uncheck();
-    await help.getByText('Restart Jeopardy Builder to turn it off.').waitFor();
+    await help.getByText('Restart Brainrot Games Maker to turn it off.').waitFor();
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: false }]), 'switching it off saves the setting');
     await fix.check();
-    await help.getByText(/Restart Jeopardy Builder to turn it/).waitFor({ state: 'detached' });
+    await help.getByText(/Restart Brainrot Games Maker to turn it/).waitFor({ state: 'detached' });
     assert(true, 'switching it back needs no restart');
     await fix.uncheck();
     await help.getByRole('button', { name: '↻ Restart now' }).click();
@@ -422,17 +426,17 @@ try {
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(!(await fix.isChecked()), 'with the setting off, the Discord audio fix box is unticked');
     await fix.check();
-    await help.getByText('Restart Jeopardy Builder to turn it on.').waitFor();
+    await help.getByText('Restart Brainrot Games Maker to turn it on.').waitFor();
     assert((await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1, 'switching it on asks for a restart, with a Restart now button');
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }]), 'switching it on saves the setting');
     await fix.uncheck();
-    await help.getByText(/Restart Jeopardy Builder to turn it/).waitFor({ state: 'detached' });
+    await help.getByText(/Restart Brainrot Games Maker to turn it/).waitFor({ state: 'detached' });
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }, { on: false }]), 'switching it back off is saved and needs no restart');
     // A setting that couldn't be saved: the box goes back to what still applies, with no restart offered.
     await failOnce(page, 'set_audio_fix', "Couldn't save the setting: access denied");
     await fix.click();
     await help.getByText("Couldn't save the setting: access denied").waitFor();
-    assert(!(await fix.isChecked()) && (await help.getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
+    assert(!(await fix.isChecked()) && (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
     await context.close();
   }
   {
@@ -448,7 +452,7 @@ try {
     const help = dialog(page);
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows the saved setting (off)');
     assert(
-      (await help.getByText('Restart Jeopardy Builder to turn it off.').count()) === 1 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1,
+      (await help.getByText('Restart Brainrot Games Maker to turn it off.').count()) === 1 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1,
       'it offers the restart that turns it off',
     );
     await context.close();
@@ -465,7 +469,7 @@ try {
     const warning = fixWarning(page.locator('.panel'), FAILED_WARNING);
     await warning.waitFor();
     assert((await dialog(page).count()) === 0, 'the host panel warns too, without opening the Sound help');
-    assert((await warning.getByText('Restart Jeopardy Builder to try again').count()) === 1, 'the warning says a restart should bring it back');
+    assert((await warning.getByText('Restart Brainrot Games Maker to try again').count()) === 1, 'the warning says a restart should bring it back');
     const created = await createdAudience(page, '📺 Audience window');
     assert(!('additionalBrowserArgs' in created), 'running without the switches: the fallback audience window keeps the defaults');
     await warning.getByRole('button', { name: '🔊 Help' }).click();
@@ -483,7 +487,7 @@ try {
     await fix.uncheck();
     await help.getByText("The fix didn't start this time").waitFor({ state: 'detached' });
     assert(
-      (await help.getByText(/Restart Jeopardy Builder to turn it/).count()) === 0 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0,
+      (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0,
       'unticking it hides the failed text, with no restart needed (the app already runs without it)',
     );
     assert((await warning.count()) === 0, 'and the host warning goes away');
@@ -512,7 +516,7 @@ try {
     await help.waitFor();
     assert(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked(), 'the fix still shows as switched on');
     assert((await help.getByText(CRASHED_WARNING).count()) === 1, 'the help says so too');
-    assert((await help.getByText(/Restart Jeopardy Builder to turn it/).count()) === 0, 'it doesn’t offer a plain restart (that would start without it again)');
+    assert((await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0, 'it doesn’t offer a plain restart (that would start without it again)');
     // A try that fails (the crash note couldn't be removed) says why, and the button works again.
     await failOnce(page, 'retry_audio_fix', "Couldn't save the setting: access denied");
     await help.getByRole('button', { name: '↻ Try it again' }).click();
@@ -542,7 +546,7 @@ try {
     const help = dialog(page);
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows it as off');
     assert(
-      (await help.getByText(/crashed|Restart Jeopardy Builder to turn it/).count()) === 0 &&
+      (await help.getByText(/crashed|Restart Brainrot Games Maker to turn it/).count()) === 0 &&
         (await help.getByRole('button', { name: /Try it again|Restart now|Restarting/ }).count()) === 0,
       'no Try it again (it would start without the fix), and no restart needed',
     );
@@ -557,7 +561,7 @@ try {
     await emit(page, 'audio-fix-off', true);
     await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
     const help = dialog(page);
-    await help.getByText('Restart Jeopardy Builder to turn it off.').waitFor();
+    await help.getByText('Restart Brainrot Games Maker to turn it off.').waitFor();
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows it as off');
     const restarting = help.getByRole('button', { name: 'Restarting…' });
     assert((await restarting.count()) === 1 && (await restarting.isDisabled()), 'the page shows the restart under way');
@@ -574,17 +578,17 @@ try {
     await notice.waitFor();
     assert(true, 'first start: a notice says the app saves data in a folder on this PC');
     await notice.getByRole('button', { name: 'ℹ See where' }).click();
-    const about = page.getByRole('dialog', { name: 'About Jeopardy Builder' });
-    await about.getByText('C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot').waitFor();
+    const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
+    await about.getByText('C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker').waitFor();
     assert((await about.getByText('Windows desktop app').count()) === 1, 'About shows the version and that this is the desktop app');
     assert(
-      (await about.getByRole('link', { name: /GitHub/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot',
+      (await about.getByRole('link', { name: /GitHub/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker',
       'About links to the GitHub repo',
     );
     await about.getByRole('link', { name: /GitHub/ }).click();
     await called(page, 'open_link');
     assert(
-      (await calls(page, 'open_link'))[0].url === 'https://github.com/vampiricwulf/Jeopardy-Builder-Brainrot' && context.pages().length === 1,
+      (await calls(page, 'open_link'))[0].url === 'https://github.com/vampiricwulf/Brainrot-Game-Maker' && context.pages().length === 1,
       "the repo link opens in the default browser (the app's open_link), not in an app window",
     );
     assert((await about.getByRole('button', { name: '📂 Open folder' }).count()) === 1 && (await about.getByText("Not created: it's only made").count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed)");
@@ -596,6 +600,27 @@ try {
     await page.reload();
     await page.getByRole('button', { name: 'ℹ About' }).waitFor();
     assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');
+    await context.close();
+  }
+
+  {
+    // The first start after the rename: the app moved Jeopardy Builder's folders and says so once.
+    const context = await desktopContext({ fix: true, active: true, moved: true });
+    const page = watch(await context.newPage(), 'desktop (moved from Jeopardy Builder)');
+    await page.goto(httpUrl);
+    const notice = page.getByRole('status').filter({ hasText: 'Jeopardy Builder is now Brainrot Games Maker' });
+    await notice.waitFor();
+    assert(true, 'after the move, a notice says the data was moved to the new folder');
+    await notice.getByRole('button', { name: 'ℹ See where' }).click();
+    const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
+    const leftover = about.getByRole('note');
+    await leftover.getByText('com.jeopardybuilder.brainrot').waitFor();
+    assert((await leftover.getByText('Left over from Jeopardy Builder').count()) === 1, 'About lists an old folder that could not be moved');
+    await leftover.getByRole('button', { name: '📂 Open folder' }).click();
+    await called(page, 'open_data_folder');
+    assert(JSON.stringify(await calls(page, 'open_data_folder')) === JSON.stringify([{ which: 'old-data' }]), 'its Open folder shows the old folder');
+    await page.keyboard.press('Escape');
+    assert((await notice.count()) === 0, 'the notice is gone once seen');
     await context.close();
   }
 

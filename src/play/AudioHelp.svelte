@@ -18,7 +18,7 @@
   const canRoute = sinkSupported();
   // Firefox has its own speaker picker; Chrome, Edge and the desktop app list the speakers here.
   const ownPicker = hasOutputPicker();
-  const appName = exe ? 'Jeopardy Builder' : 'your browser';
+  const appName = exe ? 'Brainrot Games Maker' : 'your browser';
 
   /** The speakers, once listed (null: not asked yet). */
   let outputs = $state<AudioOutput[] | null>(null);
@@ -116,7 +116,7 @@
 
     {#if capture}
       <p class="alert" role="alert">
-        ⚠ Jeopardy Builder is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it
+        ⚠ Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it
         and start it normally.
       </p>
     {/if}
@@ -155,7 +155,7 @@
         </div>
         {#if outputs && !outputs.length}
           <p class="warn small">
-            No speakers found. {exe ? 'Jeopardy Builder' : 'Your browser'} only lists them after you allow microphone access (nothing is
+            No speakers found. {exe ? 'Brainrot Games Maker' : 'Your browser'} only lists them after you allow microphone access (nothing is
             recorded).
           </p>
         {/if}
@@ -179,14 +179,14 @@
           <b>Discord audio fix</b> <span class="muted small">(on by default)</span>
         </label>
         <p class="muted small">
-          Plays the game's sound from Jeopardy Builder's own process, so Discord and OBS can pick it up. Keep it on; turn it off only if
+          Plays the game's sound from Brainrot Games Maker's own process, so Discord and OBS can pick it up. Keep it on; turn it off only if
           the sound stutters or the app misbehaves. Changes take effect after a restart.
         </p>
         <!-- Switched off, none of these apply: unticking hides them, ticking again brings them back. -->
         {#if desktop.fixSaved && desktop.fixCrashed}
           <p class="warn small">
             The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound.
-            Try it again; if it crashes again, Jeopardy Builder restarts without it.
+            Try it again; if it crashes again, Brainrot Games Maker restarts without it.
           </p>
           <div class="row">
             <button class="small" onclick={() => restart(true)} disabled={desktop.restarting}>
@@ -195,7 +195,7 @@
           </div>
         {:else if desktop.fixSaved && desktop.fixFailed}
           <p class="warn small">
-            The fix didn't start this time, so Jeopardy Builder is running without it: its previous WebView2 processes were probably
+            The fix didn't start this time, so Brainrot Games Maker is running without it: its previous WebView2 processes were probably
             still closing. Restart to try again. If it keeps happening, share your whole screen with sound instead, or run the show in
             Chrome or Edge (see below).
           </p>
@@ -206,7 +206,7 @@
           </div>
         {:else if desktop.fixSaved !== desktop.fixActive}
           <div class="row">
-            <span class="warn small">Restart Jeopardy Builder to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
+            <span class="warn small">Restart Brainrot Games Maker to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
             <button class="small" onclick={() => restart()} disabled={desktop.restarting}>
               {desktop.restarting ? 'Restarting…' : '↻ Restart now'}
             </button>
@@ -214,9 +214,9 @@
         {/if}
         {#if fixError}<p class="bad small">{fixError}</p>{/if}
         <p class="muted small">
-          If Jeopardy Builder ever won't open or its window stays blank, start it once with <code>--no-audio-fix</code> (e.g. at the
+          If Brainrot Games Maker ever won't open or its window stays blank, start it once with <code>--no-audio-fix</code> (e.g. at the
           end of a shortcut's Target; this also restarts a blank copy that's still open), or close it and put an empty file named
-          <code>discord-audio-fix-off</code> in <code>%APPDATA%\com.jeopardybuilder.brainrot</code>. Either one turns the fix off.
+          <code>discord-audio-fix-off</code> in <code>%APPDATA%\com.brainrotgames.maker</code>. Either one turns the fix off.
         </p>
       </section>
     {/if}
@@ -227,7 +227,7 @@
         {#if exe}
           <li>Use the Discord desktop app, not Discord in a web browser.</li>
           <li>
-            Start Jeopardy Builder normally: not with "Run as administrator", and with nothing ticked under its Properties › Compatibility.
+            Start Brainrot Games Maker normally: not with "Run as administrator", and with nothing ticked under its Properties › Compatibility.
             Open it only once. (Running Discord as administrator doesn't help.)
           </li>
           <li>Open the audience window and press <b>Test sound</b>.</li>
@@ -251,13 +251,13 @@
         </li>
         {#if exe}
           <li>
-            Close Jeopardy Builder, check in Task Manager that no "Jeopardy Builder" or "Microsoft Edge WebView2" entries are left, start it
+            Close Brainrot Games Maker, check in Task Manager that no "Brainrot Games Maker" or "Microsoft Edge WebView2" entries are left, start it
             again and retry. Check that the <b>Discord audio fix</b> above is on (it is unless you turned it off) and that nothing under
             it says it's off for this run.
           </li>
           <li>
             Still silent: share your whole screen with Sound on (viewers hear everything your PC plays, including your call: use
-            headphones), or run the show in Chrome or Edge: <b>Save</b> the game (.jbr), open <code>jeopardy-builder.html</code> in the
+            headphones), or run the show in Chrome or Edge: <b>Save</b> the game (.brainrot), open <code>brainrot-games-maker.html</code> in the
             browser, <b>Open…</b> the pack and share that browser window.
           </li>
         {:else}

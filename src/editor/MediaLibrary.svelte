@@ -98,7 +98,7 @@
 <p class="muted">
   Files stored with this game: {stored.length} · {formatBytes(total)}.
   {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
-  {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .jbr packs but make big standalone HTML exports.</span>{/if}
+  {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .brainrot packs but make big standalone HTML exports.</span>{/if}
 </p>
 {#if missing.length}
   <div class="missing-box" role="alert">

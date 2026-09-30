@@ -41,7 +41,9 @@
   }
 
   /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
-  const CLIP_TYPE = 'application/x-jeopardy-slide-items';
+  const CLIP_TYPE = 'application/x-brainrot-slide-items';
+  /** What copies made before the rename (Jeopardy Builder) put on the clipboard. */
+  const OLD_CLIP_TYPE = 'application/x-jeopardy-slide-items';
 </script>
 
 <script lang="ts">
@@ -617,7 +619,7 @@
       return;
     }
     const text = data?.getData('text/plain') ?? '';
-    const token = data?.getData(CLIP_TYPE) ?? '';
+    const token = data?.getData(CLIP_TYPE) || data?.getData(OLD_CLIP_TYPE) || '';
     // Our own items, unless something newer (a link, some text) was copied since.
     if (clipboard.elements.length && (token ? token === clipboard.token : text === clipboard.text)) {
       e.preventDefault();

@@ -40,11 +40,11 @@ export type AudienceMsg = { type: 'hello' } | { type: 'audience-event'; event: A
 export type ChannelMsg = { from: 'host'; msg: HostMsg } | { from: 'audience'; msg: AudienceMsg };
 
 export const AUDIENCE_HASH = '#audience';
-export const CHANNEL_NAME = 'jeopardy-builder-sync';
+export const CHANNEL_NAME = 'brainrot-games-sync';
 
 /** The audience window's title: Discord and OBS list the window by it ("My Game · Audience"). */
 export function audienceTitle(game: Game | undefined): string {
-  return `${game?.title.trim() || 'Jeopardy Builder'} · Audience`;
+  return `${game?.title.trim() || 'Brainrot Games Maker'} · Audience`;
 }
 
 /** open: the audience window exists · activated: it has been clicked, so it may autoplay with sound. */

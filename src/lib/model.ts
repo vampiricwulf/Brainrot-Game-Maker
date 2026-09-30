@@ -17,7 +17,7 @@ export function newId(): Id {
 export type MediaKind = 'image' | 'video' | 'audio' | 'font';
 
 /**
- * A file used by the game. Normally stored with it (the blob lives in the media store / .jbr pack, keyed
+ * A file used by the game. Normally stored with it (the blob lives in the media store / .brainrot pack, keyed
  * by id). A link the game couldn't save a copy of plays straight from the internet instead (`url`).
  */
 export interface MediaRef {

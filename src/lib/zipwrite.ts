@@ -1,4 +1,4 @@
-// A small ZIP writer for .jbr packs (stored, no compression: media is already compressed).
+// A small ZIP writer for .brainrot packs (stored, no compression: media is already compressed).
 // The archive is a Blob made of the headers plus the original media Blobs, so saving never copies
 // the media into memory, and checksums are computed in chunks that give the page time to breathe.
 // (A zip library copied every file into memory first, which froze big games for seconds and could

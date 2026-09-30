@@ -1,6 +1,6 @@
 // Media store: blobs for images/video/audio/fonts, keyed by MediaRef id.
 // Kept in memory (with object URLs for rendering) and persisted to IndexedDB when available,
-// so autosaved drafts keep their media. The .jbr pack is the portable copy.
+// so autosaved drafts keep their media. The .brainrot pack is the portable copy.
 // Media added from an online link is downloaded into the same store when the site allows it; when it
 // doesn't, the MediaRef keeps the link (`url`) and plays straight from the internet.
 import { del, get, keys, set } from 'idb-keyval';
@@ -67,14 +67,16 @@ export async function loadGameMedia(game: Game): Promise<string[]> {
   return missing;
 }
 
-/** Delete stored media not referenced by any of the given games (or by the saved game in progress). */
 /** Held (shared) by every open copy of the app, so one copy can tell whether others are open. */
-const OPEN_LOCK = 'jeopardy-builder-open';
+const OPEN_LOCK = 'brainrot-games-open';
+/** The name copies from before the rename (Jeopardy Builder) hold. It's held too, so an old copy open at the same
+ *  time sees this one and never prunes its media (and this one sees the old copy). */
+const OLD_OPEN_LOCK = 'jeopardy-builder-open';
 
 /** Mark this copy of the app as open for as long as the page lives (see pruneMedia). */
 export function holdOpenLock(): void {
   try {
-    void navigator.locks?.request(OPEN_LOCK, { mode: 'shared' }, () => new Promise<never>(() => {}));
+    for (const name of [OPEN_LOCK, OLD_OPEN_LOCK]) void navigator.locks?.request(name, { mode: 'shared' }, () => new Promise<never>(() => {}));
   } catch {
     /* no Web Locks: pruning just can't see other copies */
   }
@@ -84,12 +86,13 @@ export function holdOpenLock(): void {
 async function otherCopiesOpen(): Promise<boolean> {
   try {
     const held = (await navigator.locks?.query())?.held ?? [];
-    return held.filter((l) => l.name === OPEN_LOCK).length > 1;
+    return held.filter((l) => l.name === OPEN_LOCK).length > 1 || held.filter((l) => l.name === OLD_OPEN_LOCK).length > 1;
   } catch {
     return false;
   }
 }
 
+/** Delete stored media not referenced by any of the given games (or by the saved game in progress). */
 export async function pruneMedia(games: (Game | null | undefined)[]): Promise<void> {
   // Every copy of the app opened from disk shares one storage: with another copy open (a second tab
   // or window), its media would look unused here, so leave storage alone.

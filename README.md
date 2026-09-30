@@ -1,17 +1,21 @@
-# Jeopardy Builder "Brainrot"
+# Brainrot Games Maker
 
-Build and host custom Jeopardy-style games for livestreams. The whole app is **one HTML file**: double-click it to open it in a
+Build and host custom game shows for livestreams: Jeopardy boards, Final Jeopardy wagers, RPG maps and more. The whole app is **one HTML file**: double-click it to open it in a
 browser, with no install, server or internet needed. Players buzz in by voice on the stream; the host runs the board and decides who
 gets points.
 
-The full product spec is in [`docs/SPEC.md`](docs/SPEC.md).
+The full product spec is in [`docs/SPEC.md`](docs/SPEC.md), and the plan for game modes (RPG maps, board games) is in
+[`docs/GAMES-MAKER-SPEC.md`](docs/GAMES-MAKER-SPEC.md).
+
+**Renamed from Jeopardy Builder.** Old `.jbr` game packs and exported HTML files still open, and the desktop app moves
+its autosave, media and settings from the old Jeopardy Builder folders to the new ones on its first start.
 
 ## Getting the app
 
 - **Download from the [Latest release](../../releases/latest)**. It's rebuilt automatically on every push to `main`:
-  - `jeopardy-builder.html`: the whole app in one file. Double-click it to open it in **Chrome, Edge or Firefox**.
+  - `brainrot-games-maker.html`: the whole app in one file. Double-click it to open it in **Chrome, Edge or Firefox**.
     Everything works from a file opened from disk.
-  - `jeopardy-builder-portable.exe`: the Windows desktop app, no install needed.
+  - `brainrot-games-maker-portable.exe`: the Windows desktop app, no install needed.
 - Or build it yourself (see [Development](#development)). It lands in `dist/index.html`.
 
 ## Building a game (Editor)
@@ -92,7 +96,7 @@ images, game sounds, wheel and dice outcomes) has **Or paste a link** in its fil
 `https://files.catbox.moe/abc123.mp3`. On a slide, use **🌐 Link**, or paste or drop the link on the slide. While it works,
 you see the progress and a **Cancel** button; a message then says what happened:
 
-- **Saved a copy in your game**: the file was downloaded into the game. It works offline, goes into `.jbr` packs and
+- **Saved a copy in your game**: the file was downloaded into the game. It works offline, goes into `.brainrot` packs and
   exports, and keeps working if the link expires. Files over 150 MB ask first; files over 1 GB are never saved. A sound
   in an MP4 or WebM file (`.m4a`, `.weba`…) counts as a sound.
 - **Plays from the internet** (🌐): the site doesn't let the game save a copy (or you said no to a big file, or it's over
@@ -131,11 +135,11 @@ you see the progress and a **Cancel** button; a message then says what happened:
   Save.
 - Every file in a game has its own name: adding a file whose name is already taken (every pasted screenshot is
   `image.png`) gives it a random suffix, like `image-k3f9x2.png`, so files are easy to tell apart.
-- **Save** downloads a **`.jbr` game pack** (a zip with the game plus all its media). **Open…** loads `.jbr` or `.json`.
+- **Save** downloads a **`.brainrot` game pack** (a zip with the game plus all its media). **Open…** loads `.brainrot` or `.json`.
   Big games show a percentage while saving and the page stays usable. A file the browser can no longer read is left
   out and listed, instead of failing the whole save.
 - **⬇ Export HTML** makes a **single player-only HTML file** with everything inside. Send it to anyone; they double-click it
-  and press ▶ Play. You're warned above ~100 MB. For big games, share the `.jbr` instead.
+  and press ▶ Play. You're warned above ~100 MB. For big games, share the `.brainrot` instead.
 - **Export JSON** is a text-only copy, handy for hand-editing or writing clues with an AI.
 
 ## Hosting a game (Play)
@@ -264,7 +268,7 @@ help:
 - **Discord audio fix** (on by default; switch it off in the 🔊 Sound help) starts WebView2 with its audio inside its
   main process, a direct child of the app, which is what lets Discord's per-program capture hear the game (tested on
   Windows with Discord). Turning it off or on needs a restart (**↻ Restart now**). Switching it off is saved as the empty
-  file `discord-audio-fix-off` in `%APPDATA%\com.jeopardybuilder.brainrot\` (delete it to turn the fix back on).
+  file `discord-audio-fix-off` in `%APPDATA%\com.brainrotgames.maker\` (delete it to turn the fix back on).
 - The fix never keeps the app from starting. Right after a restart, WebView2 can refuse a changed setting for a few
   seconds while the previous copy's WebView2 processes close, so the app keeps trying for about 4 seconds, then tries
   both settings in turn for about 3 more seconds and runs with the first one that starts:
@@ -281,14 +285,14 @@ help:
   crash (its settings folder can't be written), a message box says so and the app closes: open it with
   `--no-audio-fix` (see below).
 
-**Trying the audio fix on an older build** (before it was built in): close Jeopardy Builder, open a Command Prompt
+**Trying the audio fix on an older build** (before it was built in): close Brainrot Games Maker, open a Command Prompt
 and run the two lines below; for the second one, drag the `.exe` into the Command Prompt window to paste its path, then
 press Enter. WebView2 adds this variable to the app's own switches and only keeps the last `--disable-features`, so it
 must repeat the full list:
 
 ```bat
 set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AudioServiceOutOfProcess --autoplay-policy=no-user-gesture-required
-"C:\Users\you\Downloads\jeopardy-builder-portable.exe"
+"C:\Users\you\Downloads\brainrot-games-maker-portable.exe"
 ```
 
 It works if Task Manager (Details tab, with the "Command line" column) no longer shows an `msedgewebview2.exe` whose
@@ -299,27 +303,27 @@ listed as "*game name* · Audience") with Sound on and check that a viewer hears
 
 Turn the Discord audio fix off from outside the app, in either of these ways:
 
-- **Command Prompt**: first close the blank window, or end **Jeopardy Builder** in Task Manager if it won't close. The
+- **Command Prompt**: first close the blank window, or end **Brainrot Games Maker** in Task Manager if it won't close. The
   file is only read when the app starts, and opening the app while a copy is still running just brings that copy to the
   front. Then press Win+R, type `cmd` and press Enter, paste this line and press Enter. It creates the settings folder
   (if it isn't there yet) with the empty `discord-audio-fix-off` file in it:
 
   ```bat
-  mkdir "%APPDATA%\com.jeopardybuilder.brainrot" 2>nul & type nul > "%APPDATA%\com.jeopardybuilder.brainrot\discord-audio-fix-off"
+  mkdir "%APPDATA%\com.brainrotgames.maker" 2>nul & type nul > "%APPDATA%\com.brainrotgames.maker\discord-audio-fix-off"
   ```
 
   A `discord-audio-fix-off.txt` made with Explorer's **New › Text Document** in that folder works too. Then open
-  Jeopardy Builder normally.
+  Brainrot Games Maker normally.
 - **Shortcut** (works with a blank copy still open): right-click the `.exe` › **Create shortcut** (on Windows 11, under
   **Show more options**), then right-click the shortcut › **Properties** and add ` --no-audio-fix` at the very end of
   **Target**, after the closing quote if there is one, e.g.
-  `"C:\Users\you\Downloads\jeopardy-builder-portable.exe" --no-audio-fix`. Open Jeopardy Builder once with this
+  `"C:\Users\you\Downloads\brainrot-games-maker-portable.exe" --no-audio-fix`. Open Brainrot Games Maker once with this
   shortcut: it saves the fix as off, and if a blank copy is still open, restarts that copy without the fix a moment
-  later. A Command Prompt works the same way: `"C:\path\to\jeopardy-builder-portable.exe" --no-audio-fix`.
+  later. A Command Prompt works the same way: `"C:\path\to\brainrot-games-maker-portable.exe" --no-audio-fix`.
 
 If the window is still blank, a WebView2 process of the blank copy may be stuck: in Task Manager, end **Jeopardy
 Builder** and any **Microsoft Edge WebView2** entries (other apps that use WebView2 may need restarting afterwards), or
-restart the PC. Then open Jeopardy Builder again.
+restart the PC. Then open Brainrot Games Maker again.
 
 To turn the fix back on later, tick it in the 🔊 Sound help (or delete the file).
 
@@ -338,10 +342,15 @@ monitor), the "Open on YouTube" fallback opens its own window, and closing the h
 the app again brings the running one to the front.
 
 **Where it saves things**: the desktop app writes only to two folders (plus files you save or export yourself):
-`%LOCALAPPDATA%\com.jeopardybuilder.brainrot` (WebView2's data: the autosave, games in progress and stored media) and,
-only once you change the Discord audio fix, `%APPDATA%\com.jeopardybuilder.brainrot` (its settings files). It says so in
+`%LOCALAPPDATA%\com.brainrotgames.maker` (WebView2's data: the autosave, games in progress and stored media) and,
+only once you change the Discord audio fix, `%APPDATA%\com.brainrotgames.maker` (its settings files). It says so in
 a notice the first time it starts, and **ℹ About** in the editor lists both with **📂 Open folder** buttons, along with the
 version, build and links. To remove the app completely, delete the `.exe` and those two folders.
+
+Coming from **Jeopardy Builder**: on its first start the app moves the old `com.jeopardybuilder.brainrot` folders to the
+new names, before any window opens, so your autosave, games in progress, media and settings carry over. If the old app
+is still open, it asks you to close it and retry (Cancel starts without them). If a folder can't be moved, ℹ About lists
+it as a leftover with an **📂 Open folder** button.
 
 For Discord/OBS sound, see
 [Streaming the sound](#streaming-the-sound-discord-obs). Pasted links are downloaded natively, so every site (Google Drive
@@ -361,7 +370,7 @@ npm run test:e2e   # drives the built file from file:// in Chromium (build first
 ```
 
 Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singlefile`. Autosave and media use IndexedDB
-(`idb-keyval`), `.jbr` packs use JSZip, and the fonts are bundled from `@fontsource` (SIL Open Font License).
+(`idb-keyval`), `.brainrot` packs use JSZip, and the fonts are bundled from `@fontsource` (SIL Open Font License).
 
 ### Code map
 
@@ -375,7 +384,7 @@ Stack: Svelte 5 + TypeScript + Vite, bundled into one file by `vite-plugin-singl
 | `src/lib/links.ts`, `download.ts`, `sniff.ts` | Online links: every host's URL rules and messages; downloading (browser or native) and trying a link live; file-type sniffing and Google Drive's pages |
 | `src/lib/audio.ts`, `audioout.svelte.ts` | Game sound: test chime (a generated WAV), blocked-sound reports, Game audio output (`setSinkId`) |
 | `src/lib/desktop.svelte.ts` | Desktop app only: the Discord audio fix setting, restart, the "running as administrator" check |
-| `src/lib/pack.ts`, `export.ts` | `.jbr` packs and standalone HTML export |
+| `src/lib/pack.ts`, `export.ts` | `.brainrot` packs and standalone HTML export |
 | `src/lib/imageedit.ts`, `theme.ts` | Image-editor canvas pipeline; theme presets |
 | `src/lib/editing.ts`, `autofit.ts` | Slide and image editor helpers (undo history, placement, crop geometry); shrink-to-fit text |
 | `src/lib/layers.ts` | Layers: hit testing (what's under the pointer, what a drag-to-select box touches), Alt+click stepping, restacking |

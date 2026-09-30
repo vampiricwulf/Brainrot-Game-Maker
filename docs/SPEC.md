@@ -1,4 +1,4 @@
-# Jeopardy Builder "Brainrot": Product & Technical Spec
+# Brainrot Games Maker: Product & Technical Spec (Jeopardy modes)
 
 Status: **v1.5 (M1–M7 implemented)** · Last updated: 2026-09-29
 
@@ -30,8 +30,8 @@ decides who gets points, and controls media.
 
 | Artifact | Description | Priority |
 |---|---|---|
-| `jeopardy-builder.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
-| Game pack `*.jbr` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
+| `brainrot-games-maker.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
+| Game pack `*.brainrot` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
 | Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB. | **P1** |
 | Desktop `.exe` / `.app` | Tauri wrapper around the same build. Adds native file dialogs and large-file handling. | **P2** |
 
@@ -50,7 +50,7 @@ the editor fetches a pasted link once to save a copy in the game, and whatever i
 | Build | **Vite** + `vite-plugin-singlefile` | Outputs one `.html` |
 | Slide canvas / element editing | **Plain DOM + `moveable`** | Decided: native text/video/CSS effects. Drag, resize, and rotate handles come from moveable. |
 | Image editor | Canvas 2D API + **Cropper.js** for crop | Filters via canvas `filter`; brush/annotate on an overlay canvas |
-| Zip packs | **JSZip** | Read and write `.jbr` |
+| Zip packs | **JSZip** | Read and write `.brainrot` |
 | Local persistence | **IndexedDB** via `idb-keyval` | Autosave, crash recovery, media blobs |
 | Two-window sync | `window.open()` + `postMessage` (primary), `BroadcastChannel` (fallback) | `postMessage` to an opened window is reliable on `file://` |
 | Fonts | Bundled subset (e.g. Inter, Oswald, Bebas Neue, Comic Neue, Press Start 2P, Anton) + user-uploaded `.ttf/.otf/.woff2` | Uploaded fonts are stored in the pack |
@@ -302,7 +302,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   - Images can be dropped straight onto categories and tiles in the round grid. Several files fill the next ones.
 
 ### 5.8 Save / load / export
-- **Save** → download `.jbr` (zip). **Open** → file picker or drag-drop.
+- **Save** → download `.brainrot` (zip). **Open** → file picker or drag-drop.
 - **Export standalone HTML** (player only, embedded media) with a size warning.
 - **Autosave** of the editing session to IndexedDB every few seconds. On launch: "Restore unsaved game?"
 - Import/export of plain `game.json` without media, for easy hand-editing or AI-assisted question writing.
@@ -312,7 +312,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ## 6. Play Mode
 
 ### 6.1 Launch
-1. Open a game (`.jbr` or the embedded game in a standalone HTML).
+1. Open a game (`.brainrot` or the embedded game in a standalone HTML).
 2. **Pre-game screen**: confirm or edit players (names, colors, starting scores), choose **Dual** or **Single**
    display mode, and choose "Resume previous session" if a saved session exists.
 3. Start. The board is shown. The host can immediately run a **roll-off** (§6.6) to decide who picks first, or
@@ -438,7 +438,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ## 8. Persistence & File Formats
 
-**`.jbr` pack (zip)**
+**`.brainrot` pack (zip)**
 ```
 game.json          # Game (schema above), media referenced by id
 media/<id>.<ext>   # original files
@@ -463,7 +463,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 
 ## 10. Non-Functional Requirements
 - **Performance**: board interactions < 100 ms. Slide transitions at 60 fps on a mid-range laptop. The target game size is
-  < 100 MB of media (mostly images + short clips). Such a game loads in under 5 s from a `.jbr` or standalone HTML.
+  < 100 MB of media (mostly images + short clips). Such a game loads in under 5 s from a `.brainrot` or standalone HTML.
   Larger games must still work (media loaded lazily as blob URLs) but aren't optimized for.
 - **Reliability**: no data loss on crash (autosave). Undo for scores.
 - **Offline**: no runtime network calls, except online media the author opted into. A game with no players or live links
@@ -479,7 +479,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 | # | Milestone | Scope | Status |
 |---|---|---|---|
 | M1 | Core game | Data model, basic editor (rounds/categories/values/text clues), play mode single-window, scoring panel (multi/none/custom), used tiles, score log + undo, autosave. | ✅ Done |
-| M2 | Streaming | Dual-window mode, audience view, reveal gating, keyboard shortcuts, `.jbr` save/load. | ✅ Done |
+| M2 | Streaming | Dual-window mode, audience view, reveal gating, keyboard shortcuts, `.brainrot` save/load. | ✅ Done |
 | M3 | Rich slides | Freeform slide editor, text styling/effects/animations, image/video/audio elements, online embeds (YouTube/URL), playback controls, fonts, custom tile faces. | ✅ Done |
 | M4 | Game mechanics | Daily Double (manual + randomize), round intro animations, timers, Final Jeopardy with wagers + per-player reveal, tie handling (roll-off / tiebreaker clue / co-winners), winner screen, mid-game player edits. | ✅ Done |
 | M5 | Tools | Dice (custom sides, custom faces, presets), weighted wheel, wheel/dice clue types, roll-off + current picker, roll log, global toolbar. | ✅ Done |
@@ -497,7 +497,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   the host's button. Media blobs are sent across with the state.
 - **YouTube** is driven through the IFrame player's postMessage protocol (no external API script). Failure is detected by
   `onError` or by no reply within 7 s, and the host always has *Open on YouTube*.
-- **Standalone HTML export** embeds the `.jbr` zip as base64 in the app's own HTML and starts in a player-only mode with
+- **Standalone HTML export** embeds the `.brainrot` zip as base64 in the app's own HTML and starts in a player-only mode with
   its own autosave slot.
 - **Image edits** are stored as parameters, and the result is saved as a separate media file (PNG if transparency is
   possible, otherwise JPEG), so the original is always kept.
@@ -508,10 +508,10 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 Legend: **E2E** = checked by `tests/e2e/smoke.mjs` against the built file opened from `file://` in Chromium; **unit** =
 checked by Vitest; **manual** = not automated yet.
 
-- [x] Opening `jeopardy-builder.html` from disk (no server) loads the editor. **E2E (Chromium)**. Edge is Chromium-based;
+- [x] Opening `brainrot-games-maker.html` from disk (no server) loads the editor. **E2E (Chromium)**. Edge is Chromium-based;
       Firefox is **manual**.
 - [x] A game with 3 rounds of different sizes plus Final can be built and played through. **unit** (round sizes, flow),
-      **E2E** (save → reopen of a `.jbr`).
+      **E2E** (save → reopen of a `.brainrot`).
 - [x] Each player's color is unique and enforced. **E2E**. Players can be added mid-game via 👥 Players. **manual**
 - [x] During a clue, the host can award +X to two players, −Y to one, and nothing to others, with X/Y ≠ the clue value. **E2E + unit**
 - [x] Every score change appears in the log and can be undone. **E2E + unit**
@@ -540,7 +540,7 @@ checked by Vitest; **manual** = not automated yet.
 | Topic | Decision |
 |---|---|
 | Delivery | Single HTML first, Tauri `.exe` later |
-| Save format | `.jbr` zip + standalone HTML export |
+| Save format | `.brainrot` zip + standalone HTML export |
 | Display | Dual-window and single-window, toggleable live |
 | Rounds | Any number of rounds + optional Final |
 | Mechanics | Daily Doubles, negative scores/deductions, Final wagers, timers |

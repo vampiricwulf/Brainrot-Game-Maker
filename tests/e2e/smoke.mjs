@@ -163,7 +163,7 @@ const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used') && e.
 await page.goto(url);
 // ℹ About: version, build and links; in a browser it explains the data stays in this browser (no folders).
 await page.getByRole('button', { name: 'ℹ About' }).click();
-const about = page.getByRole('dialog', { name: 'About Jeopardy Builder' });
+const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
 const aboutText = await about.innerText();
 assert(/Version\s+\d+\.\d+\.\d+ \(single HTML file\)/.test(aboutText) && /Build\s+(\w{7}, )?\d{4}-\d\d-\d\d/.test(aboutText), 'About shows the version and build');
 assert(
@@ -1185,10 +1185,10 @@ await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$200' && (await isUsed(0)), 'Exit, reload, Resume: scores and used tiles are kept');
 await answerDialog(() => page.getByRole('button', { name: 'Exit' }).click(), true);
 
-// .jbr round trip: save the pack, start a new game, open the pack again.
+// Pack round trip: save the pack, start a new game, open it again (named .jbr, the old extension, which still opens).
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);
-assert(dl.suggestedFilename().endsWith('.jbr'), 'Save downloads a .jbr pack');
+assert(dl.suggestedFilename().endsWith('.brainrot'), 'Save downloads a .brainrot pack');
 const packPath = await dl.path();
 await page.getByRole('button', { name: 'New' }).click();
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();

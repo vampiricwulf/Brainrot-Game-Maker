@@ -58,7 +58,7 @@ export async function exportStandaloneHtml(game: Game, onProgress?: PackProgress
   const { blob: pack, missing } = await buildPack(game, onProgress);
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
-  if (estimate > STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .jbr pack is better. Export anyway?`)) return null;
+  if (estimate > STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`)) return null;
   if (estimate > WARN && estimate <= STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`)) return null;
   const html = selfHtml();
   const cut = html.lastIndexOf('</body>');
