@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, type BoardGameRound, type Game } from './model';
 import { newSession } from './session';
-import { waysOn, ensureBoard, movePlayer, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, sendTo, shownSpace, HOP_MS, walk, currentPlayer, boardGameProblems } from './boardgame';
+import {
+  waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
+  boardGameProblems,
+} from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
 function setup(): { game: Game; round: BoardGameRound; ids: string[] } {
@@ -187,6 +190,39 @@ describe('board game: two-way links and one space at a time', () => {
     expect(movePlayer(round, bs, 'a', 1, A.id)).toBe('Landed on A');
     // At A the only link is back to B, so it may turn around.
     expect(waysOn(round, A.id, bs.prev?.a)).toEqual([B.id]);
+  });
+
+  it('knows which spaces the host can click to move on: a one-space board’s ways, or a fork’s', () => {
+    const { round, bs, A, B, C } = line();
+    // One space a turn, from A: only B.
+    expect(waysNow(round, bs)).toEqual({ playerId: 'a', steps: 1, ways: [B.id] });
+    movePlayer(round, bs, 'a', 1, B.id);
+    expect(waysNow(round, bs)?.ways).toEqual([C.id]);
+    // A dice board has none, until a move stops at a fork.
+    round.mover = { kind: 'dice', dice: 'd6' };
+    expect(waysNow(round, bs)).toBeNull();
+    sendTo(bs, ['a'], { space: B.id });
+    movePlayer(round, bs, 'a', 3);
+    expect(waysNow(round, bs)).toEqual({ playerId: 'a', steps: 3, ways: [A.id, C.id] });
+  });
+});
+
+describe('board game: turn order', () => {
+  it('moves a player to another place in the order, and whoever’s turn it is keeps it', () => {
+    const { game, round } = setup();
+    game.players.push({ id: 'c', name: 'Cat', color: '#4363d8' }, { id: 'd', name: 'Dan', color: '#f58231' });
+    const bs = ensureBoard(newSession(game), game, round);
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('b');
+    moveInOrder(bs, 3, 0);
+    expect(bs.order).toEqual(['d', 'a', 'b', 'c']);
+    expect(currentPlayer(bs)).toBe('b');
+    moveInOrder(bs, 2, 3);
+    expect(bs.order).toEqual(['d', 'a', 'c', 'b']);
+    expect(currentPlayer(bs)).toBe('b');
+    // Out of range: nothing moves.
+    moveInOrder(bs, 0, 4);
+    expect(bs.order).toEqual(['d', 'a', 'c', 'b']);
   });
 });
 

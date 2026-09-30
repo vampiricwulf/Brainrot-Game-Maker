@@ -13,6 +13,8 @@
     audience = false,
     revealed = [],
     selected = null,
+    marked = [],
+    lit = null,
     ondown,
   }: {
     round: BoardGameRound;
@@ -20,6 +22,10 @@
     audience?: boolean;
     revealed?: string[];
     selected?: string | null;
+    /** Play, the host's copy: the spaces the host can pick to move on to (a fork's ways), outlined. */
+    marked?: string[];
+    /** Play, the host's copy: the space a dragged token is over. */
+    lit?: string | null;
     /** Editor: a space was pressed (to select or drag it). */
     ondown?: (e: PointerEvent, space: BoardSpace) => void;
   } = $props();
@@ -65,6 +71,8 @@
   <div
     class="space"
     class:sel={selected === s.id}
+    class:marked={marked.includes(s.id)}
+    class:lit={lit === s.id}
     class:start={(round.start ?? round.spaces[0]?.id) === s.id}
     class:secret={!audience && s.secret}
     class:grab={!!ondown}
@@ -131,6 +139,21 @@
   }
   .space.secret {
     border-style: dashed;
+  }
+  .space.marked {
+    outline: 6px solid #ffcc00;
+    outline-offset: 6px;
+    animation: pulse 1s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    to {
+      outline-color: rgba(255, 204, 0, 0.35);
+    }
+  }
+  .space.lit {
+    outline: 8px dashed #fff;
+    outline-offset: 6px;
+    animation: none;
   }
   .n,
   .q {

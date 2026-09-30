@@ -1,6 +1,10 @@
-<!-- Editable player roster with enforced unique colors. Used in Setup, the pre-game screen and the in-game Players dialog. -->
+<!--
+  Editable player roster with enforced unique colors. Used in Setup, the pre-game screen and the in-game Players
+  dialog. Rows reorder by dragging their ⋮⋮ grip, or with ▲▼.
+-->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
+  import { DragOrder } from '../lib/dragorder.svelte';
   import { newId } from '../lib/model';
   import { toast } from '../lib/app.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
@@ -52,16 +56,42 @@
     p.color = color;
   }
 
+  /** Move a player `d` places up (−) or down the list (the others close up). */
   function move(i: number, d: number): void {
     const j = i + d;
-    if (j < 0 || j >= players.length) return;
-    [players[i], players[j]] = [players[j], players[i]];
+    if (!d || j < 0 || j >= players.length) return;
+    const [p] = players.splice(i, 1);
+    players.splice(j, 0, p);
   }
+
+  const rows = new DragOrder();
 </script>
 
-<div class="players">
+<div class="players" role="list" aria-label="Players">
   {#each players as p, i (p.id)}
-    <div class="player" data-place="player:{p.id}">
+    {@const line = rows.lineAt(p.id)}
+    <div
+      class="player"
+      data-place="player:{p.id}"
+      class:drop-before={line === 'before'}
+      class:drop-after={line === 'after'}
+      class:dragging={rows.dragging === p.id}
+      role="listitem"
+      ondragover={(e) => rows.over(e, p.id)}
+      ondrop={(e) => {
+        const m = rows.drop(e, players.map((x) => x.id));
+        if (m) move(m.from, m.to - m.from);
+      }}
+    >
+      <!-- Only the grip drags (dragging over a name box selects its text). -->
+      <span
+        class="grip"
+        draggable="true"
+        ondragstart={(e) => rows.start(e, p.id, (e.currentTarget as HTMLElement).parentElement)}
+        ondragend={() => rows.end()}
+        aria-hidden="true"
+        title="Drag to reorder{inGame ? ' (the number keys follow the order)' : ''}">⋮⋮</span
+      >
       <span class="num muted">{i + 1}</span>
       <input
         type="color"
@@ -105,10 +135,37 @@
     gap: 8px;
   }
   .player {
+    position: relative;
     display: flex;
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
+  }
+  .player.dragging {
+    opacity: 0.5;
+  }
+  /* Where a dragged row goes. */
+  .player.drop-before::before,
+  .player.drop-after::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .player.drop-before::before {
+    top: -5px;
+  }
+  .player.drop-after::after {
+    bottom: -5px;
+  }
+  .grip {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: -2px;
+    user-select: none;
   }
   .num {
     width: 16px;

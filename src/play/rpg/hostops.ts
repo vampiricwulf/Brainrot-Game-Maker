@@ -1,11 +1,15 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import {
-  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Position, type ScreenRef, type Session, type SlideElement,
-  type WorldState,
+  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Party, type Position, type ScreenRef, type Session,
+  type SlideElement, type World, type WorldState,
 } from '../../lib/model';
-import { allElements, DIR_NAME, findIn, focusRef, regroup, splitParty, step, worldById } from '../../lib/rpg';
-import { entryName, itemDef, logged } from '../../lib/toolset';
+import {
+  activeParty, allElements, audienceSees, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyScreen, regroup, splitParty,
+  step, worldById,
+} from '../../lib/rpg';
+import { addStat, currencyFields, entryName, giveItem, inventory, itemDef, logged, statFields, transferEntry } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
+import type { MenuEntry } from '../../lib/menustate.svelte';
 import { newAudioEl, newVideoEl } from '../../lib/model';
 
 /** The RPG round being played, its world and the world's state (all undefined outside an RPG round). */
@@ -20,9 +24,10 @@ export function rpgNow(game: Game, session: Session) {
 
 /**
  * A name or some text the RPG host panel is asking for, inline (a browser dialog would show on stream): a new screen
- * that way, a new look for this screen, or text for the screen (`at`: where the stage was right-clicked).
+ * that way, a new look for this screen, text for the screen (`at`: where the stage was right-clicked), or a party's
+ * new name.
  */
-export type RpgAsk = { what: 'screen'; dir: Dir8 } | { what: 'look' } | { what: 'text'; at?: StagePoint };
+export type RpgAsk = { what: 'screen'; dir: Dir8 } | { what: 'look' } | { what: 'text'; at?: StagePoint } | { what: 'party'; party: string };
 
 /** Where on the stage the host clicked (1920×1080), and on which screen in split view. */
 export type StagePoint = { x: number; y: number; screen?: ScreenRef };
@@ -36,10 +41,15 @@ export function stepParty(game: Game, session: Session, dir: Dir8): string | nul
   return why;
 }
 
-export function regroupAll(game: Game, session: Session): void {
+/** Everyone back in one party: where the followed party is, or with `partyId` where that party is. */
+export function regroupAll(game: Game, session: Session, partyId?: string): void {
   const { world, st } = rpgNow(game, session);
   if (!world || !st) return;
-  logged(session, 'Regroup', () => regroup(game, st, world, session.players.map((p) => p.id)));
+  const with_ = st.parties.find((p) => p.id === partyId);
+  logged(session, with_ ? `Regroup with ${with_.name}` : 'Regroup', () => {
+    if (with_) st.active = with_.id;
+    regroup(game, st, world, session.players.map((p) => p.id));
+  });
 }
 
 export function splitOff(game: Game, session: Session, ids: string[]): string | null {
@@ -54,6 +64,179 @@ export function splitOff(game: Game, session: Session, ids: string[]): string | 
 export function toggleMap(game: Game, session: Session): void {
   const { st } = rpgNow(game, session);
   if (st) st.mapShown = !st.mapShown;
+}
+
+/** Players' names for the log and the host ("Ann, Bob"). */
+export const names = (session: Session, ids: string[]) => ids.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(', ');
+
+/**
+ * Send players to a screen as one step (not their whole party, unless they're all of it): they join a party already
+ * standing there, else make one of their own, and viewers follow them. `at`: where they stand on it (dropped on a
+ * split-view pane); `via`: the side they walked out of; `label`: who they are in the log (a party's name). Returns what
+ * to tell the host.
+ */
+export function sendPlayers(
+  game: Game,
+  session: Session,
+  ids: string[],
+  to: ScreenRef,
+  { at, via = null, label }: { at?: { x: number; y: number }; via?: Dir8 | null; label?: string } = {},
+): string | null {
+  const { world, st } = rpgNow(game, session);
+  const found = world && findIn(world, to);
+  if (!world || !st || !found || !ids.length) return null;
+  const text = `${label ?? names(session, ids)} → ${found.screen.name}`;
+  logged(session, text, () => {
+    moveTo(game, st, world, to, { players: ids, via });
+    // Side by side where they were dropped.
+    if (at) ids.forEach((id, i) => Object.assign(st.positions[id], avatarSpot(at.x + (i - (ids.length - 1) / 2) * 170, at.y)));
+  });
+  return text;
+}
+
+/** Players join a party (dropped on its chip, or from their menu): they go to where it is. Returns what to tell the host. */
+export function joinPartyNow(game: Game, session: Session, ids: string[], partyId: string): string | null {
+  const { world, st } = rpgNow(game, session);
+  const party = st?.parties.find((p) => p.id === partyId);
+  const who = ids.filter((id) => !party?.members.includes(id));
+  if (!world || !st || !party || !who.length) return null;
+  const text = `${names(session, who)} ${who.length > 1 ? 'join' : 'joins'} ${party.name}`;
+  logged(session, text, () => joinParty(game, st, world, who, party.id));
+  return text;
+}
+
+/** The party standing on a screen: the followed one if it's there, else the first one there. */
+export function partyOn(st: WorldState, screenId: string): Party | undefined {
+  const on = (p: Party | undefined) => partyScreen(st, p)?.screen === screenId;
+  const followed = activeParty(st);
+  return on(followed) ? followed : st.parties.find(on);
+}
+
+/**
+ * Who a map's right-click menu can move to a screen: the followed party, the selected players, each other party, or
+ * everyone. `go` moves them (no players: the followed party), with who they are for the log.
+ */
+export function moveChoices(session: Session, st: WorldState, selected: string[], go: (players?: string[], label?: string) => void): MenuEntry[] {
+  const party = activeParty(st);
+  return [
+    { label: `▶ Move ${party?.name ?? 'the party'} here`, onclick: () => go() },
+    { label: `Only the selected (${selected.length})`, disabled: !selected.length, onclick: () => go(selected, `${selected.length} selected`) },
+    ...st.parties.filter((pt) => pt.id !== party?.id).map((pt) => ({ label: `Move ${pt.name} here`, onclick: () => go(pt.members, pt.name) })),
+    ...(st.parties.length > 1 ? [{ label: 'Everyone here', onclick: () => go(session.players.map((p) => p.id), 'Everyone') }] : []),
+  ];
+}
+
+/**
+ * Where the host dropped a dragged avatar: a spot on its own screen, another screen (`at`: a spot on it, dropped on a
+ * split-view pane; `via`: walked off that side of its own), or a party.
+ */
+export type AvatarDrop = { spot: { x: number; y: number } } | { to: ScreenRef; at?: { x: number; y: number }; via?: Dir8 | null } | { party: string };
+
+/**
+ * An avatar dropped past an edge of its screen (at x, y on it): the way out on that side, when there's one (an open
+ * side, or a way sent somewhere else), as the pad would take it.
+ */
+export function wayOffEdge(world: World, from: ScreenRef, x: number, y: number): { to: ScreenRef; via: Dir8 | null } | null {
+  const dx = x < 0 ? -1 : x > SLIDE_W ? 1 : 0;
+  const dy = y < 0 ? -1 : y > SLIDE_H ? 1 : 0;
+  const dir = DIRS.find((d) => DIR_VEC[d][0] === dx && DIR_VEC[d][1] === dy);
+  const found = dir && findIn(world, from);
+  if (!dir || !found) return null;
+  const e = exitOf(found.map, found.screen, dir);
+  return (e.kind === 'open' || e.kind === 'warp') && findIn(world, e.to) ? { to: e.to, via: e.kind === 'open' ? dir : null } : null;
+}
+
+/** Half an avatar (its token and nameplate): a dropped avatar stays this far inside its screen. */
+const HALF = 75;
+
+/** Where a dragged avatar may stand: all of it on its screen, and between `top` and `bottom` (clear of the stats strip). */
+export function avatarSpot(x: number, y: number, top = 0, bottom = SLIDE_H): { x: number; y: number } {
+  const fit = (v: number, lo: number, hi: number) => Math.round(Math.max(lo, Math.min(Math.max(lo, hi), v)));
+  return { x: fit(x, HALF, SLIDE_W - HALF), y: fit(y, top + HALF, bottom - HALF) };
+}
+
+/** What an object is called on its card, in menus and in the log. */
+export const objectName = (el: SlideElement) => el.name || el.role?.class || 'Object';
+
+/** Take an object off its screen (undoable). Returns what to tell the host. */
+export function removeObject(game: Game, session: Session, elId: string): string | null {
+  const found = objectAt(game, session, elId);
+  if (!found) return null;
+  const name = objectName(found.el);
+  logged(session, `Remove ${name}`, () => (override(found.st, elId).taken = true));
+  return `Removed ${name} · Ctrl+Z brings it back`;
+}
+
+/**
+ * An object's right-click menu, on the stage or in the host panel's list: open its card, reveal or hide it, remove it
+ * (`removed` gets what to tell the host).
+ */
+export function objectMenu(game: Game, session: Session, elId: string, { open, removed }: { open: () => void; removed: (text: string) => void }): MenuEntry[] {
+  const found = objectAt(game, session, elId);
+  if (!found) return [];
+  const { st, el } = found;
+  const name = objectName(el);
+  const shown = audienceSees(el, st.objects[elId]);
+  return [
+    { heading: name },
+    { label: '🗂 Open its card', onclick: open },
+    { label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, elId).shown = !shown)) },
+    { sep: true },
+    { label: '🗑 Remove', danger: true, onclick: () => removed(removeObject(game, session, elId) ?? '') },
+  ];
+}
+
+/** A player picks up an item or a pile of currency lying on a screen: it's theirs, and gone from the screen. Returns the log line. */
+export function pickUp(game: Game, session: Session, st: WorldState, el: SlideElement, playerId: string): string {
+  const role = el.role;
+  const text = `${names(session, [playerId])} picks up ${objectName(el)}`;
+  logged(session, text, () => {
+    if (role?.class === 'item') giveItem(game, session, playerId, role.item ?? null, role.qty ?? 1, role.item ? undefined : objectName(el));
+    else if (role?.class === 'currency') {
+      const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0];
+      if (f) addStat(game, session, playerId, f, role.amount ?? 0);
+    }
+    override(st, el.id).taken = true;
+  });
+  return text;
+}
+
+/** "2 × Potion", or just "Potion". */
+export const count = (n: number, what: string) => (n > 1 ? `${n} × ${what}` : what);
+
+/** A player gives `n` of an inventory entry to another player, as one step. Returns the log line. */
+export function giveEntry(game: Game, session: Session, from: string, to: string, entryId: string, n: number): string | null {
+  const e = inventory(session, from).find((x) => x.id === entryId);
+  if (!e || from === to || !session.players.some((p) => p.id === to)) return null;
+  const text = `${names(session, [from])} gives ${count(n, entryName(game, e))} to ${names(session, [to])}`;
+  logged(session, text, () => transferEntry(session, from, to, entryId, n));
+  return text;
+}
+
+/**
+ * A player drops `n` of an inventory entry on the stage, as one step (it can be picked up again): at a spot on the
+ * screen under it (dragged there), else next to them. Returns the log line.
+ */
+export function dropEntry(game: Game, session: Session, playerId: string, entryId: string, n: number, at?: StagePoint): string | null {
+  const { st } = rpgNow(game, session);
+  const by = st?.positions[playerId];
+  const e = inventory(session, playerId).find((x) => x.id === entryId);
+  if (!st || !by || !e) return null;
+  const text = `${names(session, [playerId])} drops ${count(n, entryName(game, e))}`;
+  logged(session, text, () => {
+    const el = droppedObject(game, { ...e, qty: n }, st, by);
+    if (at) Object.assign(el, centredOn(at, el.w, el.h));
+    const screen = at?.screen?.screen ?? by.screen;
+    st.added[screen] ??= [];
+    st.added[screen].push(el);
+    const list = session.inventories?.[playerId];
+    const i = list?.findIndex((x) => x.id === entryId) ?? -1;
+    if (list && i >= 0) {
+      if (list[i].qty > n) list[i].qty -= n;
+      else list.splice(i, 1);
+    }
+  });
+  return text;
 }
 
 /** Make a party the one the audience follows and the pad moves. */

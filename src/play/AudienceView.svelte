@@ -21,6 +21,7 @@
   import RpgStage from './rpg/RpgStage.svelte';
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
+  import type { AvatarDrop } from './rpg/hostops';
   import { boardLayout, themeStyle } from '../lib/theme';
 
   let {
@@ -36,7 +37,11 @@
     onobject,
     onavatar,
     onobjectmove,
+    onpickup,
+    ontoken,
+    onspace,
     onshopbuy,
+    selected = [],
   }: {
     game: Game;
     session: Session;
@@ -53,12 +58,20 @@
     onact?: (a: StageAction) => void;
     /** RPG rounds, host only: an object on the stage was clicked. */
     onobject?: (elId: string) => void;
-    /** RPG rounds, host only: an avatar was dragged (or clicked). */
-    onavatar?: (playerId: string, at?: { x: number; y: number }) => void;
+    /** RPG rounds, host only: an avatar was dragged (to a spot, another screen or a party), or clicked. */
+    onavatar?: (playerId: string, drop?: AvatarDrop) => void;
     /** RPG rounds, host only: an object was dragged to a new spot. */
     onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
+    /** RPG rounds, host only: an item or currency object was dropped on a player. */
+    onpickup?: (elId: string, playerId: string) => void;
+    /** Board-game rounds, host only: a token was clicked, or dragged onto a space or a zone. */
+    ontoken?: (playerId: string, to?: { space?: string; zone?: string }) => void;
+    /** Board-game rounds, host only: a space was clicked. */
+    onspace?: (spaceId: string) => void;
     /** Host only: a ware in the shop on screen was clicked. */
     onshopbuy?: (itemId: string) => void;
+    /** Host only: the selected players (the host's copy in dual mode rings them). */
+    selected?: string[];
   } = $props();
   const act = (a: StageAction) => onact?.(a);
 
@@ -131,7 +144,7 @@
         <Board {game} {session} {onpick} {ontilemenu} />
       </div>
       {#if layout.score}
-        <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px"><ScoreBar {game} {session} {onpicker} /></div>
+        <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px"><ScoreBar {game} {session} {onpicker} host={!!onact} /></div>
       {/if}
       {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
     </div>
@@ -206,14 +219,16 @@
             {/key}
           {/if}
         </div>
-        <div class="score-area"><ScoreBar {game} {session} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" /></div>
+        <div class="score-area">
+          <ScoreBar {game} {session} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} />
+        </div>
       {/if}
     </div>
   {/key}
 {:else if session.phase === 'rpg'}
-  <RpgStage {game} {session} {role} {onobject} {onavatar} {onobjectmove} />
+  <RpgStage {game} {session} {role} {selected} {onobject} {onavatar} {onobjectmove} {onpickup} />
 {:else if session.phase === 'boardgame'}
-  <BoardGameStage {game} {session} {role} />
+  <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
   {#key session.tiebreakerRevealed}
     <div

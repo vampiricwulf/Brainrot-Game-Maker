@@ -1,6 +1,8 @@
 <!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { textOn } from '../../lib/colors';
+  import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
   import { currentFinal, finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, score } from '../../lib/session';
   import { logged, startStep } from '../../lib/toolset';
@@ -63,15 +65,18 @@
     });
   }
 
+  /** Move a player `d` places up (−) or down the reveal order (the others close up). */
   function move(id: string, d: number): void {
     const fs = f;
     if (!fs) return;
     const i = fs.order.indexOf(id);
     const j = i + d;
-    if (j < 0 || j >= fs.order.length) return;
+    if (i < 0 || j < 0 || j >= fs.order.length || !d) return;
+    // One step (Ctrl+Z, the 📜 Log's history), however far the row went (▲▼, Alt+↑/↓ or a drag).
     const [first, second] = d < 0 ? [id, fs.order[j]] : [fs.order[j], id];
     logged(session, `Reveal order: ${byId[first]?.name ?? '?'} before ${byId[second]?.name ?? '?'}`, () => {
-      [fs.order[i], fs.order[j]] = [fs.order[j], fs.order[i]];
+      fs.order.splice(i, 1);
+      fs.order.splice(j, 0, id);
     });
   }
 
@@ -84,6 +89,22 @@
     if (!w || !f) return;
     const v = f.wagers[w.id];
     w.done(`${byId[w.id]?.name ?? '?'}’s wager: ${typeof v === 'number' ? formatPoints(v, sym) : 'none'}`);
+  }
+
+  let orderEl = $state<HTMLElement>();
+  const rows = new DragOrder();
+
+  /**
+   * ▲▼ or Alt+↑/↓: one place up or down. Moving a row drops keyboard focus, so it goes back to the moved row's
+   * `refocus` button (its name if that one is now disabled), letting them repeat.
+   */
+  function nudge(id: string, d: number, refocus = '.name'): void {
+    move(id, d);
+    tick().then(() => {
+      const row = orderEl?.querySelector(`[data-row="${id}"]`);
+      const target = row?.querySelector<HTMLButtonElement>(refocus);
+      (target && !target.disabled ? target : row?.querySelector<HTMLElement>('.name'))?.focus();
+    });
   }
 
   // The round before this Final (where "◀ Back" goes).
@@ -166,22 +187,54 @@
       </label>
     {:else if session.finalStep === 'reveal'}
       <span class="muted">
-        Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼. Click a name here or on the stage to spotlight it.
+        Go one by one: spotlight → show wager → mark right or wrong. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Click a name
+        here or on the stage to spotlight it.
         <span class="small">Keys: N shows the wager, then the next player · Shift+N back · 1–9 spotlight · C right · X wrong.</span>
       </span>
-      <div class="order">
+      <div class="order" role="list" aria-label="Reveal order" bind:this={orderEl}>
         {#each f.order as id, i (id)}
           {@const p = byId[id]}
           {@const res = f.results[id]}
-          <div class="pl" class:cur={f.current === id} style:--c={p?.color}>
-            <button class="ghost small" onclick={() => move(id, -1)} disabled={i === 0}>▲</button>
-            <button class="ghost small" onclick={() => move(id, 1)} disabled={i === f.order.length - 1}>▼</button>
+          {@const line = rows.lineAt(id)}
+          <div
+            class="pl"
+            class:cur={f.current === id}
+            class:drop-before={line === 'before'}
+            class:drop-after={line === 'after'}
+            class:dragging={rows.dragging === id}
+            style:--c={p?.color}
+            data-row={id}
+            role="listitem"
+            ondragover={(e) => rows.over(e, id)}
+            ondrop={(e) => {
+              const m = rows.drop(e, f.order);
+              if (m) move(f.order[m.from], m.to - m.from);
+            }}
+          >
+            <!-- Only the grip drags: a press on Right or Wrong that moves a little is still a press. -->
+            <span
+              class="grip"
+              draggable="true"
+              ondragstart={(e) => rows.start(e, id, (e.currentTarget as HTMLElement).parentElement)}
+              ondragend={() => rows.end()}
+              aria-hidden="true"
+              title="Drag to change the order">⋮⋮</span
+            >
+            <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier">▲</button>
+            <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later">▼</button>
             <button
               class="name"
               style:background={p?.color}
               style:color={p ? textOn(p.color) : undefined}
               onclick={() => (f.current = id)}
-              title="Spotlight on screen"
+              onkeydown={(e) => {
+                // Alt+↑/↓ moves them in the order.
+                if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                nudge(id, e.key === 'ArrowUp' ? -1 : 1);
+              }}
+              title="Spotlight on screen · drag the row (or Alt+↑/↓) to change the order"
             >{p?.name}</button>
             <span class="muted small">{formatPoints(score(session, id), sym)} · wager {formatPoints(f.wagers[id] ?? 0, sym)}</span>
             <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
@@ -252,6 +305,7 @@
     gap: 4px;
   }
   .pl {
+    position: relative;
     display: flex;
     gap: 6px;
     align-items: center;
@@ -259,6 +313,32 @@
     padding: 3px 6px;
     border-radius: 8px;
     border: 2px solid transparent;
+  }
+  .pl.dragging {
+    opacity: 0.5;
+  }
+  /* Where a dragged row goes. */
+  .pl.drop-before::before,
+  .pl.drop-after::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .pl.drop-before::before {
+    top: -3px;
+  }
+  .pl.drop-after::after {
+    bottom: -3px;
+  }
+  .grip {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: -2px;
+    user-select: none;
   }
   .pl.cur {
     border-color: var(--c);

@@ -9,8 +9,11 @@
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
-  import { newId, newImageEl, type Dir8, type Game, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
-  import { activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, newVariant, screenElements, screenAt, screenSlide } from '../../lib/rpg';
+  import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
+  import {
+    activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, newVariant, screenElements, screenAt,
+    screenSlide,
+  } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
   import MapJump from './MapJump.svelte';
   import DrawPad from '../../editor/slide/DrawPad.svelte';
@@ -23,7 +26,11 @@
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
-  import { addLive, centredOn, focusParty, liveText, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap, type RpgAsk, type StagePoint } from './hostops';
+  import {
+    addLive, centredOn, focusParty, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, partyOn, regroupAll, rpgNow, sendPlayers, splitOff, stepParty, toggleMap,
+    type RpgAsk, type StagePoint,
+  } from './hostops';
+  import { dropHover } from '../dragdrop.svelte';
 
   let {
     game,
@@ -31,6 +38,7 @@
     selected = $bindable(),
     object = $bindable(),
     mapOpen = $bindable(false),
+    mapSend = $bindable(null),
     ask = $bindable(null),
     dual,
     onhistory,
@@ -40,6 +48,8 @@
     selected: string[];
     object: string | null;
     mapOpen?: boolean;
+    /** The full map was opened to send these players somewhere (from their menu or their party's). */
+    mapSend?: { players: string[]; label: string } | null;
     /** A name or text being asked for (＋ Screen, a new look, ＋ Text, or text right-clicked onto the stage). */
     ask?: RpgAsk | null;
     dual: boolean;
@@ -201,25 +211,74 @@
     else selected = [];
   }
 
-  /** Right-click a screen on the minimap: move the party (or some players) there. */
+  /** Right-click a screen on the minimap: move the party (or some players, or another party) there. */
   function mapMenu(e: MouseEvent, ref: ScreenRef, screen: Screen): void {
+    if (!st) return;
     picked = ref;
-    showMenu(e, [
-      { heading: screen.name },
-      { label: `▶ Move ${party?.name ?? 'the party'} here`, onclick: () => moveHere() },
-      { label: `Only the selected (${selected.length})`, disabled: !selected.length, onclick: () => moveHere(selected) },
-      { sep: true },
-      { label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) },
-    ]);
+    showMenu(e, [{ heading: screen.name }, ...moveChoices(session, st, selected, moveHere), { sep: true }, { label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) }]);
   }
 
-  function moveHere(who?: string[]): void {
+  /** Move the party (or these players) to the screen picked on the minimap. */
+  function moveHere(who?: string[], label?: string): void {
     if (!picked || !world || !st) return;
     const to = picked;
     const s = st;
     const w = world;
-    logged(session, `${who ? 'Selected players' : 'Party'} to ${pickedFound?.screen.name}`, () => moveTo(game, s, w, to, { players: who }));
+    logged(session, `${label ?? party?.name ?? 'Party'} to ${pickedFound?.screen.name}`, () => moveTo(game, s, w, to, { players: who }));
     picked = null;
+  }
+
+  /** A click picks a screen on the minimap; a double-click moves the party there at once (as on the full map). */
+  let lastPick = { id: '', at: 0 };
+  function pickMini(ref: ScreenRef): void {
+    const now = Date.now();
+    const again = lastPick.id === ref.screen && now - lastPick.at < 400;
+    lastPick = { id: ref.screen, at: now };
+    picked = ref;
+    if (again) moveHere();
+  }
+
+  /** The players on a minimap screen were dragged onto another: their party goes (the followed one, if it's there). */
+  function moveDots(from: ScreenRef, to: ScreenRef): void {
+    const pt = st && partyOn(st, from.screen);
+    const text = pt && sendPlayers(game, session, pt.members, to, { label: pt.name });
+    if (text) toast(text);
+  }
+
+  /** The players to move for one dragged: the whole selection when they're part of it. */
+  const withSelected = (id: string) => (selected.includes(id) ? selected : [id]);
+
+  /** A party chip's menu: follow it, see it in split view, gather everyone there, move it, rename it. */
+  function partyMenu(e: MouseEvent, pt: Party): void {
+    if (!st) return;
+    const s = st;
+    showMenu(e, [
+      { heading: `${pt.name} (${pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name).join(', ')})` },
+      { label: '🎥 Follow', disabled: pt.id === party?.id, onclick: () => focusParty(game, session, pt.id), hint: 'Viewers see its screen; the pad moves it' },
+      { label: '▦ Show in split view', disabled: s.parties.length < 2 || !!s.split, onclick: () => (s.split = true) },
+      { label: '🤝 Regroup everyone with this party', disabled: s.parties.length < 2, onclick: () => regroupAll(game, session, pt.id) },
+      { label: '🗺 Move this party…', onclick: () => ((mapSend = { players: [...pt.members], label: pt.name }), (mapOpen = true)) },
+      { sep: true },
+      { label: '✎ Rename…', onclick: () => (ask = { what: 'party', party: pt.id }) },
+    ]);
+  }
+
+  function renameParty(partyId: string, name: string): void {
+    ask = null;
+    const pt = st?.parties.find((p) => p.id === partyId);
+    if (!st || !pt || name === pt.name) return;
+    const s = st;
+    logged(session, `Rename ${pt.name} to ${name}`, () => nameParty(s, partyId, name));
+  }
+
+  /** A player (their card on the stats strip, their chip here) dropped on a party chip: they join it. */
+  function dropOnParty(e: DragEvent, pt: Party): void {
+    const id = e.dataTransfer?.getData('text/x-player');
+    dropHover.at = null;
+    if (!id) return;
+    e.preventDefault();
+    const text = joinPartyNow(game, session, withSelected(id), pt.id);
+    if (text) toast(text);
   }
 </script>
 
@@ -235,9 +294,19 @@
         <button
           class="small party"
           class:on={pt.id === party?.id}
+          class:drop-on={dropHover.at === `party:${pt.id}`}
           style:border-color={lead?.color}
+          data-party={pt.id}
           onclick={() => focusParty(game, session, pt.id)}
-          title="Follow this party (the pad moves it): {pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name).join(', ')}"
+          oncontextmenu={(e) => partyMenu(e, pt)}
+          ondragover={(e) => {
+            if (!e.dataTransfer?.types.includes('text/x-player')) return;
+            e.preventDefault();
+            dropHover.at = `party:${pt.id}`;
+          }}
+          ondragleave={() => dropHover.at === `party:${pt.id}` && (dropHover.at = null)}
+          ondrop={(e) => dropOnParty(e, pt)}
+          title="Follow this party (the pad moves it): {pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name).join(', ')}. Right-click for more; drop a player here to add them"
         >
           {pt.name} ({pt.members.length})
         </button>
@@ -330,6 +399,16 @@
           />
         {:else if a.what === 'look'}
           <InlineAsk text="Name of the new look (e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
+        {:else if a.what === 'party'}
+          {@const pt = st.parties.find((p) => p.id === a.party)}
+          <InlineAsk
+            text="New name for {pt?.name ?? 'the party'}:"
+            field="Party name"
+            value={pt?.name ?? ''}
+            ok="✎ Rename"
+            onok={(name) => renameParty(a.party, name)}
+            oncancel={() => (ask = null)}
+          />
         {:else}
           <InlineAsk
             text="Text to put {a.at ? 'here' : 'on the screen'} (hidden until you reveal it):"
@@ -365,19 +444,19 @@
       </div>
 
       <div class="mapbox">
-        <div class="row mini-head">
+        <!-- A picked screen's buttons go up here, beside ⤢ Full map: the map keeps its size, so both clicks of a double-click land on the same screen. -->
+        <div class="row mini-head" class:pick={!!(picked && pickedFound)}>
+          {#if picked && pickedFound}
+            <span class="shrink name" title={pickedFound.screen.name}>→ <b>{pickedFound.screen.name}</b></span>
+            <button class="small primary shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}">Move {party?.name ?? 'party'} here</button>
+            {#if selected.length}<button class="small shrink" onclick={() => moveHere(selected, `${selected.length} selected`)} title="Move only the {selected.length} selected to {pickedFound.screen.name}">Only selected ({selected.length})</button>{/if}
+            <button class="small ghost" onclick={() => (picked = null)} aria-label="Cancel">✕</button>
+          {/if}
           <span class="spacer"></span>
-          <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere">⤢ Full map</button>
+          <!-- With a screen picked, just ⤢: its buttons need the room. -->
+          <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map">⤢{picked && pickedFound ? '' : ' Full map'}</button>
         </div>
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit {picked} onpick={(ref) => (picked = ref)} onmenu={mapMenu} />
-        {#if picked && pickedFound}
-          <div class="row pick">
-            <span>→ <b>{pickedFound.screen.name}</b></span>
-            <button class="small primary" onclick={() => moveHere()}>Move {party?.name ?? 'party'} here</button>
-            {#if selected.length}<button class="small" onclick={() => moveHere(selected)}>Only selected ({selected.length})</button>{/if}
-            <button class="small ghost" onclick={() => (picked = null)}>✕</button>
-          </div>
-        {/if}
+        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} />
       </div>
 
       <div class="side">
@@ -389,7 +468,22 @@
           <div class="muted small">Objects here (or click one on the stage):</div>
           <div class="objs">
             {#each objects as el (el.id)}
-              <button class="small obj" class:secret={el.secret} onclick={() => (object = el.id)}>
+              <button
+                class="small obj"
+                class:secret={el.secret}
+                onclick={() => (object = el.id)}
+                oncontextmenu={(e) =>
+                  showMenu(
+                    e,
+                    objectMenu(game, session, el.id, {
+                      open: () => (object = el.id),
+                      removed: (text) => {
+                        toast(text, 3000);
+                        if (object === el.id) object = null;
+                      },
+                    }),
+                  )}
+              >
                 {el.name || el.role?.class}{el.role && el.name ? ` · ${el.role.class}` : ''}
               </button>
             {:else}
@@ -413,8 +507,11 @@
             style:border-color={pl.color}
             style:background={on ? pl.color : undefined}
             style:color={on ? textOn(pl.color) : undefined}
+            data-player-id={pl.id}
+            draggable="true"
+            ondragstart={(e) => e.dataTransfer?.setData('text/x-player', pl.id)}
             onclick={() => (selected = on ? selected.filter((x) => x !== pl.id) : [...selected, pl.id])}
-            title="Key {i + 1}">{pl.name}</button
+            title="Key {i + 1} · right-click for their menu · drag onto a party to join it">{pl.name}</button
           >
         {/if}
       {/each}
@@ -453,7 +550,7 @@
     </DrawPad>
   {/if}
   {#if mapOpen}
-    <MapJump {game} {session} {world} {st} {selected} onclose={() => (mapOpen = false)} />
+    <MapJump {game} {session} {world} {st} {selected} send={mapSend} onclose={() => ((mapOpen = false), (mapSend = null))} />
   {/if}
   {#if live}
     <LiveScreenEditor {world} {st} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
@@ -487,6 +584,11 @@
   }
   .party {
     border-width: 2px;
+  }
+  /* A dragged player (or avatar) would join this party. */
+  .party.drop-on {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
   }
   .on {
     border-color: var(--accent);
@@ -529,15 +631,27 @@
     flex-direction: column;
     gap: 4px;
   }
-  .pick {
-    font-size: 12px;
-  }
   .pad-token {
     position: absolute;
     transform: translate(-50%, -50%);
   }
+  /* One line, so the map below keeps its size (a long name is cut short). */
   .mini-head {
     gap: 4px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  .pick {
+    font-size: 12px;
+  }
+  .pick .shrink {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The screen's name gives way first (it's lit on the map), so the buttons keep their words. */
+  .pick .name {
+    flex-shrink: 100;
   }
   .side {
     flex: 1 1 320px;

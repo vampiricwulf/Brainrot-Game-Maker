@@ -9,12 +9,15 @@
     session,
     onpicker,
     hint = 'Click to make this player the current picker',
+    host = false,
   }: {
     game: Game;
     session: Session;
     onpicker?: (id: string) => void;
     /** What clicking a plate does (host only). */
     hint?: string;
+    /** The host's copy: right-clicking a plate gives that player's menu. */
+    host?: boolean;
   } = $props();
   const sym = $derived(game.settings.currencySymbol);
 </script>
@@ -26,10 +29,10 @@
       class="plate"
       class:picker={session.currentPickerId === p.id}
       style:--c={p.color}
+      data-player-id={host ? p.id : undefined}
       disabled={!onpicker}
       onclick={() => onpicker?.(p.id)}
       title={onpicker ? hint : undefined}
-      data-player-id={p.id}
     >
       <span class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
       <span class="score" class:neg={s < 0}>{formatPoints(s, sym)}</span>

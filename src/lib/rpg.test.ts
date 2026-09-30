@@ -10,8 +10,10 @@ import {
   exitOf,
   focusRef,
   freshObjectIds,
+  joinParty,
   mapState,
   moveTo,
+  nameParty,
   newRpgRound,
   newScreen,
   newWorld,
@@ -323,3 +325,43 @@ describe('RPG: some players moving on their own', () => {
   });
 });
 
+describe('RPG: joining a party, and naming one', () => {
+  it('takes players into a party where it stands, leaving their own party behind (it goes once empty)', () => {
+    const { game, session, world, round } = setup();
+    session.players.push({ id: 'c', name: 'Cat', color: '#4363d8', startScore: 0 });
+    const st = ensureWorld(session, game, round)!;
+    moveTo(game, st, world, at(world, 'Counter'), { players: ['a'] });
+    const [rest, ann] = st.parties;
+    st.active = rest.id;
+    // Bob joins Ann's party: he goes to the shop, and viewers follow them.
+    joinParty(game, st, world, ['b'], ann.id);
+    expect(st.parties.map((p) => p.members)).toEqual([['c'], ['a', 'b']]);
+    expect(nameOf(world, st.positions.b)).toBe('Counter');
+    // Beside her, not on top of her.
+    expect(Math.abs(st.positions.b.x - st.positions.a.x)).toBeGreaterThanOrEqual(150);
+    expect(st.active).toBe(ann.id);
+    // Cat too: her party (now empty) goes, and with one party left there's no split view.
+    st.split = true;
+    joinParty(game, st, world, ['c'], ann.id);
+    expect(st.parties.map((p) => p.members)).toEqual([['a', 'b', 'c']]);
+    expect(st.parties[0].name).toBe('Party');
+    expect(st.split).toBe(false);
+    // Joining a party they're already in changes nothing.
+    joinParty(game, st, world, ['a'], ann.id);
+    expect(st.parties.map((p) => p.members)).toEqual([['a', 'b', 'c']]);
+  });
+
+  it('keeps a name the host gave a party when parties split, merge and regroup', () => {
+    const { game, session, world, round } = setup();
+    session.players.push({ id: 'c', name: 'Cat', color: '#4363d8', startScore: 0 });
+    const st = ensureWorld(session, game, round)!;
+    nameParty(st, st.parties[0].id, 'Heroes');
+    splitParty(st, ['c']);
+    expect(st.parties.map((p) => p.name)).toEqual(['Heroes', 'Party 2']);
+    moveTo(game, st, world, at(world, 'Counter'), { players: ['b'] });
+    expect(st.parties.map((p) => p.name)).toEqual(['Heroes', 'Party 2', 'Party 3']);
+    st.active = st.parties[0].id;
+    regroup(game, st, world, ['a', 'b', 'c']);
+    expect(st.parties.map((p) => p.name)).toEqual(['Heroes']);
+  });
+});

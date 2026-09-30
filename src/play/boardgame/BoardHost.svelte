@@ -1,23 +1,28 @@
 <!--
-  The host's controls for a board-game round: whose turn it is and the turn order, roll or spin to move (the host
-  confirms or edits the count), forks, the passed and landed spaces' action buttons, sending players to spaces and
-  zones, what's on screen, and each player's stats and inventory.
+  The host's controls for a board-game round: whose turn it is and the turn order (drag to reorder, click a name for
+  their turn), roll or spin to move (the host confirms or edits the count), forks, the passed and landed spaces' action
+  buttons, the card of a space clicked on the stage, sending players to spaces and zones, what's on screen, and each
+  player's stats and inventory.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
-  import { currentPlayer, sendTo, spaceById, waysOn } from '../../lib/boardgame';
+  import { currentPlayer, spaceById, waysOn } from '../../lib/boardgame';
+  import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, playerName, rollMover, turnNow } from './bgops';
+  import { boardNow, busyZones, moveNow, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow } from './bgops';
+  import SpaceCard from './SpaceCard.svelte';
 
   let {
     game,
     session,
     selected = $bindable(),
     steps = $bindable(null),
+    space = $bindable(null),
     dual,
     onhistory,
   }: {
@@ -26,6 +31,8 @@
     selected: string[];
     /** The steps to move, typed or rolled (Enter moves them too). */
     steps?: number | null;
+    /** The space whose card is open (clicked on the stage). */
+    space?: string | null;
     dual: boolean;
     /** Open the 📜 Log's history. */
     onhistory?: () => void;
@@ -52,11 +59,13 @@
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
   const showPlayers = $derived(cardsShown());
 
-  // A new turn starts with no count: the last player's roll isn't theirs.
+  // A new turn starts with no count: the last player's roll isn't theirs. A move (a way picked on the stage too) uses it up.
   $effect(() => {
     void turnId;
+    void bs?.last;
     steps = null;
   });
+  const card = $derived(round && space ? spaceById(round, space) : undefined);
 
   /** The number the dice or wheel just gave (a wheel slice labeled "3" or "Move 3"), to fill in the steps. */
   const rolled = $derived.by(() => {
@@ -94,26 +103,29 @@
   }
 
   function send(to: string): void {
-    if (!bs || !to) return;
+    if (!to) return;
     const who = selected.length ? selected : turnId ? [turnId] : [];
-    if (!who.length) return;
     const [k, id] = [to.slice(0, 1), to.slice(2)];
-    const b = bs;
-    const where = k === 'z' ? round?.zones.find((z) => z.id === id)?.name : spaceById(round!, id)?.name;
-    logged(session, `${who.map((w) => playerName(session, w)).join(', ')} → ${where}`, () => sendTo(b, who, k === 'z' ? { zone: id } : { space: id }));
+    sendNow(game, session, who, k === 'z' ? { zone: id } : { space: id });
   }
 
-  function reorder(i: number, d: number): void {
-    if (!bs) return;
-    const b = bs;
-    const j = i + d;
-    if (j < 0 || j >= b.order.length) return;
-    logged(session, 'Turn order', () => {
-      const cur = b.order[b.turn];
-      [b.order[i], b.order[j]] = [b.order[j], b.order[i]];
-      b.turn = b.order.indexOf(cur);
+  /**
+   * Move a player one place earlier or later in the turn order. Focus goes back to the moved chip's `refocus` button
+   * (its name if that one is now disabled), so ◀▶ or Alt+←/→ can repeat.
+   */
+  function reorder(i: number, d: number, refocus = '.nm'): void {
+    const id = bs?.order[i];
+    if (!id) return;
+    reorderTurns(game, session, i, i + d);
+    tick().then(() => {
+      const chip = orderEl?.querySelector(`[data-player-id="${id}"]`);
+      const target = chip?.querySelector<HTMLButtonElement>(refocus);
+      (target && !target.disabled ? target : chip?.querySelector<HTMLElement>('.nm'))?.focus();
     });
   }
+
+  let orderEl = $state<HTMLElement>();
+  const turnDrag = new DragOrder(true);
 
   function shuffle(): void {
     if (!bs) return;
@@ -140,16 +152,50 @@
   <div class="bh">
     <div class="row">
       <span class="muted small">Turn order:</span>
-      {#each bs.order as id, i (id)}
-        {@const p = session.players.find((x) => x.id === id)}
-        {#if p}
-          <span class="ord" class:cur={id === turnId} style:border-color={p.color}>
-            <button class="ghost tiny" onclick={() => reorder(i, -1)} disabled={i === 0} aria-label="Earlier">◀</button>
-            <span style:background={id === turnId ? p.color : undefined} style:color={id === turnId ? textOn(p.color) : undefined} class="nm">{p.name}</span>
-            <button class="ghost tiny" onclick={() => reorder(i, 1)} disabled={i === bs.order.length - 1} aria-label="Later">▶</button>
-          </span>
-        {/if}
-      {/each}
+      <span class="order" role="list" aria-label="Turn order" bind:this={orderEl}>
+        {#each bs.order as id, i (id)}
+          {@const p = session.players.find((x) => x.id === id)}
+          {#if p}
+            {@const line = turnDrag.lineAt(id)}
+            <span
+              class="ord"
+              class:cur={id === turnId}
+              class:drop-before={line === 'before'}
+              class:drop-after={line === 'after'}
+              class:dragging={turnDrag.dragging === id}
+              style:border-color={p.color}
+              data-player-id={id}
+              role="listitem"
+              draggable="true"
+              ondragstart={(e) => turnDrag.start(e, id)}
+              ondragover={(e) => turnDrag.over(e, id)}
+              ondrop={(e) => {
+                const m = turnDrag.drop(e, bs.order);
+                if (m) reorderTurns(game, session, m.from, m.to);
+              }}
+              ondragend={() => turnDrag.end()}
+            >
+              <span class="grip" aria-hidden="true">⋮⋮</span>
+              <button class="ghost tiny earlier" onclick={() => reorder(i, -1, '.earlier')} disabled={i === 0} aria-label="Earlier">◀</button>
+              <button
+                class="nm"
+                style:background={id === turnId ? p.color : undefined}
+                style:color={id === turnId ? textOn(p.color) : undefined}
+                onclick={() => setTurn(game, session, id)}
+                onkeydown={(e) => {
+                  // Alt+←/→ moves them in the order.
+                  if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  reorder(i, e.key === 'ArrowLeft' ? -1 : 1);
+                }}
+                title={id === turnId ? `${p.name}’s turn · drag (or Alt+←/→) to move them in the order` : `Click: ${p.name}’s turn · drag (or Alt+←/→) to move them in the order`}
+              >{p.name}</button>
+              <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="Later">▶</button>
+            </span>
+          {/if}
+        {/each}
+      </span>
       <button class="ghost small" onclick={shuffle}>🔀 Shuffle</button>
       <span class="spacer"></span>
       <button class="small" onclick={() => turnNow(game, session, -1)} title="Shift+N">◀ Previous turn</button>
@@ -236,9 +282,16 @@
       {/if}
     </div>
 
+    {#if card}
+      {#key card.id}
+        <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} onclose={() => (space = null)} />
+      {/key}
+    {/if}
+
     {#if fork && forkSpace}
       <div class="row fork" role="alert">
         <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
+        <span class="muted small">(or click the space on the stage)</span>
         {#each forkWays as n (n)}
           <button class="primary" onclick={() => move(fork.stepsLeft, n)}>→ {spaceById(round, n)?.name}</button>
         {/each}
@@ -300,16 +353,52 @@
     align-items: center;
     flex-wrap: wrap;
   }
+  .order {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
   .ord {
+    position: relative;
     display: inline-flex;
     align-items: center;
     border: 2px solid;
     border-radius: 8px;
     font-size: 12px;
   }
+  .ord.dragging {
+    opacity: 0.5;
+  }
+  /* Where a dragged chip goes. */
+  .ord.drop-before::before,
+  .ord.drop-after::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--accent);
+  }
+  .ord.drop-before::before {
+    left: -5px;
+  }
+  .ord.drop-after::after {
+    right: -5px;
+  }
+  .grip {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: -2px;
+    padding: 0 2px 0 3px;
+    user-select: none;
+  }
   .ord .nm {
     padding: 1px 6px;
+    border: none;
     border-radius: 4px;
+    background: none;
+    font-size: 12px;
     font-weight: 700;
   }
   .n {

@@ -1,6 +1,5 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
-  import { showMenu } from '../lib/menustate.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, toolOnlyClue, usedTiles } from '../lib/session';
@@ -18,7 +17,6 @@
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
   import { app } from '../lib/app.svelte';
-  import { setPicker } from '../lib/toolset';
   import type { Snippet } from 'svelte';
 
   let {
@@ -29,6 +27,9 @@
     rpgObject = $bindable(null),
     rpgMap = $bindable(false),
     rpgAsk = $bindable(null),
+    rpgMapSend = $bindable(null),
+    bgSpace = $bindable(null),
+    editingScore = $bindable(null),
     wagerLimitsOff = $bindable(false),
     timerSeconds = $bindable(null),
     bgSteps = $bindable(null),
@@ -78,6 +79,12 @@
     rpgMap?: boolean;
     /** RPG rounds: a name or text being asked for (text right-clicked onto the stage too). */
     rpgAsk?: RpgAsk | null;
+    /** RPG rounds: the full map was opened to send these players somewhere (from their menu). */
+    rpgMapSend?: { players: string[]; label: string } | null;
+    /** Board-game rounds: the space whose card is open (clicked on the stage). */
+    bgSpace?: string | null;
+    /** The player whose score is being set (clicked here, or ✎ Set the score… in their menu). */
+    editingScore?: string | null;
     /** Final wagers: "Ignore the limits" is ticked. */
     wagerLimitsOff?: boolean;
     /** Seconds typed in the timer box (T uses them too). */
@@ -174,7 +181,7 @@
     return `＋ Award ${p?.name ?? ''}${amount ? ` +${formatPoints(Math.abs(amount), sym)}` : ''}`;
   });
 
-  let editingScore = $state<string | null>(null);
+  const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
   /** Exit was pressed: it asks inline (a browser dialog would show on stream). */
   let askExit = $state(false);
 
@@ -263,8 +270,9 @@
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
       <span class="muted hint">
-        {round?.mode === 'boardgame' && round.mover.kind === 'step' ? 'Pick the way (→ buttons, or Enter when there’s one)' : 'D rolls or spins, then ▶ Move (Enter)'} · N
-        next turn (Shift+N back) · click a player's name to select them
+        {round?.mode === 'boardgame' && round.mover.kind === 'step'
+          ? 'Pick the way (→ buttons, the space, or Enter when there’s one)'
+          : 'D rolls or spins, then ▶ Move (Enter)'} · N next turn (Shift+N back) · click a token to select them, drag it to send them
       </span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
@@ -277,6 +285,20 @@
     <span class="spacer"></span>
     <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} />
   </div>
+
+  <!-- A score asked for from the player's menu, where there are no score chips to type it into (RPG and board games). -->
+  {#if scoreFor && !showPlayers}
+    {#key scoreFor.id}
+      <InlineAsk
+        text="{scoreFor.name}’s score:"
+        field="Score"
+        value={String(score(session, scoreFor.id))}
+        ok="✎ Set"
+        onok={(v) => commitScore(scoreFor.id, v)}
+        oncancel={() => (editingScore = null)}
+      />
+    {/key}
+  {/if}
 
   {#if app.live.overlay}
     <div class="mode-host tools"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} /></div>
@@ -305,12 +327,24 @@
   {/if}
 
   {#if session.phase === 'boardgame'}
-    <div class="mode-host"><BoardHost {game} {session} bind:selected bind:steps={bgSteps} {dual} onhistory={() => onlog('history')} /></div>
+    <div class="mode-host">
+      <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} onhistory={() => onlog('history')} />
+    </div>
   {/if}
 
   {#if session.phase === 'rpg'}
     <div class="mode-host">
-      <RpgHost {game} {session} bind:selected bind:object={rpgObject} bind:mapOpen={rpgMap} bind:ask={rpgAsk} {dual} onhistory={() => onlog('history')} />
+      <RpgHost
+        {game}
+        {session}
+        bind:selected
+        bind:object={rpgObject}
+        bind:mapOpen={rpgMap}
+        bind:mapSend={rpgMapSend}
+        bind:ask={rpgAsk}
+        {dual}
+        onhistory={() => onlog('history')}
+      />
     </div>
   {/if}
 
@@ -329,16 +363,7 @@
           style:--c={p.color}
           role="group"
           aria-label={p.name}
-          oncontextmenu={(e) =>
-            showMenu(e, [
-              { heading: p.name },
-              { label: on ? 'Deselect' : 'Select', onclick: () => toggle(p.id), disabled: !scoring },
-              {
-                label: session.currentPickerId === p.id ? '★ No picker' : '★ Make the picker',
-                onclick: () => setPicker(session, session.currentPickerId === p.id ? undefined : p.id),
-              },
-              { label: '✎ Set the score…', onclick: () => (editingScore = p.id) },
-            ])}
+          data-player-id={p.id}
         >
           {#if scoring}
             <button

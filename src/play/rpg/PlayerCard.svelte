@@ -1,10 +1,11 @@
 <!--
-  One player's card in the RPG host panel: stats (±), inventory (equip, use, give, drop, remove), their sheet on
-  screen, knocked out, and converting score to or from a currency. Every change is one undoable step.
+  One player's card in the RPG host panel: stats (±), inventory (equip, use, give, drop, remove; drag an item onto
+  another player's card or avatar to give it, or onto the stage to drop it there), their sheet on screen, knocked out,
+  and converting score to or from a currency. Every change is one undoable step.
 -->
 <script module lang="ts">
-  /** The host folded or unfolded the players' cards (null: not yet). */
-  export const playerCards = $state<{ open: boolean | null }>({ open: null });
+  /** The host folded or unfolded the players' cards (null: not yet), and the card to show them (it flashes). */
+  export const playerCards = $state<{ open: boolean | null; flash: string | null }>({ open: null, flash: null });
 
   /**
    * The players' cards show in the RPG and board game host panels: as the host last chose, in any round of the show,
@@ -24,11 +25,11 @@
   import { applyScore, score } from '../../lib/session';
   import {
     addStat, clampStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statValue,
-    transferEntry,
   } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
-  import { droppedObject } from './hostops';
+  import { dragDone, dropHover, itemDrag } from '../dragdrop.svelte';
+  import { count, dropEntry, giveEntry } from './hostops';
 
   let {
     game,
@@ -63,6 +64,15 @@
   let convertAmt = $state<number | null>(null);
   let convertField = $state('');
   const cf = $derived(currencies.find((f) => f.id === convertField) ?? currencies[0]);
+
+  // Their card was asked for (from their menu): it comes into view and flashes.
+  let cardEl = $state<HTMLElement>();
+  $effect(() => {
+    if (playerCards.flash !== p.id || !cardEl) return;
+    cardEl.scrollIntoView({ block: 'nearest' });
+    const t = setTimeout(() => (playerCards.flash = null), 1200);
+    return () => clearTimeout(t);
+  });
 
   function bump(fieldId: string, delta: number): void {
     const f = fields.find((x) => x.id === fieldId);
@@ -125,14 +135,11 @@
   /** How many of a stack the give / drop / remove buttons move (1 unless typed). */
   let amounts = $state<Record<string, number>>({});
   const howMany = (entryId: string, qty: number) => Math.max(1, Math.min(qty, Math.round(amounts[entryId] ?? 1) || 1));
-  const count = (n: number, what: string) => (n > 1 ? `${n} × ${what}` : what);
 
   function give(entryId: string, to: string): void {
     const e = items.find((x) => x.id === entryId);
     if (!e) return;
-    const n = howMany(entryId, e.qty);
-    const other = session.players.find((x) => x.id === to)?.name;
-    logged(session, `${name} gives ${count(n, entryName(game, e))} to ${other}`, () => transferEntry(session, p.id, to, entryId, n));
+    giveEntry(game, session, p.id, to, entryId, howMany(entryId, e.qty));
     delete amounts[entryId];
   }
 
@@ -146,21 +153,21 @@
 
   function drop(entryId: string): void {
     const e = items.find((x) => x.id === entryId);
-    if (!e || !pos || !st) return;
-    const world = st;
-    const n = howMany(entryId, e.qty);
-    logged(session, `${name} drops ${count(n, entryName(game, e))}`, () => {
-      const el = droppedObject(game, { ...e, qty: n }, world, pos);
-      world.added[pos.screen] ??= [];
-      world.added[pos.screen].push(el);
-      const list = session.inventories?.[p.id];
-      const i = list?.findIndex((x) => x.id === entryId) ?? -1;
-      if (list && i >= 0) {
-        if (list[i].qty > n) list[i].qty -= n;
-        else list.splice(i, 1);
-      }
-    });
+    if (!e || !pos) return;
+    dropEntry(game, session, p.id, entryId, howMany(entryId, e.qty));
     delete amounts[entryId];
+  }
+
+  /** An item from another player's card dragged over this one: it would go to them. */
+  const itemFromElsewhere = () => !!itemDrag.now && itemDrag.now.from !== p.id;
+
+  /** Another player's item dropped on this card: they give it to this player (as many as their amount box says). */
+  function dropItem(e: DragEvent): void {
+    const d = itemDrag.now;
+    dragDone();
+    if (!d || d.from === p.id) return;
+    e.preventDefault();
+    giveEntry(game, session, d.from, p.id, d.entryId, d.n);
   }
 
   function convert(toCurrency: boolean): void {
@@ -186,9 +193,34 @@
   }
 </script>
 
-<div class="pc" class:on style:--c={p.color}>
-  <div class="row head">
-    <button class="who" onclick={ontoggle} style:background={on ? p.color : undefined} style:color={on ? textOn(p.color) : undefined} aria-pressed={on}>
+<div
+  class="pc"
+  class:on
+  class:flash={playerCards.flash === p.id}
+  class:drop-on={dropHover.at === `player:${p.id}`}
+  style:--c={p.color}
+  bind:this={cardEl}
+  role="group"
+  aria-label="{p.name}'s card"
+  ondragover={(e) => {
+    if (!itemFromElsewhere()) return;
+    e.preventDefault();
+    dropHover.at = `player:${p.id}`;
+  }}
+  ondragleave={(e) => !cardEl?.contains(e.relatedTarget as Node) && dropHover.at === `player:${p.id}` && (dropHover.at = null)}
+  ondrop={dropItem}
+>
+  <div class="row head" data-player-id={p.id}>
+    <button
+      class="who"
+      onclick={ontoggle}
+      style:background={on ? p.color : undefined}
+      style:color={on ? textOn(p.color) : undefined}
+      aria-pressed={on}
+      draggable={st ? 'true' : undefined}
+      ondragstart={st ? (e) => e.dataTransfer?.setData('text/x-player', p.id) : undefined}
+      title="Select (key {session.players.findIndex((x) => x.id === p.id) + 1}) · right-click for their menu{st ? ' · drag onto a party to join it' : ''}"
+    >
       <Avatar player={p} size={28} />
       <span class="name">{p.name}</span>
     </button>
@@ -276,7 +308,19 @@
             { label: '✕ Remove', danger: true, onclick: () => remove(e.id) },
           ])}
       >
-        <span class="nm" title="{entryName(game, e)}{about ? `: ${about}` : ''}">
+        <!-- Only the name drags: a press on the buttons, the amount box or Give → that moves a little is still a press. -->
+        <span
+          class="nm"
+          draggable="true"
+          ondragstart={(ev) => {
+            itemDrag.now = { from: p.id, entryId: e.id, n: howMany(e.id, e.qty) };
+            ev.dataTransfer?.setData('text/x-item', e.id);
+            if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+          }}
+          ondragend={dragDone}
+          role="presentation"
+          title="{entryName(game, e)}{about ? `: ${about}` : ''} · drag onto another player to give it{pos ? ', or onto the stage to drop it there' : ''}"
+        >
           {entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{def?.secret ? ' 🔒' : ''}
         </span>
         <!-- The buttons stay together: on the name's line, or all on the next one. -->
@@ -373,6 +417,23 @@
   }
   .pc.on {
     box-shadow: 0 0 0 2px var(--c);
+  }
+  /* A dragged item would go to them. */
+  .pc.drop-on {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+  }
+  /* Asked for from their menu. */
+  .pc.flash {
+    animation: flash 0.4s ease 3;
+  }
+  @keyframes flash {
+    50% {
+      box-shadow: 0 0 0 4px var(--c), 0 0 18px var(--c);
+    }
+  }
+  .it .nm[draggable='true'] {
+    cursor: grab;
   }
   .row {
     display: flex;

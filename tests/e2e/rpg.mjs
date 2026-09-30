@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, dragBy } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -406,6 +406,57 @@ try {
   await firstCard.locator('.ia').getByRole('button', { name: 'Use', exact: true }).click();
   await page.waitForTimeout(200);
   assert((await firstCard.getByLabel(/ HP$/).inputValue()) === String(+hp - 1) && (await potions()) === 0, 'Use asks in the card, then runs what the item does and uses it up');
+
+  // Dragging things where they go. An avatar dropped on another screen of the minimap goes there on its own.
+  const avatars = page.locator('.rpg .avatar[data-player-id]');
+  const parties = () => page.locator('.rh .party').allInnerTexts();
+  await dragBy(page, avatars.first(), page.locator('.rh .mapbox .cell[aria-label="Overworld · Start"]'));
+  assert((await where()).includes('Start') && (await parties()).length === 2, 'an avatar dropped on a screen of the minimap goes there, a party of their own');
+  // Its party's menu renames it; Player 2's card on the stats strip dropped on it joins it.
+  await page.locator('.rh .party.on').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '✎ Rename…' }).click();
+  await page.getByRole('textbox', { name: 'Party name' }).fill('Heroes');
+  await page.keyboard.press('Enter');
+  await dragBy(page, page.locator('.rpg .strip .card').nth(1), page.locator('.rh .party', { hasText: 'Heroes' }));
+  assert((await parties()).join() === 'Heroes (2)', `a party can be renamed, and a player's card dropped on it joins it (${await parties()})`);
+  // The player menu, on their card on the stats strip: hide their avatar, then bring it back.
+  await page.locator('.rpg .strip .card').first().click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🫥 Hide their avatar' }).click();
+  assert((await avatars.count()) === 1, 'the stats strip gives the player’s menu: hide their avatar');
+  await page.locator('.rpg .strip .card').first().click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🫥 Show their avatar' }).click();
+  assert((await avatars.count()) === 2, '…and show it again');
+  // An item dragged onto another player's card goes to them.
+  await dragBy(page, firstCard.locator('.it .nm', { hasText: 'Rubber duck' }), secondCard);
+  assert((await secondCard.locator('.it .nm').allInnerTexts()).join().includes('Rubber duck'), 'an item dragged onto another player’s card goes to them');
+  // Delete takes off the object whose card is open (Ctrl+Z brings it back); the host panel's list has their menu too.
+  await page.locator('.rh .objs').getByRole('button', { name: /Lava/ }).click();
+  await page.getByRole('dialog', { name: 'Object: Lava' }).waitFor();
+  await page.keyboard.press('Delete');
+  assert(
+    !(await page.getByRole('dialog', { name: 'Object: Lava' }).count()) && (await page.locator('.toast').innerText()) === 'Removed Lava · Ctrl+Z brings it back',
+    'Delete takes the object whose card is open off the screen',
+  );
+  await page.keyboard.press('Control+z');
+  await page.locator('.rh .objs').getByRole('button', { name: /Lava/ }).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🗂 Open its card' }).click();
+  await page.getByRole('dialog', { name: 'Object: Lava' }).waitFor();
+  assert(true, 'Ctrl+Z brings it back, and its right-click menu in the list opens its card');
+  await page.keyboard.press('Escape');
+  // Dragged off the east edge, an avatar walks through to the screen that way; a double-click on the minimap moves the party.
+  const stageNow = await page.locator('.rpg').boundingBox();
+  await dragBy(page, avatars.first(), { x: stageNow.x + stageNow.width + 40, y: stageNow.y + stageNow.height / 2 });
+  assert((await where()).includes('Screen B1'), 'an avatar dragged off the east edge walks through to the screen there');
+  // Picking a screen on the minimap leaves the map as it was, so both clicks of a double-click land on the same screen.
+  const startCell = page.locator('.rh .mapbox .cell[aria-label="Overworld · Start"]');
+  const cellBefore = JSON.stringify(await startCell.boundingBox());
+  await startCell.click();
+  assert(JSON.stringify(await startCell.boundingBox()) === cellBefore, 'picking a screen on the minimap leaves the map where it was');
+  await page.waitForTimeout(450);
+  await startCell.dblclick();
+  await page.waitForTimeout(250);
+  assert((await where()).includes('Start'), 'a double-click on the minimap moves the party there');
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-direct.png` });
   assert(!dialogs.length, 'no browser dialog showed during the game' + (dialogs.length ? `: ${dialogs.join('; ')}` : ''));
 
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg.png` });

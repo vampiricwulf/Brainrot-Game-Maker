@@ -132,6 +132,31 @@ export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id
   return { path };
 }
 
+/**
+ * The spaces the host can pick to move on to now, and for whom: the ways on from a fork (with the steps left), or on a
+ * one-space-a-turn board the ways on from where the player whose turn it is stands. Null when there's nothing to pick.
+ */
+export function waysNow(round: BoardGameRound, bs: BoardGameState): { playerId: Id; steps: number; ways: Id[] } | null {
+  const f = bs.fork;
+  if (f) return { playerId: f.playerId, steps: f.stepsLeft, ways: waysOn(round, f.at, bs.prev?.[f.playerId], f.stepsLeft < 0) };
+  const turn = currentPlayer(bs);
+  const at = turn ? bs.positions[turn]?.space : undefined;
+  if (round.mover.kind !== 'step' || !turn || !at) return null;
+  const ways = waysOn(round, at, bs.prev?.[turn]);
+  return ways.length ? { playerId: turn, steps: 1, ways } : null;
+}
+
+/** Move one player in the turn order to position `to` (the others close up); whoever's turn it is keeps it. */
+export function moveInOrder(bs: BoardGameState, from: number, to: number): void {
+  if (from === to || from < 0 || to < 0 || from >= bs.order.length || to >= bs.order.length) return;
+  const cur = bs.order[bs.turn];
+  const order = [...bs.order];
+  const [id] = order.splice(from, 1);
+  order.splice(to, 0, id);
+  bs.order = order;
+  bs.turn = order.indexOf(cur);
+}
+
 /** How long each step of a move takes on screen. */
 export const HOP_MS = 380;
 

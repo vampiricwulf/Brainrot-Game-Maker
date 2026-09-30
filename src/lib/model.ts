@@ -782,6 +782,8 @@ export interface Party {
   id: Id;
   name: string;
   members: Id[];
+  /** The host named it: splitting and regrouping keep its name (others are numbered). */
+  named?: boolean;
 }
 
 /** Changes to an object during the game (the authored slide never changes). */
