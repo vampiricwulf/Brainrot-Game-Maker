@@ -1,6 +1,7 @@
 <!--
   Layers list for a slide (or the board's images): top-most first. Click to select (Shift/Ctrl adds),
-  drag to restack, 👁 hides an item while editing (never in the game), 🔒 locks it in place.
+  drag to restack, 👁 hides an item while editing (never in the game), 🔒 locks it in place, and
+  double-click or F2 renames an item.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -96,7 +97,25 @@
     dropAt = null;
   }
 
+  // ---------- Renaming in place (double-click or F2): Enter saves, Esc cancels, empty goes back to the automatic label ----------
+  let renaming = $state<string | null>(null);
+  function rename(el: SlideElement, name: string | null): void {
+    renaming = null;
+    const want = name?.trim() || undefined;
+    if (name !== null && want !== el.name) edit(() => (el.name = want));
+    tick().then(() => listEl?.querySelector<HTMLElement>(`[data-layer="${el.id}"] .name`)?.focus());
+  }
+  const focusAll = (input: HTMLInputElement) => {
+    input.focus();
+    input.select();
+  };
+
   function rowKey(e: KeyboardEvent, el: SlideElement): void {
+    if (e.key === 'F2') {
+      e.preventDefault();
+      renaming = el.id;
+      return;
+    }
     // Alt+↑/↓ restacks the focused item; ↑/↓ alone moves the selection through the list.
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
@@ -129,7 +148,7 @@
       data-layer={el.id}
       data-place="el:{el.id}"
       role="listitem"
-      draggable="true"
+      draggable={renaming !== el.id}
       ondragstart={(e) => {
         dragId = el.id;
         e.dataTransfer?.setData('text/x-layer', el.id);
@@ -142,16 +161,35 @@
       onpointerleave={() => hovered === el.id && (hovered = null)}
     >
       <span class="grip" aria-hidden="true">⋮⋮</span>
-      <button
-        class="name"
-        onclick={(e) => pick(e, el)}
-        onkeydown={(e) => rowKey(e, el)}
-        aria-pressed={isSel}
-        title="Click to select (Shift/Ctrl adds). Drag to restack; Alt+↑/↓ moves it up or down."
-      >
-        {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
-        <span class="txt">{layerLabel(el, game)}</span>
-      </button>
+      {#if renaming === el.id}
+        <span class="name">
+          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+          <input
+            value={el.name ?? layerLabel(el, game)}
+            aria-label="Name"
+            title="Enter saves, Esc cancels. Empty goes back to the automatic name."
+            use:focusAll
+            onkeydown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') rename(el, e.currentTarget.value);
+              else if (e.key === 'Escape') rename(el, null);
+            }}
+            onblur={(e) => renaming === el.id && rename(el, e.currentTarget.value)}
+          />
+        </span>
+      {:else}
+        <button
+          class="name"
+          onclick={(e) => pick(e, el)}
+          ondblclick={() => (renaming = el.id)}
+          onkeydown={(e) => rowKey(e, el)}
+          aria-pressed={isSel}
+          title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down."
+        >
+          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+          <span class="txt">{layerLabel(el, game)}</span>
+        </button>
+      {/if}
       <button class="ico" class:on={!isHidden} onclick={() => toggleHidden(el)} aria-label={isHidden ? 'Show while editing' : 'Hide while editing'} title={isHidden ? 'Show while editing' : 'Hide while editing (still shows in the game)'}>
         {isHidden ? '◌' : '👁'}
       </button>
@@ -237,6 +275,12 @@
     background: none;
     border: none;
     text-align: left;
+    font-size: 12px;
+  }
+  .name input {
+    flex: 1;
+    min-width: 0;
+    padding: 1px 4px;
     font-size: 12px;
   }
   .name img {
