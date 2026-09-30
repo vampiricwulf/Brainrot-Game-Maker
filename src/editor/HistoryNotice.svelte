@@ -6,6 +6,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { history, onApplied, onNotify, redo, undo, type HistoryEntry } from '../lib/history.svelte';
+  import { goTo } from '../lib/nav.svelte';
+
+  /** The History tab is showing: it shows the steps itself. */
+  let { quiet = false }: { quiet?: boolean } = $props();
 
   type Kind = 'undid' | 'redid' | 'made';
   let notice = $state<{ kind: Kind; entry: HistoryEntry; index: number } | null>(null);
@@ -19,8 +23,8 @@
 
   onMount(() => {
     // A jump from the History list shows in the list itself.
-    const offApplied = onApplied((e, dir, via) => via !== 'list' && show(dir < 0 ? 'undid' : 'redid', e, 4000));
-    const offNotify = onNotify((e) => show('made', e, 6000));
+    const offApplied = onApplied((e, dir, via) => via !== 'list' && !quiet && show(dir < 0 ? 'undid' : 'redid', e, 4000));
+    const offNotify = onNotify((e) => !quiet && show('made', e, 6000));
     return () => {
       offApplied();
       offNotify();
@@ -35,12 +39,17 @@
 
   /** Undo the step the notice announced, if it's still the latest. */
   function undoMade(): void {
-    if (notice && history.entries[history.index - 1]?.id === notice.entry.id) undo('button');
+    if (notice && history.top === notice.entry.id) undo('button');
     else notice = null;
+  }
+
+  function showHistory(): void {
+    notice = null;
+    goTo({ tab: 'history' });
   }
 </script>
 
-{#if notice}
+{#if notice && !quiet}
   {@const { kind, entry } = notice}
   <div class="history-notice" role="status" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
     <span class="text">
@@ -58,6 +67,7 @@
     {:else}
       <button class="small" onclick={undoMade}>↶ Undo</button>
     {/if}
+    <button class="small ghost" onclick={showHistory} title="Every change to this game">🕘 History</button>
   </div>
 {/if}
 

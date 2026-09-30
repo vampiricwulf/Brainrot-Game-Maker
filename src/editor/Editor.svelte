@@ -37,11 +37,12 @@
   import { rpgRounds } from '../lib/rpg';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
   import HistoryNotice from './HistoryNotice.svelte';
+  import HistoryPanel from './HistoryPanel.svelte';
 
   let { onplay }: { onplay: () => void } = $props();
 
-  // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | round index
-  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | number>(0);
+  // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
+  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
   const game = $derived(app.game);
   $effect(() => {
     registerGameFonts(game);
@@ -66,7 +67,8 @@
       const playing = rpgRounds(game).filter((r) => r.world === place.world);
       const r = playing.find((x) => x === on) ?? playing[0];
       if (r) tab = game.rounds.indexOf(r);
-    } else if (place.tab !== 'title' && place.tab !== 'history') tab = place.tab;
+      else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`, 5000);
+    } else if (place.tab !== 'title') tab = place.tab;
   }
 
   // The round on screen stays on screen when an undo puts back (or takes away) a round before it.
@@ -78,9 +80,9 @@
     onApplied((e, dir, via) => {
       const i = game.rounds.findIndex((r) => r.id === shownRound);
       if (typeof tab === 'number' && i >= 0) tab = i;
-      // Then on to where it changed (a jump in the History list shows there).
+      // Then on to where it changed (the History tab shows it in its list).
       const place = dir < 0 ? e.undoPlace : e.place;
-      if (via !== 'list' && place) goTo(place, itemIdsIn(e.ops));
+      if (via !== 'list' && tab !== 'history' && place) goTo(place, itemIdsIn(e.ops));
     }),
   );
 
@@ -408,6 +410,9 @@
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
       <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
+      <button class:active={tab === 'history'} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
+        🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
+      </button>
       <div class="navlabel muted">End</div>
       <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')}>
         Tiebreaker {game.tiebreaker ? '' : '(off)'}
@@ -441,6 +446,8 @@
           <ToolsEditor />
         {:else if tab === 'theme'}
           <ThemeEditor />
+        {:else if tab === 'history'}
+          <HistoryPanel />
         {:else if game.rounds[tab]}
           {@const i = tab}
           {@const round = game.rounds[i]}
@@ -481,7 +488,7 @@
       {/key}
     </main>
   </div>
-  <HistoryNotice />
+  <HistoryNotice quiet={tab === 'history'} />
 </div>
 
 <style>
@@ -568,6 +575,10 @@
     border-right: 1px solid var(--border);
     background: var(--panel);
     overflow-y: auto;
+  }
+  /* At 720 px high the nav scrolls: its buttons keep their height. */
+  nav > * {
+    flex-shrink: 0;
   }
   nav > button {
     text-align: left;

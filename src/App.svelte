@@ -57,7 +57,7 @@
       app.game = migrateGame(draft);
       arriving({ kind: 'reopened', label: `Reopened “${app.game.title}”` });
       await loadGameMedia(app.game);
-    }
+    } else arriving({ kind: 'new', label: 'New game' });
     // A finished game stays too, so its results can still be viewed after a reload.
     if (play) app.resumable = resumed(play);
     // Drop stored media that no saved game uses any more.

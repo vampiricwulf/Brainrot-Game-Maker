@@ -28,16 +28,16 @@ let seq = 0;
 
 /**
  * Show a place: the tab, what's open in it and the thing itself, flashed (with `items`, the slide items changed with
- * it, selected together). What was deleted since is left out (the nearest thing still there shows). Returns false
- * when some of it was.
+ * it, selected together). What was deleted since is left out: returns the place it went to (`place` itself when all
+ * of it is there), or null when nothing of it is.
  */
-export function goTo(place: Place, items: string[] = []): boolean {
+export function goTo(place: Place, items: string[] = []): Place | null {
   const found = resolve(app.game, place);
-  if (!found) return false;
+  if (!found) return null;
   nav.request = { place: found, items, seq: ++seq, at: Date.now() };
   const key = placeKey(found);
   if (key) flash(key);
-  return found === place;
+  return found;
 }
 
 /**
