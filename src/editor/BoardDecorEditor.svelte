@@ -197,6 +197,7 @@
     if (a.startsWith('align-')) {
       const free = decor.filter((d) => selected.includes(d.id) && !d.locked);
       edit(() => align(free, a.slice(6) as Align, SLIDE_W, SLIDE_H));
+      if (free.length < selected.length) tell(lockedNote(selected.length - free.length, 'image'));
     } else if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') edit(() => restack(decor, selected, a));
     else if (a === 'duplicate') duplicate();
     else if (a === 'lock' || a === 'unlock')

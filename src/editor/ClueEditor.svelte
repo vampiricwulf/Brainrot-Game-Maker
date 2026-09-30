@@ -7,6 +7,7 @@
   import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { mediaDrop } from '../lib/mediadrop';
 
   let {
     round,
@@ -153,7 +154,13 @@
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
             <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image">✕</button>
           {:else}
-            <button class="small" onclick={() => (facePicker = true)} disabled={clue.empty} title="Show an image on the tile">🖼 Tile image</button>
+            <button
+              class="small"
+              onclick={() => (facePicker = true)}
+              use:mediaDrop={{ kind: 'image', disabled: clue.empty, onpick: (id) => (clue.tileFace = { ...clue.tileFace, image: id }) }}
+              disabled={clue.empty}
+              title="Show an image on the tile (or drop one here)">🖼 Tile image</button
+            >
           {/if}
           {#if facePicker}
             <MediaPicker

@@ -17,7 +17,7 @@
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
   import SlideModal from '../rpg/SlideModal.svelte';
   import MediaPicker from '../slide/MediaPicker.svelte';
-  import { hasFiles, mediaDrop, useFile } from '../../lib/mediadrop';
+  import { fittingFile, hasFiles, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
 
   let { round }: { round: BoardGameRound } = $props();
@@ -175,7 +175,7 @@
   }
   function fileDrop(e: DragEvent): void {
     fileOver = null;
-    const file = e.dataTransfer?.files[0];
+    const file = fittingFile(Array.from(e.dataTransfer?.files ?? []), 'image');
     if (!hasFiles(e) || !file) return;
     e.preventDefault();
     const s = spaceUnder(e);
