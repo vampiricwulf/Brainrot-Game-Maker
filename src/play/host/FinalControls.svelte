@@ -1,7 +1,7 @@
 <!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  import { formatPoints, type Game, type Session } from '../../lib/model';
+  import { formatPoints, roundName, type Game, type Session } from '../../lib/model';
   import { finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, score } from '../../lib/session';
 
   let {
@@ -18,7 +18,7 @@
     armed?: boolean;
     onstep: () => void;
     onreveal: () => void;
-    /** Back to the last round's board (wagers entered so far are kept). */
+    /** Back to the round before this Final (wagers entered so far are kept). */
     onback: () => void;
   } = $props();
   const f = $derived(session.final);
@@ -52,7 +52,8 @@
     [f.order[i], f.order[j]] = [f.order[j], f.order[i]];
   }
 
-  const lastRound = $derived(game.rounds[game.rounds.length - 1]);
+  // The round before this Final (where "◀ Back" goes).
+  const lastRound = $derived(game.rounds[session.currentRound - 1]);
   const unjudged = $derived(finalUnjudged(session).length);
 
   /** "Finish game" was pressed with players still unjudged: it asks inline (a browser dialog would show on stream). */
@@ -72,17 +73,18 @@
     // The second half of a double-click on "Finish game" doesn't count as the answer.
     if (askFinish && Date.now() - askedAt < 400) return;
     askFinish = false;
-    finalNext(session);
+    finalNext(session, game);
     onstep();
   }
 
-  const labels = {
+  const after = $derived(game.rounds[session.currentRound + 1]);
+  const labels = $derived({
     category: 'Lock category, take wagers ▶',
     wagers: 'Show question ▶',
     question: 'Reveal answer ▶',
     answer: 'Start player reveals ▶',
-    reveal: 'Finish game ▶',
-  } as const;
+    reveal: after ? `Next: ${roundName(after, session.currentRound + 1)} ▶` : 'Finish game ▶',
+  });
 </script>
 
 {#if f}
@@ -147,7 +149,7 @@
     {/if}
     <div class="row">
       {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
-        <button class="ghost" onclick={onback} title="Wagers entered so far are kept">◀ Back to {lastRound?.name ?? 'the board'}</button>
+        {#if lastRound}<button class="ghost" onclick={onback} title="Wagers entered so far are kept">◀ Back to {roundName(lastRound, session.currentRound - 1)}</button>{/if}
       {/if}
       {#if session.finalStep === 'answer'}
         <button onclick={onreveal} title="R">🙈 Hide answer</button>

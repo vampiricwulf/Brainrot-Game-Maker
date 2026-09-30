@@ -4,7 +4,7 @@
   import { fontChoices } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
-  import { newId } from '../lib/model';
+  import { isBoard, newId } from '../lib/model';
   import { newSession } from '../lib/session';
   import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetTheme, type ThemePreset } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
@@ -21,8 +21,10 @@
     const s = newSession(game);
     if (!s.players.length)
       s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({ id: newId(), name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: [1200, 400, -200][i] }));
-    const r = game.rounds[0];
-    r?.categories.forEach((c, ci) => ci % 2 === 0 && c.clues[0] && (s.used[c.clues[0].id] = true));
+    // The preview shows the first Jeopardy board.
+    s.currentRound = Math.max(0, game.rounds.findIndex(isBoard));
+    const r = game.rounds[s.currentRound];
+    if (isBoard(r)) r.categories.forEach((c, ci) => ci % 2 === 0 && c.clues[0] && (s.used[c.clues[0].id] = true));
     s.currentPickerId = s.players[0]?.id;
     return s;
   });

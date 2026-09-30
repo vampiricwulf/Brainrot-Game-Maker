@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { categoryLabel, finalName, type EmbedEl, type Game, type Slide } from './model';
+import { boardRounds, categoryLabel, isBoard, roundName, type EmbedEl, type Game, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -9,17 +9,19 @@ export interface SlideRef {
 
 export function allSlides(game: Game): SlideRef[] {
   const out: SlideRef[] = [];
-  for (const r of game.rounds)
-    for (const c of r.categories)
-      c.clues.forEach((cl, i) => {
-        if (cl.empty) return;
-        const where = `${r.name} · ${categoryLabel(c)} #${i + 1}`;
-        out.push({ slide: cl.questionSlide, where: `${where} (question)` }, { slide: cl.answerSlide, where: `${where} (answer)` });
-      });
-  if (game.final.enabled) {
-    out.push({ slide: game.final.questionSlide, where: `${finalName(game)} (question)` });
-    out.push({ slide: game.final.answerSlide, where: `${finalName(game)} (answer)` });
-  }
+  game.rounds.forEach((r, ri) => {
+    if (isBoard(r))
+      for (const c of r.categories)
+        c.clues.forEach((cl, i) => {
+          if (cl.empty) return;
+          const where = `${roundName(r, ri)} · ${categoryLabel(c)} #${i + 1}`;
+          out.push({ slide: cl.questionSlide, where: `${where} (question)` }, { slide: cl.answerSlide, where: `${where} (answer)` });
+        });
+    else {
+      out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
+      out.push({ slide: r.answerSlide, where: `${roundName(r, ri)} (answer)` });
+    }
+  });
   if (game.tiebreaker) {
     out.push({ slide: game.tiebreaker.questionSlide, where: 'Tiebreaker (question)' });
     out.push({ slide: game.tiebreaker.answerSlide, where: 'Tiebreaker (answer)' });
@@ -40,7 +42,7 @@ export function mediaUsage(game: Game): Map<string, number> {
       } else if (el.kind === 'video' || el.kind === 'audio') bump(el.media);
     }
   }
-  for (const r of game.rounds) for (const c of r.categories) for (const cl of c.clues) bump(cl.tileFace?.image);
+  for (const r of boardRounds(game)) for (const c of r.categories) for (const cl of c.clues) bump(cl.tileFace?.image);
   const fonts = game.media.filter((m) => m.kind === 'font');
   if (fonts.length) {
     const used = allSlides(game).flatMap(({ slide }) => slide.elements.flatMap((e) => (e.kind === 'text' ? [e.font] : [])));
@@ -59,7 +61,7 @@ export function extraMediaRefs(game: Game): string[] {
   const out = Object.values(game.audio ?? {}).filter((x): x is string => !!x);
   if (game.theme?.boardImage) out.push(game.theme.boardImage);
   if (game.theme?.banner) out.push(game.theme.banner);
-  for (const r of game.rounds) {
+  for (const r of boardRounds(game)) {
     for (const c of r.categories) if (c.image) out.push(c.image);
     for (const d of r.decor ?? []) {
       out.push(d.media);

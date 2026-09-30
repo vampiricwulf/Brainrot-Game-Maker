@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { newLive } from './live';
-import { newGame, PLAYER_WHEEL } from './model';
+import { newGame, PLAYER_WHEEL, type BoardRound, type Game } from './model';
+
+const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { editWheel, openPlayerWheel, openWheel, resetWheelEdits, spinWheel, wheelPool } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
@@ -50,7 +52,7 @@ describe('Pick a player wheel', () => {
 
   it('counts as a chosen wheel for a wheel tile', () => {
     const { game } = withPlayers();
-    const clue = game.rounds[0].categories[0].clues[0];
+    const clue = board(game, 0).categories[0].clues[0];
     clue.type = 'wheel';
     const warn = () => validate(game).some((m) => m.text.includes('wheel/dice tile'));
     expect(warn()).toBe(true);

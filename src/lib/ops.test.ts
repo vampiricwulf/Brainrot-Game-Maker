@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newRound, type TextEl } from './model';
+import { newGame, newRound, type TextEl, type BoardRound, type Game } from './model';
+
+const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { restyle, textStyleTargets } from './ops';
 
 const mainText = (s: { elements: { kind: string }[] }) => s.elements.find((e) => e.kind === 'text') as TextEl;
@@ -8,7 +10,7 @@ describe('use this style elsewhere', () => {
   it('finds the main text of the chosen slides, never the source itself', () => {
     const game = newGame();
     game.rounds.push(newRound('Double', 2, [400, 800]));
-    const round = game.rounds[0];
+    const round = board(game, 0);
     const from = mainText(round.categories[0].clues[0].questionSlide);
     expect(textStyleTargets(game, round, from, 'round-q')).toHaveLength(6 * 5 - 1);
     expect(textStyleTargets(game, round, from, 'round-qa')).toHaveLength(6 * 5 * 2 - 1);
@@ -27,7 +29,7 @@ describe('use this style elsewhere', () => {
 
   it('restyles the targets and can put their old styles back, keeping the words', () => {
     const game = newGame();
-    const round = game.rounds[0];
+    const round = board(game, 0);
     const from = mainText(round.categories[0].clues[0].questionSlide);
     from.color = '#ff00ff';
     from.size = 64;

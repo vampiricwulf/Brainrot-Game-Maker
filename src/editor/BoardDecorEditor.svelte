@@ -9,7 +9,7 @@
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
   import { restack } from '../lib/layers';
-  import { newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type Round, type Slide, type SlideElement } from '../lib/model';
+  import { boardRounds, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
@@ -21,7 +21,7 @@
   import LayerMenu from './slide/LayerMenu.svelte';
   import { lockedNote, type LayerAction } from './slide/layerlabel';
 
-  let { round, onclose }: { round: Round; onclose: () => void } = $props();
+  let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
 
   const game = $derived(app.game);
   const decor = $derived(round.decor ?? []);
@@ -36,7 +36,7 @@
   let menu = $state<{ x: number; y: number; stack: SlideElement[] } | null>(null);
   const single = $derived(selected.length === 1 ? decor.find((d) => d.id === selected[0]) : undefined);
   const imageEl = $derived(decor.find((d) => d.id === editingImage) as ImageEl | undefined);
-  const others = $derived(game.rounds.filter((r) => r.id !== round.id));
+  const others = $derived(boardRounds(game).filter((r) => r.id !== round.id));
 
   // The board as it looks at the start of this round, minus anything hidden while editing.
   const session = $derived.by(() => {

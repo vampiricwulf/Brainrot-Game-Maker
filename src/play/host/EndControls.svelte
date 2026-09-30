@@ -1,7 +1,7 @@
 <!-- End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. -->
 <script lang="ts">
   import { toast } from '../../lib/app.svelte';
-  import { formatPoints, type Game, type Session } from '../../lib/model';
+  import { formatPoints, isFinal, type Game, type Session } from '../../lib/model';
   import { places, startTiebreaker, tiedLeaders } from '../../lib/session';
 
   let {
@@ -63,7 +63,7 @@
 {/if}
 <div class="row">
   <button class="ghost" onclick={onback}>
-    {session.final && game.final.enabled ? '◀ Back to final reveals' : '◀ Back to board'}
+    {isFinal(game.rounds[game.rounds.length - 1]) ? '◀ Back to final reveals' : '◀ Back to board'}
   </button>
   <button onclick={copyResults} title="Copy the standings as one line of text">📋 Copy results</button>
   <button onclick={onrematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>

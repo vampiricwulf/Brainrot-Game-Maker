@@ -1,5 +1,5 @@
 // File download/upload helpers and plain-JSON game export (text only, no media).
-import type { Game } from './model';
+import { GAME_VERSION, type Game } from './model';
 
 export function downloadText(filename: string, text: string, type = 'application/json'): void {
   downloadBlob(filename, new Blob([text], { type }));
@@ -26,9 +26,11 @@ export function saveGameJson(game: Game): void {
 
 export function parseGame(text: string): Game {
   const data = JSON.parse(text);
-  if (!data || data.version !== 1 || !Array.isArray(data.rounds) || !Array.isArray(data.players)) {
+  if (!data || typeof data.version !== 'number' || !Array.isArray(data.rounds) || !Array.isArray(data.players)) {
     throw new Error('This file is not a Brainrot Games Maker game.');
   }
+  if (data.version > GAME_VERSION) throw new Error('This game was made with a newer version of Brainrot Games Maker: update the app to open it.');
+  if (data.version < 1) throw new Error('This file is not a Brainrot Games Maker game.');
   return data as Game;
 }
 

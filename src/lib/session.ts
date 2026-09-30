@@ -1,6 +1,6 @@
 // Runtime game logic: scores, score log with undo/redo, used tiles, round flow.
 // Pure functions over plain objects so they're easy to test and to autosave.
-import { categoryLabel, clueValue, finalName, formatPoints, getClue, newId, playableClues, type ClueRef, type Game, type Player, type ScoreEvent, type Session } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isFinal, newId, playableClues, type BoardRound, type ClueRef, type FinalRound, type Game, type Player, type Round, type ScoreEvent, type Session } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -285,7 +285,8 @@ export function introNext(session: Session, game: Game): void {
   const intro = session.intro;
   if (!intro) return;
   const ri = game.settings.roundIntro;
-  const cats = game.rounds[session.currentRound]?.categories.length ?? 0;
+  const r = game.rounds[session.currentRound];
+  const cats = isBoard(r) ? r.categories.length : 0;
   if (intro.stage === 'title') {
     if (ri.tileFill) intro.stage = 'fill';
     else if (ri.categoryReveal !== 'off') intro.stage = 'categories';
@@ -303,37 +304,63 @@ export function skipIntro(session: Session): void {
   session.intro = null;
 }
 
-/** Move to round `index`; past the last round goes to the final round (if enabled) or the end screen. */
+/** The round being played (undefined on the end screen or with no rounds). */
+export function currentRound(session: Session, game: Game): Round | undefined {
+  return session.phase === 'end' ? undefined : game.rounds[session.currentRound];
+}
+
+/** Put the current Final round's state away (to pick up again when coming back to it). */
+function stashFinal(session: Session): void {
+  const f = session.final;
+  if (!f?.roundId) return;
+  session.finals = { ...(session.finals ?? {}), [f.roundId]: { state: f, step: session.finalStep ?? 'category' } };
+}
+
+/**
+ * Move to round `index` (any mode); past the last round is the end screen. Only the first visit to a board
+ * round plays its intro. A Final round picks up where it was left (wagers kept).
+ */
 export function goToRound(session: Session, game: Game, index: number): void {
   session.currentClue = null;
   session.revealed = false;
   session.dd = null;
+  if (session.phase === 'final') stashFinal(session);
   if (index >= game.rounds.length) {
     session.intro = null;
-    if (game.final.enabled && session.phase !== 'final' && session.phase !== 'end') startFinal(session, game);
-    else session.phase = 'end';
-  } else {
-    const target = Math.max(0, index);
-    const changed = target !== session.currentRound || session.phase !== 'board';
-    const backwards = target < session.currentRound;
-    session.currentRound = target;
-    session.phase = 'board';
-    // Only the first visit to a round plays its intro: going back (or returning) shows the board straight away.
-    if (changed) {
-      if (backwards || session.introducedRounds?.includes(target)) session.intro = null;
-      else startIntro(session, game);
-    }
+    session.phase = 'end';
+    return;
+  }
+  const target = Math.max(0, index);
+  const round = game.rounds[target];
+  const changed = target !== session.currentRound || session.phase !== 'board';
+  const backwards = target < session.currentRound;
+  session.currentRound = target;
+  if (isFinal(round)) {
+    session.intro = null;
+    startFinal(session, game, round);
+    return;
+  }
+  session.phase = 'board';
+  // Only the first visit to a round plays its intro: going back (or returning) shows the board straight away.
+  if (changed) {
+    if (backwards || session.introducedRounds?.includes(target)) session.intro = null;
+    else startIntro(session, game);
   }
 }
 
-/** Back to the last round's board from the final round or the end screen (no intro; Final wagers are kept). */
+/** From the end screen back to the last round (a Final round goes back to its reveals; no board intro). */
 export function backToLastRound(session: Session, game: Game): void {
-  session.phase = 'board';
-  session.currentRound = Math.max(0, game.rounds.length - 1);
+  const last = Math.max(0, game.rounds.length - 1);
+  const round = game.rounds[last];
+  session.currentRound = last;
   session.intro = null;
   session.currentClue = null;
   session.revealed = false;
   session.dd = null;
+  if (isFinal(round)) {
+    startFinal(session, game, round);
+    if (session.final && Object.keys(session.final.results).length) session.finalStep = 'reveal';
+  } else session.phase = 'board';
 }
 
 // ---------- Daily Double ----------
@@ -341,7 +368,7 @@ export function backToLastRound(session: Session, game: Game): void {
 /** Highest value on the current round's board (TV cap for a Daily Double wager). */
 export function roundMaxValue(game: Game, roundIndex: number): number {
   const round = game.rounds[roundIndex];
-  if (!round) return 0;
+  if (!isBoard(round)) return 0;
   let max = 0;
   round.categories.forEach((c) => c.clues.forEach((cl, row) => !cl.empty && (max = Math.max(max, clueValue(round, row, cl)))));
   return max;
@@ -365,7 +392,7 @@ export function ddShowQuestion(session: Session, playerId: string, wager: number
  * `keepExisting` leaves the Daily Doubles already on the board alone and only adds the missing ones.
  */
 export function randomizeDailyDoubles(
-  round: Game['rounds'][number],
+  round: BoardRound,
   count: number,
   rand = Math.random,
   { keepExisting = false }: { keepExisting?: boolean } = {},
@@ -407,27 +434,41 @@ export function randomizeDailyDoubles(
 
 // ---------- Final round ----------
 
-/** clueId used to tag the final round's score events (so re-judging finds the earlier one). */
-export const FINAL_CLUE_ID = 'final';
+/** clueId that tags a Final round's score events (so re-judging finds the earlier one). */
+export function finalTag(roundId: string): string {
+  return `final:${roundId}`;
+}
 
-export function startFinal(session: Session, game: Game): void {
+/** The Final round being played. */
+export function currentFinal(session: Session, game: Game): FinalRound | undefined {
+  const r = game.rounds[session.currentRound];
+  return isFinal(r) ? r : undefined;
+}
+
+/**
+ * Enter a Final round. Coming back to one (after a trip elsewhere) picks up its wagers and results; eligibility
+ * is checked again because scores may have changed, keeping what was entered for players who are still in.
+ */
+export function startFinal(session: Session, game: Game, round: FinalRound): void {
   const eligible = session.players.filter((p) => game.settings.finalAllowNonPositive || score(session, p.id) > 0).map((p) => p.id);
   // Reveal in TV order: lowest score first.
   const order = [...eligible].sort((a, b) => score(session, a) - score(session, b));
+  const saved = session.final?.roundId === round.id ? { state: session.final, step: session.finalStep } : session.finals?.[round.id];
+  // A game saved before Final became a round kept its state without a round id.
+  const prev = saved?.state ?? (session.final && !session.final.roundId ? session.final : undefined);
   session.phase = 'final';
   session.finalStep = 'category';
-  // Back again after a trip to the board: scores may have changed, so eligibility is checked again, but
-  // anything already entered for a player who's still in is kept.
-  const prev = session.final;
   const keep = <T>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r ?? {}).filter(([id]) => eligible.includes(id)));
-  session.final = { players: eligible, wagers: keep(prev?.wagers), order, shown: keep(prev?.shown), results: keep(prev?.results) };
+  const current = prev?.current && eligible.includes(prev.current) ? prev.current : undefined;
+  session.final = { roundId: round.id, players: eligible, wagers: keep(prev?.wagers), order, shown: keep(prev?.shown), results: keep(prev?.results), current };
 }
 
 export function finalWagerCap(session: Session, playerId: string): number {
   return Math.max(0, score(session, playerId));
 }
 
-export function finalNext(session: Session): void {
+/** The Final's next step. After the reveals: the next round, or the end screen if this Final was the last round. */
+export function finalNext(session: Session, game: Game): void {
   const f = session.final;
   switch (session.finalStep) {
     case 'category':
@@ -444,7 +485,7 @@ export function finalNext(session: Session): void {
       if (f) f.current = f.order.find((id) => !f.results[id]);
       break;
     default:
-      session.phase = 'end';
+      goToRound(session, game, session.currentRound + 1);
   }
 }
 
@@ -477,9 +518,10 @@ export function finalUnjudged(session: Session): string[] {
 }
 
 /** From the end screen back to the final round's reveals (e.g. to fix a judgment). */
-export function backToFinalReveal(session: Session): void {
-  if (!session.final) return;
-  session.phase = 'final';
+export function backToFinalReveal(session: Session, game: Game): void {
+  const round = currentFinal(session, game);
+  if (!round) return;
+  startFinal(session, game, round);
   session.finalStep = 'reveal';
 }
 
@@ -493,17 +535,19 @@ export function finalShow(session: Session, playerId: string): void {
 /** Mark a Final response right/wrong and apply ± their wager. Re-judging replaces the earlier result. */
 export function finalJudge(session: Session, game: Game, playerId: string, right: boolean): void {
   const f = session.final;
-  if (!f) return;
+  const round = currentFinal(session, game);
+  if (!f || !round) return;
+  const tag = finalTag(round.id);
   const prev = f.results[playerId];
   if (prev) {
     // Undo the earlier judgment's score change.
-    const e = [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === FINAL_CLUE_ID && !x.undone);
+    const e = [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === tag && !x.undone);
     if (e) e.undone = true;
   }
   const wager = f.wagers[playerId] ?? 0;
   f.results[playerId] = right ? 'right' : 'wrong';
   f.shown[playerId] = true;
-  if (wager) applyScore(session, game, [playerId], right ? wager : -wager, finalName(game), FINAL_CLUE_ID);
+  if (wager) applyScore(session, game, [playerId], right ? wager : -wager, finalName(round), tag);
 }
 
 // ---------- End of game ----------
@@ -543,7 +587,9 @@ export function clueName(game: Game, ref: ClueRef): string {
 /** Where a clue sits on the board, by id. */
 export function findClueRef(game: Game, clueId: string): ClueRef | null {
   for (let round = 0; round < game.rounds.length; round++) {
-    const cats = game.rounds[round].categories;
+    const r = game.rounds[round];
+    if (!isBoard(r)) continue;
+    const cats = r.categories;
     for (let cat = 0; cat < cats.length; cat++) {
       const row = cats[cat].clues.findIndex((c) => c.id === clueId);
       if (row >= 0) return { round, cat, row };
@@ -555,7 +601,9 @@ export function findClueRef(game: Game, clueId: string): ClueRef | null {
 /** Used tiles of a round, in board order (for the host's "Reopen a tile" list). */
 export function usedTiles(session: Session, game: Game, round = session.currentRound): { id: string; ref: ClueRef }[] {
   const out: { id: string; ref: ClueRef }[] = [];
-  game.rounds[round]?.categories.forEach((c, cat) =>
+  const r = game.rounds[round];
+  if (!isBoard(r)) return out;
+  r.categories.forEach((c, cat) =>
     c.clues.forEach((cl, row) => {
       if (!cl.empty && session.used[cl.id]) out.push({ id: cl.id, ref: { round, cat, row } });
     }),
@@ -587,6 +635,20 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);
   if (session.phase === 'tiebreaker' && !to.tiebreaker) session.phase = 'end';
   session.gameId = to.id;
+}
+
+/**
+ * Bring a session saved before round modes (Jeopardy Builder) up to date with its converted game (migrateGame):
+ * the Final is now a round (id FINAL_V1_ROUND_ID), so a session in the Final points at that round, its state
+ * and score events are tagged with it. Newer sessions are returned as they are.
+ */
+export function migrateSession(session: Session, game: Game): Session {
+  const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
+  if (finalIndex < 0) return session;
+  for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);
+  if (session.final && !session.final.roundId) session.final.roundId = FINAL_V1_ROUND_ID;
+  if (session.phase === 'final') session.currentRound = finalIndex;
+  return session;
 }
 
 /** Players ranked by score, highest first. */

@@ -2,13 +2,13 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { finalName, playableClues, PLAYER_WHEEL, type Game } from './model';
+import { isFinal, playableClues, PLAYER_WHEEL, roundName, type Game } from './model';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
 
 export interface Problem {
   text: string;
-  /** Editor tab that fixes it: 'setup' | 'final' | 'media' | 'tools' | round index. */
-  tab: 'setup' | 'final' | 'media' | 'tools' | number;
+  /** Editor tab that fixes it: 'setup' | 'tiebreaker' | 'media' | 'tools' | round index. */
+  tab: 'setup' | 'tiebreaker' | 'media' | 'tools' | number;
   level: 'warn' | 'info';
 }
 
@@ -18,7 +18,15 @@ export function validate(game: Game): Problem[] {
   const colors = game.players.map((p) => normalizeColor(p.color));
   if (new Set(colors).size !== colors.length) out.push({ text: 'Two players share a color', tab: 'setup', level: 'warn' });
 
-  game.rounds.forEach((r, i) => {
+  if (!game.rounds.length) out.push({ text: 'No rounds yet', tab: 'setup', level: 'warn' });
+  game.rounds.forEach((round, i) => {
+    const name = roundName(round, i);
+    if (isFinal(round)) {
+      if (!slideHasContent(round.questionSlide)) out.push({ text: `${name} has no question`, tab: i, level: 'warn' });
+      if (!slideHasContent(round.answerSlide)) out.push({ text: `${name} has no answer`, tab: i, level: 'warn' });
+      return;
+    }
+    const r = { ...round, name };
     const playable = playableClues(r);
     if (!playable.length) out.push({ text: `${r.name}: no playable tiles`, tab: i, level: 'warn' });
     const unnamed = r.categories.filter((c) => !c.title.trim() && !c.image).length;
@@ -34,10 +42,6 @@ export function validate(game: Game): Problem[] {
     if (broken) out.push({ text: `${r.name}: ${broken} wheel/dice tile(s) with nothing chosen`, tab: i, level: 'warn' });
   });
 
-  if (game.final.enabled) {
-    if (!slideHasContent(game.final.questionSlide)) out.push({ text: `${finalName(game)} has no question`, tab: 'final', level: 'warn' });
-    if (!slideHasContent(game.final.answerSlide)) out.push({ text: `${finalName(game)} has no answer`, tab: 'final', level: 'warn' });
-  }
 
   const known = new Set(game.media.map((m) => m.id));
   const missingRefs = [...mediaUsage(game).keys()].filter((id) => !known.has(id)).length;

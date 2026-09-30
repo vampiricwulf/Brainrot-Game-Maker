@@ -6,8 +6,8 @@
 <script lang="ts">
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
-  import { finalName, formatPoints, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, score, standings, tiedLeaders } from '../lib/session';
+  import { finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
+  import { currentClueInfo, currentFinal, score, standings, tiedLeaders } from '../lib/session';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
@@ -46,10 +46,14 @@
   const act = (a: StageAction) => onact?.(a);
 
   const info = $derived(currentClueInfo(session, game));
-  const finalCategorySlide = $derived(textSlide(game.final.category || finalName(game)));
-  const finalLabel = $derived(finalName(game).toUpperCase());
+  const finalRound = $derived(currentFinal(session, game));
+  const finalCategorySlide = $derived(textSlide(finalRound ? finalRound.category || finalName(finalRound) : ''));
+  const finalLabel = $derived(finalRound ? finalName(finalRound).toUpperCase() : '');
   const sym = $derived(game.settings.currencySymbol);
-  const round = $derived(game.rounds[session.currentRound]);
+  const round = $derived.by(() => {
+    const r = game.rounds[session.currentRound];
+    return isBoard(r) ? r : undefined;
+  });
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const ddPlayer = $derived(session.dd?.playerId ? byId[session.dd.playerId] : undefined);
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
@@ -146,9 +150,9 @@
         <SlideView slide={finalCategorySlide} />
         {#if session.finalStep === 'wagers'}<div class="final-sub">Make your wagers…</div>{/if}
       {:else if session.finalStep === 'question'}
-        <SlideView slide={game.final.questionSlide} {role} />
+        {#if finalRound}<SlideView slide={finalRound.questionSlide} {role} />{/if}
       {:else if session.finalStep === 'answer'}
-        <SlideView slide={game.final.answerSlide} {role} />
+        {#if finalRound}<SlideView slide={finalRound.answerSlide} {role} />{/if}
       {:else if session.finalStep === 'reveal'}
         <div class="reveal">
           <div class="final-label small">{finalLabel}</div>

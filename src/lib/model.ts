@@ -344,9 +344,14 @@ export interface Category {
   showTitleOverImage?: boolean;
 }
 
-export interface Round {
+/** How a round plays. Each game is a list of rounds, and each round picks its mode. */
+export type RoundMode = 'board' | 'final';
+
+/** A Jeopardy board: categories of clues with values. */
+export interface BoardRound {
   id: Id;
   name: string;
+  mode: 'board';
   categories: Category[];
   /** Default value for each row (length = rows per category). */
   values: number[];
@@ -366,24 +371,35 @@ export interface BoardDecor extends ImageEl {
   behind?: boolean;
 }
 
+/** Final Jeopardy: one category, private wagers, one question, one-by-one reveal. Can go anywhere in the game. */
 export interface FinalRound {
-  enabled: boolean;
+  id: Id;
   /** Shown on screen and in the host UI, e.g. "Final Jeopardy!" or "Final Brainrot". */
   name: string;
+  mode: 'final';
   category: string;
   questionSlide: Slide;
   answerSlide: Slide;
   timerSeconds: number;
+  hostNotes?: string;
 }
+
+export type Round = BoardRound | FinalRound;
+
+export const isBoard = (r: Round | undefined | null): r is BoardRound => r?.mode === 'board';
+export const isFinal = (r: Round | undefined | null): r is FinalRound => r?.mode === 'final';
+
+/** Game format version (bumped when saved games need converting; see migrateGame). */
+export const GAME_VERSION = 2;
 
 export interface Game {
   id: Id;
-  version: 1;
+  version: 1 | 2;
   title: string;
   settings: GameSettings;
   players: PlayerTemplate[];
+  /** Played in order. Each round has a mode (Jeopardy board, Final Jeopardy…). */
   rounds: Round[];
-  final: FinalRound;
   media: MediaRef[];
   audio: GameAudio;
   wheels: WheelPreset[];
@@ -395,7 +411,11 @@ export interface Game {
 
 // ---------- Runtime session ----------
 
+export type FinalStep = 'category' | 'wagers' | 'question' | 'answer' | 'reveal';
+
 export interface FinalState {
+  /** The Final round this is for (absent in games saved before Final became a round). */
+  roundId?: Id;
   /** Players taking part (others sat out, e.g. score ≤ 0). */
   players: Id[];
   wagers: Record<Id, number>;
@@ -461,8 +481,11 @@ export interface Session {
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
   /** Daily Double in progress for the open clue. */
   dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number } | null;
-  finalStep?: 'category' | 'wagers' | 'question' | 'answer' | 'reveal';
+  finalStep?: FinalStep;
+  /** The Final round being played (or last played). */
   final?: FinalState;
+  /** Other Final rounds' state, by round id, kept while the game is elsewhere. */
+  finals?: Record<Id, { state: FinalState; step: FinalStep }>;
   /** Tiebreaker clue showing the answer. */
   tiebreakerRevealed?: boolean;
   /** The host declared the tied leaders co-winners. */
@@ -568,19 +591,24 @@ export function newCategory(rows: number, title = ''): Category {
   return { id: newId(), title, clues: Array.from({ length: rows }, newClue) };
 }
 
-export function newRound(name: string, cats = 6, values: number[] = DEFAULT_VALUES): Round {
+export function newRound(name: string, cats = 6, values: number[] = DEFAULT_VALUES): BoardRound {
   return {
     id: newId(),
     name,
+    mode: 'board',
     values: [...values],
     categories: Array.from({ length: cats }, (_, i) => newCategory(values.length, `Category ${i + 1}`)),
   };
 }
 
+export function newFinalRound(name = 'Final Jeopardy!'): FinalRound {
+  return { id: newId(), name, mode: 'final', category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 };
+}
+
 export function newGame(): Game {
   return {
     id: newId(),
-    version: 1,
+    version: GAME_VERSION,
     title: 'Untitled Game',
     settings: {
       allowNegativeScores: true,
@@ -597,8 +625,7 @@ export function newGame(): Game {
       maxPlayers: 8,
     },
     players: [],
-    rounds: [newRound('Jeopardy!')],
-    final: { enabled: true, name: 'Final Jeopardy!', category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 },
+    rounds: [newRound('Jeopardy!'), newFinalRound()],
     media: [],
     audio: {},
     wheels: [],
@@ -607,20 +634,26 @@ export function newGame(): Game {
   };
 }
 
-export function clueValue(round: Round, row: number, clue: Clue): number {
+export function clueValue(round: BoardRound, row: number, clue: Clue): number {
   return clue.value ?? round.values[row] ?? 0;
 }
 
-export function getClue(game: Game, ref: ClueRef): { round: Round; category: Category; clue: Clue } | null {
-  const round = game.rounds[ref.round];
+export function getClue(game: Game, ref: ClueRef): { round: BoardRound; category: Category; clue: Clue } | null {
+  const r = game.rounds[ref.round];
+  const round = isBoard(r) ? r : undefined;
   const category = round?.categories[ref.cat];
   const clue = category?.clues[ref.row];
   return round && category && clue ? { round, category, clue } : null;
 }
 
-/** Playable clues in a round (not marked empty). */
+/** Playable clues in a round (not marked empty). Only board rounds have clues. */
 export function playableClues(round: Round): Clue[] {
-  return round.categories.flatMap((c) => c.clues.filter((cl) => !cl.empty));
+  return isBoard(round) ? round.categories.flatMap((c) => c.clues.filter((cl) => !cl.empty)) : [];
+}
+
+/** Every board round of the game. */
+export function boardRounds(game: Game): BoardRound[] {
+  return game.rounds.filter(isBoard);
 }
 
 /** "−$200", "$1,000", "350 pts"-style formatting with the game's points symbol. */
@@ -628,12 +661,43 @@ export function formatPoints(n: number, sym: string): string {
   return (n < 0 ? '−' : '') + sym + Math.abs(n).toLocaleString();
 }
 
-/** Fill in fields added in later versions so older saved games keep loading. */
-export function migrateGame(data: Game): Game {
+/** A version-1 game (Jeopardy Builder): board rounds without a mode, and Final Jeopardy kept apart. */
+interface GameV1 extends Omit<Game, 'version' | 'rounds'> {
+  version: 1;
+  rounds: Omit<BoardRound, 'mode'>[];
+  final?: Partial<Omit<FinalRound, 'id' | 'mode'>> & { enabled?: boolean };
+}
+
+/** Version 1 → 2: rounds get a mode, and an enabled Final Jeopardy becomes the last round (a disabled one is dropped). */
+function migrateV1(data: GameV1): Game {
+  const { final, ...rest } = data;
+  const rounds: Round[] = (data.rounds ?? []).map((r) => ({ ...r, mode: 'board' }) as BoardRound);
+  if (final && final.enabled !== false) {
+    rounds.push({
+      ...newFinalRound(),
+      name: final.name?.trim() || 'Final Jeopardy!',
+      category: final.category ?? '',
+      questionSlide: final.questionSlide ?? textSlide(),
+      answerSlide: final.answerSlide ?? textSlide(),
+      timerSeconds: final.timerSeconds || 30,
+      // A stable id, so a game in progress saved with this game can find its final round again.
+      id: FINAL_V1_ROUND_ID,
+    });
+  }
+  return { ...rest, version: 2, rounds } as Game;
+}
+
+/** The id the v1 → v2 conversion gives Final Jeopardy (see migrateSession). */
+export const FINAL_V1_ROUND_ID = 'final-v1';
+
+/** Convert older saved games and fill in fields added later, so every saved game keeps loading. */
+export function migrateGame(input: Game): Game {
+  const data = (input as unknown as { version?: number }).version === 2 ? input : migrateV1(input as unknown as GameV1);
   const d = newGame();
   const g = { ...d, ...data } as Game;
+  g.version = GAME_VERSION;
+  g.rounds = (data.rounds ?? []).map((r) => (r.mode ? r : ({ ...(r as object), mode: 'board' } as BoardRound)));
   g.settings = { ...d.settings, ...(data.settings ?? {}) };
-  g.final = { ...d.final, ...(data.final ?? {}) };
   g.media ??= [];
   // Links only ever point at web pages (a hand-edited game must not smuggle in javascript: or file:).
   for (const m of g.media) {
@@ -649,7 +713,12 @@ export function migrateGame(data: Game): Game {
   return g;
 }
 
-/** Display name of the final round (never empty). */
-export function finalName(game: Game): string {
-  return game.final.name?.trim() || 'Final Jeopardy!';
+/** Display name of a round (never empty). */
+export function roundName(round: Round, index?: number): string {
+  return round.name?.trim() || (isFinal(round) ? 'Final Jeopardy!' : index !== undefined ? `Round ${index + 1}` : 'Round');
+}
+
+/** Display name of a final round (never empty). */
+export function finalName(round: FinalRound): string {
+  return roundName(round);
 }

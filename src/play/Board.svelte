@@ -1,6 +1,6 @@
 <!-- The game board in stage coordinates (fills its parent). -->
 <script lang="ts">
-  import { categoryLabel, clueValue, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueValue, isBoard, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit } from '../lib/autofit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
 
@@ -16,7 +16,10 @@
     /** Host views only: right-clicking a used tile puts it back (used tiles then stay enabled but can't be picked). */
     onunmark?: (ref: ClueRef) => void;
   } = $props();
-  const round = $derived(game.rounds[session.currentRound]);
+  const round = $derived.by(() => {
+    const r = game.rounds[session.currentRound];
+    return isBoard(r) ? r : undefined;
+  });
   const sym = $derived(game.settings.currencySymbol);
   const intro = $derived(session.intro);
   // Tile-fill animation: each tile pops in after a random delay (stable per round).

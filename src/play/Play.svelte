@@ -1,8 +1,8 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { finalName, formatPoints, getClue, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
+  import { finalName, formatPoints, getClue, isBoard, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
-    applyScore, awardOpen, backToBoard, backToFinalReveal, backToLastRound, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
+    applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
     redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
   } from '../lib/session';
@@ -164,7 +164,10 @@
   function reasonNow(): string {
     if (session.phase === 'clue' && session.currentClue)
       return clueReason(game, session.currentClue) + (session.dd?.stage === 'question' ? ' (Daily Double)' : '');
-    if (session.phase === 'final') return finalName(game);
+    if (session.phase === 'final') {
+      const f = currentFinal(session, game);
+      return f ? finalName(f) : 'Final';
+    }
     if (session.phase === 'tiebreaker') return 'Tiebreaker';
     return 'Adjustment';
   }
@@ -256,7 +259,7 @@
         if (session.phase === 'clue') back();
         break;
       case 'final-next':
-        finalNext(session);
+        finalNext(session, game);
         finalStep();
         break;
       case 'overlay':
@@ -328,9 +331,9 @@
     if (session.phase === 'end') playSound(app.live, game.audio.winner);
   }
 
-  /** Final round started by mistake (or a tile was skipped): back to the last round's board, wagers kept. */
+  /** Final round started by mistake (or a tile was skipped): back to the round before it, wagers kept. */
   function backFromFinal(): void {
-    backToLastRound(session, game);
+    goToRound(session, game, Math.max(0, session.currentRound - 1));
     app.live.timer = null;
     app.live.sound = null;
   }
@@ -339,8 +342,7 @@
   function backFromEnd(): void {
     app.live.sound = null;
     app.live.overlay = null;
-    if (session.final && game.final.enabled) backToFinalReveal(session);
-    else backToLastRound(session, game);
+    backToLastRound(session, game);
   }
 
   /** Same players (names and colors) at 0 and a fresh board, via the pre-game screen. */
@@ -375,11 +377,13 @@
   function finalStep(): void {
     app.live.timer = null;
     if (session.phase === 'final' && session.finalStep === 'question') {
-      startTimer(app.live, game.final.timerSeconds || game.settings.finalTimerSeconds || 30);
+      startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
       playSound(app.live, game.audio.finalThink);
     }
     if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
     if (session.phase === 'end') playSound(app.live, game.audio.winner);
+    // A Final in the middle of the game went on to the next round.
+    if (session.phase === 'board' && session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
   }
 
   /** N in the final reveal: show the wager, then the next player; finishing takes a second N once all are judged. */
@@ -388,7 +392,7 @@
     if (r === 'done') {
       // The final controls show "press N again to finish" while armed.
       if (finishArmed) {
-        finalNext(session);
+        finalNext(session, game);
         finalStep();
       } else finishArmed = true;
     } else if (r === 'waiting' && session.final?.current)
@@ -440,6 +444,7 @@
       .filter((p) => p.level === 'warn')
       .map((p) => ({ text: p.text }));
     game.rounds.forEach((r, i) => {
+      if (!isBoard(r)) return;
       const want = r.dailyDoubleCount ?? 1;
       const placed = r.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
       const listed = out.some((p) => p.text.startsWith(`${r.name}:`) && p.text.includes('Daily Double'));
@@ -454,11 +459,13 @@
    */
   function placeDailyDoubles(ri: number): void {
     const r = game.rounds[ri];
+    if (!isBoard(r)) return;
     const dds = () => r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'dailyDouble').map((cl) => cl.id));
     const before = new Set(dds());
     const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
     const added = new Set(dds().filter((id) => !before.has(id)));
-    for (const c of app.game.rounds.find((x) => x.id === r.id)?.categories ?? [])
+    const edited = app.game.rounds.find((x) => x.id === r.id);
+    for (const c of isBoard(edited) ? edited.categories : [])
       for (const cl of c.clues) if (added.has(cl.id) && cl.type === 'standard') cl.type = 'dailyDouble';
     toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
   }
@@ -555,7 +562,7 @@
         if (session.phase === 'board' && session.intro) intro();
         else if (session.phase === 'final' && session.finalStep === 'reveal') finalRevealNext();
         else if (session.phase === 'final' && session.finalStep !== 'wagers') {
-          finalNext(session);
+          finalNext(session, game);
           finalStep();
         }
         break;
@@ -720,6 +727,7 @@
         onredo={doRedo}
         onnextround={() => nextRound(1)}
         onprevround={() => nextRound(-1)}
+        ongotoround={(i) => nextRound(i - session.currentRound)}
         onbackfromfinal={backFromFinal}
         onbackfromend={backFromEnd}
         onrematch={rematch}

@@ -64,7 +64,6 @@
         oninput={(e) => (s.defaultTimerSeconds = e.currentTarget.value === '' || +e.currentTarget.value === 0 ? null : +e.currentTarget.value)}
       />
     </label>
-    <label class="field">Final round think time (seconds)<input type="number" min="5" bind:value={app.game.final.timerSeconds} /></label>
     <label class="check"><input type="checkbox" bind:checked={s.timerAutoStart} /> Start the countdown automatically when a clue opens</label>
   </div>
   <p class="muted small">The host can also start a timer any time with <b>T</b>, and set any clue's own time in the clue editor.</p>

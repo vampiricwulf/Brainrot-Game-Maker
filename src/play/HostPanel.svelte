@@ -1,8 +1,8 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
   import { textOn } from '../lib/colors';
-  import { categoryLabel, finalName, formatPoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
+  import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
+  import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -34,6 +34,7 @@
     onredo,
     onnextround,
     onprevround,
+    ongotoround,
     onbackfromfinal,
     onbackfromend,
     onrematch,
@@ -77,6 +78,8 @@
     onredo: () => void;
     onnextround: () => void;
     onprevround: () => void;
+    /** Jump to any round (the round picker). */
+    ongotoround: (index: number) => void;
     onbackfromfinal: () => void;
     onbackfromend: () => void;
     onrematch: () => void;
@@ -99,6 +102,7 @@
   const info = $derived(currentClueInfo(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived(game.rounds[session.currentRound]);
+  const finalRound = $derived(currentFinal(session, game));
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const canUndo = $derived(session.scoreLog.some((e) => !e.undone));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
@@ -110,7 +114,7 @@
       ? 'Show board ▶'
       : session.intro?.stage === 'fill'
         ? 'Reveal categories ▶'
-        : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${round?.categories.length ?? 0} ▶`,
+        : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${isBoard(round) ? round.categories.length : 0} ▶`,
   );
   const timerDefault = $derived(info?.clue.timerSeconds || game.settings.defaultTimerSeconds || 30);
   const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
@@ -205,7 +209,7 @@
             : 'Shift+Esc: back to the board without using up this tile'}
       >↩ Cancel (keep tile)</button>
     {:else if session.phase === 'final'}
-      <b>{finalName(game)}</b>
+      <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       <span class="muted">{session.finalStep}</span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
@@ -351,7 +355,7 @@
       <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
       <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
       {#key session.currentRound}
-        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} />
+        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} />
       {/key}
       <span class="divider" aria-hidden="true"></span>
     {/if}

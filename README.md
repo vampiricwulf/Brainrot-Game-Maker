@@ -23,11 +23,12 @@ its autosave, media and settings from the old Jeopardy Builder folders to the ne
 | Tab | What it's for |
 |---|---|
 | ⚙ **Setup & Players** | Default players (name + unique color), rules (negative scores, quick ✔/✘ buttons, points symbol), timers, round intro, and game **sounds** (round intro, Daily Double, time's up, Final think music, winner). |
-| **Rounds** (one tab each; **＋ Add round**) | 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
+| **Rounds** (one tab each; **＋ Add round** asks for the mode) | A game is a list of rounds, and each picks a **mode**: 🟦 **Jeopardy board** or ⭐ **Final Jeopardy** (more modes are coming, see the games-maker spec). Every round has a bar to **move it earlier/later**, **⧉ Duplicate** or **delete** it, so a Final can go in the middle of the game or appear twice. **Jeopardy board:** 1–10 categories × 1–10 questions, any values per row (×2 / ÷2 helpers), per-clue value overrides, **⭐ Daily Doubles** (by hand, or 🎲 Randomize, weighted toward the bottom rows). Click a tile to edit it. **Images**: 🖼 on a category (or drop an image on it) shows a picture instead of its name (Fit/Fill, optionally with the name on top); drop an image on a tile to show it instead of the value. Drop several files to fill the next categories or tiles. **🖼 Board images** places logos, stickers or GIFs anywhere on the round's board (see below). |
 | 🎨 **Theme** | Classic / Dark / Brainrot Neon / Pastel presets, plus any colors, fonts, tile glow, a board background image, a **banner image above the board** (height and fit), and score bar position (bottom/top/hidden). |
 | 🎡 **Wheels & Dice** | Saved wheels (weighted slices) and dice (any sides, custom faces, total ranges). Each slice or face is an **outcome**: a label plus optional details, image/GIF/video/audio, a countdown and, only if you want, a score effect (+/− points, × dice total, double, bankrupt, steal, swap). |
 | 🖼 **Media** | Every file in the game, with usage counts and "remove unused". Files that play from the internet show 🌐 and their site, with **Save a copy** and **Check link**. Also **Paste a link** to add one, and a list of online players (YouTube, Google Drive's player). **Replace…** swaps in another file everywhere it's used; a file missing from this browser (e.g. after opening a `.json`, which has no media) is flagged, with **🔗 Replace file…** on it and **🔗 Find missing files…** to put back many at once by file name. |
-| **Final round** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides and think time. There's also an optional **tiebreaker clue**. |
+| **Final Jeopardy rounds** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides, think time and host notes. |
+| **Tiebreaker** (under End) | An optional **tiebreaker clue** for ties at the end. |
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
 face** (custom text or an image instead of the value), host notes, and two slides: **Question** and **Answer**.
@@ -68,8 +69,7 @@ answer typed while the question slide is showing can still be undone on the answ
 - Ctrl+Z / Ctrl+Y undo and redo. Each slide keeps its history when you switch between Question and Answer, move to
   another clue or reopen one, and deleting shows a notice with an **Undo** button. Restacking, locking, duplicating and
   deleting are one step each, whether from the Layers list, the inspector, the right-click menu or a shortcut; hiding an
-  item while editing isn't a change to the slide, so undo leaves it alone. On the Final tab, which shows two slides,
-  shortcuts, copy and paste go to the slide you last clicked (or whose Question/Answer tab you switched).
+  item while editing isn't a change to the slide, so undo leaves it alone.
 - Shrink-to-fit text gets smaller as you type and keeps long words whole. The inspector shows the size it's drawn at,
   and a ⚠ badge in the editor flags text that can't fit its box.
 - **Use this style elsewhere** copies a text look to every question and/or answer in the round or the whole game.
@@ -174,7 +174,8 @@ you see the progress and a **Cancel** button; a message then says what happened:
    Double splash); once points were given for the clue, undo them first. A used tile of the current round can be put back
    with **right-click** on the host's board, **↶ Reopen** in the host panel, or **Reopen tile** in the 📜 Log.
 6. **Next round ▶** / **Final Jeopardy! ▶** / **End game ▶** sit on the right of the host panel. With tiles left they ask inline first
-   ("12 clues left · go on? Yes"). **◀ Prev round**, or going back to a round later, never replays its intro.
+   ("12 clues left · go on? Yes"). **◀ Prev round**, or going back to a round later, never replays its intro. With more than two
+   rounds, the **Go to round** picker jumps to any round (rounds can be played out of order).
 
 **Daily Double**: a splash plays, then you pick the player and enter the wager (capped TV-style at their score or the round's
 top value; **Ignore the limit** overrides). The wager is prefilled for scoring.
@@ -199,8 +200,9 @@ After the player wheel lands, **★ Make X the picker** hands them the board.
 **Final round** (renameable): category → private wagers (players at $0 or less sit out unless allowed) → question with think timer and
 music → answer → **reveal each player one by one** (spotlight, show wager, ✔/✘) → winner screen with confetti. In the
 reveals, `N` shows the spotlit player's wager and then moves to the next player, `C` / `X` mark them right / wrong, and once
-everyone is judged a second `N` finishes (finishing earlier asks first). **◀ Back to <last round>** leaves the final round
-during the category and wager steps (wagers are kept). **Ties** offer a roll-off, the tiebreaker clue, or co-winners.
+everyone is judged a second `N` finishes (finishing earlier asks first). A Final in the middle of the game finishes with
+**Next: <round> ▶** instead, and play goes on. **◀ Back to <previous round>** leaves the final round during the category and
+wager steps (wagers are kept, also when coming back to it later). **Ties** offer a roll-off, the tiebreaker clue, or co-winners.
 
 **Game over**: fix any score by clicking it, go **◀ Back to final reveals** to change a judgment, **📋 Copy results** (one line
 for chat; tied players share a medal), or **🔁 Rematch** with the same players at 0 (until it starts, the editor still offers

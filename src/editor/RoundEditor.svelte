@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
-  import { categoryLabel, clueValue, slideText, type Round } from '../lib/model';
+  import { categoryLabel, clueValue, slideText, type BoardRound } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import { addCategory, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
@@ -10,7 +10,7 @@
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
-  let { round, canDelete, ondelete }: { round: Round; canDelete: boolean; ondelete: () => void } = $props();
+  let { round }: { round: BoardRound } = $props();
   let editing = $state<{ cat: number; row: number } | null>(null);
   let decorOpen = $state(false);
   let catPicker = $state<number | null>(null);
@@ -100,7 +100,6 @@
   <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
     🖼 Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
   </button>
-  {#if canDelete}<button class="ghost" onclick={ondelete}>Delete round</button>{/if}
 </div>
 
 <div class="values">

@@ -71,6 +71,7 @@ try {
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
 
   // ---------- Category images: two files dropped on the first header fill the first two ----------

@@ -1,10 +1,11 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, standings } from '../lib/session';
+  import { currentClueInfo, currentFinal, standings } from '../lib/session';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
+  const finalRound = $derived(currentFinal(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const picker = $derived(session.players.find((p) => p.id === session.currentPickerId));
 </script>
@@ -30,12 +31,16 @@
       <div class="label">Notes</div>
       <div class="notes">{info.clue.hostNotes}</div>
     {/if}
-  {:else if session.phase === 'final'}
-    <div class="meta"><span class="cat">{finalName(game)} · {game.final.category}</span></div>
+  {:else if session.phase === 'final' && finalRound}
+    <div class="meta"><span class="cat">{finalName(finalRound)} · {finalRound.category}</span></div>
     <div class="label">Question</div>
-    <div class="q">{slideText(game.final.questionSlide) || '—'}</div>
+    <div class="q">{slideText(finalRound.questionSlide) || '—'}</div>
     <div class="label">Answer</div>
-    <div class="a">{slideText(game.final.answerSlide) || '—'}</div>
+    <div class="a">{slideText(finalRound.answerSlide) || '—'}</div>
+    {#if finalRound.hostNotes}
+      <div class="label">Notes</div>
+      <div class="notes">{finalRound.hostNotes}</div>
+    {/if}
     {#if session.final}
       <div class="label">Wagers</div>
       <ol>

@@ -3,7 +3,7 @@
   import { app } from '../lib/app.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { PLAYER_WHEEL, setSlideText, slideText, type Round, type TextEl } from '../lib/model';
+  import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
@@ -12,7 +12,7 @@
     pos = $bindable(),
     onclose,
   }: {
-    round: Round;
+    round: BoardRound;
     pos: { cat: number; row: number };
     onclose: () => void;
   } = $props();

@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage } from './lib/persist';
+  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage, type SavedPlay } from './lib/persist';
   import { openPack } from './lib/pack';
   import { unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
   import { holdOpenLock, loadGameMedia, pruneMedia } from './lib/media.svelte';
   import { migrateGame } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
-  import { newSession, rebaseSession } from './lib/session';
+  import { migrateSession, newSession, rebaseSession } from './lib/session';
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
   import Editor from './editor/Editor.svelte';
@@ -22,6 +22,12 @@
   let loaded = $state(false);
   let loadError = $state('');
 
+  /** A saved game in progress, converted if it was saved by an older version. */
+  function resumed(play: SavedPlay): SavedPlay {
+    const game = migrateGame(play.game);
+    return { ...play, game, session: migrateSession(play.session, game) };
+  }
+
   onMount(async () => {
     if (embedded) {
       try {
@@ -30,7 +36,7 @@
         usePlayerStorage(app.game.id);
         app.storageOk = await testStorage();
         const play = await loadPlay();
-        if (play) app.resumable = { ...play, game: migrateGame(play.game) };
+        if (play) app.resumable = resumed(play);
       } catch (e) {
         loadError = (e as Error).message;
       }
@@ -45,7 +51,7 @@
       await loadGameMedia(app.game);
     }
     // A finished game stays too, so its results can still be viewed after a reload.
-    if (play) app.resumable = { ...play, game: migrateGame(play.game) };
+    if (play) app.resumable = resumed(play);
     // Drop stored media that no saved game uses any more.
     await pruneMedia([app.game, app.resumable?.game]);
     loaded = true;

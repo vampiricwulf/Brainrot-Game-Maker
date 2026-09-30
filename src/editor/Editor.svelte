@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { finalName, newGame, newRound } from '../lib/model';
+  import { isBoard, isFinal, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
+  import { clone, reidRound } from '../lib/ops';
+  import { ROUND_MODES } from '../lib/modes';
   import { pickFile, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
@@ -10,6 +12,8 @@
   import SetupPanel from './SetupPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
+  import TiebreakerEditor from './TiebreakerEditor.svelte';
+  import RoundActions from './RoundActions.svelte';
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
@@ -21,8 +25,9 @@
 
   let { onplay }: { onplay: () => void } = $props();
 
-  // 'setup' | 'final' | 'media' | round index
-  let tab = $state<'setup' | 'final' | 'media' | 'tools' | 'theme' | number>(0);
+  // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | round index
+  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | number>(0);
+  let addMenu = $state(false);
   const game = $derived(app.game);
   $effect(() => {
     registerGameFonts(game);
@@ -31,19 +36,44 @@
     document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
   });
 
-  function addRound(): void {
-    const n = game.rounds.length;
-    const prev = game.rounds[n - 1];
-    const name = n === 1 ? 'Double Jeopardy!' : `Round ${n + 1}`;
-    game.rounds.push(newRound(name, prev?.categories.length ?? 6, (prev?.values ?? [200, 400, 600, 800, 1000]).map((v) => v * 2)));
-    tab = n;
+  /** Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last. */
+  function addRound(mode: RoundMode): void {
+    addMenu = false;
+    let at = game.rounds.length;
+    if (mode !== 'final') while (at > 0 && isFinal(game.rounds[at - 1])) at--;
+    let round: Round;
+    if (mode === 'final') round = newFinalRound(game.rounds.some(isFinal) ? `Final round ${game.rounds.filter(isFinal).length + 1}` : 'Final Jeopardy!');
+    else {
+      const boards = game.rounds.slice(0, at).filter(isBoard);
+      const prev = boards[boards.length - 1];
+      const name = boards.length === 1 ? 'Double Jeopardy!' : boards.length ? `Round ${boards.length + 1}` : 'Jeopardy!';
+      round = newRound(name, prev?.categories.length ?? 6, prev ? prev.values.map((v) => v * 2) : undefined);
+    }
+    game.rounds.splice(at, 0, round);
+    tab = at;
   }
 
   function removeRound(i: number): void {
     if (game.rounds.length <= 1) return;
-    if (!confirm(`Delete "${game.rounds[i].name}" and all its clues?`)) return;
+    if (!confirm(`Delete "${roundName(game.rounds[i], i)}"${isBoard(game.rounds[i]) ? ' and all its clues' : ''}?`)) return;
     game.rounds.splice(i, 1);
     tab = Math.min(i, game.rounds.length - 1);
+  }
+
+  function moveRound(i: number, delta: number): void {
+    const j = i + delta;
+    if (j < 0 || j >= game.rounds.length) return;
+    const [r] = game.rounds.splice(i, 1);
+    game.rounds.splice(j, 0, r);
+    tab = j;
+  }
+
+  /** A copy right after the original, with fresh ids everywhere (so used tiles and saved sessions never mix them up). */
+  function duplicateRound(i: number): void {
+    const copy = reidRound(clone($state.snapshot(game.rounds[i]) as Round));
+    copy.name = `${roundName(game.rounds[i], i)} (copy)`;
+    game.rounds.splice(i + 1, 0, copy);
+    tab = i + 1;
   }
 
   function newFile(): void {
@@ -176,15 +206,28 @@
       <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
-        <button class:active={tab === i} onclick={() => (tab = i)}>{round.name || `Round ${i + 1}`}</button>
+        <button class:active={tab === i} onclick={() => (tab = i)} title={ROUND_MODES[round.mode].label}>
+          <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
+        </button>
       {/each}
-      <button class="ghost" onclick={addRound}>＋ Add round</button>
+      <div class="add">
+        <button class="ghost" aria-expanded={addMenu} onclick={() => (addMenu = !addMenu)}>＋ Add round</button>
+        {#if addMenu}
+          <div class="add-menu" role="menu">
+            {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
+              <button role="menuitem" onclick={() => addRound(mode as RoundMode)} title={m.hint}>
+                <span aria-hidden="true">{m.icon}</span> {m.label}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
       <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
       <div class="navlabel muted">End</div>
-      <button class:active={tab === 'final'} onclick={() => (tab = 'final')}>
-        {finalName(game)} {game.final.enabled ? '' : '(off)'}
+      <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')}>
+        Tiebreaker {game.tiebreaker ? '' : '(off)'}
       </button>
 
       {#if problems.length}
@@ -202,8 +245,8 @@
     <main>
       {#if tab === 'setup'}
         <SetupPanel />
-      {:else if tab === 'final'}
-        <FinalEditor />
+      {:else if tab === 'tiebreaker'}
+        <TiebreakerEditor />
       {:else if tab === 'media'}
         <MediaLibrary />
       {:else if tab === 'tools'}
@@ -211,8 +254,22 @@
       {:else if tab === 'theme'}
         <ThemeEditor />
       {:else if game.rounds[tab]}
-        {#key game.rounds[tab].id}
-          <RoundEditor round={game.rounds[tab]} canDelete={game.rounds.length > 1} ondelete={() => removeRound(tab as number)} />
+        {@const i = tab}
+        {@const round = game.rounds[i]}
+        {#key round.id}
+          <RoundActions
+            {round}
+            index={i}
+            count={game.rounds.length}
+            onmove={(d) => moveRound(i, d)}
+            onduplicate={() => duplicateRound(i)}
+            ondelete={() => removeRound(i)}
+          />
+          {#if isBoard(round)}
+            <RoundEditor {round} />
+          {:else if isFinal(round)}
+            <FinalEditor {round} />
+          {/if}
         {/key}
       {/if}
     </main>
@@ -237,6 +294,24 @@
     font-size: 18px;
     font-weight: 600;
     width: min(420px, 40vw);
+  }
+  .add {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .add-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .add-menu button {
+    text-align: left;
   }
   .autosave {
     font-size: 12px;

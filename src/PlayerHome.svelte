@@ -3,7 +3,7 @@
   import { app, toast } from './lib/app.svelte';
   import { savePack } from './lib/pack';
   import type { SavedPlay } from './lib/persist';
-  import { finalName, playableClues } from './lib/model';
+  import { finalName, isFinal, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
   import { onlineCount } from './lib/usage';
@@ -16,6 +16,7 @@
   }: { onplay: () => void; resumable: SavedPlay | null; onresume: () => void; ondiscard: () => void } = $props();
 
   const game = $derived(app.game);
+  const finals = $derived(game.rounds.filter(isFinal));
   const clues = $derived(game.rounds.reduce((n, r) => n + playableClues(r).length, 0));
   const style = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
   const online = $derived(onlineCount(game));
@@ -26,7 +27,7 @@
     <div class="logo">BRAINROT GAMES</div>
     <h1>{game.title}</h1>
     <p class="muted">
-      {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{game.final.enabled ? ` · ${finalName(game)}` : ''}
+      {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{finals.length ? ` · ${finals.map((f) => finalName(f)).join(', ')}` : ''}
     </p>
     {#if resumable}
       {@const ended = resumable.session.phase === 'end'}

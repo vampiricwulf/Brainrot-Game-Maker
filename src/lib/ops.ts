@@ -1,7 +1,7 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { newCategory, newClue, newId, type Category, type Game, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, isBoard, isFinal, newCategory, newClue, newId, type Category, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
 
-export function setRowCount(round: Round, rows: number): void {
+export function setRowCount(round: BoardRound, rows: number): void {
   rows = Math.max(1, Math.min(10, Math.floor(rows)));
   const cur = round.values.length;
   if (rows > cur) {
@@ -16,23 +16,23 @@ export function setRowCount(round: Round, rows: number): void {
   }
 }
 
-export function addCategory(round: Round, at = round.categories.length): void {
+export function addCategory(round: BoardRound, at = round.categories.length): void {
   if (round.categories.length >= 10) return;
   round.categories.splice(at, 0, newCategory(round.values.length, `Category ${round.categories.length + 1}`));
 }
 
-export function removeCategory(round: Round, index: number): void {
+export function removeCategory(round: BoardRound, index: number): void {
   if (round.categories.length <= 1) return;
   round.categories.splice(index, 1);
 }
 
-export function moveCategory(round: Round, from: number, to: number): void {
+export function moveCategory(round: BoardRound, from: number, to: number): void {
   if (to < 0 || to >= round.categories.length) return;
   const [c] = round.categories.splice(from, 1);
   round.categories.splice(to, 0, c);
 }
 
-export function duplicateCategory(round: Round, index: number): void {
+export function duplicateCategory(round: BoardRound, index: number): void {
   if (round.categories.length >= 10) return;
   const copy = clone(round.categories[index]);
   copy.id = newId();
@@ -42,7 +42,7 @@ export function duplicateCategory(round: Round, index: number): void {
 }
 
 /** Multiply all row values of a round (e.g. ×2 for Double Jeopardy). */
-export function scaleValues(round: Round, factor: number): void {
+export function scaleValues(round: BoardRound, factor: number): void {
   round.values = round.values.map((v) => Math.round(v * factor));
 }
 
@@ -67,20 +67,21 @@ export function copyTextStyle(from: TextEl, to: TextEl): void {
  * The main text elements that "Use this style elsewhere" would restyle (never `from` itself).
  * scope: `${'cat' | 'round' | 'game'}-${'q' | 'a' | 'qa'}`; 'cat' needs the category (or finds nothing).
  */
-export function textStyleTargets(game: Game, round: Round | null, from: TextEl, scope: string, category?: Category | null): TextEl[] {
+export function textStyleTargets(game: Game, round: BoardRound | null, from: TextEl, scope: string, category?: Category | null): TextEl[] {
   const [where, which] = scope.split('-');
   const cats =
-    where === 'cat' ? (category ? [category] : []) : (where === 'game' || !round ? game.rounds : [round]).flatMap((r) => r.categories);
+    where === 'cat' ? (category ? [category] : []) : (where === 'game' || !round ? boardRounds(game) : [round]).flatMap((r) => r.categories);
   const slides: Slide[] = [];
   for (const c of cats)
     for (const cl of c.clues) {
       if (which.includes('q')) slides.push(cl.questionSlide);
       if (which.includes('a')) slides.push(cl.answerSlide);
     }
-  if (where === 'game') {
-    if (which.includes('q')) slides.push(game.final.questionSlide);
-    if (which.includes('a')) slides.push(game.final.answerSlide);
-  }
+  if (where === 'game')
+    for (const r of game.rounds.filter(isFinal)) {
+      if (which.includes('q')) slides.push(r.questionSlide);
+      if (which.includes('a')) slides.push(r.answerSlide);
+    }
   const out: TextEl[] = [];
   for (const s of slides) {
     const t = s.elements.find((e): e is TextEl => e.kind === 'text');
@@ -97,8 +98,29 @@ export function restyle(from: TextEl, targets: TextEl[]): () => void {
 }
 
 /** Copy a text element's style to the main text of other slides. Returns how many slides changed. */
-export function applyTextStyle(game: Game, round: Round | null, from: TextEl, scope: string): number {
+export function applyTextStyle(game: Game, round: BoardRound | null, from: TextEl, scope: string): number {
   const targets = textStyleTargets(game, round, from, scope);
   for (const t of targets) copyTextStyle(from, t);
   return targets.length;
+}
+
+/** Fresh ids for a copied round and everything in it (categories, clues, slide elements, decor). */
+export function reidRound<R extends Round>(round: R): R {
+  const reSlide = (s: Slide) => s.elements.forEach((e) => (e.id = newId()));
+  round.id = newId();
+  if (isBoard(round)) {
+    for (const c of round.categories) {
+      c.id = newId();
+      for (const cl of c.clues) {
+        cl.id = newId();
+        reSlide(cl.questionSlide);
+        reSlide(cl.answerSlide);
+      }
+    }
+    for (const d of round.decor ?? []) d.id = newId();
+  } else if (isFinal(round)) {
+    reSlide(round.questionSlide);
+    reSlide(round.answerSlide);
+  }
+  return round;
 }

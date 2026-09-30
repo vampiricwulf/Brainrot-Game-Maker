@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { fileMime, filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, soundTwin, withExtension } from './sniff';
-import { migrateGame, newAudioEl, newEmbedEl, newGame, newImageEl } from './model';
+import { migrateGame, newAudioEl, newEmbedEl, newGame, newImageEl, type BoardRound, type Game } from './model';
+
+const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { onlineCount } from './usage';
 
 const bytes = (...parts: (string | number[])[]) =>
@@ -183,7 +185,7 @@ describe('onlineCount', () => {
     const g = newGame();
     const link = (id: string) => ({ id, name: `${id}.png`, mime: 'image/png', size: 0, kind: 'image' as const, url: `https://files.catbox.moe/${id}.png` });
     g.media = [link('used'), link('unused'), { id: 'copy', name: 'copy.mp3', mime: 'audio/mpeg', size: 9, kind: 'audio' }];
-    const slide = g.rounds[0].categories[0].clues[0].questionSlide;
+    const slide = board(g, 0).categories[0].clues[0].questionSlide;
     slide.elements.push(newImageEl('used'), newAudioEl('copy'));
     expect(onlineCount(g)).toBe(1);
     slide.elements.push(newEmbedEl('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'youtube'));

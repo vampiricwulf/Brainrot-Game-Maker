@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newId, newRound } from './model';
+import { newFinalRound, newGame, newId, newRound, type BoardRound, type FinalRound, type Game } from './model';
+
+const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
@@ -72,7 +74,7 @@ describe('scoring', () => {
 describe('flow', () => {
   it('marks clues used and detects round completion', () => {
     const { game, session } = setup();
-    const round = game.rounds[0];
+    const round = board(game, 0);
     setRowCount(round, 1);
     while (round.categories.length > 2) removeCategory(round, 0);
     round.categories[1].clues[0].empty = true;
@@ -80,7 +82,7 @@ describe('flow', () => {
     openClue(session, { round: 0, cat: 0, row: 0 });
     backToBoard(session, game);
     expect(roundComplete(session, game)).toBe(true);
-    game.final.enabled = false;
+    game.rounds.splice(1); // no Final round
     goToRound(session, game, 1);
     expect(session.phase).toBe('end');
   });
@@ -95,12 +97,12 @@ describe('flow', () => {
     expect(session.final!.players).toEqual([a, b]);
     expect(session.final!.order).toEqual([b, a]);
     expect(finalWagerCap(session, b)).toBe(400);
-    finalNext(session); // wagers
+    finalNext(session, game); // wagers
     session.final!.wagers[a] = 600;
     session.final!.wagers[b] = 400;
-    finalNext(session); // question
-    finalNext(session); // answer
-    finalNext(session); // reveal
+    finalNext(session, game); // question
+    finalNext(session, game); // answer
+    finalNext(session, game); // reveal
     expect(session.final!.current).toBe(b);
     finalJudge(session, game, b, true);
     finalJudge(session, game, a, false);
@@ -109,7 +111,7 @@ describe('flow', () => {
     finalJudge(session, game, a, true);
     expect(score(session, a)).toBe(1600);
     expect(score(session, c)).toBe(0);
-    finalNext(session);
+    finalNext(session, game);
     expect(session.phase).toBe('end');
   });
 
@@ -122,7 +124,7 @@ describe('flow', () => {
 
   it('places Daily Doubles at most one per category, skipping empty tiles', () => {
     const { game } = setup();
-    const round = game.rounds[0];
+    const round = board(game, 0);
     round.categories[0].clues.forEach((c) => (c.empty = true));
     let seed = 1;
     const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -135,7 +137,7 @@ describe('flow', () => {
 
   it('only adds the missing Daily Doubles when keeping the ones placed by hand', () => {
     const { game } = setup();
-    const round = game.rounds[0];
+    const round = board(game, 0);
     const byHand = round.categories[1].clues[0];
     byHand.type = 'dailyDouble';
     expect(randomizeDailyDoubles(round, 3, () => 0.5, { keepExisting: true })).toBe(2);
@@ -158,7 +160,7 @@ describe('flow', () => {
     introNext(session, game);
     expect(session.intro?.stage).toBe('fill');
     introNext(session, game);
-    for (let i = 0; i < game.rounds[0].categories.length; i++) introNext(session, game);
+    for (let i = 0; i < board(game, 0).categories.length; i++) introNext(session, game);
     expect(session.intro).toBeNull();
     applyScore(session, game, [a, b], 500, 'x');
     expect(tiedLeaders(session).map((p) => p.id)).toEqual([a, b]);
@@ -179,8 +181,8 @@ describe('reveal / hide', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 100, 'x');
     goToRound(session, game, 1);
-    finalNext(session);
-    finalNext(session);
+    finalNext(session, game);
+    finalNext(session, game);
     expect(session.finalStep).toBe('question');
     toggleReveal(session);
     expect(session.finalStep).toBe('answer');
@@ -190,7 +192,7 @@ describe('reveal / hide', () => {
 
   it('names final score events after the renamed final round', () => {
     const { game, session, a } = setup();
-    game.final.name = 'Final Brainrot';
+    (game.rounds[1] as FinalRound).name = 'Final Brainrot';
     applyScore(session, game, [a], 100, 'x');
     goToRound(session, game, 1);
     session.final!.wagers[a] = 50;
@@ -206,15 +208,12 @@ describe('multi-round games', () => {
     const game = newGame();
     game.players.push({ id: 'a', name: 'A', color: '#111111' });
     const sizes: [number, number][] = [[6, 5], [4, 3], [8, 7]];
-    game.rounds = sizes.map(([cats, rows], i) => {
-      const r = newRound(`R${i + 1}`, cats, Array.from({ length: rows }, (_, k) => (k + 1) * 100));
-      return r;
-    });
+    game.rounds = [...sizes.map(([cats, rows], i) => newRound(`R${i + 1}`, cats, Array.from({ length: rows }, (_, k) => (k + 1) * 100))), newFinalRound()];
     const session = newSession(game);
     sizes.forEach(([cats, rows], i) => {
-      expect(game.rounds[i].categories).toHaveLength(cats);
-      expect(game.rounds[i].categories.every((c) => c.clues.length === rows)).toBe(true);
-      game.rounds[i].categories.forEach((c, ci) =>
+      expect(board(game, i).categories).toHaveLength(cats);
+      expect(board(game, i).categories.every((c) => c.clues.length === rows)).toBe(true);
+      board(game, i).categories.forEach((c, ci) =>
         c.clues.forEach((_, row) => {
           openClue(session, { round: i, cat: ci, row }, game);
           applyScore(session, game, ['a'], 1, 'x');
@@ -232,7 +231,7 @@ describe('multi-round games', () => {
 describe('ops', () => {
   it('keeps clue counts in sync with row count', () => {
     const game = newGame();
-    const round = game.rounds[0];
+    const round = board(game, 0);
     setRowCount(round, 7);
     addCategory(round);
     expect(round.values).toEqual([200, 400, 600, 800, 1000, 1200, 1400]);
@@ -302,7 +301,7 @@ describe('players mid-game', () => {
     applyScore(session, game, [a, b, c], 400, 'x');
     session.currentPickerId = c;
     goToRound(session, game, 1);
-    finalNext(session);
+    finalNext(session, game);
     session.final!.wagers[c] = 100;
     removePlayer(session, c);
     expect(session.players.map((p) => p.id)).toEqual([a, b]);
@@ -325,7 +324,7 @@ describe('players mid-game', () => {
     const { game, session, a, b, c } = setup();
     applyScore(session, game, [a, b, c], 400, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session);
+    for (let i = 0; i < 4; i++) finalNext(session, game);
     const f = session.final!;
     const first = f.order[0];
     finalJudge(session, game, first, true);
@@ -351,7 +350,7 @@ describe('host panel rules', () => {
     const { game, session } = setup();
     expect(awardOpen(session)).toBe(true);
     const ref = { round: 0, cat: 0, row: 0 };
-    game.rounds[0].categories[0].clues[0].type = 'dailyDouble';
+    board(game, 0).categories[0].clues[0].type = 'dailyDouble';
     openClue(session, ref, game);
     expect(awardOpen(session)).toBe(false);
     session.dd!.stage = 'question';
@@ -367,7 +366,7 @@ describe('host panel rules', () => {
 
   it('knows when points were given for a clue', () => {
     const { game, session, a } = setup();
-    const id = game.rounds[0].categories[0].clues[0].id;
+    const id = board(game, 0).categories[0].clues[0].id;
     expect(clueScored(session, id)).toBe(false);
     applyScore(session, game, [a], 200, 'x', id);
     expect(clueScored(session, id)).toBe(true);
@@ -385,7 +384,7 @@ describe('host panel rules', () => {
 
   it('names image-only categories for the host', () => {
     const { game } = setup();
-    const cat = game.rounds[0].categories[0];
+    const cat = board(game, 0).categories[0];
     cat.title = '';
     cat.image = 'img1';
     expect(clueName(game, { round: 0, cat: 0, row: 1 })).toBe('🖼 Image category $400');
@@ -395,7 +394,7 @@ describe('host panel rules', () => {
 describe('closing and reopening tiles', () => {
   it('can close a clue without using it, and put a used tile back', () => {
     const { game, session } = setup();
-    const id = game.rounds[0].categories[0].clues[0].id;
+    const id = board(game, 0).categories[0].clues[0].id;
     openClue(session, { round: 0, cat: 0, row: 0 }, game);
     expect(backToBoard(session, game, { markUsed: false })).toBeNull();
     expect(session.used[id]).toBeUndefined();
@@ -413,7 +412,7 @@ describe('closing and reopening tiles', () => {
 describe('round navigation', () => {
   function twoRounds() {
     const s = setup();
-    s.game.rounds.push(newRound('Double', 2, [400, 800]));
+    s.game.rounds.splice(1, 0, newRound('Double', 2, [400, 800]));
     startIntro(s.session, s.game);
     return s;
   }
@@ -434,9 +433,9 @@ describe('round navigation', () => {
     goToRound(session, game, 1);
     applyScore(session, game, [a, b], 500, 'x');
     goToRound(session, game, 2);
-    finalNext(session);
+    finalNext(session, game);
     session.final!.wagers[a] = 300;
-    backToLastRound(session, game);
+    goToRound(session, game, 1); // the host's "◀ Back" from the Final: the round before it
     expect([session.phase, session.currentRound, session.intro]).toEqual(['board', 1, null]);
     expect(session.final!.wagers[a]).toBe(300);
     goToRound(session, game, 2);
@@ -453,7 +452,7 @@ describe('final reveal with N', () => {
     applyScore(session, game, [b], 200, 'x');
     applyScore(session, game, [c], 100, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session); // category → wagers → question → answer → reveal
+    for (let i = 0; i < 4; i++) finalNext(session, game); // category → wagers → question → answer → reveal
     const f = session.final!;
     expect(f.current).toBe(c);
     expect(finalAdvance(session)).toBe('shown');
@@ -479,9 +478,9 @@ describe('final reveal with N', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 300, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 5; i++) finalNext(session);
+    for (let i = 0; i < 5; i++) finalNext(session, game);
     expect(session.phase).toBe('end');
-    backToFinalReveal(session);
+    backToFinalReveal(session, game);
     expect([session.phase, session.finalStep]).toEqual(['final', 'reveal']);
   });
 });
@@ -492,27 +491,27 @@ describe('resume with edits', () => {
     const played = clone(game);
     openClue(session, { round: 0, cat: 1, row: 2 }, played);
     applyScore(session, game, [a], 600, 'x');
-    const openId = played.rounds[0].categories[1].clues[2].id;
+    const openId = board(played, 0).categories[1].clues[2].id;
     const edited = clone(played);
-    const [moved] = edited.rounds[0].categories.splice(1, 1);
-    edited.rounds[0].categories.push(moved);
+    const [moved] = board(edited, 0).categories.splice(1, 1);
+    board(edited, 0).categories.push(moved);
     rebaseSession(session, played, edited);
     expect(session.currentClue).toEqual(findClueRef(edited, openId));
     expect(score(session, a)).toBe(600);
     const moreEdits = clone(edited);
-    moreEdits.rounds[0].categories.pop();
+    board(moreEdits, 0).categories.pop();
     rebaseSession(session, edited, moreEdits);
     expect([session.currentClue, session.phase]).toEqual([null, 'board']);
   });
 
   it('follows rounds by id when rounds are deleted or reordered', () => {
     const { game, session } = setup();
-    game.rounds.push(newRound('Double', 2, [400, 800]), newRound('Triple', 2, [600, 1200]));
+    game.rounds.splice(1, 0, newRound('Double', 2, [400, 800]), newRound('Triple', 2, [600, 1200]));
     const played = clone(game);
     session.introducedRounds = [0, 1];
     goToRound(session, played, 1);
     openClue(session, { round: 1, cat: 1, row: 0 }, played);
-    const openId = played.rounds[1].categories[1].clues[0].id;
+    const openId = board(played, 1).categories[1].clues[0].id;
     // Round 1 deleted: "Double" is now round 0.
     const edited = clone(played);
     edited.rounds.splice(0, 1);
@@ -531,5 +530,5 @@ describe('resume with edits', () => {
 });
 
 function getClueId(game: ReturnType<typeof newGame>, ref: { round: number; cat: number; row: number }): string {
-  return game.rounds[ref.round].categories[ref.cat].clues[ref.row].id;
+  return board(game, ref.round).categories[ref.cat].clues[ref.row].id;
 }

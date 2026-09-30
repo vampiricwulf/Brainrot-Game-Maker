@@ -601,41 +601,36 @@ await page.getByRole('button', { name: 'Final Jeopardy!', exact: true }).click()
 await page.getByLabel('Name (shown on screen)').fill('Final Brainrot');
 assert((await page.getByRole('button', { name: 'Final Brainrot', exact: true }).count()) === 1, 'final round renamed (editor nav follows)');
 
-// The Final tab shows two slide editors: shortcuts, copy and paste reach only the one last clicked.
-await page.getByLabel('Include a tiebreaker clue').check();
-const finSe = page.locator('.se').nth(0);
-const tbSe = page.locator('.se').nth(1);
-const counts = async () => [await finSe.locator('.canvas .hit').count(), await tbSe.locator('.canvas .hit').count()].join(',');
+// The Final is a round of its own, with its own mode bar and slide editor.
+assert((await page.locator('.ra .mode').innerText()).includes('Final Jeopardy'), 'the Final round shows its mode');
+const finSe = page.locator('.se');
+const finHits = () => finSe.locator('.canvas .hit').count();
 await finSe.locator('.canvas .hit').first().click();
 await finSe.locator('.insp textarea').fill('FINAL QUESTION TEXT');
-await tbSe.locator('.canvas .hit').first().click();
-await tbSe.locator('.insp textarea').fill('TIEBREAKER TEXT');
 await finSe.locator('.canvas .hit').first().click();
 await page.keyboard.press('Control+c');
 await page.keyboard.press('Control+v');
-assert((await counts()) === '2,1', 'Ctrl+C / Ctrl+V on the Final slide leave the tiebreaker alone');
-await tbSe.locator('.canvas .hit').first().click();
-await finSe.getByRole('button', { name: '🅣 Text' }).click();
-await finSe.locator('.canvas .hit').last().click();
+assert((await finHits()) === 2, 'Ctrl+C / Ctrl+V work on the Final slide');
 await page.keyboard.press('Delete');
-assert((await counts()) === '2,1', "deleting on the Final slide doesn't delete the tiebreaker's earlier selection");
 await finSe.getByRole('button', { name: '🖼 Image' }).click();
 await page.locator('.picker .item', { hasText: 'pepe.png' }).click();
 await page.mouse.dblclick(...center(await finSe.locator('.canvas img').boundingBox()));
 await ie.getByRole('button', { name: '😂 Sticker' }).click();
 await imgbox.click({ position: await at(0.5, 0.5) });
 await page.keyboard.press('Delete');
-assert((await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 0 && (await counts()) === '3,1', 'Delete in an image editor opened from the Final only removes the sticker');
+assert((await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 0 && (await finHits()) === 2, 'Delete in an image editor opened from the Final only removes the sticker');
 await ie.getByRole('button', { name: 'Cancel' }).click();
 await ie.waitFor({ state: 'detached' });
-// Working on the tiebreaker, then switching the Final's Question/Answer tab: the shortcuts follow to the Final.
-await tbSe.locator('.canvas .hit').first().click();
-await page.getByRole('tab', { name: 'Answer', exact: true }).click();
-await page.keyboard.press('Control+a');
-const picked = async (se) => se.locator('.layer > .frame').count();
-assert((await picked(finSe)) === 1 && (await picked(tbSe)) === 0, "after switching the Final's tab, Ctrl+A selects on the Final, not the tiebreaker");
-await page.getByRole('tab', { name: 'Question', exact: true }).click();
+await finSe.locator('.canvas .hit').last().click();
+await page.keyboard.press('Delete');
+// The tiebreaker has its own tab under End.
+await page.getByRole('button', { name: /^Tiebreaker/ }).click();
+await page.getByLabel('Include a tiebreaker clue').check();
+await page.locator('.se .canvas .hit').first().click();
+await page.locator('.se .insp textarea').fill('TIEBREAKER TEXT');
+assert((await page.getByRole('button', { name: 'Tiebreaker', exact: true }).count()) === 1, 'the tiebreaker is edited on its own tab');
 await page.getByLabel('Include a tiebreaker clue').uncheck();
+assert((await page.getByRole('button', { name: 'Tiebreaker (off)' }).count()) === 1, 'the nav says when the tiebreaker is off');
 
 // Theme: Brainrot Neon with the score bar on top.
 await page.getByRole('button', { name: '🎨 Theme' }).click();
