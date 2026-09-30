@@ -78,7 +78,7 @@
   import ImageEditor from './ImageEditor.svelte';
   import LayersPanel from './LayersPanel.svelte';
   import LayerMenu from './LayerMenu.svelte';
-  import { lockedNote, type LayerAction } from './layerlabel';
+  import { lockedNote, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
 
   let {
@@ -601,12 +601,13 @@
       e.preventDefault();
       const up = e.code === 'BracketRight';
       restackSelected(e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward');
-    } else if (mod && k === 'z') {
+    } else if (mod && k === 'z' && (e.shiftKey ? canRedo : canUndo)) {
+      // (With nothing to undo or redo on this slide, the keys go on to the game's undo history.)
       e.preventDefault();
       e.stopImmediatePropagation();
       if (e.shiftKey) redo();
       else undo();
-    } else if (mod && k === 'y') {
+    } else if (mod && k === 'y' && canRedo) {
       e.preventDefault();
       redo();
     } else if (mod && k === 'd' && selected.length) {

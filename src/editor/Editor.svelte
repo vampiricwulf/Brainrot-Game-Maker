@@ -9,7 +9,7 @@
   import { clone, reidRound } from '../lib/ops';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
-  import { pickFile, saveGameJson } from '../lib/fileio';
+  import { pickFile, safeFilename, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
   import { formatBytes } from '../lib/media.svelte';
@@ -31,6 +31,9 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
+  import { arriving, history, mark, redo, undo } from '../lib/history.svelte';
+  import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
+  import HistoryNotice from './HistoryNotice.svelte';
 
   let { onplay }: { onplay: () => void } = $props();
 
@@ -107,6 +110,7 @@
 
   function newFile(): void {
     if (!confirm('Start a new game? Save this one first if you want to keep it.')) return;
+    arriving({ kind: 'new', label: 'New game' });
     app.game = newGame();
     // A new game has no rounds: start on the screen that adds the first one.
     tab = 0;
@@ -156,6 +160,7 @@
       } catch {
         throw new Error(`"${file.name}" is missing parts a game needs (was it edited by hand?), so it wasn't opened.`);
       }
+      arriving({ kind: 'opened', label: `Opened “${opened.title}”` });
       app.game = opened;
       tab = 0;
       toast(`Opened "${app.game.title}"`);
@@ -181,13 +186,33 @@
 
   /**
    * Ctrl+S saves the game (in a browser it would save this app's page instead), except in a dialog: finish that first
-   * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one).
+   * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one). Ctrl+Z / Ctrl+Y undo and redo.
    */
   function onkeydown(e: KeyboardEvent): void {
+    const key = undoKeyOf(e);
+    if (key) return undoKey(e, key);
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) toast('Close this window first, then save (Ctrl+S)');
     else if (!saving && !e.repeat) save();
+  }
+
+  // The text field in focus, so Ctrl+Z can stay its own while it has typing of its own.
+  const fields = createFieldTracker();
+
+  /**
+   * Ctrl+Z / Ctrl+Y go through the game's undo history, except in a text field with typing of its own (the field's
+   * own undo takes that back first), in a window that isn't about the game (⚙ Settings, ℹ About, Open: nothing
+   * happens), and in the editors that keep an undo of their own for now (they take the key first).
+   */
+  function undoKey(e: KeyboardEvent, key: 'undo' | 'redo'): void {
+    if (e.defaultPrevented || fields.native(e, key)) return;
+    // Never the browser's own undo, which would change the last field typed in, wherever it is.
+    e.preventDefault();
+    if (document.querySelector('[data-undo="off"]')) return;
+    if (key === 'undo') undo('key');
+    else redo('key');
+    fields.afterGlobal();
   }
 
   async function save(): Promise<void> {
@@ -195,6 +220,7 @@
     packPct = null;
     try {
       const { missing, where } = await savePack($state.snapshot(game), packProgress);
+      mark('saved', `Saved “${safeFilename(game.title)}.brainrot”`);
       if (missing.length) alert(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast(where, 5000);
     } catch (e) {
@@ -210,12 +236,14 @@
     packPct = null;
     try {
       const r = await exportStandaloneHtml($state.snapshot(game), packProgress);
-      if (r)
+      if (r) {
+        mark('exported', 'Exported HTML');
         toast(
           `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to|Downloaded) /, '')}. Double-click it to play.` +
             (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
           r.online ? 8000 : 5000,
         );
+      }
       if (r?.missing.length) alert(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
     } catch (e) {
       alert('Export failed: ' + (e as Error).message);
@@ -225,6 +253,8 @@
   }
 
   const problems = $derived(validate(game));
+  const undoTitle = $derived(history.canUndo ? `Undo: ${history.undoLabel} (Ctrl+Z)` : 'Nothing to undo');
+  const redoTitle = $derived(history.canRedo ? `Redo: ${history.redoLabel} (Ctrl+Y)` : 'Nothing to redo');
 
   let about = $state(false);
   let settings = $state(false);
@@ -254,12 +284,14 @@
   }
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
 <svelte:document {ondrop} />
 
 <div class="editor">
   <header>
     <input class="title" bind:value={game.title} aria-label="Game title" />
+    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
+    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
     <button
@@ -277,6 +309,7 @@
       onclick={async () => {
         try {
           toast(await saveGameJson($state.snapshot(game)), 5000);
+          mark('exported', 'Exported JSON');
         } catch (e) {
           alert('Export failed: ' + (e as Error).message);
         }
@@ -420,6 +453,7 @@
       {/key}
     </main>
   </div>
+  <HistoryNotice />
 </div>
 
 <style>
@@ -467,7 +501,7 @@
   .title {
     font-size: 18px;
     font-weight: 600;
-    width: min(420px, 40vw);
+    width: min(340px, 28vw);
   }
   .autosave {
     font-size: 12px;

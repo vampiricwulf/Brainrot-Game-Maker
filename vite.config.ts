@@ -16,5 +16,15 @@ export default defineConfig({
     __BUILD_DATE__: JSON.stringify(build.date),
   },
   build: { outDir: 'dist', assetsInlineLimit: 100_000_000 },
-  test: { include: ['src/**/*.test.ts'] },
+  test: {
+    projects: [
+      { extends: true, test: { name: 'unit', include: ['src/**/*.test.ts'], exclude: ['src/**/*.svelte.test.ts'] } },
+      // Runes code whose effects must run (see src/test/client-env.ts).
+      {
+        extends: true,
+        resolve: { conditions: ['browser'] },
+        test: { name: 'runes', include: ['src/**/*.svelte.test.ts'], environment: './src/test/client-env.ts' },
+      },
+    ],
+  },
 });

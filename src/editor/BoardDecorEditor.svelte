@@ -21,7 +21,7 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
-  import { lockedNote, type LayerAction } from './slide/layerlabel';
+  import { lockedNote, type LayerAction } from '../lib/layerlabel';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
 
@@ -240,10 +240,11 @@
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       const up = e.code === 'BracketRight';
       edit(() => restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward'));
-    } else if (mod && k === 'z') {
+    } else if (mod && k === 'z' && (e.shiftKey ? canRedo : canUndo)) {
+      // (With nothing to undo or redo here, the keys go on to the game's undo history.)
       if (e.shiftKey) redo();
       else undo();
-    } else if (mod && k === 'y') {
+    } else if (mod && k === 'y' && canRedo) {
       redo();
     } else if (k === 'escape') {
       if (selected.length) selected = [];

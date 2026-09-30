@@ -1,6 +1,6 @@
-// How the layers list, the right-click menu and the editors' notices name slide items.
-import { embedName } from '../../lib/links';
-import type { Game, SlideElement } from '../../lib/model';
+// How the layers list, the right-click menu, the editors' notices and the undo history name slide items.
+import { embedName } from './links';
+import type { Game, SlideElement } from './model';
 
 /** What the right-click menu (and its shortcuts) can do to the selection. */
 export type LayerAction = 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete';
