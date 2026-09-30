@@ -59,16 +59,20 @@ Other editor tabs:
 
 **Right-click** almost anything for a quick menu. This works on rounds, tiles, map screens, spaces, avatars and items.
 
+**Undo** (`Ctrl+Z`, `Ctrl+Shift+Z` to redo) works in slides, board images and the board game editor. Removing categories or
+rows that have clues in them asks first.
+
 ## Hosting
 
-Press **▶ Play**, confirm the players, then pick one of two modes:
+Press **▶ Play**, confirm the players, then pick one of two modes. Viewers see a "Starting soon…" card until you press
+**Start game**.
 
 - **Single window**: viewers see this window. Press `H` to hide the host controls.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **Award** or **Deduct**.
-Every change can be undone with `Ctrl+Z`.
+Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.
 
 ![A clue on screen](docs/screenshots/play-clue.png)
 
@@ -102,7 +106,7 @@ Every change can be undone with `Ctrl+Z`.
 </tr>
 </table>
 
-**Ties** at the end can be settled three ways:
+**Ties** for first aren't called a win on stream until they're settled, in one of three ways:
 
 - A roll-off, whose winner wins the game.
 - A tiebreaker clue.
@@ -125,6 +129,7 @@ Every change can be undone with `Ctrl+Z`.
 | `Space` / `←` `→` / `M` | Play/pause, seek, mute media |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `J` (RPG) | Full map |
+| `I` / `B` (RPG, board game) | Player sheet / "Be right back" cover |
 | Numpad or `Alt`+arrows (RPG) | Move the party |
 
 ## Saving
