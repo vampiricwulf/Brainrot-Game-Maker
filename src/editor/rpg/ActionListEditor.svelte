@@ -4,11 +4,10 @@
 -->
 <script lang="ts">
   import { editedGame, toast } from '../../lib/app.svelte';
-  import { clipboard, mediaShownBy } from '../../lib/clipboard.svelte';
+  import { adoptUsedBy, clipboard, holdUsedBy, toolHere } from '../../lib/clipboard.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
   import { copyActions, moveTo } from '../../lib/listedit';
-  import { uniqueMediaName } from '../../lib/medianame';
   import { clone } from '../../lib/ops';
   import { dropMenu } from '../../lib/menustate.svelte';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
@@ -127,8 +126,7 @@
     const list = actions ?? [];
     if (!list.length) return;
     clipboard.actions = clone(list);
-    const refs = [...clipboard.media, ...mediaShownBy(clipboard.actions, game.media)];
-    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+    holdUsedBy(game, clipboard.actions);
     toast(`Copied ${list.length} button${list.length === 1 ? '' : 's'}: paste them on any object, item, space or slice`);
   }
 
@@ -152,11 +150,12 @@
       if (a.do === 'stat' && !numbers.some((f) => f.id === a.field)) a.field = numbers[0]?.id ?? '';
       if (a.do === 'item' && !game.items?.some((x) => x.id === a.item)) a.item = game.items?.[0]?.id ?? '';
       if (a.do === 'shop' && !game.shops?.some((x) => x.id === a.shop)) a.shop = game.shops?.[0]?.id ?? '';
-      if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
+      // (Wheels copied with them come along.)
+      if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !toolHere(game, a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
+      if (a.do === 'wheel' && a.also) a.also = a.also.filter((id) => id === PLAYER_WHEEL || toolHere(game, id));
     }
     step(`Pasted ${copies.length} button${copies.length === 1 ? '' : 's'}`, () => {
-      for (const m of mediaShownBy(copies, clipboard.media))
-        if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+      adoptUsedBy(game, copies);
       actions = [...(actions ?? []), ...copies];
     });
     if (left) toast(`${left} of them can’t work here, so ${left === 1 ? 'it was' : 'they were'} left out`);

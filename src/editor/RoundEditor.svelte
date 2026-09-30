@@ -3,7 +3,7 @@
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
-  import { clipboard, mediaShownBy } from '../lib/clipboard.svelte';
+  import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { categoryLabel, clueValue, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
@@ -28,7 +28,6 @@
   import { randomizeDailyDoubles } from '../lib/session';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { uniqueMediaName } from '../lib/medianame';
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -185,8 +184,7 @@
   /** Copy a whole clue (both slides and its settings) with its files, so it pastes into another round or game. */
   function copyTile(p: TilePos): void {
     clipboard.clue = clone(round.categories[p.cat].clues[p.row]);
-    const refs = [...clipboard.media, ...mediaShownBy(clipboard.clue, app.game.media)];
-    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+    holdUsedBy(app.game, clipboard.clue);
     toast(`Copied ${tileName(p)}: paste it on any tile (Ctrl+V)`);
   }
 
@@ -202,8 +200,7 @@
     step(
       `Pasted a clue on ${tileName(p)}`,
       () => {
-        for (const m of mediaShownBy(c, clipboard.media))
-          if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+        adoptUsedBy(game, c);
         round.categories[p.cat].clues[p.row] = c;
       },
       { notify, place: tilePlace(p.cat, c.id) },

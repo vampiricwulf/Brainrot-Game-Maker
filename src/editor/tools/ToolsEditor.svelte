@@ -91,18 +91,18 @@
       { heading: item.name },
       { label: '✎ Rename', onclick: () => (renaming = item.id), hint: 'F2' },
       { label: '⧉ Duplicate', onclick: () => dup(kind, item), hint: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0 },
-      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1 },
+      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, hint: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, hint: 'Alt+↓' },
       { sep: true },
       { label: '🗑 Delete', danger: true, onclick: () => remove(kind, item), hint: 'Delete' },
     ]);
   }
 
-  /** On a wheel or dice in the list: F2 renames, Ctrl+D duplicates, Delete deletes, Alt+↑/↓ moves it. */
+  /** On a wheel or dice in the list: F2 renames, Ctrl+D duplicates, Delete / Backspace deletes, Alt+↑/↓ moves it. */
   function itemKey(e: KeyboardEvent, kind: Kind, item: Tool, i: number): void {
     if (e.repeat && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     const mod = e.ctrlKey || e.metaKey;
-    if (e.key === 'Delete' && !mod) remove(kind, item);
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(kind, item);
     else if (e.key === 'F2') renaming = item.id;
     else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(kind, item);
     else if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) move(kind, i, i + (e.key === 'ArrowUp' ? -1 : 1));

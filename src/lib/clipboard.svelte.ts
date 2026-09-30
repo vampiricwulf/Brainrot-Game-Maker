@@ -2,7 +2,7 @@
 // clues, maps and games).
 // The board images editor shares the slide items, so pictures copy between boards and slides both ways.
 import { uniqueMediaName } from './medianame';
-import { newId, type Action, type Clue, type Game, type MediaRef, type Screen, type Slide, type SlideElement } from './model';
+import { newId, type Action, type Clue, type DicePreset, type Game, type MediaRef, type Screen, type Slide, type SlideElement, type WheelPreset } from './model';
 
 /** A deep copy (ops.ts's clone: importing ops here would lead back round to media.svelte.ts, which imports this). */
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -18,16 +18,22 @@ export const clipboard = $state<{
   actions: Action[];
   /** The files the copied items, slide, clue, screen and buttons show, so they paste into another game with them (see pruneMedia). */
   media: MediaRef[];
+  /** The wheels and dice the copied clue, screen and buttons use (a wheel or dice clue, a Spin button…), for the same. */
+  wheels: WheelPreset[];
+  dice: DicePreset[];
   /** Written to the system clipboard with a copy, so a paste can tell whether something newer was copied since. */
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, screen: null, clue: null, actions: [], media: [], token: '', text: '' });
+}>({ elements: [], slide: null, screen: null, clue: null, actions: [], media: [], wheels: [], dice: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
 /** What copies made before the rename (Jeopardy Builder) put on the clipboard. */
 const OLD_CLIP_TYPE = 'application/x-jeopardy-slide-items';
+
+/** Each id once (the first one wins). */
+const once = <T extends { id: string }>(list: T[]): T[] => list.filter((x, i) => list.findIndex((y) => y.id === x.id) === i);
 
 /** The files of `refs` that something copied shows (pictures, sounds, music, fonts: anywhere in it). */
 export function mediaShownBy(x: unknown, refs: readonly MediaRef[]): MediaRef[] {
@@ -47,8 +53,34 @@ export function holdMedia(game: Game): void {
   const ids = new Set([...elementMediaIds(clipboard.elements), ...(s ? elementMediaIds(s.elements, s.background) : [])]);
   const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
   // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
-  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.actions], clipboard.media)];
-  clipboard.media = clone(all.filter((m, i) => all.findIndex((x) => x.id === m.id) === i));
+  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.actions, clipboard.wheels, clipboard.dice], clipboard.media)];
+  clipboard.media = clone(once(all));
+}
+
+/**
+ * Copying a clue, a screen or buttons (`x`): keep the wheels and dice of this game it uses, and the files it and they
+ * show, so it pastes into another game with them.
+ */
+export function holdUsedBy(game: Game, x: unknown): void {
+  const json = JSON.stringify(x ?? null);
+  clipboard.wheels = clone(once([...game.wheels.filter((w) => json.includes(w.id)), ...clipboard.wheels]));
+  clipboard.dice = clone(once([...game.dice.filter((d) => json.includes(d.id)), ...clipboard.dice]));
+  clipboard.media = clone(once([...clipboard.media, ...mediaShownBy([x, clipboard.wheels, clipboard.dice], game.media)]));
+}
+
+/** A wheel or dice id the pasted thing can use here: this game's, or one that comes along with it (adoptUsedBy). */
+export const toolHere = (game: Game, id: string | undefined): boolean =>
+  !!id && [...game.wheels, ...game.dice, ...clipboard.wheels, ...clipboard.dice].some((t) => t.id === id);
+
+/** Pasting `x` (held with holdUsedBy) in another game: add the wheels, dice and files it uses that this game doesn't have. */
+export function adoptUsedBy(game: Game, x: unknown): void {
+  const json = JSON.stringify(x ?? null);
+  const wheels = clipboard.wheels.filter((w) => json.includes(w.id) && !game.wheels.some((y) => y.id === w.id));
+  const dice = clipboard.dice.filter((d) => json.includes(d.id) && !game.dice.some((y) => y.id === d.id));
+  game.wheels.push(...clone(wheels));
+  game.dice.push(...clone(dice));
+  for (const m of mediaShownBy([x, wheels, dice], clipboard.media))
+    if (!game.media.some((y) => y.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((y) => y.name), m.name) });
 }
 
 /** Pasting what was copied in another game: add the files it shows that this game doesn't have. */

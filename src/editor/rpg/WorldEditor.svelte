@@ -11,10 +11,9 @@
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { app, toast } from '../../lib/app.svelte';
-  import { clipboard, mediaShownBy } from '../../lib/clipboard.svelte';
+  import { adoptUsedBy, clipboard, holdUsedBy } from '../../lib/clipboard.svelte';
   import { nameStep, step, stepAsync } from '../../lib/history.svelte';
   import { addMediaFile } from '../../lib/media.svelte';
-  import { uniqueMediaName } from '../../lib/medianame';
   import { type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
   import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newVariant, newWorldMap, sameRef, screenAt } from '../../lib/rpg';
@@ -129,6 +128,9 @@
     if (world.maps[0] !== main) toast(`${world.maps[0].name} is now the main map (the party starts on its first screen unless a start is set)`, 5000);
   }
 
+  /** The map view (tabs, grid and the selected screen's panel): its keys work while the focus is in it. */
+  let mapView = $state<HTMLDivElement>();
+
   /** The map tab being renamed in place. */
   let renaming = $state<string | null>(null);
   function rename(m: WorldMap, name: string): void {
@@ -145,12 +147,35 @@
     showMenu(e, [
       { heading: m.name },
       { label: '✎ Rename', onclick: () => (renaming = m.id), hint: 'F2 or double-click' },
-      { label: '⧉ Duplicate map', onclick: () => copyMap(m) },
-      { label: '◀ Move earlier', onclick: () => moveMap(i, i - 1), disabled: i === 0 },
-      { label: 'Move later ▶', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1 },
+      { label: '⧉ Duplicate map', onclick: () => copyMap(m), hint: 'Ctrl+D' },
+      { label: '◀ Move earlier', onclick: () => moveMap(i, i - 1), disabled: i === 0, hint: 'Alt+←' },
+      { label: 'Move later ▶', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1, hint: 'Alt+→' },
       { sep: true },
-      { label: '🗑 Delete map', danger: true, onclick: () => removeMap(m), disabled: world.maps.length <= 1 },
+      { label: '🗑 Delete map', danger: true, onclick: () => removeMap(m), disabled: world.maps.length <= 1, hint: 'Delete' },
     ]);
+  }
+
+  const focusMapTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`[data-map-tab="${id}"]`)?.focus());
+
+  /**
+   * On a map's tab, as on a round's: F2 renames it, Alt+←/→ moves it, Ctrl+D duplicates it and Delete / Backspace
+   * deletes it (with Undo at the bottom). Never the selected screens'.
+   */
+  function mapTabKey(e: KeyboardEvent, m: WorldMap, i: number): void {
+    const k = e.key.toLowerCase();
+    const mod = e.ctrlKey || e.metaKey;
+    if (k === 'f2') renaming = m.id;
+    else if (e.altKey && !mod && (k === 'arrowleft' || k === 'arrowright')) {
+      moveMap(i, i + (k === 'arrowleft' ? -1 : 1));
+      focusMapTab(m.id);
+    } else if (mod && !e.altKey && k === 'd') {
+      copyMap(m);
+      focusMapTab(map?.id);
+    } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey) {
+      removeMap(m);
+      focusMapTab(map?.id);
+    } else return;
+    e.preventDefault();
   }
 
   // Map tabs drag to reorder (a line shows where it goes).
@@ -292,8 +317,7 @@
   function copyToClipboard(s: Screen): void {
     clipboard.screen = clone($state.snapshot(s) as Screen);
     // Its files come along, so it pastes into another game (see pruneMedia).
-    const refs = [...clipboard.media, ...mediaShownBy(clipboard.screen, game.media)];
-    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+    holdUsedBy(game, clipboard.screen);
     toast(`Copied ${s.name}: paste it on any map (Ctrl+V)`);
   }
 
@@ -304,8 +328,7 @@
     if (full(map)) return;
     const copy = copyScreen(src, src.name);
     step(`Pasted screen “${copy.name}”`, () => {
-      for (const m of mediaShownBy(copy, clipboard.media))
-        if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+      adoptUsedBy(game, copy);
       [[copy.col, copy.row]] = cell && !screenAt(map, ...cell) ? [cell] : freeCells(map, 1);
       map.screens.push(copy);
     });
@@ -771,6 +794,9 @@
       picking = null;
       return;
     }
+    // (Not a key meant for something else in focus: a round's tab, the header's buttons…)
+    const at = document.activeElement;
+    if (at && at !== document.body && !mapView?.contains(at)) return;
     if (e.altKey && ARROWS[e.key] && picked.length) {
       // (Alt+← is the browser's Back button on Windows.)
       e.preventDefault();
@@ -857,7 +883,7 @@
     {#key `${sel.id}:${lookId}`}<div class="se-wrap"><ScreenEditor {world} screen={sel} slide={look?.slide} /></div>{/key}
   </div>
 {:else}
-  <div class="we">
+  <div class="we" bind:this={mapView}>
     <div class="tabs" role="tablist" aria-label="Maps">
       {#each world.maps as m, i (m.id)}
         {#if renaming === m.id}
@@ -886,7 +912,7 @@
             title={i === 0 ? 'The main map · double-click to rename, drag to reorder, right-click for more' : 'Double-click to rename, drag to reorder, right-click for more'}
             onclick={() => showMap(m)}
             ondblclick={() => (renaming = m.id)}
-            onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (renaming = m.id))}
+            onkeydown={(e) => mapTabKey(e, m, i)}
             oncontextmenu={(e) => mapMenu(e, m, i)}
             ondragstart={(e) => {
               tabDrag = m.id;

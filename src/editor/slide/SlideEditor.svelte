@@ -557,6 +557,9 @@
       return;
     }
     if (typing(e) || picker) return;
+    // Not a key meant for something else in focus (a round's tab, the clue's Next button…): it's theirs alone.
+    const at = document.activeElement;
+    if (at && at !== document.body && !root?.contains(at)) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     if (previewing) {

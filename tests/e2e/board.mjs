@@ -219,6 +219,26 @@ try {
   await shot('board-1920');
 
   assert(!dialogs.length, 'no browser dialogs');
+
+  // A wheel tile pasted into another game brings its wheel along (not "⚠ Deleted wheel").
+  await page.getByRole('button', { name: /Wheels & Dice/ }).click();
+  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  await tabs.nth(0).click();
+  await tile(2, 2).click();
+  await page.locator('select').first().selectOption('wheel');
+  await page.locator('select').nth(1).selectOption({ label: 'Wheel 1' });
+  await key('Escape');
+  await key('Control+c');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await addRound(/Jeopardy board/);
+  await tile(0, 0).focus();
+  await key('Control+v');
+  await tile(0, 0).click();
+  const wheelShown = await page.locator('select').nth(1).evaluate((s) => s.options[s.selectedIndex].text);
+  await key('Escape');
+  await page.getByRole('button', { name: /Wheels & Dice/ }).click();
+  assert(wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1', 'a wheel tile pasted in another game brings its wheel');
+
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');
 } finally {

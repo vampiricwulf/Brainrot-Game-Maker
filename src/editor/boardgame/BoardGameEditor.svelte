@@ -65,6 +65,7 @@
   /** A selection box being dragged on the empty board (`add`: Shift keeps the ones selected). */
   let box = $state<{ x0: number; y0: number; x1: number; y1: number; add: boolean } | null>(null);
   let canvas = $state<HTMLDivElement>();
+  let root = $state<HTMLDivElement>();
 
   // ---------- Undo: the game's history (Ctrl+Z / Ctrl+Shift+Z are the editor's) ----------
   // A drag is one step, and so is a delete.
@@ -316,6 +317,9 @@
     if (e.defaultPrevented || document.querySelector('[role="dialog"], [role="menu"]')) return;
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
     if (view !== 'spaces') return;
+    // (Not a key meant for something else in focus: a round's tab, the header's buttons…)
+    const at = document.activeElement;
+    if (at && at !== document.body && !root?.contains(at)) return;
     const k = e.key.toLowerCase();
     const mod = e.ctrlKey || e.metaKey;
     const onBoard = document.activeElement === document.body || !!canvas?.contains(document.activeElement);
@@ -436,7 +440,7 @@
 <!-- A drag ends wherever the pointer is let go (it's one undo step). -->
 <svelte:window onkeydown={key} onpointerup={pointerUp} onpointercancel={pointerUp} />
 
-<div class="bge">
+<div class="bge" bind:this={root}>
   <div class="row settings">
     <label class="field">Round name<input bind:value={round.name} /></label>
     <label class="field">
