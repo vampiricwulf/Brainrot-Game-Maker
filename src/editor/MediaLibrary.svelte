@@ -1,8 +1,11 @@
 <!-- Every file in the game, with usage counts and cleanup (spec §5.5), and everything that plays from the internet. -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { attachBlobSwap, step, stepAsync } from '../lib/history.svelte';
+  import { uniqueMediaName } from '../lib/medianame';
+  import { hasFiles } from '../lib/mediadrop';
   import { allEmbeds, mediaUsage } from '../lib/usage';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
@@ -42,7 +45,61 @@
   /** Done at once: the note at the bottom offers Undo (the files stay stored while a step can bring them back). */
   function remove(ids: string[], label: string): void {
     step(label, () => (game.media = game.media.filter((m) => !ids.includes(m.id))), { notify: true });
+    picked = picked.filter((id) => !ids.includes(id));
   }
+
+  // ---------- Selecting several cards (Ctrl+click toggles one, Shift+click takes the run from the last one) ----------
+  let picked = $state<string[]>([]);
+  let anchor: string | null = null;
+  const pickedRefs = $derived(game.media.filter((m) => picked.includes(m.id)));
+  function pick(e: MouseEvent, m: MediaRef): void {
+    // Not a click on the card's own buttons, player or name box.
+    if ((e.target as HTMLElement).closest('button, input, audio, video, a')) return;
+    if (e.shiftKey && anchor && game.media.some((x) => x.id === anchor)) {
+      const ids = game.media.map((x) => x.id);
+      const [a, b] = [ids.indexOf(anchor), ids.indexOf(m.id)].sort((x, y) => x - y);
+      picked = [...new Set([...picked, ...ids.slice(a, b + 1)])];
+    } else if (e.ctrlKey || e.metaKey) {
+      picked = picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id];
+      anchor = m.id;
+    } else {
+      picked = picked.length === 1 && picked[0] === m.id ? [] : [m.id];
+      anchor = m.id;
+    }
+  }
+  function removePicked(): void {
+    const refs = pickedRefs;
+    if (!refs.length) return;
+    const n = usage.get(refs[0].id) ?? 0;
+    const used = refs.filter((m) => usage.get(m.id)).length;
+    const label = refs.length === 1 ? `Removed file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Removed ${refs.length} files${used ? ` (${used} in use)` : ''}`;
+    remove(refs.map((m) => m.id), label);
+  }
+  function onkey(e: KeyboardEvent): void {
+    if (!picked.length || (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      removePicked();
+    } else if (e.key === 'Escape') picked = [];
+  }
+
+  // ---------- Renaming a file in place (double-click or F2 on its name) ----------
+  let renaming = $state<string | null>(null);
+  function rename(m: MediaRef, name: string): void {
+    renaming = null;
+    const want = name.trim();
+    if (want && want !== m.name) {
+      const to = uniqueMediaName(game.media.filter((x) => x.id !== m.id).map((x) => x.name), want);
+      step(`Renamed file “${m.name}” to “${to}”`, () => (m.name = to));
+    }
+    void tick().then(() => document.querySelector<HTMLElement>(`[data-media-name="${m.id}"]`)?.focus());
+  }
+  const focusAll = (el: HTMLInputElement) => {
+    el.focus();
+    // The name without its extension, which usually stays.
+    const dot = el.value.lastIndexOf('.');
+    el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
+  };
 
   function pickFiles(accept: string, multiple: boolean): Promise<File[]> {
     return new Promise((resolve) => {
@@ -59,7 +116,11 @@
   /** Put a new file in place of this one (every use of it follows). Undo puts the old one back. */
   async function replace(m: MediaRef): Promise<void> {
     const [f] = await pickFiles(ACCEPT[m.kind], false);
-    if (!f) return;
+    if (f) await replaceWith(m, f);
+  }
+
+  /** Replace…, or a file dropped on the card. A file of another kind is refused (a toast says why). */
+  async function replaceWith(m: MediaRef, f: File): Promise<void> {
     try {
       await stepAsync(`Replaced file “${m.name}” with “${f.name}”`, async () => {
         const before = await stashMedia(m.id);
@@ -112,7 +173,27 @@
     e.preventDefault();
     addFiles(files);
   }
+
+  /** The card a file is being dragged over (dropping it there replaces that file). */
+  let dropOn = $state<string | null>(null);
+  function cardOver(e: DragEvent, m: MediaRef): void {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dropping = false;
+    dropOn = m.id;
+  }
+  function cardDrop(e: DragEvent, m: MediaRef): void {
+    dropOn = null;
+    const f = e.dataTransfer?.files[0];
+    if (!hasFiles(e) || !f) return;
+    e.preventDefault();
+    e.stopPropagation();
+    void replaceWith(m, f);
+  }
 </script>
+
+<svelte:window onkeydown={onkey} />
 
 <div
   class="library"
@@ -150,6 +231,20 @@
       🧹 Remove unused ({unused.length})
     </button>
   </div>
+  {#if game.media.length}
+    <div class="row picking">
+      {#if picked.length}
+        <span>{picked.length} selected</span>
+        <button class="small bad" onclick={removePicked} title="Remove the selected files (Delete)">Remove selected ({picked.length})</button>
+        <button class="small ghost" onclick={() => (picked = [])} title="Esc">Clear</button>
+      {:else}
+        <span class="muted small">
+          Click a card to select it, Ctrl+click or Shift+click for more. Double-click a name (or F2) to rename it. Drop a file on a card to
+          replace it everywhere it's used.
+        </span>
+      {/if}
+    </div>
+  {/if}
 
   {#if !game.media.length}
     <div class="empty muted">
@@ -161,7 +256,21 @@
   <div class="grid">
     {#each game.media as m (m.id)}
       {@const n = usage.get(m.id) ?? 0}
-      <div class="card" class:unused={!n} data-place="media:{m.id}">
+      <!-- The keyboard selects with the checkbox. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+      <div
+        class="card"
+        class:unused={!n}
+        class:picked={picked.includes(m.id)}
+        class:media-drop={dropOn === m.id}
+        data-place="media:{m.id}"
+        onclick={(e) => pick(e, m)}
+        ondragover={(e) => cardOver(e, m)}
+        ondragleave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && dropOn === m.id && (dropOn = null)}
+        ondrop={(e) => cardDrop(e, m)}
+        role="group"
+        aria-label={m.name}
+      >
         <div class="thumb">
           {#if m.kind === 'image' && mediaUrls[m.id]}
             <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
@@ -177,7 +286,35 @@
         {#if m.kind === 'audio' && mediaUrls[m.id]}
           <audio class="listen" src={mediaUrls[m.id]} preload="none" controls aria-label="Play {m.name}"></audio>
         {/if}
-        <div class="nm" title={m.name}>{m.name}</div>
+        {#if renaming === m.id}
+          <input
+            class="nm"
+            value={m.name}
+            aria-label="File name"
+            use:focusAll
+            onkeydown={(e) => {
+              if (e.key === 'Enter') rename(m, e.currentTarget.value);
+              else if (e.key === 'Escape') (e.stopPropagation(), rename(m, m.name));
+            }}
+            onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value)}
+          />
+        {:else}
+          <div class="name-row">
+            <input
+              type="checkbox"
+              checked={picked.includes(m.id)}
+              onchange={() => (picked = picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id])}
+              aria-label="Select {m.name}"
+            />
+            <button
+              class="nm"
+              data-media-name={m.id}
+              title="{m.name} · double-click or F2 to rename"
+              ondblclick={() => (renaming = m.id)}
+              onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (renaming = m.id))}
+            >{m.name}</button>
+          </div>
+        {/if}
         <div class="meta muted">
           {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} · {n ? `used ${n}×` : 'unused'}
           {#if !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)}<span class="warn" title={m.mime}> · may not play</span>{/if}
@@ -301,6 +438,24 @@
   .card.unused {
     border-style: dashed;
   }
+  .card.picked {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .picking {
+    margin-top: 10px;
+    min-height: 28px;
+    align-items: center;
+  }
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .name-row input {
+    margin: 0;
+  }
   .thumb {
     position: relative;
     height: 100px;
@@ -335,6 +490,20 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
+  }
+  button.nm {
+    flex: 1;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: text;
+  }
+  input.nm {
+    width: 100%;
+    padding: 1px 4px;
   }
   .meta {
     font-size: 11px;

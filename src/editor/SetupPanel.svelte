@@ -4,6 +4,7 @@
   import type { GameAudio } from '../lib/model';
   import PlayerList from './PlayerList.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { mediaDrop } from '../lib/mediadrop';
 
   const s = $derived(app.game.settings);
   const audio = $derived(app.game.audio);
@@ -100,7 +101,7 @@
           <button class="small ghost" onclick={() => (audio[key] = undefined)} title="Remove">✕</button>
         {/if}
         <div class="pop">
-          <button class="small" onclick={() => (picking = key)}>{audio[key] ? 'Change…' : 'Choose…'}</button>
+          <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => (audio[key] = id) }}>{audio[key] ? 'Change…' : 'Choose…'}</button>
           {#if picking === key}
             <MediaPicker kind="audio" onpick={(id) => ((audio[key] = id), (picking = null))} onclose={() => (picking = null)} />
           {/if}

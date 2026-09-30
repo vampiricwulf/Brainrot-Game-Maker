@@ -27,6 +27,7 @@
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
   import AboutDialog from './AboutDialog.svelte';
+  import ShortcutsDialog from './ShortcutsDialog.svelte';
   import { inTauri } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
@@ -276,7 +277,7 @@
     e.preventDefault();
     const file = Array.from(e.dataTransfer.files).find((f) => /\.(brainrot|jbr|json)$/i.test(f.name));
     if (file) openFile(file);
-    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide or a tile. A .brainrot game dropped here opens.', 5000);
+    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A .brainrot game dropped here opens.', 5000);
   }
 
   let saving = $state(false);
@@ -291,6 +292,13 @@
   function onkeydown(e: KeyboardEvent): void {
     const key = undoKeyOf(e);
     if (key) return undoKey(e, key);
+    // ? (not typing, nothing open over the editor): the editor's keys.
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented && !shortcuts) {
+      if ((e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]') || document.querySelector('[role="dialog"], [role="menu"]')) return;
+      e.preventDefault();
+      shortcuts = true;
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) toast('Close this window first, then save (Ctrl+S)');
@@ -354,6 +362,7 @@
   }
 
   let about = $state(false);
+  let shortcuts = $state(false);
   let settings = $state(false);
   // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
   const NOTICE_KEY = 'jb.dataNoticeSeen';
@@ -429,6 +438,7 @@
       </span>
     {/if}
     <button class="ghost" onclick={() => (settings = true)} title="Autosaves, how Save names files, and how much undo to remember">⚙ Settings</button>
+    <button class="ghost" onclick={() => (shortcuts = true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts: the editor's keys and mouse moves (?)">⌨</button>
     <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
     <button class="primary" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
@@ -446,6 +456,7 @@
     </div>
   {/if}
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
+  {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
   {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
 

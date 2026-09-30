@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bounds, contains, elementsAt, nextBelow, restack, touchedBy } from './layers';
+import { align, bounds, centreOn, contains, elementsAt, nextBelow, restack, touchedBy } from './layers';
 
 const box = (id: string, x: number, y: number, w: number, h: number, zIndex: number, rotation = 0) => ({ id, x, y, w, h, zIndex, rotation });
 
@@ -81,5 +81,29 @@ describe('hit-testing', () => {
     expect(touchedBy(els, { x: 50, y: 50 }, { x: 200, y: 200 }).map((e) => e.id)).toEqual(['a']);
     expect(touchedBy(els, { x: 350, y: 350 }, { x: 50, y: 50 }).map((e) => e.id)).toEqual(['a', 'b']);
     expect(touchedBy(els, { x: 150, y: 150 }, { x: 250, y: 250 })).toEqual([]);
+  });
+});
+
+describe('align', () => {
+  it('puts items at the edges or in the middle of the stage', () => {
+    const e = { x: 100, y: 100, w: 400, h: 200 };
+    align([e], 'right');
+    align([e], 'vcenter');
+    expect([e.x, e.y]).toEqual([1520, 440]);
+    align([e], 'hcenter');
+    align([e], 'bottom');
+    expect([e.x, e.y]).toEqual([760, 880]);
+    align([e], 'left');
+    align([e], 'top');
+    expect([e.x, e.y]).toEqual([0, 0]);
+  });
+});
+
+describe('centreOn', () => {
+  it('moves a group together so the middle of the box around it is at the point', () => {
+    const a = { x: 0, y: 0, w: 100, h: 100 };
+    const b = { x: 200, y: 100, w: 100, h: 100 };
+    centreOn([a, b], { x: 1000, y: 500 });
+    expect([a.x, a.y, b.x, b.y]).toEqual([850, 400, 1050, 500]);
   });
 });

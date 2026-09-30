@@ -17,6 +17,7 @@
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
   import SlideModal from '../rpg/SlideModal.svelte';
   import MediaPicker from '../slide/MediaPicker.svelte';
+  import { fittingFile, hasFiles, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
 
   let { round }: { round: BoardGameRound } = $props();
@@ -163,6 +164,25 @@
     }
   }
 
+  // A picture dropped on a space is its icon; dropped on the empty board, it's the backdrop's background picture.
+  /** Where a dragged file would go: a space's id, or 'board'. */
+  let fileOver = $state<string | null>(null);
+  const spaceUnder = (e: DragEvent) => spaceById(round, (e.target as HTMLElement).closest<HTMLElement>('[data-space]')?.dataset.space);
+  function fileDragOver(e: DragEvent): void {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    fileOver = spaceUnder(e)?.id ?? 'board';
+  }
+  function fileDrop(e: DragEvent): void {
+    fileOver = null;
+    const file = fittingFile(Array.from(e.dataTransfer?.files ?? []), 'image');
+    if (!hasFiles(e) || !file) return;
+    e.preventDefault();
+    const s = spaceUnder(e);
+    if (s) selId = s.id;
+    void useFile(file, { kind: 'image', onpick: (id) => (s ? (s.icon = id) : (round.slide.background.image = id)) });
+  }
+
   /** Buttons that sent players to a deleted space or zone point nowhere now (the checklist says so). */
   function unlinkGotos(to: { space?: string; zone?: string }): void {
     for (const x of round.spaces)
@@ -270,12 +290,12 @@
       <span class="muted small">Ctrl+click the board to add a space (after the selected one) · Delete removes the selected space · right-click for more</span>
       {#if linking}<span class="warn small">Click the space {sel?.name} should lead to (again to unlink)…</span>{/if}
       <span class="spacer"></span>
-      <span class="muted small">Drag spaces to move them.</span>
+      <span class="muted small">Drag spaces to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</span>
       <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo">↶</button>
       <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo">↷</button>
     </div>
     <div class="main">
-      <div class="canvas-box" bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
+      <div class="canvas-box" class:media-drop={fileOver === 'board'} bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
         <div
           class="canvas"
           bind:this={canvas}
@@ -283,11 +303,14 @@
           onpointerdown={boardDown}
           oncontextmenu={boardMenu}
           onpointermove={boardMove}
+          ondragover={fileDragOver}
+          ondragleave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && (fileOver = null)}
+          ondrop={fileDrop}
           role="application"
           aria-label="Board"
         >
           <div class="backdrop"><SlideView slide={round.slide} mode="edit" fallbackBg="#1d5e3a" /></div>
-          <BoardSpaces {round} selected={selId} ondown={spaceDown} />
+          <BoardSpaces {round} selected={selId} marked={fileOver && fileOver !== 'board' ? [fileOver] : []} ondown={spaceDown} />
         </div>
         {#if notice && notice.at === history.top && !history.pending}
           <div class="notice" role="status">
@@ -303,7 +326,7 @@
           <div class="row">
             <label class="check small">Color <input type="color" bind:value={sel.color} aria-label="Space color" /></label>
             <div class="pop">
-              <button class="small" onclick={() => (pickingIcon = !pickingIcon)}>
+              <button class="small" onclick={() => (pickingIcon = !pickingIcon)} use:mediaDrop={{ kind: 'image', onpick: (id) => sel && (sel.icon = id) }}>
                 {#if sel.icon && mediaUrls[sel.icon]}<img class="ic" src={mediaUrls[sel.icon]} alt="" />{:else}🖼{/if} Icon
               </button>
               {#if pickingIcon}

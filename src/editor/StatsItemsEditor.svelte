@@ -12,6 +12,7 @@
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, SCORE_CURRENCY } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { mediaDrop } from '../lib/mediadrop';
   import ActionListEditor from './rpg/ActionListEditor.svelte';
   import WornLookEditor from './WornLookEditor.svelte';
 
@@ -279,7 +280,7 @@
     <div class="item" data-place="item:{it.id}">
       <div class="item-row">
         <div class="pop">
-          <button class="icon" onclick={() => (iconFor = it.id)} aria-label="Icon for {it.name}" title="Icon">
+          <button class="icon" onclick={() => (iconFor = it.id)} use:mediaDrop={{ kind: 'image', onpick: (id) => (it.icon = id) }} aria-label="Icon for {it.name}" title="Icon (or drop a picture here)">
             {#if it.icon && mediaUrls[it.icon]}<img src={mediaUrls[it.icon]} alt="" />{:else}📦{/if}
           </button>
           {#if iconFor === it.id}<MediaPicker kind="image" onpick={(id) => ((it.icon = id), (iconFor = null))} onclose={() => (iconFor = null)} />{/if}

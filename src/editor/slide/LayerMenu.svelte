@@ -1,11 +1,12 @@
 <!--
-  Right-click menu on the slide canvas: pick any item stacked under the pointer (even one hidden under a
-  bigger one or locked), then restack, lock, hide or delete the selection.
+  Right-click menu on the slide canvas (and the board images): pick any item stacked under the pointer (even one hidden
+  under a bigger one or locked), then cut, copy, restack, align, lock, hide or delete the selection. On an empty spot:
+  paste there, select all, and in the slide editor paste a whole slide, add a text box there or pick the background.
 -->
 <script lang="ts">
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
-  import { LAYER_ICON, layerLabel, type LayerAction } from '../../lib/layerlabel';
+  import { LAYER_ICON, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
 
   let {
     x,
@@ -14,6 +15,8 @@
     selected,
     game,
     hovered = $bindable(null),
+    canPaste,
+    slideExtras,
     onpick,
     onaction,
     onclose,
@@ -26,6 +29,10 @@
     selected: SlideElement[];
     game: Game;
     hovered?: string | null;
+    /** There are copied items to paste. */
+    canPaste: boolean;
+    /** The slide editor's: Paste slide (when one is copied), ＋ Text here and Background…. */
+    slideExtras?: { canPasteSlide: boolean };
     onpick: (id: string) => void;
     onaction: (a: LayerAction) => void;
     onclose: () => void;
@@ -39,6 +46,10 @@
   const anyLocked = $derived(selected.some((e) => e.locked));
   const anyUnlocked = $derived(selected.some((e) => !e.locked));
   const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+  const oneImage = $derived(selected.length === 1 && selected[0].kind === 'image');
+  const ALIGNS: [Align, string][] = [['left', 'Left'], ['hcenter', 'Center'], ['right', 'Right'], ['top', 'Top'], ['vcenter', 'Middle'], ['bottom', 'Bottom']];
+  /** Align ▸ is open. */
+  let aligning = $state(false);
 
   function act(a: LayerAction): void {
     onaction(a);
@@ -86,19 +97,39 @@
     {#if selected.length}<hr />{/if}
   {/if}
   {#if selected.length}
+    <button role="menuitem" onclick={() => act('cut')} disabled={!anyUnlocked}>✂ Cut<kbd>{mod}X</kbd></button>
+    <button role="menuitem" onclick={() => act('copy')}>📋 Copy<kbd>{mod}C</kbd></button>
+    <button role="menuitem" onclick={() => act('paste')} disabled={!canPaste}>Paste<kbd>{mod}V</kbd></button>
+    <hr />
     <button role="menuitem" onclick={() => act('front')}>Bring to front<kbd>{mod}Shift+]</kbd></button>
     <button role="menuitem" onclick={() => act('forward')}>Bring forward<kbd>{mod}]</kbd></button>
     <button role="menuitem" onclick={() => act('backward')}>Send backward<kbd>{mod}[</kbd></button>
     <button role="menuitem" onclick={() => act('back')}>Send to back<kbd>{mod}Shift+[</kbd></button>
     <hr />
     <button role="menuitem" onclick={() => act('duplicate')}>Duplicate<kbd>{mod}D</kbd></button>
+    {#if oneImage}<button role="menuitem" onclick={() => act('edit-image')}>✎ Edit image…<kbd>Double-click</kbd></button>{/if}
+    <button role="menuitem" aria-haspopup="true" aria-expanded={aligning} onclick={() => (aligning = !aligning)} disabled={!anyUnlocked}>
+      Align<kbd>{aligning ? '▾' : '▸'}</kbd>
+    </button>
+    {#if aligning}
+      <div class="aligns" role="group" aria-label="Align to the slide">
+        {#each ALIGNS as [how, label] (how)}<button role="menuitem" onclick={() => act(`align-${how}`)}>{label}</button>{/each}
+      </div>
+    {/if}
     {#if anyUnlocked}<button role="menuitem" onclick={() => act('lock')}>🔒 Lock</button>{/if}
     {#if anyLocked}<button role="menuitem" onclick={() => act('unlock')}>🔓 Unlock</button>{/if}
     <button role="menuitem" onclick={() => act('hide')}>Hide while editing</button>
     <hr />
     <button role="menuitem" class="bad" onclick={() => act('delete')} disabled={!anyUnlocked}>Delete<kbd>Del</kbd></button>
-  {:else if stack.length <= 1}
-    <div class="head">Nothing here</div>
+  {:else}
+    <button role="menuitem" onclick={() => act('paste')} disabled={!canPaste}>Paste here<kbd>{mod}V</kbd></button>
+    {#if slideExtras}<button role="menuitem" onclick={() => act('paste-slide')} disabled={!slideExtras.canPasteSlide}>Paste slide</button>{/if}
+    <button role="menuitem" onclick={() => act('select-all')}>Select all<kbd>{mod}A</kbd></button>
+    {#if slideExtras}
+      <hr />
+      <button role="menuitem" onclick={() => act('add-text')}>＋ Text here</button>
+      <button role="menuitem" onclick={() => act('background')}>🖼 Background…</button>
+    {/if}
   {/if}
 </div>
 
@@ -157,6 +188,16 @@
     font-family: inherit;
     font-size: 11px;
     color: var(--muted);
+  }
+  .aligns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 0 0 2px 16px;
+  }
+  .aligns button {
+    justify-content: center;
+    font-size: 12px;
   }
   .pick img {
     width: 28px;
