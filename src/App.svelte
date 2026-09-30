@@ -62,13 +62,14 @@
   });
 
   // A write that fails after the start (the disk or the browser's storage is full) switches the header to "use Save",
-  // saying so once; one that works again switches it back.
+  // saying so once; one that works again switches it back. A player-only file has no Save: its game restarts on refresh.
   watchWrites((err) => {
     if (!loaded) return;
     if (!err) return void (app.storageOk = true);
     if (app.storageOk) {
       const full = err instanceof DOMException && err.name === 'QuotaExceededError';
-      toast(full ? 'Storage is full, so autosave stopped: use Save to keep this game' : 'Autosave stopped working: use Save to keep this game', 8000);
+      const then = playerOnly ? 'a refresh restarts the game' : 'use Save to keep this game';
+      toast(`${full ? 'Storage is full, so autosave stopped' : 'Autosave stopped working'}: ${then}`, 8000);
     }
     app.storageOk = false;
   });

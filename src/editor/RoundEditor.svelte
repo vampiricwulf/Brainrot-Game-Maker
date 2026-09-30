@@ -219,7 +219,7 @@
             ])}
           ondragover={(e) => !clue.empty && over(e, `t${ci}-${row}`)}
           ondragleave={() => dropTarget === `t${ci}-${row}` && (dropTarget = null)}
-          ondrop={(e) => dropOnTile(e, ci, row)}
+          ondrop={(e) => !clue.empty && dropOnTile(e, ci, row)}
         >
           {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
           <span class="val">
