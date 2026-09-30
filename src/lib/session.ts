@@ -147,10 +147,6 @@ export function toggleStep(session: Session, step: string): void {
 
 // ---------- Players ----------
 
-export function addPlayer(session: Session, p: Omit<Player, 'startScore'>, startScore = 0): void {
-  session.players.push({ ...p, startScore });
-}
-
 /**
  * Take a player out mid-game. They move to `removedPlayers` (their log entries stay) so restorePlayer can bring
  * them back with their score, and they drop out of the picker, the Daily Double and the final round.
@@ -535,14 +531,6 @@ export function finalAdvance(session: Session): 'shown' | 'next' | 'waiting' | '
 export function finalUnjudged(session: Session): string[] {
   const f = session.final;
   return f ? f.order.filter((id) => !f.results[id]) : [];
-}
-
-/** From the end screen back to the final round's reveals (e.g. to fix a judgment). */
-export function backToFinalReveal(session: Session, game: Game): void {
-  const round = currentFinal(session, game);
-  if (!round) return;
-  startFinal(session, game, round);
-  session.finalStep = 'reveal';
 }
 
 /** Spotlight a player in the reveal and show their wager on screen. */

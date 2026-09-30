@@ -18,15 +18,21 @@
     </div>
 
     <h3>Saving</h3>
-    <label class="check">
-      <input type="checkbox" bind:checked={prefs.overwriteSave} onchange={savePrefs} />
-      Save replaces the game’s last save
-    </label>
-    <p class="muted small">
-      Off: every Save keeps the older saves and makes a new file (Game.brainrot, then Game (2).brainrot, Game (3).brainrot…).
-      On: Save always writes Game.brainrot.
-      {#if !desktop}(In a browser, saves are downloads, and the browser names them.){/if}
-    </p>
+    {#if desktop}
+      <label class="check">
+        <input type="checkbox" bind:checked={prefs.overwriteSave} onchange={savePrefs} />
+        Save replaces the game’s last save
+      </label>
+      <p class="muted small">
+        Off: every Save keeps the older saves and makes a new file (Game.brainrot, then Game (2).brainrot, Game (3).brainrot…).
+        On: Save always writes Game.brainrot.
+      </p>
+    {:else}
+      <p class="muted small">
+        In a browser, Save downloads the game as a .brainrot file, and the browser names it. How Save names files is a desktop
+        app setting.
+      </p>
+    {/if}
 
     <h3>Autosave</h3>
     {#if desktop}
@@ -52,13 +58,16 @@
     {/if}
 
     <div class="row">
-      <button
-        class="ghost small"
-        onclick={() => {
-          Object.assign(prefs, DEFAULT_PREFS);
-          savePrefs();
-        }}>Back to the defaults</button
-      >
+      <!-- Only the desktop app has settings to change. -->
+      {#if desktop}
+        <button
+          class="ghost small"
+          onclick={() => {
+            Object.assign(prefs, DEFAULT_PREFS);
+            savePrefs();
+          }}>Back to the defaults</button
+        >
+      {/if}
       <span class="spacer"></span>
       <button class="primary" onclick={onclose}>Done</button>
     </div>

@@ -38,8 +38,11 @@ export function savedWhere(saved: SavedFile | null, filename: string): string {
   return `Saved to ${saved.path}${saved.fallback ? ' (the app’s folder can’t be written, so in Documents)' : ''}`;
 }
 
+/** A file name from a game's title: letters of any language, digits, "-" and "_" (spaces become "-"), 60 at most. */
 export function safeFilename(title: string): string {
-  return (title.trim() || 'game').replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-').slice(0, 60) || 'game';
+  const name = title.normalize('NFC').replace(/[^\p{L}\p{M}\p{N}\-_ ]+/gu, '').trim().replace(/\s+/g, '-');
+  // Cut by characters, not UTF-16 units, so a letter outside the basic range is never split in half.
+  return Array.from(name).slice(0, 60).join('').replace(/^-+|-+$/g, '') || 'game';
 }
 
 export async function saveGameJson(game: Game): Promise<string> {
@@ -48,7 +51,12 @@ export async function saveGameJson(game: Game): Promise<string> {
 }
 
 export function parseGame(text: string): Game {
-  const data = JSON.parse(text);
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("This file isn't a readable game (.json). It may be cut off or damaged.");
+  }
   if (!data || typeof data.version !== 'number' || !Array.isArray(data.rounds) || !Array.isArray(data.players)) {
     throw new Error('This file is not a Brainrot Games Maker game.');
   }

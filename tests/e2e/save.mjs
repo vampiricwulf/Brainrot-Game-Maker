@@ -69,6 +69,9 @@ try {
   assert(!dialogs.some((d) => /missing/i.test(d)), 'nothing reported missing');
   await a.getByRole('button', { name: 'Save', exact: true }).waitFor();
   assert(await a.getByRole('button', { name: 'Save', exact: true }).isEnabled(), 'the Save button is back when done');
+  // Ctrl+S saves the game too (not the browser's "Save page as").
+  const [again] = await Promise.all([a.waitForEvent('download'), a.keyboard.press('Control+s')]);
+  assert(again.suggestedFilename() === 'Two-tabs.brainrot', 'Ctrl+S saves the game pack');
 
   // Export HTML: a playable file that includes the pack.
   const [html] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: '⬇ Export HTML' }).click()]);
@@ -82,9 +85,14 @@ try {
   await player.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
   assert(true, 'the exported HTML opens as a player');
 
-  // Reopening the saved pack restores the game and its files.
+  // Reopening the saved pack restores the game and its files. The game being edited has a round now, so Open… asks first.
+  await a.getByRole('button', { name: '＋ Add round' }).click();
+  await a.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  dialogs.length = 0;
   const [chooser2] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: 'Open…' }).click()]);
   await chooser2.setFiles(await pack.path());
+  await a.locator('nav > button.round-tab').waitFor({ state: 'detached' });
+  assert(dialogs.length === 1 && dialogs[0].includes('It replaces this game'), 'Open… asks before replacing a game with rounds');
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert((await a.locator('input.title').inputValue()) === 'Two tabs', 'the saved pack opens again with its files');
 

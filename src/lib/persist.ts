@@ -21,8 +21,25 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
   }
 }
 
+/** Told how each write went (null: it worked), so the app can say when autosave stops working (e.g. storage is full). */
+let onWrite: (err: unknown) => void = () => {};
+export function watchWrites(fn: (err: unknown) => void): void {
+  onWrite = fn;
+}
+
+/** A write to storage (the draft, the game in progress, media): a failure is reported, never thrown. */
+export async function write(fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+    onWrite(null);
+  } catch (err) {
+    console.warn('Autosave failed:', err);
+    onWrite(err);
+  }
+}
+
 export const loadDraft = () => safe(() => get<Game>(DRAFT_KEY));
-export const saveDraft = (game: Game) => safe(() => set(DRAFT_KEY, game));
+export const saveDraft = (game: Game) => write(() => set(DRAFT_KEY, game));
 
 // Exported player-only files keep their own saved game (keyed per game) so they never touch the builder's.
 let playKey = PLAY_KEY;
@@ -32,7 +49,7 @@ export function usePlayerStorage(gameId: string): void {
 
 export const loadPlay = () => safe(() => get<SavedPlay>(playKey));
 export const savePlay = (game: Game, session: Session) =>
-  safe(() => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
+  write(() => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
 export const clearPlay = () => safe(() => del(playKey));
 
 /** Runs `fn` with the latest arguments once calls stop for `ms`. `flush()` runs a pending call now. */

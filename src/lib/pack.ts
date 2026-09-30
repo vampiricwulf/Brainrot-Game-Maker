@@ -69,7 +69,9 @@ export async function openPack(file: Blob): Promise<Game> {
 
 /** Open a .brainrot pack (or a .jbr from before the rename: same format) or a plain .json game. */
 export async function openGameFile(file: File): Promise<Game> {
-  if (/\.json$/i.test(file.name) || file.type === 'application/json') {
+  // A pack is a zip, which starts with "PK": one saved or renamed as .json still opens.
+  const zip = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
+  if (!zip && (/\.json$/i.test(file.name) || file.type === 'application/json')) {
     const game = migrateGame(parseGame(await file.text()));
     registerLinks(game);
     return game;

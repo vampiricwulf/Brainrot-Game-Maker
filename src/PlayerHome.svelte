@@ -46,7 +46,7 @@
       <p class="muted small">🌐 {online} item{online === 1 ? '' : 's'} in this game play{online === 1 ? 's' : ''} from the internet, so stay online while you play.</p>
     {/if}
     {#if !app.storageOk}
-      <p class="warn small">This browser won't save progress for files opened from disk, so a refresh restarts the game.</p>
+      <p class="warn small">This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game.</p>
     {/if}
     <button
       class="ghost small"
