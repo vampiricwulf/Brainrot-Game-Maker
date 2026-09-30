@@ -25,7 +25,8 @@ export type Place =
 
 export type RoundPart =
   | { kind: 'category'; category: string }
-  | { kind: 'clue'; category: string; clue: string; side?: Side; element?: string }
+  /** `onBoard`: the tile on the board (moved, cleared, pasted), without opening the clue. */
+  | { kind: 'clue'; category: string; clue: string; side?: Side; element?: string; onBoard?: boolean }
   | { kind: 'decor'; element?: string }
   | { kind: 'final'; side?: Side; element?: string }
   | { kind: 'space'; space: string }

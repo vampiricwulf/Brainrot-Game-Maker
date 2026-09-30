@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, type Category, type Clue, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, newTextEl, type Category, type Clue, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it). */
@@ -23,6 +23,90 @@ export function stepClue(round: BoardRound, pos: { cat: number; row: number }, d
     if (!round.categories[at.cat].clues[at.row]?.empty) return at;
   }
   return null;
+}
+
+/**
+ * The clue next to `pos` on the board, `dc` categories across or `dr` rows down (the clue editor's Alt+arrows),
+ * skipping empty tiles, or null past the edge.
+ */
+export function neighbourClue(round: BoardRound, pos: { cat: number; row: number }, dc: number, dr: number): { cat: number; row: number } | null {
+  for (let cat = pos.cat + dc, row = pos.row + dr; cat >= 0 && cat < round.categories.length && row >= 0 && row < round.values.length; cat += dc, row += dr)
+    if (!round.categories[cat].clues[row]?.empty) return { cat, row };
+  return null;
+}
+
+/** A tile on the board. */
+export interface TilePos {
+  cat: number;
+  row: number;
+}
+
+/**
+ * Swap the clues of two tiles: slides, type, value, face, timer, notes and whether it's empty all go with the clue.
+ * The row values stay put (they belong to the row).
+ */
+export function swapClues(round: BoardRound, a: TilePos, b: TilePos): void {
+  const ca = round.categories[a.cat].clues;
+  const cb = round.categories[b.cat].clues;
+  const x = ca[a.row];
+  ca[a.row] = cb[b.row];
+  cb[b.row] = x;
+}
+
+/** A copy of a clue with fresh ids (its own, and its slides' items). */
+export function copyClue(clue: Clue): Clue {
+  const copy = clone(clue);
+  copy.id = newId();
+  for (const e of [...copy.questionSlide.elements, ...copy.answerSlide.elements]) e.id = newId();
+  return copy;
+}
+
+/** A slide with nothing on it, keeping the look of its main text (so a restyled board stays restyled). */
+function clearSlide(slide: Slide): void {
+  const main = slide.elements.find((e): e is TextEl => e.kind === 'text');
+  if (main) main.text = '';
+  slide.elements = [main ?? newTextEl()];
+  slide.background = {};
+}
+
+/** Take out what was written or added to a clue (both slides, host notes, tile face). Its type and value stay. */
+export function clearClue(clue: Clue): void {
+  clearSlide(clue.questionSlide);
+  clearSlide(clue.answerSlide);
+  delete clue.hostNotes;
+  delete clue.tileFace;
+}
+
+/**
+ * A new row of clues at `at` (0: the top). The row values stay where they are (they belong to the positions), and
+ * the board gets one more at the bottom, like adding a row with the count. At most 10 rows.
+ */
+export function insertRow(round: BoardRound, at: number): boolean {
+  if (round.values.length >= 10) return false;
+  const n = round.values.length;
+  const step = n > 1 ? round.values[n - 1] - round.values[n - 2] : round.values[0] || 100;
+  round.values.push((round.values[n - 1] ?? 0) + step);
+  for (const cat of round.categories) cat.clues.splice(at, 0, newClue());
+  return true;
+}
+
+/** Delete a row of clues: the ones below move up, and the bottom row value goes. At least 1 row stays. */
+export function deleteRow(round: BoardRound, at: number): boolean {
+  if (round.values.length <= 1 || at < 0 || at >= round.values.length) return false;
+  round.values.pop();
+  for (const cat of round.categories) cat.clues.splice(at, 1);
+  return true;
+}
+
+/** Move a row of clues (every category's) to another row; the row values stay by position. */
+export function moveRow(round: BoardRound, from: number, to: number): boolean {
+  const n = round.values.length;
+  if (from === to || from < 0 || to < 0 || from >= n || to >= n) return false;
+  for (const cat of round.categories) {
+    const [c] = cat.clues.splice(from, 1);
+    cat.clues.splice(to, 0, c);
+  }
+  return true;
 }
 
 export function setRowCount(round: BoardRound, rows: number): void {

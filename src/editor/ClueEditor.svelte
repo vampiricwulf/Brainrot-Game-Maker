@@ -3,7 +3,7 @@
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { stepClue, textStyleTargets } from '../lib/ops';
+  import { neighbourClue, stepClue, textStyleTargets } from '../lib/ops';
   import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -39,16 +39,19 @@
   const focusQuestion = () => tick().then(() => (questionField ?? emptyBox)?.focus());
   onMount(() => void focusQuestion());
 
-  // Walk clues column by column (down a category, then on to the next one), past empty tiles.
+  // Prev / Next walk clues column by column (down a category, then on to the next one), past empty tiles.
   const prev = $derived(stepClue(round, pos, -1));
   const next = $derived(stepClue(round, pos, 1));
-  function step(d: 1 | -1): void {
-    const to = d > 0 ? next : prev;
+  function go(to: { cat: number; row: number } | null): void {
     if (!to) return;
     pos = to;
     side = 'q';
     focusQuestion();
   }
+  const step = (d: 1 | -1) => go(d > 0 ? next : prev);
+
+  /** Alt+arrows go like the board: up and down the category, or across to the same row of the next one. */
+  const ALT_ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
   function typing(e: Event): boolean {
     return !!(e.target as HTMLElement)?.closest?.('input:not([type="checkbox"]), textarea, select');
@@ -61,10 +64,10 @@
     else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       step(e.shiftKey ? -1 : 1);
-    } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    } else if (e.altKey && !e.ctrlKey && !e.metaKey && ALT_ARROWS[e.key] && !e.defaultPrevented) {
       // Alt+← is the browser's Back button on Windows.
       e.preventDefault();
-      step(e.key === 'ArrowRight' ? 1 : -1);
+      go(neighbourClue(round, pos, ...ALT_ARROWS[e.key]));
     }
   }
 </script>
@@ -80,9 +83,9 @@
           <div class="value">{sym}{clue.value ?? round.values[pos.row]}</div>
         </div>
         <span class="spacer"></span>
-        <span class="muted small keys">Ctrl+Enter next clue · Alt+←/→ previous/next</span>
-        <button onclick={() => step(-1)} disabled={!prev} title="Alt+← or Shift+Ctrl+Enter">◀ Prev</button>
-        <button onclick={() => step(1)} disabled={!next} title="Alt+→ or Ctrl+Enter">Next ▶</button>
+        <span class="muted small keys">Ctrl+Enter next clue · Alt+arrows: the clue above, below or beside</span>
+        <button onclick={() => step(-1)} disabled={!prev} title="Shift+Ctrl+Enter">◀ Prev</button>
+        <button onclick={() => step(1)} disabled={!next} title="Ctrl+Enter">Next ▶</button>
         <button class="primary" onclick={onclose}>Done</button>
       </header>
 
