@@ -51,6 +51,11 @@ Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube
 </tr>
 </table>
 
+**RPG map editor:** drag a screen to move it or swap it with another (dropping past the edge grows the map, dropping
+on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /
+`Ctrl+C` `Ctrl+V` / `F2` work on the grid, `Shift`-click or a box selects several, and pictures dropped on the map
+become screens. Click ⛔ between two screens to block the way.
+
 Other editor tabs:
 
 - 🎨 **Theme**: presets, colors, fonts and background images.

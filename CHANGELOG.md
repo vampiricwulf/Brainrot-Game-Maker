@@ -11,6 +11,8 @@ done, the Unreleased lines move under that day's heading.
 ## Unreleased
 
 ### Changed
+- Keep in game and Resume with my edits follow screens moved in the editor; a party on a screen that no longer exists
+  goes to the start. (4eef0fe)
 - A Final round has its own **"Players with a score of 0 or less can play it"** option (on for a new Final). It used to
   be one game-wide setting in ⚙ Setup; older games keep their choice on each of their Finals. (288972f)
 - A **Daily Double's wager stays off the stream** until the host presses **Show wager**, as a Final's wagers do.
@@ -18,6 +20,12 @@ done, the Unreleased lines move under that day's heading.
 
 ### Added
 - This changelog.
+- **RPG map editor**: drag a screen to move it or swap it with another; `Delete` deletes the selected screens with an
+  Undo notice instead of asking; the grid works from the keyboard (arrows, `Enter`, `Alt`+arrows, `Ctrl+D`, `F2`,
+  `Esc`); select several with `Shift`/`Ctrl`-click or a box; copy/paste screens; move or copy a screen to another map;
+  insert or delete rows and columns; rename, reorder and duplicate maps from their tabs; switch looks and neighbouring
+  screens from the screen editor; click ⛔ between screens to block a way; drop pictures on the map to make screens;
+  a menu for each look (duplicate, make main, reorder). (4eef0fe)
 - ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
   never a redo.
 
