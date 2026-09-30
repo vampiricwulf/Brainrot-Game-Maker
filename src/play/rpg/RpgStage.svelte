@@ -63,6 +63,13 @@
     return id ? mediaUrls[id] : undefined;
   });
 
+  /** Split view: each screen at half size, in a 2×2 grid; two side by side in the middle, a third centred below. */
+  function paneAt(i: number, n: number): string {
+    const x = n === 3 && i === 2 ? 25 : (i % 2) * 50;
+    const y = n === 2 ? 25 : Math.floor(i / 2) * 50;
+    return `translate(${x}%, ${y}%) scale(0.5)`;
+  }
+
   /** Where the incoming screen slides in from (the flip-screen effect), by the direction of the last move. */
   function enter(node: Element, { map }: { map: string }) {
     const m = world?.maps.find((x) => x.id === map);
@@ -112,7 +119,8 @@
   }
   function objMove(e: PointerEvent): void {
     if (!objDrag) return;
-    const s = stage?.scale || 1;
+    // Split view draws each screen at half size.
+    const s = (stage?.scale || 1) * (split ? 0.5 : 1);
     const x = Math.round(objDrag.ox + (e.clientX - objDrag.sx) / s);
     const y = Math.round(objDrag.oy + (e.clientY - objDrag.sy) / s);
     const moved = objDrag.moved || Math.abs(e.clientX - objDrag.sx) + Math.abs(e.clientY - objDrag.sy) > 4;
@@ -190,7 +198,7 @@
       {#if found}
         <div
           class="pane"
-          style:transform={split ? `translate(${(i % 2) * 50}%, ${Math.floor(i / 2) * 50}%) scale(0.5)` : undefined}
+          style:transform={split ? paneAt(i, panes.length) : undefined}
         >
           {#key ref.screen}
             <div class="screen" in:enter={{ map: ref.map }}>{@render screenPane(ref, found.screen)}</div>
@@ -208,12 +216,13 @@
       <div class="strip bar-{bar}"><StatsStrip {game} {session} players={stripPlayers} /></div>
     {/if}
     {#if st.mapShown}
-      <div class="map-ov" transition:fade={{ duration: 200 }}>
-        <MapView {world} {st} players={session.players} audience focus={panes[0]} />
+      <div class="map-ov bar-{bar}" transition:fade={{ duration: 200 }}>
+        <MapView {world} {st} players={session.players} audience fit focus={panes[0]} />
       </div>
     {/if}
   {:else}
-    <div class="empty">{world ? 'Starting…' : 'This round has no world yet.'}</div>
+    <!-- A world is only started (the state made) once it has a screen to start on. -->
+    <div class="empty">{world ? `${world.name} has no screen to start on yet.` : 'This round has no world yet.'}</div>
   {/if}
 </div>
 {#if role !== 'mirror'}<MusicPlayer src={music} />{/if}
@@ -318,6 +327,7 @@
   .strip.bar-top {
     top: 0;
   }
+  /* Clear of the stats strip, wherever it is. */
   .map-ov {
     position: absolute;
     inset: 60px 80px 200px;
@@ -327,6 +337,12 @@
     background: rgba(0, 0, 20, 0.88);
     border: 4px solid #ffcc00;
     overflow: hidden;
+  }
+  .map-ov.bar-top {
+    inset: 200px 80px 60px;
+  }
+  .map-ov.bar-hidden {
+    inset: 60px 80px;
   }
   .empty {
     position: absolute;

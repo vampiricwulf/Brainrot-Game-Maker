@@ -10,7 +10,7 @@
   import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
   import {
-    addStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statValue,
+    addStat, clampStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statValue,
     transferEntry,
   } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
@@ -53,13 +53,17 @@
   function bump(fieldId: string, delta: number): void {
     const f = fields.find((x) => x.id === fieldId);
     if (!f) return;
-    logged(session, `${name}: ${f.name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => addStat(game, session, p.id, f, delta));
+    let changed = 0;
+    logged(session, `${name}: ${f.name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => (changed = addStat(game, session, p.id, f, delta)));
+    if (!changed) toast(`${name}’s ${f.name} is already at its ${delta > 0 ? `max (${f.max})` : `min (${f.min})`}`);
   }
 
+  /** Set a stat (a number stays within the field's min and max: the log says what it became). */
   function set(fieldId: string, v: string | boolean | string[]): void {
     const f = fields.find((x) => x.id === fieldId);
     if (!f) return;
-    logged(session, `${name}: ${f.name} = ${Array.isArray(v) ? v.join(', ') : v}`, () => setStat(session, p.id, f, f.type === 'number' ? Number(v) : v));
+    const value = clampStat(f, f.type === 'number' ? Number(v) : v);
+    logged(session, `${name}: ${f.name} = ${Array.isArray(value) ? value.join(', ') : value}`, () => setStat(session, p.id, f, value));
   }
 
   function giveNew(itemId: string): void {
@@ -84,10 +88,15 @@
     const e = items.find((x) => x.id === entryId);
     const def = itemDef(game, e?.item);
     if (!e || !def?.onUse?.length) return;
-    if (!confirm(`${name} uses ${def.name}:\n${def.onUse.map((a) => '• ' + describeAction(game, a)).join('\n')}\n\nUse it up?`)) return;
+    const actions = def.onUse;
+    if (!confirm(`${name} uses ${def.name}:\n${actions.map((a) => '• ' + describeAction(game, a)).join('\n')}\n\nUse it up?`)) return;
     const ctx = { game, session, live: app.live, world, st, board, bs, selected, chosen: [p.id] };
-    const said = def.onUse.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a)}`));
-    if (!def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
+    let said: string[] = [];
+    // One undoable step: what it does, and using it up.
+    logged(session, `${name} uses ${def.name}`, () => {
+      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a)}`));
+      if (!def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
+    });
     toast(said.join(' · '), 3000);
   }
 
@@ -119,7 +128,7 @@
     const world = st;
     const n = howMany(entryId, e.qty);
     logged(session, `${name} drops ${count(n, entryName(game, e))}`, () => {
-      const el = droppedObject(game, { ...e, qty: n }, { x: pos.x + 140, y: pos.y });
+      const el = droppedObject(game, { ...e, qty: n }, world, pos);
       world.added[pos.screen] ??= [];
       world.added[pos.screen].push(el);
       const list = session.inventories?.[p.id];
@@ -137,6 +146,8 @@
     if (!amt || !cf) return;
     // One undoable step: the points and the currency change together.
     if (toCurrency) {
+      const have = score(session, p.id);
+      if (have < amt) return void toast(`${name} only has ${formatPoints(have, game.settings.currencySymbol)}`);
       logged(session, `${name}: ${formatPoints(amt, game.settings.currencySymbol)} score → ${formatStat(cf, amt)}`, () => {
         applyScore(session, game, [p.id], -amt, `Converted to ${cf.name}`);
         addStat(game, session, p.id, cf, amt);
@@ -191,7 +202,11 @@
           type="number"
           value={v}
           aria-label="{p.name} {f.name}"
-          onchange={(e) => set(f.id, e.currentTarget.value)}
+          onchange={(e) => {
+            set(f.id, e.currentTarget.value);
+            // Kept within min and max: the box shows what it became (even when that's what it was).
+            e.currentTarget.value = String(statValue(game, session, p.id, f));
+          }}
           onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         />
         <button class="tiny" onclick={() => bump(f.id, 1)} aria-label="{p.name} {f.name} plus 1">+</button>
@@ -214,6 +229,7 @@
   <div class="inv">
     {#each items as e (e.id)}
       {@const def = itemDef(game, e.item)}
+      {@const about = def?.hostNotes ?? def?.description}
       <div
         class="row it"
         role="group"
@@ -232,41 +248,44 @@
             { label: '✕ Remove', danger: true, onclick: () => remove(e.id) },
           ])}
       >
-        <span class="nm" title={def?.hostNotes ?? def?.description}>
+        <span class="nm" title="{entryName(game, e)}{about ? `: ${about}` : ''}">
           {entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{def?.secret ? ' 🔒' : ''}
         </span>
-        {#if def?.wearable}
-          <button class="tiny" class:on={e.equipped} onclick={() => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped))}>
-            {e.equipped ? 'Unequip' : 'Equip'}
-          </button>
-        {/if}
-        {#if def?.onUse?.length}<button class="tiny" onclick={() => use(e.id)}>Use</button>{/if}
-        {#if e.qty > 1}
-          <input
-            class="qty"
-            type="number"
-            min="1"
-            max={e.qty}
-            value={amounts[e.id] ?? 1}
-            oninput={(ev) => (amounts[e.id] = +ev.currentTarget.value)}
-            aria-label="How many of {entryName(game, e)}"
-            title="How many to give, drop or remove"
-          />
-        {/if}
-        <select
-          class="tiny"
-          aria-label="Give {entryName(game, e)} to"
-          onchange={(ev) => {
-            const to = ev.currentTarget.value;
-            ev.currentTarget.value = '';
-            if (to) give(e.id, to);
-          }}
-        >
-          <option value="">Give →</option>
-          {#each session.players.filter((x) => x.id !== p.id) as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-        </select>
-        {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" onclick={() => drop(e.id)}>⬇</button>{/if}
-        <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" onclick={() => remove(e.id)}>✕</button>
+        <!-- The buttons stay together: on the name's line, or all on the next one. -->
+        <span class="acts">
+          {#if def?.wearable}
+            <button class="tiny" class:on={e.equipped} onclick={() => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped))}>
+              {e.equipped ? 'Unequip' : 'Equip'}
+            </button>
+          {/if}
+          {#if def?.onUse?.length}<button class="tiny" onclick={() => use(e.id)}>Use</button>{/if}
+          {#if e.qty > 1}
+            <input
+              class="qty"
+              type="number"
+              min="1"
+              max={e.qty}
+              value={amounts[e.id] ?? 1}
+              oninput={(ev) => (amounts[e.id] = +ev.currentTarget.value)}
+              aria-label="How many of {entryName(game, e)}"
+              title="How many to give, drop or remove"
+            />
+          {/if}
+          <select
+            class="tiny"
+            aria-label="Give {entryName(game, e)} to"
+            onchange={(ev) => {
+              const to = ev.currentTarget.value;
+              ev.currentTarget.value = '';
+              if (to) give(e.id, to);
+            }}
+          >
+            <option value="">Give →</option>
+            {#each session.players.filter((x) => x.id !== p.id) as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
+          </select>
+          {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" onclick={() => drop(e.id)}>⬇</button>{/if}
+          <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" onclick={() => remove(e.id)}>✕</button>
+        </span>
       </div>
     {/each}
     <select
@@ -360,9 +379,19 @@
     width: 44px;
     padding: 0 3px;
   }
+  /* A long name is cut short (it's in full in its tooltip). */
   .nm {
     flex: 1;
-    min-width: 70px;
+    min-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .acts {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
   }
   .add {
     align-self: flex-start;

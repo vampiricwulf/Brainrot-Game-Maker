@@ -36,10 +36,12 @@
   const o = $derived(st.objects[el.id]);
   const role = $derived(el.role);
   const seen = $derived(audienceSees(el, o));
-  // Who the buttons apply to: the host's selected players, else the party here.
-  let chosen = $state<string[]>([]);
+  // Who the buttons apply to: the players picked on this card, else the host's selected players, else everyone here.
+  let chosen = $state<string[] | null>(null);
   const here = $derived(session.players.filter((p) => st.positions[p.id]?.screen === screen.id).map((p) => p.id));
-  const who = $derived(chosen.length ? chosen : ctx.selected.length ? ctx.selected : here);
+  /** Picked by the host (on this card, or selected): null means nobody was, so it's for everyone here. */
+  const picked = $derived(chosen ?? (ctx.selected.length ? ctx.selected : null));
+  const who = $derived(picked ?? here);
   const whoNames = $derived(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(', ') || 'nobody');
   const title = $derived(el.name || role?.class || 'Object');
   const locked = $derived(o?.locked ?? role?.locked ?? false);
@@ -48,29 +50,42 @@
   /** Compare: a player number field against one of the NPC's stats (nothing more: no combat engine). */
   const numberFields = $derived(statFields(game).filter((f) => f.type === 'number'));
   let cmpField = $state('');
-  let cmpStat = $state(0);
+  /** The NPC stat picked (null: the one named like the player stat, else the first). */
+  let cmpStat = $state<number | null>(null);
   const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? numberFields.find((f) => npcStats.some((s) => s.name === f.name)) ?? numberFields[0]);
+  const ns = $derived(cmpStat ?? Math.max(0, npcStats.findIndex((s) => s.name === cf?.name)));
 
   function runAll(): void {
     const list = role?.actions ?? [];
     if (list.some(needsPlayers) && !who.length) return void toast('Pick who it’s for first');
-    const said = list.map((a) => runAction({ ...ctx, chosen: who, world, st }, a, `${title}: ${describeAction(game, a)}`));
+    let said: string[] = [];
+    // One undoable step for all of them.
+    logged(session, `${title}: ${list.map((a) => describeAction(game, a)).join(', ')}`, () => {
+      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st }, a, `${title}: ${describeAction(game, a)}`));
+    });
     toast(said.join(' · '), 4000);
   }
 
+  // Renaming or reclassing an object drawn on the screen changes the game being played: the undo puts it back.
   function rename(name: string): void {
-    logged(session, `Rename ${title} to ${name}`, () => (el.name = name || undefined));
+    logged(session, `Rename ${title} to ${name}`, () => (el.name = name || undefined), game);
   }
 
   /** Make it an item, a zone, a hazard…: the rest (actions, dialogue) is set up in the live editor. */
   function setClass(c: string): void {
-    logged(session, `${title}: ${c || 'scenery'}`, () => {
-      el.role = c ? { ...(el.role ?? {}), class: c as NonNullable<SlideElement['role']>['class'] } : undefined;
-    });
+    logged(
+      session,
+      `${title}: ${c || 'scenery'}`,
+      () => {
+        el.role = c ? { ...(el.role ?? {}), class: c as NonNullable<SlideElement['role']>['class'] } : undefined;
+      },
+      game,
+    );
   }
 
   function toggle(id: string): void {
-    chosen = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
+    const cur = picked ?? [];
+    chosen = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
   }
 
   function run(a: NonNullable<typeof role>['actions'] extends (infer T)[] | undefined ? T : never): void {
@@ -143,10 +158,19 @@
     {#if onkeep}<button class="small" onclick={onkeep} title="Save its screen, with this, in the game in the editor, so it's there next time">💾 Keep</button>{/if}
   </div>
   <div class="row who">
-    <span class="muted small">For:</span>
+    <span class="muted small">For{picked ? '' : ' everyone here'}:</span>
     {#each session.players as p (p.id)}
-      {@const on = who.includes(p.id)}
-      <button class="chip" style:border-color={p.color} style:background={on ? p.color : undefined} style:color={on ? textOn(p.color) : undefined} onclick={() => toggle(p.id)}>
+      {@const on = !!picked?.includes(p.id)}
+      <!-- Everyone here (nobody picked) is outlined, not filled: clicking one picks just them. -->
+      <button
+        class="chip"
+        class:auto={!picked && here.includes(p.id)}
+        style:border-color={p.color}
+        style:background={on ? p.color : undefined}
+        style:color={on ? textOn(p.color) : undefined}
+        aria-pressed={on}
+        onclick={() => toggle(p.id)}
+      >
         {p.name}
       </button>
     {/each}
@@ -154,7 +178,7 @@
   <div class="row btns">
     {#if role?.class === 'doorway'}
       <button class="primary" onclick={() => goThrough()}>🚪 Go through (party)</button>
-      {#if chosen.length || ctx.selected.length}<button onclick={() => goThrough(who)}>🚪 Only {whoNames}</button>{/if}
+      {#if picked?.length}<button onclick={() => goThrough(who)}>🚪 Only {whoNames}</button>{/if}
       <button class="small" onclick={() => logged(session, `${locked ? 'Unlock' : 'Lock'} ${title}`, () => (override(st, el.id).locked = !locked))}>
         {locked ? '🔓 Unlock' : '🔒 Lock'}
       </button>
@@ -185,17 +209,17 @@
   {#if npcStats.length && numberFields.length}
     <div class="row cmp">
       <span class="muted small">Compare</span>
-      <select class="tiny" value={cf?.id} onchange={(e) => (cmpField = e.currentTarget.value)} aria-label="Player stat">
+      <select class="tiny" value={cf?.id} onchange={(e) => ((cmpField = e.currentTarget.value), (cmpStat = null))} aria-label="Player stat">
         {#each numberFields as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
       </select>
       <span class="muted small">vs</span>
-      <select class="tiny" bind:value={cmpStat} aria-label="{title} stat">
+      <select class="tiny" value={ns} onchange={(e) => (cmpStat = +e.currentTarget.value)} aria-label="{title} stat">
         {#each npcStats as s, i (i)}<option value={i}>{s.name}</option>{/each}
       </select>
       {#if cf}
         {#each who as id (id)}
           {@const pv = statNumber(game, session, id, cf)}
-          {@const nv = npcStats[cmpStat]?.value ?? 0}
+          {@const nv = npcStats[ns]?.value ?? 0}
           <span class="vs" class:win={pv > nv} class:lose={pv < nv}>
             {session.players.find((p) => p.id === id)?.name} {pv} vs {nv}
           </span>
@@ -257,6 +281,9 @@
     border-width: 2px;
     padding: 1px 8px;
     font-size: 12px;
+  }
+  .chip.auto {
+    border-style: dashed;
   }
   .stat {
     display: inline-flex;

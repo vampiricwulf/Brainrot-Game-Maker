@@ -10,8 +10,9 @@
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import type { Game, Session } from '../../lib/model';
-  import Avatar from '../../lib/rpg/Avatar.svelte';
+  import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
+  import { wornItems } from '../../lib/toolset';
   import StatsStrip from '../rpg/StatsStrip.svelte';
   import { boardNow } from './bgops';
 
@@ -69,7 +70,7 @@
           <SlideView slide={zone.slide} mode="play" {role} fallbackBg="#2a0845" />
           <div class="zone-players">
             {#each inZone(zone.id) as p (p.id)}
-              <div class="tok"><Avatar player={p} size={130} /><div class="plate" style:background={p.color} style:color={textOn(p.color)}>{p.name}</div></div>
+              <div class="tok"><AvatarToken player={p} size={130} worn={wornItems(game, session, p.id)} /></div>
             {/each}
           </div>
         </div>
@@ -82,23 +83,27 @@
           {@const p = session.players.find((x) => x.id === t.id)}
           {#if p}
             <div class="tok on-board" class:current={t.id === turnId} style:left="{t.x}px" style:top="{t.y}px" data-player={p.name} data-player-id={p.id}>
-              <Avatar player={p} size={t.small ? 64 : 84} />
+              <AvatarToken player={p} size={t.small ? 64 : 84} worn={wornItems(game, session, p.id)} name={false} />
             </div>
           {/if}
         {/each}
       </div>
     {/if}
-    {#if turn}
-      <div class="turn-banner" style:background={turn.color} style:color={textOn(turn.color)}>🎲 {turn.name}’s turn</div>
-    {/if}
-    {#if round.zones.some((z) => inZone(z.id).length) && !zone}
-      <div class="zones">
-        {#each round.zones as z (z.id)}
-          {#if inZone(z.id).length}<div class="zone">🌀 {z.name}: {inZone(z.id).map((p) => p.name).join(', ')}</div>{/if}
-        {/each}
-      </div>
-    {/if}
-    {#if round.winPublic && round.winNotes}<div class="win">🏆 {round.winNotes}</div>{/if}
+    <!-- Whose turn, how to win, who's in a zone: one thin row along the top (the bottom when the stats strip is at the top). -->
+    <div class="labels" class:low={bar === 'top'}>
+      {#if turn}
+        <div class="turn-banner" style:background={turn.color} style:color={textOn(turn.color)}>🎲 {turn.name}’s turn</div>
+      {/if}
+      {#if round.winPublic && round.winNotes}<div class="win">🏆 {round.winNotes}</div>{/if}
+      <span class="spacer"></span>
+      {#if round.zones.some((z) => inZone(z.id).length) && !zone}
+        <div class="zones">
+          {#each round.zones as z (z.id)}
+            {#if inZone(z.id).length}<div class="zone">🌀 {z.name}: {inZone(z.id).map((p) => p.name).join(', ')}</div>{/if}
+          {/each}
+        </div>
+      {/if}
+    </div>
     {#if bar !== 'hidden'}
       <div class="strip bar-{bar}"><StatsStrip {game} {session} players={session.players} /></div>
     {/if}
@@ -137,13 +142,6 @@
     z-index: 11;
     filter: drop-shadow(0 0 12px #ffcc00);
   }
-  .plate {
-    margin-top: -8px;
-    padding: 2px 12px;
-    border-radius: 8px;
-    border: 3px solid #000;
-    font: 28px 'Anton', 'Oswald', sans-serif;
-  }
   .zone-players {
     position: absolute;
     left: 0;
@@ -154,29 +152,33 @@
     gap: 40px;
   }
   /* Labels over the board never catch clicks meant for the tokens and spaces under them. */
-  .turn-banner,
-  .zones,
-  .win {
-    pointer-events: none;
-  }
-  .turn-banner {
+  .labels {
     position: absolute;
     left: 30px;
-    top: 24px;
-    padding: 8px 24px;
-    border-radius: 14px;
-    border: 4px solid #000;
-    font: 48px 'Anton', 'Oswald', sans-serif;
+    right: 30px;
+    top: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
     z-index: 20;
+    pointer-events: none;
+  }
+  .labels.low {
+    top: auto;
+    bottom: 20px;
+    align-items: flex-end;
+  }
+  .turn-banner {
+    padding: 4px 20px;
+    border-radius: 12px;
+    border: 4px solid #000;
+    font: 38px 'Anton', 'Oswald', sans-serif;
+    white-space: nowrap;
   }
   .zones {
-    position: absolute;
-    right: 30px;
-    top: 24px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    z-index: 20;
   }
   .zone,
   .win {
@@ -185,15 +187,12 @@
     background: rgba(42, 8, 69, 0.9);
     border: 3px solid #b388ff;
     color: #fff;
-    font: 32px 'Anton', 'Oswald', sans-serif;
+    font: 28px 'Anton', 'Oswald', sans-serif;
   }
   .win {
-    position: absolute;
-    left: 30px;
-    top: 110px;
+    align-self: center;
     background: rgba(0, 0, 0, 0.75);
     border-color: #ffcc00;
-    z-index: 20;
   }
   .strip {
     position: absolute;

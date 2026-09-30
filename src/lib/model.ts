@@ -649,13 +649,20 @@ export type Action = { id: Id } & (
 );
 export type ActionKind = Action['do'];
 
-/** One undoable step in the action log: the RPG state before (and after, once undone) as JSON. */
+/**
+ * One undoable step in the action log: the parts of the state it changed (session parts, screens of the game being
+ * played) as they were before, and after once undone, as JSON.
+ */
 export interface ActionEvent {
   id: Id;
   ts: number;
   text: string;
+  /** The round it was taken in (Ctrl+Z can reach back into an earlier round). */
+  round?: number;
   before: string;
   after?: string;
+  /** Points the step spent or earned (a shop that charges points): they come off the score log when it's undone. */
+  score?: ScoreEvent[];
 }
 
 // ---------- RPG mode: worlds, maps, screens, objects (games-maker spec §7) ----------

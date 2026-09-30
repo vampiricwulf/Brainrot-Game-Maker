@@ -1,14 +1,39 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, standings } from '../lib/session';
+  import { currentClueInfo, currentFinal, playerName, standings } from '../lib/session';
+  import { findIn, focusRef } from '../lib/rpg';
+  import { currentPlayer, spaceById } from '../lib/boardgame';
+  import { rpgNow } from './rpg/hostops';
+  import { boardNow, busyZones } from './boardgame/bgops';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
   const finalRound = $derived(currentFinal(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const picker = $derived(session.players.find((p) => p.id === session.currentPickerId));
+  // RPG and board-game rounds: where the party is, whose turn it is, and the notes that go with them.
+  const rpg = $derived(rpgNow(game, session));
+  const here = $derived(rpg.world && rpg.st ? findIn(rpg.world, focusRef(rpg.st) ?? { map: '', screen: '' }) : null);
+  const board = $derived(boardNow(game, session));
+  const landed = $derived(board.round && board.bs?.last?.landed ? spaceById(board.round, board.bs.last.landed) : undefined);
 </script>
+
+{#snippet hostNote(label: string, text: string | undefined)}
+  {#if text}
+    <div class="label">{label}</div>
+    <div class="notes">{text}</div>
+  {/if}
+{/snippet}
+
+{#snippet standingsList()}
+  <div class="label">Standings</div>
+  <ol>
+    {#each standings(session) as { player, score } (player.id)}
+      <li><span class="dot" style:background={player.color}></span>{player.name} <b>{formatPoints(score, sym)}</b></li>
+    {/each}
+  </ol>
+{/snippet}
 
 <div class="info">
   {#if session.phase === 'clue' && info}
@@ -60,16 +85,35 @@
     <div class="q">{slideText(game.tiebreaker.questionSlide) || '—'}</div>
     <div class="label">Answer</div>
     <div class="a">{slideText(game.tiebreaker.answerSlide) || '—'}</div>
+  {:else if session.phase === 'rpg' && rpg.round}
+    <div class="meta"><span class="cat">{rpg.round.name}</span></div>
+    {#if here && rpg.st}
+      <div class="label">On screen</div>
+      <div class="q">🗺 {here.map.name} · {here.screen.name}</div>
+      {@render hostNote('Screen notes', here.screen.hostNotes)}
+      {#if rpg.st.parties.length > 1}
+        <div class="label">Parties</div>
+        <ul>
+          {#each rpg.st.parties as pt (pt.id)}<li>{pt.name}: {pt.members.map((m) => playerName(session, m)).join(', ')}</li>{/each}
+        </ul>
+      {/if}
+    {/if}
+    {@render hostNote('Round notes', rpg.round.hostNotes)}
+    {@render standingsList()}
+  {:else if session.phase === 'boardgame' && board.round && board.bs}
+    {@const turn = currentPlayer(board.bs)}
+    <div class="meta"><span class="cat">{board.round.name}</span></div>
+    <div class="label">Turn</div>
+    <div class="q">🎲 {turn ? playerName(session, turn) : 'Nobody'}</div>
+    {#if landed}{@render hostNote(`Landed on ${landed.name}`, landed.hostNotes)}{/if}
+    {#each busyZones(board.round, board.bs) as z (z.id)}{@render hostNote(`🌀 ${z.name}`, z.hostNotes)}{/each}
+    {@render hostNote('Round notes', board.round.hostNotes)}
+    {@render standingsList()}
   {:else}
     <div class="meta"><span class="cat">{game.rounds[session.currentRound]?.name ?? ''}</span></div>
     <div class="label">Picking next</div>
     <div class="q">{picker ? picker.name : 'Nobody set (press P then a number, or click a name plate)'}</div>
-    <div class="label">Standings</div>
-    <ol>
-      {#each standings(session) as { player, score } (player.id)}
-        <li><span class="dot" style:background={player.color}></span>{player.name} <b>{formatPoints(score, sym)}</b></li>
-      {/each}
-    </ol>
+    {@render standingsList()}
   {/if}
 </div>
 
@@ -122,7 +166,8 @@
     border-radius: 6px;
     white-space: pre-wrap;
   }
-  ol {
+  ol,
+  ul {
     margin: 0;
     padding-left: 20px;
   }

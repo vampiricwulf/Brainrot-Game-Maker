@@ -1,6 +1,6 @@
 // The board-game host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import { currentPlayer, movePlayer, nextTurn } from '../../lib/boardgame';
-import { isBoardGame, type Game, type Session } from '../../lib/model';
+import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardZone, type Game, type Session } from '../../lib/model';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
@@ -15,6 +15,11 @@ export function boardNow(game: Game, session: Session) {
 }
 
 export const playerName = (session: Session, id: string | undefined) => session.players.find((p) => p.id === id)?.name ?? '?';
+
+/** The zones on screen or with players in them. */
+export function busyZones(round: BoardGameRound, bs: BoardGameState): BoardZone[] {
+  return round.zones.filter((z) => bs.zoneShown === z.id || bs.order.some((id) => bs.positions[id]?.zone === z.id));
+}
 
 /** Move whoever's turn it is (or `playerId`) `steps` spaces; `choose` picks the way at a fork. */
 export function moveNow(game: Game, session: Session, steps: number, choose?: string, playerId?: string): string {

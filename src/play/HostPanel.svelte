@@ -226,7 +226,10 @@
       <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
-      <span class="muted hint">D rolls or spins, then ▶ Move · N next turn · click a player's name to select them</span>
+      <span class="muted hint">
+        {round?.mode === 'boardgame' && round.mover.kind === 'step' ? 'Pick the way (→ buttons)' : 'D rolls or spins, then ▶ Move'} · N next turn · click a player's
+        name to select them
+      </span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       <span class="muted">Award the winner with the scoring buttons, then go back to the results.</span>

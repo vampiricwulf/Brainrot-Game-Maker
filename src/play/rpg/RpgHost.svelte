@@ -3,6 +3,7 @@
   the object clicked on the stage (or every object here), and each player's stats and inventory.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
@@ -61,7 +62,7 @@
   const ctx = $derived<RunContext>({ game, session, live: app.live, world, st, selected });
   const obj = $derived(object ? objectAt(game, session, object) : null);
   const objects = $derived(here && st ? screenElements(st, here.screen, false).filter((e) => e.role || e.name) : []);
-  const last = $derived(lastAction(session));
+  const last = $derived(lastAction(session, session.currentRound));
   let showPlayers = $state(true);
   /** A screen picked on the host map, waiting for "Move here". */
   let picked = $state<ScreenRef | null>(null);
@@ -70,17 +71,29 @@
   /** The screen (and which of its looks) open in the live editor. */
   let live = $state<{ screen: Screen; slide: Slide; title: string } | null>(null);
   const variantId = $derived(here && st?.variant?.[here.screen.id]);
-  /** Directions with room for a new screen next to this one. */
+  /**
+   * Directions with room for a new screen next to this one that the party could then go: not a side that's blocked
+   * or leads elsewhere, nor a diagonal on a map without diagonal moves.
+   */
   const freeDirs = $derived(
     here
       ? DIRS.filter((d) => {
           const [dx, dy] = DIR_VEC[d];
           const c = here.screen.col + dx;
           const r = here.screen.row + dy;
-          return c >= 0 && r >= 0 && !screenAt(here.map, c, r);
+          return c >= 0 && r >= 0 && !screenAt(here.map, c, r) && !here.screen.exits?.[d] && (d.length === 1 || here.map.diagonals);
         })
       : [],
   );
+
+  // Moving on (the pad, the map, a doorway, an action) closes the card of an object left behind.
+  let cardScreen = untrack(() => here?.screen.id);
+  $effect(() => {
+    const at = here?.screen.id;
+    if (at === cardScreen) return;
+    cardScreen = at;
+    if (untrack(() => obj && obj.screen.id !== at)) object = null;
+  });
 
   /** The live editor on the screen an object is on (its current look). */
   function editObject(screen: Screen): void {
@@ -96,9 +109,17 @@
 
   function addScreen(d: Dir8): void {
     if (!here) return;
-    const s = addScreenBeside(here.map, here.screen, d, `New ${DIR_NAME[d].toLowerCase()} of ${here.screen.name}`);
+    // Viewers see a visited screen's name on the map.
+    const name = prompt('Name of the new screen (viewers see it on the map once visited):', `New ${DIR_NAME[d].toLowerCase()} of ${here.screen.name}`)?.trim();
+    if (!name) return;
+    const { map, screen } = here;
+    let id = '';
+    logged(session, `Add ${name}`, () => (id = addScreenBeside(map, screen, d, name)?.id ?? ''), game);
+    // The screen as the game holds it now, so what the live editor changes shows on the stage.
+    const s = map.screens.find((x) => x.id === id);
     if (!s) return void toast('There’s already a screen that way');
-    toast(`Added “${s.name}”: the party can go ${DIR_NAME[d].toLowerCase()} now`, 3000);
+    const way = DIR_NAME[d].toLowerCase();
+    toast(`Added “${s.name}”${exitOf(map, screen, d).kind === 'open' ? `: the party can go ${way} now` : `, but the party can’t go ${way} from here`}`, 3000);
     live = { screen: s, slide: s.slide, title: s.name };
   }
 
@@ -109,9 +130,18 @@
       const name = prompt('Name of the new look (e.g. On fire):', 'New look')?.trim();
       if (!name) return;
       const look = newVariant(st, screen, name);
-      screen.variants = [...(screen.variants ?? []), look];
-      logged(session, `${screen.name}: ${name}`, () => ((st.variant ??= {}), (st.variant[screen.id] = look.id)));
-      live = { screen, slide: screen.variants.at(-1)!.slide, title: `${screen.name} (${name})` };
+      // One step: undoing it takes the new look away again, not only back to the old one.
+      logged(
+        session,
+        `${screen.name}: ${name}`,
+        () => {
+          screen.variants = [...(screen.variants ?? []), look];
+          st.variant ??= {};
+          st.variant[screen.id] = look.id;
+        },
+        game,
+      );
+      live = { screen, slide: screen.variants!.at(-1)!.slide, title: `${screen.name} (${name})` };
       return;
     }
     const name = screen.variants?.find((x) => x.id === v)?.name ?? 'the original look';
@@ -124,7 +154,7 @@
 
   function addText(): void {
     const text = prompt('Text to put on the screen (hidden until you reveal it):')?.trim();
-    if (text && addLive(game, session, liveText(text), `Text: ${text}`)) toast('Added, hidden: reveal it from its card');
+    if (text && addLive(game, session, liveText(game, session, text), `Text: ${text}`)) toast('Added, hidden: reveal it from its card');
   }
 
   /** Copy a screen as it is now (default: the one on air) into the editor's game, so it's there next time. */
@@ -174,6 +204,7 @@
     <div class="row top">
       <b class="where">🗺 {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
       {#if here?.screen.hostNotes && !dual}<span class="notes">📝 {here.screen.hostNotes}</span>{/if}
+      {#if now.round?.hostNotes && !dual}<span class="notes" title="Round notes">📝 {now.round.hostNotes}</span>{/if}
       <span class="spacer"></span>
       {#each st.parties as pt (pt.id)}
         {@const lead = session.players.find((pl) => pl.id === pt.members[0])}
@@ -222,6 +253,7 @@
         class="small"
         aria-label="Add a screen"
         disabled={!freeDirs.length}
+        title={freeDirs.length ? 'An empty screen next to this one' : 'No open side here without a screen'}
         onchange={(e) => {
           const d = e.currentTarget.value as Dir8;
           e.currentTarget.value = '';
@@ -290,7 +322,7 @@
           <span class="spacer"></span>
           <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere">⤢ Full map</button>
         </div>
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} {picked} onpick={(ref) => (picked = ref)} onmenu={mapMenu} />
+        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit {picked} onpick={(ref) => (picked = ref)} onmenu={mapMenu} />
         {#if picked && pickedFound}
           <div class="row pick">
             <span>→ <b>{pickedFound.screen.name}</b></span>
@@ -379,6 +411,8 @@
   {#if live}
     <LiveScreenEditor {world} {st} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
   {/if}
+{:else if world}
+  <div class="muted">{world.name} has no screen to start on: add one to its map in the editor.</div>
 {:else}
   <div class="muted">This RPG round has no world to play (pick one in the editor).</div>
 {/if}
@@ -438,11 +472,11 @@
   .dir.mid {
     font-size: 16px;
   }
+  /* The whole map shows (it's fitted into the box), the party's screen included. */
   .mapbox {
     flex: 1 1 260px;
     max-width: 420px;
-    max-height: 200px;
-    overflow: auto;
+    height: 200px;
     display: flex;
     flex-direction: column;
     gap: 4px;

@@ -98,8 +98,9 @@
     if (audience.open) pushGame(g);
   });
   $effect(() => {
-    const s = $state.snapshot(session);
-    if (audience.open) pushSession(s);
+    // The action log (the host's undo history) stays here: viewers never need it.
+    const { actionLog, actionRedo, ...s } = session;
+    if (audience.open) pushSession($state.snapshot(s));
   });
   $effect(() => {
     const l = $state.snapshot(app.live);
@@ -456,9 +457,11 @@
   function doUndo(): void {
     const a = lastAction(session);
     if (a && a.ts >= lastScoreTs()) {
-      undoAction(session);
+      undoAction(session, game);
       undoneKinds.push('action');
-      return toast(`Undid ${a.text}`, 4000);
+      // The log goes back into earlier rounds too: say where, since nobody can see it happen.
+      const where = a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '';
+      return toast(`Undid ${a.text}${where}`, 4000);
     }
     const events = undo(session);
     if (!events.length) return toast('Nothing to undo');
@@ -470,7 +473,7 @@
   function doRedo(): void {
     const kind = undoneKinds.pop() ?? (session.actionRedo?.length ? 'action' : 'score');
     if (kind === 'action') {
-      const a = redoAction(session);
+      const a = redoAction(session, game);
       if (a) return toast(`Redid ${a.text}`);
     }
     const events = redo(session);
@@ -570,7 +573,7 @@
           onclick: () => {
             const text = prompt('Text to put here (hidden until you reveal it):')?.trim();
             if (!text) return;
-            const el = liveText(text);
+            const el = liveText(game, session, text);
             el.x = Math.round(at.x - el.w / 2);
             el.y = Math.round(at.y - el.h / 2);
             if (addLive(game, session, el, `Text: ${text}`)) rpgObject = el.id;
@@ -615,6 +618,7 @@
           },
         ]);
       }
+      return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
     }
   }
 
@@ -740,12 +744,17 @@
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'm', 'i', 'b', 'j'].includes(k)) {
+    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'm', 'j'].includes(k)) {
       e.preventDefault();
       if (k === 'j') rpgMap = true;
       else if (k === 'g') regroupAll(game, session);
-      else if (k === 'm') toggleMap(game, session);
-      else if (k === 'b') app.live.cover = !app.live.cover;
+      else toggleMap(game, session);
+      return;
+    }
+    // The toolset's keys in RPG and board-game rounds: a player's sheet (I) and the cover (B).
+    if ((session.phase === 'rpg' || session.phase === 'boardgame') && !e.shiftKey && (k === 'i' || k === 'b')) {
+      e.preventDefault();
+      if (k === 'b') app.live.cover = !app.live.cover;
       else if (app.live.overlay?.kind === 'sheet') {
         // I again: the next selected player's sheet, then closed.
         const at = selected.indexOf(app.live.overlay.playerId);

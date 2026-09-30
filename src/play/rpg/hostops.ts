@@ -1,5 +1,8 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
-import { isRpg, newImageEl, newTextEl, type Dir8, type Game, type InventoryEntry, type ScreenRef, type Session, type SlideElement } from '../../lib/model';
+import {
+  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Position, type ScreenRef, type Session, type SlideElement,
+  type WorldState,
+} from '../../lib/model';
 import { allElements, DIR_NAME, findIn, focusRef, regroup, splitParty, step, worldById } from '../../lib/rpg';
 import { entryName, itemDef, logged } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
@@ -50,15 +53,36 @@ export function focusParty(game: Game, session: Session, partyId: string): void 
   if (st) st.active = partyId;
 }
 
-/** An item dropped on a screen (drop-to-add): its icon, or a label, with the item class so it can be picked up. */
-export function droppedObject(game: Game, e: InventoryEntry, at: { x: number; y: number }): SlideElement {
+type Box = { x: number; y: number; w: number; h: number };
+
+/** Each avatar standing on a screen, as the box its token and nameplate cover. */
+function avatarBoxes(st: WorldState, screenId: string): Box[] {
+  return Object.values(st.positions)
+    .filter((p) => p.screen === screenId && !p.hidden)
+    .map((p) => ({ x: p.x - 90, y: p.y - 80, w: 180, h: 170 }));
+}
+
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/** Where something `w`×`h` goes next to a player (below, above, right, left of them) without covering anyone. */
+function spotNear(st: WorldState, by: Position, w: number, h: number): { x: number; y: number } {
+  const fit = (x: number, y: number) => ({ x: Math.round(Math.max(0, Math.min(SLIDE_W - w, x))), y: Math.round(Math.max(0, Math.min(SLIDE_H - h, y))) });
+  const spots = [fit(by.x - w / 2, by.y + 90), fit(by.x - w / 2, by.y - 90 - h), fit(by.x + 100, by.y - h / 2), fit(by.x - 100 - w, by.y - h / 2)];
+  const boxes = avatarBoxes(st, by.screen);
+  return spots.find((s) => !boxes.some((b) => overlaps({ ...s, w, h }, b))) ?? spots[0];
+}
+
+/**
+ * An item a player drops on their screen (drop-to-add): its icon, or a label, with the item class so it can be
+ * picked up. It lands next to them, clear of the avatars.
+ */
+export function droppedObject(game: Game, e: InventoryEntry, st: WorldState, by: Position): SlideElement {
   const def = itemDef(game, e.item);
   const size = 160;
   const el: SlideElement = def?.icon
     ? newImageEl(def.icon, size, size)
     : { ...newTextEl(`📦 ${entryName(game, e)}`), size: 44, uppercase: false, autoFit: true, w: 340, h: 90 };
-  el.x = Math.round(at.x - el.w / 2);
-  el.y = Math.round(at.y - el.h / 2);
+  Object.assign(el, spotNear(st, by, el.w, el.h));
   el.name = entryName(game, e);
   el.role = { class: 'item', item: e.item ?? undefined, qty: e.qty };
   return el;
@@ -96,10 +120,16 @@ export function addLive(game: Game, session: Session, el: SlideElement, text: st
   return true;
 }
 
-/** Text typed onto the stage. */
-export function liveText(text: string): SlideElement {
-  const el = { ...newTextEl(text), size: 72, w: 1200, h: 200, x: 360, y: 440 };
+/** Text typed onto the stage: a wide band near the top, or lower down where no avatar stands on the screen on air. */
+export function liveText(game: Game, session: Session, text: string): SlideElement {
+  const el = { ...newTextEl(text), size: 72, w: 1200, h: 200, x: 360, y: 60 };
   el.name = text.length > 24 ? `${text.slice(0, 24)}…` : text;
+  const { st } = rpgNow(game, session);
+  const at = st && focusRef(st);
+  const boxes = st && at ? avatarBoxes(st, at.screen) : [];
+  // Below the stats strip when it's at the top.
+  const top = game.theme?.scoreBar === 'top' ? 170 : 60;
+  el.y = [top, top + 240, top + 480].find((y) => !boxes.some((b) => overlaps({ ...el, y }, b))) ?? top;
   return el;
 }
 

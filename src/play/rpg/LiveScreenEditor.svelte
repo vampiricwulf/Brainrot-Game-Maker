@@ -1,12 +1,14 @@
 <!--
   Editing a screen (or one of its looks) during the game: the screen editor on the game being played, while the
-  game keeps running underneath. Changes stay in this game until the host presses 💾 Keep in game.
+  game keeps running underneath. Changes stay in this game until the host presses 💾 Keep in game. Everything done
+  here is one undoable step (Ctrl+Z once it's closed).
 -->
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
-  import { adoptAdded } from '../../lib/rpg';
+  import { adoptAdded, focusRef, occupiedScreens } from '../../lib/rpg';
   import { app } from '../../lib/app.svelte';
   import type { Screen, Slide, World, WorldState } from '../../lib/model';
+  import { startStep } from '../../lib/toolset';
   import ScreenEditor from '../../editor/rpg/ScreenEditor.svelte';
 
   let {
@@ -17,18 +19,28 @@
     st,
     onclose,
   }: { world: World; screen: Screen; slide: Slide; title: string; st?: WorldState; onclose: () => void } = $props();
+  // One step for the whole edit, objects moving into the look included (so an undo puts them back where they were).
+  const done = untrack(() => app.session && startStep(app.session, app.playGame ?? undefined));
   // Objects added during play become part of this look, so they can be moved and edited here too.
   untrack(() => st && adoptAdded(st, screen, slide));
   // The slide editors work on the game being played while this is open (and the host's shortcuts stay off).
   app.editGame = app.playGame;
-  onDestroy(() => (app.editGame = null));
+  onDestroy(() => {
+    app.editGame = null;
+    done?.(`Edit ${title}`);
+  });
+  /** Viewers are looking at this screen (the party is on it, or a party is in split view). */
+  const onAir = $derived(!!st && (st.split ? occupiedScreens(st) : [focusRef(st)]).some((r) => r?.screen === screen.id));
 </script>
 
 <div class="backdrop" role="presentation">
   <div class="modal" role="dialog" aria-label="Edit {title} live">
     <div class="row">
       <b>✎ {title}</b>
-      <span class="muted small">Live: viewers see changes as you make them. They stay in this game unless you press 💾 Keep in game.</span>
+      <span class="muted small">
+        {onAir ? 'Live: viewers see changes as you make them.' : 'Off air: viewers see it when the party gets here.'} They stay in this game unless you press
+        💾 Keep in game.
+      </span>
       <span class="spacer"></span>
       <button class="primary" onclick={onclose}>Done</button>
     </div>

@@ -11,7 +11,7 @@
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import PlayerCard from '../rpg/PlayerCard.svelte';
-  import { boardNow, moveNow, playerName, rollMover, turnNow } from './bgops';
+  import { boardNow, busyZones, moveNow, playerName, rollMover, turnNow } from './bgops';
 
   let { game, session, selected = $bindable(), dual }: { game: Game; session: Session; selected: string[]; dual: boolean } = $props();
 
@@ -29,9 +29,17 @@
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
   const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected });
-  const recent = $derived(lastAction(session));
+  const recent = $derived(lastAction(session, session.currentRound));
+  /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
+  const zones = $derived(round && bs ? busyZones(round, bs) : []);
   let steps = $state<number | null>(null);
   let showPlayers = $state(true);
+
+  // A new turn starts with no count: the last player's roll isn't theirs.
+  $effect(() => {
+    void turnId;
+    steps = null;
+  });
 
   /** The number the dice or wheel just gave (a wheel slice labeled "3" or "Move 3"), to fill in the steps. */
   const rolled = $derived.by(() => {
@@ -56,6 +64,8 @@
     if (!n) return void toast('How many spaces? Roll first, or type a number');
     toast(moveNow(game, session, n, choose), 3000);
     app.live.overlay = null;
+    // Moved: the count is used up (a fork goes on with the steps left, not these).
+    steps = null;
   }
 
   function run(a: Action, who: string): void {
@@ -122,6 +132,9 @@
       {/each}
       <button class="ghost small" onclick={shuffle}>🔀 Shuffle</button>
       <span class="spacer"></span>
+      <button class="small" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="B: viewers see only a 'Be right back' card">
+        ⏸ Cover
+      </button>
       <button class="small" onclick={() => turnNow(game, session, -1)}>◀ Previous turn</button>
       <button class="primary" onclick={() => turnNow(game, session, 1)} title="N">Next turn ▶</button>
     </div>
@@ -233,6 +246,9 @@
     <div class="row">
       {#if round.winNotes}<span class="notes" title={round.winPublic ? 'Shown on the board' : 'Only you see this'}>🏆 {round.winNotes}{round.winPublic ? '' : ' (secret)'}</span>{/if}
       {#if round.hostNotes && !dual}<span class="notes">📝 {round.hostNotes}</span>{/if}
+      {#if !dual}
+        {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}
+      {/if}
       <span class="spacer"></span>
       {#if recent}<span class="muted small last" title="Ctrl+Z undoes it">Last: {recent.text}</span>{/if}
       <button class="ghost small" onclick={() => (showPlayers = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} Players</button>
@@ -273,6 +289,10 @@
     border: 2px solid;
     border-radius: 8px;
     font-size: 12px;
+  }
+  .on {
+    border-color: var(--accent);
+    background: rgba(79, 124, 255, 0.25);
   }
   .ord .nm {
     padding: 1px 6px;

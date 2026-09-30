@@ -58,8 +58,14 @@ export function applyScore(
     session.scoreLog.push(e);
     events.push(e);
   }
-  if (events.length) session.redoStack = [];
+  if (events.length) clearRedo(session);
   return events;
+}
+
+/** A new score change: nothing undone before it can be redone any more (a score or an RPG/board-game step). */
+function clearRedo(session: Session): void {
+  session.redoStack = [];
+  session.actionRedo = [];
 }
 
 /** Set a player's score to an exact number (logged as a manual adjustment). */
@@ -68,7 +74,7 @@ export function setScore(session: Session, playerId: string, value: number): voi
   if (!delta) return;
   // Manual edits bypass the no-negative clamp: the host typed the number on purpose.
   session.scoreLog.push({ id: newId(), ts: Date.now(), playerId, delta, reason: 'Manual edit' });
-  session.redoStack = [];
+  clearRedo(session);
 }
 
 /** One undo step: every event of a multi-player award shares it. */

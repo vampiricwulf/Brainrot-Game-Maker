@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newId, type Game, type Session, type Shop } from './model';
-import { newSession, score, setScore } from './session';
+import { newGame, newId, newTextEl, type Game, type Session, type Shop } from './model';
+import { applyScore, newSession, score, setScore, toggleStep } from './session';
+import { addScreenBeside, newWorld } from './rpg';
 import {
   addStat,
   buy,
+  clampStat,
+  lastAction,
+  startStep,
   countItem,
   giveItem,
   inventory,
@@ -50,6 +54,8 @@ describe('stats', () => {
     expect(statValue(game, session, 'b', hp)).toBe(0);
     setStat(session, 'b', hp, 99);
     expect(statValue(game, session, 'b', hp)).toBe(10);
+    // What a typed value becomes, so the log and the box can say so.
+    expect([clampStat(hp, 25), clampStat(gold, -5), clampStat(hp, 'x')]).toEqual([10, 0, 0]);
   });
 });
 
@@ -148,6 +154,101 @@ describe('action log', () => {
     expect(session.actionRedo).toEqual([]); // a new step clears redo
     expect(newId()).not.toBe(newId());
   });
+
+  it('keeps only what a step changed, and remembers its round', () => {
+    const { game, session } = setup();
+    session.currentRound = 2;
+    logged(session, 'Bob hurt', () => addStat(game, session, 'b', game.statFields![0], -3));
+    expect(Object.keys(JSON.parse(session.actionLog![0].before))).toEqual(['stats']);
+    expect(lastAction(session, 2)?.text).toBe('Bob hurt');
+    expect(lastAction(session, 3)).toBeUndefined(); // "Last:" in another round shows nothing
+    expect(lastAction(session)?.text).toBe('Bob hurt'); // but Ctrl+Z still reaches it
+  });
+
+  it('stays small in a long show: never a copy of the score log', () => {
+    const { game, session } = setup();
+    for (let i = 0; i < 150; i++) applyScore(session, game, ['a'], 100, `Clue ${i}`);
+    for (let i = 0; i < 300; i++) logged(session, `Bob finds gold ${i}`, () => addStat(game, session, 'b', game.statFields![1], 1));
+    expect(JSON.stringify(session.actionLog).length).toBeLessThan(100_000);
+  });
+
+  it('makes a step inside a step part of it: one undo takes back the lot', () => {
+    const { game, session } = setup();
+    const hp = game.statFields![0];
+    setStat(session, 'b', hp, 5);
+    giveItem(game, session, 'b', 'potion', 2);
+    // An item's "Use": its actions log themselves, then it's used up.
+    logged(session, 'Bob uses Potion', () => {
+      logged(session, 'HP +3', () => addStat(game, session, 'b', hp, 3));
+      applyScore(session, game, ['b'], 100, 'Potion');
+      logged(session, 'used Potion', () => takeItem(session, 'b', 'potion', 1));
+    });
+    expect(session.actionLog).toHaveLength(1);
+    expect([statValue(game, session, 'b', hp), countItem(session, 'b', 'potion'), score(session, 'b')]).toEqual([8, 1, 100]);
+    undoAction(session);
+    expect([statValue(game, session, 'b', hp), countItem(session, 'b', 'potion'), score(session, 'b')]).toEqual([5, 2, 0]);
+    redoAction(session);
+    expect([statValue(game, session, 'b', hp), countItem(session, 'b', 'potion'), score(session, 'b')]).toEqual([8, 1, 100]);
+  });
+
+  it('never touches score changes made after a step (undo, or redo after a new award)', () => {
+    const { game, session } = setup();
+    const hp = game.statFields![0];
+    applyScore(session, game, ['a'], 400, 'Clue');
+    logged(session, 'Ann hurt', () => addStat(game, session, 'a', hp, -1));
+    // The host takes the award back in the score log, then undoes the step.
+    toggleStep(session, session.scoreLog[0].batchId!);
+    undoAction(session);
+    expect([score(session, 'a'), statValue(game, session, 'a', hp)]).toEqual([0, 10]);
+    // Undo a step, award points: the award stays, and there's nothing left to redo.
+    logged(session, 'Ann hurt', () => addStat(game, session, 'a', hp, -1));
+    undoAction(session);
+    applyScore(session, game, ['a'], 400, 'Clue');
+    expect(redoAction(session)).toBeNull();
+    expect([score(session, 'a'), statValue(game, session, 'a', hp)]).toEqual([400, 10]);
+    // A score log fix-up after an undo is kept when the step is redone.
+    logged(session, 'Ann hurt', () => addStat(game, session, 'a', hp, -1));
+    undoAction(session);
+    toggleStep(session, session.scoreLog.at(-1)!.batchId!);
+    redoAction(session);
+    expect([score(session, 'a'), statValue(game, session, 'a', hp)]).toEqual([0, 9]);
+  });
+
+  it('puts back older saves’ steps without their copy of the score log', () => {
+    const { game, session } = setup();
+    setScore(session, 'a', 300);
+    const old = { stats: {}, inventories: {}, worlds: {}, boardgames: {}, stock: {}, scoreLog: [], redoStack: [] };
+    session.actionLog = [{ id: 'x', ts: 1, text: 'Old step', before: JSON.stringify(old) }];
+    setStat(session, 'a', game.statFields![0], 3);
+    undoAction(session);
+    expect([score(session, 'a'), statValue(game, session, 'a', game.statFields![0])]).toEqual([300, 10]);
+  });
+
+  it('undoes improvising on the game being played: a new screen, a renamed object, a live edit', () => {
+    const { game, session } = setup();
+    const world = newWorld('W');
+    game.worlds = [world];
+    const map = world.maps[0];
+    map.cols = 1; // the new screen grows the map
+    const start = map.screens[0];
+    start.slide.elements.push({ ...newTextEl('Goblin'), name: 'Goblin' });
+    logged(session, 'Add a screen', () => addScreenBeside(map, start, 'e', 'Beach'), game);
+    expect(map.screens.map((s) => s.name)).toEqual(['Start', 'Beach']);
+    logged(session, 'Rename Goblin', () => (start.slide.elements[0].name = 'Goblin King'), game);
+    // The live editor: one step for everything done while it's open.
+    const done = startStep(session, game);
+    start.slide.elements.push(newTextEl('Tree'));
+    done('Edit Start');
+    expect(session.actionLog!.map((e) => e.text)).toEqual(['Add a screen', 'Rename Goblin', 'Edit Start']);
+    undoAction(session, game);
+    expect(map.screens[0].slide.elements.map((e) => e.name)).toEqual(['Goblin King']);
+    undoAction(session, game);
+    expect(map.screens[0].slide.elements[0].name).toBe('Goblin');
+    undoAction(session, game);
+    expect([map.screens.map((s) => s.name), map.cols]).toEqual([['Start'], 1]);
+    redoAction(session, game);
+    expect(map.screens.map((s) => s.name)).toEqual(['Start', 'Beach']);
+  });
 });
 
 describe('shops that charge points', () => {
@@ -159,8 +260,13 @@ describe('shops that charge points', () => {
     expect(score(session, 'a')).toBe(200);
     expect(countItem(session, 'a', 'sword')).toBe(1);
     expect(buy(game, session, shop, 'a', 'sword')).toEqual({ ok: false, error: 'Short by $100' });
+    // An award after the purchase stays when the purchase is undone and redone.
+    applyScore(session, game, ['b'], 50, 'Clue');
     undoAction(session);
-    expect([score(session, 'a'), countItem(session, 'a', 'sword')]).toEqual([500, 0]);
+    expect([score(session, 'a'), countItem(session, 'a', 'sword'), score(session, 'b')]).toEqual([500, 0, 50]);
+    expect(session.scoreLog.some((e) => e.reason.startsWith('Bought'))).toBe(false);
+    redoAction(session);
+    expect([score(session, 'a'), countItem(session, 'a', 'sword'), score(session, 'b')]).toEqual([200, 1, 50]);
     // No currency stat in the game: points.
     game.statFields = [];
     expect(shopCurrency(game, { ...shop, currency: undefined })).toBe('score');
