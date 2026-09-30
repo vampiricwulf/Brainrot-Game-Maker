@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newRound, type Game, type Session, type Shop } from './model';
-import { applyScore, newSession, redo, removePlayer, toggleStep, undo } from './session';
+import { applyScore, finalJudge, goToRound, newSession, redo, removePlayer, toggleStep, undo } from './session';
 import { addStat, buy, logged, newStatField, redoAction, redoFrom, SCORE_CURRENCY, undoAction, type Undone } from './toolset';
 import { nextUndo, stillUndone, timelineRows, undoOrder } from './timeline';
 
@@ -104,6 +104,22 @@ describe('the play history', () => {
     const top = timelineRows(session, game, '$')[0];
     for (let i = 0; i < 10 && stillUndone(session, top); i++) redoOnce(session, game, undone);
     expect(timelineRows(session, game, '$').some((r) => r.kind !== 'roll' && r.state === 'redo')).toBe(false);
+  });
+
+  it('says how each Final judgment went, a 0 wager too', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a', 'b'], 400, 'x');
+    goToRound(session, game, 2);
+    Object.assign(session.final!.wagers, { a: 0, b: 100 });
+    later();
+    finalJudge(session, game, 'a', true);
+    later();
+    finalJudge(session, game, 'b', false);
+    expect(timelineRows(session, game, '$').map((r) => r.text)).toEqual([
+      '−$100 (Bob) · Final Jeopardy! ✘',
+      '$0 (Ann) · Final Jeopardy! ✔',
+      '+$400 × 2 (Ann, Bob) · x',
+    ]);
   });
 
   it('orders Undo the way Ctrl+Z goes, and leaves out removed players’ changes', () => {

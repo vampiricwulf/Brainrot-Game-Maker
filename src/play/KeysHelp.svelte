@@ -44,7 +44,6 @@
     ['F', 'Full-screen'],
     ['?', 'This list'],
   ];
-
 </script>
 
 <svelte:window

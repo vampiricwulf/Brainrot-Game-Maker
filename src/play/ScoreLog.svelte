@@ -109,20 +109,6 @@
       Newest first. <b>↶ Back to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and
       Ctrl+Shift+Z go one at a time.
     </p>
-    {#if asking}
-      {@const n = asking.steps}
-      {@const row = asking}
-      <div class="asking">
-        <InlineAsk
-          text={undone(row)
-            ? `Redo ${n} steps, up to ${time(row.ts)}?`
-            : `Undo ${n} steps, back to ${time(row.ts)}? Scores, moves and items go back.`}
-          ok={undone(row) ? `Redo ${n} steps` : `Undo ${n} steps`}
-          onok={() => go(row)}
-          oncancel={() => (asking = null)}
-        />
-      </div>
-    {/if}
     <div class="list tl" role="list">
       {#each items as it, i (it.kind === 'row' ? `${it.row.kind}:${it.row.id}` : `${it.kind}:${i}`)}
         {#if it.kind === 'now'}
@@ -136,8 +122,9 @@
             class="item"
             class:redo={undone(row)}
             class:off={row.kind === 'score' && row.state === 'off'}
-            class:roll={row.kind === 'roll'}
+            class:moment={row.kind === 'roll'}
             class:current={it.current}
+            class:asked={asking?.kind === row.kind && asking.id === row.id}
             role="listitem"
             aria-current={it.current ? 'step' : undefined}
           >
@@ -167,6 +154,21 @@
         <div class="muted">Nothing yet. Scores, moves, items and rolls show up here, and you can go back to any point.</div>
       {/each}
     </div>
+    <!-- Under the list, so the rows don't move under the pointer (a double-click's second half). -->
+    {#if asking}
+      {@const n = asking.steps}
+      {@const row = asking}
+      <div class="asking">
+        <InlineAsk
+          text={undone(row)
+            ? `Redo ${n} steps, up to ${time(row.ts)}?`
+            : `Undo ${n} steps, back to ${time(row.ts)}? Scores, moves and items go back.`}
+          ok={undone(row) ? `Redo ${n} steps` : `Undo ${n} steps`}
+          onok={() => go(row)}
+          oncancel={() => (asking = null)}
+        />
+      </div>
+    {/if}
   {:else if tab === 'rolls'}
     <div class="list">
       {#each rolls as r (r.id)}
@@ -342,7 +344,8 @@
     padding: 8px 12px 0;
   }
   .asking {
-    padding: 8px 12px 0;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
   }
   .tl {
     gap: 2px;
@@ -364,6 +367,11 @@
   .item.current {
     border-color: var(--accent);
   }
+  /* The step the question under the list is about. */
+  .item.asked {
+    border: 1px dashed var(--warn);
+    opacity: 1;
+  }
   .item.redo,
   .item.off {
     opacity: 0.5;
@@ -374,7 +382,7 @@
   .item.off .text {
     text-decoration: line-through;
   }
-  .item.roll .text {
+  .item.moment .text {
     color: var(--muted);
   }
   .time {

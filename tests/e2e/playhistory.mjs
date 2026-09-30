@@ -65,6 +65,14 @@ try {
   // 0 selects everyone (a group award is 0, then Enter), Esc clears the selection.
   await page.keyboard.press('0');
   assert((await selected()) === 3, '0 selects everyone');
+  const [border, own] = await page.locator('.panel .p.on').first().evaluate((e) => {
+    const probe = document.body.appendChild(document.createElement('i'));
+    probe.style.color = getComputedStyle(e).getPropertyValue('--c');
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return [getComputedStyle(e).borderTopColor, color];
+  });
+  assert(border === own, `a selected player's chip keeps their color (${border}, not the ⏸ Cover's highlight)`);
   await page.keyboard.press('0');
   assert((await selected()) === 0, '0 again selects no one');
   await page.keyboard.press('0');
@@ -162,6 +170,9 @@ try {
   await page.locator('.bh').waitFor();
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await page.keyboard.press('Enter');
+  assert((await toast()).startsWith('Still rolling') && (await page.locator('.stage-box .ov').count()) === 1, 'Enter while the dice still roll waits for them');
+  await page.waitForTimeout(1400);
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Alice: Landed on'), 'Enter with nobody selected moves the rolled steps');
   await page.keyboard.press('n');

@@ -158,6 +158,13 @@
     void session.boardgames;
     untrack(catchUp);
   });
+  // A player taken out by Undo (one added in 👥 Players) isn't selected any more either.
+  $effect(() => {
+    const here = new Set(session.players.map((p) => p.id));
+    untrack(() => {
+      if (selected.some((id) => !here.has(id))) selected = selected.filter((id) => here.has(id));
+    });
+  });
 
   onMount(() => {
     registerGameFonts(game);
@@ -906,6 +913,12 @@
       [steps, way] = [1, ways[0]];
     }
     if (!steps) return false;
+    // D then Enter at once: the dice (or the wheel) are still going on screen, and the move would end them early.
+    const o = app.live.overlay;
+    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) {
+      toast(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: Enter again once it lands`);
+      return true;
+    }
     toast(moveNow(game, session, steps, way), 3000);
     app.live.overlay = null;
     bgSteps = null;
@@ -913,7 +926,7 @@
   }
 
   // What Tab (or Shift+Tab) moved the focus to. (Not :focus-visible: browsers show a clicked button's focus too, once any
-  // key is pressed.)
+  // key is pressed.) A Tab that moved nothing here (out to the browser's address bar) doesn't count for the next click.
   let tabbing = false;
   let tabbedTo: EventTarget | null = null;
 
@@ -1123,6 +1136,7 @@
 <svelte:window
   onkeydown={onkey}
   onkeydowncapture={(e) => (tabbing = e.key === 'Tab')}
+  onpointerdowncapture={() => (tabbing = false)}
   onfocusin={(e) => {
     tabbedTo = tabbing ? e.target : null;
     tabbing = false;

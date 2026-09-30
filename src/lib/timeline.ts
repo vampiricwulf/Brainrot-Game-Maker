@@ -68,6 +68,9 @@ export function undoOrder(session: Session): UndoStep[] {
   return out;
 }
 
+/** A Final judgment says which it was, as the Scores tab does ("$0 (Ann) · Final Jeopardy! ✔"). */
+const judged = (e: ScoreEvent) => (e.right === undefined ? '' : e.right ? ' ✔' : ' ✘');
+
 /** The round a score change was given in (older saves: its clue's round, or its Final's). */
 function roundOf(game: Game, e: ScoreEvent): number | undefined {
   if (e.round !== undefined) return e.round;
@@ -97,7 +100,7 @@ export function timelineRows(session: Session, game: Game, sym: string): Timelin
   for (const [id, events] of byStep) {
     const state: TimelineState = events.some((e) => !e.undone) ? 'done' : events.some((e) => redoIds.has(e.id)) ? 'redo' : 'off';
     const ts = Math.max(...events.map((e) => e.ts));
-    rows.push({ kind: 'score', id, ts, text: describeStep(session, events, sym), events, state, clueId: events[0].clueId, round: roundOf(game, events[0]) });
+    rows.push({ kind: 'score', id, ts, text: describeStep(session, events, sym) + judged(events[0]), events, state, clueId: events[0].clueId, round: roundOf(game, events[0]) });
   }
   for (const a of session.actionLog ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: a.text, round: a.round, state: 'done' });
   for (const a of session.actionRedo ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: a.text, round: a.round, state: 'redo' });

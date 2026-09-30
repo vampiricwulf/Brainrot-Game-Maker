@@ -444,22 +444,26 @@
     {/if}
     <button onclick={onaudience} class:on={dual} title="A opens or focuses it">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
     <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
-    <!-- Right-click either one for the whole history. -->
-    <button
-      onclick={onundo}
-      oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
-      disabled={!undoText}
-      title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ Undo</button
-    >
-    <button
-      onclick={onredo}
-      oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
-      disabled={!redoText}
-      title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
-    >
+    <!-- Right-click either one for the whole history. Kept together when the row wraps. -->
+    <span class="pair">
+      <button
+        onclick={onundo}
+        oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
+        disabled={!undoText}
+        title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ Undo</button
+      >
+      <button
+        onclick={onredo}
+        oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
+        disabled={!redoText}
+        title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
+      >
+    </span>
     <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
     <button onclick={onplayers}>👥 Players</button>
-    <button class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">⏸ Cover</button>
+    <button class="cover-toggle" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
+      ⏸ Cover
+    </button>
     <button onclick={onhide} title="H">Hide controls</button>
     {#if askExit}
       <InlineAsk
@@ -593,9 +597,14 @@
   .award input {
     width: 110px;
   }
-  .on {
+  /* ⏸ Cover while viewers see the card (not every .on: a selected player's chip is one too). */
+  .cover-toggle.on {
     border-color: var(--accent);
     background: rgba(79, 124, 255, 0.25);
+  }
+  .pair {
+    display: flex;
+    gap: inherit;
   }
   .divider {
     width: 1px;
