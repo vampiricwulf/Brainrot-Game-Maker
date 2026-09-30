@@ -73,6 +73,7 @@ Press **▶ Play**, confirm the players, then pick one of two modes. Viewers see
 
 Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **Award** or **Deduct**.
 Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.
+Nothing pops up over the stage: questions for the host (a locked door, naming a new screen…) appear in the host panel.
 
 ![A clue on screen](docs/screenshots/play-clue.png)
 
