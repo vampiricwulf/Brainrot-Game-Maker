@@ -249,7 +249,7 @@
 {/if}
 
 <ContextMenu />
-{#if app.toast}
+{#if app.toast && !app.onAir}
   <div class="toast" role="status">{app.toast}</div>
 {/if}
 

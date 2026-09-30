@@ -226,6 +226,26 @@ describe('action log', () => {
     expect([score(session, 'a'), statValue(game, session, 'a', game.statFields![0])]).toEqual([300, 10]);
   });
 
+  it('leaves what viewers are shown (the map, split view, a zone) as it is', () => {
+    const { game, session } = setup();
+    const st = { positions: { a: { map: 'm', screen: 's1', x: 0, y: 0 } }, parties: [], active: '', knowledge: {}, objects: {}, added: {}, mapShown: false };
+    const bs = { positions: {}, order: ['a', 'b'], turn: 0 };
+    session.worlds = { w: st };
+    session.boardgames = { r: bs };
+    logged(session, 'Party east', () => {
+      session.worlds!.w.positions.a.screen = 's2';
+      session.boardgames!.r.turn = 1;
+    });
+    // Switched between steps: the map on screen, split view, a zone on screen.
+    Object.assign(session.worlds!.w, { mapShown: true, split: true });
+    session.boardgames!.r.zoneShown = 'z';
+    const shown = () => [session.worlds!.w.mapShown, session.worlds!.w.split, session.boardgames!.r.zoneShown];
+    undoAction(session, game);
+    expect([session.worlds!.w.positions.a.screen, session.boardgames!.r.turn, ...shown()]).toEqual(['s1', 0, true, true, 'z']);
+    redoAction(session, game);
+    expect([session.worlds!.w.positions.a.screen, session.boardgames!.r.turn, ...shown()]).toEqual(['s2', 1, true, true, 'z']);
+  });
+
   it('undoes improvising on the game being played: a new screen, a renamed object, a live edit', () => {
     const { game, session } = setup();
     const world = newWorld('W');

@@ -196,9 +196,12 @@
     {#each panes as ref, i (ref.screen)}
       {@const found = findIn(world, ref)}
       {#if found}
+        <!-- Its screen: the host's right-click or drop puts things on the screen under the pointer. -->
         <div
           class="pane"
           style:transform={split ? paneAt(i, panes.length) : undefined}
+          data-map={ref.map}
+          data-screen={ref.screen}
         >
           {#key ref.screen}
             <div class="screen" in:enter={{ map: ref.map }}>{@render screenPane(ref, found.screen)}</div>

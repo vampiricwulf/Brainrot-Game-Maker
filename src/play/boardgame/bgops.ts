@@ -2,7 +2,7 @@
 import { currentPlayer, movePlayer, nextTurn } from '../../lib/boardgame';
 import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardZone, type Game, type Session } from '../../lib/model';
 import { logged } from '../../lib/toolset';
-import { openWheel, quickDice, rollDice } from '../../lib/overlay';
+import { openWheel, quickDice, rollDice, spinWheel } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
 import type { Live } from '../../lib/live';
 
@@ -41,7 +41,7 @@ export function turnNow(game: Game, session: Session, delta = 1): void {
   });
 }
 
-/** Roll the round's dice or open its wheel for a move. Returns why it couldn't, or null. */
+/** Roll the round's dice, or open its wheel (then spin it) for a move. Returns why it couldn't, or null. */
 export function rollMover(game: Game, session: Session, live: Live): string | null {
   const { round } = boardNow(game, session);
   if (!round) return 'No board';
@@ -49,7 +49,10 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
   if (m.kind === 'wheel') {
     const w = game.wheels.find((x) => x.id === m.wheel);
     if (!w) return 'The movement wheel no longer exists: pick one in the editor';
-    openWheel(live, session, w);
+    // D again (or 🎡 Spin to move again) spins the wheel it opened.
+    const o = live.overlay;
+    if (o?.kind === 'wheel' && o.wheelId === w.id && !o.spin) spinWheel(live, session, game);
+    else openWheel(live, session, w);
     return null;
   }
   if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';

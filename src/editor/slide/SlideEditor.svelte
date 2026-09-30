@@ -140,6 +140,7 @@
   let previewMuted = $state(false);
   let textArea = $state<HTMLTextAreaElement>();
   let canvasEl = $state<HTMLDivElement>();
+  let root = $state<HTMLDivElement>();
   /** Fitted font size of each text element, as drawn on the canvas. */
   let fits = $state<Record<string, FitResult>>({});
   // Layers: items hidden while editing (editor-only, never saved or undone), the item under the
@@ -167,8 +168,18 @@
     // The editor it was opened from keeps its selection: the dialog belongs to what's selected there.
     for (const i of instances) if (i !== me && !opener(i)) i.clear();
   }
+  /**
+   * A dialog from outside this editor is open over it (⚙ Settings, ℹ About, the clue's 🖼 Tile image picker): the keys
+   * are its. Inside a dialog (the clue editor, a screen edited live), only one open in that dialog counts: an object's
+   * card beside it isn't over it.
+   */
+  function covered(): boolean {
+    if (!root) return false;
+    const within = root.parentElement?.closest('[role="dialog"]') ?? document;
+    return [...within.querySelectorAll('[role="dialog"]')].some((d) => !d.contains(root!) && !root!.contains(d));
+  }
   function inCharge(): boolean {
-    return imageEditors === 0 && (active === me || (!active && instances.size === 1));
+    return imageEditors === 0 && !covered() && (active === me || (!active && instances.size === 1));
   }
   onMount(() => {
     instances.add(me);
@@ -723,7 +734,7 @@
   />
 {/if}
 
-<div class="se" class:fill onpointerdowncapture={activate} onfocusin={activate}>
+<div class="se" class:fill bind:this={root} onpointerdowncapture={activate} onfocusin={activate}>
   <div class="toolbar">
     <!-- Preview is look-only: everything that edits the slide is off until it stops. -->
     <fieldset class="tools" disabled={previewing}>

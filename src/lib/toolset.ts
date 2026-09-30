@@ -291,11 +291,18 @@ function capture(session: Session, game?: Game): Record<string, string> {
 /** Some parts as one JSON object (null: the part isn't there, like a screen added later). */
 const partsOf = (parts: Record<string, string>, keys: string[]) => `{${keys.map((k) => `${JSON.stringify(k)}:${parts[k] ?? 'null'}`).join(',')}}`;
 
+/** What viewers are shown, switched outside any step (the map on screen, split view, a zone on screen): Undo and Redo leave it as it is. */
+const SHOWN: Record<string, string[]> = { worlds: ['mapShown', 'split'], boardgames: ['zoneShown'] };
+
 function restore(session: Session, json: string, game?: Game): void {
   // Older saves kept the whole score log here too: it's left alone (a step's own points are in its `score`).
   for (const [k, v] of Object.entries(JSON.parse(json))) {
-    if ((PARTS as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? {} });
-    else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
+    if ((PARTS as readonly string[]).includes(k)) {
+      const part = (v ?? {}) as Record<string, Record<string, unknown>>;
+      const now = session[k as (typeof PARTS)[number]] as Record<string, Record<string, unknown>> | undefined;
+      for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id]) part[id][f] = now[id][f];
+      Object.assign(session, { [k]: part });
+    } else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
   }
 }
 

@@ -18,6 +18,8 @@ export const app = $state<{
   /** On-screen transient state mirrored to the audience window. */
   live: Live;
   toast: string;
+  /** Single window with the host controls hidden: the whole window is on stream, so toasts aren't shown. */
+  onAir: boolean;
   /** IndexedDB autosave works in this browser. */
   storageOk: boolean;
   /** Set while the host edits the game being played (a screen live): the slide editors work on it instead. */
@@ -33,6 +35,7 @@ export const app = $state<{
   pregame: false,
   live: newLive(),
   toast: '',
+  onAir: false,
   storageOk: true,
   editGame: null,
   fileAutosave: null,

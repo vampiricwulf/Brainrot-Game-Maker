@@ -5,9 +5,12 @@
   import type { Game, Session } from '../../lib/model';
   import { openPlayerWheel, openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
+  import { audience } from '../../lib/sync.svelte';
 
   let { game, session, onrolloff }: { game: Game; session: Session; onrolloff: (ids: string[], sides: number) => void } = $props();
   let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
+  /** Single window: the height an open menu has above its button, up to the host panel's top (viewers see the stage above). */
+  let room = $state<number>();
   let custom = $state('');
   let quickList = $state('');
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
@@ -16,6 +19,14 @@
   let sides = $state<number | null>(untrack(() => game.settings.rollOffDie || 20));
   /** A die from d2 to d1000 (a blank box, or a d1 that would tie every round, can't be rolled). */
   const sidesOk = $derived(!!sides && sides >= 2 && sides <= 1000);
+
+  /** Open (or close) a menu from its button: over the host panel only, unless there's an audience window. */
+  function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): void {
+    const b = e.currentTarget as HTMLElement;
+    const panel = b.closest('.panel')?.getBoundingClientRect();
+    room = audience.open || !panel ? undefined : Math.max(0, b.getBoundingClientRect().top - panel.top - 8);
+    menu = menu === m ? null : m;
+  }
 
   function dice(sides: number, count: number, name?: string): void {
     rollDice(app.live, session, quickDice(sides, count, name));
@@ -55,9 +66,9 @@
 
 <div class="tl">
   <div class="pop">
-    <button onclick={() => (menu = menu === 'dice' ? null : 'dice')} title="D rolls the last dice">🎲 Dice</button>
+    <button onclick={(e) => toggle('dice', e)} title="D rolls the last dice">🎲 Dice</button>
     {#if menu === 'dice'}
-      <div class="menu">
+      <div class="menu" style:max-height={room === undefined ? undefined : `${room}px`}>
         <div class="grid">
           {#each QUICK_DICE as q}<button class="small" onclick={() => dice(q.sides, q.count, q.label)}>{q.label}</button>{/each}
         </div>
@@ -75,9 +86,9 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={() => (menu = menu === 'wheel' ? null : 'wheel')}>🎡 Wheel</button>
+    <button onclick={(e) => toggle('wheel', e)}>🎡 Wheel</button>
     {#if menu === 'wheel'}
-      <div class="menu">
+      <div class="menu" style:max-height={room === undefined ? undefined : `${room}px`}>
         <div class="wl">
           <button
             class="small item"
@@ -114,9 +125,9 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={() => (menu = menu === 'rolloff' ? null : 'rolloff')} title="O rolls for everyone">🏁 Who goes first</button>
+    <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone">🏁 Who goes first</button>
     {#if menu === 'rolloff'}
-      <div class="menu">
+      <div class="menu" style:max-height={room === undefined ? undefined : `${room}px`}>
         <div class="muted small">Everyone included rolls; tied leaders re-roll.</div>
         {#each session.players as p (p.id)}
           <label class="check small">
@@ -174,6 +185,11 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: auto;
+  }
+  /* A short menu scrolls (its parts keep their size). */
+  .menu > * {
+    flex-shrink: 0;
   }
   .grid {
     display: grid;

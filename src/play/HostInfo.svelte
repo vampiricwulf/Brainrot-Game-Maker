@@ -59,7 +59,7 @@
       <div class="notes">{info.clue.hostNotes}</div>
     {/if}
   {:else if session.phase === 'final' && finalRound}
-    <div class="meta"><span class="cat">{finalName(finalRound)} · {finalRound.category}</span></div>
+    <div class="meta"><span class="cat">{finalName(finalRound)}{finalRound.category ? ` · ${finalRound.category}` : ''}</span></div>
     <div class="label">Question</div>
     <div class="q">{slideText(finalRound.questionSlide) || '—'}</div>
     <div class="label">Answer</div>

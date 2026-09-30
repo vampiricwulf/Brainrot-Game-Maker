@@ -222,11 +222,13 @@
         <span class="v">
           {#if f.type === 'number'}
             <button class="tiny" onclick={() => bump(f.id, -1)} aria-label="{p.name} {f.name} minus 1">−</button>
+            <!-- Its max is in the tooltip (the stats strip's bar shows it too): the box fits beside the next stat's name. -->
             <input
               class="sn"
               type="number"
               value={v}
               aria-label="{p.name} {f.name}"
+              title={f.max === undefined ? undefined : `Up to ${f.max}`}
               onchange={(e) => {
                 set(f.id, e.currentTarget.value);
                 // Kept within min and max: the box shows what it became (even when that's what it was).
@@ -235,7 +237,6 @@
               onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
             <button class="tiny" onclick={() => bump(f.id, 1)} aria-label="{p.name} {f.name} plus 1">+</button>
-            {#if f.max !== undefined}<span class="muted small">/{f.max}</span>{/if}
           {:else if f.type === 'checkbox'}
             <input type="checkbox" checked={!!v} onchange={(e) => set(f.id, e.currentTarget.checked)} aria-label="{p.name} {f.name}" />
           {:else if f.type === 'tags'}
@@ -415,12 +416,15 @@
   /* A stat's number: − and + do what the box's spinners would, so they're hidden (they'd cover the number). */
   .sn {
     flex: 1;
-    min-width: 30px;
+    min-width: 24px;
     padding: 1px 3px;
     appearance: textfield;
   }
   .sn::-webkit-inner-spin-button {
     display: none;
+  }
+  .v .tiny {
+    padding: 1px 4px;
   }
   .txt {
     flex: 1;
@@ -460,10 +464,15 @@
     gap: 4px;
     margin-left: auto;
   }
+  /* A long item or player name never widens the card (the Give → list gets narrower). */
+  .add,
+  .acts {
+    max-width: 100%;
+  }
+  .acts select {
+    min-width: 0;
+  }
   .add {
     align-self: flex-start;
-  }
-  .small {
-    font-size: 11px;
   }
 </style>

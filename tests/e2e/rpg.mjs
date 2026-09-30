@@ -240,6 +240,13 @@ try {
   await stroke([[0.32, 0.55], [0.5, 0.6]]);
   await stroke([[0.1, 0.1], [0.12, 0.12]]);
   await pad.getByRole('button', { name: '↶ Undo' }).click();
+  // Esc asks right in the pad before throwing the drawing away (a browser dialog would show on stream); Esc again keeps it.
+  await page.keyboard.press('Escape');
+  const discard = pad.getByRole('group', { name: 'Throw away this drawing?' });
+  await discard.waitFor();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawpad-discard.png` });
+  await page.keyboard.press('Escape');
+  assert((await discard.count()) === 0 && (await pad.isVisible()) && !dialogs.length, 'Esc asks in the drawpad (no browser dialog), and Esc again goes back to drawing');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawpad.png` });
   await pad.getByRole('button', { name: 'Insert drawing' }).click();
   const drawn = page.getByRole('dialog', { name: 'Object: Drawing' });

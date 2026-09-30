@@ -270,7 +270,7 @@
   </div>
 
   {#if app.live.overlay}
-    <ToolsControls {game} {session} {selected} onclose={oncloseoverlay} />
+    <div class="mode-host"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} /></div>
   {/if}
 
   <SoundWarnings {dual} onhelp={onsound} />
@@ -290,7 +290,9 @@
   {/if}
 
   {#if session.phase === 'final'}
-    <FinalControls {game} {session} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
+    <div class="mode-host">
+      <FinalControls {game} {session} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
+    </div>
   {/if}
 
   {#if session.phase === 'boardgame'}
@@ -302,7 +304,7 @@
   {/if}
 
   {#if session.phase === 'end'}
-    <EndControls {game} {session} {onrolloff} {ontiebreaker} onback={onbackfromend} {onrematch} />
+    <div class="mode-host"><EndControls {game} {session} {onrolloff} {ontiebreaker} onback={onbackfromend} {onrematch} /></div>
   {/if}
 
   {#if showPlayers}
@@ -460,8 +462,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    /* No overflow clipping: tool menus pop upward out of the panel. The stage above shrinks instead, down to its
-       floor in RPG and board game rounds, where their part of the panel scrolls. */
+    /* No overflow clipping: tool menus pop upward out of the panel (over the stage only with an audience window). The
+       stage above shrinks instead, down to its floor, and the panel's tall parts scroll. */
     min-height: 0;
   }
   .mode-host {

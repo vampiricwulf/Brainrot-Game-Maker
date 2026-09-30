@@ -3,7 +3,7 @@
   import { finalName, formatPoints, getClue, isBoard, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
+    finalAdvance, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
     redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo, blankSlide, toolOnlyClue, finalWagersOk,
     startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
@@ -24,14 +24,14 @@
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, redoFrom, undoAction, type Undone } from '../lib/toolset';
-  import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap, type RpgAsk } from './rpg/hostops';
+  import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap, type RpgAsk, type StagePoint } from './rpg/hostops';
   import { showMenu } from '../lib/menustate.svelte';
   import { sendTo } from '../lib/boardgame';
   import { audienceSees, override } from '../lib/rpg';
   import { boardNow, rollMover, turnNow } from './boardgame/bgops';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
-  import type { Dir8 } from '../lib/model';
+  import type { ActionEvent, Dir8 } from '../lib/model';
   import {
     audience,
     audienceTitle,
@@ -114,16 +114,22 @@
     const l = $state.snapshot(app.live);
     if (audience.open) pushLive(app.pregame ? { ...l, pregame: true } : l);
   });
-  // "Press N again to finish" only applies right where it was armed.
+  // "Press N again to finish" only applies right where it was armed, and not once a judgment is taken back (Ctrl+Z).
   $effect(() => {
     void session.phase;
     void session.finalStep;
+    void finalUnjudged(session).length;
     finishArmed = false;
   });
   // "Ignore the limits" is for the wagers being entered now, not the next Final's.
   $effect(() => {
     void session.phase;
     wagerLimitsOff = false;
+  });
+  // Single window with the controls hidden: the whole window is on stream, so no toast pops up over the stage.
+  $effect(() => {
+    app.onAir = hideControls && !dual;
+    return () => (app.onAir = false);
   });
   // An RPG round's question (a new screen's name…) is for that round only.
   $effect(() => {
@@ -338,7 +344,8 @@
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
     app.live.overlay = null;
-    if (session.phase !== 'clue' || !info) return;
+    // Only the tile's own wheel or dice: closing the scores or a roll mid-clue leaves the clue and its countdown as they are.
+    if (session.phase !== 'clue' || !info || o?.kind !== info.clue.type) return;
     // A wheel/dice tile shows its question once the tool is closed, and its countdown starts. One with nothing to ask
     // is done: no empty slide, no countdown.
     if (toolOnlyClue(info.clue)) back();
@@ -481,15 +488,16 @@
     return -1;
   }
 
+  /** The action log goes back into earlier rounds too: Undo and Redo say where, since nobody can see it happen. */
+  const inRound = (a: ActionEvent) => (a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '');
+
   /** Ctrl+Z undoes whichever came last: a score change or an RPG action (move, stat, item, reveal…). */
   function doUndo(): void {
     const a = lastAction(session);
     if (a && a.ts >= lastScoreTs()) {
       undoAction(session, game);
       undone.push({ log: 'action', id: a.id });
-      // The log goes back into earlier rounds too: say where, since nobody can see it happen.
-      const where = a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '';
-      return toast(`Undid ${a.text}${where}`, 4000);
+      return toast(`Undid ${a.text}${inRound(a)}`, 4000);
     }
     const events = undo(session);
     if (!events.length) return toast('Nothing to undo');
@@ -501,7 +509,7 @@
   function doRedo(): void {
     if (redoFrom(session, undone) === 'action') {
       const a = redoAction(session, game);
-      if (a) return toast(`Redid ${a.text}`);
+      if (a) return toast(`Redid ${a.text}${inRound(a)}`);
     }
     const events = redo(session);
     if (events.length) toast(`Redid ${describeStep(session, events, sym)}`);
@@ -520,18 +528,15 @@
     rpgObject = null;
   }
 
-  /** Files dropped on the stage in an RPG round become hidden objects on the screen the audience follows. */
+  /** Files dropped on the stage in an RPG round become hidden objects on the screen they're dropped on. */
   async function dropOnStage(e: DragEvent): Promise<void> {
     if (session.phase !== 'rpg' || !e.dataTransfer?.files.length) return;
     e.preventDefault();
-    const box = (e.currentTarget as HTMLElement).querySelector('.stage')?.getBoundingClientRect();
-    const at = box
-      ? { x: ((e.clientX - box.left) / box.width) * SLIDE_W, y: ((e.clientY - box.top) / box.height) * SLIDE_H }
-      : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    const at = stagePoint(e);
     for (const file of Array.from(e.dataTransfer.files)) {
       try {
         const el = await droppedFile(game, file, at);
-        if (addLive(game, session, el, `Added ${el.name}`)) {
+        if (addLive(game, session, el, `Added ${el.name}`, at.screen)) {
           rpgObject = el.id;
           toast(`Added ${el.name}, hidden: reveal it from its card`, 3000);
         }
@@ -551,10 +556,13 @@
 
   // ---------- Right-click on the stage (host) ----------
 
-  /** Stage coordinates (1920×1080) of a pointer event over the stage. */
-  function stagePoint(e: MouseEvent): { x: number; y: number } {
-    const box = (e.currentTarget as HTMLElement).querySelector('.stage')?.getBoundingClientRect();
-    return box ? { x: ((e.clientX - box.left) / box.width) * SLIDE_W, y: ((e.clientY - box.top) / box.height) * SLIDE_H } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+  /** Stage coordinates (1920×1080) of a pointer event over the stage: in an RPG round, on the screen under it (split view has several). */
+  function stagePoint(e: MouseEvent): StagePoint {
+    const pane = (e.target as HTMLElement).closest<HTMLElement>('.pane[data-screen]');
+    const box = (pane ?? (e.currentTarget as HTMLElement).querySelector('.stage'))?.getBoundingClientRect();
+    if (!box) return { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    const at = { x: ((e.clientX - box.left) / box.width) * SLIDE_W, y: ((e.clientY - box.top) / box.height) * SLIDE_H };
+    return pane ? { ...at, screen: { map: pane.dataset.map!, screen: pane.dataset.screen! } } : at;
   }
 
   const sheet = (id: string) => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id });
@@ -636,8 +644,9 @@
           },
         ]);
       }
-      return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
     }
+    // Anywhere else on the host's stage: never the browser's own menu (it may be on stream).
+    return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
   }
 
   /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
@@ -728,8 +737,9 @@
     // The live screen editor (RPG) has its own keys.
     if (app.pregame || showPlayers || showKeys || showSound || app.editGame || rpgMap) return;
     const t = e.target as HTMLElement;
-    // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'.
-    if (t.closest('input, textarea, select, [contenteditable]')) return;
+    // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
+    // but Space still ticks it (not the media).
+    if (t.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || (e.key === ' ' && t.matches('input'))) return;
     if (e.key === '?') {
       showKeys = true;
       return;
@@ -962,8 +972,8 @@
   </div>
 {:else}
   <div class="play" class:hidden={hideControls}>
-    <!-- RPG and board game rounds have a tall host panel: it scrolls, so the stage keeps a floor. -->
-    <div class="stage-area" class:dual class:floor={session.phase === 'rpg' || session.phase === 'boardgame'}>
+    <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
+    <div class="stage-area" class:dual>
       <div
         class="stage-box"
         role="presentation"
@@ -1151,11 +1161,8 @@
   }
   .stage-area {
     flex: 1;
-    min-height: 0;
-    display: flex;
-  }
-  .stage-area.floor {
     min-height: 38vh;
+    display: flex;
   }
   .stage-box {
     flex: 1;

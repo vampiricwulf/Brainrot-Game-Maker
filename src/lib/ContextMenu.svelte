@@ -33,10 +33,11 @@
       // A menu dropped from a button gives it the focus back.
       return from?.focus();
     }
-    if (!e.key.startsWith('Arrow')) return;
-    // The arrows are the menu's (not a nudge for what's selected in a slide editor underneath).
-    e.preventDefault();
+    // Every other key is the menu's too: Delete, Ctrl+Z and the like never reach what's under it (the arrows aren't a
+    // nudge for what's selected in a slide editor). Tab, Enter and Space do their usual job on the focused item.
     e.stopImmediatePropagation();
+    if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') return;
+    e.preventDefault();
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const buttons = [...(box?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);

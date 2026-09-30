@@ -48,13 +48,13 @@ export function onSlices(pool: PoolSlice[]): WheelSegment[] {
 
 /**
  * Quick wheel options, one per line. A line can end with a weight, like "Sing a song x3" (or ×3, *3), to
- * make it that many times as likely.
+ * make it that many times as likely. An x at the end of a word isn't one ("Xbox 360", "Open box 3").
  */
 export function parseQuickWheel(text: string): { label: string; weight: number }[] {
   return text
     .split('\n')
     .map((line) => {
-      const m = /^(.*?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*$/i.exec(line.trim());
+      const m = /^(.*?)(?:\s+x|\s*[×*])\s*(\d+(?:\.\d+)?)\s*$/i.exec(line.trim());
       const label = (m ? m[1] : line).trim();
       return { label, weight: m && label ? Math.min(1000, +m[2]) : 1 };
     })

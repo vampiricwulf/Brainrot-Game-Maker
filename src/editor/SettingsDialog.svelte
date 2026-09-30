@@ -10,7 +10,7 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-label="Settings">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Settings">
     <div class="row">
       <h2>⚙ Settings</h2>
       <span class="spacer"></span>

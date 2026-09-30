@@ -3,6 +3,7 @@
   import { app } from '../lib/app.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { textSlide, type TextEl } from '../lib/model';
+  import { slideHasContent } from '../lib/usage';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   let tbSide = $state<'q' | 'a'>('q');
@@ -15,8 +16,15 @@
   <input
     type="checkbox"
     checked={!!app.game.tiebreaker}
-    onchange={(e) =>
-      (app.game.tiebreaker = e.currentTarget.checked ? { questionSlide: textSlide(), answerSlide: textSlide() } : undefined)}
+    onchange={(e) => {
+      const tb = app.game.tiebreaker;
+      // Unticking throws the tiebreaker away: ask first if it has something in it (there's no undo here).
+      if (!e.currentTarget.checked && tb && (slideHasContent(tb.questionSlide) || slideHasContent(tb.answerSlide)) && !confirm('Remove the tiebreaker clue and its question and answer?')) {
+        e.currentTarget.checked = true;
+        return;
+      }
+      app.game.tiebreaker = e.currentTarget.checked ? { questionSlide: textSlide(), answerSlide: textSlide() } : undefined;
+    }}
   /> Include a tiebreaker clue
 </label>
 {#if app.game.tiebreaker}

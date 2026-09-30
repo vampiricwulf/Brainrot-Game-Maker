@@ -137,8 +137,11 @@
   }
 
   async function openFile(file: File): Promise<void> {
-    // Like New: asked once the file is chosen (a cancelled picker asks nothing), and not for a game with no rounds yet.
-    if (game.rounds.length && !confirm(`Open "${file.name}"? It replaces this game. Save this one first if you want to keep it.`)) return;
+    // Like New: asked once the file is chosen (a cancelled picker asks nothing), and not for a game with nothing in it
+    // yet (wheels, players or the Stats & Items catalog made before any round count).
+    const work = game.rounds.length || game.players.length || game.media.length || game.wheels.length || game.dice.length;
+    const kit = game.statFields?.length || game.items?.length || game.shops?.length || game.worlds?.length;
+    if ((work || kit) && !confirm(`Open "${file.name}"? It replaces this game. Save this one first if you want to keep it.`)) return;
     try {
       const opened = await openGameFile(file);
       // A hand-edited file missing parts the editor needs would break the page: check it before it replaces this game.
@@ -170,11 +173,14 @@
   let packPct = $state<number | null>(null);
   const packProgress = (done: number, total: number) => (packPct = total ? Math.floor((done / total) * 100) : null);
 
-  /** Ctrl+S saves the game (in a browser it would save this app's page instead), except in a dialog: finish that first. */
+  /**
+   * Ctrl+S saves the game (in a browser it would save this app's page instead), except in a dialog: finish that first
+   * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one).
+   */
   function onkeydown(e: KeyboardEvent): void {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
-    if (document.querySelector('[role="dialog"]')) toast('Close this window first, then save (Ctrl+S)');
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) toast('Close this window first, then save (Ctrl+S)');
     else if (!saving && !e.repeat) save();
   }
 

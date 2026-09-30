@@ -44,7 +44,7 @@
           }}
           aria-label="World"
         >
-          {#each game.worlds ?? [] as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+          {#each game.worlds ?? [] as w (w.id)}<option value={w.id}>{w.name}</option>{:else}<option value="">— none yet —</option>{/each}
         </select>
       </label>
       <button class="small" onclick={createWorld}>＋ New world</button>
@@ -58,7 +58,14 @@
         <label class="field">World name<input bind:value={world.name} /></label>
         <label class="field start">
           Party starts at
-          <ScreenPicker {world} value={round.start} label="" none="— first screen —" onchange={(ref) => (round.start = ref)} />
+          <!-- A start screen deleted since: the party starts on the first screen (as the map's 🏁 shows). -->
+          <ScreenPicker
+            {world}
+            value={startRef(world, round) === round.start ? round.start : undefined}
+            label=""
+            none="— first screen —"
+            onchange={(ref) => (round.start = ref)}
+          />
         </label>
       {/if}
     </div>
@@ -76,7 +83,7 @@
   {#if world}
     {#key world.id}<WorldEditor {world} bind:editing start={startRef(world, round)} onstart={(ref) => (round.start = ref)} />{/key}
   {:else}
-    <p class="warn">This round's world is gone. Pick one above or make a new one.</p>
+    <p class="warn">This round's world is gone. Make a new one (＋ New world){game.worlds?.length ? ' or pick another above' : ''}.</p>
   {/if}
 </div>
 

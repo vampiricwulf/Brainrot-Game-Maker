@@ -522,6 +522,12 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
   const prev = saved?.state ?? (session.final && !session.final.roundId ? session.final : undefined);
   session.phase = 'final';
   session.finalStep = 'category';
+  // Once the reveals have started the players are settled (their scores now include this Final): someone it took to
+  // $0 can still be judged again.
+  if (prev && saved?.step === 'reveal') {
+    session.final = prev;
+    return;
+  }
   const keep = <T>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r ?? {}).filter(([id]) => eligible.includes(id)));
   const current = prev?.current && eligible.includes(prev.current) ? prev.current : undefined;
   session.final = { roundId: round.id, players: eligible, wagers: keep(prev?.wagers), order, shown: keep(prev?.shown), results: keep(prev?.results), current };

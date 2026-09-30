@@ -22,7 +22,10 @@ export function rpgNow(game: Game, session: Session) {
  * A name or some text the RPG host panel is asking for, inline (a browser dialog would show on stream): a new screen
  * that way, a new look for this screen, or text for the screen (`at`: where the stage was right-clicked).
  */
-export type RpgAsk = { what: 'screen'; dir: Dir8 } | { what: 'look' } | { what: 'text'; at?: { x: number; y: number } };
+export type RpgAsk = { what: 'screen'; dir: Dir8 } | { what: 'look' } | { what: 'text'; at?: StagePoint };
+
+/** Where on the stage the host clicked (1920×1080), and on which screen in split view. */
+export type StagePoint = { x: number; y: number; screen?: ScreenRef };
 
 /** Step the active party. Returns what to tell the host when it couldn't. */
 export function stepParty(game: Game, session: Session, dir: Dir8): string | null {
@@ -113,10 +116,10 @@ export function objectAt(game: Game, session: Session, elId: string) {
   return null;
 }
 
-/** Put an improvised object on the screen the audience follows. It starts hidden (the host reveals it). */
-export function addLive(game: Game, session: Session, el: SlideElement, text: string): boolean {
+/** Put an improvised object on a screen (by default the one the audience follows). It starts hidden (the host reveals it). */
+export function addLive(game: Game, session: Session, el: SlideElement, text: string, where?: ScreenRef): boolean {
   const { st } = rpgNow(game, session);
-  const at = st && focusRef(st);
+  const at = st && (where ?? focusRef(st));
   if (!st || !at) return false;
   el.secret = true;
   logged(session, text, () => {
@@ -124,6 +127,11 @@ export function addLive(game: Game, session: Session, el: SlideElement, text: st
     st.added[at.screen].push(el);
   });
   return true;
+}
+
+/** Where something `w`×`h` centred on a point of the stage goes, kept on the stage. */
+export function centredOn(at: { x: number; y: number }, w: number, h: number): { x: number; y: number } {
+  return { x: Math.round(Math.max(0, Math.min(SLIDE_W - w, at.x - w / 2))), y: Math.round(Math.max(0, Math.min(SLIDE_H - h, at.y - h / 2))) };
 }
 
 /** Text typed onto the stage: a wide band near the top, or lower down where no avatar stands on the screen on air. */
@@ -144,10 +152,7 @@ export async function droppedFile(game: Game, file: File, at: { x: number; y: nu
   const ref = await addMediaFile(game, file);
   const el = ref.kind === 'image' ? newImageEl(ref.id, 480, 480) : ref.kind === 'video' ? newVideoEl(ref.id) : ref.kind === 'audio' ? newAudioEl(ref.id) : null;
   if (!el) throw new Error(`“${file.name}” can’t go on a screen`);
-  if (el.kind !== 'audio') {
-    el.x = Math.round(at.x - el.w / 2);
-    el.y = Math.round(at.y - el.h / 2);
-  }
+  if (el.kind !== 'audio') Object.assign(el, centredOn(at, el.w, el.h));
   el.name = ref.name;
   return el;
 }

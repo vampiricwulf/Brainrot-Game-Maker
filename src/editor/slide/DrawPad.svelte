@@ -5,6 +5,7 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
   import { SLIDE_H, SLIDE_W } from '../../lib/model';
+  import InlineAsk from '../../play/host/InlineAsk.svelte';
 
   type Tool = 'pen' | 'fill' | 'erase';
   interface Stroke {
@@ -37,6 +38,8 @@
   let current: Stroke | null = null;
   let canvas = $state<HTMLCanvasElement>();
   let busy = $state(false);
+  /** Cancel was pressed with something drawn: the pad asks first, right in it (in play, a browser dialog shows on stream). */
+  let discarding = $state(false);
 
   function at(e: PointerEvent): [number, number] {
     const r = canvas!.getBoundingClientRect();
@@ -154,15 +157,18 @@
 
   /** Cancel (Esc, the Cancel button): ask before throwing a drawing away. */
   function cancel(): void {
-    if (strokes.length && !confirm('Throw away this drawing?')) return;
-    oncancel();
+    if (strokes.length) discarding = true;
+    else oncancel();
   }
 
   function key(e: KeyboardEvent): void {
+    // Ctrl+S: not the browser's "Save page as" (the editor says to finish the drawing first).
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') return e.preventDefault();
     const typing = (e.target as HTMLElement).closest?.('input, textarea, select');
     // The pad has its own keys: nothing reaches the game underneath.
     e.stopImmediatePropagation();
-    if (e.key === 'Escape') return cancel();
+    // Esc while it asks is "keep drawing".
+    if (e.key === 'Escape') return discarding ? void (discarding = false) : cancel();
     if (typing) return;
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') {
@@ -181,10 +187,14 @@
 <svelte:window onkeydowncapture={key} />
 
 <div class="backdrop-modal" role="presentation">
-  <div class="modal" role="dialog" aria-label={title}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label={title}>
     <div class="row head">
       <b>🖌 {title}</b>
-      <span class="muted small">Draw the whole thing, as many strokes as it takes, then Insert.</span>
+      {#if discarding}
+        <InlineAsk text="Throw away this drawing?" ok="Throw away" cancel="Keep drawing" danger onok={oncancel} oncancel={() => (discarding = false)} />
+      {:else}
+        <span class="muted small">Draw the whole thing, as many strokes as it takes, then Insert.</span>
+      {/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={insert} disabled={!strokes.length || busy}>Insert drawing</button>

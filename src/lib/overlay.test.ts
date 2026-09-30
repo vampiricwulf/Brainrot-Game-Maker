@@ -70,6 +70,12 @@ describe('editing a wheel for one spin', () => {
       { label: 'Skip', weight: 0.5 },
       { label: 'Top 10', weight: 1 },
     ]);
+    // An x stuck to a word is part of it, not a weight.
+    expect(parseQuickWheel('Open box 3\nXbox 360\nRelax 2')).toEqual([
+      { label: 'Open box 3', weight: 1 },
+      { label: 'Xbox 360', weight: 1 },
+      { label: 'Relax 2', weight: 1 },
+    ]);
   });
 
   it('leaves players out and changes chances, only for this run', () => {

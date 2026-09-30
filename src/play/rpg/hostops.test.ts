@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, type Game, type Session, type SlideElement, type WorldState } from '../../lib/model';
-import { ensureWorld, newRpgRound } from '../../lib/rpg';
+import { addScreenBeside, ensureWorld, newRpgRound } from '../../lib/rpg';
 import { goToRound, newSession } from '../../lib/session';
-import { droppedObject, liveText } from './hostops';
+import { addLive, centredOn, droppedObject, liveText } from './hostops';
 
 /** An RPG round with three players standing on its start screen. */
 function setup(): { game: Game; session: Session; st: WorldState } {
@@ -43,5 +43,20 @@ describe('improvising on the RPG stage', () => {
     const side = droppedObject(game, { id: 'e', item: null, name: 'Rock', qty: 1 }, st, st.positions.p1);
     expect(avatars(st).some((b) => covers(side, b))).toBe(false);
     expect(side.x + side.w <= 1920 && side.y + side.h <= 1080 && side.x >= 0).toBe(true);
+  });
+
+  it('keeps what is put where the host clicked on the stage, on the screen clicked (split view has several)', () => {
+    const { game, session, st } = setup();
+    expect(centredOn({ x: 960, y: 540 }, 1200, 200)).toEqual({ x: 360, y: 440 });
+    expect(centredOn({ x: 154, y: 1060 }, 1200, 200)).toEqual({ x: 0, y: 880 });
+    const map = game.worlds![0].maps[0];
+    const beach = addScreenBeside(map, map.screens[0], 'e', 'Beach')!;
+    const text = liveText(game, session, 'Beware of the goose');
+    expect(addLive(game, session, text, 'Text', { map: map.id, screen: beach.id })).toBe(true);
+    expect(st.added[beach.id]).toEqual([text]);
+    // By default: the screen the audience follows.
+    const other = liveText(game, session, 'Hello');
+    addLive(game, session, other, 'Text');
+    expect(st.added[map.screens[0].id]).toEqual([other]);
   });
 });

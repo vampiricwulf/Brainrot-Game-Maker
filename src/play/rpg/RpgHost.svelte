@@ -22,7 +22,7 @@
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
-  import { addLive, focusParty, liveText, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap, type RpgAsk } from './hostops';
+  import { addLive, centredOn, focusParty, liveText, objectAt, regroupAll, rpgNow, splitOff, stepParty, toggleMap, type RpgAsk, type StagePoint } from './hostops';
 
   let {
     game,
@@ -159,15 +159,15 @@
     });
   }
 
-  /** Typed text goes on the screen hidden: where the stage was right-clicked (its card opens), else clear of the avatars. */
-  function addText(text: string, at?: { x: number; y: number }): void {
+  /**
+   * Typed text goes on the screen hidden: where the stage was right-clicked (kept on the stage, on that pane's screen in
+   * split view; its card opens), else clear of the avatars.
+   */
+  function addText(text: string, at?: StagePoint): void {
     ask = null;
     const el = liveText(game, session, text);
-    if (at) {
-      el.x = Math.round(at.x - el.w / 2);
-      el.y = Math.round(at.y - el.h / 2);
-    }
-    if (!addLive(game, session, el, `Text: ${text}`)) return;
+    if (at) Object.assign(el, centredOn(at, el.w, el.h));
+    if (!addLive(game, session, el, `Text: ${text}`, at?.screen)) return;
     if (at) object = el.id;
     else toast('Added, hidden: reveal it from its card');
   }
@@ -513,11 +513,12 @@
   .dir.mid {
     font-size: 16px;
   }
-  /* The whole map shows (it's fitted into the box), the party's screen included. */
+  /* The whole map shows (it's fitted into the box), the party's screen included. Shorter on a short window, so the
+     players' row below stays in sight. */
   .mapbox {
     flex: 1 1 260px;
     max-width: 420px;
-    height: 200px;
+    height: clamp(110px, 20vh, 200px);
     display: flex;
     flex-direction: column;
     gap: 4px;

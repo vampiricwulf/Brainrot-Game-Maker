@@ -100,9 +100,11 @@
   }
   function drop(e: DragEvent): void {
     dropping = false;
-    if (!e.dataTransfer?.files.length) return;
+    // A game file isn't media: the editor opens it, as when it's dropped anywhere else.
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => !/\.(brainrot|jbr|json)$/i.test(f.name));
+    if (!files.length) return;
     e.preventDefault();
-    addFiles(Array.from(e.dataTransfer.files));
+    addFiles(files);
   }
 </script>
 
