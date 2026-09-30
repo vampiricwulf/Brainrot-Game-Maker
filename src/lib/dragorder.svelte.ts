@@ -1,5 +1,6 @@
 // Drag to reorder a list (rows or chips), the way the layers panel restacks: a line shows where the dragged one will
 // go, before or after the one under the pointer. The list's own ▲▼ (or ◀▶) buttons and Alt+arrows stay.
+import { tick } from 'svelte';
 
 /** Where a dragged item goes when dropped before or after another: its index now and its new index (null: no move). */
 export function dropMove(ids: string[], dragged: string, target: string, after: boolean): { from: number; to: number } | null {
@@ -55,4 +56,42 @@ export class DragOrder {
   lineAt(id: string): 'before' | 'after' | null {
     return this.line?.id === id && this.dragging !== id ? (this.line.after ? 'after' : 'before') : null;
   }
+}
+
+/** What a row's keys do (see rowKeys). */
+export interface RowKeys {
+  /** Alt+↑/↓: one place up (−1) or down. */
+  move?: (d: -1 | 1) => void;
+  /** Ctrl+D (⌘+D). */
+  duplicate?: () => void;
+}
+
+/**
+ * `use:rowKeys={{ move, duplicate }}` on a list's row: Alt+↑/↓ from any field in it moves the row (the field keeps
+ * the focus, so they repeat), Ctrl+D duplicates it. A row inside another row (a button in an item's Use list) keeps
+ * the keys for itself.
+ */
+export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys) => void; destroy: () => void } {
+  let k = keys;
+  function key(e: KeyboardEvent): void {
+    if (e.defaultPrevented) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (k.move && e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      e.stopPropagation();
+      // (Moving a row takes it out of the page and back, which drops the focus.)
+      const had = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      k.move(e.key === 'ArrowUp' ? -1 : 1);
+      void tick().then(() => had?.isConnected && had !== document.activeElement && had.focus());
+    } else if (k.duplicate && mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      e.stopPropagation();
+      k.duplicate();
+    }
+  }
+  node.addEventListener('keydown', key);
+  return {
+    update: (next) => (k = next),
+    destroy: () => node.removeEventListener('keydown', key),
+  };
 }

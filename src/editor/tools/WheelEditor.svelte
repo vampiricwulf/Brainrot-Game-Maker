@@ -1,8 +1,17 @@
+<!--
+  A saved wheel: its slices (drag ⋮⋮ or Alt+↑/↓ to reorder, Enter in a label for the next one), and a preview that
+  test-spins. A click on a slice of the preview goes to its row.
+-->
 <script lang="ts">
-  import type { WheelPreset } from '../../lib/model';
+  import { tick } from 'svelte';
+  import type { WheelPreset, WheelSegment } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
   import { newSegment, parseQuickWheel, segmentAngles, spinTarget, weightedIndex } from '../../lib/tools';
   import { app } from '../../lib/app.svelte';
+  import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
+  import { step } from '../../lib/history.svelte';
+  import { copySegment, moveTo } from '../../lib/listedit';
+  import { flash } from '../../lib/nav.svelte';
   import Stage from '../../lib/Stage.svelte';
   import WheelView from '../../play/tools/WheelView.svelte';
   import OutcomeEditor from './OutcomeEditor.svelte';
@@ -20,10 +29,58 @@
     test = { kind: 'wheel', nonce: 'test', name: wheel.name, segments, rotation: to, spin: { from, to, startedAt: Date.now(), duration: wheel.spinDurationMs }, result: index };
   }
 
-  function move(i: number, d: number): void {
-    const j = i + d;
-    if (j < 0 || j >= wheel.segments.length) return;
-    [wheel.segments[i], wheel.segments[j]] = [wheel.segments[j], wheel.segments[i]];
+  const name = (s: WheelSegment) => s.label.trim() || 'untitled';
+
+  /** Move the slice at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
+  function move(i: number, j: number): void {
+    const s = wheel.segments[i];
+    if (!s || j < 0 || j >= wheel.segments.length || i === j) return;
+    step(`Moved slice “${name(s)}” ${j < i ? 'up' : 'down'}`, () => moveTo(wheel.segments, i, j));
+  }
+
+  let segsEl = $state<HTMLElement>();
+  /** Put the typing in a slice's label (after the rows are drawn). */
+  function focusLabel(id: string): void {
+    void tick().then(() => segsEl?.querySelector<HTMLInputElement>(`[data-seg="${id}"] input.label`)?.focus());
+  }
+
+  function duplicate(i: number): void {
+    const copy = copySegment(wheel.segments[i]);
+    step(`Duplicated slice “${name(wheel.segments[i])}”`, () => wheel.segments.splice(i + 1, 0, copy));
+    focusLabel(copy.id);
+  }
+
+  // Deleting is done at once: the note at the bottom offers Undo.
+  function remove(i: number): void {
+    if (wheel.segments.length <= 2) return;
+    step(`Deleted slice “${name(wheel.segments[i])}”`, () => wheel.segments.splice(i, 1), { notify: true });
+  }
+
+  /** Keyboard-first: Enter starts the next slice, Backspace in an empty label deletes it (back to the one before). */
+  function labelKey(e: KeyboardEvent, i: number): void {
+    if (e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const s = newSegment('', wheel.segments.length);
+      step('Added slice', () => wheel.segments.splice(i + 1, 0, s));
+      focusLabel(s.id);
+    } else if (e.key === 'Backspace' && !wheel.segments[i].label && wheel.segments.length > 2) {
+      e.preventDefault();
+      const back = wheel.segments[i - 1] ?? wheel.segments[i + 1];
+      step('Deleted an empty slice', () => wheel.segments.splice(i, 1));
+      focusLabel(back.id);
+    }
+  }
+
+  const rows = new DragOrder();
+
+  /** A click on a slice of the preview goes to its row. */
+  function previewClick(e: MouseEvent): void {
+    const at = (e.target as Element).closest('[data-slice]')?.getAttribute('data-slice');
+    const s = at === null || at === undefined ? undefined : wheel.segments[+at];
+    if (!s) return;
+    focusLabel(s.id);
+    flash(`slice:${s.id}`);
   }
 </script>
 
@@ -36,21 +93,46 @@
     <label class="check"><input type="checkbox" bind:checked={wheel.removeAfterLanding} /> Each slice can only land once (removed after it lands)</label>
     <p class="muted small">Slice size = landing chance. Outcomes can be anything: punishments, dares, prompts, numbers. Score effects are optional.</p>
 
-    <div class="segs">
+    <div class="segs" role="list" aria-label="Slices" bind:this={segsEl}>
       {#each wheel.segments as seg, i (seg.id)}
-        <div class="seg">
+        {@const line = rows.lineAt(seg.id)}
+        <div
+          class="seg drag-row"
+          class:drop-before={line === 'before'}
+          class:drop-after={line === 'after'}
+          class:dragging={rows.dragging === seg.id}
+          role="listitem"
+          data-seg={seg.id}
+          data-place="slice:{seg.id}"
+          ondragover={(e) => rows.over(e, seg.id)}
+          ondrop={(e) => {
+            const m = rows.drop(e, wheel.segments.map((x) => x.id));
+            if (m) move(m.from, m.to);
+          }}
+          use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(i) }}
+        >
+          <span
+            class="drag-grip"
+            draggable="true"
+            ondragstart={(e) => rows.start(e, seg.id, (e.currentTarget as HTMLElement).parentElement)}
+            ondragend={() => rows.end()}
+            aria-hidden="true"
+            title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span
+          >
           <input type="color" bind:value={seg.color} aria-label="Slice color" />
-          <OutcomeEditor outcome={seg} placeholder="Slice label" />
+          <OutcomeEditor outcome={seg} placeholder="Slice label" labelkey={(e) => labelKey(e, i)} />
           <label class="w" title="Weight (relative size / chance)">
             ×<input type="number" min="0.1" step="0.5" bind:value={seg.weight} />
           </label>
           <span class="pct muted">{pct[i]?.toFixed(0)}%</span>
-          <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0}>▲</button>
-          <button class="ghost small" onclick={() => move(i, 1)} disabled={i === wheel.segments.length - 1}>▼</button>
-          <button class="ghost small" onclick={() => wheel.segments.splice(i, 1)} disabled={wheel.segments.length <= 2}>✕</button>
+          <button class="ghost small" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
+          <button class="ghost small" onclick={() => move(i, i + 1)} disabled={i === wheel.segments.length - 1} aria-label="Move down">▼</button>
+          <button class="ghost small" onclick={() => duplicate(i)} aria-label="Duplicate slice" title="Duplicate slice (Ctrl+D)">⧉</button>
+          <button class="ghost small" onclick={() => remove(i)} disabled={wheel.segments.length <= 2} aria-label="Delete slice" title={wheel.segments.length <= 2 ? 'A wheel needs two slices' : 'Delete slice'}>✕</button>
         </div>
       {/each}
     </div>
+    <p class="muted small">Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · click a slice on the wheel to find it</p>
     <div class="row">
       <button onclick={() => wheel.segments.push(newSegment(`Option ${wheel.segments.length + 1}`, wheel.segments.length))}>＋ Add slice</button>
     </div>
@@ -68,7 +150,9 @@
   </div>
 
   <div class="right">
-    <div class="preview">
+    <!-- (The slices' rows are the keyboard's way to them.) -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div class="preview" onclick={previewClick} title="Click a slice to find it in the list">
       <Stage>
         <div class="bg"></div>
         <WheelView o={test ?? { kind: 'wheel', nonce: 'p', name: wheel.name, segments: wheel.segments, rotation: 0, spin: null, result: null }} game={app.game} role="mirror" />
@@ -106,6 +190,12 @@
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 6px;
+  }
+  .seg .drag-grip {
+    padding-top: 7px;
+  }
+  .preview :global([data-slice]) {
+    cursor: pointer;
   }
   .w {
     display: flex;

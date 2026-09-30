@@ -2,6 +2,8 @@
   import { newId, type DicePreset, type Die } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
   import { rollPreset } from '../../lib/tools';
+  import { step } from '../../lib/history.svelte';
+  import { faceLines } from '../../lib/listedit';
   import { app } from '../../lib/app.svelte';
   import Stage from '../../lib/Stage.svelte';
   import DiceView from '../../play/tools/DiceView.svelte';
@@ -20,6 +22,19 @@
       while (d.customFaces.length < Math.min(d.sides, 100)) d.customFaces.push({ label: String(d.customFaces.length + 1) });
       d.customFaces.length = Math.min(d.sides, 100);
     }
+  }
+
+  /** The face lists being pasted, per die. */
+  let pasted = $state<Record<string, string>>({});
+
+  /** Faces 1… get the pasted lines (`resize`: first the die gets as many sides as there are lines). */
+  function fill(d: Die, resize = false): void {
+    const lines = faceLines(pasted[d.id] ?? '');
+    step(`Filled the faces of “${preset.name}”`, () => {
+      if (resize) setSides(d, lines.length);
+      lines.forEach((label, i) => d.customFaces?.[i] && (d.customFaces[i].label = label));
+    });
+    pasted[d.id] = '';
   }
 
   function testRoll(): void {
@@ -48,6 +63,21 @@
               <div class="face"><span class="muted n0">{fi + 1}</span><OutcomeEditor outcome={face} placeholder="Face {fi + 1}" /></div>
             {/each}
           </div>
+          {@const lines = faceLines(pasted[d.id] ?? '')}
+          {@const faces = d.customFaces.length}
+          <details class="fill">
+            <summary class="muted small">Fill faces from a list (one per line)</summary>
+            <textarea rows="4" bind:value={pasted[d.id]} aria-label="Face labels, one per line" placeholder={'Take a sip\nPick a victim\nSing a song\n…'}></textarea>
+            <div class="row">
+              <button class="small" onclick={() => fill(d)} disabled={!lines.length}>
+                Fill {lines.length > 1 ? `faces 1–${Math.min(lines.length, faces)}` : 'face 1'}
+              </button>
+              {#if lines.length >= 2 && lines.length !== d.sides}
+                <button class="small" onclick={() => fill(d, true)}>Fill and make it a d{lines.length}</button>
+              {/if}
+              {#if lines.length > faces}<span class="muted small">{lines.length - faces} line{lines.length - faces === 1 ? '' : 's'} more than it has sides</span>{/if}
+            </div>
+          </details>
         {/if}
       </div>
     {/each}
@@ -123,6 +153,13 @@
     width: 24px;
     text-align: right;
     padding-top: 6px;
+  }
+  .fill {
+    margin-top: 6px;
+  }
+  .fill textarea {
+    width: 100%;
+    margin: 4px 0;
   }
   h4 {
     margin: 12px 0 0;

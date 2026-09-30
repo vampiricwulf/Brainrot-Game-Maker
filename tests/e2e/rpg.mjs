@@ -58,7 +58,10 @@ try {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-hat-editor.png` });
   assert(hatY < -0.3, `the drawn hat sits on top of the avatar (${hatY})`);
   await page.getByRole('button', { name: '＋ Shop' }).click();
-  await page.getByRole('button', { name: '＋ Something to sell' }).click();
+  // It lists the items it doesn't sell yet.
+  await page.getByRole('button', { name: '＋ Something to sell ▾' }).click();
+  assert((await page.getByRole('menu').getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Potion|Hat|＋ Everything', 'Something to sell lists the items and Everything');
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
   await page.locator('label', { hasText: 'Buys back at' }).locator('input').fill('50');
   // A second shop, deleted below.
   await page.getByRole('button', { name: '＋ Shop' }).click();

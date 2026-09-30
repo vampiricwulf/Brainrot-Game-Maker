@@ -636,8 +636,8 @@
     const s = clipboard.slide;
     const ids = new Set([...mediaIds(clipboard.elements), ...(s ? mediaIds(s.elements, s.background) : [])]);
     const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
-    // (A screen copied on the map keeps its files too.)
-    const all = [...refs, ...mediaShownBy(clipboard.screen, clipboard.media)];
+    // (A screen copied on the map, and copied buttons, keep their files too.)
+    const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.actions], clipboard.media)];
     clipboard.media = clone(all.filter((m, i) => all.findIndex((x) => x.id === m.id) === i));
   }
 

@@ -6,7 +6,16 @@
   import MediaPicker from '../slide/MediaPicker.svelte';
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
 
-  let { outcome, placeholder = 'Label' }: { outcome: Outcome; placeholder?: string } = $props();
+  let {
+    outcome,
+    placeholder = 'Label',
+    labelkey,
+  }: {
+    outcome: Outcome;
+    placeholder?: string;
+    /** Keys in the label box (a wheel's Enter for the next slice). */
+    labelkey?: (e: KeyboardEvent) => void;
+  } = $props();
   let open = $state(false);
   let picking = $state<MediaKind | null>(null);
   const media = $derived(outcome.media ? app.game.media.find((m) => m.id === outcome.media) : undefined);
@@ -36,7 +45,7 @@
 
 <div class="oe">
   <div class="row">
-    <input class="label" bind:value={outcome.label} {placeholder} />
+    <input class="label" bind:value={outcome.label} {placeholder} aria-label={placeholder} onkeydown={labelkey} />
     <button class="ghost small" class:has={extras} onclick={() => (open = !open)} title="Details, media, timer, score effect">
       {open ? '▾' : '▸'} More{extras ? ' •' : ''}
     </button>
