@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
+  import { step } from '../lib/history.svelte';
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
@@ -682,7 +683,7 @@
     // (after resuming an older save it may not), and not the sample players unless they were renamed.
     const roster = session.players.filter((p) => samples.get(p.id) !== p.name);
     if (app.game.id === game.id && !app.game.players.length && roster.length)
-      app.game.players = roster.map(({ id, name, color }) => ({ id, name, color }));
+      step('Saved the players from the show', () => (app.game.players = roster.map(({ id, name, color }) => ({ id, name, color }))), { during: 'play' });
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;
     app.pregame = false;
@@ -721,8 +722,14 @@
     const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
     const added = new Set(dds().filter((id) => !before.has(id)));
     const edited = app.game.rounds.find((x) => x.id === r.id);
-    for (const c of isBoard(edited) ? edited.categories : [])
-      for (const cl of c.clues) if (added.has(cl.id) && cl.type === 'standard') cl.type = 'dailyDouble';
+    step(
+      `Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`,
+      () => {
+        for (const c of isBoard(edited) ? edited.categories : [])
+          for (const cl of c.clues) if (added.has(cl.id) && cl.type === 'standard') cl.type = 'dailyDouble';
+      },
+      { during: 'play' },
+    );
     toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
   }
 

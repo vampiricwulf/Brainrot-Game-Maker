@@ -6,6 +6,7 @@
   import { untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
+  import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
   import { newId, newImageEl, type Dir8, type Game, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
@@ -172,11 +173,16 @@
     else toast('Added, hidden: reveal it from its card');
   }
 
-  /** Copy a screen as it is now (default: the one on air) into the editor's game, so it's there next time. */
+  /**
+   * Copy a screen as it is now (default: the one on air) into the editor's game, so it's there next time. It's a step
+   * of the editor's undo history.
+   */
   function keep(ref: ScreenRef | null = here ? { map: here.map.id, screen: here.screen.id } : null): void {
     if (!ref || !world) return;
     if (app.game.id !== game.id) return void toast('The editor has a different game open, so there’s nowhere to keep it');
-    toast(keepScreen(game, app.game, world.id, ref, st), 4000);
+    const w = world;
+    const name = w.maps.find((m) => m.id === ref.map)?.screens.find((s) => s.id === ref.screen)?.name ?? 'the screen';
+    toast(step(`Kept “${name}” from the show`, () => keepScreen(game, app.game, w.id, ref, st), { during: 'play' }), 4000);
   }
 
   const PAD: (Dir8 | null)[] = ['nw', 'n', 'ne', 'w', null, 'e', 'sw', 's', 'se'];
