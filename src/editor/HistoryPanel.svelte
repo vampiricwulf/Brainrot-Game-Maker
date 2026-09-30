@@ -30,15 +30,19 @@
     | { kind: 'head'; key: string; text: string; day?: boolean }
     | { kind: 'mark'; key: string; m: Mark };
 
-  const minute = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  const second = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  // (Made once: 500 steps' times are a lot of formatting.)
+  const MINUTE = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
+  const SECOND = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  const DAY = new Intl.DateTimeFormat([], { weekday: 'short', day: 'numeric', month: 'short' });
+  const minute = (ts: number) => MINUTE.format(ts);
+  const second = (ts: number) => SECOND.format(ts);
   /** '' today, else "Yesterday" or "Mon 28 Sep". */
   function dayOf(ts: number): string {
     const d = new Date(ts);
     const today = new Date();
     if (d.toDateString() === today.toDateString()) return '';
     const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
-    return d.toDateString() === yesterday.toDateString() ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+    return d.toDateString() === yesterday.toDateString() ? 'Yesterday' : DAY.format(d);
   }
 
   // Newest first: the undone steps, "● Now", then the steps that are in the game, under a header whenever the minute

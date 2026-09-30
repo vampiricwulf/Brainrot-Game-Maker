@@ -230,7 +230,9 @@
         value={round.mover.kind === 'wheel' ? round.mover.wheel : round.mover.kind}
         onchange={(e) => {
           const v = e.currentTarget.value;
-          round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
+          step(`Move by: ${e.currentTarget.selectedOptions[0]?.text}`, () => {
+            round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
+          });
         }}
       >
         {#if moverWheel && !game.wheels.some((w) => w.id === moverWheel)}<option value={moverWheel}>⚠ Deleted wheel — pick another</option>{/if}

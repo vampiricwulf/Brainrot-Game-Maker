@@ -30,7 +30,7 @@
   import { inTauri } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
-  import { validate } from '../lib/validate';
+  import { validate, type Problem } from '../lib/validate';
   import { arriving, history, mark, onApplied, redo, step, undo } from '../lib/history.svelte';
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
@@ -39,7 +39,8 @@
   import HistoryNotice from './HistoryNotice.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
 
-  let { onplay }: { onplay: () => void } = $props();
+  /** `problems`: the checklist, worked out by the app a moment after changes stop. */
+  let { onplay, problems }: { onplay: () => void; problems: Problem[] } = $props();
 
   // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
   let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
@@ -282,8 +283,6 @@
       exporting = false;
     }
   }
-
-  const problems = $derived(validate(game));
 
   let about = $state(false);
   let settings = $state(false);

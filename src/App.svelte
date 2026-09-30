@@ -5,7 +5,8 @@
   import { openPack } from './lib/pack';
   import { unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
-  import { holdOpenLock, loadGameMedia, pruneMedia } from './lib/media.svelte';
+  import { holdOpenLock, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
+  import { validate, type Problem } from './lib/validate';
   import { migrateGame, newId } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
   import { migrateSession, newSession, rebaseSession } from './lib/session';
@@ -101,11 +102,24 @@
   let lastAutosaveAt = Date.now();
   let autosavedRev = 0;
 
+  // The editor's checklist, worked out from the watcher's plain copy a moment after changes stop: reading the whole
+  // game through its proxies on every keystroke made typing in a clue lag in big games. (Whether files are missing
+  // depends on the ones loaded, too.)
+  let problems = $state.raw<Problem[]>([]);
+  const checkSoon = debounce(() => watch && (problems = validate(watch.value())), 300);
+  $effect(() => {
+    void Object.keys(mediaUrls).length;
+    untrack(checkSoon);
+  });
+
   // Each game that arrives (the draft at the start, New, Open…) gets its own watcher, started once the game is on
-  // screen (its first reading takes a moment on a big game) and outside this effect.
+  // screen (its first reading takes a moment on a big game) and outside this effect. Its checklist is worked out
+  // at once.
   $effect(() => {
     const game = app.game;
-    if (loaded && !playerOnly) requestAnimationFrame(() => setTimeout(() => startWatch(game)));
+    if (!loaded || playerOnly) return;
+    problems = untrack(() => validate(game));
+    requestAnimationFrame(() => setTimeout(() => startWatch(game)));
   });
   function startWatch(game: Game): void {
     if (app.game !== game || watching === game) return;
@@ -113,6 +127,7 @@
     watch = watchGame(game);
     watching = game;
     watch.subscribe(saveEditorSoon);
+    watch.subscribe(checkSoon);
     saveEditorSoon();
     startHistory(game, watch);
     // Changes count from the game as it arrives, so an unchanged game is never autosaved.
@@ -284,7 +299,7 @@
       <button class="ghost" onclick={discardResume}>Discard</button>
     </div>
   {/if}
-  <Editor onplay={startPlay} />
+  <Editor onplay={startPlay} {problems} />
 {:else}
   <Play onexit={exitPlay} oncancel={leavePlay} />
 {/if}

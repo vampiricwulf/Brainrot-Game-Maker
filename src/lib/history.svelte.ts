@@ -154,9 +154,9 @@ let group: { label: string | null; opts: StepOptions } = { label: null, opts: {}
 let named: { label: string; opts: StepOptions } | null = null;
 /** Where the next game that arrives comes from (New, Open…), and its history when it was saved with it. */
 let next: { origin: Omit<Origin, 'ts'>; saved?: { saved: SavedHistory; steps: StoredStep[] } } | null = null;
-/** Steps new or changed since the history was last saved, and the ones gone since. */
+/** Steps new or changed since the history was last saved, and the ids of the ones gone since. */
 const unsaved = new Set<string>();
-const gone = new Set<string>();
+const goneIds = new Set<string>();
 /** Files' bytes swapped in the step being made (attachBlobSwap). */
 let swaps: BlobSwap[] = [];
 /** Unused files that only dropped steps held are cleaned up a little later. */
@@ -466,7 +466,7 @@ export function heldMedia(entries: readonly Pick<HistoryEntry, 'media' | 'blobs'
 function left(steps: readonly HistoryEntry[]): void {
   for (const e of steps) {
     unsaved.delete(e.id);
-    gone.add(e.id);
+    goneIds.add(e.id);
   }
   if (!steps.some((e) => e.media || e.blobs)) return;
   clearTimeout(pruning);
@@ -489,9 +489,9 @@ export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[
     trimmed: h.trimmed,
     marks: h.marks,
   };
-  const dropped = [...gone];
+  const dropped = [...goneIds];
   unsaved.clear();
-  gone.clear();
+  goneIds.clear();
   return { history, steps, dropped };
 }
 
