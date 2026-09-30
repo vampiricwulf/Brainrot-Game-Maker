@@ -163,6 +163,24 @@ export function startRef(world: World, round: RpgRound): ScreenRef | null {
 }
 
 /**
+ * Resuming with the editor's changes: players stand on their screen wherever it is now (screens keep their ids when
+ * they move, to another map too). Players whose screen was deleted go to the start.
+ */
+export function refindPositions(session: Session, game: Game): void {
+  for (const [id, st] of Object.entries(session.worlds ?? {})) {
+    const world = worldById(game, id);
+    if (!world) continue;
+    const round = game.rounds.find((r): r is RpgRound => isRpg(r) && r.world === id);
+    const start = round ? startRef(world, round) : null;
+    for (const p of Object.values(st.positions)) {
+      const map = world.maps.find((m) => m.screens.some((s) => s.id === p.screen));
+      const to = map ? { map: map.id, screen: p.screen } : start;
+      if (to) Object.assign(p, to);
+    }
+  }
+}
+
+/**
  * Players added or removed mid-game: newcomers (and players put back) join the active party where it stands. A party
  * whose players all left goes: viewers then follow the first party, and with one party left there's no split view.
  */
@@ -489,9 +507,9 @@ export function newVariant(st: WorldState | undefined, screen: Screen, name: str
 /**
  * Copied objects (a new look, a duplicated screen) get fresh ids, so taking or moving one doesn't change the
  * original, and Reveal / Hide buttons among the copies point at the copies. Doorways' arrival objects are on the
- * screen they lead to, so they stay as they are.
+ * screen they lead to, so they stay as they are. Returns the new id of each old one.
  */
-export function freshObjectIds(slides: Slide[]): void {
+export function freshObjectIds(slides: Slide[]): Map<string, string> {
   const ids = new Map<string, string>();
   for (const el of slides.flatMap((sl) => sl.elements)) {
     // (Looks from older saves can share an object with the screen's own slide: the copies share theirs.)
@@ -500,6 +518,7 @@ export function freshObjectIds(slides: Slide[]): void {
   }
   for (const el of slides.flatMap((sl) => sl.elements))
     for (const a of el.role?.actions ?? []) if ((a.do === 'reveal' || a.do === 'hide') && a.object) a.object = ids.get(a.object) ?? a.object;
+  return ids;
 }
 
 /** An empty screen next to `at` in direction `dir`, if that cell is free and on the grid. */
@@ -532,15 +551,18 @@ export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef
     tw = { ...clone(w), maps: [] };
     to.worlds.push(tw);
   }
-  let tm = tw.maps.find((m) => m.id === found.map.id);
+  // Moved in the editor meanwhile (another cell, another map): it's kept where it is there.
+  const there = tw.maps.find((m) => m.screens.some((s) => s.id === ref.screen));
+  let tm = there ?? tw.maps.find((m) => m.id === found.map.id);
   if (!tm) {
     tm = { ...clone(found.map), screens: [] };
     tw.maps.push(tm);
   }
-  tm.cols = Math.max(tm.cols, found.map.cols);
-  tm.rows = Math.max(tm.rows, found.map.rows);
+  if (!there) {
+    tm.cols = Math.max(tm.cols, found.map.cols);
+    tm.rows = Math.max(tm.rows, found.map.rows);
+  }
   const copy = clone(found.screen);
-  // Objects added during play become part of the look showing now.
   // Objects added during play (not ones picked up since) become part of the look showing now.
   const added = clone(st?.added[found.screen.id] ?? []).filter((e) => !st?.objects[e.id]?.taken);
   const v = st?.variant?.[found.screen.id];
@@ -555,6 +577,10 @@ export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef
     if (o.shown !== undefined) el.secret = !o.shown || undefined;
   }
   const i = tm.screens.findIndex((s) => s.id === copy.id);
+  if (i >= 0) {
+    copy.col = tm.screens[i].col;
+    copy.row = tm.screens[i].row;
+  }
   // A different screen already in that cell (added in the editor meanwhile) keeps it: this one is not copied.
   const clash = tm.screens.find((s) => s.col === copy.col && s.row === copy.row && s.id !== copy.id);
   if (clash) return `${tm.name} already has “${clash.name}” in that spot in the editor`;

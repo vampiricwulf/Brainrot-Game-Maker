@@ -25,7 +25,7 @@ import {
   splitParty,
   step,
 } from './rpg';
-import { newSession } from './session';
+import { newSession, rebaseSession } from './session';
 
 /** A 3×2 overworld (A1 B1 C1 / A2 B2 —) plus a one-screen shop map, and two players. */
 function setup(): { game: Game; session: Session; world: World; round: RpgRound } {
@@ -270,6 +270,47 @@ describe('RPG: improvising', () => {
     // Kept again: replaced, not duplicated.
     keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st);
     expect(editor.worlds![0].maps[0].screens.filter((s) => s.id === d1.id)).toHaveLength(1);
+  });
+});
+
+describe('RPG: screens moved in the editor while the game is on', () => {
+  it('keeps a screen where the editor has it now (another cell, or another map)', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const editor = JSON.parse(JSON.stringify(game)) as Game;
+    const [over, shop] = editor.worlds![0].maps;
+    const b1 = over.screens.find((s) => s.name === 'B1')!;
+    const c1 = over.screens.find((s) => s.name === 'C1')!;
+    // Swapped B1 and C1 in the editor.
+    [b1.col, c1.col] = [c1.col, b1.col];
+    expect(keepScreen(game, editor, world.id, at(world, 'B1'), st)).toBe('Kept “B1” in the game');
+    expect([screenAt(over, 2, 0)?.name, screenAt(over, 1, 0)?.name]).toEqual(['B1', 'C1']);
+    // Moved to the shop map: kept there, not added to the overworld again.
+    over.screens = over.screens.filter((s) => s.id !== b1.id);
+    shop.screens.push({ ...b1, col: 0, row: 1 });
+    keepScreen(game, editor, world.id, at(world, 'B1'), st);
+    expect(over.screens.some((s) => s.name === 'B1')).toBe(false);
+    expect(shop.screens.filter((s) => s.name === 'B1').map((s) => [s.col, s.row])).toEqual([[0, 1]]);
+  });
+
+  it('resumes with the party on its screen wherever it went, or at the start when it was deleted', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    moveTo(game, st, world, at(world, 'B1'));
+    const edited = JSON.parse(JSON.stringify(game)) as Game;
+    const [over, shop] = edited.worlds![0].maps;
+    const b1 = over.screens.find((s) => s.name === 'B1')!;
+    over.screens = over.screens.filter((s) => s !== b1);
+    shop.screens.push({ ...b1, col: 1, row: 0 });
+    rebaseSession(session, game, edited);
+    expect(Object.values(st.positions).map((p) => [p.map, p.screen])).toEqual([
+      [shop.id, b1.id],
+      [shop.id, b1.id],
+    ]);
+    const gone = JSON.parse(JSON.stringify(edited)) as Game;
+    gone.worlds![0].maps[1].screens.pop();
+    rebaseSession(session, edited, gone);
+    expect(nameOf(gone.worlds![0], Object.values(st.positions)[0])).toBe('A1');
   });
 });
 

@@ -1,6 +1,6 @@
 // Runtime game logic: scores, score log with undo/redo, used tiles, round flow.
 // Pure functions over plain objects so they're easy to test and to autosave.
-import { ensureWorld } from './rpg';
+import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard } from './boardgame';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide } from './model';
 
@@ -732,7 +732,8 @@ export function usedTiles(session: Session, game: Game, round = session.currentR
 
 /**
  * Point a saved session at an edited copy of its game ("Resume with my edits"). Used tiles and the score log
- * are keyed by clue id, so they carry over; the open clue is found again by id, or dropped if it was deleted.
+ * are keyed by clue id, so they carry over; the open clue is found again by id, or dropped if it was deleted. RPG
+ * parties stay on their screens wherever they were moved.
  */
 export function rebaseSession(session: Session, from: Game, to: Game): void {
   const openId = session.currentClue ? getClue(from, session.currentClue)?.clue.id : undefined;
@@ -755,6 +756,7 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);
   if (session.phase === 'tiebreaker' && !to.tiebreaker) session.phase = 'end';
   session.gameId = to.id;
+  refindPositions(session, to);
   if (session.phase === 'end' || session.phase === 'tiebreaker') return;
   // The round being played was deleted (or the one now in its place is another mode): enter that one properly,
   // without its intro. With no rounds left, the game is over.

@@ -30,7 +30,7 @@
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
-  import { clipboard } from '../../lib/clipboard.svelte';
+  import { clipboard, mediaShownBy } from '../../lib/clipboard.svelte';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
   import { uniqueMediaName } from '../../lib/medianame';
@@ -636,7 +636,9 @@
     const s = clipboard.slide;
     const ids = new Set([...mediaIds(clipboard.elements), ...(s ? mediaIds(s.elements, s.background) : [])]);
     const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
-    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+    // (A screen copied on the map keeps its files too.)
+    const all = [...refs, ...mediaShownBy(clipboard.screen, clipboard.media)];
+    clipboard.media = clone(all.filter((m, i) => all.findIndex((x) => x.id === m.id) === i));
   }
 
   /** Pasting what was copied in another game: add the files it shows that this game doesn't have. */
