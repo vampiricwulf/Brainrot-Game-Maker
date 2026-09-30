@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { jeopardyGame } from './testgame';
 import { fileMime, filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, soundTwin, withExtension } from './sniff';
-import { migrateGame, newAudioEl, newEmbedEl, newGame, newImageEl, type BoardRound, type Game } from './model';
+import { migrateGame, newAudioEl, newEmbedEl, newImageEl, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { onlineCount } from './usage';
@@ -166,7 +167,7 @@ describe('readDrivePage (what Google Drive sent instead of the file)', () => {
 
 describe('migrateGame and online links', () => {
   it('keeps link fields and drops anything that is not a web link', () => {
-    const g = newGame();
+    const g = jeopardyGame();
     g.media = [
       { id: 'a', name: 'a.mp4', mime: 'video/mp4', size: 0, kind: 'video', url: 'https://files.catbox.moe/a.mp4', source: 'https://files.catbox.moe/a.mp4', expiresAt: 123 },
       { id: 'b', name: 'b.png', mime: 'image/png', size: 5, kind: 'image', source: 'https://litter.catbox.moe/b.png' },
@@ -182,7 +183,7 @@ describe('migrateGame and online links', () => {
 
 describe('onlineCount', () => {
   it('counts the live links the game uses and its online players, not unused links in the library', () => {
-    const g = newGame();
+    const g = jeopardyGame();
     const link = (id: string) => ({ id, name: `${id}.png`, mime: 'image/png', size: 0, kind: 'image' as const, url: `https://files.catbox.moe/${id}.png` });
     g.media = [link('used'), link('unused'), { id: 'copy', name: 'copy.mp3', mime: 'audio/mpeg', size: 9, kind: 'audio' }];
     const slide = board(g, 0).categories[0].clues[0].questionSlide;

@@ -22,7 +22,7 @@
   <button class="ghost small" disabled={index === 0} onclick={() => onmove(-1)} title="Play this round earlier">◀ Move earlier</button>
   <button class="ghost small" disabled={index >= count - 1} onclick={() => onmove(1)} title="Play this round later">Move later ▶</button>
   <button class="ghost small" onclick={onduplicate} title="A copy of this round, right after it">⧉ Duplicate</button>
-  <button class="ghost small" disabled={count <= 1} onclick={ondelete}>Delete round</button>
+  <button class="ghost small" onclick={ondelete}>Delete round</button>
 </div>
 
 <style>

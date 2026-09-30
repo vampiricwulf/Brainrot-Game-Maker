@@ -20,7 +20,7 @@ export function validate(game: Game): Problem[] {
   const colors = game.players.map((p) => normalizeColor(p.color));
   if (new Set(colors).size !== colors.length) out.push({ text: 'Two players share a color', tab: 'setup', level: 'warn' });
 
-  if (!game.rounds.length) out.push({ text: 'No rounds yet', tab: 'setup', level: 'warn' });
+  if (!game.rounds.length) out.push({ text: 'No rounds yet: add one to play', tab: 0, level: 'warn' });
   game.rounds.forEach((round, i) => {
     const name = roundName(round, i);
     if (isFinal(round)) {

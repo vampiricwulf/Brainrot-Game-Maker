@@ -24,7 +24,14 @@ const roundNames = async () => (await page.locator('nav > button.round-tab').all
 try {
   await page.goto(pathToFileURL(file).href);
   await page.getByRole('button', { name: 'Open…' }).waitFor();
-  assert((await roundNames()).join('|') === 'Jeopardy!|Final Jeopardy!', `a new game has a board round and a Final round (${(await roundNames()).join(', ')})`);
+  assert((await roundNames()).length === 0, 'a new game has no rounds');
+  assert(await page.locator('.first-round').isVisible(), 'the editor opens on "Add your first round"');
+  assert(await page.getByRole('button', { name: '▶ Play' }).isDisabled(), 'Play waits for a round');
+  assert((await page.locator('.first-round .mode').count()) === 4, 'every mode can be the first round');
+  await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
+  assert((await roundNames()).join('|') === 'Jeopardy!|Final Jeopardy!', `the host adds a board and a Final (${(await roundNames()).join(', ')})`);
 
   // Add a board round: it goes before the Final, so the Final stays last.
   await page.getByRole('button', { name: '＋ Add round' }).click();

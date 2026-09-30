@@ -5,6 +5,7 @@ import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -29,6 +30,7 @@ try {
   host.on('pageerror', (e) => errors.push('[host] ' + e.message));
   host.on('dialog', (d) => d.accept());
   await host.goto(base);
+  await addClassicRounds(host);
   await host.getByRole('button', { name: '⚙ Setup & Players' }).click();
   await host.getByRole('button', { name: '＋ Add player' }).click();
   await host.getByRole('button', { name: '＋ Add player' }).click();

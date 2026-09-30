@@ -907,7 +907,8 @@ export function newGame(): Game {
       maxPlayers: 8,
     },
     players: [],
-    rounds: [newRound('Jeopardy!'), newFinalRound()],
+    // The host adds rounds themselves (＋ Add round picks the mode).
+    rounds: [],
     media: [],
     audio: {},
     wheels: [],

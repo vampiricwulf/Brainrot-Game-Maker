@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newId } from './model';
+import { jeopardyGame } from './testgame';
+import { newId } from './model';
 import { applyScore, newSession, score } from './session';
 import {
   actionDeltas, activeSegments, applyAction, newWheel, parseDice, planRollOff, rollPreset, segmentAngles, sliceAt,
@@ -76,7 +77,7 @@ describe('roll-off', () => {
 
 describe('score actions', () => {
   function setup() {
-    const game = newGame();
+    const game = jeopardyGame();
     for (let i = 0; i < 3; i++) game.players.push({ id: `p${i}`, name: `P${i}`, color: `#00000${i}` });
     const session = newSession(game);
     applyScore(session, game, ['p0'], 1000, 'x');

@@ -61,10 +61,10 @@
   }
 
   function removeRound(i: number): void {
-    if (game.rounds.length <= 1) return;
     if (!confirm(`Delete "${roundName(game.rounds[i], i)}"${isBoard(game.rounds[i]) ? ' and all its clues' : ''}?`)) return;
     game.rounds.splice(i, 1);
-    tab = Math.min(i, game.rounds.length - 1);
+    // With none left, tab 0 is the "add your first round" screen.
+    tab = Math.max(0, Math.min(i, game.rounds.length - 1));
   }
 
   function moveRound(i: number, delta: number): void {
@@ -86,7 +86,8 @@
   function newFile(): void {
     if (!confirm('Start a new game? Save this one first if you want to keep it.')) return;
     app.game = newGame();
-    tab = 'setup';
+    // A new game has no rounds: start on the screen that adds the first one.
+    tab = 0;
     pruneMedia([app.game, app.playGame, app.resumable?.game]);
   }
 
@@ -191,7 +192,7 @@
       </span>
     {/if}
     <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
-    <button class="primary" onclick={onplay}>▶ Play</button>
+    <button class="primary" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
     <div class="data-notice" role="status">
@@ -285,12 +286,54 @@
             <BoardGameEditor {round} />
           {/if}
         {/key}
+      {:else if !game.rounds.length}
+        <div class="first-round">
+          <h2>Add your first round</h2>
+          <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
+          <div class="modes">
+            {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
+              <button class="mode" onclick={() => addRound(mode as RoundMode)}>
+                <span class="icon" aria-hidden="true">{m.icon}</span>
+                <b>{m.label}</b>
+                <span class="muted small">{m.hint}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       {/if}
     </main>
   </div>
 </div>
 
 <style>
+  .first-round {
+    max-width: 820px;
+    margin: 40px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .first-round h2,
+  .first-round p {
+    margin: 0;
+  }
+  .first-round .modes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+  }
+  .first-round .mode {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 14px;
+    text-align: left;
+    white-space: normal;
+  }
+  .first-round .icon {
+    font-size: 28px;
+  }
   .editor {
     display: flex;
     flex-direction: column;

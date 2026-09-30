@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { jeopardyGame } from './testgame';
 import { newLive, overlayDoneAt } from './live';
-import { newGame, PLAYER_WHEEL, type BoardRound, type Game } from './model';
+import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, wheelPool } from './overlay';
@@ -9,7 +10,7 @@ import { newSession } from './session';
 import { validate } from './validate';
 
 function withPlayers() {
-  const game = newGame();
+  const game = jeopardyGame();
   game.players = [
     { id: 'a', name: 'Ann', color: '#ff0000' },
     { id: 'b', name: 'Bob', color: '#00ff00' },

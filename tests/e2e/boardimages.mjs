@@ -5,6 +5,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -67,6 +68,7 @@ async function drop(locator, files) {
 
 try {
   await page.goto(pathToFileURL(file).href);
+  await addClassicRounds(page);
   await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();

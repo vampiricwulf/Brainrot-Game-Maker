@@ -84,6 +84,7 @@
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
 
   function startPlay(): void {
+    if (!app.game.rounds.length) return toast('Add a round first (＋ Add round)', 4000);
     const saved = app.resumable;
     if (
       saved &&

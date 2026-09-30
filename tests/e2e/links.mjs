@@ -12,6 +12,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -149,6 +150,7 @@ const shot = (name, p = page) => shots && p.screenshot({ path: `${shots}/${name}
 const toast = () => page.locator('.toast').innerText();
 
 await page.goto(url);
+await addClassicRounds(page);
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
 await page.locator('.cat textarea').first().fill('Links');
 

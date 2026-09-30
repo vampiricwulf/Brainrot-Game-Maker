@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -27,6 +28,7 @@ const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEUlEQVR42mP8z8AARLg
 
 try {
   await page.goto(pathToFileURL(file).href);
+  await addClassicRounds(page);
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
   await page.locator('.grid .tile').first().click();
   const canvas = page.locator('.canvas');

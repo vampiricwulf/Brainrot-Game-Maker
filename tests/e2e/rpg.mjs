@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -22,7 +23,7 @@ const where = () => page.locator('.rh .where').innerText();
 
 try {
   await page.goto(pathToFileURL(file).href);
-  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await addClassicRounds(page);
 
   // Stats & items.
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();

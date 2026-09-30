@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { jeopardyGame } from './testgame';
 import { newFinalRound, newGame, newId, newRound, type BoardRound, type FinalRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
@@ -11,7 +12,7 @@ import {
 import { applyAction } from './tools';
 
 function setup(players = 3) {
-  const game = newGame();
+  const game = jeopardyGame();
   for (let i = 0; i < players; i++) game.players.push({ id: newId(), name: `P${i + 1}`, color: `#00000${i}` });
   const session = newSession(game);
   const [a, b, c] = session.players.map((p) => p.id);
@@ -205,7 +206,7 @@ describe('reveal / hide', () => {
 
 describe('multi-round games', () => {
   it('plays through 3 rounds of different sizes, then Final', () => {
-    const game = newGame();
+    const game = jeopardyGame();
     game.players.push({ id: 'a', name: 'A', color: '#111111' });
     const sizes: [number, number][] = [[6, 5], [4, 3], [8, 7]];
     game.rounds = [...sizes.map(([cats, rows], i) => newRound(`R${i + 1}`, cats, Array.from({ length: rows }, (_, k) => (k + 1) * 100))), newFinalRound()];
@@ -230,7 +231,7 @@ describe('multi-round games', () => {
 
 describe('ops', () => {
   it('keeps clue counts in sync with row count', () => {
-    const game = newGame();
+    const game = jeopardyGame();
     const round = board(game, 0);
     setRowCount(round, 7);
     addCategory(round);

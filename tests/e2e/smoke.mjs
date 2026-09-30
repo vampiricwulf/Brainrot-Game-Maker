@@ -72,6 +72,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
+import { addClassicRounds } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -161,6 +162,7 @@ const tile = (i) => page.locator('.stage-box .board .tile').nth(i);
 const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used') && e.getAttribute('aria-disabled') === 'true');
 
 await page.goto(url);
+await addClassicRounds(page);
 // ℹ About: version, build and links; in a browser it explains the data stays in this browser (no folders).
 await page.getByRole('button', { name: 'ℹ About' }).click();
 const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
@@ -1186,6 +1188,14 @@ const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('b
 assert(dl.suggestedFilename().endsWith('.brainrot'), 'Save downloads a .brainrot pack');
 const packPath = await dl.path();
 await page.getByRole('button', { name: 'New' }).click();
+assert(
+  (await page.locator('nav > button.round-tab').count()) === 0 && (await page.getByRole('button', { name: '▶ Play' }).isDisabled()),
+  'a new game starts with no rounds, and Play waits for one',
+);
+// The "Add your first round" screen, then a Final from the nav.
+await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+await page.getByRole('button', { name: '＋ Add round' }).click();
+await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 assert((await page.locator('.cat textarea').first().inputValue()) !== 'Memes', 'new game is blank');
 

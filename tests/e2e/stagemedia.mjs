@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -60,7 +61,7 @@ const guard = () => page.waitForTimeout(500); // past the stage's double-click g
 
 try {
   await page.goto(pathToFileURL(file).href);
-  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await addClassicRounds(page);
   const clip = await webm();
 
   // A clue with a video and a sound (with its speaker icon on), both started by hand.

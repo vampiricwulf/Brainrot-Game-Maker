@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { jeopardyGame } from './testgame';
 import { parseGame } from './fileio';
 import { FINAL_V1_ROUND_ID, isBoard, isFinal, migrateGame, newGame, textSlide, type Game } from './model';
+import { validate } from './validate';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
 
 /** A game as Jeopardy Builder saved it (format version 1). */
 function v1Game(finalEnabled = true) {
-  const g = newGame() as unknown as Record<string, unknown>;
+  const g = jeopardyGame() as unknown as Record<string, unknown>;
   const rounds = (g.rounds as { mode?: string }[]).filter((r) => r.mode === 'board').map(({ mode: _m, ...r }) => r);
   return {
     ...g,
@@ -36,7 +38,7 @@ describe('games from before round modes (version 1)', () => {
   });
 
   it('refuses games from a newer version with a clear message', () => {
-    expect(() => parseGame(JSON.stringify({ ...newGame(), version: 99 }))).toThrow(/newer version/);
+    expect(() => parseGame(JSON.stringify({ ...jeopardyGame(), version: 99 }))).toThrow(/newer version/);
   });
 
   it('carries a saved game in the middle of the Final over to its new round', () => {
@@ -61,3 +63,12 @@ describe('games from before round modes (version 1)', () => {
     expect(session.scoreLog.find((e) => e.id === 'e1')?.clueId).toBe(finalTag(FINAL_V1_ROUND_ID));
   });
 });
+
+describe('a new game', () => {
+  it('starts with no rounds (the host adds them), and the checklist says so', () => {
+    const g = newGame();
+    expect(g.rounds).toEqual([]);
+    expect(validate(g).find((p) => p.text.startsWith('No rounds yet'))).toMatchObject({ tab: 0, level: 'warn' });
+  });
+});
+

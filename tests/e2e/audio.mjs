@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -50,6 +51,7 @@ function wav(seconds) {
 /** A fresh game with two players, at the pre-game screen. `introSound` sets a round-intro sound first. */
 async function toPregame(page, url, { introSound = false } = {}) {
   await page.goto(url);
+  await addClassicRounds(page);
   await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();

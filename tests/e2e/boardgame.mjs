@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { addClassicRounds } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -27,7 +28,7 @@ const tokenOn = async (name) =>
 
 try {
   await page.goto(pathToFileURL(file).href);
-  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await addClassicRounds(page);
 
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Board game/ }).click();
