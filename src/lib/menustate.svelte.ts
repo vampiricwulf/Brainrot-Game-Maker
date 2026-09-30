@@ -28,9 +28,12 @@ export function closeMenu(): void {
 export function dropdown(box: HTMLElement, close: () => void): { destroy: () => void } {
   const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const items = () => [...box.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+  // On the window, as the right-click menu does: Esc closes just the menu wherever the focus is (and never
+  // also the dialog it's in).
   function key(e: KeyboardEvent): void {
     if (e.key === 'Escape') {
-      e.stopPropagation();
+      e.preventDefault();
+      e.stopImmediatePropagation();
       close();
       opener?.focus();
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -41,6 +44,6 @@ export function dropdown(box: HTMLElement, close: () => void): { destroy: () => 
     }
   }
   items()[0]?.focus();
-  box.addEventListener('keydown', key);
-  return { destroy: () => box.removeEventListener('keydown', key) };
+  addEventListener('keydown', key, true);
+  return { destroy: () => removeEventListener('keydown', key, true) };
 }

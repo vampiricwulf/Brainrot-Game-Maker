@@ -430,12 +430,20 @@ assert((await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 &
 
 // Esc closes what's open over the slide (the Shape menu, draw mode, the link box), not the clue editor.
 const clueOpen = async () => (await page.locator('[aria-label="Edit clue"]').count()) === 1;
-await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+const shapeBtn = page.getByRole('button', { name: '◼ Shape ▾' });
+await shapeBtn.click();
 await page.keyboard.press('Escape');
-assert((await page.getByRole('button', { name: '▭ Rectangle' }).count()) === 0 && (await clueOpen()), 'Esc closes the Shape menu, not the clue');
-await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+assert(
+  (await page.getByRole('button', { name: '▭ Rectangle' }).count()) === 0 && (await clueOpen()) && (await shapeBtn.evaluate((b) => b === document.activeElement)),
+  'Esc closes the Shape menu (focus goes back to its button), not the clue',
+);
+const shapeWidth = (await shapeBtn.boundingBox()).width;
+await shapeBtn.click();
 await page.getByRole('button', { name: '✏ Draw a line' }).click();
-assert((await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1, 'draw mode says so on the slide');
+assert(
+  (await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1 && (await page.getByRole('button', { name: '■ Stop' }).boundingBox()).width === shapeWidth,
+  "draw mode says so on the slide, and ■ Stop takes the Shape button's place at the same width (the toolbar doesn't move)",
+);
 await page.keyboard.press('Escape');
 assert((await page.locator('.draw').count()) === 0 && (await clueOpen()), 'Esc stops drawing, not the clue');
 await page.getByRole('button', { name: '🌐 Link' }).click();
@@ -454,6 +462,7 @@ assert((await page.locator('[aria-label="Drawpad"]').count()) === 0 && (await hi
 
 // Preview plays sound: the audio clip and the video play unmuted, and stop with the preview.
 await page.getByRole('button', { name: '🔊 Audio' }).click();
+assert(await page.locator('.picker').getByLabel('Paste a link').evaluate((e) => e === document.activeElement), 'a picker opens with its link field ready for a paste');
 await page.locator('.picker .item', { hasText: 'beep.wav' }).click();
 await page.getByRole('button', { name: '🎬 Video' }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);

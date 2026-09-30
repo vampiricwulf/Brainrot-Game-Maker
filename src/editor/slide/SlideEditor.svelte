@@ -541,19 +541,19 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (!inCharge() || menu) return;
-    // Esc first closes whatever is open over the slide (the Shape menu, the link box, a file picker) or
-    // stops drawing, and goes no further (in the clue editor, it would close the whole clue).
-    if (e.key === 'Escape' && (shapeMenu || linkBox || drawing || picker)) {
+    // The Shape menu keys itself (Esc closes just the menu).
+    if (!inCharge() || menu || shapeMenu) return;
+    // Esc first closes whatever is open over the slide (the link box, a file picker) or stops drawing, and
+    // goes no further (in the clue editor, it would close the whole clue).
+    if (e.key === 'Escape' && (linkBox || drawing || picker)) {
       e.stopImmediatePropagation();
-      shapeMenu = false;
       linkBox = null;
       drawing = false;
       picker = null;
       replacing = null;
       return;
     }
-    if (typing(e) || picker || shapeMenu) return;
+    if (typing(e) || picker) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     if (previewing) {
@@ -730,12 +730,18 @@
         {#if picker === 'audio' && !replacing}<MediaPicker kind="audio" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
-        <!-- While drawing, this is the way out (the slide says how to draw). -->
-        {#if drawing}
-          <button class="primary" onclick={() => (drawing = false)} title="Stop drawing (Esc)">■ Stop drawing</button>
-        {:else}
-          <button onclick={() => (shapeMenu = !shapeMenu)} aria-expanded={shapeMenu}>◼ Shape ▾</button>
-        {/if}
+        <!-- While drawing, this is the way out (the slide says how to draw). Both labels share its width, so
+             the toolbar doesn't wrap differently and shrink the slide. -->
+        <button
+          class="swap"
+          class:primary={drawing}
+          onclick={() => (drawing ? (drawing = false) : (shapeMenu = !shapeMenu))}
+          aria-expanded={drawing ? undefined : shapeMenu}
+          title={drawing ? 'Stop drawing (Esc)' : undefined}
+        >
+          <span class:hide={drawing}>◼ Shape ▾</span>
+          <span class:hide={!drawing}>■ Stop</span>
+        </button>
         {#if shapeMenu}
           <div class="backdrop" onclick={() => (shapeMenu = false)} role="presentation"></div>
           <div class="menu" use:dropdown={() => (shapeMenu = false)}>

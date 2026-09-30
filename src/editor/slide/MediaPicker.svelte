@@ -23,7 +23,8 @@
   const items = $derived(editedGame().media.filter((m) => m.kind === kind));
 
   // Fixed to the window, so no scrolling panel or dialog edge cuts it off: under the button (over it when
-  // there's more room above), and moved in from the window's edges.
+  // there's more room above), and moved in from the window's edges. Placed as it mounts, before it's drawn
+  // (it isn't hidden meanwhile: its link field takes the focus as it opens).
   let box = $state<HTMLDivElement>();
   let place = $state<{ left: number; top?: number; bottom?: number; maxHeight: number }>();
   function position(): void {
@@ -60,7 +61,6 @@
 <div class="backdrop" onclick={onclose} role="presentation"></div>
 <div
   class="picker"
-  class:placed={!!place}
   bind:this={box}
   style:left={px(place?.left)}
   style:top={px(place?.top)}
@@ -105,8 +105,6 @@
     width: min(320px, calc(100vw - 16px));
     max-height: 420px;
     overflow: auto;
-    /* Hidden for the moment before it's placed. */
-    visibility: hidden;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -115,9 +113,6 @@
     flex-direction: column;
     gap: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  }
-  .picker.placed {
-    visibility: visible;
   }
   .list {
     display: grid;
