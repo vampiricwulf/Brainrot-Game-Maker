@@ -18,11 +18,6 @@
   // An editor went away. The next one to mount takes over: it's the same editor remounted by a
   // Question/Answer tab switch (tabs sit outside the editor, so clicking one doesn't activate it).
   let vacated = false;
-
-  /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
-  const CLIP_TYPE = 'application/x-brainrot-slide-items';
-  /** What copies made before the rename (Jeopardy Builder) put on the clipboard. */
-  const OLD_CLIP_TYPE = 'application/x-jeopardy-slide-items';
 </script>
 
 <script lang="ts">
@@ -30,14 +25,13 @@
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
-  import { clipboard, mediaShownBy } from '../../lib/clipboard.svelte';
+  import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, pastingOurs } from '../../lib/clipboard.svelte';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
-  import { uniqueMediaName } from '../../lib/medianame';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
-  import { restack, type Restack } from '../../lib/layers';
+  import { align as alignTo, centreOn, restack, type Pt, type Restack } from '../../lib/layers';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
     type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
@@ -53,7 +47,7 @@
   import ImageEditor from './ImageEditor.svelte';
   import LayersPanel from './LayersPanel.svelte';
   import LayerMenu from './LayerMenu.svelte';
-  import { lockedNote, type LayerAction } from '../../lib/layerlabel';
+  import { lockedNote, type Align, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
   import { itemsFor, placeElement, take } from '../../lib/nav.svelte';
   import { gameUndo, slideHistory } from '../../lib/slideundo.svelte';
@@ -129,7 +123,7 @@
   // mouse, and the right-click menu.
   let hidden = $state<string[]>([]);
   let hovered = $state<string | null>(null);
-  let menu = $state<{ x: number; y: number; stack: SlideElement[] } | null>(null);
+  let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[] } | null>(null);
   const editView = $derived(hidden.length ? { ...slide, elements: slide.elements.filter((e) => !hidden.includes(e.id)) } : slide);
 
   const single = $derived(selected.length === 1 ? slide.elements.find((e) => e.id === selected[0]) : undefined);
@@ -240,9 +234,10 @@
     });
   }
 
-  function addText(): void {
+  /** 🅣 Text, or ＋ Text here from the right-click menu (`at`: where it goes). */
+  function addText(at?: Pt): void {
     let t: TextEl;
-    if (!slide.elements.some((e) => e.kind === 'text')) {
+    if (!slide.elements.some((e) => e.kind === 'text') && !at) {
       // No main text any more (it was deleted): bring it back full-slide and shrink-to-fit.
       t = newTextEl('');
     } else {
@@ -252,7 +247,7 @@
       t.x += k * 40;
       t.y += k * 40;
     }
-    add(t);
+    add(t, at);
     focusText(true);
   }
 
@@ -451,8 +446,10 @@
     restackSelected(dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir);
   }
 
-  function menuAction(a: LayerAction): void {
-    if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restackSelected(a);
+  /** A right-click menu choice (`at`: where on the slide the menu was opened). */
+  function menuAction(a: LayerAction, at?: Pt): void {
+    if (a.startsWith('align-')) align(a.slice(6) as Align);
+    else if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restackSelected(a);
     else if (a === 'duplicate') duplicate();
     else if (a === 'lock' || a === 'unlock')
       edit(() => {
@@ -463,6 +460,21 @@
       hidden = [...hidden, ...selected];
       selected = [];
     } else if (a === 'delete') remove();
+    else if (a === 'copy') copyFromMenu((data) => toast(`Copied ${copied(data)}`));
+    else if (a === 'cut') cut(null);
+    else if (a === 'paste') pasteItems(at);
+    else if (a === 'paste-slide') pasteSlide();
+    else if (a === 'select-all') selectAll();
+    else if (a === 'add-text') addText(at);
+    else if (a === 'background') {
+      replacing = 'bg';
+      picker = 'image';
+    } else if (a === 'edit-image' && single?.kind === 'image') editingImage = single.id;
+  }
+
+  /** Ctrl+A: every item that isn't locked or hidden. */
+  function selectAll(): void {
+    selected = slide.elements.filter((x) => !x.locked && !hidden.includes(x.id)).map((x) => x.id);
   }
 
   /** Tab / Shift+Tab: select the next item down (or up) the stack. */
@@ -473,18 +485,9 @@
     selected = [list[(i + dir + list.length) % list.length].id];
   }
 
-  function align(how: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom'): void {
+  function align(how: Align): void {
     const { free, locked } = selection();
-    edit(() => {
-      for (const e of free) {
-        if (how === 'left') e.x = 0;
-        if (how === 'hcenter') e.x = Math.round((SLIDE_W - e.w) / 2);
-        if (how === 'right') e.x = SLIDE_W - e.w;
-        if (how === 'top') e.y = 0;
-        if (how === 'vcenter') e.y = Math.round((SLIDE_H - e.h) / 2);
-        if (how === 'bottom') e.y = SLIDE_H - e.h;
-      }
-    });
+    edit(() => alignTo(free, how, SLIDE_W, SLIDE_H));
     if (locked) tell(lockedNote(locked));
   }
 
@@ -501,7 +504,7 @@
 
   function copySlide(): void {
     clipboard.slide = clone(slide);
-    holdMedia();
+    holdMedia(game);
     toast('Slide copied');
   }
 
@@ -511,7 +514,7 @@
     if (!clipboard.slide) return;
     const s = clone(clipboard.slide);
     for (const e of s.elements) e.id = newId();
-    adoptMedia(mediaIds(s.elements, s.background));
+    adoptMedia(game, elementMediaIds(s.elements, s.background));
     undoApi.step('Pasted a slide', () => {
       slide.background = s.background;
       slide.elements = s.elements;
@@ -583,7 +586,7 @@
       duplicate();
     } else if (mod && k === 'a') {
       e.preventDefault();
-      selected = slide.elements.filter((x) => !x.locked && !hidden.includes(x.id)).map((x) => x.id);
+      selectAll();
     } else if (mod && !e.shiftKey && !e.altKey && (k === 'b' || k === 'i' || k === 'u') && texts.length) {
       // Bold / italic / underline for the selected text boxes (all on unless all already are).
       e.preventDefault();
@@ -624,70 +627,52 @@
     }
   }
 
-  // ---------- Clipboard ----------
-  /** The media files items show (and a slide's background picture). */
-  function mediaIds(els: SlideElement[], background?: Slide['background']): string[] {
-    const ids = els.flatMap((x) => (x.kind === 'image' ? [x.media, x.editedMedia] : x.kind === 'video' || x.kind === 'audio' ? [x.media] : []));
-    return [...ids, background?.image].filter((id): id is string => !!id);
-  }
-
-  /** Keep the files of what's copied with it (from this game, or an earlier copy's), so it pastes into another game. */
-  function holdMedia(): void {
-    const s = clipboard.slide;
-    const ids = new Set([...mediaIds(clipboard.elements), ...(s ? mediaIds(s.elements, s.background) : [])]);
-    const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
-    // (A screen copied on the map keeps its files too.)
-    const all = [...refs, ...mediaShownBy(clipboard.screen, clipboard.media)];
-    clipboard.media = clone(all.filter((m, i) => all.findIndex((x) => x.id === m.id) === i));
-  }
-
-  /** Pasting what was copied in another game: add the files it shows that this game doesn't have. */
-  function adoptMedia(ids: string[]): void {
-    for (const m of clipboard.media)
-      if (ids.includes(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
-  }
-
-  /** Copy items (the selection by default) to the in-app clipboard, and mark the system clipboard as ours. */
-  function copyItems(data: DataTransfer | null, from = slide.elements.filter((x) => selected.includes(x.id))): number {
-    const items = clone(from);
-    const words = items.flatMap((x) => (x.kind === 'text' && x.text.trim() ? [x.text] : [])).join('\n');
-    clipboard.elements = items;
-    holdMedia();
-    clipboard.token = newId();
-    clipboard.text = words || `${items.length} slide item${items.length === 1 ? '' : 's'}`;
-    data?.setData('text/plain', clipboard.text);
-    data?.setData(CLIP_TYPE, clipboard.token);
-    return items.length;
+  // ---------- Clipboard (shared with the board images: clipboard.svelte.ts) ----------
+  /** Copy the selection (or `from`) to the clipboard: "3 items". */
+  function copied(data: DataTransfer | null, from = slide.elements.filter((x) => selected.includes(x.id))): string {
+    const n = copyElements(game, from, data);
+    return `${n} item${n === 1 ? '' : 's'}`;
   }
 
   function oncopy(e: ClipboardEvent): void {
     if (!inCharge() || typing(e) || previewing || !selected.length) return;
     e.preventDefault();
-    const n = copyItems(e.clipboardData);
-    toast(`Copied ${n} item${n === 1 ? '' : 's'}`);
+    toast(`Copied ${copied(e.clipboardData)}`);
+  }
+
+  /** Copy, then delete. Locked items stay where they are, so they aren't copied either (a paste would duplicate them). */
+  function cut(data: DataTransfer | null): void {
+    const { free, locked } = selection();
+    if (!free.length) return void tell(lockedNote(locked));
+    if (data) copied(data, free);
+    else copyFromMenu((d) => copied(d, free));
+    remove('Cut');
   }
 
   function oncut(e: ClipboardEvent): void {
     if (!inCharge() || typing(e) || previewing || !selected.length) return;
     e.preventDefault();
-    // Locked items stay where they are, so they aren't copied either (a paste would duplicate them).
-    const { free, locked } = selection();
-    if (!free.length) return void tell(lockedNote(locked));
-    copyItems(e.clipboardData, free);
-    remove('Cut');
+    cut(e.clipboardData);
   }
 
-  function pasteItems(): void {
+  /** Paste the copied items (`at`: centred on that point, from the right-click menu). */
+  function pasteItems(at?: Pt): void {
+    if (!clipboard.elements.length) return;
     const copies = clipboard.elements.map((x) => ({ ...clone(x), id: newId() }));
-    adoptMedia(mediaIds(copies));
-    // Copies that would land exactly on an existing item (pasting onto the same slide) shift down-right.
-    const k = freeOffset(copies, slide.elements);
+    // (Copied from the board images: their board-only settings stay behind.)
+    for (const c of copies) for (const key of ['behind', 'clickThrough'] as const) delete (c as Record<string, unknown>)[key];
+    adoptMedia(game, elementMediaIds(copies));
+    if (at) centreOn(copies, at);
+    else {
+      // Copies that would land exactly on an existing item (pasting onto the same slide) shift down-right.
+      const k = freeOffset(copies, slide.elements);
+      for (const c of copies) {
+        c.x += k * 30;
+        c.y += k * 30;
+      }
+    }
     const z = topZ();
-    copies.forEach((c, i) => {
-      c.x += k * 30;
-      c.y += k * 30;
-      c.zIndex = z + i;
-    });
+    copies.forEach((c, i) => (c.zIndex = z + i));
     edit(() => {
       slide.elements.push(...copies);
       selected = copies.map((c) => c.id);
@@ -704,9 +689,7 @@
       return;
     }
     const text = data?.getData('text/plain') ?? '';
-    const token = data?.getData(CLIP_TYPE) || data?.getData(OLD_CLIP_TYPE) || '';
-    // Our own items, unless something newer (a link, some text) was copied since.
-    if (clipboard.elements.length && (token ? token === clipboard.token : text === clipboard.text)) {
+    if (pastingOurs(data ?? null)) {
       e.preventDefault();
       pasteItems();
     } else if (text.trim()) {
@@ -722,13 +705,18 @@
   <ImageEditor el={imageEl} onclose={() => (editingImage = null)} />
 {/if}
 {#if menu}
+  {@const at = menu.at}
   <LayerMenu
-    {...menu}
+    x={menu.x}
+    y={menu.y}
+    stack={menu.stack}
     selected={slide.elements.filter((e) => selected.includes(e.id))}
     {game}
     bind:hovered
+    canPaste={clipboard.elements.length > 0}
+    slideExtras={{ canPasteSlide: !!clipboard.slide }}
     onpick={(id) => (selected = [id])}
-    onaction={menuAction}
+    onaction={(a) => menuAction(a, at)}
     onclose={() => (menu = null)}
   />
 {/if}
@@ -737,7 +725,7 @@
   <div class="toolbar">
     <!-- Preview is look-only: everything that edits the slide is off until it stops. -->
     <fieldset class="tools" disabled={previewing}>
-      <button onclick={addText} title="Add a text box">🅣 Text</button>
+      <button onclick={() => addText()} title="Add a text box">🅣 Text</button>
       <div class="pop">
         <button onclick={() => (picker = 'image')}>🖼 Image</button>
         {#if picker === 'image' && !replacing}<MediaPicker kind="image" onpick={picked} onclose={() => (picker = null)} />{/if}

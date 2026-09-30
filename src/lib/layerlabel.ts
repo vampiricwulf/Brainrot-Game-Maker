@@ -2,8 +2,17 @@
 import { embedName } from './links';
 import type { Game, SlideElement } from './model';
 
-/** What the right-click menu (and its shortcuts) can do to the selection. */
-export type LayerAction = 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete';
+/** Where Align puts items: at the slide's edges, or centred across (hcenter) or down (vcenter) it. */
+export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom';
+
+/**
+ * What the right-click menu (and its shortcuts) can do: to the selection, or on an empty spot (paste there, select
+ * all, and in the slide editor a whole slide, a text box there and the background).
+ */
+export type LayerAction =
+  | 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete'
+  | 'cut' | 'copy' | 'paste' | 'edit-image' | `align-${Align}`
+  | 'select-all' | 'paste-slide' | 'add-text' | 'background';
 
 /** The one notice for an action that left locked items alone (delete, cut, align, nudge). */
 export function lockedNote(n: number, noun = 'item'): string {

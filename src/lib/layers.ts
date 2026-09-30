@@ -1,5 +1,6 @@
 // Layers in the slide editor: hit-testing rotated boxes (what's under the pointer, what a drag-to-select
-// box touches) and restacking. Stage coordinates (1920×1080).
+// box touches), restacking, aligning, and placing pasted items. Stage coordinates (1920×1080).
+import type { Align } from './layerlabel';
 
 export interface Box {
   x: number;
@@ -88,4 +89,31 @@ export function restack<T extends { id: string; zIndex: number }>(els: T[], ids:
     }
   }
   out.forEach((e, i) => (e.zIndex = i));
+}
+
+/** Move each item to the stage's edge, or centre it across or down the stage (Align in the Inspector and the menu). */
+export function align(els: { x: number; y: number; w: number; h: number }[], how: Align, W = 1920, H = 1080): void {
+  for (const e of els) {
+    if (how === 'left') e.x = 0;
+    if (how === 'hcenter') e.x = Math.round((W - e.w) / 2);
+    if (how === 'right') e.x = W - e.w;
+    if (how === 'top') e.y = 0;
+    if (how === 'vcenter') e.y = Math.round((H - e.h) / 2);
+    if (how === 'bottom') e.y = H - e.h;
+  }
+}
+
+/** Move a group of items together so the middle of the box around them is at `at` (a paste at the pointer). */
+export function centreOn(els: { x: number; y: number; w: number; h: number }[], at: Pt): void {
+  if (!els.length) return;
+  const x0 = Math.min(...els.map((e) => e.x));
+  const y0 = Math.min(...els.map((e) => e.y));
+  const x1 = Math.max(...els.map((e) => e.x + e.w));
+  const y1 = Math.max(...els.map((e) => e.y + e.h));
+  const dx = Math.round(at.x - (x0 + x1) / 2);
+  const dy = Math.round(at.y - (y0 + y1) / 2);
+  for (const e of els) {
+    e.x += dx;
+    e.y += dy;
+  }
 }

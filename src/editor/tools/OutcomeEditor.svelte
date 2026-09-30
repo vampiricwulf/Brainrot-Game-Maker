@@ -4,6 +4,7 @@
   import { imgFallback, mediaUrls } from '../../lib/media.svelte';
   import type { MediaKind, Outcome, ScoreAction } from '../../lib/model';
   import MediaPicker from '../slide/MediaPicker.svelte';
+  import { mediaDrop } from '../../lib/mediadrop';
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
 
   let { outcome, placeholder = 'Label' }: { outcome: Outcome; placeholder?: string } = $props();
@@ -58,7 +59,13 @@
         {#each ['image', 'video', 'audio'] as const as k}
           {@const what = k === 'image' ? 'a picture' : k === 'video' ? 'a video' : 'a sound'}
           <div class="pop">
-            <button class="small" onclick={() => (picking = k)} title="Add {what}" aria-label="Add {what}">{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button>
+            <button
+              class="small"
+              onclick={() => (picking = k)}
+              use:mediaDrop={{ kind: ['image', 'video', 'audio'], onpick: (id) => (outcome.media = id) }}
+              title="Add {what} (or drop one here)"
+              aria-label="Add {what}"
+            >{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button>
             {#if picking === k}
               <MediaPicker kind={k} onpick={(id) => ((outcome.media = id), (picking = null))} onclose={() => (picking = null)} />
             {/if}

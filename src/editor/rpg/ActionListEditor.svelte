@@ -6,6 +6,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
   import MediaPicker from '../slide/MediaPicker.svelte';
+  import { mediaDrop } from '../../lib/mediadrop';
   import ScreenPicker from './ScreenPicker.svelte';
   import SlideModal from './SlideModal.svelte';
 
@@ -197,7 +198,7 @@
           <button class="small" onclick={() => (editing = { action: a, which: 'question' })}>Edit slides…</button>
         {:else if a.do === 'sound'}
           <div class="pop">
-            <button class="small" onclick={() => (pickingSound = a.id)}>
+            <button class="small" onclick={() => (pickingSound = a.id)} use:mediaDrop={{ kind: 'audio', onpick: (id) => (a.media = id) }}>
               {a.media ? `🔊 ${game.media.find((m) => m.id === a.media)?.name ?? 'sound'}` : 'Choose sound…'}
             </button>
             {#if pickingSound === a.id}

@@ -11,6 +11,7 @@
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { mediaDrop } from '../lib/mediadrop';
 
   const game = $derived(app.game);
   const t = $derived(game.theme);
@@ -101,14 +102,14 @@
       <div class="row pop">
         <span>Background image</span>
         {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} />{/if}
-        <button class="small" onclick={() => (picking = 'bg')}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
+        <button class="small" onclick={() => (picking = 'bg')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.boardImage = id) }}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
         {#if t.boardImage}<button class="small ghost" onclick={() => (t.boardImage = undefined)} title="Remove">✕</button>{/if}
         {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
       <div class="row pop">
         <span title="A logo or show title across the top of the board">Banner above the board</span>
         {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" onerror={imgFallback} />{/if}
-        <button class="small" onclick={() => (picking = 'banner')}>{t.banner ? 'Change…' : 'Choose…'}</button>
+        <button class="small" onclick={() => (picking = 'banner')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.banner = id) }}>{t.banner ? 'Change…' : 'Choose…'}</button>
         {#if t.banner}<button class="small ghost" onclick={() => (t.banner = undefined)} title="Remove">✕</button>{/if}
         {#if picking === 'banner'}<MediaPicker kind="image" onpick={(id) => ((t.banner = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>

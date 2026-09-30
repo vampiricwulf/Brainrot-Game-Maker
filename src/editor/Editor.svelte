@@ -211,7 +211,7 @@
     e.preventDefault();
     const file = Array.from(e.dataTransfer.files).find((f) => /\.(brainrot|jbr|json)$/i.test(f.name));
     if (file) openFile(file);
-    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide or a tile. A .brainrot game dropped here opens.', 5000);
+    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A .brainrot game dropped here opens.', 5000);
   }
 
   let saving = $state(false);

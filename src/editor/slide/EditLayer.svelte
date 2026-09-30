@@ -33,7 +33,8 @@
     onchange: () => void;
     ondblclick?: (el: SlideElement) => void;
     /** Right-click: everything under the pointer (top-most first), at viewport position x/y. */
-    onmenu?: (m: { x: number; y: number; stack: SlideElement[] }) => void;
+    /** Right-click: where (in the window, and on the slide) and what's under the pointer. */
+    onmenu?: (m: { x: number; y: number; at: Pt; stack: SlideElement[] }) => void;
   } = $props();
 
   const stage = getContext<{ scale: number }>('stage');
@@ -266,13 +267,14 @@
   function context(e: MouseEvent): void {
     e.preventDefault();
     if (!onmenu || drag) return;
-    const stack = elementsAt(visible, toStage(e, layerEl));
+    const at = toStage(e, layerEl);
+    const stack = elementsAt(visible, at);
     // Right-clicking something that isn't selected selects it first (the top unlocked item there).
     if (!stack.some((x) => selected.includes(x.id))) {
       const top = stack.find((x) => !x.locked) ?? stack[0];
       selected = top ? [top.id] : [];
     }
-    onmenu({ x: e.clientX, y: e.clientY, stack });
+    onmenu({ x: e.clientX, y: e.clientY, at, stack });
   }
 
   const HANDLES: [number, number][] = [

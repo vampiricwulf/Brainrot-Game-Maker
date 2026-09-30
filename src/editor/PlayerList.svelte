@@ -9,6 +9,7 @@
   import { toast } from '../lib/app.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { mediaDrop } from '../lib/mediadrop';
 
   interface P {
     id: string;
@@ -101,7 +102,13 @@
       />
       {#if avatars}
         <div class="pop">
-          <button class="ghost av-btn" onclick={() => (picking = p.id)} aria-label="Picture for {p.name}" title="Avatar picture (RPG rounds, player sheets)">
+          <button
+            class="ghost av-btn"
+            onclick={() => (picking = p.id)}
+            use:mediaDrop={{ kind: 'image', onpick: (id) => (p.avatar = id) }}
+            aria-label="Picture for {p.name}"
+            title="Avatar picture (RPG rounds, player sheets): click, or drop a picture here"
+          >
             <Avatar player={p} size={30} />
           </button>
           {#if picking === p.id}

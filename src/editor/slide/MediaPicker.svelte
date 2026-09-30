@@ -6,6 +6,7 @@
   import { pickFile } from '../../lib/fileio';
   import { stepAsync } from '../../lib/history.svelte';
   import { linkHost } from '../../lib/links';
+  import { fittingFile, hasFiles, useFile } from '../../lib/mediadrop';
   import type { MediaKind } from '../../lib/model';
   import LinkField from '../LinkField.svelte';
 
@@ -59,13 +60,40 @@
       toast((e as Error).message, 5000);
     }
   }
+
+  // A file dropped on the picker (or anywhere around it while it's open), or a copied file pasted with Ctrl+V, is
+  // picked at once.
+  let dropping = $state(false);
+  function over(e: DragEvent): void {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dropping = true;
+  }
+  function take(files: File[], e: Event): void {
+    const file = fittingFile(files, kind);
+    if (!file) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    void useFile(file, { kind, onpick });
+  }
+  function ondrop(e: DragEvent): void {
+    dropping = false;
+    if (hasFiles(e)) take(Array.from(e.dataTransfer?.files ?? []), e);
+  }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} onresize={position} />
+<svelte:window
+  onkeydown={(e) => e.key === 'Escape' && onclose()}
+  onresize={position}
+  onpastecapture={(e) => take(Array.from(e.clipboardData?.files ?? []), e)}
+/>
 
-<div class="backdrop" onclick={onclose} role="presentation"></div>
+<div class="backdrop" onclick={onclose} ondragover={over} ondragleave={() => (dropping = false)} {ondrop} role="presentation"></div>
 <div
   class="picker"
+  class:media-drop={dropping}
+  ondragover={over}
+  {ondrop}
   bind:this={box}
   style:left={px(place?.left)}
   style:top={px(place?.top)}
@@ -73,8 +101,10 @@
   style:max-height={px(place?.maxHeight)}
   role="dialog"
   aria-label="Choose {kind}"
+  tabindex="-1"
 >
   <button class="primary" onclick={upload}>⬆ Upload {kind} file…</button>
+  <div class="muted small">{dropping ? 'Let go to use it' : 'Or drop one here, or paste it (Ctrl+V)'}</div>
   <!-- Fonts need the file itself (a font can't be used from a link without the site's permission). -->
   {#if kind !== 'font'}
     <div class="muted small">Or paste a link to one online:</div>

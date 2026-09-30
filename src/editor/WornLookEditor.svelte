@@ -13,6 +13,7 @@
   import Stage from '../lib/Stage.svelte';
   import DrawPad from './slide/DrawPad.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { mediaDrop } from '../lib/mediadrop';
 
   let { item }: { item: ItemDef & { wearable: Wearable } } = $props();
   const game = $derived(editedGame());
@@ -81,7 +82,7 @@
   <div class="controls">
     <div class="row">
       <div class="pop">
-        <button class="small" onclick={() => (picking = !picking)}>
+        <button class="small" onclick={() => (picking = !picking)} use:mediaDrop={{ kind: 'image', onpick: (id) => (w.image = id) }}>
           {#if w.image && mediaUrls[w.image]}<img class="thumb" src={mediaUrls[w.image]} alt="" />{/if} 🖼 Picture…
         </button>
         {#if picking}<MediaPicker kind="image" onpick={(id) => ((w.image = id), (picking = false))} onclose={() => (picking = false)} />{/if}

@@ -37,6 +37,7 @@
     toggleSeam,
   } from '../../lib/worldedit';
   import MediaPicker from '../slide/MediaPicker.svelte';
+  import { mediaDrop } from '../../lib/mediadrop';
   import ScreenEditor from './ScreenEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
 
@@ -939,7 +940,7 @@
         </div>
         <div class="row">
           <div class="pop">
-            <button class="small" onclick={() => (musicFor = 'map')}>🎵 {map.music ? 'Change map music' : 'Map music…'}</button>
+            <button class="small" onclick={() => (musicFor = 'map')} use:mediaDrop={{ kind: 'audio', onpick: (id) => (map.music = id) }}>🎵 {map.music ? 'Change map music' : 'Map music…'}</button>
             {#if musicFor === 'map'}<MediaPicker kind="audio" onpick={(id) => ((map.music = id), (musicFor = null))} onclose={() => (musicFor = null)} />{/if}
           </div>
           {#if map.music}<button class="ghost small" onclick={() => (map.music = undefined)}>No music</button>{/if}
@@ -1169,7 +1170,7 @@
             {/if}
             <div class="row">
               <div class="pop">
-                <button class="small" onclick={() => (musicFor = 'screen')}>🎵 {sel.music ? 'Change screen music' : 'Screen music…'}</button>
+                <button class="small" onclick={() => (musicFor = 'screen')} use:mediaDrop={{ kind: 'audio', onpick: (id) => sel && (sel.music = id) }}>🎵 {sel.music ? 'Change screen music' : 'Screen music…'}</button>
                 {#if musicFor === 'screen'}<MediaPicker kind="audio" onpick={(id) => ((sel.music = id), (musicFor = null))} onclose={() => (musicFor = null)} />{/if}
               </div>
               {#if sel.music}<button class="ghost small" onclick={() => (sel.music = undefined)}>No music</button>{/if}

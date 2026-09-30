@@ -91,3 +91,6 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   0%, 35% { outline: 3px solid var(--accent); outline-offset: 2px; }
   100% { outline: 3px solid transparent; outline-offset: 2px; }
 }
+
+/* A slot a file is being dragged over (mediadrop.ts). */
+.media-drop { outline: 2px dashed var(--accent); outline-offset: 2px; }

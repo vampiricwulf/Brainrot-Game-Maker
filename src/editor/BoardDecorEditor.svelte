@@ -1,7 +1,7 @@
 <!--
   Free-placed images on a round's board screen (Round.decor): logos, stickers, memes. Drag, resize and
   rotate them over a live preview of the board, fade them, put them behind the tiles, or let clicks
-  pass through them to the tiles.
+  pass through them to the tiles. Ctrl+C / Ctrl+X / Ctrl+V share the slide editor's clipboard.
 -->
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
@@ -10,7 +10,9 @@
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
-  import { restack } from '../lib/layers';
+  import { align, centreOn, restack, type Pt } from '../lib/layers';
+  import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
+  import { freeOffset } from '../lib/editing';
   import { boardRounds, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
@@ -21,7 +23,7 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
-  import { lockedNote, type LayerAction } from '../lib/layerlabel';
+  import { lockedNote, type Align, type LayerAction } from '../lib/layerlabel';
   import { itemsFor, placeElement, take } from '../lib/nav.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
@@ -38,7 +40,7 @@
   let replaceFrom = $state<HTMLElement>();
   let editingImage = $state<string | null>(null);
   let canvasEl = $state<HTMLDivElement>();
-  let menu = $state<{ x: number; y: number; stack: SlideElement[] } | null>(null);
+  let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[] } | null>(null);
   const single = $derived(selected.length === 1 ? decor.find((d) => d.id === selected[0]) : undefined);
   const imageEl = $derived(decor.find((d) => d.id === editingImage) as ImageEl | undefined);
   const others = $derived(boardRounds(game).filter((r) => r.id !== round.id));
@@ -163,7 +165,8 @@
     addFiles(e.dataTransfer.files, { x: ((e.clientX - r.left) / r.width) * SLIDE_W, y: ((e.clientY - r.top) / r.height) * SLIDE_H });
   }
 
-  function remove(): void {
+  /** Delete the selected images, keeping locked ones. `verb` names it in the notice ("Cut image · Undo"). */
+  function remove(verb = 'Deleted'): void {
     const gone = decor.filter((d) => selected.includes(d.id) && !d.locked);
     const locked = decor.filter((d) => selected.includes(d.id) && d.locked).length;
     if (!gone.length) {
@@ -174,7 +177,7 @@
       round.decor = decor.filter((d) => !gone.includes(d));
       selected = selected.filter((id) => decor.some((d) => d.id === id));
     });
-    tell(`Deleted ${gone.length === 1 ? 'image' : `${gone.length} images`}${locked ? ` · ${lockedNote(locked, 'image')}` : ''}`, () => undo('button'));
+    tell(`${verb} ${gone.length === 1 ? 'image' : `${gone.length} images`}${locked ? ` · ${lockedNote(locked, 'image')}` : ''}`, () => undo('button'));
   }
 
   function duplicate(): void {
@@ -189,8 +192,12 @@
     edit(() => restack(decor, selected, dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir));
   }
 
-  function menuAction(a: LayerAction): void {
-    if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') edit(() => restack(decor, selected, a));
+  /** A right-click menu choice (`at`: where on the board the menu was opened). */
+  function menuAction(a: LayerAction, at?: Pt): void {
+    if (a.startsWith('align-')) {
+      const free = decor.filter((d) => selected.includes(d.id) && !d.locked);
+      edit(() => align(free, a.slice(6) as Align, SLIDE_W, SLIDE_H));
+    } else if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') edit(() => restack(decor, selected, a));
     else if (a === 'duplicate') duplicate();
     else if (a === 'lock' || a === 'unlock')
       edit(() => {
@@ -200,6 +207,73 @@
       hidden = [...hidden, ...selected];
       selected = [];
     } else if (a === 'delete') remove();
+    else if (a === 'copy') copyFromMenu((data) => toast(`Copied ${copied(data)}`));
+    else if (a === 'cut') cut(null);
+    else if (a === 'paste') pasteItems(at);
+    else if (a === 'select-all') selectAll();
+    else if (a === 'edit-image' && single) editingImage = single.id;
+  }
+
+  function selectAll(): void {
+    selected = decor.filter((d) => !d.locked && !hidden.includes(d.id)).map((d) => d.id);
+  }
+
+  // ---------- Clipboard: the slide editor's (clipboard.svelte.ts), so pictures go between boards and slides ----------
+  /** Copy the selected images (or `from`): "2 images". Board-only settings stay behind (a slide has no tiles). */
+  function copied(data: DataTransfer | null, from = decor.filter((d) => selected.includes(d.id))): string {
+    const n = copyElements(game, from.map(({ behind: _b, clickThrough: _c, ...el }) => el), data);
+    return n === 1 ? 'image' : `${n} images`;
+  }
+
+  /** Copy, then delete (locked images stay, and aren't copied). */
+  function cut(data: DataTransfer | null): void {
+    const free = decor.filter((d) => selected.includes(d.id) && !d.locked);
+    if (!free.length) return void tell(lockedNote(selected.length, 'image'));
+    if (data) copied(data, free);
+    else copyFromMenu((d) => copied(d, free));
+    remove('Cut');
+  }
+
+  /** Paste the copied pictures (`at`: centred there). Anything else copied (text, shapes, video) is skipped. */
+  function pasteItems(at?: Pt): void {
+    const all = clipboard.elements;
+    const pics = all.filter((x): x is ImageEl => x.kind === 'image');
+    const skipped = all.length - pics.length;
+    if (skipped) toast(`Skipped ${skipped} item${skipped === 1 ? '' : 's'}: board images are pictures only`, 4000);
+    if (!pics.length) return;
+    const copies: BoardDecor[] = pics.map((x) => ({ ...clone(x), id: newId(), clickThrough: true }));
+    adoptMedia(game, elementMediaIds(copies));
+    if (at) centreOn(copies, at);
+    else {
+      const k = freeOffset(copies, decor);
+      for (const c of copies) {
+        c.x += k * 30;
+        c.y += k * 30;
+      }
+    }
+    const z = topZ();
+    copies.forEach((c, i) => (c.zIndex = z + i));
+    edit(() => {
+      items().push(...copies);
+      selected = copies.map((c) => c.id);
+    });
+  }
+
+  /** Not while typing, editing an image or picking one (a picker takes a pasted file itself). */
+  const busy = (e: Event) => !!(editingImage || picking || menu) || typing(e);
+
+  function oncopy(e: ClipboardEvent): void {
+    if (busy(e) || !selected.length) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    toast(`Copied ${copied(e.clipboardData)}`);
+  }
+
+  function oncut(e: ClipboardEvent): void {
+    if (busy(e) || !selected.length) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    cut(e.clipboardData);
   }
 
   /** Copy the selected images (or all of them) onto every other round's board. */
@@ -240,7 +314,7 @@
     } else if (mod && k === 'd' && selected.length) {
       duplicate();
     } else if (mod && k === 'a') {
-      selected = decor.filter((d) => !d.locked && !hidden.includes(d.id)).map((d) => d.id);
+      selectAll();
     } else if (k.startsWith('arrow') && selected.length && !(e.target as HTMLElement)?.closest?.('[role="list"]')) {
       const step = e.shiftKey ? 10 : 1;
       for (const d of decor.filter((x) => selected.includes(x.id) && !x.locked)) {
@@ -255,27 +329,35 @@
     e.stopImmediatePropagation();
   }
 
+  /** Pasted picture files, or pictures copied here or on a slide. */
   function onpaste(e: ClipboardEvent): void {
-    if (typing(e) || !e.clipboardData?.files.length) return;
+    if (busy(e)) return;
+    const data = e.clipboardData;
+    if (data?.files.length) addFiles(data.files, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
+    else if (pastingOurs(data)) pasteItems();
+    else return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    addFiles(e.clipboardData.files, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
   }
 </script>
 
-<svelte:window onkeydowncapture={onkey} onpastecapture={onpaste} />
+<svelte:window onkeydowncapture={onkey} oncopycapture={oncopy} oncutcapture={oncut} onpastecapture={onpaste} />
 
 {#if imageEl}
   <ImageEditor el={imageEl} onclose={() => (editingImage = null)} />
 {/if}
 {#if menu}
+  {@const at = menu.at}
   <LayerMenu
-    {...menu}
+    x={menu.x}
+    y={menu.y}
+    stack={menu.stack}
     selected={decor.filter((d) => selected.includes(d.id))}
     {game}
     bind:hovered
+    canPaste={clipboard.elements.some((x) => x.kind === 'image')}
     onpick={(id) => (selected = [id])}
-    onaction={menuAction}
+    onaction={(a) => menuAction(a, at)}
     onclose={() => (menu = null)}
   />
 {/if}
@@ -370,7 +452,7 @@
             {game}
             onorder={order}
             onduplicate={duplicate}
-            ondelete={remove}
+            ondelete={() => remove()}
             onreplace={(from) => ((picking = 'replace'), (replaceFrom = from))}
             onapplystyle={() => {}}
             onuploadfont={() => {}}
@@ -384,13 +466,14 @@
           <p class="muted">{selected.length} images selected.</p>
           <div class="row">
             <button class="small" onclick={duplicate}>Duplicate</button>
-            <button class="small bad" onclick={remove}>Delete</button>
+            <button class="small bad" onclick={() => remove()}>Delete</button>
           </div>
         {:else}
           <p class="muted small">
             Add logos, stickers or GIFs anywhere on this round's board. Drop image files onto the preview or paste them. Drag to
             move, pull the handles to resize, and use the round handle to rotate. Double-click an image to edit it. Right-click,
-            Alt+click or the Layers list picks an image hidden under another.
+            Alt+click or the Layers list picks an image hidden under another. Ctrl+C / Ctrl+X / Ctrl+V copy pictures between
+            boards and slides.
           </p>
         {/if}
       </aside>
