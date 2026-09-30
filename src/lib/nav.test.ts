@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { nav, placeElement, placeKey, resolve, take, type Place } from './nav.svelte';
+import { itemsFor, nav, placeElement, placeKey, resolve, take, type Place } from './nav.svelte';
 import { newTextEl, type BoardRound, type Game } from './model';
 import { jeopardyGame } from './testgame';
 import { newRpgRound, newScreen, newVariant } from './rpg';
@@ -95,14 +95,21 @@ describe('requests', () => {
     vi.useFakeTimers();
     const mine = { seq: 0 };
     const other = { seq: 0 };
-    nav.request = { place: { tab: 'theme' }, seq: 7, at: Date.now() };
+    nav.request = { place: { tab: 'theme' }, items: [], seq: 7, at: Date.now() };
     expect(take(mine)).toEqual({ tab: 'theme' });
     expect(take(mine)).toBeNull();
     // Another part (a clue editor opening because of it) gets it too.
     expect(take(other)).toEqual({ tab: 'theme' });
-    nav.request = { place: { tab: 'media' }, seq: 8, at: Date.now() };
+    nav.request = { place: { tab: 'media' }, items: [], seq: 8, at: Date.now() };
     vi.advanceTimersByTime(1600);
     // A part that shows up much later isn't sent anywhere.
     expect(take({ seq: 0 })).toBeNull();
+  });
+
+  it('select the items changed together (that are on this slide)', () => {
+    nav.request = { place: { tab: 'tiebreaker', side: 'q', element: 'a' }, items: ['a', 'b', 'gone'], seq: 9, at: Date.now() };
+    const slide = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    expect(itemsFor('a', slide)).toEqual(['a', 'b']);
+    expect(itemsFor('c', slide)).toEqual(['c']);
   });
 });

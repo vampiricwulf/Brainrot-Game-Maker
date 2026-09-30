@@ -6,6 +6,7 @@
   import { onMount, untrack } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
+  import { step, stepAsync } from '../../lib/history.svelte';
   import { newId, type ImageEdits, type ImageEl } from '../../lib/model';
   import { aspectCrop } from '../../lib/editing';
   import { fontChoices } from '../../lib/fonts';
@@ -254,11 +255,14 @@
       const type = alpha ? 'image/png' : 'image/jpeg';
       const blob = await canvasToBlob(canvas, type, 0.92);
       const base = source.name.replace(/\.\w+$/, '');
-      const ref = await addMediaFile(game, blob, `${base}-edited.${alpha ? 'png' : 'jpg'}`);
-      el.editedMedia = ref.id;
-      el.edits = JSON.parse(JSON.stringify(edits));
-      // Match the box to the new shape so nothing looks squashed.
-      el.h = Math.round(el.w * (canvas.height / canvas.width));
+      // The edited file and the image showing it: one undo step.
+      await stepAsync('Edited image', async () => {
+        const ref = await addMediaFile(game, blob, `${base}-edited.${alpha ? 'png' : 'jpg'}`);
+        el.editedMedia = ref.id;
+        el.edits = JSON.parse(JSON.stringify(edits));
+        // Match the box to the new shape so nothing looks squashed.
+        el.h = Math.round(el.w * (canvas.height / canvas.width));
+      });
       toast('Image edited (original kept)');
       onclose();
     } catch (e) {
@@ -269,8 +273,10 @@
   }
 
   function revert(): void {
-    el.editedMedia = undefined;
-    el.edits = undefined;
+    step('Back to the original image', () => {
+      el.editedMedia = undefined;
+      el.edits = undefined;
+    });
     toast('Back to the original image');
     onclose();
   }

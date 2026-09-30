@@ -4,9 +4,9 @@
   pass through them to the tiles.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { SnapshotHistory } from '../lib/editing';
+  import { begin, history, redo, step, undo } from '../lib/history.svelte';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
@@ -22,7 +22,7 @@
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
   import { lockedNote, type LayerAction } from '../lib/layerlabel';
-  import { placeElement, take } from '../lib/nav.svelte';
+  import { itemsFor, placeElement, take } from '../lib/nav.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
 
@@ -50,12 +50,14 @@
       if (hidden.some((id) => !ids.has(id))) hidden = hidden.filter((id) => ids.has(id));
     });
   });
-  // An undo or redo that changed an image here selects it.
+  // An undo or redo that changed an image here selects it (and the others it changed with it).
   const handled = { seq: 0 };
   $effect(() => {
     const place = take(handled);
     const id = place && placeElement(place);
-    if (id && untrack(() => decor.some((d) => d.id === id))) selected = [id];
+    untrack(() => {
+      if (id && decor.some((d) => d.id === id)) selected = itemsFor(id, decor);
+    });
   });
 
   // The board as it looks at the start of this round, minus anything hidden while editing.
@@ -75,50 +77,18 @@
 
   const topZ = () => Math.max(0, ...decor.map((d) => d.zIndex)) + 1;
 
-  // ---------- Undo history (Ctrl+Z / Ctrl+Y), as in the slide editor ----------
-  // Typing and sliders are grouped into one step after a pause; adding, deleting, restacking or a
-  // finished drag is recorded at once.
-  const snapshot = () => JSON.stringify(round.decor ?? []);
-  const hist = new SnapshotHistory(untrack(snapshot));
-  let hv = $state(0);
-  let pending = $state(false);
-  let dragging = false;
-  $effect(() => {
-    const now = snapshot();
-    pending = now !== hist.last;
-    if (!pending) return;
-    const t = setTimeout(() => !dragging && commit(), 400);
-    return () => clearTimeout(t);
-  });
-  const canUndo = $derived(hv >= 0 && (pending || hist.undoStack.length > 0));
-  const canRedo = $derived(hv >= 0 && !pending && hist.redoStack.length > 0);
-
-  function commit(): void {
-    if (hist.commit(snapshot())) hv++;
-    pending = false;
-  }
+  // ---------- Undo: the game's history, as in the slide editor (Ctrl+Z / Ctrl+Y are the editor's) ----------
+  // Adding, deleting or restacking is a step of its own, and so is each drag.
   /** Record a discrete edit as its own undo step. */
-  function edit(fn: () => void): void {
-    commit();
-    fn();
-    commit();
-  }
-  function restore(s: string | null): void {
-    hv++;
-    if (s === null) return;
-    const d = JSON.parse(s) as BoardDecor[];
-    round.decor = d;
-    pending = false;
-    selected = selected.filter((id) => d.some((x) => x.id === id));
-  }
-  const undo = () => restore(hist.undo(snapshot()));
-  const redo = () => restore(hist.redo(snapshot()));
+  const edit = (fn: () => void) => step(null, fn);
+  let endDrag: (() => void) | null = null;
+  onDestroy(() => endDrag?.());
 
   // "Deleted image · Undo" on the board, until the next change or a few seconds.
-  let notice = $state<{ text: string; undo?: () => void; at: number } | null>(null);
+  let notice = $state<{ text: string; undo?: () => void; at: string | null } | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   function tell(text: string, undoFn?: () => void): void {
-    notice = { text, undo: undoFn, at: hv };
+    notice = { text, undo: undoFn, at: history.top };
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => (notice = null), 6000);
   }
@@ -201,7 +171,7 @@
       round.decor = decor.filter((d) => !gone.includes(d));
       selected = selected.filter((id) => decor.some((d) => d.id === id));
     });
-    tell(`Deleted ${gone.length === 1 ? 'image' : `${gone.length} images`}${locked ? ` · ${lockedNote(locked, 'image')}` : ''}`, undo);
+    tell(`Deleted ${gone.length === 1 ? 'image' : `${gone.length} images`}${locked ? ` · ${lockedNote(locked, 'image')}` : ''}`, () => undo('button'));
   }
 
   function duplicate(): void {
@@ -233,12 +203,15 @@
   function copyToRounds(): void {
     const src = selected.length ? decor.filter((d) => selected.includes(d.id)) : decor;
     if (!src.length || !others.length) return;
-    for (const r of others) {
-      if (!r.decor) r.decor = [];
-      const z = Math.max(0, ...r.decor.map((d) => d.zIndex)) + 1;
-      r.decor.push(...src.map((d, i) => ({ ...clone(d), id: newId(), zIndex: z + i })));
-    }
-    toast(`Copied ${src.length} image${src.length === 1 ? '' : 's'} to ${others.length} other round${others.length === 1 ? '' : 's'}`);
+    const what = `${src.length} image${src.length === 1 ? '' : 's'} to ${others.length} other round${others.length === 1 ? '' : 's'}`;
+    step(`Copied ${what}`, () => {
+      for (const r of others) {
+        if (!r.decor) r.decor = [];
+        const z = Math.max(0, ...r.decor.map((d) => d.zIndex)) + 1;
+        r.decor.push(...src.map((d, i) => ({ ...clone(d), id: newId(), zIndex: z + i })));
+      }
+    });
+    toast(`Copied ${what}`);
   }
 
   function typing(e: Event): boolean {
@@ -256,12 +229,6 @@
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       const up = e.code === 'BracketRight';
       edit(() => restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward'));
-    } else if (mod && k === 'z' && (e.shiftKey ? canRedo : canUndo)) {
-      // (With nothing to undo or redo here, the keys go on to the game's undo history.)
-      if (e.shiftKey) redo();
-      else undo();
-    } else if (mod && k === 'y' && canRedo) {
-      redo();
     } else if (k === 'escape') {
       if (selected.length) selected = [];
       else onclose();
@@ -325,8 +292,8 @@
         Copy {selected.length ? 'selected' : 'all'} to other rounds
       </button>
       <span class="spacer"></span>
-      <button class="ghost" onclick={undo} disabled={!canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
-      <button class="ghost" onclick={redo} disabled={!canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
+      <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} aria-label="Undo (Ctrl+Z)" title={history.undoTitle}>↶</button>
+      <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} aria-label="Redo (Ctrl+Y)" title={history.redoTitle}>↷</button>
       <button class="primary" onclick={onclose}>Done</button>
     </header>
 
@@ -348,17 +315,17 @@
             bind:hovered
             onmenu={(m) => (menu = m)}
             onstart={() => {
-              commit();
-              dragging = true;
+              endDrag?.();
+              endDrag = begin();
             }}
             onchange={() => {
-              dragging = false;
-              commit();
+              endDrag?.();
+              endDrag = null;
             }}
             ondblclick={(el) => el.kind === 'image' && (editingImage = el.id)}
           />
         </Stage>
-        {#if notice && notice.at === hv && !pending}
+        {#if notice && notice.at === history.top && !history.pending}
           <div class="notice" role="status">
             <span>{notice.text}</span>
             {#if notice.undo}

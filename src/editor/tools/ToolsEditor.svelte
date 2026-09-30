@@ -2,6 +2,7 @@
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
   import { take } from '../../lib/nav.svelte';
+  import { step } from '../../lib/history.svelte';
   import { newId } from '../../lib/model';
   import { newDice, newWheel } from '../../lib/tools';
   import WheelEditor from './WheelEditor.svelte';
@@ -18,14 +19,24 @@
   const wheel = $derived(game.wheels.find((w) => w.id === sel));
   const dice = $derived(game.dice.find((d) => d.id === sel));
 
-  function dup<T extends { id: string; name: string }>(list: T[], item: T): void {
+  function dup<T extends { id: string; name: string }>(list: T[], item: T, noun: string): void {
     const copy = JSON.parse(JSON.stringify(item)) as T & { segments?: { id: string }[]; dice?: { id: string }[] };
     copy.id = newId();
     copy.name += ' (copy)';
     copy.segments?.forEach((s) => (s.id = newId()));
     copy.dice?.forEach((d) => (d.id = newId()));
-    list.push(copy);
+    step(`Duplicated ${noun} “${item.name}”`, () => list.push(copy));
     sel = copy.id;
+  }
+
+  // Deleting is done at once: the note at the bottom offers Undo.
+  function removeWheel(id: string, name: string): void {
+    step(`Deleted wheel “${name}”`, () => (game.wheels = game.wheels.filter((w) => w.id !== id)), { notify: true });
+    sel = null;
+  }
+  function removeDice(id: string, name: string): void {
+    step(`Deleted dice “${name}”`, () => (game.dice = game.dice.filter((d) => d.id !== id)), { notify: true });
+    sel = null;
   }
 </script>
 
@@ -65,15 +76,15 @@
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>
-        <button class="small" onclick={() => dup(game.wheels, wheel)}>Duplicate</button>
-        <button class="small bad" onclick={() => confirm(`Delete "${wheel.name}"?`) && ((game.wheels = game.wheels.filter((w) => w.id !== wheel.id)), (sel = null))}>Delete</button>
+        <button class="small" onclick={() => dup(game.wheels, wheel, 'wheel')}>Duplicate</button>
+        <button class="small bad" onclick={() => removeWheel(wheel.id, wheel.name)}>Delete</button>
       </div>
       {#key wheel.id}<WheelEditor {wheel} />{/key}
     {:else if dice}
       <div class="row top">
         <span class="spacer"></span>
-        <button class="small" onclick={() => dup(game.dice, dice)}>Duplicate</button>
-        <button class="small bad" onclick={() => confirm(`Delete "${dice.name}"?`) && ((game.dice = game.dice.filter((d) => d.id !== dice.id)), (sel = null))}>Delete</button>
+        <button class="small" onclick={() => dup(game.dice, dice, 'dice')}>Duplicate</button>
+        <button class="small bad" onclick={() => removeDice(dice.id, dice.name)}>Delete</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
     {:else}

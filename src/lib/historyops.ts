@@ -230,3 +230,20 @@ export function mediaIdsIn(ops: readonly Op[]): string[] {
   }
   return [...ids];
 }
+
+/**
+ * Ids of the slide items (and board images) that ops add, remove or change, in the order they first come. Not the
+ * ones only restacked: moving one item up or down the stack renumbers the items around it.
+ */
+export function itemIdsIn(ops: readonly Op[]): string[] {
+  const ids = new Set<string>();
+  for (const op of ops) {
+    if (op.t === 'set' && op.k === 'zIndex') continue;
+    const path = opPath(op);
+    for (let i = 1; i < path.length; i++) {
+      const id = path[i];
+      if ((path[i - 1] === 'elements' || path[i - 1] === 'decor') && typeof id === 'string') ids.add(id);
+    }
+  }
+  return [...ids];
+}

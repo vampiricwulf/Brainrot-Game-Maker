@@ -120,8 +120,9 @@
   }
 </script>
 
-{#snippet who(a: { who?: string })}
-  <select bind:value={a.who} aria-label="Who">
+<!-- An action without a who is for `fallback` (the party, for a move): showing it doesn't fill that in. -->
+{#snippet who(a: { who?: string }, fallback = 'ask')}
+  <select bind:value={() => a.who ?? fallback, (v) => (a.who = v)} aria-label="Who">
     <option value="ask">Host picks who</option>
     <option value="party">{board ? 'Whoever’s turn it is' : 'The party here'}</option>
     <option value="selected">Selected players</option>
@@ -206,7 +207,7 @@
           {#if a.media && !mediaUrls[a.media]}<span class="warn small">missing</span>{/if}
         {:else if a.do === 'move'}
           {#if world}<ScreenPicker {world} value={a.to} onchange={(r) => r && (a.to = r)} />{/if}
-          {@render who(a)}
+          {@render who(a, 'party')}
         {:else if a.do === 'reveal' || a.do === 'hide'}
           <select bind:value={a.object} aria-label="Object">
             {#if !objects.some((o) => o.id === a.object)}<option value={a.object}>{a.object ? '⚠ Deleted object — pick another' : '— choose —'}</option>{/if}

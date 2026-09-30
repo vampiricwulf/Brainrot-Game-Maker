@@ -1,6 +1,7 @@
 <!-- An RPG round: which world it plays, where the party starts, and the world itself. -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
+  import { step } from '../../lib/history.svelte';
   import type { RpgRound, World } from '../../lib/model';
   import { newWorld, rpgRounds, startRef, worldById } from '../../lib/rpg';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -20,13 +21,18 @@
     round.start = undefined;
   }
 
+  /** Done at once, with its maps and screens: the note at the bottom offers Undo. */
   function deleteWorld(w: World): void {
-    const screens = w.maps.reduce((n, m) => n + m.screens.length, 0);
-    if (!confirm(`Delete the world "${w.name}" and its ${screens} screen(s)?`)) return;
-    game.worlds = (game.worlds ?? []).filter((x) => x.id !== w.id);
-    // This round plays another world (or none: it says so below).
-    round.world = game.worlds[0]?.id ?? '';
-    round.start = undefined;
+    step(
+      `Deleted world “${w.name}”`,
+      () => {
+        game.worlds = (game.worlds ?? []).filter((x) => x.id !== w.id);
+        // This round plays another world (or none: it says so below).
+        round.world = game.worlds[0]?.id ?? '';
+        round.start = undefined;
+      },
+      { notify: true },
+    );
   }
 </script>
 

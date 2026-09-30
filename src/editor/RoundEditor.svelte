@@ -3,7 +3,8 @@
   import { showMenu } from '../lib/menustate.svelte';
   import { take } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
-  import { categoryLabel, clueValue, slideText, type BoardRound } from '../lib/model';
+  import { categoryLabel, clueValue, roundName, slideText, type BoardRound } from '../lib/model';
+  import { step } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { addCategory, categoryHasContent, clueHasContent, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
@@ -31,6 +32,7 @@
   let catPicker = $state<number | null>(null);
   let dropTarget = $state<string | null>(null);
   const sym = $derived(app.game.settings.currencySymbol);
+  const name = $derived(roundName(round, app.game.rounds.indexOf(round)));
 
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
@@ -105,14 +107,17 @@
       value={round.categories.length}
       onchange={(e) => {
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
-        // Fewer categories drops the last ones: ask first if any has something in it (there's no undo here).
-        const gone = round.categories.length - n;
-        if (round.categories.slice(n).some(categoryHasContent) && !confirm(`Remove the last ${gone === 1 ? 'category and its' : `${gone} categories and their`} clues?`)) {
-          e.currentTarget.value = String(round.categories.length);
-          return;
-        }
-        while (round.categories.length < n) addCategory(round);
-        while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
+        // Fewer categories drops the last ones at once: if any had something in it, the note at the bottom offers Undo.
+        const lost = round.categories.slice(n).some(categoryHasContent);
+        if (n !== round.categories.length)
+          step(
+            `Changed ${name} to ${n} categor${n === 1 ? 'y' : 'ies'}`,
+            () => {
+              while (round.categories.length < n) addCategory(round);
+              while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
+            },
+            { notify: lost },
+          );
         e.currentTarget.value = String(round.categories.length);
       }}
     />
@@ -126,12 +131,9 @@
       value={round.values.length}
       onchange={(e) => {
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
-        const gone = round.values.length - n;
-        if (round.categories.some((c) => c.clues.slice(n).some(clueHasContent)) && !confirm(`Remove the bottom ${gone === 1 ? 'row' : `${gone} rows`} of clues?`)) {
-          e.currentTarget.value = String(round.values.length);
-          return;
-        }
-        setRowCount(round, n);
+        // Like fewer categories: the bottom rows go at once, with Undo when they had clues in them.
+        const lost = round.categories.some((c) => c.clues.slice(n).some(clueHasContent));
+        if (n !== round.values.length) step(`Changed ${name} to ${n} row${n === 1 ? '' : 's'}`, () => setRowCount(round, n), { notify: lost });
         e.currentTarget.value = String(round.values.length);
       }}
     />
@@ -147,8 +149,8 @@
   {#each round.values as _, i}
     <input type="number" bind:value={round.values[i]} aria-label="Row {i + 1} value" />
   {/each}
-  <button class="small" onclick={() => scaleValues(round, 2)} title="Double every row value">×2</button>
-  <button class="small" onclick={() => scaleValues(round, 0.5)} title="Halve every row value">÷2</button>
+  <button class="small" onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
+  <button class="small" onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
   <span class="spacer"></span>
   <span class="muted">⭐ Daily Doubles</span>
   <input
@@ -163,7 +165,7 @@
   <button
     class="small"
     onclick={() => {
-      const n = randomizeDailyDoubles(round, round.dailyDoubleCount ?? 1);
+      const n = step('Placed Daily Doubles at random', () => randomizeDailyDoubles(round, round.dailyDoubleCount ?? 1));
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
     title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🎲 Randomize</button>
@@ -219,10 +221,15 @@
         <div class="cat-tools">
           <button class="ghost small" onclick={() => moveCategory(round, ci, ci - 1)} disabled={ci === 0} title="Move left">◀</button>
           <button class="ghost small" onclick={() => moveCategory(round, ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right">▶</button>
-          <button class="ghost small" onclick={() => duplicateCategory(round, ci)} disabled={round.categories.length >= 10} title="Duplicate">⧉</button>
           <button
             class="ghost small"
-            onclick={() => confirm(`Delete category "${categoryLabel(cat)}"?`) && removeCategory(round, ci)}
+            onclick={() => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci))}
+            disabled={round.categories.length >= 10}
+            title="Duplicate">⧉</button>
+          <!-- Done at once: the note at the bottom offers Undo. -->
+          <button
+            class="ghost small"
+            onclick={() => step(`Deleted category “${categoryLabel(cat)}”`, () => removeCategory(round, ci), { notify: true })}
             disabled={round.categories.length <= 1}
             title="Delete">✕</button>
           <span class="pop">

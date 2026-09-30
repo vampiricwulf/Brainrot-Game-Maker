@@ -1,7 +1,6 @@
 <!-- Freeform 16:9 slide editor (spec §5.3): toolbar, canvas with handles, and an inspector. -->
 <script module lang="ts">
-  import { freeOffset, isMediaLink, SnapshotHistory } from '../../lib/editing';
-  import type { Slide } from '../../lib/model';
+  import { freeOffset, isMediaLink } from '../../lib/editing';
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
   // handles keyboard shortcuts, copy and paste (and becoming active clears the other's selection),
@@ -20,30 +19,6 @@
   // Question/Answer tab switch (tabs sit outside the editor, so clicking one doesn't activate it).
   let vacated = false;
 
-  // Undo history per slide, so it survives Question/Answer switches, Prev/Next and reopening a clue.
-  // Keyed by the slide itself: opening another game starts fresh histories.
-  const histories = new WeakMap<Slide, SnapshotHistory>();
-  function historyFor(slide: Slide): SnapshotHistory {
-    const now = JSON.stringify(slide);
-    const h = histories.get(slide);
-    if (!h) {
-      const fresh = new SnapshotHistory(now);
-      histories.set(slide, fresh);
-      return fresh;
-    }
-    // Changed while no editor showed it (e.g. the clue's quick text fields): that's one undo step.
-    h.commit(now);
-    return h;
-  }
-
-  /**
-   * Start a slide's undo history before any editor shows it (the clue editor calls this for both
-   * slides when a clue opens), so a quick-field edit to the hidden slide can be undone there later.
-   */
-  export function trackSlide(slide: Slide): void {
-    historyFor(slide);
-  }
-
   /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
   const CLIP_TYPE = 'application/x-brainrot-slide-items';
   /** What copies made before the rename (Jeopardy Builder) put on the clipboard. */
@@ -52,7 +27,7 @@
 
 <script lang="ts">
   import { pathShape } from '../../lib/draw';
-  import { getContext, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
+  import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
   import { clipboard } from '../../lib/clipboard.svelte';
@@ -65,7 +40,7 @@
   import { restack, type Restack } from '../../lib/layers';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
-    type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type SlideElement, type TextEl,
+    type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
   } from '../../lib/model';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
@@ -80,7 +55,9 @@
   import LayerMenu from './LayerMenu.svelte';
   import { lockedNote, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
-  import { placeElement, take } from '../../lib/nav.svelte';
+  import { itemsFor, placeElement, take } from '../../lib/nav.svelte';
+  import { gameUndo, slideHistory } from '../../lib/slideundo.svelte';
+  import { itemPlace } from '../../lib/historylabel';
 
   let {
     slide,
@@ -126,10 +103,13 @@
   async function insertDrawing(png: Blob, box: { x: number; y: number; w: number; h: number }): Promise<void> {
     drawpad = false;
     try {
-      const ref = await addMediaFile(game, png, 'drawing.png');
-      const el = newImageEl(ref.id, box.w, box.h);
-      Object.assign(el, { x: box.x, y: box.y, name: 'Drawing' });
-      add(el);
+      // The picture's file and the picture on the slide: one step.
+      await undoApi.stepAsync('Added drawing', async () => {
+        const ref = await addMediaFile(game, png, 'drawing.png');
+        const el = newImageEl(ref.id, box.w, box.h);
+        Object.assign(el, { x: box.x, y: box.y, name: 'Drawing' });
+        add(el);
+      });
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 4000);
     }
@@ -161,14 +141,14 @@
       if (hidden.some((id) => !ids.has(id))) hidden = hidden.filter((id) => ids.has(id));
     });
   });
-  // An undo or redo that changed an item on this slide selects it.
+  // An undo or redo that changed an item on this slide selects it (and the others it changed with it).
   const handled = { seq: 0 };
   $effect(() => {
     const place = take(handled);
     const id = place && placeElement(place);
     untrack(() => {
       if (!id || previewing || !slide.elements.some((e) => e.id === id)) return;
-      selected = [id];
+      selected = itemsFor(id, slide.elements);
       activate();
     });
   });
@@ -224,51 +204,22 @@
     return () => imageEditors--;
   });
 
-  // ---------- Undo history (Ctrl+Z / Ctrl+Y inside the slide editor) ----------
-  // Typing and sliders are grouped into one step after a pause; discrete actions (add, delete,
-  // paste, a finished drag…) are recorded at once, and undo/redo record anything pending first.
-  const hist = untrack(() => historyFor(slide));
-  let hv = $state(0);
-  let pending = $state(false);
-  let dragging = false;
-  $effect(() => {
-    const now = JSON.stringify(slide);
-    pending = now !== hist.last;
-    if (!pending) return;
-    const t = setTimeout(() => !dragging && commit(), 400);
-    return () => clearTimeout(t);
-  });
-  const canUndo = $derived(hv >= 0 && (pending || hist.undoStack.length > 0));
-  const canRedo = $derived(hv >= 0 && !pending && hist.redoStack.length > 0);
-
-  function commit(): void {
-    if (hist.commit(JSON.stringify(slide))) hv++;
-    pending = false;
-  }
+  // ---------- Undo ----------
+  // The game's undo history (a discrete action is a step of its own, a drag is one step, and Ctrl+Z / Ctrl+Y are the
+  // editor's); while a screen is edited live during play, a history of the slide's own (slideundo.svelte.ts).
+  const undoApi = untrack(() => (app.editGame ? slideHistory(slide) : gameUndo));
   /** Record a discrete edit as its own undo step. */
-  function edit(fn: () => void): void {
-    commit();
-    fn();
-    commit();
-  }
-  function restore(s: string | null): void {
-    hv++;
-    if (s === null) return;
-    const d = JSON.parse(s) as Slide;
-    slide.background = d.background;
-    slide.elements = d.elements;
-    pending = false;
-    selected = selected.filter((id) => d.elements.some((e) => e.id === id));
-  }
-  const undo = () => restore(hist.undo(JSON.stringify(slide)));
-  const redo = () => restore(hist.redo(JSON.stringify(slide)));
+  const edit = (fn: () => void) => undoApi.step(null, fn);
+  /** The drag going on (one step until it ends). */
+  let endDrag: (() => void) | null = null;
+  onDestroy(() => endDrag?.());
 
   // A short note on the canvas, optionally with an Undo button ("Deleted text box · Undo"). It goes
-  // away after a few seconds or as soon as the slide changes again, so its Undo always means that step.
-  let notice = $state<{ text: string; undo?: () => void; at: number } | null>(null);
+  // away after a few seconds or as soon as something changes again, so its Undo always means that step.
+  let notice = $state<{ text: string; undo?: () => void; at: unknown } | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   function tell(text: string, undoFn?: () => void): void {
-    notice = { text, undo: undoFn, at: hv };
+    notice = { text, undo: undoFn, at: undoApi.top };
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => (notice = null), 6000);
   }
@@ -476,7 +427,7 @@
       slide.elements = slide.elements.filter((e) => !ids.has(e.id));
       selected = selected.filter((id) => !ids.has(id));
     });
-    tell(`${verb} ${describe(gone)}${locked ? ` · ${lockedNote(locked)}` : ''}`, undo);
+    tell(`${verb} ${describe(gone)}${locked ? ` · ${lockedNote(locked)}` : ''}`, undoApi.undo);
   }
 
   function duplicate(): void {
@@ -534,16 +485,15 @@
     if (locked) tell(lockedNote(locked));
   }
 
+  // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
   function applyStyle(el: TextEl, scope: string): void {
     const targets = styletargets?.(el, scope) ?? [];
     if (!targets.length) return void tell('There are no other slides in that group yet.');
-    if (!confirm(`Restyle the main text on ${targets.length} slide${targets.length === 1 ? '' : 's'}? The words stay the same.`)) return;
-    const undoStyle = restyle(el, targets);
-    commit(); // this slide's main text may be one of the targets
-    tell(`Style applied to ${targets.length} slide${targets.length === 1 ? '' : 's'}`, () => {
-      undoStyle();
-      tell('Style change undone');
-    });
+    const slides = `${targets.length} slide${targets.length === 1 ? '' : 's'}`;
+    const top = undoApi.top;
+    // It shows on this slide (the ones it changed may be anywhere).
+    undoApi.step(`Restyled the main text on ${slides}`, () => restyle(el, targets), { place: itemPlace(game, el.id) ?? undefined });
+    tell(`Style applied to ${slides}`, undoApi.top !== top ? undoApi.undo : undefined);
   }
 
   function copySlide(): void {
@@ -559,12 +509,12 @@
     const s = clone(clipboard.slide);
     for (const e of s.elements) e.id = newId();
     adoptMedia(mediaIds(s.elements, s.background));
-    edit(() => {
+    undoApi.step('Pasted a slide', () => {
       slide.background = s.background;
       slide.elements = s.elements;
       selected = [];
     });
-    tell('Pasted the copied slide', undo);
+    tell('Pasted the copied slide', undoApi.undo);
   }
 
   function typing(e: Event): boolean {
@@ -578,7 +528,6 @@
   function togglePreview(): void {
     previewing = !previewing;
     if (previewing) {
-      commit();
       selected = [];
       shapeMenu = false;
       drawing = false;
@@ -621,15 +570,11 @@
       e.preventDefault();
       const up = e.code === 'BracketRight';
       restackSelected(e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward');
-    } else if (mod && k === 'z' && (e.shiftKey ? canRedo : canUndo)) {
-      // (With nothing to undo or redo on this slide, the keys go on to the game's undo history.)
+    } else if (undoApi.keys && mod && (k === 'z' || k === 'y')) {
+      // (Only a screen edited live has keys of its own: in the editor, Ctrl+Z / Ctrl+Y go through the game's history.)
       e.preventDefault();
-      e.stopImmediatePropagation();
-      if (e.shiftKey) redo();
-      else undo();
-    } else if (mod && k === 'y' && canRedo) {
-      e.preventDefault();
-      redo();
+      if (k === 'y' || e.shiftKey) undoApi.redo();
+      else undoApi.undo();
     } else if (mod && k === 'd' && selected.length) {
       e.preventDefault();
       duplicate();
@@ -916,8 +861,8 @@
         aria-label={previewMuted ? 'Preview sound is off' : 'Preview sound is on'}
         title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}
       >{previewMuted ? '🔇' : '🔈'}</button>
-      <button class="ghost small" onclick={undo} disabled={previewing || !canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
-      <button class="ghost small" onclick={redo} disabled={previewing || !canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
+      <button class="ghost small" onclick={undoApi.undo} disabled={previewing || !undoApi.canUndo} aria-label="Undo (Ctrl+Z)" title={undoApi.undoTitle}>↶</button>
+      <button class="ghost small" onclick={undoApi.redo} disabled={previewing || !undoApi.canRedo} aria-label="Redo (Ctrl+Y)" title={undoApi.redoTitle}>↷</button>
     </div>
   </div>
 
@@ -953,12 +898,12 @@
               bind:hovered
               onmenu={(m) => (menu = m)}
               onstart={() => {
-                commit();
-                dragging = true;
+                endDrag?.();
+                endDrag = undoApi.begin();
               }}
               onchange={() => {
-                dragging = false;
-                commit();
+                endDrag?.();
+                endDrag = null;
               }}
               ondblclick={(el) => (el.kind === 'text' ? focusText(false) : el.kind === 'image' && (editingImage = el.id))}
             />
@@ -974,7 +919,7 @@
         {:else if badge}
           <div class="ribbon">{badge}</div>
         {/if}
-        {#if notice && notice.at === hv && !pending && !previewing}
+        {#if notice && notice.at === undoApi.top && !undoApi.pending && !previewing}
           <div class="notice" role="status">
             <span>{notice.text}</span>
             {#if notice.undo}

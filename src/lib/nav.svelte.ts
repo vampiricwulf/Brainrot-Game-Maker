@@ -10,6 +10,8 @@ export type { Place, RoundPart, Side };
 
 export interface NavRequest {
   place: Place;
+  /** The slide items (or board images) the step changed: the place's own one and the others changed with it. */
+  items: string[];
   seq: number;
   at: number;
 }
@@ -25,13 +27,14 @@ export const nav = new Nav();
 let seq = 0;
 
 /**
- * Show a place: the tab, what's open in it and the thing itself, flashed. What was deleted since is left out (the
- * nearest thing still there shows). Returns false when some of it was.
+ * Show a place: the tab, what's open in it and the thing itself, flashed (with `items`, the slide items changed with
+ * it, selected together). What was deleted since is left out (the nearest thing still there shows). Returns false
+ * when some of it was.
  */
-export function goTo(place: Place, game: Game = app.game): boolean {
-  const found = resolve(game, place);
+export function goTo(place: Place, items: string[] = []): boolean {
+  const found = resolve(app.game, place);
   if (!found) return false;
-  nav.request = { place: found, seq: ++seq, at: Date.now() };
+  nav.request = { place: found, items, seq: ++seq, at: Date.now() };
   const key = placeKey(found);
   if (key) flash(key);
   return found === place;
@@ -46,6 +49,12 @@ export function take(handled: { seq: number }): Place | null {
   if (!r || r.seq <= handled.seq || Date.now() - r.at > FRESH_MS) return null;
   handled.seq = r.seq;
   return r.place;
+}
+
+/** The items of `list` a request for its item `id` selects: those the step changed with it, else just that one. */
+export function itemsFor(id: string, list: readonly { id: string }[]): string[] {
+  const items = nav.request?.items ?? [];
+  return items.includes(id) ? items.filter((x) => list.some((e) => e.id === x)) : [id];
 }
 
 /** The slide item a place picks, if any. */

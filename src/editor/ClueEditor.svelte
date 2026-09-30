@@ -5,7 +5,7 @@
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { stepClue, textStyleTargets } from '../lib/ops';
   import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
-  import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
+  import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
   let {
@@ -25,13 +25,6 @@
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
   let emptyBox = $state<HTMLInputElement>();
-
-  // Both slides keep undo history from the moment the clue opens, so typing the answer in its quick
-  // field while the question slide is showing is still a step Ctrl+Z can undo on the answer slide.
-  $effect(() => {
-    const c = clue;
-    if (c) untrack(() => [c.questionSlide, c.answerSlide].forEach(trackSlide));
-  });
 
   // An undo or redo on this clue shows the side it changed.
   const handled = { seq: 0 };

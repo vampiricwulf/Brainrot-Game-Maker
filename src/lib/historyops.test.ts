@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOps, diff, mediaIdsIn, mergeOps, opPath, opsSize, PathGone, same, type Json, type Op } from './historyops';
+import { applyOps, diff, itemIdsIn, mediaIdsIn, mergeOps, opPath, opsSize, PathGone, same, type Json, type Op } from './historyops';
 
 type Obj = { [k: string]: Json };
 const clone = <T>(v: T): T => structuredClone(v);
@@ -303,5 +303,16 @@ describe('op helpers', () => {
     expect(mediaIdsIn(diff({ media: [m('a')] }, { media: [m('a'), m('a')] })).sort()).toEqual(['a']);
     expect(mediaIdsIn([{ t: 'set', p: [], k: 'media', b: [m('x')], a: [] }])).toEqual(['x']);
     expect(mediaIdsIn(diff({ media: [m('a'), m('b')] }, { media: [m('b'), m('a')] }))).toEqual([]);
+  });
+
+  it('lists the slide items and board images ops add, remove or change', () => {
+    const el = (id: string, x = 0) => ({ id, kind: 'text', x });
+    const slide = (...els: Obj[]) => ({ background: {}, elements: els });
+    const before = { rounds: [{ id: 'r', decor: [el('d1')], questionSlide: slide(el('a'), el('b'), el('c')) }] };
+    const after = { rounds: [{ id: 'r', decor: [el('d1', 5)], questionSlide: slide(el('b', 9), el('e')) }] };
+    expect(itemIdsIn(diff(before, after)).sort()).toEqual(['a', 'b', 'c', 'd1', 'e']);
+    // Ids of other things (the round) aren't items, and restacking renumbers items around the one moved.
+    expect(itemIdsIn(diff({ rounds: [{ id: 'r', name: 'A' }] }, { rounds: [{ id: 'r', name: 'B' }] }))).toEqual([]);
+    expect(itemIdsIn(diff(slide({ ...el('a'), zIndex: 1 }, { ...el('b'), zIndex: 2 }), slide({ ...el('a'), zIndex: 2 }, { ...el('b'), zIndex: 1 })))).toEqual([]);
   });
 });

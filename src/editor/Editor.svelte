@@ -31,8 +31,9 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
-  import { arriving, history, mark, onApplied, redo, undo } from '../lib/history.svelte';
+  import { arriving, history, mark, onApplied, redo, step, undo } from '../lib/history.svelte';
   import { goTo, take, type Place } from '../lib/nav.svelte';
+  import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
   import HistoryNotice from './HistoryNotice.svelte';
@@ -79,7 +80,7 @@
       if (typeof tab === 'number' && i >= 0) tab = i;
       // Then on to where it changed (a jump in the History list shows there).
       const place = dir < 0 ? e.undoPlace : e.place;
-      if (via !== 'list' && place) goTo(place);
+      if (via !== 'list' && place) goTo(place, itemIdsIn(e.ops));
     }),
   );
 
@@ -109,19 +110,11 @@
     );
   }
 
-  /** What goes with a deleted round, for the confirm (an RPG's world stays: other rounds can play it). */
-  const GOES_WITH: Record<RoundMode, string> = {
-    board: ' and all its clues?',
-    final: ' and its question and answer?',
-    rpg: '? Its world of screens stays in the game.',
-    boardgame: ' and all its spaces?',
-  };
-
   // Moving, copying or deleting a round keeps the same tab on screen (a round's right-click menu can act on
-  // another round). The round on screen follows its own move, and its copy shows the copy.
+  // another round). The round on screen follows its own move, and its copy shows the copy. Deleting is done at
+  // once: the note at the bottom offers Undo (an RPG round's world stays, other rounds can play it).
   function removeRound(i: number): void {
-    if (!confirm(`Delete "${roundName(game.rounds[i], i)}"${GOES_WITH[game.rounds[i].mode]}`)) return;
-    game.rounds.splice(i, 1);
+    step(`Deleted round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i, 1), { notify: true });
     if (typeof tab === 'number' && tab > i) tab--;
     // The round on screen went: show its neighbour. With none left, tab 0 is the "add your first round" screen.
     else if (tab === i) tab = Math.max(0, Math.min(i, game.rounds.length - 1));
@@ -140,7 +133,7 @@
   function duplicateRound(i: number): void {
     const copy = reidRound(clone($state.snapshot(game.rounds[i]) as Round));
     copy.name = `${roundName(game.rounds[i], i)} (copy)`;
-    game.rounds.splice(i + 1, 0, copy);
+    step(`Duplicated round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i + 1, 0, copy));
     if (typeof tab === 'number' && tab >= i) tab++;
   }
 
@@ -239,7 +232,7 @@
   /**
    * Ctrl+Z / Ctrl+Y go through the game's undo history, except in a text field with typing of its own (the field's
    * own undo takes that back first), in a window that isn't about the game (⚙ Settings, ℹ About, Open: nothing
-   * happens), and in the editors that keep an undo of their own for now (they take the key first).
+   * happens), and in the image editor and the drawpad, which undo their own drafts (they take the key first).
    */
   function undoKey(e: KeyboardEvent, key: 'undo' | 'redo'): void {
     if (e.defaultPrevented || fields.native(e, key)) return;
@@ -289,8 +282,6 @@
   }
 
   const problems = $derived(validate(game));
-  const undoTitle = $derived(history.canUndo ? `Undo: ${history.undoLabel} (Ctrl+Z)` : 'Nothing to undo');
-  const redoTitle = $derived(history.canRedo ? `Redo: ${history.redoLabel} (Ctrl+Y)` : 'Nothing to redo');
 
   let about = $state(false);
   let settings = $state(false);
@@ -326,8 +317,8 @@
 <div class="editor">
   <header>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
-    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
-    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
+    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
+    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
     <button

@@ -93,6 +93,11 @@ class HistoryState {
   /** What Undo would take back, and what Redo would bring back. */
   undoLabel = $derived(this.pending ? 'your latest changes' : (this.entries[this.index - 1]?.label ?? null));
   redoLabel = $derived(this.pending ? null : (this.entries[this.index]?.label ?? null));
+  /** Tooltips for ↶ and ↷ ("Undo: Renamed category “Memes” (Ctrl+Z)"). */
+  undoTitle = $derived(this.canUndo ? `Undo: ${this.undoLabel} (Ctrl+Z)` : 'Nothing to undo');
+  redoTitle = $derived(this.canRedo ? `Redo: ${this.redoLabel} (Ctrl+Y)` : 'Nothing to redo');
+  /** The newest step's id (a notice's Undo only works while it's still the newest). */
+  top = $derived(this.entries[this.index - 1]?.id ?? null);
 }
 
 const h = new HistoryState();

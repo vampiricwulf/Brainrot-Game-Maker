@@ -300,6 +300,27 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
   return at;
 }
 
+/** Where an item on a clue's, a Final's or the tiebreaker's slide is (a restyle starts there but changes other slides). */
+export function itemPlace(game: Game, id: string): Place | null {
+  const on = (s: Slide) => s.elements.some((e) => e.id === id);
+  const sides = ['questionSlide', 'answerSlide'] as const;
+  for (const r of game.rounds) {
+    if (r.mode === 'board')
+      for (const c of r.categories)
+        for (const cl of c.clues) {
+          const side = sides.find((k) => on(cl[k]));
+          if (side) return placeAt(game, ['rounds', r.id, 'categories', c.id, 'clues', cl.id, side, 'elements', id]).place;
+        }
+    if (r.mode === 'final') {
+      const side = sides.find((k) => on(r[k]));
+      if (side) return placeAt(game, ['rounds', r.id, side, 'elements', id]).place;
+    }
+  }
+  const tb = game.tiebreaker;
+  const side = tb && sides.find((k) => on(tb[k]));
+  return side ? placeAt(game, ['tiebreaker', side, 'elements', id]).place : null;
+}
+
 // ---------- Labels ----------
 
 const RULES: Record<string, string> = {
@@ -387,7 +408,10 @@ export function describe(ops: readonly Op[], before: Game, after: Game, explicit
   if (op.t === 'ins') undoPlace = placeAt(before, op.p).place;
   if (op.t === 'del') place = placeAt(after, op.p).place;
   const label = explicit || labelOf(ops, op, at, moved, before, after);
-  return { label, icon: at.icon, where: at.crumbs.join(' › '), place, undoPlace };
+  // Where it is doesn't say again what the label names ("Edited question “Who is Pepe?”" in Round 1 › Memes › $400 › Question).
+  const last = at.crumbs[at.crumbs.length - 1];
+  const crumbs = last?.trim() && label.includes(`“${short(last)}”`) ? at.crumbs.slice(0, -1) : at.crumbs;
+  return { label, icon: at.icon, where: crumbs.join(' › '), place, undoPlace };
 }
 
 function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], before: Game, after: Game): string {

@@ -2,6 +2,7 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
+  import { step } from '../lib/history.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { textSlide, type TextEl } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
@@ -25,12 +26,10 @@
     checked={!!app.game.tiebreaker}
     onchange={(e) => {
       const tb = app.game.tiebreaker;
-      // Unticking throws the tiebreaker away: ask first if it has something in it (there's no undo here).
-      if (!e.currentTarget.checked && tb && (slideHasContent(tb.questionSlide) || slideHasContent(tb.answerSlide)) && !confirm('Remove the tiebreaker clue and its question and answer?')) {
-        e.currentTarget.checked = true;
-        return;
-      }
-      app.game.tiebreaker = e.currentTarget.checked ? { questionSlide: textSlide(), answerSlide: textSlide() } : undefined;
+      const on = e.currentTarget.checked;
+      // Unticking throws the tiebreaker away at once: when it had something in it, the note at the bottom offers Undo.
+      const lost = !on && !!tb && (slideHasContent(tb.questionSlide) || slideHasContent(tb.answerSlide));
+      step(on ? 'Tiebreaker on' : 'Tiebreaker off', () => (app.game.tiebreaker = on ? { questionSlide: textSlide(), answerSlide: textSlide() } : undefined), { notify: lost });
     }}
   /> Include a tiebreaker clue
 </label>

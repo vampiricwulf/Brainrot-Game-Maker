@@ -39,17 +39,18 @@ describe('step labels', () => {
   it('names renames, with where they happened', () => {
     expect(step((g) => (g.title = 'Brainrot Night 2'))).toMatchObject({ label: 'Renamed the game “Brainrot Night 2”', where: 'Game title', place: { tab: 'title' } });
     const r = step((g) => (g.rounds[0].name = 'Round of memes'));
-    expect(r).toMatchObject({ label: 'Renamed round “Round of memes”', icon: '🟦', where: 'Round of memes' });
+    expect(r).toMatchObject({ label: 'Renamed round “Round of memes”', icon: '🟦', where: '' });
     expect(r.place).toEqual({ tab: 'round', round: r.after.rounds[0].id });
+    // Where it happened doesn't say the name again.
     const c = step((g) => (board(g).categories[1].title = 'Memes'));
-    expect(c).toMatchObject({ label: 'Renamed category “Memes”', where: 'Jeopardy! › Memes' });
+    expect(c).toMatchObject({ label: 'Renamed category “Memes”', where: 'Jeopardy!' });
     expect(c.place).toEqual({ tab: 'round', round: c.after.rounds[0].id, part: { kind: 'category', category: board(c.after).categories[1].id } });
   });
 
   it('calls the main text of a clue its question or answer', () => {
     const q = step((g) => ((board(g).categories[0].clues[1].questionSlide.elements[0] as TextEl).text = 'Who is Pepe?'));
     const cat = board(q.after).categories[0];
-    expect(q).toMatchObject({ label: 'Edited question “Who is Pepe?”', icon: '🅣', where: 'Jeopardy! › Category 1 › $400 › Question › Who is Pepe?' });
+    expect(q).toMatchObject({ label: 'Edited question “Who is Pepe?”', icon: '🅣', where: 'Jeopardy! › Category 1 › $400 › Question' });
     expect(q.place).toEqual({
       tab: 'round',
       round: q.after.rounds[0].id,
@@ -83,7 +84,7 @@ describe('step labels', () => {
     expect(add.label).toBe('Added category “Brand new”');
     expect(add.undoPlace).toEqual({ tab: 'round', round: add.after.rounds[0].id });
     const del = step((g) => board(g).categories.splice(2, 1));
-    expect(del).toMatchObject({ label: 'Deleted category “Category 3”', where: 'Jeopardy! › Category 3' });
+    expect(del).toMatchObject({ label: 'Deleted category “Category 3”', where: 'Jeopardy!' });
     expect(del.place).toEqual({ tab: 'round', round: del.after.rounds[0].id });
     expect(del.undoPlace).toMatchObject({ part: { kind: 'category', category: board(del.before).categories[2].id } });
     expect(step((g) => g.rounds.push(g.rounds.shift()!)).label).toBe('Moved round “Jeopardy!” later');
@@ -101,7 +102,7 @@ describe('step labels', () => {
 
   it('names screens moved on the map, swapped, deleted and edited', () => {
     const moved = step((g) => (screens(g)[1].col = 3));
-    expect(moved).toMatchObject({ label: 'Moved screen “Town” to D1', icon: '🗺', where: 'World 1 › Overworld › Town' });
+    expect(moved).toMatchObject({ label: 'Moved screen “Town” to D1', icon: '🗺', where: 'World 1 › Overworld' });
     const swapped = step((g) => {
       const [a, b] = [screens(g)[1], screens(g)[2]];
       [a.col, b.col] = [b.col, a.col];
@@ -122,7 +123,7 @@ describe('step labels', () => {
     const r = step((g) => ((screens(g)[1].slide.elements[1].role!.dialogue!.elements[0] as TextEl).text = 'Hello there'));
     const npc = r.before.worlds![0].maps[0].screens[1].slide.elements[1];
     expect(r.label).toBe('Edited text “Hello there”');
-    expect(r.where).toBe('World 1 › Overworld › Town › Old Man › dialogue › Hello there');
+    expect(r.where).toBe('World 1 › Overworld › Town › Old Man › dialogue');
     expect(r.place).toMatchObject({ inSlide: true, element: npc.id });
   });
 
