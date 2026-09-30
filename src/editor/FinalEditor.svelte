@@ -4,7 +4,7 @@
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { finalName, type FinalRound, type TextEl } from '../lib/model';
+  import { finalName, setSlideText, slideText, type FinalRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   let { round }: { round: FinalRound } = $props();
@@ -35,10 +35,21 @@
   </label>
   <span class="muted hint">Wagers are entered privately by the host during the game, then revealed player by player.</span>
 </div>
-<label class="field notes">
-  Host notes (never shown on stream)
-  <textarea rows="2" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
-</label>
+<!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
+<div class="quick">
+  <label class="field">
+    Question
+    <textarea rows="2" placeholder="Type the final question…" value={slideText(round.questionSlide)} oninput={(e) => setSlideText(round.questionSlide, e.currentTarget.value)}></textarea>
+  </label>
+  <label class="field">
+    Answer (hidden until revealed)
+    <textarea rows="2" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value)}></textarea>
+  </label>
+  <label class="field">
+    Host notes (never shown on stream)
+    <textarea rows="2" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
+  </label>
+</div>
 <div class="tabs" role="tablist">
   <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question slide</button>
   <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer slide (hidden until revealed)</button>
@@ -56,11 +67,22 @@
   h2 {
     margin: 0 0 8px;
   }
-  .notes {
+  .quick {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 10px;
     margin-bottom: 12px;
   }
-  .notes textarea {
-    width: min(640px, 100%);
+  .quick textarea {
+    resize: none;
+    field-sizing: content;
+    min-height: calc(2lh + 14px);
+    max-height: calc(4lh + 14px);
+  }
+  @media (max-width: 900px) {
+    .quick {
+      grid-template-columns: 1fr;
+    }
   }
   .grid {
     display: flex;

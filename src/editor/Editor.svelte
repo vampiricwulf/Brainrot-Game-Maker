@@ -3,7 +3,7 @@
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
   import { clone, reidRound } from '../lib/ops';
@@ -124,15 +124,15 @@
     else if (tab === i) tab = Math.max(0, Math.min(i, game.rounds.length - 1));
   }
 
-  function moveRound(i: number, delta: number): void {
-    const j = i + delta;
-    if (j < 0 || j >= game.rounds.length) return;
-    step(`Moved round “${roundName(game.rounds[i], i)}” ${delta < 0 ? 'earlier' : 'later'}`, () => {
+  /** Move round `i` to `j` (the tab on screen stays with its round). */
+  function moveRound(i: number, j: number): void {
+    if (j < 0 || j >= game.rounds.length || j === i) return;
+    const shown = typeof tab === 'number' ? game.rounds[tab] : undefined;
+    step(`Moved round “${roundName(game.rounds[i], i)}” ${j < i ? 'earlier' : 'later'}`, () => {
       const [r] = game.rounds.splice(i, 1);
       game.rounds.splice(j, 0, r);
     });
-    if (tab === i) tab = j;
-    else if (tab === j) tab = i;
+    if (shown) tab = game.rounds.indexOf(shown);
   }
 
   /** A copy right after the original, with fresh ids everywhere (so used tiles and saved sessions never mix them up). */
@@ -141,6 +141,70 @@
     copy.name = `${roundName(game.rounds[i], i)} (copy)`;
     step(`Duplicated round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i + 1, 0, copy));
     if (typeof tab === 'number' && tab >= i) tab++;
+  }
+
+  // ---------- Round tabs: drag to reorder, keys, rename in place ----------
+
+  const focusRoundTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`nav [data-place="round:${id}"]`)?.focus());
+
+  /**
+   * On a round's tab: Alt+↑/↓ moves it, Delete / Backspace deletes it (with Undo at the bottom), F2 renames it and
+   * Ctrl+D duplicates it.
+   */
+  function roundTabKey(e: KeyboardEvent, i: number): void {
+    const k = e.key.toLowerCase();
+    const mod = e.ctrlKey || e.metaKey;
+    const id = game.rounds[i].id;
+    if (e.altKey && !mod && (k === 'arrowup' || k === 'arrowdown')) {
+      e.preventDefault();
+      moveRound(i, i + (k === 'arrowup' ? -1 : 1));
+      focusRoundTab(id);
+    } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey) {
+      e.preventDefault();
+      removeRound(i);
+      focusRoundTab(game.rounds[Math.min(i, game.rounds.length - 1)]?.id);
+    } else if (k === 'f2') {
+      e.preventDefault();
+      renamingRound = id;
+    } else if (mod && !e.altKey && k === 'd') {
+      e.preventDefault();
+      duplicateRound(i);
+      focusRoundTab(game.rounds[i + 1]?.id);
+    }
+  }
+
+  /** The round tab being renamed in place. */
+  let renamingRound = $state<string | null>(null);
+  function renameRound(round: Round, name: string): void {
+    renamingRound = null;
+    if (name.trim() && name.trim() !== roundName(round, game.rounds.indexOf(round))) round.name = name.trim();
+    focusRoundTab(round.id);
+  }
+  const focusAll = (el: HTMLInputElement) => {
+    el.focus();
+    el.select();
+  };
+
+  // Round tabs drag to reorder (a line shows where it goes).
+  let roundDrag = $state<string | null>(null);
+  let roundDrop = $state<{ id: string; after: boolean } | null>(null);
+  function roundOver(e: DragEvent, round: Round): void {
+    if (!roundDrag) return;
+    e.preventDefault();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    roundDrop = { id: round.id, after: e.clientY > r.top + r.height / 2 };
+  }
+  function roundDropped(e: DragEvent): void {
+    if (!roundDrag) return;
+    e.preventDefault();
+    const from = game.rounds.findIndex((r) => r.id === roundDrag);
+    const at = game.rounds.findIndex((r) => r.id === roundDrop?.id);
+    if (from >= 0 && at >= 0 && roundDrop) {
+      const to = at + (roundDrop.after ? 1 : 0);
+      moveRound(from, to > from ? to - 1 : to);
+    }
+    roundDrag = null;
+    roundDrop = null;
   }
 
   function newFile(): void {
@@ -389,24 +453,53 @@
       <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
-        <button
-          class="round-tab"
-          class:active={tab === i}
-          data-place="round:{round.id}"
-          onclick={() => (tab = i)}
-          oncontextmenu={(e) =>
-            showMenu(e, [
-              { heading: roundName(round, i) },
-              { label: '◀ Move earlier', onclick: () => moveRound(i, -1), disabled: i === 0 },
-              { label: 'Move later ▶', onclick: () => moveRound(i, 1), disabled: i === game.rounds.length - 1 },
-              { label: '⧉ Duplicate', onclick: () => duplicateRound(i) },
-              { sep: true },
-              { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i) },
-            ])}
-          title={ROUND_MODES[round.mode].label}
-        >
-          <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
-        </button>
+        {#if renamingRound === round.id}
+          <input
+            class="tab-name"
+            value={roundName(round, i)}
+            aria-label="Round name"
+            use:focusAll
+            onkeydown={(e) => {
+              if (e.key === 'Enter') renameRound(round, e.currentTarget.value);
+              else if (e.key === 'Escape') renameRound(round, round.name);
+            }}
+            onblur={(e) => renamingRound === round.id && renameRound(round, e.currentTarget.value)}
+          />
+        {:else}
+          <button
+            class="round-tab"
+            class:active={tab === i}
+            class:drop-before={roundDrop?.id === round.id && !roundDrop.after}
+            class:drop-after={roundDrop?.id === round.id && roundDrop.after}
+            class:lifted={roundDrag === round.id}
+            data-place="round:{round.id}"
+            draggable="true"
+            onclick={() => (tab = i)}
+            ondblclick={() => (renamingRound = round.id)}
+            onkeydown={(e) => roundTabKey(e, i)}
+            oncontextmenu={(e) =>
+              showMenu(e, [
+                { heading: roundName(round, i) },
+                { label: '✎ Rename', onclick: () => (renamingRound = round.id), hint: 'F2 or double-click' },
+                { label: '◀ Move earlier', onclick: () => moveRound(i, i - 1), disabled: i === 0, hint: 'Alt+↑' },
+                { label: 'Move later ▶', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, hint: 'Alt+↓' },
+                { label: '⧉ Duplicate', onclick: () => duplicateRound(i), hint: 'Ctrl+D' },
+                { sep: true },
+                { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), hint: 'Delete' },
+              ])}
+            ondragstart={(e) => {
+              roundDrag = round.id;
+              e.dataTransfer?.setData('text/x-round', round.id);
+              if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+            }}
+            ondragover={(e) => roundOver(e, round)}
+            ondrop={roundDropped}
+            ondragend={() => ((roundDrag = null), (roundDrop = null))}
+            title="{ROUND_MODES[round.mode].label} · drag to reorder, double-click to rename, right-click for more"
+          >
+            <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
+          </button>
+        {/if}
       {/each}
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
@@ -459,7 +552,7 @@
               {round}
               index={i}
               count={game.rounds.length}
-              onmove={(d) => moveRound(i, d)}
+              onmove={(d) => moveRound(i, i + d)}
               onduplicate={() => duplicateRound(i)}
               ondelete={() => removeRound(i)}
             />
@@ -592,6 +685,16 @@
     background: var(--accent);
     border-color: var(--accent);
     color: #fff;
+  }
+  .round-tab.lifted {
+    opacity: 0.5;
+  }
+  /* Where a dragged tab goes (a shadow: the tab clips what's inside it). */
+  .round-tab.drop-before {
+    box-shadow: 0 -3px 0 var(--accent);
+  }
+  .round-tab.drop-after {
+    box-shadow: 0 3px 0 var(--accent);
   }
   .navlabel {
     margin-top: 12px;

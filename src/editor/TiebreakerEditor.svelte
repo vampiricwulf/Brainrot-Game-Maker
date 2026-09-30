@@ -4,7 +4,7 @@
   import { take } from '../lib/nav.svelte';
   import { step } from '../lib/history.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { textSlide, type TextEl } from '../lib/model';
+  import { setSlideText, slideText, textSlide, type TextEl } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import SlideEditor from './slide/SlideEditor.svelte';
 
@@ -35,6 +35,17 @@
 </label>
 {#if app.game.tiebreaker}
   {@const tb = app.game.tiebreaker}
+  <!-- Quick text: the main text of each slide, so a plain tiebreaker never needs the canvas. -->
+  <div class="quick">
+    <label class="field">
+      Question
+      <textarea rows="2" placeholder="Type the tiebreaker question…" value={slideText(tb.questionSlide)} oninput={(e) => setSlideText(tb.questionSlide, e.currentTarget.value)}></textarea>
+    </label>
+    <label class="field">
+      Answer (hidden until revealed)
+      <textarea rows="2" placeholder="Type the answer…" value={slideText(tb.answerSlide)} oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value)}></textarea>
+    </label>
+  </div>
   <div class="tabs" role="tablist">
     <button role="tab" class:on={tbSide === 'q'} aria-selected={tbSide === 'q'} onclick={() => (tbSide = 'q')}>Tiebreaker question</button>
     <button role="tab" class:on={tbSide === 'a'} aria-selected={tbSide === 'a'} onclick={() => (tbSide = 'a')}>Tiebreaker answer</button>
@@ -55,6 +66,23 @@
   }
   p {
     margin: 0 0 8px;
+  }
+  .quick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .quick textarea {
+    resize: none;
+    field-sizing: content;
+    min-height: calc(2lh + 14px);
+    max-height: calc(4lh + 14px);
+  }
+  @media (max-width: 900px) {
+    .quick {
+      grid-template-columns: 1fr;
+    }
   }
   .tabs {
     display: flex;

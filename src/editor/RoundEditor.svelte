@@ -1,15 +1,34 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
-  import { showMenu } from '../lib/menustate.svelte';
-  import { take } from '../lib/nav.svelte';
+  import { tick, untrack } from 'svelte';
+  import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
+  import { clipboard, mediaShownBy } from '../lib/clipboard.svelte';
   import { categoryLabel, clueValue, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
-  import { addCategory, categoryHasContent, clueHasContent, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
+  import {
+    addCategory,
+    categoryHasContent,
+    clearClue,
+    clone,
+    clueHasContent,
+    copyClue,
+    deleteRow,
+    duplicateCategory,
+    insertRow,
+    moveCategory,
+    moveRow,
+    removeCategory,
+    scaleValues,
+    setRowCount,
+    swapClues,
+    type TilePos,
+  } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls } from '../lib/media.svelte';
+  import { uniqueMediaName } from '../lib/medianame';
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -27,6 +46,12 @@
   function openAt(cat: number, row: number): void {
     const c = round.categories[cat];
     open = c?.clues[row] ? { category: c.id, clue: c.clues[row].id } : null;
+    if (open) cursor = { cat, row };
+  }
+  /** Done in the clue editor: back to the tile it ended on. */
+  function closeClue(): void {
+    open = null;
+    void tick().then(() => focusTile(cur.cat, cur.row, true));
   }
   let decorOpen = $state(false);
   let catPicker = $state<number | null>(null);
@@ -96,7 +121,7 @@
     const part = place.part;
     untrack(() => {
       decorOpen = part?.kind === 'decor';
-      if (part?.kind !== 'clue') open = null;
+      if (part?.kind !== 'clue' || part.onBoard) open = null;
       else if (open?.clue !== part.clue) open = { category: part.category, clue: part.clue };
     });
   });
@@ -105,6 +130,278 @@
     if (!hasFiles(e)) return;
     e.preventDefault();
     dropTarget = key;
+  }
+
+  /** A right-click in a field with text selected keeps the browser's own menu (Copy, Paste…). */
+  function textSelected(e: MouseEvent): boolean {
+    const t = e.target;
+    return t instanceof HTMLTextAreaElement && t.selectionStart !== t.selectionEnd;
+  }
+
+  // ---------- Tiles ----------
+
+  /** "Memes $400" */
+  function tileName(p: TilePos): string {
+    const cat = round.categories[p.cat];
+    return `${categoryLabel(cat)} ${sym}${clueValue(round, p.row, cat.clues[p.row])}`;
+  }
+
+  /** The tile with this clue, on the board (an undo flashes it there without opening it). */
+  const tilePlace = (cat: number, clue: string): Place => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[cat].id, clue, onBoard: true } });
+  const rowsPlace = (): Place => ({ tab: 'round', round: round.id, part: { kind: 'values' } });
+
+  /** The tile with the keyboard focus: the board is one tab stop, and the arrows move it. */
+  let cursor = $state<TilePos>({ cat: 0, row: 0 });
+  const cur = $derived<TilePos>({ cat: Math.min(cursor.cat, round.categories.length - 1), row: Math.min(cursor.row, round.values.length - 1) });
+  let gridEl = $state<HTMLDivElement>();
+
+  /** Focus a tile (`always`: even when the focus isn't on the board now). */
+  function focusTile(cat: number, row: number, always = false): void {
+    if (!always && !gridEl?.contains(document.activeElement)) return;
+    cursor = { cat, row };
+    gridEl?.querySelector<HTMLElement>(`[data-tile="${cat},${row}"]`)?.focus();
+  }
+
+  /** A clue dragged from another tile: the two swap (with `copy`, a copy of it replaces this one). */
+  function dropClue(from: TilePos, to: TilePos, copy: boolean): void {
+    if (from.cat === to.cat && from.row === to.row) return;
+    const clue = round.categories[from.cat].clues[from.row];
+    const [a, b] = [tileName(from), tileName(to)];
+    if (copy) {
+      const c = copyClue(clue);
+      step(`Copied ${a} to ${b}`, () => (round.categories[to.cat].clues[to.row] = c), { place: tilePlace(to.cat, c.id) });
+    } else step(`Swapped ${a} and ${b}`, () => swapClues(round, from, to), { place: tilePlace(to.cat, clue.id) });
+    cursor = to;
+  }
+
+  /** Take out what's written on a tile. Done at once: the note at the bottom offers Undo. */
+  function clearTile(p: TilePos): void {
+    const clue = round.categories[p.cat].clues[p.row];
+    if (!clueHasContent(clue)) return;
+    step(`Cleared ${tileName(p)}`, () => clearClue(clue), { notify: true, place: tilePlace(p.cat, clue.id) });
+  }
+
+  /** Copy a whole clue (both slides and its settings) with its files, so it pastes into another round or game. */
+  function copyTile(p: TilePos): void {
+    clipboard.clue = clone(round.categories[p.cat].clues[p.row]);
+    const refs = [...clipboard.media, ...mediaShownBy(clipboard.clue, app.game.media)];
+    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+    toast(`Copied ${tileName(p)}: paste it on any tile (Ctrl+V)`);
+  }
+
+  /** Paste the copied clue over a tile, with fresh ids (and the files it shows, when it came from another game). */
+  function pasteTile(p: TilePos): void {
+    if (!clipboard.clue) return void toast('Copy a clue first (right-click a tile, or Ctrl+C)');
+    const c = copyClue(clipboard.clue);
+    const game = app.game;
+    step(
+      `Pasted a clue on ${tileName(p)}`,
+      () => {
+        for (const m of mediaShownBy(c, clipboard.media))
+          if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+        round.categories[p.cat].clues[p.row] = c;
+      },
+      { place: tilePlace(p.cat, c.id) },
+    );
+  }
+
+  const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  const catNameField = (ci: number) => gridEl?.querySelector<HTMLTextAreaElement>(`[data-cat-name="${ci}"]`);
+
+  /**
+   * On a tile: arrows move between tiles (↑ from the top row goes to the category's name), Enter or F2 opens the
+   * clue, Delete / Backspace clears it, Ctrl+C / Ctrl+V copy and paste a whole clue.
+   */
+  function tileKey(e: KeyboardEvent, p: TilePos): void {
+    const mod = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    const v = ARROWS[e.key];
+    if (v && !mod && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      if (p.row + v[1] < 0) return catNameField(p.cat)?.focus();
+      focusTile(Math.max(0, Math.min(round.categories.length - 1, p.cat + v[0])), Math.max(0, Math.min(round.values.length - 1, p.row + v[1])));
+    } else if (k === 'f2') {
+      e.preventDefault();
+      openAt(p.cat, p.row);
+    } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey) {
+      e.preventDefault();
+      clearTile(p);
+    } else if (mod && !e.altKey && k === 'c' && !window.getSelection()?.toString()) {
+      e.preventDefault();
+      copyTile(p);
+    } else if (mod && !e.altKey && k === 'v') {
+      e.preventDefault();
+      pasteTile(p);
+    }
+  }
+
+  /** ↓ at the end of a category's name goes down to its top tile. */
+  function catNameKey(e: KeyboardEvent, ci: number): void {
+    const t = e.currentTarget as HTMLTextAreaElement;
+    if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || t.selectionEnd < t.value.length) return;
+    e.preventDefault();
+    focusTile(ci, 0, true);
+  }
+
+  // Tiles drag onto each other to swap (Ctrl or Alt: copy). Their own drag type, so image files dropped on them still work.
+  const CLUE_TYPE = 'text/x-brainrot-clue';
+  let tileDrag = $state<TilePos | null>(null);
+  let dropCopy = $state(false);
+
+  function tileOver(e: DragEvent, p: TilePos, empty: boolean | undefined): void {
+    if (!tileDrag) return void (!empty && over(e, `t${p.cat}-${p.row}`));
+    e.preventDefault();
+    dropCopy = e.ctrlKey || e.altKey;
+    if (e.dataTransfer) e.dataTransfer.dropEffect = dropCopy ? 'copy' : 'move';
+    dropTarget = tileDrag.cat === p.cat && tileDrag.row === p.row ? null : `t${p.cat}-${p.row}`;
+  }
+
+  function tileDropped(e: DragEvent, p: TilePos, empty: boolean | undefined): void {
+    if (tileDrag) {
+      e.preventDefault();
+      dropClue(tileDrag, p, e.ctrlKey || e.altKey);
+      tileDragEnd();
+    } else if (!empty && hasFiles(e)) dropOnTile(e, p.cat, p.row);
+  }
+
+  function tileDragEnd(): void {
+    tileDrag = null;
+    dropTarget = null;
+  }
+
+  function tileMenu(e: MouseEvent, p: TilePos): void {
+    const clue = round.categories[p.cat].clues[p.row];
+    cursor = p;
+    showMenu(e, [
+      { heading: tileName(p) },
+      { label: '✎ Edit clue', onclick: () => openAt(p.cat, p.row), hint: 'Enter' },
+      {
+        label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
+        disabled: clue.empty,
+        onclick: () => (clue.type = clue.type === 'dailyDouble' ? 'standard' : 'dailyDouble'),
+      },
+      { label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty', onclick: () => (clue.empty = !clue.empty) },
+      { sep: true },
+      { label: '📋 Copy clue', onclick: () => copyTile(p), hint: 'Ctrl+C' },
+      { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, hint: 'Ctrl+V' },
+      { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueHasContent(clue), hint: 'Delete' },
+      ...rowItems(p.row),
+    ]);
+  }
+
+  // ---------- Categories ----------
+
+  function moveCat(from: number, to: number): void {
+    if (to < 0 || to >= round.categories.length || to === from) return;
+    step(`Moved category “${categoryLabel(round.categories[from])}” ${to < from ? 'left' : 'right'}`, () => moveCategory(round, from, to));
+  }
+
+  /** A new category at `at`, its name ready to type. */
+  function insertCat(at: number): void {
+    step(null, () => addCategory(round, at));
+    void tick().then(() => {
+      const f = catNameField(at);
+      f?.focus();
+      f?.select();
+    });
+  }
+
+  // Done at once: the note at the bottom offers Undo.
+  function deleteCat(ci: number): void {
+    step(`Deleted category “${categoryLabel(round.categories[ci])}”`, () => removeCategory(round, ci), { notify: true });
+  }
+
+  function clearCat(ci: number): void {
+    const cat = round.categories[ci];
+    const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
+    step(`Cleared the clues of “${categoryLabel(cat)}”`, () => cat.clues.forEach(clearClue), { notify: true, place });
+  }
+
+  function catMenu(e: MouseEvent, ci: number): void {
+    if (textSelected(e)) return;
+    const cat = round.categories[ci];
+    const n = round.categories.length;
+    showMenu(e, [
+      { heading: categoryLabel(cat) },
+      { label: '◀ Move left', onclick: () => moveCat(ci, ci - 1), disabled: ci === 0 },
+      { label: 'Move right ▶', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1 },
+      { sep: true },
+      { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
+      { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
+      { label: '⧉ Duplicate', onclick: () => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci)), disabled: n >= 10 },
+      { label: '🖼 Image…', onclick: () => (catPicker = ci) },
+      { label: '⬚ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueHasContent) },
+      { sep: true },
+      { label: '🗑 Delete category', danger: true, onclick: () => deleteCat(ci), disabled: n <= 1 },
+    ]);
+  }
+
+  // Category headers drag to reorder (a line shows where it goes), from anywhere but their fields and buttons, so
+  // the name can still be selected with the mouse.
+  let grab = $state<string | null>(null);
+  let catDrag = $state<string | null>(null);
+  let catDrop = $state<{ id: string; after: boolean } | null>(null);
+
+  function catDown(e: PointerEvent, id: string): void {
+    grab = (e.target as HTMLElement).closest('textarea, input, select, button, .pop') ? null : id;
+  }
+
+  function catOver(e: DragEvent, ci: number): void {
+    if (!catDrag) return over(e, `c${ci}`);
+    e.preventDefault();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    catDrop = { id: round.categories[ci].id, after: e.clientX > r.left + r.width / 2 };
+  }
+
+  function catDropped(e: DragEvent, ci: number): void {
+    if (!catDrag) return void (hasFiles(e) && dropOnCategory(e, ci));
+    e.preventDefault();
+    const from = round.categories.findIndex((c) => c.id === catDrag);
+    const at = round.categories.findIndex((c) => c.id === catDrop?.id);
+    if (from >= 0 && at >= 0 && catDrop) {
+      const to = at + (catDrop.after ? 1 : 0);
+      moveCat(from, to > from ? to - 1 : to);
+    }
+    catDragEnd();
+  }
+
+  function catDragEnd(): void {
+    catDrag = null;
+    catDrop = null;
+    grab = null;
+  }
+
+  // ---------- Rows ----------
+
+  // Rows of clues go in, out and around anywhere; the row values stay by position (the top row is still the cheapest).
+  function addRow(at: number): void {
+    step(`Inserted a row in ${name}`, () => insertRow(round, at), { place: rowsPlace() });
+  }
+
+  // Done at once: the note at the bottom offers Undo.
+  function removeRow(row: number): void {
+    step(`Deleted row ${row + 1} of ${name}`, () => deleteRow(round, row), { notify: true, place: rowsPlace() });
+  }
+
+  function shiftRow(from: number, to: number): void {
+    if (step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in ${name}`, () => moveRow(round, from, to), { place: rowsPlace() }) && cursor.row === from)
+      cursor = { cat: cursor.cat, row: to };
+  }
+
+  function rowItems(row: number): MenuEntry[] {
+    const n = round.values.length;
+    return [
+      { sep: true },
+      { label: '＋ Insert row above', onclick: () => addRow(row), disabled: n >= 10 },
+      { label: '＋ Insert row below', onclick: () => addRow(row + 1), disabled: n >= 10 },
+      { label: '▲ Move row up', onclick: () => shiftRow(row, row - 1), disabled: row === 0 },
+      { label: '▼ Move row down', onclick: () => shiftRow(row, row + 1), disabled: row === n - 1 },
+      { label: `🗑 Delete row ${row + 1}`, danger: true, onclick: () => removeRow(row), disabled: n <= 1 },
+    ];
+  }
+
+  function rowMenu(e: MouseEvent, row: number): void {
+    showMenu(e, [{ heading: `Row ${row + 1} · ${sym}${round.values[row]}` }, ...rowItems(row)]);
   }
 </script>
 
@@ -159,7 +456,7 @@
 <div class="values" data-place="values:{round.id}">
   <span class="muted">Row values</span>
   {#each round.values as _, i}
-    <input type="number" bind:value={round.values[i]} aria-label="Row {i + 1} value" />
+    <input type="number" bind:value={round.values[i]} aria-label="Row {i + 1} value" oncontextmenu={(e) => rowMenu(e, i)} title="Right-click to insert, move or delete this row" />
   {/each}
   <button class="small" onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
   <button class="small" onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
@@ -185,15 +482,27 @@
 </div>
 
 <div class="grid-wrap">
-  <div class="grid" style:grid-template-columns="repeat({round.categories.length}, minmax(140px, 1fr))">
+  <div class="grid" bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax(140px, 1fr))">
     {#each round.categories as cat, ci (cat.id)}
       <div
         class="cat"
         class:drop={dropTarget === `c${ci}`}
+        class:drop-before={catDrop?.id === cat.id && !catDrop.after}
+        class:drop-after={catDrop?.id === cat.id && catDrop.after}
+        class:lifted={catDrag === cat.id}
         data-place="category:{cat.id}"
-        ondragover={(e) => over(e, `c${ci}`)}
+        draggable={grab === cat.id}
+        onpointerdown={(e) => catDown(e, cat.id)}
+        oncontextmenu={(e) => catMenu(e, ci)}
+        ondragstart={(e) => {
+          catDrag = cat.id;
+          e.dataTransfer?.setData('text/x-category', cat.id);
+          if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+        }}
+        ondragover={(e) => catOver(e, ci)}
         ondragleave={() => dropTarget === `c${ci}` && (dropTarget = null)}
-        ondrop={(e) => dropOnCategory(e, ci)}
+        ondrop={(e) => catDropped(e, ci)}
+        ondragend={catDragEnd}
         role="group"
         aria-label="Category {ci + 1}"
       >
@@ -212,7 +521,9 @@
           class:sub={!!cat.image}
           rows={cat.image ? 1 : 2}
           placeholder={cat.image ? 'Name (for you; optional on screen)' : 'Category name'}
-          aria-label="Category {ci + 1} name"></textarea>
+          aria-label="Category {ci + 1} name"
+          data-cat-name={ci}
+          onkeydown={(e) => catNameKey(e, ci)}></textarea>
         {#if cat.image}
           <div class="cat-img-opts">
             <select
@@ -231,23 +542,16 @@
           </div>
         {/if}
         <div class="cat-tools">
-          <button class="ghost small" onclick={() => step(`Moved category “${categoryLabel(cat)}” left`, () => moveCategory(round, ci, ci - 1))} disabled={ci === 0} title="Move left">◀</button>
-          <button
-            class="ghost small"
-            onclick={() => step(`Moved category “${categoryLabel(cat)}” right`, () => moveCategory(round, ci, ci + 1))}
-            disabled={ci === round.categories.length - 1}
-            title="Move right">▶</button>
+          <span class="grip" aria-hidden="true" title="Drag to move the category · right-click it for more">⋮⋮</span>
+          <button class="ghost small" onclick={() => moveCat(ci, ci - 1)} disabled={ci === 0} title="Move left">◀</button>
+          <button class="ghost small" onclick={() => moveCat(ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right">▶</button>
           <button
             class="ghost small"
             onclick={() => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci))}
             disabled={round.categories.length >= 10}
             title="Duplicate">⧉</button>
           <!-- Done at once: the note at the bottom offers Undo. -->
-          <button
-            class="ghost small"
-            onclick={() => step(`Deleted category “${categoryLabel(cat)}”`, () => removeCategory(round, ci), { notify: true })}
-            disabled={round.categories.length <= 1}
-            title="Delete">✕</button>
+          <button class="ghost small" onclick={() => deleteCat(ci)} disabled={round.categories.length <= 1} title="Delete">✕</button>
           <span class="pop">
             <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)">🖼</button>
             {#if catPicker === ci}
@@ -264,27 +568,32 @@
         {@const a = slideHasContent(clue.answerSlide)}
         {@const kinds = [...new Set(clue.questionSlide.elements.map((e) => e.kind).filter((k) => k !== 'text'))]}
         {@const face = clue.tileFace?.image && !clue.empty ? mediaUrls[clue.tileFace.image] : undefined}
+        {@const p = { cat: ci, row }}
+        {@const target = dropTarget === `t${ci}-${row}`}
         <button
           class="tile"
           class:empty={clue.empty}
-          class:drop={dropTarget === `t${ci}-${row}`}
+          class:drop={target}
+          class:lifted={tileDrag?.cat === ci && tileDrag.row === row}
           data-place="clue:{clue.id}"
+          data-tile="{ci},{row}"
+          tabindex={cur.cat === ci && cur.row === row ? 0 : -1}
+          draggable="true"
           onclick={() => openAt(ci, row)}
-          oncontextmenu={(e) =>
-            showMenu(e, [
-              { heading: `${categoryLabel(cat) || `Category ${ci + 1}`} · ${sym}${clueValue(round, row, clue)}` },
-              { label: '✎ Edit clue', onclick: () => openAt(ci, row) },
-              {
-                label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
-                disabled: clue.empty,
-                onclick: () => (clue.type = clue.type === 'dailyDouble' ? 'standard' : 'dailyDouble'),
-              },
-              { label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty', onclick: () => (clue.empty = !clue.empty) },
-            ])}
-          ondragover={(e) => !clue.empty && over(e, `t${ci}-${row}`)}
-          ondragleave={() => dropTarget === `t${ci}-${row}` && (dropTarget = null)}
-          ondrop={(e) => !clue.empty && dropOnTile(e, ci, row)}
+          onfocus={() => (cursor = p)}
+          onkeydown={(e) => tileKey(e, p)}
+          oncontextmenu={(e) => tileMenu(e, p)}
+          ondragstart={(e) => {
+            tileDrag = p;
+            e.dataTransfer?.setData(CLUE_TYPE, clue.id);
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
+          }}
+          ondragover={(e) => tileOver(e, p, clue.empty)}
+          ondragleave={() => target && (dropTarget = null)}
+          ondrop={(e) => tileDropped(e, p, clue.empty)}
+          ondragend={tileDragEnd}
         >
+          {#if target && tileDrag}<span class="swap">{dropCopy ? '⧉ Copy here' : '⇄ Swap'}</span>{/if}
           {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
           <span class="val">
             {clue.empty ? 'EMPTY' : `${sym}${clueValue(round, row, clue)}`}
@@ -307,12 +616,15 @@
 </div>
 
 {#if editing}
-  <ClueEditor {round} bind:pos={() => editing!, (p) => openAt(p.cat, p.row)} onclose={() => (open = null)} />
+  <ClueEditor {round} bind:pos={() => editing!, (p) => openAt(p.cat, p.row)} onclose={closeClue} />
 {/if}
 {#if decorOpen}
   <BoardDecorEditor {round} onclose={() => (decorOpen = false)} />
 {/if}
-<p class="muted small tip">Tip: drop image files onto a category or a tile to use them there. Drop several to fill the next ones.</p>
+<p class="muted small tip">
+  Tips: drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it. Right-click a tile, a category or a row value for
+  more. Drop image files onto a category or a tile to use them there.
+</p>
 
 <style>
   .head {
@@ -383,6 +695,46 @@
   .tile.drop {
     outline: 2px dashed var(--accent);
     outline-offset: 2px;
+  }
+  .cat {
+    position: relative;
+  }
+  .cat.drop-before::before,
+  .cat.drop-after::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+  }
+  .cat.drop-before::before {
+    left: -4px;
+  }
+  .cat.drop-after::after {
+    right: -4px;
+  }
+  .cat.lifted,
+  .tile.lifted {
+    opacity: 0.5;
+  }
+  .grip {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 0 2px;
+    align-self: center;
+  }
+  .swap {
+    position: absolute;
+    inset: auto 6px 6px auto;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    pointer-events: none;
   }
   .cat-img {
     position: relative;
