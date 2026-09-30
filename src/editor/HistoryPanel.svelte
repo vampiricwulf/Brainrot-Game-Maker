@@ -3,8 +3,9 @@
   (dimmed) above "● Now". Click a step to go back (or forward) to just after it; Go there shows where it changed.
 -->
 <script lang="ts">
-  import { toast } from '../lib/app.svelte';
-  import { clear, history, jumpTo, MAX_STEPS, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
+  import { app, toast } from '../lib/app.svelte';
+  import { clear, heldMedia, history, jumpTo, MAX_STEPS, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
+  import { formatBytes, getBlob } from '../lib/media.svelte';
   import { goTo } from '../lib/nav.svelte';
   import InlineAsk from '../play/host/InlineAsk.svelte';
 
@@ -67,6 +68,14 @@
     if (index === 0 && entries.length) out.push({ kind: 'now', key: 'now' });
     out.push(...marksAt(0));
     return out;
+  });
+
+  // Stored files that are no longer in the game, kept only so their steps can be undone (freed with the steps).
+  const kept = $derived.by(() => {
+    // (Counted by their bytes: a replaced file's copies of its bytes are those of a file, in the game or not.)
+    const inGame = new Set(app.game.media.flatMap((m) => getBlob(m.id) ?? []));
+    const blobs = new Set([...heldMedia(history.entries)].flatMap((id) => getBlob(id) ?? []).filter((b) => !inGame.has(b)));
+    return { n: blobs.size, bytes: [...blobs].reduce((a, b) => a + b.size, 0) };
   });
 
   /** A jump is waiting for "Go back 34 steps?" to be answered. */
@@ -192,6 +201,10 @@
   </div>
   <p class="foot muted">
     {history.trimmed ? `Older steps weren't kept (the history keeps the last ${MAX_STEPS} steps).` : `The history keeps the last ${MAX_STEPS} steps.`}
+    {#if kept.n}
+      {kept.n === 1 ? 'A removed file' : `${kept.n} removed files`} ({formatBytes(kept.bytes)}) {kept.n === 1 ? 'is' : 'are'} kept so
+      {kept.n === 1 ? 'its step' : 'their steps'} can be undone.
+    {/if}
   </p>
 </div>
 

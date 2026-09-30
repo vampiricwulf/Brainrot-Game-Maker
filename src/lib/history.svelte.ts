@@ -3,8 +3,9 @@
 // pause, or an editor's own step()), kept as the ops that undo and redo it (historyops.ts). Undo applies them to the
 // live game in place, so editors keep changing the game as they always have. A step's name and where it happened
 // come from its ops (historylabel.ts), unless the editor names it.
-import { toast } from './app.svelte';
-import { applyOps, diff, mergeOps, opsSize, PathGone, type Op } from './historyops';
+import { app, toast } from './app.svelte';
+import { applyOps, diff, mediaIdsIn, mergeOps, opsSize, PathGone, type Op } from './historyops';
+import { loadGameMedia, pruneMedia, registerLinks, restoreStash } from './media.svelte';
 import { describe, type Place } from './historylabel';
 import { newId, type Game } from './model';
 import { isTextField } from './undokeys';
@@ -31,11 +32,22 @@ export interface HistoryEntry {
   sealed: boolean;
   /** Made from the host screen (Keep in game, a wheel saved while hosting…). */
   during?: 'play';
+  /** Media files whose stored bytes this step can bring back (kept when unused files are cleaned up). */
+  media?: string[];
+  /** Stored bytes it swaps (Replace file…). */
+  blobs?: BlobSwap[];
   /** Bytes its ops take. */
   size: number;
   /** For merging typing across pauses: the element focused when the step began, and its focus session. */
   target?: Element | null;
   focusSession?: number;
+}
+
+/** A file's bytes swapped under the same id: stashed copies of them before and after (null: it had none). */
+export interface BlobSwap {
+  id: string;
+  before: string | null;
+  after: string | null;
 }
 
 export interface Mark {
@@ -126,6 +138,11 @@ let group: { label: string | null; opts: StepOptions } = { label: null, opts: {}
 let named: { label: string; opts: StepOptions } | null = null;
 /** Where the next game that arrives comes from (New, Open…). */
 let next: Omit<Origin, 'ts'> | null = null;
+/** Files' bytes swapped in the step being made (attachBlobSwap). */
+let swaps: BlobSwap[] = [];
+/** Unused files that only dropped steps held are cleaned up a little later. */
+let pruning: ReturnType<typeof setTimeout> | undefined;
+const PRUNE_MS = 5000;
 
 const appliedFns = new Set<(e: HistoryEntry, dir: 1 | -1, via: Via) => void>();
 const notifyFns = new Set<(e: HistoryEntry) => void>();
@@ -153,6 +170,8 @@ export function startHistory(g: Game, w: GameWatch): void {
 }
 
 function restart(origin: Omit<Origin, 'ts'>): void {
+  released(h.entries);
+  swaps = [];
   h.entries = [];
   h.index = 0;
   h.marks = [];
@@ -192,15 +211,19 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
   const label = explicit?.label ?? named?.label ?? null;
   const opts: StepOptions = { ...named?.opts, ...explicit?.opts };
   const isExplicit = !!(explicit || named);
+  const blobs = swaps;
   named = null;
+  swaps = [];
   h.pending = false;
-  if (after === before) return;
+  if (after === before && !blobs.length) return;
   base = after;
   // A checkbox shown for the first time fills in an option the game doesn't have yet as false (Svelte's binding
   // does): the game was like that already, so it isn't a step.
   const ops = diff(before, after).filter((o) => !(o.t === 'set' && o.b === undefined && o.a === false));
-  if (!ops.length) return;
-  const d = describe(ops, before, after, label);
+  if (!ops.length && !blobs.length) return;
+  // (A file replaced by one with the same name and size changes only its bytes.)
+  const file: Place = { tab: 'media', media: blobs[0]?.id };
+  const d = ops.length ? describe(ops, before, after, label) : { label: label ?? 'Replaced a file', icon: '🖼', where: 'Media', place: file, undoPlace: file };
   const entry: HistoryEntry = {
     id: newId(),
     ts: wasPending ? since : Date.now(),
@@ -216,6 +239,9 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
     focusSession: wasPending ? pendingSession : session,
   };
   if (opts.during) entry.during = opts.during;
+  const media = mediaIdsIn(ops);
+  if (media.length) entry.media = media;
+  if (blobs.length) entry.blobs = blobs;
   if (!merge(entry, before, after)) add(entry);
   if (opts.notify) for (const fn of notifyFns) fn(entry);
 }
@@ -223,7 +249,7 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
 /** Join the step to the one before it when it goes on changing the same values (typing on in one field). */
 function merge(e: HistoryEntry, before: Game, after: Game): boolean {
   const top = h.index === h.entries.length ? h.entries[h.index - 1] : undefined;
-  if (!top || e.explicit || top.sealed || e.ts - top.end >= SEAL_MS) return false;
+  if (!top || e.explicit || e.blobs || top.sealed || e.ts - top.end >= SEAL_MS) return false;
   const typing = isTextField(e.target) && e.target === top.target && e.focusSession === top.focusSession;
   if (!typing && e.ts - top.end >= MERGE_MS) return false;
   const ops = mergeOps(top.ops, e.ops);
@@ -231,22 +257,26 @@ function merge(e: HistoryEntry, before: Game, after: Game): boolean {
   const rest = h.entries.slice(0, -1);
   if (!ops.length) {
     // Back to how it was: no step at all.
+    released([top]);
     h.entries = rest;
     h.index = rest.length;
     return true;
   }
-  h.entries = [...rest, { ...top, ...describe(ops, before, after, null), end: e.end, ops, size: opsSize(ops) }];
+  const media = mediaIdsIn(ops);
+  h.entries = [...rest, { ...top, ...describe(ops, before, after, null), end: e.end, ops, size: opsSize(ops), media: media.length ? media : undefined }];
   return true;
 }
 
 function add(e: HistoryEntry): void {
   // A new step drops the undone ones (and the marks among them).
+  released(h.entries.slice(h.index));
   let entries = [...h.entries.slice(0, h.index), e];
   let marks = h.index < h.entries.length ? h.marks.filter((m) => m.at <= h.index) : h.marks;
   let bytes = entries.reduce((n, x) => n + x.size, 0);
   let drop = 0;
   while (entries.length - drop > MAX_STEPS || (bytes > MAX_BYTES && entries.length - drop > KEEP_NEWEST)) bytes -= entries[drop++].size;
   if (drop) {
+    released(entries.slice(0, drop));
     h.origin = { kind: 'older', label: "Older steps weren't kept", ts: entries[drop - 1].end };
     h.trimmed += drop;
     entries = entries.slice(drop);
@@ -261,7 +291,15 @@ function add(e: HistoryEntry): void {
 function apply(list: HistoryEntry[], dir: 1 | -1): boolean {
   let gone = false;
   try {
-    for (const e of list) applyOps(game!, e.ops, dir);
+    for (const e of list) {
+      applyOps(game!, e.ops, dir);
+      // Replaced files' bytes go back too (at once when they're in memory).
+      for (const s of dir < 0 ? [...(e.blobs ?? [])].reverse() : (e.blobs ?? [])) void restoreStash(s.id, dir < 0 ? s.before : s.after);
+    }
+    // A file that's a link again plays from its link; files brought back show again (after a reload, their bytes
+    // are read from storage).
+    if (list.some((e) => e.blobs)) registerLinks(game!);
+    else if (list.some((e) => e.media)) void loadGameMedia(game!);
   } catch (err) {
     if (!(err instanceof PathGone)) throw err;
     console.warn('Undo history:', err);
@@ -374,6 +412,28 @@ export function mark(kind: Mark['kind'], label: string): void {
   const top = h.entries[h.index - 1];
   if (top) top.sealed = true;
   h.marks = [...h.marks, { kind, ts: Date.now(), label, at: h.index }].slice(-MAX_MARKS);
+}
+
+/** A file's bytes were swapped under the same id (Replace file…): the step being made swaps them back when undone. */
+export function attachBlobSwap(swap: BlobSwap): void {
+  swaps.push(swap);
+}
+
+/** Media files (and stashed copies) that some step can bring back: cleaning up unused files keeps them. */
+export function heldMedia(entries: readonly Pick<HistoryEntry, 'media' | 'blobs'>[] = h.entries): Set<string> {
+  const ids = new Set<string>();
+  for (const e of entries) {
+    for (const id of e.media ?? []) ids.add(id);
+    for (const s of e.blobs ?? []) for (const id of [s.before, s.after]) if (id) ids.add(id);
+  }
+  return ids;
+}
+
+/** Steps left the history: files only they held are cleaned up a little later (unless a step holds them again). */
+function released(gone: readonly HistoryEntry[]): void {
+  if (!gone.some((e) => e.media || e.blobs)) return;
+  clearTimeout(pruning);
+  pruning = setTimeout(() => pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia()), PRUNE_MS);
 }
 
 /** Forget every step. */

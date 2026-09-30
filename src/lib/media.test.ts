@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { addMediaFile } from './media.svelte';
+import { addMediaFile, getBlob, mediaUrls, pruneMedia, registerBlob, restoreStash, stashMedia } from './media.svelte';
 import { newGame } from './model';
 import { saveDraft, watchWrites } from './persist';
 
@@ -25,5 +25,37 @@ describe('adding files', () => {
     await saveDraft(game);
     expect(failed).toHaveLength(2);
     watchWrites(() => {});
+  });
+});
+
+describe('files the undo history can bring back', () => {
+  it('keeps held files (and stashed copies) when unused ones are pruned', async () => {
+    const game = newGame();
+    for (const id of ['used', 'removed', 'gone']) registerBlob(id, new Blob([id]));
+    game.media.push({ id: 'used', name: 'used.png', mime: 'image/png', size: 4, kind: 'image' });
+    await pruneMedia([game], new Set(['removed']));
+    expect(getBlob('used')).toBeDefined();
+    expect(getBlob('removed')).toBeDefined();
+    expect(getBlob('gone')).toBeUndefined();
+    expect(mediaUrls.gone).toBeUndefined();
+    // Once nothing holds it, the next prune drops it.
+    await pruneMedia([game]);
+    expect(getBlob('removed')).toBeUndefined();
+  });
+
+  it('stashes a file\'s bytes and puts them back', async () => {
+    const before = new Blob(['old']);
+    const after = new Blob(['new']);
+    registerBlob('pic', before);
+    const stash = await stashMedia('pic');
+    expect(stash).toMatch(/^stash-/);
+    registerBlob('pic', after);
+    await restoreStash('pic', stash);
+    expect(getBlob('pic')).toBe(before);
+    // A file that had no bytes (a link) has none again.
+    await restoreStash('pic', null);
+    expect(getBlob('pic')).toBeUndefined();
+    expect(mediaUrls.pic).toBeUndefined();
+    expect(await stashMedia('nothing')).toBeNull();
   });
 });

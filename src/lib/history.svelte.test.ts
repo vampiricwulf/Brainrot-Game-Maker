@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   arriving,
+  attachBlobSwap,
   begin,
   clear,
   commit,
+  heldMedia,
   history,
   jumpTo,
   listen,
@@ -19,6 +21,7 @@ import {
   undo,
 } from './history.svelte';
 import { watchGame, type GameWatch } from './watch.svelte';
+import { getBlob, registerBlob, stashMedia } from './media.svelte';
 import type { BoardRound, Game, TextEl } from './model';
 import { jeopardyGame } from './testgame';
 import { newRpgRound, newScreen } from './rpg';
@@ -440,5 +443,57 @@ describe('undo history: limits and marks', () => {
     await seen();
     expect(history.undoLabel).toBe('your latest changes');
     expect(history.canRedo).toBe(false);
+  });
+});
+
+describe('undo history: files', () => {
+  const file = (id: string) => ({ id, name: `${id}.png`, mime: 'image/png', size: 3, kind: 'image' as const });
+
+  it('holds the files its steps can bring back, both ways, until the steps go', () => {
+    step(null, () => g.media.push(file('a')));
+    step(null, () => g.media.push(file('b')));
+    step('Removed file “a.png”', () => (g.media = g.media.filter((m) => m.id !== 'a')));
+    expect(history.entries.map((e) => e.media)).toEqual([['a'], ['b'], ['a']]);
+    expect(heldMedia()).toEqual(new Set(['a', 'b']));
+    // Undone steps (redo brings the file back) still hold theirs, until something new drops them.
+    undo();
+    undo();
+    expect(heldMedia()).toEqual(new Set(['a', 'b']));
+    step(null, () => (g.title = 'New'));
+    expect(heldMedia()).toEqual(new Set(['a']));
+    clear();
+    expect(heldMedia()).toEqual(new Set());
+  });
+
+  it('swaps a replaced file’s bytes back on undo, and forward on redo', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const old = new Blob(['old']);
+    const fresh = new Blob(['new']);
+    step(null, () => g.media.push(file('pic')));
+    registerBlob('pic', old);
+    const end = begin('Replaced file “pic.png” with “pic2.png”');
+    const before = await stashMedia('pic');
+    registerBlob('pic', fresh);
+    g.media[0].name = 'pic2.png';
+    attachBlobSwap({ id: 'pic', before, after: await stashMedia('pic') });
+    end();
+    const e = history.entries[1];
+    expect(e.label).toBe('Replaced file “pic.png” with “pic2.png”');
+    expect(e.blobs).toHaveLength(1);
+    expect(heldMedia().has(before!)).toBe(true);
+    undo();
+    expect(getBlob('pic')).toBe(old);
+    expect(g.media[0].name).toBe('pic.png');
+    redo();
+    expect(getBlob('pic')).toBe(fresh);
+    // Bytes alone (same name and size) still make a step.
+    const end2 = begin('Replaced file “pic2.png” with “pic2.png”');
+    const again = await stashMedia('pic');
+    registerBlob('pic', new Blob(['new']));
+    attachBlobSwap({ id: 'pic', before: again, after: await stashMedia('pic') });
+    end2();
+    expect(history.entries[2]).toMatchObject({ ops: [], place: { tab: 'media', media: 'pic' } });
+    undo();
+    expect(getBlob('pic')).toBe(fresh);
   });
 });
