@@ -162,11 +162,20 @@ export function startRef(world: World, round: RpgRound): ScreenRef | null {
   return map && first ? { map: map.id, screen: first.id } : null;
 }
 
-/** Players added or removed mid-game: newcomers join the active party where it stands. */
+/**
+ * Players added or removed mid-game: newcomers (and players put back) join the active party where it stands. A party
+ * whose players all left goes: viewers then follow the first party, and with one party left there's no split view.
+ */
 function syncPlayers(session: Session, game: Game, st: WorldState, world: World): void {
   const ids = session.players.map((p) => p.id);
   for (const party of st.parties) party.members = party.members.filter((m) => ids.includes(m));
-  const missing = ids.filter((id) => !st.positions[id]);
+  if (st.parties.some((p) => !p.members.length)) {
+    st.parties = st.parties.filter((p) => p.members.length);
+    if (!st.parties.some((p) => p.id === st.active) && st.parties[0]) st.active = st.parties[0].id;
+    if (st.parties.length < 2) st.split = false;
+    renameParties(st);
+  }
+  const missing = ids.filter((id) => !st.parties.some((p) => p.members.includes(id)));
   if (!missing.length) return;
   let active = st.parties.find((p) => p.id === st.active) ?? st.parties[0];
   if (!active) {

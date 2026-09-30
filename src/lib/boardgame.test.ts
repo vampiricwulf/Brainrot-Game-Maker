@@ -61,6 +61,20 @@ describe('board game: moving', () => {
     expect(bs.last).toEqual({ playerId: 'a', passed: [ids[1], ids[2], cut.id, ids[5]], landed: ids[6] });
   });
 
+  it('going back into a space two ways lead to, asks which way back and goes that way', () => {
+    const { game, round, ids } = setup();
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    const cut = round.spaces.at(-1)!;
+    sendTo(bs, ['a'], { space: ids[5] });
+    expect(movePlayer(round, bs, 'a', -1)).toBe('At Space 6: which way? (1 to go)');
+    expect(bs.fork).toEqual({ playerId: 'a', at: ids[5], stepsLeft: -1 });
+    // The host panel offers the ways the move saw: back to Space 5, or back along the Shortcut.
+    expect(waysOn(round, ids[5], bs.prev?.a, bs.fork!.stepsLeft < 0)).toEqual([ids[4], cut.id]);
+    expect(movePlayer(round, bs, 'a', bs.fork!.stepsLeft, cut.id)).toBe('Landed on Shortcut');
+    expect(bs.fork).toBeUndefined();
+  });
+
   it('moves backwards, and shows the move one space at a time', () => {
     const { game, round, ids } = setup();
     const session = newSession(game);
@@ -95,6 +109,25 @@ describe('board game: moving', () => {
     ensureBoard(session, game, round);
     expect(bs.order).toEqual(['b', 'c']);
     expect(currentPlayer(bs)).toBe('b');
+  });
+
+  it('passes the turn on when the player whose turn it is leaves', () => {
+    const { game, round } = setup();
+    game.players.push({ id: 'c', name: 'Cat', color: '#4363d8' });
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    nextTurn(bs);
+    session.players = session.players.filter((p) => p.id !== 'b');
+    ensureBoard(session, game, round);
+    expect(currentPlayer(bs)).toBe('c');
+    // The last in the order: the turn goes round to the first.
+    session.players.push({ id: 'd', name: 'Dee', color: '#f58231', startScore: 0 });
+    ensureBoard(session, game, round);
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('d');
+    session.players = session.players.filter((p) => p.id !== 'd');
+    ensureBoard(session, game, round);
+    expect(currentPlayer(bs)).toBe('a');
   });
 
   it('flags a board that is too small, and paths that end', () => {

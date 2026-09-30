@@ -4,7 +4,7 @@
   answers and Esc cancels.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   let {
     text,
@@ -33,6 +33,10 @@
   } = $props();
 
   let typed = $state(untrack(() => value));
+  let box = $state<HTMLInputElement>();
+  // Into the box, with the text it starts with selected so typing replaces it. (Not `autofocus`: that leaves the focus
+  // on the button that asked, where typing would reach the host's shortcuts.)
+  onMount(() => box?.select());
   const blank = $derived(field !== undefined && !typed.trim());
   // A click right after the question shows (the second half of the double-click that asked it) isn't the answer.
   const shownAt = Date.now();
@@ -45,12 +49,11 @@
 <div class="ia" role="group" aria-label={text ?? field}>
   {#if text}<span class="ask">{text}</span>{/if}
   {#if field !== undefined}
-    <!-- svelte-ignore a11y_autofocus -->
     <input
+      bind:this={box}
       bind:value={typed}
       placeholder={field}
       aria-label={field}
-      autofocus
       onkeydown={(e) => {
         if (e.key === 'Enter') answer();
         else if (e.key === 'Escape') oncancel();

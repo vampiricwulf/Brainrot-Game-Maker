@@ -4,7 +4,7 @@ import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardZone, 
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
-import type { Live } from '../../lib/live';
+import { overlayDoneAt, type Live } from '../../lib/live';
 
 /** The board-game round being played and its state (undefined outside one). */
 export function boardNow(game: Game, session: Session) {
@@ -45,12 +45,14 @@ export function turnNow(game: Game, session: Session, delta = 1): void {
 export function rollMover(game: Game, session: Session, live: Live): string | null {
   const { round } = boardNow(game, session);
   if (!round) return 'No board';
+  // Still rolling or spinning: D again waits for it, like Roll again.
+  const o = live.overlay;
+  if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return null;
   const m = round.mover;
   if (m.kind === 'wheel') {
     const w = game.wheels.find((x) => x.id === m.wheel);
     if (!w) return 'The movement wheel no longer exists: pick one in the editor';
     // D again (or 🎡 Spin to move again) spins the wheel it opened.
-    const o = live.overlay;
     if (o?.kind === 'wheel' && o.wheelId === w.id && !o.spin) spinWheel(live, session, game);
     else openWheel(live, session, w);
     return null;

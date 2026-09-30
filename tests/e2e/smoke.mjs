@@ -321,10 +321,19 @@ assert(
   c3.width < c2.width - 40 && Math.abs(c3.width / c3.height - 1) < 0.03 && Math.abs(c3.x - c2.x) < 2 && Math.abs(c3.y - c2.y) < 2,
   `1:1 crop: a corner dragged straight in shrinks the box, square, from the opposite corner (${Math.round(c2.width)} → ${Math.round(c3.width)}×${Math.round(c3.height)})`,
 );
-// Cancel asks before throwing the edits away, and the slide keeps the earlier result.
-await ie.getByRole('button', { name: 'Cancel' }).click();
+// Cancel asks in the editor's header before throwing the edits away (a browser dialog would show on stream when
+// it's opened mid-show); Esc keeps editing. The slide keeps the earlier result.
+const asked = confirms.length;
+await ie.getByRole('button', { name: 'Cancel', exact: true }).click();
+const discardAsk = ie.getByRole('group', { name: 'Discard your image edits?' });
+await discardAsk.waitFor();
+await page.keyboard.press('Escape');
+assert((await discardAsk.count()) === 0 && (await ie.count()) === 1, 'Esc while it asks keeps editing');
+await ie.getByRole('button', { name: 'Cancel', exact: true }).click();
+await page.waitForTimeout(450);
+await discardAsk.getByRole('button', { name: 'Discard' }).click();
 await ie.waitFor({ state: 'detached' });
-assert(confirms.at(-1) === 'Discard your image edits?', 'Cancel with unsaved edits asks first');
+assert(confirms.length === asked, 'Cancel with unsaved edits asks first, in the editor');
 const dims2 = await page.locator('.canvas img').first().evaluate((i) => [i.naturalWidth, i.naturalHeight]);
 assert(dims2.join('×') === '100×100', 'cancelled edits leave the slide image as it was');
 await page.getByRole('button', { name: '🔊 Audio' }).click();

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dropdown, showMenu } from '../lib/menustate.svelte';
+  import { dropMenu, showMenu } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
@@ -36,7 +36,6 @@
 
   // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | round index
   let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | number>(0);
-  let addMenu = $state(false);
   const game = $derived(app.game);
   $effect(() => {
     registerGameFonts(game);
@@ -47,7 +46,6 @@
 
   /** Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last. */
   function addRound(mode: RoundMode): void {
-    addMenu = false;
     let at = game.rounds.length;
     if (mode !== 'final') while (at > 0 && isFinal(game.rounds[at - 1])) at--;
     let round: Round;
@@ -62,6 +60,14 @@
     }
     game.rounds.splice(at, 0, round);
     tab = at;
+  }
+
+  /** The round modes, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
+  function addRoundMenu(e: MouseEvent): void {
+    dropMenu(
+      e,
+      Object.entries(ROUND_MODES).map(([mode, m]) => ({ label: `${m.icon} ${m.label}`, hint: m.hint, onclick: () => addRound(mode as RoundMode) })),
+    );
   }
 
   /** What goes with a deleted round, for the confirm (an RPG's world stays: other rounds can play it). */
@@ -336,19 +342,7 @@
           <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
         </button>
       {/each}
-      <div class="add">
-        <button class="ghost" aria-expanded={addMenu} onclick={() => (addMenu = !addMenu)}>＋ Add round</button>
-        {#if addMenu}
-          <div class="backdrop" onclick={() => (addMenu = false)} role="presentation"></div>
-          <div class="add-menu" role="menu" use:dropdown={() => (addMenu = false)}>
-            {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
-              <button role="menuitem" onclick={() => addRound(mode as RoundMode)} title={m.hint}>
-                <span aria-hidden="true">{m.icon}</span> {m.label}
-              </button>
-            {/each}
-          </div>
-        {/if}
-      </div>
+      <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
@@ -474,32 +468,6 @@
     font-size: 18px;
     font-weight: 600;
     width: min(420px, 40vw);
-  }
-  .add {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-  /* A click anywhere else closes the Add round menu. */
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 49;
-  }
-  .add-menu {
-    position: relative;
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 6px;
-    margin-top: 4px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--panel);
-  }
-  .add-menu button {
-    text-align: left;
   }
   .autosave {
     font-size: 12px;

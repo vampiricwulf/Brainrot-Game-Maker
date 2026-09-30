@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { finalName, formatPoints, getClue, isBoard, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
+  import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
@@ -26,8 +26,8 @@
   import { lastAction, logged, redoAction, redoFrom, undoAction, type Undone } from '../lib/toolset';
   import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap, type RpgAsk, type StagePoint } from './rpg/hostops';
   import { showMenu } from '../lib/menustate.svelte';
-  import { sendTo } from '../lib/boardgame';
-  import { audienceSees, override } from '../lib/rpg';
+  import { ensureBoard, sendTo } from '../lib/boardgame';
+  import { audienceSees, ensureWorld, override } from '../lib/rpg';
   import { boardNow, rollMover, turnNow } from './boardgame/bgops';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
@@ -45,7 +45,7 @@
   import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   let {
     onexit,
@@ -61,8 +61,10 @@
   const game = $derived(app.playGame!);
   const session = $derived(app.session!);
 
-  let selected = $state<string[]>([]);
-  let amount = $state<number | null>(null);
+  // Resuming into an open clue starts with its Amount (a Daily Double's wager, and who's playing it), as picking it did.
+  const ddUp = untrack(() => (session.dd?.stage === 'question' ? session.dd : null));
+  let selected = $state<string[]>(ddUp?.playerId ? [ddUp.playerId] : []);
+  let amount = $state<number | null>(ddUp ? (ddUp.wager ?? null) : untrack(() => currentClueInfo(session, game)?.value ?? null));
   let showLog = $state(false);
   let showPlayers = $state(false);
   let hideControls = $state(false);
@@ -135,6 +137,18 @@
   $effect(() => {
     void session.currentRound;
     rpgAsk = null;
+  });
+  // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
+  // catches up at once, not only when the round is next visited.
+  $effect(() => {
+    void session.players.map((p) => p.id).join();
+    void session.worlds;
+    void session.boardgames;
+    untrack(() => {
+      const round = game.rounds[session.currentRound];
+      if (session.phase === 'rpg' && isRpg(round)) ensureWorld(session, game, round);
+      else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
+    });
   });
 
   onMount(() => {
@@ -585,7 +599,7 @@
         const shown = audienceSees(found.el, st.objects[objId]);
         return showMenu(e, [
           { heading: name },
-          { label: '🗂 Open its card', onclick: () => (rpgObject = objId) },
+          { label: '🗂 Open its card', onclick: () => ((hideControls = false), (rpgObject = objId)) },
           { label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, objId).shown = !shown)) },
           { sep: true },
           { label: '🗑 Remove', danger: true, onclick: () => logged(session, `Remove ${name}`, () => (override(st, objId).taken = true)) },
@@ -738,8 +752,8 @@
     if (app.pregame || showPlayers || showKeys || showSound || app.editGame || rpgMap) return;
     const t = e.target as HTMLElement;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
-    // but Space still ticks it (not the media).
-    if (t.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || (e.key === ' ' && t.matches('input'))) return;
+    // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
+    if (t.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t.matches('input'))) return;
     if (e.key === '?') {
       showKeys = true;
       return;

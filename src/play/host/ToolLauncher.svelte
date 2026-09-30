@@ -1,6 +1,6 @@
 <!-- Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6). -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, Session } from '../../lib/model';
   import { openPlayerWheel, openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
@@ -21,11 +21,13 @@
   const sidesOk = $derived(!!sides && sides >= 2 && sides <= 1000);
 
   /** Open (or close) a menu from its button: over the host panel only, unless there's an audience window. */
-  function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): void {
+  async function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): Promise<void> {
     const b = e.currentTarget as HTMLElement;
+    menu = menu === m ? null : m;
+    // Measured once it's open: the host panel grows to make room for it (see HostPanel).
+    await tick();
     const panel = b.closest('.panel')?.getBoundingClientRect();
     room = audience.open || !panel ? undefined : Math.max(0, b.getBoundingClientRect().top - panel.top - 8);
-    menu = menu === m ? null : m;
   }
 
   function dice(sides: number, count: number, name?: string): void {

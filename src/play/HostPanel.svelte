@@ -184,7 +184,7 @@
     game.settings.deductOnWrong && session.phase === 'clue' && !!info && (session.dd?.stage !== 'question' || session.dd.playerId === id);
 </script>
 
-<div class="panel">
+<div class="panel" class:dual>
   <div class="status row">
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
@@ -270,7 +270,7 @@
   </div>
 
   {#if app.live.overlay}
-    <div class="mode-host"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} /></div>
+    <div class="mode-host tools"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} /></div>
   {/if}
 
   <SoundWarnings {dual} onhelp={onsound} />
@@ -466,9 +466,23 @@
        stage above shrinks instead, down to its floor, and the panel's tall parts scroll. */
     min-height: 0;
   }
+  /* Single window: an open 🎲 / 🎡 / 🏁 menu may not cover the stage, so the panel grows to make room for it (the stage
+     shrinks, down to its floor) and the buttons move to its foot. */
+  .panel:not(.dual):has(:global(.tl .menu)) {
+    min-height: min(62vh, 420px);
+  }
+  .panel:not(.dual):has(:global(.tl .menu)) > .nav {
+    margin-top: auto;
+  }
   .mode-host {
     min-height: 0;
     overflow: auto;
+  }
+  /* Above a round's own box (RPG, board game, Final), the tools keep their height (a shop's "Short by…" answers) and
+     that box scrolls instead. A tall wheel editor still scrolls in here. */
+  .tools:has(~ .mode-host) {
+    flex-shrink: 0;
+    max-height: 45vh;
   }
   .val {
     color: var(--value);

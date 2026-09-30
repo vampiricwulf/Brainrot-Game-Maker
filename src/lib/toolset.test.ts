@@ -228,7 +228,11 @@ describe('action log', () => {
 
   it('leaves what viewers are shown (the map, split view, a zone) as it is', () => {
     const { game, session } = setup();
-    const st = { positions: { a: { map: 'm', screen: 's1', x: 0, y: 0 } }, parties: [], active: '', knowledge: {}, objects: {}, added: {}, mapShown: false };
+    const parties = [
+      { id: 'p1', name: 'Party 1', members: ['a'] },
+      { id: 'p2', name: 'Party 2', members: ['b'] },
+    ];
+    const st = { positions: { a: { map: 'm', screen: 's1', x: 0, y: 0 }, b: { map: 'm', screen: 's1', x: 0, y: 0 } }, parties, active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false };
     const bs = { positions: {}, order: ['a', 'b'], turn: 0 };
     session.worlds = { w: st };
     session.boardgames = { r: bs };
@@ -244,6 +248,25 @@ describe('action log', () => {
     expect([session.worlds!.w.positions.a.screen, session.boardgames!.r.turn, ...shown()]).toEqual(['s1', 0, true, true, 'z']);
     redoAction(session, game);
     expect([session.worlds!.w.positions.a.screen, session.boardgames!.r.turn, ...shown()]).toEqual(['s2', 1, true, true, 'z']);
+  });
+
+  it('keeps viewers on the party they follow, and turns split view off when one party is left', () => {
+    const { game, session } = setup();
+    const pos = (screen: string) => ({ map: 'm', screen, x: 0, y: 0 });
+    const party = { id: 'p1', name: 'Party', members: ['a', 'b'] };
+    session.worlds = { w: { positions: { a: pos('s1'), b: pos('s1') }, parties: [party], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false } };
+    const w = () => session.worlds!.w;
+    logged(session, 'Split off Bob', () => {
+      w().parties = [{ ...party, members: ['a'] }, { id: 'p2', name: 'Party 2', members: ['b'] }];
+      w().active = 'p2';
+    });
+    logged(session, 'Party east', () => (w().positions.b.screen = 's2'));
+    // Between steps the host has viewers follow Party 1, and turns split view on.
+    Object.assign(w(), { active: 'p1', split: true });
+    undoAction(session, game);
+    expect([w().positions.b.screen, w().active, w().split]).toEqual(['s1', 'p1', true]);
+    undoAction(session, game);
+    expect([w().parties.length, w().active, w().split]).toEqual([1, 'p1', false]);
   });
 
   it('undoes improvising on the game being played: a new screen, a renamed object, a live edit', () => {

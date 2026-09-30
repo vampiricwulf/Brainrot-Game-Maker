@@ -130,7 +130,9 @@
           </label>
         {/each}
       </div>
-      <label class="check small"><input type="checkbox" bind:checked={override} /> Ignore the limits</label>
+      <label class="check small">
+        <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} /> Ignore the limits
+      </label>
     {:else if session.finalStep === 'reveal'}
       <span class="muted">
         Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼.

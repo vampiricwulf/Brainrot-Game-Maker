@@ -25,7 +25,19 @@
   {:else}
     <button class="small" onclick={() => startTimer(app.live, custom || defaultSeconds)} title="T">Start {custom || defaultSeconds}s</button>
   {/if}
-  <input type="number" min="1" max="3600" placeholder="secs" bind:value={custom} aria-label="Timer seconds" />
+  <!-- Enter starts that countdown; Enter and Esc give the keys back to the shortcuts, as the Amount box does. -->
+  <input
+    type="number"
+    min="1"
+    max="3600"
+    placeholder="secs"
+    bind:value={custom}
+    aria-label="Timer seconds"
+    onkeydown={(e) => {
+      if (e.key === 'Enter') startTimer(app.live, custom || defaultSeconds);
+      if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
+    }}
+  />
 </div>
 
 <style>

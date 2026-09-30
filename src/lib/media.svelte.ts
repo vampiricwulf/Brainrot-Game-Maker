@@ -6,6 +6,7 @@
 import { delMany, getMany, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
+import { clipboard } from './clipboard.svelte';
 import { loadPlay, write } from './persist';
 import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, parseMediaLink, type LinkKind, type MediaLink } from './links';
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
@@ -92,7 +93,10 @@ async function otherCopiesOpen(): Promise<boolean> {
   }
 }
 
-/** Delete stored media not referenced by any of the given games (or by the saved game in progress). */
+/**
+ * Delete stored media not referenced by any of the given games (or by the saved game in progress, or by what's on the
+ * in-app clipboard: a slide copied in the last game can be pasted into the next one).
+ */
 export async function pruneMedia(games: (Game | null | undefined)[]): Promise<void> {
   // Every copy of the app opened from disk shares one storage: with another copy open (a second tab
   // or window), its media would look unused here, so leave storage alone.
@@ -100,7 +104,7 @@ export async function pruneMedia(games: (Game | null | undefined)[]): Promise<vo
   // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it.
   const saved = (await loadPlay())?.game;
   // Checked again once the stored files are listed: media added while this runs must survive.
-  const keep = () => new Set([...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []));
+  const keep = () => new Set([...[...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []), ...clipboard.media.map((m) => m.id)]);
   if (!shared) {
     try {
       const stored = await keys();

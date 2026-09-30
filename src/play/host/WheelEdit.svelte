@@ -1,7 +1,7 @@
 <!-- The host's edit box for the wheel on screen: switch slices off, change their chances, add or rename slices.
      Edits change this run of the wheel only; Save as / Overwrite keep them in the game. -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { newId, type Game, type Session, type WheelPreset } from '../../lib/model';
   import { editWheel, resetWheelEdits, wheelPool, type WheelLike } from '../../lib/overlay';
@@ -31,6 +31,7 @@
   /** The name typed for "Save as new wheel" (null: not asking). */
   let saveName = $state<string | null>(null);
   let askOverwrite = $state(false);
+  let nameBox = $state<HTMLInputElement>();
 
   /** A saved wheel goes into the game being played and, when it's the same game, the one in the editor. */
   function keep(change: (g: Game) => void): void {
@@ -42,6 +43,8 @@
     if (!on.length) return toast('Keep at least one slice on the wheel');
     saveName = what === 'save' ? (o.players ? 'Players' : `${o.name} (edited)`) : null;
     askOverwrite = what === 'overwrite';
+    // Into the name box (the button keeps the focus otherwise, and typing would reach the host's shortcuts).
+    if (what === 'save') tick().then(() => nameBox?.select());
   }
 
   function saveAs(): void {
@@ -144,12 +147,11 @@
   </div>
   {#if saveName !== null}
     <div class="row">
-      <!-- svelte-ignore a11y_autofocus -->
       <input
         class="label"
+        bind:this={nameBox}
         bind:value={saveName}
         aria-label="Name for the new wheel"
-        autofocus
         onkeydown={(e) => {
           if (e.key === 'Enter') saveAs();
           else if (e.key === 'Escape') saveName = null;

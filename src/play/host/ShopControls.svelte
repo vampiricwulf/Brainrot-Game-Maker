@@ -4,6 +4,7 @@
   the spot, a shop that buys back lists what the buyer can sell, and 🚪 Leave shop closes it.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { Game, Session } from '../../lib/model';
@@ -31,16 +32,21 @@
   /** A price for this sale, or the stock left, being typed in (asked inline: a browser dialog would show on stream). */
   let asking = $state<{ what: 'price' | 'stock'; item: string } | null>(null);
   let typed = $state<number | null>(null);
+  let priceBox = $state<HTMLInputElement>();
+  let stockBox = $state<HTMLInputElement>();
 
+  // Each goes into its box (the button that asked keeps the focus otherwise, and typing would reach the shortcuts).
   function otherPrice(item: string): void {
     asking = { what: 'price', item };
     typed = shopPrice(game, shop!, item);
+    tick().then(() => priceBox?.select());
   }
 
   function restock(item: string): void {
     if (!shop) return;
     asking = { what: 'stock', item };
     typed = stockLeft(session, shop, item);
+    tick().then(() => stockBox?.select());
   }
 
   /** Sell at the price typed, or set the stock left (blank = unlimited). */
@@ -103,8 +109,7 @@
     <div class="row">
       <label class="check small">
         How many {itemDef(game, asking.item)?.name} left?
-        <!-- svelte-ignore a11y_autofocus -->
-        <input class="n" type="number" min="0" placeholder="∞" bind:value={typed} autofocus onkeydown={keys} />
+        <input class="n" type="number" min="0" placeholder="∞" bind:this={stockBox} bind:value={typed} onkeydown={keys} />
       </label>
       <span class="muted small">Blank = unlimited</span>
       <button class="small" onclick={answer}>Set</button>
@@ -130,8 +135,7 @@
       {#if asking?.what === 'price' && asking.item === it}
         <label class="check">
           Price
-          <!-- svelte-ignore a11y_autofocus -->
-          <input class="n" type="number" min="0" bind:value={typed} autofocus onkeydown={keys} />
+          <input class="n" type="number" min="0" bind:this={priceBox} bind:value={typed} onkeydown={keys} />
         </label>
         <button class="small" onclick={answer}>Sell</button>
         <button class="small ghost" onclick={() => (asking = null)}>Cancel</button>

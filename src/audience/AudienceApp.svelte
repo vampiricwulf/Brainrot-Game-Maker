@@ -152,9 +152,11 @@
   }
 </script>
 
+<!-- A right-click (the host clicking to allow sound) never opens the browser's menu over the stream either. -->
 <svelte:window
   ondragover={ignoreFiles}
   ondrop={ignoreFiles}
+  oncontextmenu={(e) => e.preventDefault()}
   onmousemove={poke}
   onkeydown={(e) => {
     // A key press (not Shift, Ctrl, Alt or Esc) counts as the click that allows sound, too.

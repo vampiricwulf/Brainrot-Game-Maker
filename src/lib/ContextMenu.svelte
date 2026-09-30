@@ -45,10 +45,13 @@
   }
 </script>
 
-<!-- A press on the button a menu dropped from leaves it to that button's click, which closes it (see dropMenu). -->
+<!--
+  A press elsewhere closes the menu first, so a board space or slide item that keeps its presses to itself can't leave
+  it open. A press on the button a menu dropped from leaves it to that button's click, which closes it (see dropMenu).
+-->
 <svelte:window
   onkeydowncapture={key}
-  onpointerdown={(e) => contextMenu.open && !box?.contains(e.target as Node) && !contextMenu.open.from?.contains(e.target as Node) && closeMenu()}
+  onpointerdowncapture={(e) => contextMenu.open && !box?.contains(e.target as Node) && !contextMenu.open.from?.contains(e.target as Node) && closeMenu()}
   onblur={closeMenu}
   onresize={closeMenu}
   onwheel={() => contextMenu.open && closeMenu()}

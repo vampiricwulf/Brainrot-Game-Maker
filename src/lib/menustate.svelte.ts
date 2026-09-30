@@ -18,10 +18,10 @@ export function showMenu(e: MouseEvent, items: MenuEntry[], from?: HTMLElement):
 }
 
 /**
- * A menu dropped from a button (＋ Add action, 📦 Item ▾), from its click: under the button and kept on screen like a
- * right-click menu, for long lists a `dropdown` in a narrow or scrolling panel would cut off. Otherwise it works like
- * a `dropdown`: a second click on the button closes it, as do Esc (the focus goes back to the button) and a click
- * elsewhere.
+ * A menu dropped from a button (＋ Add round, ＋ Add action, 📦 Item ▾), from its click: under the button and kept on
+ * screen like a right-click menu, for long lists a `dropdown` in a narrow or scrolling panel would cut off. Otherwise it
+ * works like a `dropdown`: a second click on the button closes it, as do Esc (the focus goes back to the button) and a
+ * click elsewhere.
  */
 export function dropMenu(e: MouseEvent, items: MenuEntry[]): void {
   const from = e.currentTarget as HTMLElement;
@@ -35,7 +35,7 @@ export function closeMenu(): void {
 }
 
 /**
- * `use:dropdown={close}` on a menu that drops from a button (＋ Add round, Shape ▾), so it keys like a
+ * `use:dropdown={close}` on a menu that drops from a button (Shape ▾), so it keys like a
  * right-click menu: its first item takes focus, ↑/↓ move between items, and Esc closes it (focus goes
  * back to the button). A click outside is the menu's own backdrop, which covers the button too, so a
  * second click on the button closes the menu.

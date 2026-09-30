@@ -190,7 +190,7 @@
   <div class="row head">
     <button class="who" onclick={ontoggle} style:background={on ? p.color : undefined} style:color={on ? textOn(p.color) : undefined} aria-pressed={on}>
       <Avatar player={p} size={28} />
-      {p.name}
+      <span class="name">{p.name}</span>
     </button>
     <span class="score">{formatPoints(score(session, p.id), game.settings.currencySymbol)}</span>
     <span class="spacer"></span>
@@ -305,6 +305,8 @@
             onchange={(ev) => {
               const to = ev.currentTarget.value;
               ev.currentTarget.value = '';
+              // Let go of the keys: shortcuts ignore a focused select, and arrow keys would give it to someone else.
+              ev.currentTarget.blur();
               if (to) give(e.id, to);
             }}
           >
@@ -330,6 +332,8 @@
       onchange={(ev) => {
         const v = ev.currentTarget.value;
         ev.currentTarget.value = '';
+        // Let go of the keys: shortcuts ignore a focused select, and arrow keys would give another item.
+        ev.currentTarget.blur();
         giveNew(v);
       }}
     >
@@ -376,12 +380,22 @@
     gap: 4px;
     flex-wrap: wrap;
   }
+  /* One line: a long name is cut short (it's in full on the stats strip and the sheet), so 📺 stays beside it. */
+  .head {
+    flex-wrap: nowrap;
+  }
   .who {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
     font-weight: 700;
     padding: 2px 8px 2px 2px;
+  }
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .score {
     font-weight: 700;

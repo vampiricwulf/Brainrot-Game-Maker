@@ -58,13 +58,20 @@
     o?.kind === 'wheel' && o.players && o.result !== null && o.spin ? session.players.find((p) => p.id === o.segments[o.result!]?.id) : undefined,
   );
 
-  /** A slice's action button: for the players it was tagged for (or the one the player wheel picked), else the selected. */
-  function runOutcome(a: Action): void {
+  /**
+   * Who this spin was for: the player the player wheel picked, else the players tagged, else the player a 🎯 wheel
+   * spun with it landed on. Every effect of the spin (slice actions, score cards) starts with them.
+   */
+  const chosen = $derived.by(() => {
     const fromWheel = extraResults.find((r) => r.w.players)?.seg.id;
-    const chosen = picked ? [picked.id] : lastRoll?.playerIds?.length ? lastRoll.playerIds : fromWheel ? [fromWheel] : [];
+    return picked ? [picked.id] : lastRoll?.playerIds?.length ? lastRoll.playerIds : fromWheel ? [fromWheel] : [];
+  });
+
+  /** A slice's action button: for the players it was for (see `chosen`), else the selected. `from` names it in the log. */
+  function runOutcome(a: Action, from: string): void {
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
-    toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a), 3000);
+    toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a, `${from}: ${describeAction(game, a)}`), 3000);
   }
 
   function tag(id: string): void {
@@ -152,7 +159,7 @@
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">
         <span class="muted small">{outcome.label}:</span>
-        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a)}>{describeAction(game, a)}</button>{/each}
+        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcome.label}`)}>{describeAction(game, a)}</button>{/each}
       </div>
     {/if}
     {#if !busy}
@@ -160,7 +167,7 @@
         {#if r.seg.actions?.length || r.seg.scoreAction || r.seg.timerSeconds}
           <div class="row">
             <span class="muted small">{r.w.name} → {r.seg.label}:</span>
-            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a)}>{describeAction(game, a)}</button>{/each}
+            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${r.seg.label}`)}>{describeAction(game, a)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
           {#if r.seg.scoreAction && !doneKeys.includes(`${actionKey}-${r.w.key}`)}
@@ -171,7 +178,7 @@
                 {session}
                 reason={`Wheel: ${r.w.name} → ${r.seg.label}`}
                 rollTotal={0}
-                defaultTargets={lastRoll?.playerIds ?? []}
+                defaultTargets={chosen}
                 ondone={() => (doneKeys = [...doneKeys, `${actionKey}-${r.w.key}`])}
               />
             {/key}
@@ -223,7 +230,7 @@
             {session}
             reason={`${o.kind === 'wheel' ? 'Wheel' : 'Dice'}: ${o.name} → ${outcome.label}`}
             rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
-            defaultTargets={lastRoll?.playerIds ?? []}
+            defaultTargets={chosen}
             ondone={() => (actionDone = actionKey)}
           />
         {/key}

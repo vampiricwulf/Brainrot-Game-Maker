@@ -69,14 +69,15 @@ export function ensureBoard(session: Session, game: Game, round: BoardGameRound)
 /** Players added or removed mid-game: newcomers start on the start space and take their turn last. */
 function syncPlayers(session: Session, round: BoardGameRound, bs: BoardGameState): void {
   const ids = session.players.map((p) => p.id);
-  const cur = bs.order[bs.turn];
+  // The same player keeps the turn when someone before them left; when they left, it goes to the next one still in.
+  const keep = [...bs.order.slice(bs.turn), ...bs.order.slice(0, bs.turn)].find((id) => ids.includes(id));
   bs.order = bs.order.filter((id) => ids.includes(id));
   for (const id of ids) if (!bs.order.includes(id)) bs.order.push(id);
   const start = startSpace(round);
   for (const id of ids) if (!bs.positions[id]) bs.positions[id] = { space: start?.id };
-  // The same player keeps the turn when someone before them left.
-  const at = cur ? bs.order.indexOf(cur) : -1;
-  bs.turn = at >= 0 ? at : Math.min(bs.turn, Math.max(0, bs.order.length - 1));
+  bs.turn = keep ? bs.order.indexOf(keep) : 0;
+  // A way to pick for someone who left isn't asked any more.
+  if (bs.fork && !ids.includes(bs.fork.playerId)) bs.fork = undefined;
 }
 
 export function currentPlayer(bs: BoardGameState): Id | undefined {
@@ -92,7 +93,7 @@ export function nextTurn(bs: BoardGameState, delta = 1): void {
 export interface Walk {
   /** Every space stepped onto, in order (the last one is where it stops). */
   path: Id[];
-  /** Stopped at a fork with steps left: the host picks the way. */
+  /** Stopped at a fork with steps left (negative: going back): the host picks the way. */
   fork?: { at: Id; stepsLeft: number };
 }
 
@@ -122,7 +123,7 @@ export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id
     let to: Id | undefined;
     if (choose && options.includes(choose) && path.length === 0) to = choose;
     else if (options.length === 1) to = options[0];
-    else if (options.length > 1) return { path, fork: { at, stepsLeft: left } };
+    else if (options.length > 1) return { path, fork: { at, stepsLeft: back ? -left : left } };
     if (!to) break;
     path.push(to);
     prev = at;
@@ -155,7 +156,7 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   const passed = [...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))];
   bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1) };
   const name = (id?: Id) => spaceById(round, id)?.name ?? '?';
-  if (w.fork) return `At ${name(w.fork.at)}: which way? (${w.fork.stepsLeft} to go)`;
+  if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;
   if (!w.path.length) return 'Nowhere to go from here';
   return `Landed on ${name(w.path.at(-1))}`;
 }

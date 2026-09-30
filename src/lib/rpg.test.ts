@@ -138,6 +138,25 @@ describe('RPG: moving', () => {
     expect(nameOf(world, st.positions.c)).toBe('B1');
     expect(st.parties[0].members).toContain('c');
   });
+
+  it('drops a party whose players all left: viewers follow the one left, and split view is off', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    splitParty(st, ['b']);
+    step(game, st, world, 'e'); // Bob's party, followed by viewers
+    st.split = true;
+    session.players = session.players.filter((p) => p.id !== 'b');
+    ensureWorld(session, game, round);
+    expect(st.parties.map((p) => p.members)).toEqual([['a']]);
+    expect(st.parties[0].name).toBe('Party');
+    expect(nameOf(world, focusRef(st))).toBe('A1');
+    expect(st.split).toBe(false);
+    // Put back, Bob joins the party viewers follow, where it stands.
+    session.players.push({ id: 'b', name: 'Bob', color: '#3cb44b', startScore: 0 });
+    ensureWorld(session, game, round);
+    expect(st.parties.map((p) => p.members)).toEqual([['a', 'b']]);
+    expect(nameOf(world, st.positions.b)).toBe('A1');
+  });
 });
 
 describe('RPG: what the audience sees', () => {

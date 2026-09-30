@@ -58,6 +58,7 @@
   import { clipboard } from '../../lib/clipboard.svelte';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
+  import { uniqueMediaName } from '../../lib/medianame';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
@@ -527,18 +528,23 @@
 
   function copySlide(): void {
     clipboard.slide = clone(slide);
+    holdMedia();
     toast('Slide copied');
   }
 
+  // Replace everything on this slide with the copied one. It's one undo step, so the canvas offers Undo
+  // instead of asking first (a browser dialog would show on stream mid-show).
   function pasteSlide(): void {
-    if (!clipboard.slide || !confirm('Replace everything on this slide with the copied slide?')) return;
+    if (!clipboard.slide) return;
     const s = clone(clipboard.slide);
     for (const e of s.elements) e.id = newId();
+    adoptMedia(mediaIds(s.elements, s.background));
     edit(() => {
       slide.background = s.background;
       slide.elements = s.elements;
       selected = [];
     });
+    tell('Pasted the copied slide', undo);
   }
 
   function typing(e: Event): boolean {
@@ -650,11 +656,32 @@
   }
 
   // ---------- Clipboard ----------
+  /** The media files items show (and a slide's background picture). */
+  function mediaIds(els: SlideElement[], background?: Slide['background']): string[] {
+    const ids = els.flatMap((x) => (x.kind === 'image' ? [x.media, x.editedMedia] : x.kind === 'video' || x.kind === 'audio' ? [x.media] : []));
+    return [...ids, background?.image].filter((id): id is string => !!id);
+  }
+
+  /** Keep the files of what's copied with it (from this game, or an earlier copy's), so it pastes into another game. */
+  function holdMedia(): void {
+    const s = clipboard.slide;
+    const ids = new Set([...mediaIds(clipboard.elements), ...(s ? mediaIds(s.elements, s.background) : [])]);
+    const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
+    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+  }
+
+  /** Pasting what was copied in another game: add the files it shows that this game doesn't have. */
+  function adoptMedia(ids: string[]): void {
+    for (const m of clipboard.media)
+      if (ids.includes(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+  }
+
   /** Copy items (the selection by default) to the in-app clipboard, and mark the system clipboard as ours. */
   function copyItems(data: DataTransfer | null, from = slide.elements.filter((x) => selected.includes(x.id))): number {
     const items = clone(from);
     const words = items.flatMap((x) => (x.kind === 'text' && x.text.trim() ? [x.text] : [])).join('\n');
     clipboard.elements = items;
+    holdMedia();
     clipboard.token = newId();
     clipboard.text = words || `${items.length} slide item${items.length === 1 ? '' : 's'}`;
     data?.setData('text/plain', clipboard.text);
@@ -681,6 +708,7 @@
 
   function pasteItems(): void {
     const copies = clipboard.elements.map((x) => ({ ...clone(x), id: newId() }));
+    adoptMedia(mediaIds(copies));
     // Copies that would land exactly on an existing item (pasting onto the same slide) shift down-right.
     const k = freeOffset(copies, slide.elements);
     const z = topZ();

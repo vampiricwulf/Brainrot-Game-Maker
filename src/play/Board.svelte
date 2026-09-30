@@ -69,9 +69,11 @@
           onclick={() => !used && onpick?.({ round: session.currentRound, cat: ci, row })}
           oncontextmenu={onunmark &&
             ((e) => {
-              // Never show the browser menu on the host's stage (it may be on stream).
+              // A used tile's right-click reopens it. Any other goes on to the stage's own menu (⏸ Cover), so the browser's
+              // never shows on the host's stage (it may be on stream).
+              if (!session.used[clue.id]) return;
               e.preventDefault();
-              if (session.used[clue.id]) onunmark({ round: session.currentRound, cat: ci, row });
+              onunmark({ round: session.currentRound, cat: ci, row });
             })}
           aria-label="{categoryLabel(cat)} for {clueValue(round, row, clue)}"
         >

@@ -154,8 +154,25 @@
   </div>
   {#if el.hostNotes}<div class="notes">📝 {el.hostNotes}</div>{/if}
   <div class="row setup">
-    <input class="nm" value={el.name ?? ''} placeholder="Name" aria-label="Object name" onchange={(e) => rename(e.currentTarget.value.trim())} />
-    <select value={role?.class ?? ''} onchange={(e) => setClass(e.currentTarget.value)} aria-label="Object class" title="What it is">
+    <input
+      class="nm"
+      value={el.name ?? ''}
+      placeholder="Name"
+      aria-label="Object name"
+      onchange={(e) => rename(e.currentTarget.value.trim())}
+      onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+    />
+    <!-- Let go of the keys after a pick: shortcuts ignore a focused select, and arrow keys would change the class again. -->
+    <select
+      value={role?.class ?? ''}
+      onchange={(e) => {
+        const v = e.currentTarget.value;
+        e.currentTarget.blur();
+        setClass(v);
+      }}
+      aria-label="Object class"
+      title="What it is"
+    >
       {#each OBJECT_CLASSES as [v, l, hint] (v)}<option value={v} title={hint}>{l}</option>{/each}
     </select>
     {#if onedit}<button class="small" onclick={onedit} title="Move, resize, restyle, or give it actions and dialogue">✎ Edit</button>{/if}

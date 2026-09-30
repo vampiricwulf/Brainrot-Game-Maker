@@ -22,6 +22,8 @@
   const turnName = $derived(playerName(session, turnId));
   const fork = $derived(bs?.fork);
   const forkSpace = $derived(round && fork ? spaceById(round, fork.at) : undefined);
+  /** The ways on from the fork, as the move saw them (backwards when it was going back). */
+  const forkWays = $derived(round && bs && fork ? waysOn(round, fork.at, bs.prev?.[fork.playerId], fork.stepsLeft < 0) : []);
   const last = $derived(bs?.last);
   const landed = $derived(round && last?.landed ? spaceById(round, last.landed) : undefined);
   const passed = $derived(round && last ? last.passed.map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s?.onPass?.length) : []);
@@ -224,8 +226,8 @@
 
     {#if fork && forkSpace}
       <div class="row fork" role="alert">
-        <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({fork.stepsLeft} to go)</b>
-        {#each forkSpace.next as n (n)}
+        <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
+        {#each forkWays as n (n)}
           <button class="primary" onclick={() => move(fork.stepsLeft, n)}>→ {spaceById(round, n)?.name}</button>
         {/each}
       </div>

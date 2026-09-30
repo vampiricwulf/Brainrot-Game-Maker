@@ -142,7 +142,9 @@
       {/if}
     </div>
   {:else}
-    {#key `${info.clue.id}-${session.revealed}`}
+    <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown. -->
+    {@const waiting = live.overlay?.kind === info.clue.type && !session.revealed}
+    {#key `${info.clue.id}-${session.revealed}-${waiting}`}
       <div
         class="full"
         class:clickable={!!onact}
@@ -150,7 +152,7 @@
         role="presentation"
         in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}
       >
-        <SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />
+        {#if !waiting}<SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />{/if}
       </div>
     {/key}
     {#if session.dd?.stage === 'question' && ddPlayer}

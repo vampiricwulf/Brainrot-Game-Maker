@@ -60,7 +60,9 @@
     </label>
     <button class="small ghost" onclick={() => (wager = cap)}>True Daily Double ({formatPoints(cap, sym)})</button>
     <span class="muted small">Max {formatPoints(cap, sym)} (their score or the round's top value)</span>
-    <label class="check small"><input type="checkbox" bind:checked={override} /> Ignore the limit</label>
+    <label class="check small">
+      <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && valid && onshow(playerId, wager!)} /> Ignore the limit
+    </label>
     <span class="spacer"></span>
     <button class="primary" disabled={!playerId || !valid} onclick={() => onshow(playerId, wager!)}>Show question ▶</button>
   </div>

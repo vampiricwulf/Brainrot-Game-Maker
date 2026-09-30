@@ -1094,7 +1094,7 @@ export interface BoardGameState {
   hop?: { playerId: Id; path: Id[]; at: number };
   /** The space each player came from, so a move doesn't turn back along a two-way link. */
   prev?: Record<Id, Id>;
-  /** A move stopped at a fork: the host picks the way, then it goes on. */
+  /** A move stopped at a fork: the host picks the way, then it goes on (the same way: negative steps go back). */
   fork?: { playerId: Id; at: Id; stepsLeft: number };
   /** Spaces passed and landed on in the last move, for their action buttons. */
   last?: { playerId: Id; passed: Id[]; landed?: Id };

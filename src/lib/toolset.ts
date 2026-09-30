@@ -295,6 +295,7 @@ const partsOf = (parts: Record<string, string>, keys: string[]) => `{${keys.map(
 const SHOWN: Record<string, string[]> = { worlds: ['mapShown', 'split'], boardgames: ['zoneShown'] };
 
 function restore(session: Session, json: string, game?: Game): void {
+  const followed = Object.fromEntries(Object.entries(session.worlds ?? {}).map(([id, st]) => [id, st.active]));
   // Older saves kept the whole score log here too: it's left alone (a step's own points are in its `score`).
   for (const [k, v] of Object.entries(JSON.parse(json))) {
     if ((PARTS as readonly string[]).includes(k)) {
@@ -303,6 +304,12 @@ function restore(session: Session, json: string, game?: Game): void {
       for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id]) part[id][f] = now[id][f];
       Object.assign(session, { [k]: part });
     } else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
+  }
+  // Viewers keep following the party they were (switched outside any step) while it's still there, and with one party
+  // left there's no split view.
+  for (const [id, st] of Object.entries(session.worlds ?? {})) {
+    if (st.parties.some((p) => p.id === followed[id])) st.active = followed[id];
+    if (st.parties.length < 2) st.split = false;
   }
 }
 

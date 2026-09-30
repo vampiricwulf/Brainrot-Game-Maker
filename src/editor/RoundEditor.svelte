@@ -140,7 +140,7 @@
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
     title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🎲 Randomize</button>
-  <span class="muted small">{round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble').length, 0)} placed</span>
+  <span class="muted small">{round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0)} placed</span>
 </div>
 
 <div class="grid-wrap">

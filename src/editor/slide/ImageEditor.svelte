@@ -11,6 +11,7 @@
   import { fontChoices } from '../../lib/fonts';
   import { linkHost } from '../../lib/links';
   import SaveCopyButton from '../SaveCopyButton.svelte';
+  import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
     canvasToBlob, defaultEdits, fitCrop, loadImage, orientedSize, outputSize, renderEdited, renderOriented, STICKERS,
   } from '../../lib/imageedit';
@@ -31,6 +32,7 @@
   let sticker = $state(STICKERS[0]);
   let cropAspect = $state<'free' | number>('free');
   let saving = $state(false);
+  let discarding = $state(false);
   let host = $state<HTMLDivElement>();
   let box = $state<HTMLDivElement>();
   let rendered = $state<HTMLCanvasElement | null>(null);
@@ -101,8 +103,8 @@
 
   /** Cancel (Esc, the Cancel button): ask before throwing edits away. */
   function cancel(): void {
-    if (snapshot(edits) !== opened && !confirm('Discard your image edits?')) return;
-    onclose();
+    if (snapshot(edits) !== opened) discarding = true;
+    else onclose();
   }
 
   // ---------- Pointer interactions (in fractions of the displayed image) ----------
@@ -260,7 +262,7 @@
       toast('Image edited (original kept)');
       onclose();
     } catch (e) {
-      alert('Could not save the edit: ' + (e as Error).message);
+      toast('Could not save the edit: ' + (e as Error).message, 5000);
     } finally {
       saving = false;
     }
@@ -291,8 +293,9 @@
       undo();
     } else if (e.key === 'Escape') {
       e.stopImmediatePropagation();
-      // Esc in a field (e.g. the meme caption) just leaves the field.
+      // Esc in a field (e.g. the meme caption) just leaves the field; while it asks, Esc keeps editing.
       if (typing) (e.target as HTMLElement).blur();
+      else if (discarding) discarding = false;
       else cancel();
     } else if (e.altKey && e.key.startsWith('Arrow')) {
       // Not the clue editor's Prev/Next: that would drop this dialog and its edits.
@@ -330,7 +333,11 @@
     {/if}
     <header class="row">
       <b>🎨 Edit image</b>
-      <span class="muted small">{source?.name} · output {out.w}×{out.h}px</span>
+      {#if discarding}
+        <InlineAsk text="Discard your image edits?" ok="Discard" cancel="Keep editing" danger onok={onclose} oncancel={() => (discarding = false)} />
+      {:else}
+        <span class="muted small">{source?.name} · output {out.w}×{out.h}px</span>
+      {/if}
       {#if tool === 'crop' && edits.crop && img}
         <span class="small crop-size">crop {Math.round(edits.crop.w * oriented.w)}×{Math.round(edits.crop.h * oriented.h)}px</span>
       {/if}
