@@ -475,6 +475,8 @@ export interface ScoreEvent {
   undone?: boolean;
   /** Shared by every event of one award/effect (e.g. "Award (3)"), so Undo/Redo treat it as one step. */
   batchId?: Id;
+  /** A Final re-judge: the earlier judgment's event it took the place of (undoing this brings that one back). */
+  replaces?: Id;
 }
 
 export interface RollEvent {

@@ -216,6 +216,8 @@ export function quickDice(sides: number, count: number, name = `${count > 1 ? co
 
 export function startRollOff(live: Live, session: Session, playerIds: string[], sides: number, purpose: 'first' | 'tiebreak' = 'first'): void {
   if (!playerIds.length) return;
+  // A blank die is a d20, and a die has at least 2 sides (a d1 would tie every round).
+  sides = Math.min(1000, Math.max(2, Math.floor(sides) || 20));
   const plan = planRollOff(playerIds, sides);
   live.overlay = {
     kind: 'rolloff',

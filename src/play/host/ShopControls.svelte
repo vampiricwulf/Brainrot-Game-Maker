@@ -28,21 +28,39 @@
     if (result) toast(result.ok ? result.text : result.error, 3000);
   }
 
+  /** A price for this sale, or the stock left, being typed in (asked inline: a browser dialog would show on stream). */
+  let asking = $state<{ what: 'price' | 'stock'; item: string } | null>(null);
+  let typed = $state<number | null>(null);
+
   function otherPrice(item: string): void {
-    const v = prompt('Price for this sale:', String(shopPrice(game, shop!, item)));
-    if (v === null) return;
-    const n = Number(v);
-    if (!Number.isFinite(n) || n < 0) return void toast('That isn’t a price');
-    purchase(item, { price: n, allowShort: true });
+    asking = { what: 'price', item };
+    typed = shopPrice(game, shop!, item);
   }
 
   function restock(item: string): void {
     if (!shop) return;
-    const left = stockLeft(session, shop, item);
-    const v = prompt('How many left? (blank = unlimited)', left === null ? '' : String(left));
-    if (v === null) return;
+    asking = { what: 'stock', item };
+    typed = stockLeft(session, shop, item);
+  }
+
+  /** Sell at the price typed, or set the stock left (blank = unlimited). */
+  function answer(): void {
+    const a = asking;
+    const v = typed;
+    if (!a || !shop) return;
+    asking = null;
+    if (a.what === 'price') {
+      if (v === null || v < 0) return void toast('That isn’t a price');
+      purchase(a.item, { price: v, allowShort: true });
+      return;
+    }
     const s = shop;
-    logged(session, `Restock ${itemDef(game, item)?.name}`, () => setStock(session, s, item, v.trim() === '' ? null : Math.max(0, Math.round(Number(v) || 0))));
+    logged(session, `Restock ${itemDef(game, a.item)?.name}`, () => setStock(session, s, a.item, v === null ? null : Math.max(0, Math.round(v))));
+  }
+
+  function keys(e: KeyboardEvent): void {
+    if (e.key === 'Enter') answer();
+    else if (e.key === 'Escape') asking = null;
   }
 </script>
 
@@ -81,6 +99,18 @@
       {/if}
     {/each}
   </div>
+  {#if asking?.what === 'stock'}
+    <div class="row">
+      <label class="check small">
+        How many {itemDef(game, asking.item)?.name} left?
+        <!-- svelte-ignore a11y_autofocus -->
+        <input class="n" type="number" min="0" placeholder="∞" bind:value={typed} autofocus onkeydown={keys} />
+      </label>
+      <span class="muted small">Blank = unlimited</span>
+      <button class="small" onclick={answer}>Set</button>
+      <button class="small ghost" onclick={() => (asking = null)}>Cancel</button>
+    </div>
+  {/if}
   {#if shop.buysBack}
     {@const sellable = inventory(session, buyer).filter((e) => sellPrice(game, shop, e.item) !== null)}
     <div class="row">
@@ -97,10 +127,20 @@
     {@const it = o.short.item}
     <div class="row warn" role="alert">
       <span>{o.short.error} for {itemDef(game, it)?.name}.</span>
-      <button class="small" onclick={() => purchase(it, { allowShort: true })}>Sell anyway</button>
-      <button class="small" onclick={() => purchase(it, { price: 0 })}>Give it free</button>
-      <button class="small" onclick={() => otherPrice(it)}>Other price…</button>
-      <button class="small ghost" onclick={() => (o.short = undefined)}>Cancel</button>
+      {#if asking?.what === 'price' && asking.item === it}
+        <label class="check">
+          Price
+          <!-- svelte-ignore a11y_autofocus -->
+          <input class="n" type="number" min="0" bind:value={typed} autofocus onkeydown={keys} />
+        </label>
+        <button class="small" onclick={answer}>Sell</button>
+        <button class="small ghost" onclick={() => (asking = null)}>Cancel</button>
+      {:else}
+        <button class="small" onclick={() => purchase(it, { allowShort: true })}>Sell anyway</button>
+        <button class="small" onclick={() => purchase(it, { price: 0 })}>Give it free</button>
+        <button class="small" onclick={() => otherPrice(it)}>Other price…</button>
+        <button class="small ghost" onclick={() => (o.short = undefined)}>Cancel</button>
+      {/if}
     </div>
   {/if}
 {/if}
@@ -131,5 +171,8 @@
   .tiny {
     font-size: 11px;
     padding: 1px 5px;
+  }
+  .n {
+    width: 80px;
   }
 </style>

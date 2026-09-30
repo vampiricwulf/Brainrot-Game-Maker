@@ -64,7 +64,7 @@
     font-family: var(--value-font);
     font-size: 90px;
     font-weight: 900;
-    color: #ffcc00;
+    color: var(--value);
     text-shadow: 6px 6px 0 #000;
   }
   .row {

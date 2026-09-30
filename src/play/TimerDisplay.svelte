@@ -17,7 +17,7 @@
   const urgent = $derived(!done && left <= 5);
 </script>
 
-<div class="timer" class:urgent class:paused={timer.startedAt === null && !done}>
+<div class="timer" class:urgent class:done class:paused={timer.startedAt === null && !done}>
   <div class="num">{Math.ceil(left)}</div>
   <div class="bar"><div class="fill" style:width="{frac * 100}%"></div></div>
 </div>
@@ -81,8 +81,12 @@
     paint-order: stroke fill;
     text-shadow: 0 0 60px #ff0000;
     z-index: 30;
-    animation: slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both, shake 0.4s 0.5s linear 2;
+    /* Then it gets out of the way, so viewers can read the question again (the red clock at 0 stays). */
+    animation: slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both, shake 0.4s 0.5s linear 2, fade-out 0.5s 2.5s forwards;
     pointer-events: none;
+  }
+  .done {
+    border-color: #ff3b3b;
   }
   @keyframes pulse {
     to {
@@ -92,6 +96,11 @@
   @keyframes slam {
     from {
       scale: 3;
+      opacity: 0;
+    }
+  }
+  @keyframes fade-out {
+    to {
       opacity: 0;
     }
   }

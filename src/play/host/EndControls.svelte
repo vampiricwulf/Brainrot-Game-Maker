@@ -1,25 +1,30 @@
 <!-- End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. -->
 <script lang="ts">
   import { toast } from '../../lib/app.svelte';
-  import { formatPoints, isFinal, type Game, type Session } from '../../lib/model';
-  import { places, startTiebreaker, tiedLeaders } from '../../lib/session';
+  import { formatPoints, isFinal, roundName, type Game, type Session } from '../../lib/model';
+  import { places, tiedLeaders } from '../../lib/session';
 
   let {
     game,
     session,
     onrolloff,
+    ontiebreaker,
     onback,
     onrematch,
   }: {
     game: Game;
     session: Session;
     onrolloff?: (ids: string[]) => void;
-    /** Back to the final reveals (or the board if there was no final round). */
+    /** Play the tiebreaker clue. */
+    ontiebreaker: () => void;
+    /** Back to the last round (a final round goes back to its reveals). */
     onback: () => void;
     /** New game with the same players, via the pre-game screen. */
     onrematch: () => void;
   } = $props();
   const ties = $derived(tiedLeaders(session));
+  const lastIndex = $derived(game.rounds.length - 1);
+  const last = $derived(game.rounds[lastIndex]);
 
   /** "🏆 Brainrot Night: 🥇 Sam $4,200 · 🥈 Alex $3,100 · 🥉 Jo $0" for chat or Discord. Tied players share a place and a medal. */
   function resultsText(): string {
@@ -52,7 +57,7 @@
     <b>Tie for first:</b> {ties.map((p) => p.name).join(', ')}
     <div class="row">
       {#if onrolloff}<button onclick={() => onrolloff(ties.map((p) => p.id))}>🎲 Tiebreaker roll-off</button>{/if}
-      <button onclick={() => startTiebreaker(session)} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : 'Write one in the editor on the final round tab'}>
+      <button onclick={ontiebreaker} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : "Write one on the editor's Tiebreaker tab"}>
         ❓ Tiebreaker clue
       </button>
       <button onclick={() => (session.coWinners = true)}>🤝 Declare co-winners</button>
@@ -67,9 +72,9 @@
   <div class="row"><span class="muted">Co-winners declared.</span><button class="ghost small" onclick={() => (session.coWinners = false)}>Undo</button></div>
 {/if}
 <div class="row">
-  <button class="ghost" onclick={onback}>
-    {isFinal(game.rounds[game.rounds.length - 1]) ? '◀ Back to final reveals' : '◀ Back to board'}
-  </button>
+  {#if last}
+    <button class="ghost" onclick={onback}>{isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`}</button>
+  {/if}
   <button onclick={copyResults} title="Copy the standings as one line of text">📋 Copy results</button>
   <button onclick={onrematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>
 </div>

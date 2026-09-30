@@ -4,6 +4,7 @@
   import { registerBlob, registerLinks } from '../lib/media.svelte';
   import type { Game, Session } from '../lib/model';
   import { newLive, type Live } from '../lib/live';
+  import { newSession } from '../lib/session';
   import { CHANNEL_NAME, audienceTitle, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { applyLocal, onLocalMediaChange } from '../lib/mediactl.svelte';
@@ -158,9 +159,10 @@
 
 <!-- A touch only counts once the finger lifts, hence pointerup too. -->
 <div class="aud" class:idle ondblclick={toggleFullscreen} onpointerdown={activate} onpointerup={activate} role="presentation">
-  {#if game && session}
+  {#if game && (session || live.pregame)}
     <Stage>
-      <AudienceView {game} {session} {live} role="audience" />
+      <!-- Before Start the host sends no session yet: AudienceView shows its "Starting soon" card. -->
+      <AudienceView {game} session={session ?? newSession(game)} {live} role="audience" />
     </Stage>
   {:else}
     <div class="msg">
@@ -172,7 +174,8 @@
       {/if}
     </div>
   {/if}
-  {#if !activated && status === 'connected'}
+  <!-- Only while the mouse is over the window, so it stays off the stream (the host panel warns too). -->
+  {#if !activated && status === 'connected' && !idle}
     <div class="activate">Click anywhere in this window once so it can play sound</div>
   {/if}
   {#if status === 'host-left'}

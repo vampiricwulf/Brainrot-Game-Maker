@@ -55,9 +55,9 @@
         >{s.label.length > 22 ? s.label.slice(0, 21) + '…' : s.label}</text>
       </g>
     {/each}
-    <circle r="60" fill="#111" stroke="#ffcc00" stroke-width="8" />
+    <circle class="rim" r="60" fill="#111" stroke-width="8" />
   </g>
-  <circle r={R} fill="none" stroke="#ffcc00" stroke-width="10" />
+  <circle class="rim" r={R} fill="none" stroke-width="10" />
   <polygon points="-34,-488 34,-488 0,-410" fill="#fff" stroke="#000" stroke-width="5" />
 </svg>
 
@@ -68,5 +68,8 @@
     font-family: var(--board-font);
     font-weight: 800;
     filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.6));
+  }
+  .rim {
+    stroke: var(--value);
   }
 </style>

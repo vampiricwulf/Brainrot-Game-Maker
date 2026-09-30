@@ -13,7 +13,9 @@
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
   let skipped = $state<string[]>([]);
   const who = $derived(session.players.filter((p) => !skipped.includes(p.id)).map((p) => p.id));
-  let sides = $state(untrack(() => game.settings.rollOffDie || 20));
+  let sides = $state<number | null>(untrack(() => game.settings.rollOffDie || 20));
+  /** A die from d2 to d1000 (a blank box, or a d1 that would tie every round, can't be rolled). */
+  const sidesOk = $derived(!!sides && sides >= 2 && sides <= 1000);
 
   function dice(sides: number, count: number, name?: string): void {
     rollDice(app.live, session, quickDice(sides, count, name));
@@ -40,6 +42,16 @@
     else toast('Use dice notation like d20 or 2d6 (up to 1000 sides)');
   }
 </script>
+
+<!-- Esc closes an open menu (even from its text boxes) and does nothing else: no overlay closed, no clue left. -->
+<svelte:window
+  onkeydowncapture={(e) => {
+    if (menu && e.key === 'Escape') {
+      e.stopImmediatePropagation();
+      menu = null;
+    }
+  }}
+/>
 
 <div class="tl">
   <div class="pop">
@@ -119,15 +131,16 @@
         <label class="check small">Die: d<input type="number" min="2" max="1000" bind:value={sides} class="n" /></label>
         <button
           class="primary small"
-          disabled={who.length < 1}
+          disabled={who.length < 1 || !sidesOk}
+          title={sidesOk ? '' : 'Pick a die from d2 to d1000'}
           onclick={() => {
-            onrolloff(who, sides);
+            onrolloff(who, Math.round(sides!));
             menu = null;
           }}>Roll for {who.length}</button>
       </div>
     {/if}
   </div>
-  <button onclick={() => toggleScoreboard(app.live)} title="S">📊 Scores</button>
+  <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="S">📊 Scores</button>
 </div>
 
 {#if menu}<div class="backdrop" onclick={() => (menu = null)} role="presentation"></div>{/if}
@@ -139,6 +152,12 @@
   }
   .pop {
     position: relative;
+  }
+  /* Above the backdrop, so another tool's button switches menus in one click. */
+  .pop > button,
+  .tl > button {
+    position: relative;
+    z-index: 61;
   }
   .menu {
     position: absolute;

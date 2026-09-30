@@ -4,8 +4,8 @@
   import { app } from '../../lib/app.svelte';
   import { startTimer, timerRemaining, toggleTimer } from '../../lib/live';
 
-  let { defaultSeconds }: { defaultSeconds: number } = $props();
-  let custom = $state<number | null>(null);
+  /** custom: the seconds typed in the box (bound, so T uses them too). */
+  let { defaultSeconds, custom = $bindable(null) }: { defaultSeconds: number; custom?: number | null } = $props();
   let now = $state(Date.now());
   onMount(() => {
     const id = setInterval(() => (now = Date.now()), 250);

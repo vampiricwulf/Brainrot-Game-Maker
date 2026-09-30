@@ -405,6 +405,8 @@ assert(usercontent.fromPage === 0, 'Drive files were never loaded by the page');
 
 // ---------- Reopen the saved .jbr: live links are still links ----------
 await page.getByRole('button', { name: 'Exit' }).click();
+await page.waitForTimeout(450);
+await page.getByRole('button', { name: 'Leave', exact: true }).click();
 const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
 await chooser.setFiles({ name: 'links.jbr', mimeType: 'application/zip', buffer: readFileSync(await download.path()) });
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Links');

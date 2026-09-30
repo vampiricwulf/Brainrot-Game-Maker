@@ -6,7 +6,7 @@
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { autoPlay } from '../../lib/audioout.svelte';
 
-  let { outcome, game, role, color = '#ffcc00' }: { outcome: Outcome; game: Game; role: MediaRole; color?: string } = $props();
+  let { outcome, game, role, color = 'var(--value)' }: { outcome: Outcome; game: Game; role: MediaRole; color?: string } = $props();
   const ref = $derived(outcome.media ? game.media.find((m) => m.id === outcome.media) : undefined);
   const url = $derived(outcome.media ? mediaUrls[outcome.media] : undefined);
 </script>

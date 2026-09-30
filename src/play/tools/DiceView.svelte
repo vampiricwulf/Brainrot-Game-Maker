@@ -64,7 +64,7 @@
     font-family: var(--value-font);
     font-size: 64px;
     font-weight: 900;
-    color: #ffcc00;
+    color: var(--value);
     text-shadow: 5px 5px 0 #000;
   }
   .dice {

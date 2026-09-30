@@ -10,7 +10,7 @@
     ['Right-click a used tile', 'Put it back on the board (or use ↶ Reopen in the host panel)'],
     ['N', 'Next step (round intro, final round; in the reveals: show the wager, then the next player)'],
     ['C / X', 'Final reveals: mark the spotlit player right / wrong'],
-    ['T', 'Start / pause the countdown'],
+    ['T', 'Start / pause the countdown (the seconds typed in the ⏱ box, if any)'],
     ['P then 1 – 9', 'Make player N the current picker'],
     ['D', 'Roll the last dice again'],
     ['W', 'Spin the wheel (or open the first saved wheel)'],
@@ -50,8 +50,12 @@
 />
 
 <div class="backdrop" onclick={onclose} role="presentation">
-  <div class="modal" role="dialog" aria-label="Keyboard shortcuts">
-    <h2>Keyboard shortcuts</h2>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div class="row">
+      <h2>Keyboard shortcuts</h2>
+      <span class="spacer"></span>
+      <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
+    </div>
     <table>
       <tbody>
         {#each KEYS as [k, d]}
@@ -84,7 +88,10 @@
     overflow: auto;
   }
   h2 {
-    margin: 0 0 10px;
+    margin: 0;
+  }
+  .row {
+    margin-bottom: 10px;
   }
   td {
     padding: 3px 10px 3px 0;

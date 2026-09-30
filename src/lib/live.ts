@@ -115,6 +115,8 @@ export interface Live {
   overlay: Overlay | null;
   /** Panic button: the audience sees only the cover card. */
   cover?: boolean;
+  /** The host is still on the pre-game screen: viewers see a "Starting soon" card (the board would give it away). */
+  pregame?: boolean;
 }
 
 export function newLive(): Live {
