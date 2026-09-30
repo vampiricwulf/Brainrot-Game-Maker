@@ -213,6 +213,11 @@ describe('step labels', () => {
       board(g).categories[0].clues[0].questionSlide.elements.push({ ...newImageEl('m2'), id: 'img' });
     });
     expect(put).toMatchObject({ label: 'Added image “pepe-edited.png”', place: { part: { kind: 'clue', element: 'img' } } });
+    const two = step((g) => {
+      g.media.push(file, { ...file, id: 'm3', name: 'b.png' });
+      board(g).categories[0].clues[0].questionSlide.elements.push({ ...newImageEl('m2'), id: 'a' }, { ...newImageEl('m3'), id: 'b' });
+    });
+    expect(two).toMatchObject({ label: 'Added 2 images', where: 'Jeopardy! › Category 1 › $200 › Question' });
   });
 
   it('lets an editor name the step, keeping the places from the ops', () => {

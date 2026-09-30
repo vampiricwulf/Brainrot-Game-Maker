@@ -260,6 +260,26 @@ try {
   await page.waitForTimeout(250);
   assert((await page.locator('.hist .hr.undone').count()) === 22 && !(await ask.count()), 'and goes back once asked');
 
+  // ---------- Files dropped and where they go: one step ----------
+  await page.locator('nav button.round-tab').first().click();
+  const dt = await page.evaluateHandle((files) => {
+    const d = new DataTransfer();
+    for (const [name, bytes] of files) d.items.add(new File([new Uint8Array(bytes)], name, { type: 'image/png' }));
+    return d;
+  }, [['red.png', [...png(255, 0, 0)]], ['blue.png', [...png(0, 0, 255)]]]);
+  await page.locator('.cat').first().dispatchEvent('dragover', { dataTransfer: dt });
+  await page.locator('.cat').first().dispatchEvent('drop', { dataTransfer: dt });
+  await page.locator('.cat .cat-img img').nth(1).waitFor();
+  const dropped = await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(dropped === 'Undo: Set 2 category images (Ctrl+Z)', `two images dropped on the categories are one step (${dropped})`);
+  await clickAway();
+  await key('Control+z');
+  // (The first category shows the picture it had before: wide.png.)
+  const images = await page.locator('.cat .cat-img img').count();
+  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  const names = await page.locator('.card .nm').allInnerTexts();
+  assert(images === 1 && !names.some((n) => /red|blue/.test(n)), `and one Ctrl+Z takes the images and their files back (${names})`);
+
   assert(dialogs.length === 1 && dialogs[0].includes('It replaces this game'), `the only browser dialog was Open's (${dialogs.join(' | ')})`);
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('History E2E passed.');

@@ -4,7 +4,7 @@
   import { take } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
   import { categoryLabel, clueValue, roundName, slideText, type BoardRound } from '../lib/model';
-  import { step } from '../lib/history.svelte';
+  import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { addCategory, categoryHasContent, clueHasContent, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
@@ -54,26 +54,38 @@
   }
 
   // Several images dropped at once fill the next categories to the right…
-  async function dropOnCategory(e: DragEvent, ci: number): Promise<void> {
-    const ids = await images(e);
-    ids.forEach((id, i) => {
-      const cat = round.categories[ci + i];
-      if (cat) cat.image = id;
+  // (The files and where they go: one step.)
+  function dropOnCategory(e: DragEvent, ci: number): Promise<void> {
+    return stepAsync(null, async () => {
+      const ids = await images(e);
+      ids.forEach((id, i) => {
+        const cat = round.categories[ci + i];
+        if (cat) cat.image = id;
+      });
+      const n = Math.min(ids.length, round.categories.length - ci);
+      if (n > 1) {
+        nameStep(`Set ${n} category images`);
+        toast(`Set ${n} category images`);
+      }
     });
-    if (ids.length > 1) toast(`Set ${Math.min(ids.length, round.categories.length - ci)} category images`);
   }
 
   // …and the next tiles down the column (then on to the next column), skipping empty tiles.
-  async function dropOnTile(e: DragEvent, ci: number, row: number): Promise<void> {
-    const ids = await images(e);
-    const rows = round.values.length;
-    let n = 0;
-    for (let idx = ci * rows + row; idx < round.categories.length * rows && n < ids.length; idx++) {
-      const clue = round.categories[Math.floor(idx / rows)].clues[idx % rows];
-      if (clue.empty) continue;
-      clue.tileFace = { ...clue.tileFace, image: ids[n++] };
-    }
-    if (ids.length > 1) toast(`Set ${n} tile images`);
+  function dropOnTile(e: DragEvent, ci: number, row: number): Promise<void> {
+    return stepAsync(null, async () => {
+      const ids = await images(e);
+      const rows = round.values.length;
+      let n = 0;
+      for (let idx = ci * rows + row; idx < round.categories.length * rows && n < ids.length; idx++) {
+        const clue = round.categories[Math.floor(idx / rows)].clues[idx % rows];
+        if (clue.empty) continue;
+        clue.tileFace = { ...clue.tileFace, image: ids[n++] };
+      }
+      if (ids.length > 1) {
+        nameStep(`Set ${n} tile images`);
+        toast(`Set ${n} tile images`);
+      }
+    });
   }
 
   // An undo or redo here: open the clue or the board images it changed, or close them to show the board.

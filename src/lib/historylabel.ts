@@ -477,7 +477,7 @@ export function describe(all: readonly Op[], before: Game, after: Game, explicit
     place = a.place ?? place;
     undoPlace = b.place ?? undoPlace;
     crumbs = (op.t === 'del' ? b : a).crumbs;
-  }
+  } else if (alike > 1 && (op.t === 'ins' || op.t === 'del')) crumbs = crumbs.slice(0, -1); // (Not the first one's name: "Added 2 images".)
   const label = explicit || labelOf(ops, op, at, moved, alike, before, after);
   // Where it is doesn't say again what the label names ("Edited question “Who is Pepe?”" in Round 1 › Memes › $400 › Question).
   const last = crumbs[crumbs.length - 1];

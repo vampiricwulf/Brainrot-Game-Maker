@@ -6,7 +6,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { begin, history, redo, step, undo } from '../lib/history.svelte';
+  import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
@@ -124,21 +124,24 @@
     });
   }
 
-  async function addFiles(files: FileList | File[], at?: { x: number; y: number }): Promise<void> {
-    let i = 0;
-    for (const file of Array.from(files)) {
-      try {
-        const ref = await addMediaFile(game, file);
-        if (ref.kind !== 'image') {
-          toast(`"${ref.name}" isn't an image. Board images can be pictures or GIFs.`);
-          continue;
+  // The files and the board images they make: one step.
+  function addFiles(files: FileList | File[], at?: { x: number; y: number }): Promise<void> {
+    return stepAsync(null, async () => {
+      let i = 0;
+      for (const file of Array.from(files)) {
+        try {
+          const ref = await addMediaFile(game, file);
+          if (ref.kind !== 'image') {
+            toast(`"${ref.name}" isn't an image. Board images can be pictures or GIFs.`);
+            continue;
+          }
+          await add(ref.id, at && { x: at.x + i * 40, y: at.y + i * 40 });
+          i++;
+        } catch (e) {
+          toast((e as Error).message, 5000);
         }
-        await add(ref.id, at && { x: at.x + i * 40, y: at.y + i * 40 });
-        i++;
-      } catch (e) {
-        toast((e as Error).message, 5000);
       }
-    }
+    });
   }
 
   function picked(id: string): void {

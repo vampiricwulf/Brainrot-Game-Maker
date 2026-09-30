@@ -4,6 +4,7 @@
   import { toast, editedGame } from '../../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls } from '../../lib/media.svelte';
   import { pickFile } from '../../lib/fileio';
+  import { stepAsync } from '../../lib/history.svelte';
   import { linkHost } from '../../lib/links';
   import type { MediaKind } from '../../lib/model';
   import LinkField from '../LinkField.svelte';
@@ -17,7 +18,8 @@
     kind: MediaKind;
     /** What it drops from (by default the element it's placed in, which holds the button that opened it). */
     anchor?: HTMLElement;
-    onpick: (id: string) => void;
+    /** (Awaited when it waits for something, so an upload and its use are one undo step.) */
+    onpick: (id: string) => unknown;
     onclose: () => void;
   } = $props();
   const items = $derived(editedGame().media.filter((m) => m.kind === kind));
@@ -45,11 +47,14 @@
     const file = await pickFile(ACCEPT[kind]);
     if (!file) return;
     try {
-      const ref = await addMediaFile(editedGame(), file);
-      if (ref.kind !== kind) toast(`That's ${ref.kind === 'image' ? 'an' : 'a'} ${ref.kind} file; added it anyway.`);
-      if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
-        toast(`⚠ This browser may not play "${ref.name}" (${ref.mime}). Try converting it to MP4 (H.264) or MP3.`, 7000);
-      onpick(ref.id);
+      // The file and where it's used: one step.
+      await stepAsync(null, async () => {
+        const ref = await addMediaFile(editedGame(), file);
+        if (ref.kind !== kind) toast(`That's ${ref.kind === 'image' ? 'an' : 'a'} ${ref.kind} file; added it anyway.`);
+        if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
+          toast(`⚠ This browser may not play "${ref.name}" (${ref.mime}). Try converting it to MP4 (H.264) or MP3.`, 7000);
+        await onpick(ref.id);
+      });
     } catch (e) {
       toast((e as Error).message, 5000);
     }

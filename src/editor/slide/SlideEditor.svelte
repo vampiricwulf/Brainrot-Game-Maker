@@ -379,17 +379,20 @@
     add(t, at);
   }
 
-  async function dropFiles(files: FileList, at: { x: number; y: number }): Promise<void> {
-    for (const file of Array.from(files)) {
-      try {
-        const ref = await addMediaFile(game, file);
-        if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
-          toast(`⚠ This browser may not play "${ref.name}". MP4 (H.264) / MP3 are safest.`, 7000);
-        await addMedia(ref.kind, ref.id, at);
-      } catch (e) {
-        toast((e as Error).message, 5000);
+  // The files and the items they make: one step.
+  function dropFiles(files: FileList, at: { x: number; y: number }): Promise<void> {
+    return undoApi.stepAsync(null, async () => {
+      for (const file of Array.from(files)) {
+        try {
+          const ref = await addMediaFile(game, file);
+          if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
+            toast(`⚠ This browser may not play "${ref.name}". MP4 (H.264) / MP3 are safest.`, 7000);
+          await addMedia(ref.kind, ref.id, at);
+        } catch (e) {
+          toast((e as Error).message, 5000);
+        }
       }
-    }
+    });
   }
 
   function ondrop(e: DragEvent): void {
