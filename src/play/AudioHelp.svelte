@@ -8,7 +8,8 @@
   import { chooseAudioOut, sound, testSound } from '../lib/sync.svelte';
   import { audioOut, hasOutputPicker, listOutputs, pickOutput, sinkSupported } from '../lib/audioout.svelte';
   import { DEFAULT_OUTPUT, matchOutput, type AudioOutput } from '../lib/audio';
-  import { captureProblem, desktop, restartApp, setAudioFix } from '../lib/desktop.svelte';
+  import { captureProblem, desktop, RESTART_ASK, restartApp, setAudioFix } from '../lib/desktop.svelte';
+  import InlineAsk from './host/InlineAsk.svelte';
 
   // windowTitle: the audience window's title, which Discord lists it by.
   let { dual, windowTitle, onclose }: { dual: boolean; windowTitle: string; onclose: () => void } = $props();
@@ -91,8 +92,12 @@
     box.checked = desktop.fixSaved;
   }
 
+  /** A restart button was pressed: it asks inline (a browser dialog would show on stream). */
+  let askRestart = $state(false);
+
   /** `retry`: try the fix again after WebView2 crashed with it. */
-  async function restart(retry = false): Promise<void> {
+  async function restart(retry: boolean): Promise<void> {
+    askRestart = false;
     fixError = (await restartApp(retry)) ?? '';
   }
 </script>
@@ -105,6 +110,17 @@
     }
   }}
 />
+
+<!-- A restart button: pressed, it asks first, in its place. -->
+{#snippet restartButton(label: string, retry: boolean)}
+  {#if askRestart && !desktop.restarting}
+    <InlineAsk text={RESTART_ASK} ok="↻ Restart" onok={() => restart(retry)} oncancel={() => (askRestart = false)} />
+  {:else}
+    <button class="small" onclick={() => (askRestart = true)} disabled={desktop.restarting}>
+      {desktop.restarting ? 'Restarting…' : label}
+    </button>
+  {/if}
+{/snippet}
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" tabindex="-1" bind:this={modal}>
@@ -188,28 +204,18 @@
             The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound.
             Try it again; if it crashes again, Brainrot Games Maker restarts without it.
           </p>
-          <div class="row">
-            <button class="small" onclick={() => restart(true)} disabled={desktop.restarting}>
-              {desktop.restarting ? 'Restarting…' : '↻ Try it again'}
-            </button>
-          </div>
+          <div class="row">{@render restartButton('↻ Try it again', true)}</div>
         {:else if desktop.fixSaved && desktop.fixFailed}
           <p class="warn small">
             The fix didn't start this time, so Brainrot Games Maker is running without it: its previous WebView2 processes were probably
             still closing. Restart to try again. If it keeps happening, share your whole screen with sound instead, or run the show in
             Chrome or Edge (see below).
           </p>
-          <div class="row">
-            <button class="small" onclick={() => restart()} disabled={desktop.restarting}>
-              {desktop.restarting ? 'Restarting…' : '↻ Restart now'}
-            </button>
-          </div>
+          <div class="row">{@render restartButton('↻ Restart now', false)}</div>
         {:else if desktop.fixSaved !== desktop.fixActive}
           <div class="row">
             <span class="warn small">Restart Brainrot Games Maker to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
-            <button class="small" onclick={() => restart()} disabled={desktop.restarting}>
-              {desktop.restarting ? 'Restarting…' : '↻ Restart now'}
-            </button>
+            {@render restartButton('↻ Restart now', false)}
           </div>
         {/if}
         {#if fixError}<p class="bad small">{fixError}</p>{/if}

@@ -77,12 +77,14 @@ export async function setAudioFix(on: boolean): Promise<string | null> {
   }
 }
 
+/** What the host is asked before a restart (inline in the page: a browser dialog would show on stream). */
+export const RESTART_ASK = 'Restart Brainrot Games Maker now? Everything is saved: a game in progress can be resumed from the editor.';
+
 /**
- * Ask, then restart the app. `retry`: WebView2 crashed with the Discord audio fix, so forget that first and start with
- * the fix again. Resolves to an error message, or null (also when the host says no).
+ * Restart the app (the host was asked first: RESTART_ASK). `retry`: WebView2 crashed with the Discord audio fix, so
+ * forget that first and start with the fix again. Resolves to an error message, or null.
  */
 export async function restartApp(retry = false): Promise<string | null> {
-  if (!confirm('Restart Brainrot Games Maker now? Everything is saved: a game in progress can be resumed from the editor.')) return null;
   desktop.restarting = true;
   try {
     // Lets the last autosave (half a second behind) be written first.

@@ -14,7 +14,13 @@ const context = await browser.newContext({ viewport: { width: 1500, height: 1000
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept(d.defaultValue() || 'Beware of the goose') : d.accept()));
+// Nothing asks with a browser dialog once the game is on (it would show on stream): the host panel asks instead.
+let playing = false;
+const dialogs = [];
+page.on('dialog', (d) => {
+  if (playing) dialogs.push(d.message());
+  return d.accept();
+});
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
@@ -31,6 +37,9 @@ try {
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
   await page.getByRole('button', { name: '＋ Item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
+  // Using it takes 1 HP (the first stat). A new item has its More open.
+  await page.getByRole('button', { name: '＋ Add action' }).click();
+  await page.getByRole('menuitem', { name: '📊 Change a stat' }).click();
   // A hat, drawn right on an avatar: it goes where it was drawn, and the preview shows it.
   await page.getByRole('button', { name: '＋ Item', exact: true }).click();
   await page.getByLabel('Item name').nth(1).fill('Hat');
@@ -63,6 +72,14 @@ try {
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
   await page.getByText('Secret (hidden until revealed)').click();
+  // And a locked gate to Screen B1 (secret too: viewers see nothing on this screen).
+  await page.getByRole('button', { name: '📦 Item ▾' }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
+  await page.getByPlaceholder('e.g. Old Man, Cave door').fill('Gate');
+  await page.getByLabel('Object class').selectOption('doorway');
+  await page.getByLabel('Leads to: screen').selectOption({ label: 'Screen B1' });
+  await page.getByText('Locked (you can still open it in play)').click();
+  await page.getByText('Secret (hidden until revealed)').click();
   await page.getByRole('button', { name: '🚩 Arrival' }).click();
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
@@ -72,6 +89,7 @@ try {
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
+  playing = true;
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Next round ▶' }).click();
@@ -95,10 +113,35 @@ try {
   await page.getByRole('dialog', { name: 'Full map' }).waitFor();
   assert(true, 'right-click the stage: the full map');
   await page.keyboard.press('Escape');
+  // Text right there: the host panel asks for it, and it lands where the stage was clicked (its card opens).
+  await page.mouse.click(stageBox.x + stageBox.width * 0.75, stageBox.y + stageBox.height * 0.25, { button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '＋ Text here…' }).click();
+  await page.locator('.rh .ask', { hasText: 'Text to put here' }).waitFor();
+  await page.locator('.rh').getByRole('textbox', { name: 'Text', exact: true }).fill('X marks the spot');
+  await page.keyboard.press('Enter');
+  const spot = page.getByRole('dialog', { name: 'Object: X marks the spot' });
+  await spot.waitFor();
+  assert(true, 'right-click ＋ Text here… asks in the host panel, then adds the text and opens its card');
+  await spot.getByRole('button', { name: '🗑 Remove' }).click();
 
   // Viewers (single window) never get the secret Potion or the arrival point drawn, nor a click target for them.
   assert((await page.locator('.rpg .hit').count()) === 0, 'secret objects and arrival points get no click target on the viewers’ stage');
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'the secret Potion is not drawn for viewers');
+
+  // The locked gate asks first (in its card), and only goes through on the answer.
+  await page.locator('.rh .objs').getByRole('button', { name: /Gate/ }).click();
+  const gate = page.getByRole('dialog', { name: 'Object: Gate' });
+  await gate.getByRole('button', { name: '🚪 Go through (party)' }).click();
+  await gate.getByText('Gate is locked. Go through anyway?').waitFor();
+  await gate.getByRole('button', { name: 'Cancel' }).click();
+  assert((await where()).includes('Start') && (await gate.locator('.ask').count()) === 0, 'a locked door asks inline; Cancel stays put');
+  await gate.getByRole('button', { name: '🚪 Go through (party)' }).click();
+  await page.waitForTimeout(450);
+  await gate.getByRole('button', { name: '🚪 Go through', exact: true }).click();
+  await page.waitForTimeout(200);
+  assert((await where()).includes('Screen B1'), 'answering Go through takes the party through the locked door');
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(200);
 
   // Move: the pad, then numpad and Alt keys.
   await page.getByRole('button', { name: 'Go East', exact: true }).click();
@@ -218,6 +261,11 @@ try {
   await page.locator('.rpg .avatar .gear img').first().waitFor();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-hat-stage.png` });
   assert(true, 'an equipped hat shows on the avatar on stage');
+  // An item made up on the spot: the card asks for its name.
+  await page.locator('.rh .pc').first().getByLabel('Give Player 1 an item').selectOption({ label: 'Something else…' });
+  await page.locator('.rh .pc').first().getByRole('textbox', { name: 'Name of the item' }).fill('Rubber duck');
+  await page.keyboard.press('Enter');
+  assert((await page.locator('.rh .pc').first().locator('.it').allInnerTexts()).join().includes('Rubber duck'), 'Something else… asks for a name in the card, then gives it');
 
   // The secret Potion is in the host's list: reveal it, then pick it up.
   await page.locator('.rh .objs').getByRole('button', { name: /Potion/ }).click();
@@ -259,14 +307,22 @@ try {
 
   // Improvising: typed text starts hidden; a new look; a new screen to the south; keep it in the game.
   await page.getByRole('button', { name: '＋ Text' }).click();
+  await page.locator('.rh').getByRole('textbox', { name: 'Text', exact: true }).fill('Beware of the goose');
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: '＋ Add text' }).click();
   await page.locator('.rh .objs').getByRole('button', { name: /Beware of the goose/ }).waitFor();
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('goose'), 'typed text is added hidden from viewers');
   await page.getByLabel('Look').selectOption('+');
+  assert((await page.getByRole('textbox', { name: 'Look name' }).inputValue()) === 'New look', 'a new look asks for its name (New look to start with)');
+  await page.getByRole('textbox', { name: 'Look name' }).press('Enter');
   await page.getByRole('dialog', { name: /Edit Start \(New look\) live/ }).waitFor();
   assert(true, 'a new look opens in the live editor');
   await page.getByRole('button', { name: 'Done' }).click();
   assert((await page.getByLabel('Look').locator('option:checked').innerText()).includes('New look'), 'the screen now shows the new look');
   await page.getByLabel('Add a screen').selectOption('s');
+  await page.locator('.rh .ask', { hasText: 'Name of the new screen' }).waitFor();
+  assert((await page.getByRole('textbox', { name: 'Screen name' }).inputValue()) === 'New south of Start', 'a new screen asks for its name');
+  await page.getByRole('textbox', { name: 'Screen name' }).press('Enter');
   await page.getByRole('dialog', { name: /Edit New south of Start live/ }).waitFor();
   await page.getByRole('button', { name: 'Done' }).click();
   await page.keyboard.press('Control+z');
@@ -313,6 +369,16 @@ try {
   await page.locator('.sheet').waitFor();
   assert((await page.locator('.sheet').innerText()).includes('Potion'), 'I shows a player sheet with the inventory');
   await page.keyboard.press('Escape');
+
+  // Use: the card says what the item does and asks first.
+  const hp = await firstCard.getByLabel(/ HP$/).inputValue();
+  await firstCard.locator('.it', { hasText: 'Potion' }).getByRole('button', { name: 'Use', exact: true }).click();
+  await firstCard.getByText('Player 1 uses Potion: HP −1. Use it up?').waitFor();
+  await page.waitForTimeout(450);
+  await firstCard.locator('.ia').getByRole('button', { name: 'Use', exact: true }).click();
+  await page.waitForTimeout(200);
+  assert((await firstCard.getByLabel(/ HP$/).inputValue()) === String(+hp - 1) && (await potions()) === 0, 'Use asks in the card, then runs what the item does and uses it up');
+  assert(!dialogs.length, 'no browser dialog showed during the game' + (dialogs.length ? `: ${dialogs.join('; ')}` : ''));
 
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg.png` });
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

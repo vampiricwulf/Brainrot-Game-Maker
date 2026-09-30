@@ -5,7 +5,7 @@
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalJudge, finalNext, finalShow, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
     redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo, blankSlide, toolOnlyClue, finalWagersOk,
-    startTiebreaker, roundMaxValue,
+    startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
   import { newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
@@ -23,8 +23,8 @@
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
-  import { addLive, droppedFile, liveText, objectAt, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { lastAction, logged, redoAction, redoFrom, undoAction, type Undone } from '../lib/toolset';
+  import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap, type RpgAsk } from './rpg/hostops';
   import { showMenu } from '../lib/menustate.svelte';
   import { sendTo } from '../lib/boardgame';
   import { audienceSees, override } from '../lib/rpg';
@@ -81,8 +81,10 @@
   let rpgObject = $state<string | null>(null);
   /** RPG rounds: the host's full map is open (J). */
   let rpgMap = $state(false);
-  /** Which log each combined Undo went to, so Redo goes back the same way. */
-  let undoneKinds: ('score' | 'action')[] = [];
+  /** RPG rounds: a name or text the host panel is asking for (right-clicking the stage asks for text there). */
+  let rpgAsk = $state<RpgAsk | null>(null);
+  /** What each combined Undo took back (from the score log or the action log), so Redo goes back the same way. */
+  const undone: Undone[] = [];
 
   const sym = $derived(game.settings.currencySymbol);
   const dual = $derived(audience.open);
@@ -122,6 +124,11 @@
   $effect(() => {
     void session.phase;
     wagerLimitsOff = false;
+  });
+  // An RPG round's question (a new screen's name…) is for that round only.
+  $effect(() => {
+    void session.currentRound;
+    rpgAsk = null;
   });
 
   onMount(() => {
@@ -479,21 +486,20 @@
     const a = lastAction(session);
     if (a && a.ts >= lastScoreTs()) {
       undoAction(session, game);
-      undoneKinds.push('action');
+      undone.push({ log: 'action', id: a.id });
       // The log goes back into earlier rounds too: say where, since nobody can see it happen.
       const where = a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '';
       return toast(`Undid ${a.text}${where}`, 4000);
     }
     const events = undo(session);
     if (!events.length) return toast('Nothing to undo');
-    undoneKinds.push('score');
+    undone.push({ log: 'score', id: stepOf(events[0]) });
     // No Redo button in the toast: it sits over the host's nav row. ↷ Redo is next to ↶ Undo (or Ctrl+Shift+Z).
     toast(`Undid ${describeStep(session, events, sym)}`, 4000);
   }
 
   function doRedo(): void {
-    const kind = undoneKinds.pop() ?? (session.actionRedo?.length ? 'action' : 'score');
-    if (kind === 'action') {
+    if (redoFrom(session, undone) === 'action') {
       const a = redoAction(session, game);
       if (a) return toast(`Redid ${a.text}`);
     }
@@ -589,17 +595,8 @@
       }
       const at = stagePoint(e);
       return showMenu(e, [
-        {
-          label: '＋ Text here…',
-          onclick: () => {
-            const text = prompt('Text to put here (hidden until you reveal it):')?.trim();
-            if (!text) return;
-            const el = liveText(game, session, text);
-            el.x = Math.round(at.x - el.w / 2);
-            el.y = Math.round(at.y - el.h / 2);
-            if (addLive(game, session, el, `Text: ${text}`)) rpgObject = el.id;
-          },
-        },
+        // The host panel asks for the text (with the controls hidden, they come back for it).
+        { label: '＋ Text here…', onclick: () => ((hideControls = false), (rpgAsk = { what: 'text', at })) },
         { label: '🗺 Full map (jump anywhere)', onclick: () => (rpgMap = true) },
         { label: st.mapShown ? '🗺 Hide the map from viewers' : '🗺 Show the map to viewers', onclick: () => toggleMap(game, session) },
         { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) },
@@ -1008,6 +1005,7 @@
         bind:amount
         bind:rpgObject
         bind:rpgMap
+        bind:rpgAsk
         bind:wagerLimitsOff
         bind:timerSeconds
         {pickerPending}

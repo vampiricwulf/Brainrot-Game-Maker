@@ -42,6 +42,11 @@
   });
   onDestroy(() => cancelAnimationFrame(raf));
 
+  /** The height of the label row (whose turn, how to win, zones), in stage pixels. */
+  let labelsH = $state(0);
+  /** Along the top, tokens stay below the label row (it's at the bottom when the stats strip is at the top). */
+  const clearTop = $derived(bar === 'top' ? 0 : 20 + labelsH + 8);
+
   /** Each token on the board and where it's drawn (keyed by player, so a move slides from space to space). */
   const tokens = $derived.by(() => {
     if (!bs || !round) return [];
@@ -55,7 +60,11 @@
       const sp = spaceById(round, spaceId);
       if (!sp) continue;
       const spots = fanOut(ids.length);
-      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: sp.y + spots[i].dy - 40, small: ids.length > 3 }));
+      const small = ids.length > 3;
+      // On a space near the top (boards made before spaces started lower), a token that would slip under the turn
+      // banner or the win notes comes down just enough to stay in sight. The board itself stays as it is.
+      const lowest = clearTop + (small ? 32 : 42);
+      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: Math.max(lowest, sp.y + spots[i].dy - 40), small }));
     }
     return out;
   });
@@ -90,7 +99,7 @@
       </div>
     {/if}
     <!-- Whose turn, how to win, who's in a zone: one thin row along the top (the bottom when the stats strip is at the top). -->
-    <div class="labels" class:low={bar === 'top'}>
+    <div class="labels" class:low={bar === 'top'} bind:clientHeight={labelsH}>
       {#if turn}
         <div class="turn-banner" style:background={turn.color} style:color={textOn(turn.color)}>🎲 {turn.name}’s turn</div>
       {/if}

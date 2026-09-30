@@ -142,7 +142,7 @@ function followFinals(session: Session, changed: ScoreEvent[]): void {
       if (was) was.undone = false;
     }
     const counted = judgments.filter((x) => !x.undone).at(-1);
-    if (counted) f.results[e.playerId] = counted.delta > 0 ? 'right' : 'wrong';
+    if (counted) f.results[e.playerId] = (counted.right ?? counted.delta > 0) ? 'right' : 'wrong';
     else delete f.results[e.playerId];
   }
 }
@@ -615,8 +615,15 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
   const wager = f.wagers[playerId] ?? 0;
   f.results[playerId] = right ? 'right' : 'wrong';
   f.shown[playerId] = true;
-  const [e] = wager ? applyScore(session, game, [playerId], right ? wager : -wager, finalName(round), tag) : [];
-  if (e && earlier) e.replaces = earlier.id;
+  let [e] = applyScore(session, game, [playerId], right ? wager : -wager, finalName(round), tag);
+  // Nothing to add or take (a 0 wager, or no points left to lose): logged all the same, so Undo takes it back too.
+  if (!e) {
+    e = { id: newId(), ts: Date.now(), playerId, delta: 0, reason: finalName(round), clueId: tag };
+    session.scoreLog.push(e);
+    clearRedo(session);
+  }
+  e.right = right;
+  if (earlier) e.replaces = earlier.id;
 }
 
 // ---------- End of game ----------

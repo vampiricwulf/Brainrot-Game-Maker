@@ -585,6 +585,34 @@ describe('undoing a final judgment', () => {
     undo(session);
     expect([score(session, a), session.finals![f.roundId!].state.results[a]]).toEqual([500, undefined]);
   });
+
+  it('undoes a judgment of a 0 wager too (a 0-point step that says right or wrong)', () => {
+    const { game, session, a, f } = judged();
+    f.wagers[a] = 0;
+    finalJudge(session, game, a, true);
+    const e = session.scoreLog.at(-1)!;
+    expect([e.delta, e.right, describeStep(session, [e], '$')]).toEqual([0, true, '$0 (P1) · Final Jeopardy!']);
+    expect([score(session, a), f.results[a]]).toEqual([500, 'right']);
+    // A re-judge replaces it, and undoing that brings the first judgment back.
+    finalJudge(session, game, a, false);
+    expect(f.results[a]).toBe('wrong');
+    undo(session);
+    expect([score(session, a), f.results[a]]).toEqual([500, 'right']);
+    undo(session);
+    expect([score(session, a), f.results[a]]).toEqual([500, undefined]);
+    redo(session);
+    expect(f.results[a]).toBe('right');
+  });
+
+  it('logs a wrong answer that costs nothing (no points left to lose, negative scores off)', () => {
+    const { game, session, a, f } = judged();
+    game.settings.allowNegativeScores = false;
+    setScore(session, a, 0);
+    finalJudge(session, game, a, false);
+    expect([score(session, a), f.results[a], session.scoreLog.at(-1)!.delta]).toEqual([0, 'wrong', 0]);
+    undo(session);
+    expect(f.results[a]).toBeUndefined();
+  });
 });
 
 describe('resume with edits', () => {
