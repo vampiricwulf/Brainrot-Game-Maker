@@ -1,29 +1,55 @@
-<!-- A shop for the audience: its wares, prices and what's sold out. -->
+<!--
+  A shop for the audience: its wares, prices, what's sold out, and who's shopping. In the host's window a ware can be
+  clicked to buy it for the buyer.
+-->
 <script lang="ts">
+  import { textOn } from '../../lib/colors';
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, Session } from '../../lib/model';
-  import { currencyFields, formatStat, itemDef, shopPrice, statFields, stockLeft } from '../../lib/toolset';
+  import { balance, formatPrice, itemDef, shopPrice, stockLeft } from '../../lib/toolset';
 
-  let { game, session, shopId }: { game: Game; session: Session; shopId: string } = $props();
+  let {
+    game,
+    session,
+    shopId,
+    buyer,
+    onbuy,
+  }: { game: Game; session: Session; shopId: string; buyer?: string; onbuy?: (itemId: string) => void } = $props();
   const shop = $derived(game.shops?.find((s) => s.id === shopId));
-  const cur = $derived(statFields(game).find((f) => f.id === shop?.currency) ?? currencyFields(game)[0]);
+  const who = $derived(session.players.find((p) => p.id === buyer));
 </script>
 
 {#if shop}
   <div class="shop">
     <h1>🛒 {shop.name}</h1>
+    {#if who}
+      <div class="who">
+        <span class="nm-chip" style:background={who.color} style:color={textOn(who.color)}>{who.name}</span>
+        has {formatPrice(game, shop, balance(game, session, shop, who.id))}
+      </div>
+    {/if}
     <div class="wares">
       {#each shop.stock as s (s.item)}
         {@const def = itemDef(game, s.item)}
         {@const left = stockLeft(session, shop, s.item)}
         {#if def}
-          <div class="ware" class:out={left !== null && left <= 0}>
+          {@const out = left !== null && left <= 0}
+          <svelte:element
+            this={onbuy ? 'button' : 'div'}
+            class="ware"
+            class:out
+            class:buy={!!onbuy}
+            disabled={onbuy ? out : undefined}
+            onclick={onbuy ? (e: MouseEvent) => (e.stopPropagation(), onbuy(s.item)) : undefined}
+            aria-label={onbuy ? `Buy ${def.name}` : undefined}
+            role={onbuy ? undefined : 'listitem'}
+          >
             {#if def.icon && mediaUrls[def.icon]}<img src={mediaUrls[def.icon]} alt="" />{:else}<span class="ic">📦</span>{/if}
             <div class="nm">{def.name}</div>
             {#if def.description}<div class="desc">{def.description}</div>{/if}
-            <div class="price">{cur ? formatStat(cur, shopPrice(game, shop, s.item)) : shopPrice(game, shop, s.item)}</div>
-            {#if left !== null}<div class="left">{left <= 0 ? 'SOLD OUT' : `${left} left`}</div>{/if}
-          </div>
+            <div class="price">{formatPrice(game, shop, shopPrice(game, shop, s.item))}</div>
+            {#if left !== null}<div class="left">{out ? 'SOLD OUT' : `${left} left`}</div>{/if}
+          </svelte:element>
         {/if}
       {/each}
     </div>
@@ -65,6 +91,25 @@
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.08);
     text-align: center;
+  }
+  .ware.buy {
+    font: inherit;
+    color: inherit;
+    border: 4px solid transparent;
+    cursor: pointer;
+  }
+  .ware.buy:hover:not(:disabled) {
+    border-color: #ffcc00;
+    background: rgba(255, 204, 0, 0.15);
+  }
+  .who {
+    text-align: center;
+    font: 40px 'Anton', 'Oswald', sans-serif;
+    margin-top: -12px;
+  }
+  .nm-chip {
+    padding: 2px 16px;
+    border-radius: 10px;
   }
   .ware.out {
     opacity: 0.45;

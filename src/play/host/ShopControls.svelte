@@ -1,41 +1,30 @@
 <!--
-  Buying from the shop on screen: pick who buys, then an item. Short of money, the host can sell it anyway (the
-  currency goes negative), give it free, or charge a different price. Stock can be changed on the spot.
+  Buying from the shop on screen: pick who buys, then an item (here, or by clicking it on the stage). Short of money,
+  the host can sell it anyway (going below zero), give it free, or charge a different price. Stock can be changed on
+  the spot, a shop that buys back lists what the buyer can sell, and 🚪 Leave shop closes it.
 -->
 <script lang="ts">
-  import { toast } from '../../lib/app.svelte';
+  import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { Game, Session } from '../../lib/model';
-  import { buy, currencyFields, entryName, inventory, sell, sellPrice, formatStat, itemDef, logged, setStock, shopPrice, statFields, statNumber, stockLeft } from '../../lib/toolset';
+  import { balance, entryName, formatPrice, inventory, itemDef, logged, sell, sellPrice, setStock, shopPrice, stockLeft } from '../../lib/toolset';
+  import { shopBuy, shopBuyer } from './shopops';
 
-  let { game, session, shopId, selected }: { game: Game; session: Session; shopId: string; selected: string[] } = $props();
-  const shop = $derived(game.shops?.find((s) => s.id === shopId));
-  const cur = $derived(statFields(game).find((f) => f.id === shop?.currency) ?? currencyFields(game)[0]);
-  let buyer = $state<string>('');
-  $effect.pre(() => {
-    if (!buyer || !session.players.some((p) => p.id === buyer)) buyer = selected[0] ?? session.players[0]?.id ?? '';
-  });
-  /** A purchase that came up short, waiting for the host's call. */
-  let short = $state<{ item: string; error: string } | null>(null);
+  let { game, session, selected }: { game: Game; session: Session; selected: string[] } = $props();
+  const o = $derived(app.live.overlay?.kind === 'shop' ? app.live.overlay : undefined);
+  const shop = $derived(o ? game.shops?.find((s) => s.id === o.shopId) : undefined);
+  const buyer = $derived(o ? (shopBuyer(o, session, selected) ?? '') : '');
 
   function purchase(item: string, opts: { price?: number; allowShort?: boolean } = {}): void {
-    if (!shop || !buyer) return;
-    const s = shop;
-    let result: ReturnType<typeof buy> | undefined;
-    logged(session, `Shop: ${itemDef(game, item)?.name}`, () => (result = buy(game, session, s, buyer, item, opts)));
-    if (!result) return;
-    if (result.ok) {
-      short = null;
-      toast(result.text, 3000);
-    } else if (result.error === 'Sold out') toast(`${itemDef(game, item)?.name} is sold out`);
-    else short = { item, error: result.error };
+    if (o) shopBuy(game, session, o, selected, item, opts);
   }
 
   function sellEntry(entryId: string): void {
     if (!shop || !buyer) return;
     const s = shop;
+    const who = buyer;
     let result: ReturnType<typeof sell> | undefined;
-    logged(session, 'Shop: sell', () => (result = sell(game, session, s, buyer, entryId)));
+    logged(session, 'Shop: sell', () => (result = sell(game, session, s, who, entryId)));
     if (result) toast(result.ok ? result.text : result.error, 3000);
   }
 
@@ -57,24 +46,34 @@
   }
 </script>
 
-{#if shop}
+{#if shop && o}
   <div class="row">
     <span class="muted small">Buyer:</span>
     {#each session.players as p (p.id)}
       {@const on = buyer === p.id}
-      <button class="chip" style:border-color={p.color} style:background={on ? p.color : undefined} style:color={on ? textOn(p.color) : undefined} onclick={() => ((buyer = p.id), (short = null))}>
-        {p.name}{cur ? ` ${formatStat(cur, statNumber(game, session, p.id, cur))}` : ''}
+      <button
+        class="chip"
+        style:border-color={p.color}
+        style:background={on ? p.color : undefined}
+        style:color={on ? textOn(p.color) : undefined}
+        aria-pressed={on}
+        onclick={() => ((o.buyer = p.id), (o.short = undefined))}
+      >
+        {p.name} {formatPrice(game, shop, balance(game, session, shop, p.id))}
       </button>
     {/each}
+    <span class="spacer"></span>
+    <button onclick={() => (app.live.overlay = null)} title="Close the shop (Esc)">🚪 Leave shop</button>
   </div>
   <div class="row">
+    <span class="muted small">Buy (or click it on the stage):</span>
     {#each shop.stock as s (s.item)}
       {@const def = itemDef(game, s.item)}
       {@const left = stockLeft(session, shop, s.item)}
       {#if def}
         <span class="ware">
-          <button class="small" disabled={left !== null && left <= 0} onclick={() => purchase(s.item)} title="Buy for the selected buyer">
-            {def.name} · {cur ? formatStat(cur, shopPrice(game, shop, s.item)) : shopPrice(game, shop, s.item)}{left !== null ? ` (${left})` : ''}
+          <button class="small" disabled={left !== null && left <= 0} onclick={() => purchase(s.item)} title="Buy one for the buyer">
+            {def.name} · {formatPrice(game, shop, shopPrice(game, shop, s.item))}{left !== null ? ` (${left})` : ''}
           </button>
           <button class="tiny ghost" onclick={() => restock(s.item)} title="Change the stock">📦</button>
         </span>
@@ -87,20 +86,20 @@
       <span class="muted small">Sell ({Math.round(shop.buysBack.rate * 100)}%):</span>
       {#each sellable as e (e.id)}
         {@const pr = sellPrice(game, shop, e.item) ?? 0}
-        <button class="small" onclick={() => sellEntry(e.id)}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''} → {cur ? formatStat(cur, pr) : pr}</button>
+        <button class="small" onclick={() => sellEntry(e.id)}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''} → {formatPrice(game, shop, pr)}</button>
       {:else}
         <span class="muted small">Nothing to sell.</span>
       {/each}
     </div>
   {/if}
-  {#if short}
-    {@const it = short.item}
-    <div class="row warn">
-      <span>{short.error} for {itemDef(game, it)?.name}.</span>
+  {#if o.short}
+    {@const it = o.short.item}
+    <div class="row warn" role="alert">
+      <span>{o.short.error} for {itemDef(game, it)?.name}.</span>
       <button class="small" onclick={() => purchase(it, { allowShort: true })}>Sell anyway</button>
       <button class="small" onclick={() => purchase(it, { price: 0 })}>Give it free</button>
       <button class="small" onclick={() => otherPrice(it)}>Other price…</button>
-      <button class="small ghost" onclick={() => (short = null)}>Cancel</button>
+      <button class="small ghost" onclick={() => (o.short = undefined)}>Cancel</button>
     </div>
   {/if}
 {/if}

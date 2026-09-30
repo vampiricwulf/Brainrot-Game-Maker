@@ -6,7 +6,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { downloadText, pickFile } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField } from '../lib/model';
-  import { currencyFields, newStatField, STAT_PRESETS } from '../lib/toolset';
+  import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, SCORE_CURRENCY } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import ActionListEditor from './rpg/ActionListEditor.svelte';
@@ -255,8 +255,13 @@
         <input class="name" bind:value={s.name} aria-label="Shop name" />
         <label class="small">
           Charges
-          <select bind:value={s.currency} aria-label="{s.name} currency">
-            {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{:else}<option value={undefined}>(add a currency stat)</option>{/each}
+          <select
+            value={shopCurrency(game, s) === 'score' ? SCORE_CURRENCY : s.currency ?? currencyFields(game)[0]?.id}
+            onchange={(e) => (s.currency = e.currentTarget.value)}
+            aria-label="{s.name} currency"
+          >
+            <option value={SCORE_CURRENCY}>Points (the score)</option>
+            {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
         </label>
         <label class="small" title="Shops with the same pool name share their stock">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>

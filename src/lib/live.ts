@@ -84,7 +84,15 @@ export type Overlay =
   /** One player's full sheet: avatar, stats, inventory. */
   | { kind: 'sheet'; nonce: string; playerId: Id }
   /** A shop's wares and prices. */
-  | { kind: 'shop'; nonce: string; shopId: Id };
+  | {
+      kind: 'shop';
+      nonce: string;
+      shopId: Id;
+      /** Who's buying (default: the player who opened it). */
+      buyer?: Id;
+      /** A purchase the buyer can't afford, waiting for the host's call (host panel only). */
+      short?: { item: Id; error: string };
+    };
 
 /** A wheel spun alongside the main one: its own slices, spin and result. */
 export interface ExtraWheel {

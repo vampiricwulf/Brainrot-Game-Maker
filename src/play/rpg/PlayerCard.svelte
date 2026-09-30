@@ -90,31 +90,63 @@
     toast(said.join(' · '), 3000);
   }
 
+  /** How many of a stack the give / drop / remove buttons move (1 unless typed). */
+  let amounts = $state<Record<string, number>>({});
+  const howMany = (entryId: string, qty: number) => Math.max(1, Math.min(qty, Math.round(amounts[entryId] ?? 1) || 1));
+  const count = (n: number, what: string) => (n > 1 ? `${n} × ${what}` : what);
+
+  function give(entryId: string, to: string): void {
+    const e = items.find((x) => x.id === entryId);
+    if (!e) return;
+    const n = howMany(entryId, e.qty);
+    const other = session.players.find((x) => x.id === to)?.name;
+    logged(session, `${name} gives ${count(n, entryName(game, e))} to ${other}`, () => transferEntry(session, p.id, to, entryId, n));
+    delete amounts[entryId];
+  }
+
+  function remove(entryId: string): void {
+    const e = items.find((x) => x.id === entryId);
+    if (!e) return;
+    const n = howMany(entryId, e.qty);
+    change(entryId, `loses ${count(n, entryName(game, e))}`, (l, i) => (l[i].qty > n ? (l[i].qty -= n) : l.splice(i, 1)));
+    delete amounts[entryId];
+  }
+
   function drop(entryId: string): void {
     const e = items.find((x) => x.id === entryId);
     if (!e || !pos || !st) return;
     const world = st;
-    logged(session, `${name} drops ${entryName(game, e)}`, () => {
-      const el = droppedObject(game, e, { x: pos.x + 140, y: pos.y });
+    const n = howMany(entryId, e.qty);
+    logged(session, `${name} drops ${count(n, entryName(game, e))}`, () => {
+      const el = droppedObject(game, { ...e, qty: n }, { x: pos.x + 140, y: pos.y });
       world.added[pos.screen] ??= [];
       world.added[pos.screen].push(el);
       const list = session.inventories?.[p.id];
       const i = list?.findIndex((x) => x.id === entryId) ?? -1;
-      if (list && i >= 0) list.splice(i, 1);
+      if (list && i >= 0) {
+        if (list[i].qty > n) list[i].qty -= n;
+        else list.splice(i, 1);
+      }
     });
+    delete amounts[entryId];
   }
 
   function convert(toCurrency: boolean): void {
     const amt = Math.abs(convertAmt ?? 0);
     if (!amt || !cf) return;
+    // One undoable step: the points and the currency change together.
     if (toCurrency) {
-      applyScore(session, game, [p.id], -amt, `Converted to ${cf.name}`);
-      logged(session, `${name}: ${formatPoints(amt, game.settings.currencySymbol)} score → ${formatStat(cf, amt)}`, () => addStat(game, session, p.id, cf, amt));
+      logged(session, `${name}: ${formatPoints(amt, game.settings.currencySymbol)} score → ${formatStat(cf, amt)}`, () => {
+        applyScore(session, game, [p.id], -amt, `Converted to ${cf.name}`);
+        addStat(game, session, p.id, cf, amt);
+      });
     } else {
       const have = statNumber(game, session, p.id, cf);
       if (have < amt) return void toast(`${name} only has ${formatStat(cf, have)}`);
-      logged(session, `${name}: ${formatStat(cf, amt)} → score`, () => addStat(game, session, p.id, cf, -amt));
-      applyScore(session, game, [p.id], amt, `Converted from ${cf.name}`);
+      logged(session, `${name}: ${formatStat(cf, amt)} → score`, () => {
+        addStat(game, session, p.id, cf, -amt);
+        applyScore(session, game, [p.id], amt, `Converted from ${cf.name}`);
+      });
     }
     convertAmt = null;
   }
@@ -191,20 +223,32 @@
           </button>
         {/if}
         {#if def?.onUse?.length}<button class="tiny" onclick={() => use(e.id)}>Use</button>{/if}
+        {#if e.qty > 1}
+          <input
+            class="qty"
+            type="number"
+            min="1"
+            max={e.qty}
+            value={amounts[e.id] ?? 1}
+            oninput={(ev) => (amounts[e.id] = +ev.currentTarget.value)}
+            aria-label="How many of {entryName(game, e)}"
+            title="How many to give, drop or remove"
+          />
+        {/if}
         <select
           class="tiny"
           aria-label="Give {entryName(game, e)} to"
           onchange={(ev) => {
             const to = ev.currentTarget.value;
             ev.currentTarget.value = '';
-            if (to) logged(session, `${name} gives ${entryName(game, e)} to ${session.players.find((x) => x.id === to)?.name}`, () => transferEntry(session, p.id, to, e.id));
+            if (to) give(e.id, to);
           }}
         >
           <option value="">Give →</option>
           {#each session.players.filter((x) => x.id !== p.id) as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
         </select>
         {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" onclick={() => drop(e.id)}>⬇</button>{/if}
-        <button class="tiny" title="Remove one" onclick={() => change(e.id, `loses ${entryName(game, e)}`, (l, i) => (l[i].qty > 1 ? l[i].qty-- : l.splice(i, 1)))}>✕</button>
+        <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" onclick={() => remove(e.id)}>✕</button>
       </div>
     {/each}
     <select
@@ -293,6 +337,10 @@
     gap: 2px;
     border-top: 1px solid var(--border);
     padding-top: 3px;
+  }
+  .qty {
+    width: 44px;
+    padding: 0 3px;
   }
   .nm {
     flex: 1;

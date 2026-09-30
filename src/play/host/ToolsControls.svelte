@@ -179,7 +179,7 @@
       {/each}
     {/if}
     {#if o.kind === 'shop'}
-      <ShopControls {game} {session} shopId={o.shopId} {selected} />
+      <ShopControls {game} {session} {selected} />
     {/if}
     {#if o.kind === 'wheel' && o.editing}
       {#key o.nonce}<WheelEdit {o} {game} {session} disabled={busy} />{/key}

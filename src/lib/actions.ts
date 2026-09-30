@@ -181,7 +181,8 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
     }
     case 'shop':
       if (!game.shops?.some((s) => s.id === a.shop)) return 'That shop no longer exists';
-      live.overlay = { kind: 'shop', nonce: newId(), shopId: a.shop };
+      // The player it's for does the buying (the host can switch the buyer in the shop).
+      live.overlay = { kind: 'shop', nonce: newId(), shopId: a.shop, buyer: targets(ctx, 'ask')[0] ?? targets(ctx, 'party')[0] };
       return text;
     case 'timer':
       startTimer(live, a.seconds);

@@ -235,7 +235,20 @@ try {
   assert((await shopTc.innerText()).includes('Player 1 🪙-1'), 'and their gold goes below zero');
   await shopTc.getByRole('button', { name: /^Potion( ×\d+)? →/ }).first().click();
   assert((await potions()) === 1, 'selling back takes one away');
-  await page.keyboard.press('Escape');
+  // Click a ware on the stage to buy it; short of gold, the host picks what happens.
+  assert((await page.locator('.stage .shop .who').innerText()).includes('Player 1'), 'the stage shows who is shopping');
+  await page.locator('.stage').getByRole('button', { name: 'Buy Potion' }).click();
+  await shopTc.getByText(/Short by .* for Potion/).waitFor();
+  await shopTc.getByRole('button', { name: 'Give it free' }).click();
+  assert((await potions()) === 2, 'clicking a ware on the stage buys it');
+  assert(await page.locator('.stage .shop').isVisible(), 'clicking the shop keeps it open');
+  await shopTc.getByRole('button', { name: '🚪 Leave shop' }).click();
+  await page.locator('.stage .shop').waitFor({ state: 'detached' });
+  assert(true, '🚪 Leave shop closes it');
+  // Give one of the two Potions (not the whole stack), then a typed amount.
+  await firstCard.getByLabel('Give Potion to').selectOption({ label: 'Player 2' });
+  const secondCard = page.locator('.rh .pc').nth(1);
+  assert((await potions()) === 1 && (await secondCard.locator('.it .nm').allInnerTexts()).join().includes('Potion'), 'giving an item gives one');
 
   // The player sheet.
   await page.keyboard.press('i');

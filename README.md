@@ -32,7 +32,7 @@ its autosave, media and settings from the old Jeopardy Builder folders to the ne
 | **Board game rounds** | Spaces on a board, linked in a loop or a path: click the board to add a space after the selected one (a new board starts as a loop of 12), drag them around, and 🔗 **Link to…** another space to make a fork; ⇄ makes a link go **both ways** (drawn with an arrow at each end, and
 players never turn straight back along it). Each space has a name, color, icon, actions **when passed** (Start: +2 gold) and **when landed on**, secret (viewers see "?"), and host notes. Also: the **Start** space, how a turn's move is decided (dice such as `d6` / `2d6`, a saved wheel, or 👣 **one space a turn** where the player
 picks the way), the **board backdrop** (a slide), **off-board zones** like the Shadow Realm (each with its own screen), and how to win (secret, or shown on the board). |
-| 📊 **Stats & Items** | **Stats** every player has (numbers as counters, bars or hearts, text, checkboxes, tags), with presets (HP, Gold…), a start value, per-player starting values, and where viewers see them (the stats strip, only the player sheet, or never). A number can be a **currency** (separate from the score). **Items** (icon, price, stackable, worn on the avatar, secret, what "Use" does), with CSV import/export. **Shops** sell items for a currency, with stock (or unlimited), and shops with the same pool share it. A shop can **buy back** items for a share of the price. |
+| 📊 **Stats & Items** | **Stats** every player has (numbers as counters, bars or hearts, text, checkboxes, tags), with presets (HP, Gold…), a start value, per-player starting values, and where viewers see them (the stats strip, only the player sheet, or never). A number can be a **currency** (separate from the score). **Items** (icon, price, stackable, worn on the avatar, secret, what "Use" does), with CSV import/export. **Shops** sell items for a currency stat or for **points** (the score; also what a shop charges when the game has no currency stat), with stock (or unlimited), and shops with the same pool share it. A shop can **buy back** items for a share of the price. |
 | **Tiebreaker** (under End) | An optional **tiebreaker clue** for ties at the end. |
 
 **Clue editor.** Each clue has a type (Standard, ⭐ Daily Double, 🎡 Wheel, 🎲 Dice), an optional countdown, an optional **tile
@@ -226,8 +226,9 @@ drop on the screen, remove), 📺 their sheet on screen, and converting score to
 the stage (or in **Objects here**, which includes secret ones) for its card: go through a doorway, pick up an item, talk,
 shop, its action buttons, NPC stats, reveal/hide and remove. Drag an avatar to move it on its screen. Viewers never see
 secret objects, hotspots, arrival points or host notes. Every change goes in the log, so **Ctrl+Z** undoes whichever
-came last, a score or an RPG change. A shop on screen has buyer chips and item buttons in the host panel; short of money,
-the host can sell anyway, give it free or charge another price; a shop that buys back lists what the buyer can sell.
+came last, a score or an RPG change. A shop on screen shops for the player who opened it (switch with the buyer chips); click a ware on the stage, or its
+button in the host panel, to buy one, and **🚪 Leave shop** to close it. Short of money, the host can sell anyway, give
+it free or charge another price; a shop that buys back lists what the buyer can sell.
 The 🛒 Shop menu opens any shop, and an object card has ▶ **Run all** and a **Compare** helper ("Player 1 7 vs 1").
 
 **Board game rounds**: the stage shows the board, the players' tokens and whose turn it is. The host panel has the

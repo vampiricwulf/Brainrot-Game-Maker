@@ -165,7 +165,7 @@
       <button class="primary" onclick={pickUp}>✋ {whoNames.split(',')[0]} picks up {f ? formatStat(f, role.amount ?? 0) : role.amount}</button>
     {/if}
     {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
-    {#if role?.shop}<button onclick={() => (ctx.live.overlay = { kind: 'shop', nonce: newId(), shopId: role.shop! })}>🛒 Shop</button>{/if}
+    {#if role?.shop}<button onclick={() => (ctx.live.overlay = { kind: 'shop', nonce: newId(), shopId: role.shop!, buyer: who[0] })}>🛒 Shop</button>{/if}
     {#each role?.actions ?? [] as a (a.id)}
       <button onclick={() => run(a)}>{describeAction(game, a)}</button>
     {/each}

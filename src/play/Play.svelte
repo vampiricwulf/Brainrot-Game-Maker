@@ -27,6 +27,7 @@
   import { override } from '../lib/rpg';
   import { pathShape } from '../lib/draw';
   import { rollMover, turnNow } from './boardgame/bgops';
+  import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { Dir8 } from '../lib/model';
   import {
@@ -306,6 +307,8 @@
     if (!o) return;
     const busy = Date.now() < overlayDoneAt(o);
     if (busy) return;
+    // A shop stays open until 🚪 Leave shop (its wares are clicked to buy).
+    if (o.kind === 'shop') return;
     if (o.kind === 'popup' && o.answer && !o.revealed) o.revealed = true;
     else if (o.kind === 'wheel' && !o.spin) spinWheel(app.live, session, game);
     else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
@@ -870,6 +873,7 @@
             onobjectmove={objectMoved}
             drawing={rpgDraw}
             ondraw={drawn}
+            onshopbuy={(item) => app.live.overlay?.kind === 'shop' && shopBuy(game, session, app.live.overlay, selected, item)}
           />
         </Stage>
       </div>

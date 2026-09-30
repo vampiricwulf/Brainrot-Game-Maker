@@ -37,6 +37,7 @@
     onobjectmove,
     drawing = null,
     ondraw,
+    onshopbuy,
   }: {
     game: Game;
     session: Session;
@@ -58,6 +59,8 @@
     /** RPG rounds, host only: draw mode, and a finished stroke (null: cancelled). */
     drawing?: { color: string; closed: boolean } | null;
     ondraw?: (points: [number, number][] | null, closed: boolean) => void;
+    /** Host only: a ware in the shop on screen was clicked. */
+    onshopbuy?: (itemId: string) => void;
   } = $props();
   const act = (a: StageAction) => onact?.(a);
 
@@ -244,7 +247,7 @@
 {/if}
 
 {#if live.overlay}
-  <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} />
+  <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} {onshopbuy} />
 {/if}
 
 <div class="pops" style:bottom={session.phase === 'board' ? '270px' : '40px'}>

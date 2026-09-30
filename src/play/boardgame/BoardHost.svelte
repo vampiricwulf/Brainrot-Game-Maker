@@ -197,7 +197,7 @@
             const id = e.currentTarget.value;
             e.currentTarget.value = '';
             e.currentTarget.blur();
-            if (id) app.live.overlay = { kind: 'shop', nonce: newId(), shopId: id };
+            if (id) app.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: selected[0] ?? turnId };
           }}
         >
           <option value="">🛒 Shop…</option>

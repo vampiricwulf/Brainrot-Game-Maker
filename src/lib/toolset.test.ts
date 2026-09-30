@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newId, type Game, type Session, type Shop } from './model';
-import { newSession } from './session';
+import { newSession, score, setScore } from './session';
 import {
   addStat,
   buy,
@@ -10,6 +10,8 @@ import {
   logged,
   newStatField,
   redoAction,
+  SCORE_CURRENCY,
+  shopCurrency,
   sell,
   setStat,
   statValue,
@@ -144,3 +146,21 @@ describe('action log', () => {
     expect(newId()).not.toBe(newId());
   });
 });
+
+describe('shops that charge points', () => {
+  it('charge the score when set to, or when the game has no currency stat, and undo gives both back', () => {
+    const { game, session } = setup();
+    const shop: Shop = { id: 's', name: 'Market', currency: SCORE_CURRENCY, stock: [{ item: 'sword', price: 300, qty: null }] };
+    setScore(session, 'a', 500);
+    logged(session, 'buy', () => buy(game, session, shop, 'a', 'sword'));
+    expect(score(session, 'a')).toBe(200);
+    expect(countItem(session, 'a', 'sword')).toBe(1);
+    expect(buy(game, session, shop, 'a', 'sword')).toEqual({ ok: false, error: 'Short by $100' });
+    undoAction(session);
+    expect([score(session, 'a'), countItem(session, 'a', 'sword')]).toEqual([500, 0]);
+    // No currency stat in the game: points.
+    game.statFields = [];
+    expect(shopCurrency(game, { ...shop, currency: undefined })).toBe('score');
+  });
+});
+

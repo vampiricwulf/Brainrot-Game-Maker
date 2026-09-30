@@ -1,6 +1,7 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
-import { newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Session, type Shop, type StatField, type StatValue } from './model';
+import { applyScore, score } from './session';
+import { formatPoints, newId, type ActionEvent, type Game, type InventoryEntry, type ItemDef, type Session, type Shop, type StatField, type StatValue } from './model';
 
 // ---------- Stats ----------
 
@@ -175,6 +176,47 @@ export function shopPrice(game: Game, shop: Shop, itemId: string): number {
  * A purchase: the currency goes down (it may go below 0 or the field's minimum only with `allowShort`), the item
  * is added and the stock goes down. Returns a line for the log, or an error message.
  */
+/** A shop that charges the players' points instead of a currency stat. */
+export const SCORE_CURRENCY = 'score';
+
+/**
+ * What a shop charges: its currency stat, or the players' points ('score'). A game with no currency stat charges
+ * points.
+ */
+export function shopCurrency(game: Game, shop: Shop): StatField | 'score' {
+  if (shop.currency === SCORE_CURRENCY) return 'score';
+  return statFields(game).find((f) => f.id === shop.currency) ?? currencyFields(game)[0] ?? 'score';
+}
+
+/** A price or a balance in a shop's currency ("🪙12", "$300"). */
+export function formatPrice(game: Game, shop: Shop, n: number): string {
+  const cur = shopCurrency(game, shop);
+  return cur === 'score' ? formatPoints(n, game.settings.currencySymbol) : formatStat(cur, n);
+}
+
+/** What a player has to spend in a shop. */
+export function balance(game: Game, session: Session, shop: Shop, playerId: string): number {
+  const cur = shopCurrency(game, shop);
+  return cur === 'score' ? score(session, playerId) : statNumber(game, session, playerId, cur);
+}
+
+/** Pay (or, negative, get paid) in a shop's currency. Points go in the score log. */
+function pay(game: Game, session: Session, shop: Shop, playerId: string, amount: number, reason: string): void {
+  if (!amount) return;
+  const cur = shopCurrency(game, shop);
+  if (cur === 'score') applyScore(session, game, [playerId], -amount, reason, undefined, true);
+  else {
+    // Buying anyway may go below the field's minimum: set it directly.
+    session.stats ??= {};
+    session.stats[playerId] ??= {};
+    session.stats[playerId][cur.id] = statNumber(game, session, playerId, cur) - amount;
+  }
+}
+
+/**
+ * A purchase: the currency (or points) goes down (below 0 only with `allowShort`), the item is added and the stock
+ * goes down. Returns a line for the log, or an error message.
+ */
 export function buy(
   game: Game,
   session: Session,
@@ -186,19 +228,16 @@ export function buy(
   const cost = price ?? shopPrice(game, shop, itemId);
   const left = stockLeft(session, shop, itemId);
   if (left !== null && left <= 0) return { ok: false, error: 'Sold out' };
-  const cur = statFields(game).find((f) => f.id === shop.currency) ?? currencyFields(game)[0];
-  if (cur && cost) {
-    const have = statNumber(game, session, playerId, cur);
-    if (have < cost && !allowShort) return { ok: false, error: `Short by ${formatStat(cur, cost - have)}` };
-    // Buying anyway may go below the field's minimum: set it directly.
-    session.stats ??= {};
-    session.stats[playerId] ??= {};
-    session.stats[playerId][cur.id] = have - cost;
+  const name = itemDef(game, itemId)?.name ?? 'an item';
+  if (cost) {
+    const have = balance(game, session, shop, playerId);
+    if (have < cost && !allowShort) return { ok: false, error: `Short by ${formatPrice(game, shop, cost - have)}` };
+    pay(game, session, shop, playerId, cost, `Bought ${name} (${shop.name})`);
   }
   giveItem(game, session, playerId, itemId, 1);
   if (left !== null) setStock(session, shop, itemId, left - 1);
   const who = session.players.find((p) => p.id === playerId)?.name ?? 'Someone';
-  return { ok: true, text: `${who} bought ${itemDef(game, itemId)?.name ?? 'an item'}${cost && cur ? ` for ${formatStat(cur, cost)}` : ''}` };
+  return { ok: true, text: `${who} bought ${name}${cost ? ` for ${formatPrice(game, shop, cost)}` : ''}` };
 }
 
 /** What a shop pays for an item it buys back (null = it doesn't). */
@@ -207,19 +246,18 @@ export function sellPrice(game: Game, shop: Shop, itemId: string | null): number
   return Math.floor(shopPrice(game, shop, itemId) * shop.buysBack.rate);
 }
 
-/** A player sells one of an inventory entry back to a shop: they get the currency, the shop's stock goes up. */
+/** A player sells one of an inventory entry back to a shop: they get paid, the shop's stock goes up. */
 export function sell(game: Game, session: Session, shop: Shop, playerId: string, entryId: string): { ok: true; text: string } | { ok: false; error: string } {
   const e = inventory(session, playerId).find((x) => x.id === entryId);
   if (!e) return { ok: false, error: 'They don’t have that any more' };
   const price = sellPrice(game, shop, e.item);
   if (price === null) return { ok: false, error: `${shop.name} doesn’t buy things back` };
-  const cur = statFields(game).find((f) => f.id === shop.currency) ?? currencyFields(game)[0];
   takeItem(session, playerId, e.item, 1);
-  if (cur && price) addStat(game, session, playerId, cur, price);
+  if (price) pay(game, session, shop, playerId, -price, `Sold ${entryName(game, e)} (${shop.name})`);
   const left = stockLeft(session, shop, e.item!);
   if (left !== null && shop.stock.some((x) => x.item === e.item)) setStock(session, shop, e.item!, left + 1);
   const who = session.players.find((p) => p.id === playerId)?.name ?? 'Someone';
-  return { ok: true, text: `${who} sold ${entryName(game, e)}${cur && price ? ` for ${formatStat(cur, price)}` : ''}` };
+  return { ok: true, text: `${who} sold ${entryName(game, e)}${price ? ` for ${formatPrice(game, shop, price)}` : ''}` };
 }
 
 // ---------- Action log (undo for everything that isn't score) ----------
@@ -232,6 +270,9 @@ function rpgState(session: Session): string {
     worlds: session.worlds ?? {},
     boardgames: session.boardgames ?? {},
     stock: session.stock ?? {},
+    // Points spent or earned inside a step (a purchase in a shop that charges points) undo with it.
+    scoreLog: session.scoreLog,
+    redoStack: session.redoStack,
   });
 }
 
@@ -241,6 +282,8 @@ function restore(session: Session, json: string): void {
   session.inventories = s.inventories;
   session.worlds = s.worlds;
   session.boardgames = s.boardgames ?? {};
+  if (s.scoreLog) session.scoreLog = s.scoreLog;
+  if (s.redoStack) session.redoStack = s.redoStack;
   session.stock = s.stock;
 }
 

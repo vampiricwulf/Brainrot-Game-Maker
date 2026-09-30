@@ -19,7 +19,16 @@
     session,
     role,
     onclick,
-  }: { o: Overlay; game: Game; session: Session; role: MediaRole; onclick?: () => void } = $props();
+    onshopbuy,
+  }: {
+    o: Overlay;
+    game: Game;
+    session: Session;
+    role: MediaRole;
+    onclick?: () => void;
+    /** Host: a ware in the shop on screen was clicked. */
+    onshopbuy?: (itemId: string) => void;
+  } = $props();
 </script>
 
 <div class="ov" class:clickable={!!onclick} transition:fade={{ duration: 200 }} onclick={() => onclick?.()} role="presentation">
@@ -35,7 +44,7 @@
     {:else if o.kind === 'sheet'}
       <PlayerSheet {game} {session} playerId={o.playerId} />
     {:else if o.kind === 'shop'}
-      <ShopView {game} {session} shopId={o.shopId} />
+      <ShopView {game} {session} shopId={o.shopId} buyer={o.buyer} onbuy={onshopbuy} />
     {:else if o.kind === 'scoreboard'}
       <div class="sb">
         <h1>Scores</h1>
