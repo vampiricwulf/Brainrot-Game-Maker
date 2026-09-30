@@ -1,8 +1,8 @@
-// In-app clipboard for slide elements, whole slides, board clues and RPG screens (works across slides, clues, maps
-// and games).
+// In-app clipboard for slide elements, whole slides, board clues, RPG screens and sets of buttons (works across slides,
+// clues, maps and games).
 // The board images editor shares the slide items, so pictures copy between boards and slides both ways.
 import { uniqueMediaName } from './medianame';
-import { newId, type Clue, type Game, type MediaRef, type Screen, type Slide, type SlideElement } from './model';
+import { newId, type Action, type Clue, type Game, type MediaRef, type Screen, type Slide, type SlideElement } from './model';
 
 /** A deep copy (ops.ts's clone: importing ops here would lead back round to media.svelte.ts, which imports this). */
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -14,13 +14,15 @@ export const clipboard = $state<{
   screen: Screen | null;
   /** A board clue: both slides and its settings. */
   clue: Clue | null;
-  /** The files the copied items, slide, clue and screen show, so they paste into another game with them (see pruneMedia). */
+  /** Buttons (actions) of an object, item, space or wheel slice. */
+  actions: Action[];
+  /** The files the copied items, slide, clue, screen and buttons show, so they paste into another game with them (see pruneMedia). */
   media: MediaRef[];
   /** Written to the system clipboard with a copy, so a paste can tell whether something newer was copied since. */
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, screen: null, clue: null, media: [], token: '', text: '' });
+}>({ elements: [], slide: null, screen: null, clue: null, actions: [], media: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
@@ -44,8 +46,8 @@ export function holdMedia(game: Game): void {
   const s = clipboard.slide;
   const ids = new Set([...elementMediaIds(clipboard.elements), ...(s ? elementMediaIds(s.elements, s.background) : [])]);
   const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
-  // (A screen copied on the map, or a clue on the board, keeps its files too.)
-  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue], clipboard.media)];
+  // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
+  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.actions], clipboard.media)];
   clipboard.media = clone(all.filter((m, i) => all.findIndex((x) => x.id === m.id) === i));
 }
 

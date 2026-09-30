@@ -1,6 +1,15 @@
-<!-- Edit a list of actions (an object's buttons, an item's "Use"). Each becomes a button the host presses in play. -->
+<!--
+  Edit a list of actions (an object's buttons, an item's "Use"). Each becomes a button the host presses in play. They
+  reorder by their ⋮⋮ grip (or ▲▼, Alt+↑/↓), and a whole set copies to another object, item, space or slice.
+-->
 <script lang="ts">
-  import { editedGame } from '../../lib/app.svelte';
+  import { editedGame, toast } from '../../lib/app.svelte';
+  import { clipboard, mediaShownBy } from '../../lib/clipboard.svelte';
+  import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
+  import { step } from '../../lib/history.svelte';
+  import { copyActions, moveTo } from '../../lib/listedit';
+  import { uniqueMediaName } from '../../lib/medianame';
+  import { clone } from '../../lib/ops';
   import { dropMenu } from '../../lib/menustate.svelte';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -93,9 +102,64 @@
     actions = [...(actions ?? []), a];
   }
 
-  function remove(id: string): void {
-    actions = (actions ?? []).filter((a) => a.id !== id);
-    if (!actions.length) actions = undefined;
+  // Deleting is done at once: the note at the bottom offers Undo.
+  function remove(a: Action): void {
+    step(
+      `Deleted button “${LABEL[a.do]}”`,
+      () => {
+        actions = (actions ?? []).filter((x) => x.id !== a.id);
+        if (!actions.length) actions = undefined;
+      },
+      { notify: true },
+    );
+  }
+
+  /** A copy right under it (its own pop-up slides). */
+  function duplicate(a: Action): void {
+    const list = [...(actions ?? [])];
+    const [copy] = copyActions([a]);
+    list.splice(list.findIndex((x) => x.id === a.id) + 1, 0, copy);
+    step(`Duplicated button “${LABEL[a.do]}”`, () => (actions = list));
+  }
+
+  /** The whole set to the in-app clipboard, with the files it plays or shows (so it pastes into another game too). */
+  function copyAll(): void {
+    const list = actions ?? [];
+    if (!list.length) return;
+    clipboard.actions = clone(list);
+    const refs = [...clipboard.media, ...mediaShownBy(clipboard.actions, game.media)];
+    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
+    toast(`Copied ${list.length} button${list.length === 1 ? '' : 's'}: paste them on any object, item, space or slice`);
+  }
+
+  /** The copied set, after these ones (the ones that can't work here are left out). */
+  function paste(): void {
+    // (The same kinds ＋ Add action offers here.)
+    const fits = (a: Action) =>
+      a.do === 'goto' ? !!board : a.do === 'move' ? !board && !!world?.maps[0]?.screens[0] : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
+    const copies = copyActions(clipboard.actions.filter(fits));
+    const left = clipboard.actions.length - copies.length;
+    if (!copies.length) return void toast('Those buttons can’t work here');
+    for (const a of copies) {
+      // Spaces and objects of somewhere else: pick them again here.
+      if (a.do === 'goto' && !board?.spaces.some((s) => s.id === a.space) && !board?.zones.some((z) => z.id === a.zone)) a.space = a.zone = undefined;
+      if ((a.do === 'reveal' || a.do === 'hide') && !objects.some((o) => o.id === a.object)) a.object = objects[0]?.id;
+      if (a.do === 'move' && world && !world.maps.some((m) => m.id === a.to.map && m.screens.some((s) => s.id === a.to.screen))) {
+        const m = world.maps.find((x) => x.screens.length);
+        if (m) a.to = { map: m.id, screen: m.screens[0].id };
+      }
+      // (From another game: its stats, items, shops and wheels are other ones.)
+      if (a.do === 'stat' && !numbers.some((f) => f.id === a.field)) a.field = numbers[0]?.id ?? '';
+      if (a.do === 'item' && !game.items?.some((x) => x.id === a.item)) a.item = game.items?.[0]?.id ?? '';
+      if (a.do === 'shop' && !game.shops?.some((x) => x.id === a.shop)) a.shop = game.shops?.[0]?.id ?? '';
+      if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
+    }
+    step(`Pasted ${copies.length} button${copies.length === 1 ? '' : 's'}`, () => {
+      for (const m of mediaShownBy(copies, clipboard.media))
+        if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+      actions = [...(actions ?? []), ...copies];
+    });
+    if (left) toast(`${left} of them can’t work here, so ${left === 1 ? 'it was' : 'they were'} left out`);
   }
 
   /** The kinds of action, under the button (a second click, Esc or a click elsewhere closes it). */
@@ -112,13 +176,15 @@
     );
   }
 
-  function move(i: number, d: number): void {
+  /** Move the button at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
+  function move(i: number, j: number): void {
     const list = [...(actions ?? [])];
-    const j = i + d;
-    if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    actions = list;
+    const a = list[i];
+    if (!a || !moveTo(list, i, j)) return;
+    step(`Moved button “${LABEL[a.do]}” ${j < i ? 'up' : 'down'}`, () => (actions = list));
   }
+
+  const rows = new DragOrder();
 </script>
 
 <!-- An action without a who is for `fallback` (the party, for a move): showing it doesn't fill that in. -->
@@ -132,15 +198,40 @@
   </select>
 {/snippet}
 
-<div class="actions">
+<div class="actions" role="list" aria-label="Buttons">
   {#each actions ?? [] as a, i (a.id)}
-    <div class="act">
+    {@const line = rows.lineAt(a.id)}
+    <div
+      class="act drag-row"
+      class:drop-before={line === 'before'}
+      class:drop-after={line === 'after'}
+      class:dragging={rows.dragging === a.id}
+      role="listitem"
+      ondragover={(e) => rows.over(e, a.id)}
+      ondrop={(e) => {
+        const m = rows.drop(e, (actions ?? []).map((x) => x.id));
+        if (m) move(m.from, m.to);
+      }}
+      use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(a) }}
+    >
       <div class="head">
+        <span
+          class="drag-grip"
+          draggable="true"
+          ondragstart={(e) => {
+            e.stopPropagation();
+            rows.start(e, a.id, (e.currentTarget as HTMLElement).closest('.act'));
+          }}
+          ondragend={() => rows.end()}
+          aria-hidden="true"
+          title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span
+        >
         <b class="small">{LABEL[a.do]}</b>
         <span class="spacer"></span>
-        <button class="ghost tiny" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
-        <button class="ghost tiny" onclick={() => move(i, 1)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
-        <button class="ghost tiny" onclick={() => remove(a.id)} aria-label="Remove action">✕</button>
+        <button class="ghost tiny" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
+        <button class="ghost tiny" onclick={() => move(i, i + 1)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
+        <button class="ghost tiny" onclick={() => duplicate(a)} aria-label="Duplicate action" title="Duplicate (Ctrl+D)">⧉</button>
+        <button class="ghost tiny" onclick={() => remove(a)} aria-label="Remove action">✕</button>
       </div>
       <div class="fields">
         {#if a.do === 'stat'}
@@ -249,6 +340,13 @@
   {/each}
   <div class="row">
     <button class="small" onclick={openMenu} aria-haspopup="menu">＋ Add action</button>
+    <span class="spacer"></span>
+    {#if actions?.length}
+      <button class="ghost tiny" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>
+    {/if}
+    {#if clipboard.actions.length}
+      <button class="ghost tiny" onclick={paste} title="Add the copied buttons here">📋 Paste {clipboard.actions.length} button{clipboard.actions.length === 1 ? '' : 's'}</button>
+    {/if}
   </div>
 </div>
 

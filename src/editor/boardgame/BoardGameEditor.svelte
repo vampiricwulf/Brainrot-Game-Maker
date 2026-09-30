@@ -8,6 +8,8 @@
   import { app } from '../../lib/app.svelte';
   import { take } from '../../lib/nav.svelte';
   import { begin, history, redo, step, undo } from '../../lib/history.svelte';
+  import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
+  import { copyActions, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { clampToBoard, newBoardSpace, nextSpaceName, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
@@ -27,8 +29,12 @@
   const moverWheel = $derived(round.mover.kind === 'wheel' ? round.mover.wheel : null);
 
   let view = $state<'spaces' | 'backdrop' | 'zones'>('spaces');
-  let selId = $state<string | null>(null);
-  const sel = $derived(spaceById(round, selId ?? undefined));
+  /** The selected spaces (Shift+click or a box adds more), the last one picked last. */
+  let selIds = $state<string[]>([]);
+  const picked = $derived(selIds.map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s));
+  /** The one space selected, whose settings the side panel shows. */
+  const sel = $derived(picked.length === 1 ? picked[0] : undefined);
+  const selectOnly = (id: string | null) => (selIds = id ? [id] : []);
   /** The next space clicked is linked from (or unlinked from) the selected one. */
   let linking = $state(false);
   let pickingIcon = $state(false);
@@ -42,7 +48,7 @@
     const part = place.part;
     if (part.kind === 'space') {
       view = 'spaces';
-      selId = part.space;
+      selectOnly(part.space);
     } else if (part.kind === 'backdrop') view = 'backdrop';
     else if (part.kind === 'zone') {
       view = 'zones';
@@ -52,7 +58,12 @@
 
   let boxW = $state(0);
   const scale = $derived(boxW / SLIDE_W || 1);
-  let drag: { id: string; dx: number; dy: number } | null = null;
+  /** Spaces being dragged: where the press began, and where each of them was then. */
+  let drag: { from: { x: number; y: number }; at: Map<string, { x: number; y: number }>; moved: boolean; only: string } | null = null;
+  /** A link being drawn from a space (Alt+drag, or its ⊕ handle), to where the pointer is. */
+  let wire = $state<{ from: string; x: number; y: number } | null>(null);
+  /** A selection box being dragged on the empty board (`add`: Shift keeps the ones selected). */
+  let box = $state<{ x0: number; y0: number; x1: number; y1: number; add: boolean } | null>(null);
   let canvas = $state<HTMLDivElement>();
 
   // ---------- Undo: the game's history (Ctrl+Z / Ctrl+Shift+Z are the editor's) ----------
@@ -74,18 +85,7 @@
     return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
   }
 
-  function spaceDown(e: PointerEvent, s: BoardSpace): void {
-    e.stopPropagation();
-    if (linking && sel && sel.id !== s.id) {
-      sel.next = sel.next.includes(s.id) ? sel.next.filter((n) => n !== s.id) : [...sel.next, s.id];
-      linking = false;
-      return;
-    }
-    selId = s.id;
-    const p = toBoard(e);
-    drag = { id: s.id, dx: p.x - s.x, dy: p.y - s.y };
-    endDrag?.();
-    endDrag = begin();
+  function capture(e: PointerEvent): void {
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -93,23 +93,116 @@
     }
   }
 
-  function boardMove(e: PointerEvent): void {
-    if (!drag) return;
-    const s = spaceById(round, drag.id);
-    if (!s) return;
-    const p = toBoard(e);
-    const at = clampToBoard(p.x - drag.dx, p.y - drag.dy);
-    s.x = at.x;
-    s.y = at.y;
+  const SPACE_R = 58;
+
+  /** The space under a point of the board (the topmost). */
+  function spaceAt(p: { x: number; y: number }): BoardSpace | undefined {
+    return [...round.spaces].reverse().find((s) => Math.hypot(s.x - p.x, s.y - p.y) <= SPACE_R);
   }
 
-  /** Ctrl+click (⌘+click) on the board adds a space after the selected one; a plain click deselects. */
+  /** Link `from` to `to`, or unlink them when it already leads there. */
+  function toggleLink(from: BoardSpace, to: BoardSpace): void {
+    const on = from.next.includes(to.id);
+    step(on ? `Unlinked “${from.name}” from “${to.name}”` : `Linked “${from.name}” to “${to.name}”`, () => {
+      from.next = on ? from.next.filter((n) => n !== to.id) : [...from.next, to.id];
+    });
+  }
+
+  function spaceDown(e: PointerEvent, s: BoardSpace): void {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    if (linking && sel && sel.id !== s.id) {
+      toggleLink(sel, s);
+      linking = false;
+      return;
+    }
+    if (e.altKey) return void startWire(e, s);
+    if (e.shiftKey) {
+      selIds = selIds.includes(s.id) ? selIds.filter((x) => x !== s.id) : [...selIds, s.id];
+      return;
+    }
+    if (!selIds.includes(s.id)) selectOnly(s.id);
+    drag = { from: toBoard(e), at: new Map(picked.map((x) => [x.id, { x: x.x, y: x.y }])), moved: false, only: s.id };
+    endDrag?.();
+    endDrag = begin(picked.length > 1 ? `Moved ${picked.length} spaces` : `Moved space “${s.name}”`);
+    capture(e);
+  }
+
+  /** Start drawing a link from a space (it's made where the pointer is let go). */
+  function startWire(e: PointerEvent, s: BoardSpace): void {
+    e.stopPropagation();
+    e.preventDefault();
+    selectOnly(s.id);
+    wire = { from: s.id, ...toBoard(e) };
+    capture(e);
+  }
+
+  function boardMove(e: PointerEvent): void {
+    if (wire) return void Object.assign(wire, toBoard(e));
+    if (box) {
+      const p = toBoard(e);
+      box.x1 = p.x;
+      box.y1 = p.y;
+      return;
+    }
+    if (!drag) return;
+    const p = toBoard(e);
+    if (Math.abs(p.x - drag.from.x) + Math.abs(p.y - drag.from.y) > 2) drag.moved = true;
+    shift(drag.at, p.x - drag.from.x, p.y - drag.from.y);
+  }
+
+  /** Move spaces from where they were by as much of (dx, dy) as keeps all of them on the board (in shape). */
+  function shift(at: Map<string, { x: number; y: number }>, dx: number, dy: number): void {
+    const was = [...at.values()];
+    const lo = clampToBoard(-Infinity, -Infinity);
+    const hi = clampToBoard(Infinity, Infinity);
+    dx = Math.round(Math.max(lo.x - Math.min(...was.map((w) => w.x)), Math.min(hi.x - Math.max(...was.map((w) => w.x)), dx)));
+    dy = Math.round(Math.max(lo.y - Math.min(...was.map((w) => w.y)), Math.min(hi.y - Math.max(...was.map((w) => w.y)), dy)));
+    for (const [id, w] of at) {
+      const s = spaceById(round, id);
+      if (!s) continue;
+      s.x = w.x + dx;
+      s.y = w.y + dy;
+    }
+  }
+
+  /** The pointer let go: a drag is one step, a link is made, a box selects what's in it. */
+  function pointerUp(e: PointerEvent): void {
+    endDrag?.();
+    endDrag = null;
+    // A click (no drag) on one of several selected spaces picks just that one.
+    if (drag && !drag.moved && drag.at.size > 1) selectOnly(drag.only);
+    drag = null;
+    if (wire) {
+      const from = spaceById(round, wire.from);
+      const to = canvas && spaceAt(toBoard(e));
+      wire = null;
+      if (from && to && to.id !== from.id) toggleLink(from, to);
+    }
+    if (box) {
+      const b = box;
+      box = null;
+      const [x0, x1] = [Math.min(b.x0, b.x1), Math.max(b.x0, b.x1)];
+      const [y0, y1] = [Math.min(b.y0, b.y1), Math.max(b.y0, b.y1)];
+      // (A click without a drag only deselects.)
+      const inside = x1 - x0 + (y1 - y0) < 8 ? [] : round.spaces.filter((s) => s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1).map((s) => s.id);
+      selIds = b.add ? [...selIds, ...inside.filter((id) => !selIds.includes(id))] : inside;
+    }
+  }
+
+  /**
+   * Ctrl+click (⌘+click) on the board adds a space after the selected one; a drag on the empty board draws a box
+   * that selects the spaces in it (a plain click deselects).
+   */
   function boardDown(e: PointerEvent): void {
     if (e.button !== 0) return;
-    if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.backdrop')) return;
+    const el = e.target as HTMLElement;
+    if (e.target !== e.currentTarget && !el.closest('.backdrop') && !el.closest('[data-link]')) return;
     linking = false;
-    if (!(e.ctrlKey || e.metaKey)) return void (selId = null);
-    addSpaceAt(toBoard(e));
+    if (e.ctrlKey || e.metaKey) return addSpaceAt(toBoard(e));
+    const p = toBoard(e);
+    box = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, add: e.shiftKey };
+    capture(e);
   }
 
   function addSpaceAt(at: { x: number; y: number }): void {
@@ -121,46 +214,134 @@
       sel.next = [s.id];
     }
     round.spaces.push(s);
-    selId = s.id;
+    selectOnly(s.id);
+  }
+
+  /** A copy of a space (its look, buttons, secret and notes), next to it and after it on the path. */
+  function duplicateSpace(s: BoardSpace): void {
+    const at = clampToBoard(s.x + 160, s.y);
+    const copy: BoardSpace = { ...$state.snapshot(s), id: newId(), name: nextSpaceName(round), x: at.x, y: at.y, next: [...s.next] };
+    if (s.onPass) copy.onPass = copyActions(s.onPass);
+    if (s.onLand) copy.onLand = copyActions(s.onLand);
+    step(`Duplicated space “${s.name}”`, () => {
+      s.next = [copy.id];
+      round.spaces.splice(round.spaces.indexOf(s) + 1, 0, copy);
+    });
+    selectOnly(copy.id);
+  }
+
+  /** A link's menu (right-click its line): both ways or one, reversed, or gone. */
+  function linkMenu(e: MouseEvent, a: BoardSpace, b: BoardSpace): void {
+    const both = b.next.includes(a.id);
+    const title = `“${a.name}” ${both ? '↔' : '→'} “${b.name}”`;
+    showMenu(e, [
+      { heading: `${a.name} ${both ? '↔' : '→'} ${b.name}` },
+      both
+        ? { label: `→ One way (${a.name} → ${b.name})`, onclick: () => step(`Made ${title} one way`, () => (b.next = b.next.filter((n) => n !== a.id))) }
+        : { label: '⇄ Both ways', onclick: () => step(`Made ${title} both ways`, () => (b.next = [...b.next, a.id])) },
+      {
+        label: '↺ Reverse',
+        disabled: both,
+        onclick: () =>
+          step(`Reversed ${title}`, () => {
+            a.next = a.next.filter((n) => n !== b.id);
+            b.next = [...b.next, a.id];
+          }),
+      },
+      { sep: true },
+      {
+        label: '✕ Remove link',
+        danger: true,
+        onclick: () =>
+          step(
+            `Removed the link ${title}`,
+            () => {
+              a.next = a.next.filter((n) => n !== b.id);
+              b.next = b.next.filter((n) => n !== a.id);
+            },
+            { notify: true },
+          ),
+      },
+    ]);
   }
 
   /** Right-click: a space's menu, or the board's (add a space there). */
   function boardMenu(e: MouseEvent): void {
-    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-space]');
+    const target = e.target as HTMLElement;
+    const el = target.closest<HTMLElement>('[data-space]');
     const s = el ? spaceById(round, el.dataset.space) : undefined;
+    const link = target.closest<Element>('[data-link]')?.getAttribute('data-link')?.split('>');
+    const [la, lb] = link ? [spaceById(round, link[0]), spaceById(round, link[1])] : [];
     const at = toBoard(e as PointerEvent);
-    if (s) {
-      selId = s.id;
+    if (s && picked.length > 1 && selIds.includes(s.id)) {
+      const list = picked;
+      showMenu(e, [
+        { heading: `${list.length} spaces` },
+        { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), hint: 'Delete' },
+      ]);
+    } else if (s) {
+      selectOnly(s.id);
       showMenu(e, [
         { heading: s.name },
         { label: '🏁 Make it Start', onclick: () => (round.start = s.id), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
-        { label: '🔗 Link it to…', onclick: () => (linking = true), hint: 'Then click the space it leads to' },
+        { label: '🔗 Link it to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
         { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
+        { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), hint: 'Ctrl+D' },
         { sep: true },
         { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s) },
       ]);
-    } else
+    } else if (la && lb) linkMenu(e, la, lb);
+    else
       showMenu(e, [
         { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) },
-        { label: 'Deselect', onclick: () => (selId = null), disabled: !sel },
+        { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), hint: 'Ctrl+A' },
+        { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length },
       ]);
   }
 
+  /** Tab / Shift+Tab: the next or previous space along the list. */
+  function cycle(dir: 1 | -1): void {
+    const list = round.spaces;
+    if (!list.length) return;
+    const i = selIds.length ? list.findIndex((s) => s.id === selIds[selIds.length - 1]) : dir > 0 ? -1 : 0;
+    selectOnly(list[(i + dir + list.length) % list.length].id);
+  }
+
   /**
-   * Delete / Backspace removes the selected space. Not while typing in a field, nor while a dialog is open over the
-   * board (a pop-up slide being edited, a picker): those keys are its own.
+   * Delete / Backspace removes the selected spaces, arrows nudge them (Shift: further), Ctrl+D duplicates the one,
+   * Tab / Shift+Tab go through the spaces and Ctrl+A selects them all. Not while typing in a field, nor while a
+   * dialog or menu is open over the board (a pop-up slide being edited, a picker): those keys are its own.
    */
   function key(e: KeyboardEvent): void {
-    if (e.defaultPrevented || document.querySelector('[role="dialog"]')) return;
+    if (e.defaultPrevented || document.querySelector('[role="dialog"], [role="menu"]')) return;
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
+    if (view !== 'spaces') return;
     const k = e.key.toLowerCase();
-    if (view !== 'spaces' || !sel) return;
-    if (k === 'delete' || k === 'backspace') {
+    const mod = e.ctrlKey || e.metaKey;
+    const onBoard = document.activeElement === document.body || !!canvas?.contains(document.activeElement);
+    if (k === 'tab' && !mod && !e.altKey && onBoard) {
       e.preventDefault();
-      removeSpace(sel);
+      cycle(e.shiftKey ? -1 : 1);
+    } else if (mod && k === 'a' && onBoard) {
+      e.preventDefault();
+      selIds = round.spaces.map((s) => s.id);
+    } else if (!picked.length) return;
+    else if (k === 'delete' || k === 'backspace') {
+      e.preventDefault();
+      removeSpaces(picked);
     } else if (k === 'escape') {
       linking = false;
-      selId = null;
+      wire = null;
+      selectOnly(null);
+    } else if (mod && !e.altKey && k === 'd' && sel) {
+      e.preventDefault();
+      duplicateSpace(sel);
+    } else if (k.startsWith('arrow') && !mod && !e.altKey) {
+      // Nudge: joined into one step with the next nudges (the history merges them after a pause).
+      e.preventDefault();
+      const d = e.shiftKey ? 50 : 10;
+      const [dx, dy] = k === 'arrowleft' ? [-d, 0] : k === 'arrowright' ? [d, 0] : k === 'arrowup' ? [0, -d] : [0, d];
+      shift(new Map(picked.map((x) => [x.id, { x: x.x, y: x.y }])), dx, dy);
     }
   }
 
@@ -179,7 +360,7 @@
     if (!hasFiles(e) || !file) return;
     e.preventDefault();
     const s = spaceUnder(e);
-    if (s) selId = s.id;
+    if (s) selectOnly(s.id);
     void useFile(file, { kind: 'image', onpick: (id) => (s ? (s.icon = id) : (round.slide.background.image = id)) });
   }
 
@@ -194,18 +375,32 @@
   }
 
   function removeSpace(s: BoardSpace): void {
-    step(`Deleted space “${s.name}”`, () => {
-      // Spaces that led here now lead where it led (when it had one way on).
-      for (const p of previousOf(round, s.id)) {
-        p.next = p.next.filter((n) => n !== s.id);
-        if (s.next.length === 1 && s.next[0] !== p.id && !p.next.includes(s.next[0])) p.next.push(s.next[0]);
+    removeSpaces([s]);
+  }
+
+  /** Delete spaces in one step, the path closing up over each (in the list's order, so a run of them bridges too). */
+  function removeSpaces(list: BoardSpace[]): void {
+    if (!list.length) return;
+    const what = list.length === 1 ? list[0].name : `${list.length} spaces`;
+    step(list.length === 1 ? `Deleted space “${what}”` : `Deleted ${what}`, () => {
+      for (const s of list) {
+        // Spaces that led here now lead where it led (when it had one way on).
+        for (const p of previousOf(round, s.id)) {
+          p.next = p.next.filter((n) => n !== s.id);
+          if (s.next.length === 1 && s.next[0] !== p.id && !p.next.includes(s.next[0])) p.next.push(s.next[0]);
+        }
+        round.spaces = round.spaces.filter((x) => x.id !== s.id);
+        if (round.start === s.id) round.start = undefined;
+        unlinkGotos({ space: s.id });
       }
-      round.spaces = round.spaces.filter((x) => x.id !== s.id);
-      if (round.start === s.id) round.start = undefined;
-      unlinkGotos({ space: s.id });
     });
-    selId = null;
-    tell(`Deleted ${s.name}`);
+    selectOnly(null);
+    tell(`Deleted ${what}`);
+  }
+
+  /** The same colour, or secret or not, for all the selected spaces. */
+  function setAll(what: string, fn: (s: BoardSpace) => void): void {
+    step(`${what} for ${picked.length} spaces`, () => picked.forEach(fn));
   }
 
   function addZone(): void {
@@ -228,17 +423,18 @@
   }
 
   const zone = $derived(round.zones.find((z) => z.id === zoneSlide));
+
+  /** Zones reorder (the order of the host's Send to list) by a drag or Alt+↑/↓. */
+  const zoneRows = new DragOrder();
+  function moveZone(from: number, to: number): void {
+    const z = round.zones[from];
+    if (!z || to < 0 || to >= round.zones.length || to === from) return;
+    step(`Moved zone “${z.name}” ${to < from ? 'up' : 'down'}`, () => moveTo(round.zones, from, to));
+  }
 </script>
 
 <!-- A drag ends wherever the pointer is let go (it's one undo step). -->
-<svelte:window
-  onkeydown={key}
-  onpointerup={() => {
-    endDrag?.();
-    endDrag = null;
-    drag = null;
-  }}
-/>
+<svelte:window onkeydown={key} onpointerup={pointerUp} onpointercancel={pointerUp} />
 
 <div class="bge">
   <div class="row settings">
@@ -285,14 +481,18 @@
     <button role="tab" aria-selected={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
   </div>
 
+  {#snippet undoRedo()}
+    <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo">↶</button>
+    <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo">↷</button>
+  {/snippet}
+
   {#if view === 'spaces'}
     <div class="row tools">
-      <span class="muted small">Ctrl+click the board to add a space (after the selected one) · Delete removes the selected space · right-click for more</span>
+      <span class="muted small">Ctrl+click adds a space (after the selected one) · Alt+drag or ⊕ links · Shift+click or a box selects several · right-click for more</span>
       {#if linking}<span class="warn small">Click the space {sel?.name} should lead to (again to unlink)…</span>{/if}
       <span class="spacer"></span>
       <span class="muted small">Drag spaces to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</span>
-      <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo">↶</button>
-      <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo">↷</button>
+      {@render undoRedo()}
     </div>
     <div class="main">
       <div class="canvas-box" class:media-drop={fileOver === 'board'} bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
@@ -310,7 +510,39 @@
           aria-label="Board"
         >
           <div class="backdrop"><SlideView slide={round.slide} mode="edit" fallbackBg="#1d5e3a" /></div>
-          <BoardSpaces {round} selected={selId} marked={fileOver && fileOver !== 'board' ? [fileOver] : []} ondown={spaceDown} />
+          <BoardSpaces {round} selected={selIds} marked={fileOver && fileOver !== 'board' ? [fileOver] : []} ondown={spaceDown} />
+          {#if sel && !wire}
+            <!-- Drag from it to the space this one should lead to. -->
+            <div
+              class="link-handle"
+              style:left="{sel.x + SPACE_R * 0.72}px"
+              style:top="{sel.y - SPACE_R * 0.72}px"
+              onpointerdown={(e) => startWire(e, sel)}
+              role="button"
+              tabindex="-1"
+              aria-label="Link {sel.name} to…"
+              title="Drag to the space it leads to (onto a linked one to unlink)"
+            >
+              ⊕
+            </div>
+          {/if}
+          {#if wire}
+            {@const from = spaceById(round, wire.from)}
+            {#if from}
+              <svg class="overlay" viewBox="0 0 {SLIDE_W} {SLIDE_H}" aria-hidden="true">
+                <line x1={from.x} y1={from.y} x2={wire.x} y2={wire.y} class="wire" />
+              </svg>
+            {/if}
+          {/if}
+          {#if box}
+            <div
+              class="box"
+              style:left="{Math.min(box.x0, box.x1)}px"
+              style:top="{Math.min(box.y0, box.y1)}px"
+              style:width="{Math.abs(box.x1 - box.x0)}px"
+              style:height="{Math.abs(box.y1 - box.y0)}px"
+            ></div>
+          {/if}
         </div>
         {#if notice && notice.at === history.top && !history.pending}
           <div class="notice" role="status">
@@ -320,7 +552,41 @@
         {/if}
       </div>
       <aside class="side">
-        {#if sel}
+        {#if picked.length > 1}
+          {@const colors = new Set(picked.map((x) => x.color))}
+          {@const secret = picked.filter((x) => x.secret).length}
+          <h4>{picked.length} spaces selected</h4>
+          <p class="muted small">Drag one to move them all, or nudge them with the arrow keys. Shift+click a space to add or leave it out.</p>
+          <label class="check small">
+            Color
+            <input
+              type="color"
+              value={colors.size === 1 ? picked[0].color : '#888888'}
+              onchange={(e) => {
+                const c = e.currentTarget.value;
+                setAll('Color', (x) => (x.color = c));
+              }}
+              aria-label="Color of the selected spaces"
+            />
+            {#if colors.size > 1}<span class="muted">(mixed)</span>{/if}
+          </label>
+          <label class="check small">
+            <input
+              type="checkbox"
+              checked={secret === picked.length}
+              indeterminate={secret > 0 && secret < picked.length}
+              onchange={(e) => {
+                const on = e.currentTarget.checked;
+                setAll(on ? 'Secret' : 'Not secret', (x) => (x.secret = on || undefined));
+              }}
+            />
+            Secret (viewers see “?” until you reveal them)
+          </label>
+          <div class="row">
+            <span class="spacer"></span>
+            <button class="ghost small" onclick={() => removeSpaces(picked)}>Delete {picked.length} spaces</button>
+          </div>
+        {:else if sel}
           <h4>Space</h4>
           <label class="field">Name<input bind:value={sel.name} aria-label="Space name" /></label>
           <div class="row">
@@ -350,7 +616,7 @@
                   aria-label="Both ways with {other?.name}"
                   title={both ? 'Both ways: click for one way only' : 'Make it both ways (back and forth)'}>⇄</button
                 >
-                <button class="ghost tiny" onclick={() => (sel.next = sel.next.filter((x) => x !== n))} aria-label="Unlink">✕</button>
+                <button class="ghost tiny" onclick={() => other && toggleLink(sel, other)} aria-label="Unlink">✕</button>
               </span>
             {:else}
               <span class="muted small">nothing (the path ends)</span>
@@ -366,13 +632,14 @@
           <label class="field">Host notes<textarea rows="2" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">
             <button class="small" onclick={() => (round.start = sel.id)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
+            <button class="small" onclick={() => duplicateSpace(sel)} title="A copy after it on the path (Ctrl+D)">⧉ Duplicate space</button>
             <span class="spacer"></span>
             <button class="ghost small" onclick={() => removeSpace(sel)}>Delete space</button>
           </div>
         {:else}
           <p class="muted small">
-            Click a space to set it up. Ctrl+click (⌘+click) the board to add one, or right-click → Add a space here. New spaces go after
-            the selected space, so you can draw the path in order.
+            Click a space to set it up (Tab goes to the next one). Ctrl+click (⌘+click) the board to add one, or right-click → Add a
+            space here. New spaces go after the selected space, so you can draw the path in order.
           </p>
         {/if}
       </aside>
@@ -381,15 +648,45 @@
     <div class="se-wrap"><SlideEditor slide={round.slide} placeholder="Click to type" fill /></div>
   {:else}
     <div class="zones">
-      <p class="muted small">Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's actions or the host panel.</p>
-      {#each round.zones as z (z.id)}
-        <div class="row zone" data-place="zone:{z.id}">
-          <input bind:value={z.name} aria-label="Zone name" />
-          <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
-          <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>
-          <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}">✕</button>
-        </div>
-      {/each}
+      <div class="row">
+        <p class="muted small grow">
+          Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's actions or the host
+          panel. Drag ⋮⋮ (or Alt+↑/↓) to reorder: the host's Send to list follows.
+        </p>
+        {@render undoRedo()}
+      </div>
+      <div class="zone-list" role="list" aria-label="Zones">
+        {#each round.zones as z, i (z.id)}
+          {@const line = zoneRows.lineAt(z.id)}
+          <div
+            class="row zone drag-row"
+            class:drop-before={line === 'before'}
+            class:drop-after={line === 'after'}
+            class:dragging={zoneRows.dragging === z.id}
+            data-place="zone:{z.id}"
+            role="listitem"
+            ondragover={(e) => zoneRows.over(e, z.id)}
+            ondrop={(e) => {
+              const m = zoneRows.drop(e, round.zones.map((x) => x.id));
+              if (m) moveZone(m.from, m.to);
+            }}
+            use:rowKeys={{ move: (d) => moveZone(i, i + d) }}
+          >
+            <span
+              class="drag-grip"
+              draggable="true"
+              ondragstart={(e) => zoneRows.start(e, z.id, (e.currentTarget as HTMLElement).parentElement)}
+              ondragend={() => zoneRows.end()}
+              aria-hidden="true"
+              title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span
+            >
+            <input bind:value={z.name} aria-label="Zone name" />
+            <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
+            <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>
+            <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}">✕</button>
+          </div>
+        {/each}
+      </div>
       <div class="row"><button onclick={addZone}>＋ Zone</button></div>
     </div>
   {/if}
@@ -475,10 +772,48 @@
     height: 1080px;
     transform-origin: 0 0;
     cursor: crosshair;
+    /* (Shift+click picks spaces: it mustn't select their names' text, which would then drag as text.) */
+    user-select: none;
   }
   .backdrop {
     position: absolute;
     inset: 0;
+  }
+  /* (Board px: the canvas is scaled.) */
+  .link-handle {
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    margin: -28px 0 0 -28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #ffcc00;
+    color: #000;
+    border: 4px solid #000;
+    font-size: 38px;
+    line-height: 1;
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .wire {
+    stroke: #ffcc00;
+    stroke-width: 8;
+    stroke-dasharray: 20 12;
+  }
+  .box {
+    position: absolute;
+    border: 4px dashed #ffcc00;
+    background: rgba(255, 204, 0, 0.12);
+    pointer-events: none;
   }
   .side {
     width: 320px;
@@ -517,7 +852,8 @@
     display: flex;
     flex-direction: column;
   }
-  .zones {
+  .zones,
+  .zone-list {
     display: flex;
     flex-direction: column;
     gap: 6px;

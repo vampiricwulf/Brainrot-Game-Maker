@@ -69,6 +69,23 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
 
+/* Rows that drag to reorder by their ⋮⋮ grip (dragorder.svelte.ts): a line shows where the dragged one goes. */
+.drag-row { position: relative; }
+.drag-row.dragging { opacity: 0.5; }
+.drag-row.drop-before::before,
+.drag-row.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.drag-row.drop-before::before { top: -3px; }
+.drag-row.drop-after::after { bottom: -3px; }
+.drag-grip { cursor: grab; color: var(--muted); font-size: 12px; letter-spacing: -2px; user-select: none; }
+
 .toast {
   position: fixed;
   bottom: 24px;

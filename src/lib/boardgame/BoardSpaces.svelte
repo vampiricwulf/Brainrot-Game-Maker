@@ -12,7 +12,7 @@
     round,
     audience = false,
     revealed = [],
-    selected = null,
+    selected = [],
     marked = [],
     lit = null,
     ondown,
@@ -21,7 +21,8 @@
     /** Viewers: secret spaces show as "?" and host notes never show. */
     audience?: boolean;
     revealed?: string[];
-    selected?: string | null;
+    /** Editor: the selected spaces. */
+    selected?: readonly string[];
     /** Play, the host's copy: the spaces the host can pick to move on to (a fork's ways), outlined. */
     marked?: string[];
     /** Play, the host's copy: the space a dragged token is over. */
@@ -61,6 +62,8 @@
         {@const l = line(a, b)}
         <line {...l} class="shadow" />
         <line {...l} class="link" marker-end="url(#bg-arrow)" marker-start={both ? 'url(#bg-arrow)' : undefined} />
+        <!-- Editor: a wide line to right-click (the link's menu). -->
+        {#if ondown}<line {...l} class="hit" data-link="{a.id}>{b.id}" />{/if}
       {/if}
     {/each}
   {/each}
@@ -70,7 +73,7 @@
   {@const bg = h ? '#555' : s.color}
   <div
     class="space"
-    class:sel={selected === s.id}
+    class:sel={selected.includes(s.id)}
     class:marked={marked.includes(s.id)}
     class:lit={lit === s.id}
     class:start={(round.start ?? round.spaces[0]?.id) === s.id}
@@ -108,6 +111,11 @@
   .link {
     stroke: #fff;
     stroke-width: 8;
+  }
+  .hit {
+    stroke: transparent;
+    stroke-width: 40;
+    pointer-events: stroke;
   }
   .shadow {
     stroke: rgba(0, 0, 0, 0.6);

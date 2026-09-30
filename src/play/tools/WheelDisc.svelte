@@ -42,8 +42,8 @@
     {#each segments as s, i (s.id)}
       {@const a = angles[i]}
       {@const mid = (a.start + a.end) / 2}
-      <path d={path(a.start, a.end)} fill={s.color} stroke="#000" stroke-width="3" />
-      <g transform="rotate({mid})">
+      <path d={path(a.start, a.end)} fill={s.color} stroke="#000" stroke-width="3" data-slice={i} />
+      <g transform="rotate({mid})" data-slice={i}>
         <text
           x="0"
           y={-R * 0.58}
