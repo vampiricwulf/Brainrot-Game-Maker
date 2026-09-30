@@ -146,6 +146,17 @@
     send({ type: 'audience-event', event: { kind: 'activation', active: true } });
   }
 
+  /**
+   * Every other key goes to the host, so the shortcuts (N, R, Ctrl+Z…) keep working after the host clicked this window.
+   * Nothing shows here, and the browser's own keys stay out of the way (Alt+← going back, Space scrolling).
+   */
+  function forwardKey(e: KeyboardEvent): void {
+    if (NO_GESTURE.includes(e.key) && e.key !== 'Escape') return;
+    const { key, code, shiftKey, ctrlKey, altKey, metaKey } = e;
+    send({ type: 'key', key: { key, code, shiftKey, ctrlKey, altKey, metaKey } });
+    if (!ctrlKey && !metaKey && !/^F\d+$/.test(key)) e.preventDefault();
+  }
+
   /** A file dropped on this window is ignored: the browser would open it in place of the stream. */
   function ignoreFiles(e: DragEvent): void {
     if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
@@ -161,7 +172,8 @@
   onkeydown={(e) => {
     // A key press (not Shift, Ctrl, Alt or Esc) counts as the click that allows sound, too.
     activate(e);
-    if (e.key.toLowerCase() === 'f') toggleFullscreen();
+    if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) return toggleFullscreen();
+    forwardKey(e);
   }}
 />
 

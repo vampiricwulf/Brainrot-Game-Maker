@@ -8,7 +8,7 @@ import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems,
-  blankSlide, toolOnlyClue,
+  blankSlide, toolOnlyClue, finalBack, rosterChange,
 } from './session';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
@@ -348,6 +348,25 @@ describe('players mid-game', () => {
   });
 });
 
+describe('the Players dialog in the history', () => {
+  it('says what one change did', () => {
+    const [ann, bob, cat] = [
+      { id: 'a', name: 'Ann', color: '#f00', startScore: 0 },
+      { id: 'b', name: 'Bob', color: '#0f0', startScore: 0 },
+      { id: 'c', name: 'Cat', color: '#00f', startScore: 0 },
+    ];
+    const was = { players: [ann, bob] };
+    expect(rosterChange(was, { players: [{ ...ann, name: 'Alice' }, bob] })).toBe('Renamed Ann to Alice');
+    expect(rosterChange(was, { players: [ann, { ...bob, color: '#ff0' }] })).toBe('New color for Bob');
+    expect(rosterChange(was, { players: [bob, ann] })).toBe('Swapped Bob and Ann');
+    expect(rosterChange(was, { players: [ann, bob, cat] })).toBe('Added Cat');
+    expect(rosterChange(was, { players: [bob], removed: [ann] })).toBe('Removed Ann');
+    expect(rosterChange({ players: [bob], removed: [ann] }, { players: [bob, ann] })).toBe('Restored Ann');
+    expect(rosterChange(was, { players: [{ ...ann, name: '' }, bob] })).toBe('Renamed Ann to a player');
+    expect(rosterChange(was, was)).toBe('Changed the players');
+  });
+});
+
 describe('host panel rules', () => {
   it('opens the award row everywhere but the Daily Double splash, the final reveals and the end screen', () => {
     const { game, session } = setup();
@@ -494,6 +513,23 @@ describe('final reveal with N', () => {
     finalJudge(session, game, b, true);
     expect(finalAdvance(session)).toBe('done');
     expect(session.phase).toBe('final');
+  });
+
+  it('goes back one player with Shift+N, their wager as it was', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a], 300, 'x');
+    applyScore(session, game, [b], 200, 'x');
+    applyScore(session, game, [c], 100, 'x');
+    goToRound(session, game, 1);
+    for (let i = 0; i < 4; i++) finalNext(session, game);
+    const f = session.final!;
+    expect(f.order).toEqual([c, b, a]);
+    expect(finalBack(session)).toBe(false); // the first one has nobody before them
+    finalAdvance(session);
+    finalAdvance(session);
+    expect(f.current).toBe(b);
+    expect(finalBack(session)).toBe(true);
+    expect([f.current, f.shown[c], f.shown[b]]).toEqual([c, true, undefined]);
   });
 
   it('goes back from the end screen to the reveals', () => {

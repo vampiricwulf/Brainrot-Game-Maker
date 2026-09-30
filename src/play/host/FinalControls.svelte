@@ -1,8 +1,9 @@
 <!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  import { formatPoints, roundName, type Game, type Session } from '../../lib/model';
-  import { finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, score } from '../../lib/session';
+  import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
+  import { currentFinal, finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, score } from '../../lib/session';
+  import { logged, startStep } from '../../lib/toolset';
 
   let {
     game,
@@ -30,6 +31,10 @@
   const problems = $derived(finalWagerProblems(session, override));
   const wagersOk = $derived(finalWagersOk(session, override));
   const names = (ids: string[]) => ids.map((id) => byId[id]?.name ?? '?').join(', ');
+  const title = $derived.by(() => {
+    const r = currentFinal(session, game);
+    return r ? finalName(r) : 'the Final';
+  });
 
   const wagerBoxes: HTMLInputElement[] = $state([]);
 
@@ -42,23 +47,43 @@
     if (todo) wagerBoxes[f.players.indexOf(todo)]?.focus();
   }
 
+  // Who plays, the reveal order and each wager are undoable steps (Ctrl+Z, the 📜 Log's history).
   function toggleIn(id: string): void {
-    if (!f) return;
-    if (f.players.includes(id)) {
-      f.players = f.players.filter((x) => x !== id);
-      f.order = f.order.filter((x) => x !== id);
-    } else {
-      f.players.push(id);
-      f.order.push(id);
-    }
+    const fs = f;
+    if (!fs) return;
+    const out = fs.players.includes(id);
+    logged(session, `${byId[id]?.name ?? '?'} ${out ? 'sits out' : 'plays'} ${title}`, () => {
+      if (out) {
+        fs.players = fs.players.filter((x) => x !== id);
+        fs.order = fs.order.filter((x) => x !== id);
+      } else {
+        fs.players.push(id);
+        fs.order.push(id);
+      }
+    });
   }
 
   function move(id: string, d: number): void {
-    if (!f) return;
-    const i = f.order.indexOf(id);
+    const fs = f;
+    if (!fs) return;
+    const i = fs.order.indexOf(id);
     const j = i + d;
-    if (j < 0 || j >= f.order.length) return;
-    [f.order[i], f.order[j]] = [f.order[j], f.order[i]];
+    if (j < 0 || j >= fs.order.length) return;
+    const [first, second] = d < 0 ? [id, fs.order[j]] : [fs.order[j], id];
+    logged(session, `Reveal order: ${byId[first]?.name ?? '?'} before ${byId[second]?.name ?? '?'}`, () => {
+      [fs.order[i], fs.order[j]] = [fs.order[j], fs.order[i]];
+    });
+  }
+
+  /** The wager being typed: one step from the box's focus until it's left. */
+  let wagerStep: { id: string; done: (text: string) => void } | null = null;
+
+  function wagerDone(): void {
+    const w = wagerStep;
+    wagerStep = null;
+    if (!w || !f) return;
+    const v = f.wagers[w.id];
+    w.done(`${byId[w.id]?.name ?? '?'}’s wager: ${typeof v === 'number' ? formatPoints(v, sym) : 'none'}`);
   }
 
   // The round before this Final (where "◀ Back" goes).
@@ -82,6 +107,7 @@
     // The second half of a double-click on "Finish game" doesn't count as the answer.
     if (askFinish && Date.now() - askedAt < 400) return;
     askFinish = false;
+    wagerDone();
     finalNext(session, game);
     onstep();
   }
@@ -123,6 +149,11 @@
               value={w ?? ''}
               class:bad={typeof w === 'number' && !override && w > cap}
               oninput={(e) => (f.wagers[id] = e.currentTarget.value === '' ? (undefined as unknown as number) : +e.currentTarget.value)}
+              onfocus={() => {
+                wagerDone();
+                wagerStep = { id, done: startStep(session) };
+              }}
+              onblur={wagerDone}
               onkeydown={(e) => e.key === 'Enter' && wagerEnter(i)}
               bind:this={wagerBoxes[i]}
             />
@@ -135,8 +166,8 @@
       </label>
     {:else if session.finalStep === 'reveal'}
       <span class="muted">
-        Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼.
-        <span class="small">Keys: N shows the wager, then the next player · C right · X wrong.</span>
+        Go one by one: spotlight → show wager → mark right or wrong. Reorder with ▲▼. Click a name here or on the stage to spotlight it.
+        <span class="small">Keys: N shows the wager, then the next player · Shift+N back · 1–9 spotlight · C right · X wrong.</span>
       </span>
       <div class="order">
         {#each f.order as id, i (id)}

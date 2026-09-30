@@ -56,7 +56,13 @@
     <!-- Short, so it fits where the two round buttons were (the row doesn't re-wrap under the host's cursor). -->
     <span class="ask" title="Go to {target} with {left} clue{left === 1 ? '' : 's'} not played?">{left} clue{left === 1 ? '' : 's'} left · go on?</span>
     <button class="primary small" onclick={yes}>Yes</button>
-    <button class="small" bind:this={cancelBtn} onclick={() => ((asking = false), clearTimeout(timer))}>Cancel</button>
+    <!-- The focus is put here, so Enter and Space press it (not the host's Enter = Award). -->
+    <button
+      class="small"
+      bind:this={cancelBtn}
+      onclick={() => ((asking = false), clearTimeout(timer))}
+      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && e.stopPropagation()}>Cancel</button
+    >
   {:else}
     <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
     {#if ongoto && game.rounds.length > 2}

@@ -4,7 +4,18 @@
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { score } from '../lib/session';
 
-  let { game, session, onpicker }: { game: Game; session: Session; onpicker?: (id: string) => void } = $props();
+  let {
+    game,
+    session,
+    onpicker,
+    hint = 'Click to make this player the current picker',
+  }: {
+    game: Game;
+    session: Session;
+    onpicker?: (id: string) => void;
+    /** What clicking a plate does (host only). */
+    hint?: string;
+  } = $props();
   const sym = $derived(game.settings.currencySymbol);
 </script>
 
@@ -17,7 +28,8 @@
       style:--c={p.color}
       disabled={!onpicker}
       onclick={() => onpicker?.(p.id)}
-      title={onpicker ? 'Click to make this player the current picker' : undefined}
+      title={onpicker ? hint : undefined}
+      data-player-id={p.id}
     >
       <span class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
       <span class="score" class:neg={s < 0}>{formatPoints(s, sym)}</span>

@@ -3,11 +3,11 @@
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, newSession, openClue, playerName, randomizeDailyDoubles,
-    redo, removePlayer, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo, blankSlide, toolOnlyClue, finalWagersOk,
-    startTiebreaker, roundMaxValue, stepOf,
+    finalAdvance, finalBack, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, newSession, openClue, playerName,
+    randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
+    blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
-  import { newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { validate } from '../lib/validate';
@@ -18,25 +18,27 @@
   import PlayerList from '../editor/PlayerList.svelte';
   import AudienceView from './AudienceView.svelte';
   import HostPanel from './HostPanel.svelte';
-  import ScoreLog from './ScoreLog.svelte';
+  import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { lastAction, logged, redoAction, redoFrom, undoAction, type Undone } from '../lib/toolset';
+  import { logged, redoAction, redoFrom, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
+  import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap, type RpgAsk, type StagePoint } from './rpg/hostops';
   import { showMenu } from '../lib/menustate.svelte';
-  import { ensureBoard, sendTo } from '../lib/boardgame';
+  import { currentPlayer, ensureBoard, sendTo, waysOn } from '../lib/boardgame';
   import { audienceSees, ensureWorld, override } from '../lib/rpg';
-  import { boardNow, rollMover, turnNow } from './boardgame/bgops';
+  import { boardNow, moveNow, rollMover, turnNow } from './boardgame/bgops';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
-  import type { ActionEvent, Dir8 } from '../lib/model';
+  import type { ActionEvent, Dir8, Player, ScoreEvent } from '../lib/model';
   import {
     audience,
     audienceTitle,
     closeAudienceWindow,
     mediaCommand,
+    onAudienceKey,
     openAudienceWindow,
     pushGame,
     pushLive,
@@ -66,6 +68,8 @@
   let selected = $state<string[]>(ddUp?.playerId ? [ddUp.playerId] : []);
   let amount = $state<number | null>(ddUp ? (ddUp.wager ?? null) : untrack(() => currentClueInfo(session, game)?.value ?? null));
   let showLog = $state(false);
+  /** The 📜 Log's tab (L opens the one used last, 🕘 History to begin with). */
+  let logTab = $state<LogTab>('history');
   let showPlayers = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
@@ -85,8 +89,10 @@
   let rpgMap = $state(false);
   /** RPG rounds: a name or text the host panel is asking for (right-clicking the stage asks for text there). */
   let rpgAsk = $state<RpgAsk | null>(null);
+  /** Board-game rounds: the steps typed or rolled in the host panel (Enter moves them). */
+  let bgSteps = $state<number | null>(null);
   /** What each combined Undo took back (from the score log or the action log), so Redo goes back the same way. */
-  const undone: Undone[] = [];
+  const undone = $state<Undone[]>([]);
 
   const sym = $derived(game.settings.currencySymbol);
   const dual = $derived(audience.open);
@@ -138,23 +144,27 @@
     void session.currentRound;
     rpgAsk = null;
   });
+  /** The round's party or turn order takes in the players added or removed. */
+  function catchUp(): void {
+    const round = game.rounds[session.currentRound];
+    if (session.phase === 'rpg' && isRpg(round)) ensureWorld(session, game, round);
+    else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
+  }
   // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
   // catches up at once, not only when the round is next visited.
   $effect(() => {
     void session.players.map((p) => p.id).join();
     void session.worlds;
     void session.boardgames;
-    untrack(() => {
-      const round = game.rounds[session.currentRound];
-      if (session.phase === 'rpg' && isRpg(round)) ensureWorld(session, game, round);
-      else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
-    });
+    untrack(catchUp);
   });
 
   onMount(() => {
     registerGameFonts(game);
     // Game audio output: route every sound this window plays (single-window mode) to the chosen device.
     const offSinks = watchSinks();
+    // Keys pressed in the audience window work as if pressed here (the host clicked it to allow sound).
+    const offKeys = onAudienceKey((k) => onkey(new KeyboardEvent('keydown', k)));
     // Time's up watcher (the host is the single source of truth for expiry).
     const id = setInterval(() => {
       const t = app.live.timer;
@@ -168,6 +178,7 @@
     return () => {
       clearInterval(id);
       offSinks();
+      offKeys();
       for (const t of pending) clearTimeout(t);
       pending.clear();
     };
@@ -275,8 +286,8 @@
   function rollOffResult(s: typeof session, o: { nonce: string; winner: string; purpose?: 'first' | 'tiebreak' }): void {
     if (rollOffsApplied.has(o.nonce)) return;
     rollOffsApplied.add(o.nonce);
-    if (o.purpose === 'tiebreak') s.rollOffWinner = o.winner;
-    else s.currentPickerId = o.winner;
+    if (o.purpose === 'tiebreak') logged(s, `${playerName(s, o.winner)} won the roll-off`, () => (s.rollOffWinner = o.winner));
+    else setPicker(s, o.winner, ' (roll-off)');
   }
 
   function rolloff(ids: string[], sides: number, purpose: 'first' | 'tiebreak' = 'first'): void {
@@ -392,12 +403,36 @@
     back(true);
   }
 
-  /** Put a used tile back on the board, or mark one as played. */
+  /** Put a used tile back on the board, or mark one as played (an undoable step, unlike closing a clue). */
   function toggleTile(clueId: string): void {
     const ref = findClueRef(game, clueId);
-    const used = toggleUsed(session, clueId);
     const name = ref ? clueName(game, ref) : 'That tile';
-    toast(used ? `${name} marked as played` : `${name} is back on the board`);
+    const text = session.used[clueId] ? `${name} back on the board` : `${name} marked as played`;
+    logged(session, text, () => toggleUsed(session, clueId));
+    toast(session.used[clueId] ? `${name} marked as played` : `${name} is back on the board`);
+  }
+
+  /** Right-click on a tile of the host's board: open it or skip it, or put a used one back (it says who scored it). */
+  function tileMenu(e: MouseEvent, ref: ClueRef): void {
+    const clue = getClue(game, ref)?.clue;
+    if (!clue) return;
+    const cover = { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) };
+    if (!session.used[clue.id])
+      return showMenu(e, [
+        { heading: clueName(game, ref) },
+        { label: '▶ Open', onclick: () => pick(ref) },
+        { label: '✓ Mark as played (skip it)', onclick: () => toggleTile(clue.id) },
+        { sep: true },
+        cover,
+      ]);
+    const scored = session.scoreLog.filter((x) => !x.undone && x.clueId === clue.id);
+    showMenu(e, [
+      { heading: clueName(game, ref) },
+      { heading: scored.length ? scored.map((x) => `${playerName(session, x.playerId)} ${x.delta < 0 ? '' : '+'}${formatPoints(x.delta, sym)}`).join(', ') : 'No points given' },
+      { label: '↶ Put it back on the board', onclick: () => toggleTile(clue.id) },
+      { sep: true },
+      cover,
+    ]);
   }
 
   function nextRound(delta: number): void {
@@ -484,49 +519,98 @@
       toast(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
   }
 
-  /** C / X in the final reveal: judge the spotlit player. */
-  function finalJudgeKey(right: boolean): void {
-    const id = session.final?.current;
-    if (!id || session.phase !== 'final' || session.finalStep !== 'reveal') return;
+  /** Judge a player in the final reveal (their wager goes up with it). */
+  function judge(id: string, right: boolean): void {
     finalShow(session, id);
     finalJudge(session, game, id, right);
   }
 
-  /** The newest score step not undone (for choosing between the score log and the action log). */
-  function lastScoreTs(): number {
-    const here = new Set(session.players.map((p) => p.id));
-    for (let i = session.scoreLog.length - 1; i >= 0; i--) {
-      const e = session.scoreLog[i];
-      if (!e.undone && here.has(e.playerId)) return e.ts;
-    }
-    return -1;
+  /** C / X in the final reveal: judge the spotlit player. */
+  function finalJudgeKey(right: boolean): void {
+    const id = session.final?.current;
+    if (!id || session.phase !== 'final' || session.finalStep !== 'reveal') return;
+    judge(id, right);
   }
 
   /** The action log goes back into earlier rounds too: Undo and Redo say where, since nobody can see it happen. */
   const inRound = (a: ActionEvent) => (a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '');
 
-  /** Ctrl+Z undoes whichever came last: a score change or an RPG action (move, stat, item, reveal…). */
-  function doUndo(): void {
-    const a = lastAction(session);
-    if (a && a.ts >= lastScoreTs()) {
-      undoAction(session, game);
+  /** What ↶ Undo would take back next, and ↷ Redo bring back (their tooltips say it). */
+  const undoText = $derived.by(() => {
+    const next = nextUndo(session);
+    if (next?.log === 'action') {
+      const a = session.actionLog!.at(-1)!;
+      return `${a.text}${inRound(a)}`;
+    }
+    const here = (e: ScoreEvent) => !e.undone && stepOf(e) === next?.id && session.players.some((p) => p.id === e.playerId);
+    return next ? describeStep(session, session.scoreLog.filter(here), sym) : null;
+  });
+  const redoText = $derived.by(() => {
+    const from = redoFrom(session, [...undone]);
+    const a = session.actionRedo?.at(-1);
+    if (from === 'action' && a) return `${a.text}${inRound(a)}`;
+    const top = session.scoreLog.find((e) => e.id === session.redoStack.at(-1));
+    return top ? describeStep(session, session.scoreLog.filter((e) => e.undone && stepOf(e) === stepOf(top) && session.redoStack.includes(e.id)), sym) : null;
+  });
+
+  /**
+   * One Undo: whichever came last, a score change or a step (an RPG or board-game move, an item, a tile marked played, the
+   * picker, a Players or Final change). Returns what it took back, or null with nothing to undo.
+   */
+  function undoOnce(): string | null {
+    const next = nextUndo(session);
+    if (next?.log === 'action') {
+      const a = undoAction(session, game)!;
       undone.push({ log: 'action', id: a.id });
-      return toast(`Undid ${a.text}${inRound(a)}`, 4000);
+      return `${a.text}${inRound(a)}`;
     }
     const events = undo(session);
-    if (!events.length) return toast('Nothing to undo');
+    if (!events.length) return null;
     undone.push({ log: 'score', id: stepOf(events[0]) });
+    return describeStep(session, events, sym);
+  }
+
+  /** One Redo, back the way the Undos went. Returns what it brought back, or null with nothing to redo. */
+  function redoOnce(): string | null {
+    if (redoFrom(session, undone) === 'action') {
+      const a = redoAction(session, game);
+      if (a) return `${a.text}${inRound(a)}`;
+    }
+    const events = redo(session);
+    return events.length ? describeStep(session, events, sym) : null;
+  }
+
+  function doUndo(): void {
+    const text = undoOnce();
     // No Redo button in the toast: it sits over the host's nav row. ↷ Redo is next to ↶ Undo (or Ctrl+Shift+Z).
-    toast(`Undid ${describeStep(session, events, sym)}`, 4000);
+    if (text) toast(`Undid ${text}`, 4000);
+    else toast('Nothing to undo');
   }
 
   function doRedo(): void {
-    if (redoFrom(session, undone) === 'action') {
-      const a = redoAction(session, game);
-      if (a) return toast(`Redid ${a.text}${inRound(a)}`);
+    const text = redoOnce();
+    if (text) toast(`Redid ${text}`);
+  }
+
+  const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  /** 🕘 History's ↶ Back to here: undo every step newer than the row (a roll or a change undone in Scores marks a moment). */
+  function undoBackTo(row: TimelineRow): void {
+    const moment = row.kind === 'roll' || (row.kind === 'score' && row.state === 'off');
+    let n = 0;
+    // Undo goes newest first, so the row is reached once everything newer is undone.
+    for (let next = nextUndo(session); next && next.id !== row.id && (moment ? next.ts > row.ts : next.ts >= row.ts) && n < 1000; next = nextUndo(session)) {
+      if (!undoOnce()) break;
+      n++;
     }
-    const events = redo(session);
-    if (events.length) toast(`Redid ${describeStep(session, events, sym)}`);
+    if (n) toast(`Undid ${n} step${n === 1 ? '' : 's'} (back to ${clock(row.ts)})`, 4000);
+  }
+
+  /** 🕘 History's ↷ Redo to here: redo until that row is back. */
+  function redoUpTo(row: TimelineRow): void {
+    let n = 0;
+    while (stillUndone(session, row) && n < 1000 && redoOnce()) n++;
+    if (n) toast(`Redid ${n} step${n === 1 ? '' : 's'} (up to ${clock(row.ts)})`);
   }
 
   // ---------- RPG rounds ----------
@@ -659,8 +743,28 @@
         ]);
       }
     }
+    const f = session.final;
+    if (session.phase === 'final' && session.finalStep === 'reveal' && f && who && f.order.includes(who.id)) {
+      const id = who.id;
+      return showMenu(e, [
+        { heading: who.name },
+        { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => (f.current = id) },
+        { label: 'Show wager', disabled: !!f.shown[id], onclick: () => finalShow(session, id) },
+        { label: `✔ Right${f.current === id ? ' (C)' : ''}`, onclick: () => judge(id, true) },
+        { label: `✘ Wrong${f.current === id ? ' (X)' : ''}`, onclick: () => judge(id, false) },
+      ]);
+    }
     // Anywhere else on the host's stage: never the browser's own menu (it may be on stream).
     return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
+  }
+
+  /** A score plate on the stage during the Final reveals: spotlight that player (their wager stays hidden until N). */
+  function spotlight(id: string): void {
+    const f = session.final;
+    if (!f || session.finalStep !== 'reveal') return;
+    const round = currentFinal(session, game);
+    if (f.order.includes(id)) f.current = id;
+    else toast(`${playerName(session, id)} isn't playing ${round ? finalName(round) : 'this Final'}`);
   }
 
   /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
@@ -747,13 +851,84 @@
     selected = selected.filter((x) => x !== id);
   }
 
+  // Each change in the Players dialog (a name or a color set, a player moved, added, removed or restored) is one
+  // undoable step: the step under way ends with the click or the change that made it, and the next one begins.
+  let rosterStep: ((text: string) => void) | null = null;
+  let rosterBefore: { players: Player[]; removed: Player[] } = { players: [], removed: [] };
+
+  function beginRoster(): void {
+    rosterBefore = { players: $state.snapshot(session.players), removed: $state.snapshot(session.removedPlayers ?? []) };
+    rosterStep = startStep(session);
+  }
+
+  function commitRoster(): void {
+    if (!rosterStep) return;
+    // The round's party or turn order takes the change in with it, so its Undo puts them back too.
+    catchUp();
+    rosterStep(rosterChange(rosterBefore, { players: session.players, removed: session.removedPlayers }));
+    beginRoster();
+  }
+
+  function openPlayers(): void {
+    removing = null;
+    showPlayers = true;
+    beginRoster();
+  }
+
+  function closePlayers(): void {
+    commitRoster();
+    rosterStep = null;
+    showPlayers = false;
+  }
+
+  /** Esc in the Players dialog: out of a name box first, then away from the "Remove?" question, then the dialog closes. */
+  function playersEsc(e: KeyboardEvent): void {
+    e.preventDefault();
+    if (e.target instanceof HTMLElement && e.target.matches('input, select')) e.target.blur();
+    else if (removing) removing = null;
+    else closePlayers();
+  }
+
+  /**
+   * Enter in a board-game round with nobody selected: move the steps in the host panel's box, or on a board that moves one
+   * space at a time, take the only way on. False when there's nothing to move (Enter then awards, as anywhere else).
+   */
+  function boardEnter(): boolean {
+    const { round, bs } = boardNow(game, session);
+    if (!round || !bs || bs.fork) return false;
+    let steps = bgSteps;
+    let way: string | undefined;
+    if (round.mover.kind === 'step') {
+      const id = currentPlayer(bs);
+      const at = id ? bs.positions[id]?.space : undefined;
+      const ways = id && at ? waysOn(round, at, bs.prev?.[id]) : [];
+      if (ways.length !== 1) return false;
+      [steps, way] = [1, ways[0]];
+    }
+    if (!steps) return false;
+    toast(moveNow(game, session, steps, way), 3000);
+    app.live.overlay = null;
+    bgSteps = null;
+    return true;
+  }
+
+  // What Tab (or Shift+Tab) moved the focus to. (Not :focus-visible: browsers show a clicked button's focus too, once any
+  // key is pressed.)
+  let tabbing = false;
+  let tabbedTo: EventTarget | null = null;
+
   function onkey(e: KeyboardEvent): void {
+    if (showPlayers && e.key === 'Escape' && e.target) return playersEsc(e);
     // The live screen editor (RPG) has its own keys.
     if (app.pregame || showPlayers || showKeys || showSound || app.editGame || rpgMap) return;
-    const t = e.target as HTMLElement;
+    // (A key from the audience window has no target here.)
+    const t = e.target instanceof HTMLElement ? e.target : null;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
-    if (t.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t.matches('input'))) return;
+    if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
+    // Enter or Space on a button reached with Tab presses it (a tile opens). On a button clicked with the mouse, Enter
+    // still awards.
+    if ((e.key === ' ' || e.key === 'Enter') && t && t === tabbedTo && t.matches('button, [role="button"]')) return;
     if (e.key === '?') {
       showKeys = true;
       return;
@@ -793,7 +968,7 @@
       else toggleMap(game, session);
       return;
     }
-    // The toolset's keys in RPG and board-game rounds: a player's sheet (I) and the cover (B).
+    // The toolset's keys in RPG and board-game rounds: a player's sheet (I) and the cover (B, like K everywhere).
     if ((session.phase === 'rpg' || session.phase === 'boardgame') && !e.shiftKey && (k === 'i' || k === 'b')) {
       e.preventDefault();
       if (k === 'b') app.live.cover = !app.live.cover;
@@ -809,11 +984,25 @@
       return;
     }
 
-    if (/^[1-9]$/.test(e.key)) {
-      const p = session.players[+e.key - 1];
-      if (!p) return;
-      if (pickerPending) session.currentPickerId = p.id;
-      else selected = selected.includes(p.id) ? selected.filter((x) => x !== p.id) : [...selected, p.id];
+    if (/^[0-9]$/.test(e.key)) {
+      const n = +e.key;
+      const reveal = session.phase === 'final' && session.finalStep === 'reveal' ? session.final : undefined;
+      if (pickerPending) {
+        const p = session.players[n - 1];
+        if (!p) return;
+        setPicker(session, p.id);
+      } else if (reveal && n) {
+        // The final reveals: spotlight the Nth player in the reveal order (N shows their wager).
+        if (!reveal.order[n - 1]) return;
+        reveal.current = reveal.order[n - 1];
+      } else if (!n) {
+        // 0: everyone, or no one (a group award is 0, then Enter).
+        selected = selected.length === session.players.length ? [] : session.players.map((p) => p.id);
+      } else {
+        const p = session.players[n - 1];
+        if (!p) return;
+        selected = selected.includes(p.id) ? selected.filter((x) => x !== p.id) : [...selected, p.id];
+      }
       pickerPending = false;
       return;
     }
@@ -821,6 +1010,8 @@
 
     switch (k) {
       case 'enter':
+        // Board games with nobody selected: move (see boardEnter).
+        if (session.phase === 'boardgame' && !selected.length && !e.shiftKey && boardEnter()) break;
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;
@@ -835,6 +1026,7 @@
         // Shift+Esc cancels: back to the board without using up the tile.
         else if (session.phase === 'clue' && e.shiftKey) cancelClue();
         else if (session.phase === 'clue') back();
+        else if (selected.length) selected = [];
         break;
       case 'd':
         // Board games: roll (or spin) the round's own mover.
@@ -860,9 +1052,13 @@
         toggleScoreboard(app.live);
         break;
       case 'n':
-        if (session.phase === 'boardgame') turnNow(game, session, 1);
+        // Shift+N goes the other way: the turn before, or the player before in the reveals.
+        if (session.phase === 'boardgame') turnNow(game, session, e.shiftKey ? -1 : 1);
+        else if (session.phase === 'final' && session.finalStep === 'reveal') {
+          if (e.shiftKey) finalBack(session);
+          else finalRevealNext();
+        } else if (e.shiftKey) break;
         else if (session.phase === 'board' && session.intro) intro();
-        else if (session.phase === 'final' && session.finalStep === 'reveal') finalRevealNext();
         else if (session.phase === 'final' && (session.finalStep !== 'wagers' || finalWagersOk(session, wagerLimitsOff))) {
           finalNext(session, game);
           finalStep();
@@ -873,8 +1069,13 @@
         finalJudgeKey(k === 'c');
         break;
       case 't':
-        if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
+        // Shift+T: 10 more seconds on the countdown that's up.
+        if (e.shiftKey && app.live.timer) addTime(app.live, 10);
+        else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
         else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
+        break;
+      case 'k':
+        app.live.cover = !app.live.cover;
         break;
       case 'p':
         pickerPending = true;
@@ -919,7 +1120,14 @@
   }
 </script>
 
-<svelte:window onkeydown={onkey} />
+<svelte:window
+  onkeydown={onkey}
+  onkeydowncapture={(e) => (tabbing = e.key === 'Tab')}
+  onfocusin={(e) => {
+    tabbedTo = tabbing ? e.target : null;
+    tabbing = false;
+  }}
+/>
 
 {#if app.pregame}
   <div class="pregame">
@@ -1002,11 +1210,9 @@
             live={app.live}
             role={dual ? 'mirror' : 'single'}
             onpick={pick}
-            onunmark={(ref) => {
-              const id = getClue(game, ref)?.clue.id;
-              if (id && session.used[id]) toggleTile(id);
-            }}
-            onpicker={(id) => (session.currentPickerId = session.currentPickerId === id ? undefined : id)}
+            ontilemenu={tileMenu}
+            onpicker={(id) => setPicker(session, session.currentPickerId === id ? undefined : id)}
+            onspotlight={spotlight}
             onact={stageAct}
             onobject={(id) => (rpgObject = id)}
             onavatar={avatarAct}
@@ -1032,6 +1238,9 @@
         bind:rpgAsk
         bind:wagerLimitsOff
         bind:timerSeconds
+        bind:bgSteps
+        {undoText}
+        {redoText}
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}
@@ -1055,8 +1264,11 @@
         onfinalstep={finalStep}
         ontiebreaker={tiebreaker}
         ontiebreakerdone={() => ((session.phase = 'end'), (app.live.timer = null))}
-        onlog={() => (showLog = !showLog)}
-        onplayers={() => ((removing = null), (showPlayers = true))}
+        onlog={(tab) => {
+          if (tab) logTab = tab;
+          showLog = !!tab || !showLog;
+        }}
+        onplayers={openPlayers}
         {dual}
         onaudience={toggleAudience}
         onsound={() => (showSound = true)}
@@ -1076,10 +1288,16 @@
     <KeysHelp onclose={() => (showKeys = false)} />
   {/if}
   {#if showLog}
-    <ScoreLog {session} {sym} onreopen={toggleTile} onclose={() => (showLog = false)} />
+    <ScoreLog {game} {session} {sym} bind:tab={logTab} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
-    <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && (showPlayers = false)}>
+    <!-- Every click or change in here ends a step (see commitRoster). -->
+    <div
+      class="backdrop"
+      role="presentation"
+      onclick={(e) => (e.target === e.currentTarget ? closePlayers() : commitRoster())}
+      onchange={commitRoster}
+    >
       <div class="modal" role="dialog" aria-modal="true" aria-label="Players">
         <h2>Players</h2>
         <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
@@ -1109,7 +1327,7 @@
             {/each}
           </div>
         {/if}
-        <div class="row"><span class="spacer"></span><button class="primary" onclick={() => (showPlayers = false)}>Done</button></div>
+        <div class="row"><span class="spacer"></span><button class="primary" onclick={closePlayers}>Done</button></div>
       </div>
     </div>
   {/if}

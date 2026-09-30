@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newId, newTextEl, type Game, type Session, type Shop } from './model';
-import { applyScore, newSession, redo, score, setScore, stepOf, toggleEvent, toggleStep, undo } from './session';
+import { newGame, newId, newTextEl, type BoardRound, type Game, type Session, type Shop } from './model';
+import { applyScore, backToBoard, finalJudge, finalNext, goToRound, newSession, openClue, redo, removePlayer, restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo } from './session';
+import { jeopardyGame } from './testgame';
 import { addScreenBeside, newWorld } from './rpg';
 import {
   addStat,
@@ -22,6 +23,7 @@ import {
   SCORE_CURRENCY,
   shopCurrency,
   sell,
+  setPicker,
   setStat,
   statValue,
   stockLeft,
@@ -397,3 +399,97 @@ describe('worn items', () => {
   });
 });
 
+describe('the host’s own choices', () => {
+  function show() {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#e6194b' },
+      { id: 'b', name: 'Bob', color: '#3cb44b' },
+    ];
+    return { game, session: newSession(game) };
+  }
+
+  it('puts a tile marked played back, and leaves the tiles closed since alone', () => {
+    const { game, session } = show();
+    const tile = (cat: number) => (game.rounds[0] as BoardRound).categories[cat].clues[0].id;
+    logged(session, 'Memes $200 marked as played', () => toggleUsed(session, tile(0)));
+    // Played the usual way: back to the board marks it used, no step.
+    openClue(session, { round: 0, cat: 1, row: 0 }, game);
+    backToBoard(session, game);
+    expect(Object.keys(session.used).sort()).toEqual([tile(0), tile(1)].sort());
+    undoAction(session);
+    expect(Object.keys(session.used)).toEqual([tile(1)]);
+    redoAction(session);
+    expect(session.used[tile(0)]).toBe(true);
+    // Reopening the tile just closed, then undoing that, closes it again.
+    logged(session, 'back on the board', () => toggleUsed(session, tile(1)));
+    expect([session.used[tile(1)], session.lastClosed]).toEqual([undefined, null]);
+    undoAction(session);
+    expect(session.used[tile(1)]).toBe(true);
+  });
+
+  it('puts back the picker, co-winners and the roll-off’s winner', () => {
+    const { session } = show();
+    setPicker(session, 'b', ' (roll-off)');
+    setPicker(session, 'b'); // no change, no step
+    setPicker(session, undefined);
+    logged(session, 'Co-winners declared', () => (session.coWinners = true));
+    logged(session, 'Ann won the roll-off', () => (session.rollOffWinner = 'a'));
+    expect(session.actionLog!.map((e) => e.text)).toEqual(['Bob picks next (roll-off)', 'No picker', 'Co-winners declared', 'Ann won the roll-off']);
+    undoAction(session);
+    undoAction(session);
+    expect([session.rollOffWinner, session.coWinners, session.currentPickerId]).toEqual([undefined, undefined, undefined]);
+    undoAction(session);
+    expect(session.currentPickerId).toBe('b');
+    undoAction(session);
+    expect(session.currentPickerId).toBeUndefined();
+  });
+
+  it('puts back who plays a Final, its reveal order and wagers, never its results', () => {
+    const { game, session } = show();
+    applyScore(session, game, ['a'], 300, 'x');
+    applyScore(session, game, ['b'], 200, 'x');
+    goToRound(session, game, 1);
+    const f = session.final!;
+    logged(session, 'Bob sits out', () => ((f.players = ['a']), (f.order = ['a'])));
+    logged(session, 'Bob plays', () => ((f.players = ['a', 'b']), (f.order = ['a', 'b'])));
+    logged(session, 'Reveal order', () => (f.order = ['b', 'a']));
+    finalNext(session, game);
+    const wager = startStep(session);
+    f.wagers.a = 3;
+    f.wagers.a = 30;
+    wager('Ann’s wager: $30');
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    finalJudge(session, game, 'a', true);
+    // Undo of the wager (taken straight from the action log here) leaves the judgment and its points alone.
+    undoAction(session);
+    expect([f.wagers.a, f.results.a, score(session, 'a')]).toEqual([undefined, 'right', 330]);
+    undoAction(session);
+    undoAction(session);
+    expect([f.players, f.order]).toEqual([['a'], ['a']]);
+    // After the game moved on, a step still finds its Final.
+    goToRound(session, game, 2);
+    undoAction(session);
+    expect(session.final!.players).toEqual(['a', 'b']);
+  });
+
+  it('puts back the players: a rename, a new player, one removed and restored', () => {
+    const { game, session } = show();
+    applyScore(session, game, ['a'], 300, 'x');
+    const step = (text: string, change: () => void) => logged(session, text, change);
+    step('Renamed Ann to Alice', () => (session.players[0].name = 'Alice'));
+    step('Added Cat', () => session.players.push({ id: 'c', name: 'Cat', color: '#00f', startScore: 0 }));
+    step('Removed Bob', () => removePlayer(session, 'b'));
+    step('Restored Bob', () => restorePlayer(session, 'b'));
+    expect(session.players.map((p) => p.name)).toEqual(['Alice', 'Cat', 'Bob']);
+    undoAction(session);
+    expect([session.players.map((p) => p.name), session.removedPlayers?.map((p) => p.name)]).toEqual([['Alice', 'Cat'], ['Bob']]);
+    undoAction(session);
+    undoAction(session);
+    undoAction(session);
+    expect([session.players.map((p) => p.name), session.removedPlayers ?? []]).toEqual([['Ann', 'Bob'], []]);
+    expect(score(session, 'a')).toBe(300);
+    redoAction(session);
+    expect(session.players[0].name).toBe('Alice');
+  });
+});

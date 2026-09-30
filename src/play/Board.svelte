@@ -8,13 +8,13 @@
     game,
     session,
     onpick,
-    onunmark,
+    ontilemenu,
   }: {
     game: Game;
     session: Session;
     onpick?: (ref: ClueRef) => void;
-    /** Host views only: right-clicking a used tile puts it back (used tiles then stay enabled but can't be picked). */
-    onunmark?: (ref: ClueRef) => void;
+    /** Host views only: a tile's right-click menu (used tiles then stay enabled for it, but can't be picked). */
+    ontilemenu?: (e: MouseEvent, ref: ClueRef) => void;
   } = $props();
   const round = $derived.by(() => {
     const r = game.rounds[session.currentRound];
@@ -64,17 +64,10 @@
           class:used
           class:fill={intro?.stage === 'fill'}
           style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
-          disabled={(used && !onunmark) || !onpick || !!intro}
+          disabled={(used && !ontilemenu) || !onpick || !!intro}
           aria-disabled={used || undefined}
           onclick={() => !used && onpick?.({ round: session.currentRound, cat: ci, row })}
-          oncontextmenu={onunmark &&
-            ((e) => {
-              // A used tile's right-click reopens it. Any other goes on to the stage's own menu (⏸ Cover), so the browser's
-              // never shows on the host's stage (it may be on stream).
-              if (!session.used[clue.id]) return;
-              e.preventDefault();
-              onunmark({ round: session.currentRound, cat: ci, row });
-            })}
+          oncontextmenu={ontilemenu && !clue.empty ? (e) => ontilemenu(e, { round: session.currentRound, cat: ci, row }) : undefined}
           aria-label="{categoryLabel(cat)} for {clueValue(round, row, clue)}"
         >
           {#if !used}

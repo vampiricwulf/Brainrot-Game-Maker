@@ -818,9 +818,11 @@ assert(await page.getByRole('button', { name: '🙈 Hide answer' }).isVisible(),
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 assert(await isUsed(0), 'tile marked used after returning to board');
-// A used tile can be put back: right-click it on the host's board (no browser menu), then play it again.
+// A used tile can be put back: right-click it on the host's board (its own menu, which says who scored it), then play it again.
 await tile(0).click({ button: 'right', force: true });
-assert(!(await isUsed(0)), 'right-clicking a used tile puts it back on the board');
+assert((await page.getByRole('menu').innerText()).includes('Player 1 +$350, Player 2 +$350, Player 3 −$200'), 'right-clicking a used tile says who scored it');
+await page.getByRole('menuitem', { name: '↶ Put it back on the board' }).click();
+assert(!(await isUsed(0)), 'its menu puts a used tile back on the board');
 assert((await page.locator('.toast').innerText()).includes('Memes $200 is back on the board'), 'reopening says which tile came back');
 await tile(0).click();
 await page.locator('.full').waitFor();
@@ -863,6 +865,10 @@ await page.locator('.full').waitFor();
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 
+// Putting a tile back is a step too, in order with score changes: Ctrl+Z takes back both reopens, then the score.
+await page.keyboard.press('Control+z');
+assert((await page.locator('.toast').innerText()).includes('Undid Memes $200 back on the board'), 'Ctrl+Z first takes back the tile reopened last');
+await page.keyboard.press('Control+z');
 await page.keyboard.press('Control+z');
 assert((await scoreOf(2)) === '$0', 'Ctrl+Z undoes the last score change');
 // Esc while editing a score cancels the edit.
@@ -1300,6 +1306,7 @@ await page.getByRole('button', { name: '◀ Back to editor' }).click();
 // The saved game kept its media through "New": resume it and the image still shows.
 await page.getByRole('button', { name: 'Resume game' }).click();
 await tile(0).click({ button: 'right', force: true });
+await page.getByRole('menuitem', { name: '↶ Put it back on the board' }).click();
 await tile(0).click();
 await page.locator('.full img').waitFor();
 assert((await page.locator('.full .missing').count()) === 0, 'New keeps the media of the game waiting to be resumed');

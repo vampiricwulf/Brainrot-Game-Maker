@@ -2,40 +2,49 @@
 <script lang="ts">
   let { onclose }: { onclose: () => void } = $props();
   const KEYS: [string, string][] = [
-    ['1 – 9', 'Select / deselect player N for scoring'],
+    ['1 – 9', 'Select / deselect player N for scoring (in the Final reveals: spotlight the Nth player)'],
+    ['0', 'Select everyone, or no one'],
     ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
     ['R', 'Reveal the answer'],
-    ['Esc / B', 'Close the tool overlay, or go back to the board (the tile is used up)'],
+    ['Esc / B', 'Close the log or the tool overlay, go back to the board (the tile is used up), or clear the selection'],
     ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given for it)'],
-    ['Right-click a used tile', 'Put it back on the board (or use ↶ Reopen in the host panel)'],
+    ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back on the board'],
     ['N', 'Next step (round intro, final round; in the reveals: show the wager, then the next player)'],
-    ['C / X', 'Final reveals: mark the spotlit player right / wrong'],
+    ['Shift+N', 'Final reveals: back to the player before'],
+    ['C / X', 'Final reveals: mark the spotlit player right / wrong (or right-click their score on the stage)'],
     ['T', 'Start / pause the countdown (the seconds typed in the ⏱ box, if any)'],
+    ['Shift+T', '10 more seconds on the countdown'],
     ['P then 1 – 9', 'Make player N the current picker'],
     ['D', 'Roll the last dice again'],
     ['W', 'Spin the wheel (or open the first saved wheel)'],
     ['O', 'Roll-off: who goes first'],
     ['S', 'Scoreboard overlay'],
+    ['K', 'Cover: viewers see only a “Be right back” card (again: uncover)'],
     ['Space', 'Play / pause the slide’s video or audio'],
     ['← / →', 'Seek the media back / forward 5 s'],
     ['M', 'Mute / unmute the media'],
     ['Y', 'Open YouTube / online media in its own window'],
-    ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo the last change: a score (a whole multi-player award at once) or an RPG move, stat, item or reveal'],
+    [
+      'Ctrl+Z / Ctrl+Shift+Z',
+      'Undo / redo the last change: a score (a whole multi-player award at once), an RPG or board-game move, stat, item or reveal, a tile marked played or put back, the picker, a change in 👥 Players or in the Final’s players, order and wagers',
+    ],
     ['RPG: Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],
     ['RPG: Alt+Q W E A D Z X C / Alt+arrows', 'Move the party (laptop keys)'],
     ['RPG: J', 'The full map: pick any screen and jump the party (or some players) there'],
     ['RPG: G', 'Regroup everyone here'],
     ['RPG: M', 'Map on screen'],
     ['RPG / board game: I', 'Show the selected player’s sheet (again: the next selected, then close)'],
-    ['RPG / board game: B', 'Cover: viewers see only a “Be right back” card'],
+    ['RPG / board game: B', 'Cover, like K'],
     ['Board game: D', 'Roll the round’s dice (or spin its wheel): the result fills in the steps'],
-    ['Board game: N', 'Next player’s turn'],
-    ['L', 'Score & roll log'],
+    ['Board game: Enter', 'With nobody selected: move the steps (on a one-space board, the only way on)'],
+    ['Board game: N / Shift+N', 'Next / previous player’s turn'],
+    ['L', 'Log: the history (go back to any point), scores and rolls'],
     ['A', 'Open / focus the audience window (never closes it)'],
     ['H', 'Hide / show the host controls'],
     ['F', 'Full-screen'],
     ['?', 'This list'],
   ];
+
 </script>
 
 <svelte:window
@@ -63,6 +72,7 @@
         {/each}
       </tbody>
     </table>
+    <p class="muted">The keys work in the audience window too (F there makes it full-screen).</p>
   </div>
 </div>
 
@@ -92,6 +102,9 @@
   }
   .row {
     margin-bottom: 10px;
+  }
+  p {
+    margin: 10px 0 0;
   }
   td {
     padding: 3px 10px 3px 0;

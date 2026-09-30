@@ -3,6 +3,7 @@
   import { toast } from '../../lib/app.svelte';
   import { formatPoints, isFinal, roundName, type Game, type Session } from '../../lib/model';
   import { places, tiedLeaders } from '../../lib/session';
+  import { logged } from '../../lib/toolset';
 
   let {
     game,
@@ -60,16 +61,14 @@
       <button onclick={ontiebreaker} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : "Write one on the editor's Tiebreaker tab"}>
         ❓ Tiebreaker clue
       </button>
-      <button onclick={() => (session.coWinners = true)}>🤝 Declare co-winners</button>
+      <button onclick={() => logged(session, 'Co-winners declared', () => (session.coWinners = true))}>🤝 Declare co-winners</button>
     </div>
   </div>
 {:else if session.rollOffWinner && session.players.some((p) => p.id === session.rollOffWinner)}
-  <div class="row">
-    <span class="muted">🎲 {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker roll-off.</span>
-    <button class="ghost small" onclick={() => (session.rollOffWinner = undefined)}>Undo</button>
-  </div>
+  <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
+  <div class="muted">🎲 {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker roll-off.</div>
 {:else if session.coWinners}
-  <div class="row"><span class="muted">Co-winners declared.</span><button class="ghost small" onclick={() => (session.coWinners = false)}>Undo</button></div>
+  <div class="muted">🤝 Co-winners declared.</div>
 {/if}
 <div class="row">
   {#if last}
@@ -87,8 +86,5 @@
     padding: 8px;
     border: 1px solid var(--warn);
     border-radius: 8px;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>
