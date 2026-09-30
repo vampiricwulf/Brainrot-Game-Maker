@@ -1,7 +1,7 @@
 <!-- Edit a list of actions (an object's buttons, an item's "Use"). Each becomes a button the host presses in play. -->
 <script lang="ts">
   import { editedGame } from '../../lib/app.svelte';
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { dropMenu } from '../../lib/menustate.svelte';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
@@ -97,11 +97,10 @@
     if (!actions.length) actions = undefined;
   }
 
-  /** The kinds of action, under the button (kept on screen, closed by Esc or a click elsewhere, like a right-click menu). */
+  /** The kinds of action, under the button (a second click, Esc or a click elsewhere closes it). */
   function openMenu(e: MouseEvent): void {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    showMenu(
-      new MouseEvent('click', { clientX: r.left, clientY: r.bottom + 2 }),
+    dropMenu(
+      e,
       // Board spaces send players to a space (there are no screens); Reveal / Hide need objects on the same screen.
       KINDS.filter(([k]) => (k === 'goto' ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(([k, l]) => ({
         label: l,
@@ -144,7 +143,9 @@
       <div class="fields">
         {#if a.do === 'stat'}
           <select bind:value={a.field} aria-label="Stat">
-            {#if !numbers.some((f) => f.id === a.field)}<option value={a.field}>{numbers.length ? '— choose —' : 'Add a number stat in 📊 Stats & Items'}</option>{/if}
+            {#if !numbers.some((f) => f.id === a.field)}
+              <option value={a.field}>{a.field && !game.statFields?.some((f) => f.id === a.field) ? '⚠ Deleted stat — pick another' : numbers.length ? '— choose —' : 'Add a number stat in 📊 Stats & Items'}</option>
+            {/if}
             {#each numbers as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
           <select bind:value={a.op} aria-label="Change"><option value="add">add</option><option value="set">set to</option></select>
@@ -154,7 +155,9 @@
           <select bind:value={a.op} aria-label="Give or take"><option value="give">Give</option><option value="take">Take</option></select>
           <input type="number" min="1" bind:value={a.qty} aria-label="How many" class="n" />
           <select bind:value={a.item} aria-label="Item">
-            {#if !game.items?.some((it) => it.id === a.item)}<option value={a.item}>{game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>{/if}
+            {#if !game.items?.some((it) => it.id === a.item)}
+              <option value={a.item}>{a.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>
+            {/if}
             {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
           </select>
           {@render who(a)}
@@ -173,6 +176,7 @@
                 else if (a.also) a.also[wi - 1] = v;
               }}
             >
+              {#if id !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === id)}<option value={id}>⚠ Deleted wheel — pick another</option>{/if}
               <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
               {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
             </select>
@@ -205,12 +209,14 @@
           {@render who(a)}
         {:else if a.do === 'reveal' || a.do === 'hide'}
           <select bind:value={a.object} aria-label="Object">
-            {#if !objects.some((o) => o.id === a.object)}<option value={a.object}>— choose —</option>{/if}
+            {#if !objects.some((o) => o.id === a.object)}<option value={a.object}>{a.object ? '⚠ Deleted object — pick another' : '— choose —'}</option>{/if}
             {#each objects as o (o.id)}<option value={o.id}>{o.name || o.kind}</option>{/each}
           </select>
         {:else if a.do === 'shop'}
           <select bind:value={a.shop} aria-label="Shop">
-            {#if !game.shops?.some((s) => s.id === a.shop)}<option value={a.shop}>{game.shops?.length ? '— choose —' : 'Add a shop in 📊 Stats & Items'}</option>{/if}
+            {#if !game.shops?.some((s) => s.id === a.shop)}
+              <option value={a.shop}>{a.shop ? '⚠ Deleted shop — pick another' : game.shops?.length ? '— choose —' : 'Add a shop in 📊 Stats & Items'}</option>
+            {/if}
             {#each game.shops ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
           </select>
         {:else if a.do === 'timer'}
@@ -226,7 +232,9 @@
             }}
             aria-label="Send to"
           >
-            {#if !(a.zone ? board?.zones.some((z) => z.id === a.zone) : board?.spaces.some((sp) => sp.id === a.space))}<option value={to}>— choose —</option>{/if}
+            {#if !(a.zone ? board?.zones.some((z) => z.id === a.zone) : board?.spaces.some((sp) => sp.id === a.space))}
+              <option value={to}>{a.zone ? '⚠ Deleted zone — pick another' : a.space ? '⚠ Deleted space — pick another' : '— choose —'}</option>
+            {/if}
             {#each board?.spaces ?? [] as sp (sp.id)}<option value="s:{sp.id}">{sp.name}</option>{/each}
             {#each board?.zones ?? [] as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
           </select>

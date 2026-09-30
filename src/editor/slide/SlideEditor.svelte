@@ -761,7 +761,8 @@
             <button onclick={() => addShape('line')}>― Line</button>
             <button onclick={() => addShape('arrow')}>➝ Arrow</button>
             <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw one line; hold Shift when letting go to close the shape">✏ Draw a line</button>
-            <button onclick={() => ((shapeMenu = false), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the slide, then insert it">🖌 Drawpad…</button>
+            <!-- Nothing stays selected behind the drawpad. -->
+            <button onclick={() => ((shapeMenu = false), (selected = []), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the slide, then insert it">🖌 Drawpad…</button>
             <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
           </div>
         {/if}

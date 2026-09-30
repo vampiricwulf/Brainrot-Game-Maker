@@ -21,6 +21,9 @@
   let { round }: { round: BoardGameRound } = $props();
   const game = $derived(app.game);
 
+  /** The wheel a turn's move spins, if it does. */
+  const moverWheel = $derived(round.mover.kind === 'wheel' ? round.mover.wheel : null);
+
   let view = $state<'spaces' | 'backdrop' | 'zones'>('spaces');
   let selId = $state<string | null>(null);
   const sel = $derived(spaceById(round, selId ?? undefined));
@@ -233,6 +236,7 @@
           round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
         }}
       >
+        {#if moverWheel && !game.wheels.some((w) => w.id === moverWheel)}<option value={moverWheel}>⚠ Deleted wheel — pick another</option>{/if}
         <option value="dice">🎲 Dice</option>
         <option value="step">👣 One space a turn (pick the way)</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>🎡 {w.name}</option>{/each}

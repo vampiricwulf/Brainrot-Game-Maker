@@ -312,17 +312,21 @@
   <h3>Shops</h3>
   <div class="row"><button onclick={addShop}>＋ Shop</button></div>
   {#each game.shops ?? [] as s (s.id)}
+    <!-- What the shop charges: with its currency stat deleted, that's the first currency (or points). -->
+    {@const cur = shopCurrency(game, s)}
     <div class="shop">
       <div class="row">
         <input class="name" bind:value={s.name} aria-label="Shop name" />
         <label class="small">
           Charges
           <select
-            value={shopCurrency(game, s) === 'score' ? SCORE_CURRENCY : s.currency ?? currencyFields(game)[0]?.id}
+            value={cur === 'score' ? SCORE_CURRENCY : cur.id}
             onchange={(e) => (s.currency = e.currentTarget.value)}
             aria-label="{s.name} currency"
           >
             <option value={SCORE_CURRENCY}>Points (the score)</option>
+            <!-- A stat no longer ticked as a currency is still what it charges. -->
+            {#if cur !== 'score' && !currencyFields(game).includes(cur)}<option value={cur.id}>{cur.name}</option>{/if}
             {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
         </label>
