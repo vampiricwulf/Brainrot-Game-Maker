@@ -3,7 +3,6 @@
 import { ensureWorld } from './rpg';
 import { ensureBoard } from './boardgame';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide } from './model';
-import { slideHasContent } from './usage';
 
 export function newSession(game: Game): Session {
   return {
@@ -259,7 +258,7 @@ export function awardOpen(session: Session): boolean {
 
 /** Nothing on the slide but empty text. */
 export function blankSlide(slide: Slide): boolean {
-  return !slideHasContent(slide) && !slide.background.image;
+  return !slide.background.image && slide.elements.every((e) => e.kind === 'text' && !e.text.trim());
 }
 
 /** A wheel or dice tile with nothing to ask (no question or answer): the spin or roll is all there is to it. */
@@ -726,6 +725,7 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
   if (found !== null && fits) return;
   const seen = session.introducedRounds ?? [];
   if (!seen.includes(session.currentRound)) session.introducedRounds = [...seen, session.currentRound];
+  session.intro = null;
   goToRound(session, to, session.currentRound);
 }
 

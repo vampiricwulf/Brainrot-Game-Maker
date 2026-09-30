@@ -658,6 +658,17 @@ describe('resume with edits after deleting the round being played', () => {
     rebaseSession(session, game, edited);
     expect([session.currentRound, session.phase, session.finalStep]).toEqual([0, 'final', 'category']);
   });
+
+  it('drops the deleted board’s intro when another board takes its place', () => {
+    const { game, session } = setup();
+    game.rounds.splice(1, 0, newRound('Double Jeopardy!'));
+    startIntro(session, game);
+    introNext(session, game);
+    const edited = clone(game);
+    edited.rounds.splice(0, 1);
+    rebaseSession(session, game, edited);
+    expect([session.currentRound, session.phase, session.intro ?? null]).toEqual([0, 'board', null]);
+  });
 });
 
 function getClueId(game: ReturnType<typeof newGame>, ref: { round: number; cat: number; row: number }): string {
