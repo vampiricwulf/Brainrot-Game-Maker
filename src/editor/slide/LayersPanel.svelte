@@ -166,7 +166,7 @@
           {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
           <input
             value={el.name ?? layerLabel(el, game)}
-            aria-label="Name"
+            aria-label="Layer name"
             title="Enter saves, Esc cancels. Empty goes back to the automatic name."
             use:focusAll
             onkeydown={(e) => {

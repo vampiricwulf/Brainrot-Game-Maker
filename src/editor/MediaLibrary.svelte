@@ -70,9 +70,10 @@
   function removePicked(): void {
     const refs = pickedRefs;
     if (!refs.length) return;
+    const n = usage.get(refs[0].id) ?? 0;
     const used = refs.filter((m) => usage.get(m.id)).length;
-    const what = refs.length === 1 ? `file “${refs[0].name}”` : `${refs.length} files`;
-    remove(refs.map((m) => m.id), `Removed ${what}${used ? ` (${used === refs.length && refs.length > 1 ? 'all' : used} in use)` : ''}`);
+    const label = refs.length === 1 ? `Removed file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Removed ${refs.length} files${used ? ` (${used} in use)` : ''}`;
+    remove(refs.map((m) => m.id), label);
   }
   function onkey(e: KeyboardEvent): void {
     if (!picked.length || (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) return;
