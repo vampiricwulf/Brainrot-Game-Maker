@@ -25,7 +25,6 @@
   import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
   import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
   import { override } from '../lib/rpg';
-  import { pathShape } from '../lib/draw';
   import { rollMover, turnNow } from './boardgame/bgops';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
@@ -75,8 +74,6 @@
   let rpgObject = $state<string | null>(null);
   /** RPG rounds: the host's full map is open (J). */
   let rpgMap = $state(false);
-  /** RPG rounds: draw mode on the stage (color, and whether strokes close into filled areas). */
-  let rpgDraw = $state<{ color: string; closed: boolean } | null>(null);
   /** Which log each combined Undo went to, so Redo goes back the same way. */
   let undoneKinds: ('score' | 'action')[] = [];
 
@@ -520,17 +517,6 @@
     logged(session, `Move ${name}`, () => Object.assign(override(st, id), at));
   }
 
-  /** A stroke drawn on the stage becomes an object (hidden until revealed); its card opens to set it up. */
-  function drawn(points: [number, number][] | null, closed: boolean): void {
-    if (!points || !rpgDraw) {
-      rpgDraw = null;
-      return;
-    }
-    const el = pathShape(points, closed, rpgDraw.color);
-    el.name = closed ? 'Drawn area' : 'Drawing';
-    if (addLive(game, session, el, `Draw ${el.name.toLowerCase()}`)) rpgObject = el.id;
-  }
-
   /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
   function avatarAct(id: string, at?: { x: number; y: number }): void {
     const { st } = rpgNow(game, session);
@@ -871,8 +857,6 @@
             onobject={(id) => (rpgObject = id)}
             onavatar={avatarAct}
             onobjectmove={objectMoved}
-            drawing={rpgDraw}
-            ondraw={drawn}
             onshopbuy={(item) => app.live.overlay?.kind === 'shop' && shopBuy(game, session, app.live.overlay, selected, item)}
           />
         </Stage>
@@ -891,7 +875,6 @@
         bind:amount
         bind:rpgObject
         bind:rpgMap
-        bind:rpgDraw
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}

@@ -14,7 +14,6 @@
   import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { inventory, itemDef } from '../../lib/toolset';
   import MapView from './MapView.svelte';
-  import DrawLayer from '../../editor/slide/DrawLayer.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
 
@@ -25,8 +24,6 @@
     onobject,
     onavatar,
     onobjectmove,
-    drawing = null,
-    ondraw,
   }: {
     game: Game;
     session: Session;
@@ -37,10 +34,6 @@
     onavatar?: (playerId: string, at?: { x: number; y: number }) => void;
     /** Host: an object was dragged to a new spot on its screen. */
     onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
-    /** Host: draw mode is on (the color, and whether a stroke closes into a filled area). */
-    drawing?: { color: string; closed: boolean } | null;
-    /** Host: a stroke was drawn (null: drawing was cancelled with Esc). */
-    ondraw?: (points: [number, number][] | null, closed: boolean) => void;
   } = $props();
 
   const round = $derived.by(() => {
@@ -213,10 +206,6 @@
           {#key ref.screen}
             <div class="screen" in:enter={{ map: ref.map }}>{@render screenPane(ref, found.screen)}</div>
           {/key}
-          {#if drawing && ondraw && !split}
-            {@const mode = drawing}
-            <DrawLayer ondone={(pts, shift) => ondraw(pts, mode.closed || shift)} oncancel={() => ondraw(null, false)} />
-          {/if}
           {#if split}
             <div class="pane-label">
               {st.parties.find((pt) => pt.members.some((m) => st.positions[m]?.screen === ref.screen))?.name ?? ''}

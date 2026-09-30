@@ -35,8 +35,6 @@
     onobject,
     onavatar,
     onobjectmove,
-    drawing = null,
-    ondraw,
     onshopbuy,
   }: {
     game: Game;
@@ -56,9 +54,6 @@
     onavatar?: (playerId: string, at?: { x: number; y: number }) => void;
     /** RPG rounds, host only: an object was dragged to a new spot. */
     onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
-    /** RPG rounds, host only: draw mode, and a finished stroke (null: cancelled). */
-    drawing?: { color: string; closed: boolean } | null;
-    ondraw?: (points: [number, number][] | null, closed: boolean) => void;
     /** Host only: a ware in the shop on screen was clicked. */
     onshopbuy?: (itemId: string) => void;
   } = $props();
@@ -201,7 +196,7 @@
     </div>
   {/key}
 {:else if session.phase === 'rpg'}
-  <RpgStage {game} {session} {role} {onobject} {onavatar} {onobjectmove} {drawing} {ondraw} />
+  <RpgStage {game} {session} {role} {onobject} {onavatar} {onobjectmove} />
 {:else if session.phase === 'boardgame'}
   <BoardGameStage {game} {session} {role} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}

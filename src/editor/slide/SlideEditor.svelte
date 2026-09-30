@@ -65,6 +65,7 @@
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
   import DrawLayer from './DrawLayer.svelte';
+  import DrawPad from './DrawPad.svelte';
   import Inspector from './Inspector.svelte';
   import MediaPicker from './MediaPicker.svelte';
   import LinkField from '../LinkField.svelte';
@@ -110,6 +111,20 @@
   let shapeMenu = $state(false);
   /** ✏ Draw is on: the next drag on the canvas draws a line. */
   let drawing = $state(false);
+  /** The drawpad is open: a whole drawing, inserted as one picture. */
+  let drawpad = $state(false);
+
+  async function insertDrawing(png: Blob, box: { x: number; y: number; w: number; h: number }): Promise<void> {
+    drawpad = false;
+    try {
+      const ref = await addMediaFile(game, png, 'drawing.png');
+      const el = newImageEl(ref.id, box.w, box.h);
+      Object.assign(el, { x: box.x, y: box.y, name: 'Drawing' });
+      add(el);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 4000);
+    }
+  }
   /** The 🌐 Link box: the link it started with (pasted or dropped) and where the item goes. */
   let linkBox = $state<{ initial: string; at?: { x: number; y: number }; key: number } | null>(null);
   let linkKey = 0;
@@ -699,7 +714,8 @@
             <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
             <button onclick={() => addShape('line')}>― Line</button>
             <button onclick={() => addShape('arrow')}>➝ Arrow</button>
-            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw; hold Shift when letting go to close the shape">✏ Draw</button>
+            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw one line; hold Shift when letting go to close the shape">✏ Draw a line</button>
+            <button onclick={() => ((shapeMenu = false), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the slide, then insert it">🖌 Drawpad…</button>
             <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
           </div>
         {/if}
@@ -940,6 +956,12 @@
     </aside>
   </div>
 </div>
+
+{#if drawpad}
+  <DrawPad oninsert={insertDrawing} oncancel={() => (drawpad = false)}>
+    {#snippet backdrop()}<Stage><SlideView {slide} mode="edit" /></Stage>{/snippet}
+  </DrawPad>
+{/if}
 
 <style>
   .se {

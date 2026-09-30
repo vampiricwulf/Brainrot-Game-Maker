@@ -128,23 +128,40 @@ try {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-wheels.png` });
   await page.keyboard.press('Escape');
 
-  // Draw on the stage: the stroke becomes an object (hidden at first) whose card opens to set it up.
+  // The drawpad: draw a whole object (several strokes, a filled shape, undo), then insert it as one object.
   await page.getByRole('button', { name: '✏ Draw' }).click();
-  const drawBox = await page.locator('.rpg .draw').boundingBox();
-  await page.mouse.move(drawBox.x + drawBox.width * 0.3, drawBox.y + drawBox.height * 0.3);
-  await page.mouse.down();
-  for (const [fx, fy] of [[0.45, 0.3], [0.45, 0.5], [0.3, 0.5], [0.3, 0.32]]) await page.mouse.move(drawBox.x + drawBox.width * fx, drawBox.y + drawBox.height * fy, { steps: 4 });
-  await page.mouse.up();
-  const drawn = page.getByRole('dialog', { name: 'Object: Drawn area' });
+  const pad = page.getByRole('dialog', { name: 'Draw on Start' });
+  await pad.waitFor();
+  const padBox = await pad.getByLabel('Drawing area').boundingBox();
+  const stroke = async (pts) => {
+    await page.mouse.move(padBox.x + padBox.width * pts[0][0], padBox.y + padBox.height * pts[0][1]);
+    await page.mouse.down();
+    for (const [fx, fy] of pts.slice(1)) await page.mouse.move(padBox.x + padBox.width * fx, padBox.y + padBox.height * fy, { steps: 4 });
+    await page.mouse.up();
+  };
+  await pad.getByRole('button', { name: '⬟ Filled shape' }).click();
+  await stroke([[0.3, 0.3], [0.45, 0.3], [0.45, 0.5], [0.3, 0.5]]);
+  await pad.getByRole('button', { name: '✏ Pen' }).click();
+  await stroke([[0.32, 0.55], [0.5, 0.6]]);
+  await stroke([[0.1, 0.1], [0.12, 0.12]]);
+  await pad.getByRole('button', { name: '↶ Undo' }).click();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawpad.png` });
+  await pad.getByRole('button', { name: 'Insert drawing' }).click();
+  const drawn = page.getByRole('dialog', { name: 'Object: Drawing' });
   await drawn.waitFor();
-  assert(true, 'a drawn stroke becomes an object and its card opens');
-  await page.getByRole('button', { name: '✏ Draw' }).click();
+  assert(!(await pad.isVisible()), 'the drawing (several strokes) is inserted as one object and its card opens');
+  const img = await page.evaluate(() => {
+    const els = [...document.querySelectorAll('.rpg img')];
+    return els.length;
+  });
+  assert(img === 0, 'it starts hidden from viewers');
   await drawn.getByLabel('Object name').fill('Lava');
   await drawn.getByLabel('Object name').press('Enter');
   await page.getByRole('dialog', { name: 'Object: Lava' }).getByLabel('Object class').selectOption('zone');
   const lava = page.getByRole('dialog', { name: 'Object: Lava' });
   await lava.getByRole('button', { name: '👁 Reveal to viewers' }).click();
   assert((await lava.locator('.cls').innerText()) === 'zone', 'it can be named and made a zone');
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawn.png` });
   // Drag it on the stage: it stays where it's dropped.
   const hit = page.getByRole('button', { name: 'Object: Lava' });
   const before = await hit.boundingBox();

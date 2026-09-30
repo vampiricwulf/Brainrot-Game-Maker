@@ -3,14 +3,17 @@
   the object clicked on the stage (or every object here), and each player's stats and inventory.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
-  import { newId, type Dir8, type Game, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
-  import { activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, newVariant, screenElements, screenAt } from '../../lib/rpg';
+  import { newId, newImageEl, type Dir8, type Game, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
+  import { activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, newVariant, screenElements, screenAt, screenSlide } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
   import MapJump from './MapJump.svelte';
+  import DrawPad from '../../editor/slide/DrawPad.svelte';
+  import Stage from '../../lib/Stage.svelte';
+  import SlideView from '../../lib/slide/SlideView.svelte';
+  import { addMediaFile } from '../../lib/media.svelte';
   import { lastAction, logged } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
@@ -23,7 +26,6 @@
     selected = $bindable(),
     object = $bindable(),
     mapOpen = $bindable(false),
-    drawing = $bindable(null),
     dual,
   }: {
     game: Game;
@@ -31,17 +33,23 @@
     selected: string[];
     object: string | null;
     mapOpen?: boolean;
-    /** Draw mode on the stage: the color, and whether strokes close into filled areas. */
-    drawing?: { color: string; closed: boolean } | null;
     dual: boolean;
   } = $props();
-  let drawColor = $state('#ffcc00');
-  let drawArea = $state(true);
-  $effect(() => {
-    // Changing the pen while drawing applies to the next stroke.
-    const pen = { color: drawColor, closed: drawArea };
-    untrack(() => drawing && (drawing = pen));
-  });
+  /** The drawpad is open (drawing an object for the screen on air). */
+  let drawpad = $state(false);
+
+  /** The finished drawing goes on the screen where it was drawn, hidden until revealed; its card opens. */
+  async function insertDrawing(png: Blob, box: { x: number; y: number; w: number; h: number }): Promise<void> {
+    drawpad = false;
+    try {
+      const ref = await addMediaFile(game, png, 'drawing.png');
+      const el = newImageEl(ref.id, box.w, box.h);
+      Object.assign(el, { x: box.x, y: box.y, name: 'Drawing' });
+      if (addLive(game, session, el, 'Add a drawing')) object = el.id;
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 4000);
+    }
+  }
 
   const now = $derived(rpgNow(game, session));
   const world = $derived(now.world);
@@ -229,18 +237,11 @@
       <button class="small" onclick={addText} title="Type text onto the screen">＋ Text</button>
       <button
         class="small"
-        class:on={!!drawing}
-        aria-pressed={!!drawing}
-        onclick={() => (drawing = drawing ? null : { color: drawColor, closed: drawArea })}
-        title="Draw on the stage: each stroke becomes an object (an area, a path, a wall…) you can make an item, a zone, a hazard…"
+        onclick={() => (drawpad = true)}
+        title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard…"
       >
         ✏ Draw
       </button>
-      {#if drawing}
-        <input type="color" bind:value={drawColor} aria-label="Pen color" class="pen" />
-        <label class="check small"><input type="checkbox" bind:checked={drawArea} /> Filled area</label>
-        <span class="muted small">Draw on the stage · Esc stops</span>
-      {/if}
       <span class="muted small">or drop a picture on the stage</span>
       <span class="spacer"></span>
       <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
@@ -341,6 +342,14 @@
       </div>
     {/if}
   </div>
+  {#if drawpad && here}
+    {@const scr = here.screen}
+    <DrawPad title="Draw on {scr.name}" oninsert={insertDrawing} oncancel={() => (drawpad = false)}>
+      {#snippet backdrop()}
+        <Stage><SlideView slide={{ ...screenSlide(st, scr), elements: screenElements(st, scr, false) }} mode="edit" fallbackBg="#2f6b3a" /></Stage>
+      {/snippet}
+    </DrawPad>
+  {/if}
   {#if mapOpen}
     <MapJump {game} {session} {world} {st} {selected} onclose={() => (mapOpen = false)} />
   {/if}
@@ -417,11 +426,6 @@
   }
   .pick {
     font-size: 12px;
-  }
-  .pen {
-    width: 28px;
-    height: 22px;
-    padding: 0;
   }
   .mini-head {
     gap: 4px;
