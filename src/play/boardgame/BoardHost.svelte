@@ -52,6 +52,9 @@
     return null;
   });
   $effect(() => {
+    // Every roll or spin, even one that comes up the same as the last (a new turn has emptied the box since).
+    const o = app.live.overlay;
+    void (o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null);
     if (rolled !== null) steps = rolled;
   });
 

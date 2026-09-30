@@ -8,10 +8,11 @@ import { droppedObject, liveText } from './hostops';
 function setup(): { game: Game; session: Session; st: WorldState } {
   const game = newGame();
   game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: `p${i}`, name, color: '#e6194b' }));
-  game.rounds = [newRpgRound(game)];
+  const round = newRpgRound(game);
+  game.rounds = [round];
   const session = newSession(game);
   goToRound(session, game, 0);
-  const st = ensureWorld(session, game, game.rounds[0] as never)!;
+  const st = ensureWorld(session, game, round)!;
   return { game, session, st };
 }
 
