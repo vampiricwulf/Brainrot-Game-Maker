@@ -27,6 +27,8 @@
     ['RPG: M', 'Map on screen'],
     ['RPG: I', 'Show the selected player’s sheet (again: the next selected, then close)'],
     ['RPG: B', 'Cover: viewers see only a “Be right back” card'],
+    ['Board game: D', 'Roll the round’s dice (or spin its wheel): the result fills in the steps'],
+    ['Board game: N', 'Next player’s turn'],
     ['L', 'Score & roll log'],
     ['A', 'Open / focus the audience window (never closes it)'],
     ['H', 'Hide / show the host controls'],

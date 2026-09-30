@@ -1,0 +1,150 @@
+<!--
+  A board game's spaces and the links between them, drawn in 1920×1080 board coordinates over the backdrop. Viewers
+  see a secret space as a plain "?" until the host reveals it.
+-->
+<script lang="ts">
+  import { textOn } from '../colors';
+  import { mediaUrls } from '../media.svelte';
+  import type { BoardGameRound, BoardSpace } from '../model';
+  import { SLIDE_H, SLIDE_W } from '../model';
+
+  let {
+    round,
+    audience = false,
+    revealed = [],
+    selected = null,
+    ondown,
+  }: {
+    round: BoardGameRound;
+    /** Viewers: secret spaces show as "?" and host notes never show. */
+    audience?: boolean;
+    revealed?: string[];
+    selected?: string | null;
+    /** Editor: a space was pressed (to select or drag it). */
+    ondown?: (e: PointerEvent, space: BoardSpace) => void;
+  } = $props();
+
+  const R = 58;
+  const hidden = (s: BoardSpace) => audience && !!s.secret && !revealed.includes(s.id);
+  const byId = $derived(new Map(round.spaces.map((s) => [s.id, s])));
+
+  /** A link from a to b, stopping at the edge of each circle. */
+  function line(a: BoardSpace, b: BoardSpace) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const k = (R + 6) / d;
+    return { x1: a.x + dx * k, y1: a.y + dy * k, x2: b.x - dx * k, y2: b.y - dy * k };
+  }
+</script>
+
+<svg class="links" viewBox="0 0 {SLIDE_W} {SLIDE_H}" aria-hidden="true">
+  <defs>
+    <marker id="bg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#fff" />
+    </marker>
+  </defs>
+  {#each round.spaces as a (a.id)}
+    {#each a.next as n (n)}
+      {@const b = byId.get(n)}
+      {#if b}
+        {@const l = line(a, b)}
+        <line {...l} class="shadow" />
+        <line {...l} class="link" marker-end="url(#bg-arrow)" />
+      {/if}
+    {/each}
+  {/each}
+</svg>
+{#each round.spaces as s, i (s.id)}
+  {@const h = hidden(s)}
+  {@const bg = h ? '#555' : s.color}
+  <div
+    class="space"
+    class:sel={selected === s.id}
+    class:start={(round.start ?? round.spaces[0]?.id) === s.id}
+    class:secret={!audience && s.secret}
+    class:grab={!!ondown}
+    style:left="{s.x}px"
+    style:top="{s.y}px"
+    style:background={bg}
+    style:color={textOn(bg)}
+    onpointerdown={ondown ? (e) => ondown(e, s) : undefined}
+    role={ondown ? 'button' : undefined}
+    aria-label={ondown ? `Space ${s.name}` : undefined}
+    data-space={s.id}
+  >
+    {#if h}
+      <span class="q">?</span>
+    {:else if s.icon && mediaUrls[s.icon]}
+      <img src={mediaUrls[s.icon]} alt="" />
+    {:else}
+      <span class="n">{i + 1}</span>
+    {/if}
+    {#if !h}<span class="label">{s.name}</span>{/if}
+  </div>
+{/each}
+
+<style>
+  .links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .link {
+    stroke: #fff;
+    stroke-width: 8;
+  }
+  .shadow {
+    stroke: rgba(0, 0, 0, 0.6);
+    stroke-width: 14;
+  }
+  .space {
+    position: absolute;
+    width: 116px;
+    height: 116px;
+    margin: -58px 0 0 -58px;
+    border-radius: 50%;
+    border: 6px solid #000;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+    display: grid;
+    place-items: center;
+    font-family: 'Anton', 'Oswald', sans-serif;
+  }
+  .space.grab {
+    cursor: grab;
+    touch-action: none;
+  }
+  .space.start {
+    border-color: #fff;
+    box-shadow: 0 0 0 6px #000, 0 6px 12px rgba(0, 0, 0, 0.5);
+  }
+  .space.sel {
+    outline: 6px dashed #ffcc00;
+    outline-offset: 6px;
+  }
+  .space.secret {
+    border-style: dashed;
+  }
+  .n,
+  .q {
+    font-size: 48px;
+  }
+  img {
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+  }
+  .label {
+    position: absolute;
+    top: 100%;
+    margin-top: 6px;
+    padding: 2px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 26px;
+    white-space: nowrap;
+  }
+</style>

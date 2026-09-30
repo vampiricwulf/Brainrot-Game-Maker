@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, isBoard, isFinal, newCategory, newClue, newId, type Category, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, type Category, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
 
 export function setRowCount(round: BoardRound, rows: number): void {
   rows = Math.max(1, Math.min(10, Math.floor(rows)));
@@ -121,6 +121,20 @@ export function reidRound<R extends Round>(round: R): R {
   } else if (isFinal(round)) {
     reSlide(round.questionSlide);
     reSlide(round.answerSlide);
+  } else if (isBoardGame(round)) {
+    // A copy gets its own spaces (and its own board state in play); links follow the new ids.
+    const ids = new Map(round.spaces.map((sp) => [sp.id, newId()]));
+    for (const sp of round.spaces) {
+      sp.id = ids.get(sp.id)!;
+      sp.next = sp.next.map((n) => ids.get(n) ?? n);
+      for (const a of [...(sp.onPass ?? []), ...(sp.onLand ?? [])]) {
+        a.id = newId();
+        if (a.do === 'goto' && a.space) a.space = ids.get(a.space) ?? a.space;
+      }
+    }
+    if (round.start) round.start = ids.get(round.start) ?? round.start;
+    reSlide(round.slide);
+    for (const z of round.zones) reSlide(z.slide);
   }
   return round;
 }

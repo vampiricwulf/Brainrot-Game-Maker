@@ -365,7 +365,7 @@ export interface Category {
 }
 
 /** How a round plays. Each game is a list of rounds, and each round picks its mode. */
-export type RoundMode = 'board' | 'final' | 'rpg';
+export type RoundMode = 'board' | 'final' | 'rpg' | 'boardgame';
 
 /** A Jeopardy board: categories of clues with values. */
 export interface BoardRound {
@@ -404,11 +404,12 @@ export interface FinalRound {
   hostNotes?: string;
 }
 
-export type Round = BoardRound | FinalRound | RpgRound;
+export type Round = BoardRound | FinalRound | RpgRound | BoardGameRound;
 
 export const isBoard = (r: Round | undefined | null): r is BoardRound => r?.mode === 'board';
 export const isFinal = (r: Round | undefined | null): r is FinalRound => r?.mode === 'final';
 export const isRpg = (r: Round | undefined | null): r is RpgRound => r?.mode === 'rpg';
+export const isBoardGame = (r: Round | undefined | null): r is BoardGameRound => r?.mode === 'boardgame';
 
 /** Game format version (bumped when saved games need converting; see migrateGame). */
 export const GAME_VERSION = 2;
@@ -505,7 +506,7 @@ export interface Session {
   currentRound: number;
   /** Rounds whose intro has already played, so revisiting a round never replays it. */
   introducedRounds?: number[];
-  phase: 'board' | 'clue' | 'final' | 'rpg' | 'tiebreaker' | 'end';
+  phase: 'board' | 'clue' | 'final' | 'rpg' | 'boardgame' | 'tiebreaker' | 'end';
   /** Round intro sequence in progress (spec §6.3 step 0). */
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
   /** Daily Double in progress for the open clue. */
@@ -535,6 +536,8 @@ export interface Session {
   inventories?: Record<Id, InventoryEntry[]>;
   /** RPG state per world (shared by every round that uses the world). */
   worlds?: Record<Id, WorldState>;
+  /** Board game state per board-game round (by round id). */
+  boardgames?: Record<Id, BoardGameState>;
   /** Shop stock left, by shop (or stock pool) then item; null = unlimited. */
   stock?: Record<Id, Record<Id, number | null>>;
   /** Everything the host did besides scoring (moves, stats, items, reveals…), newest last, for undo. */
@@ -622,6 +625,8 @@ export type Action = { id: Id } & (
   | { do: 'timer'; seconds: number }
   | { do: 'shop'; shop: Id }
   | { do: 'note'; text: string }
+  /** Board games: send players to a space or an off-board zone. */
+  | { do: 'goto'; space?: Id; zone?: Id; who?: Who }
 );
 export type ActionKind = Action['do'];
 
@@ -998,3 +1003,70 @@ export function roundName(round: Round, index?: number): string {
 export function finalName(round: FinalRound): string {
   return roundName(round);
 }
+
+// ---------- Board game mode: spaces on a board, spin or roll to move (games-maker spec §7.13) ----------
+
+export interface BoardSpace {
+  id: Id;
+  name: string;
+  /** Center on the 1920×1080 board. */
+  x: number;
+  y: number;
+  color: string;
+  /** An image drawn in the space (instead of its name). */
+  icon?: Id;
+  /** Spaces a player can step to next; more than one is a fork (the host picks). */
+  next: Id[];
+  /** Run (host-confirmed) when a player passes over it, e.g. Start: +2 gold. */
+  onPass?: Action[];
+  /** Run (host-confirmed) when a player stops on it. */
+  onLand?: Action[];
+  hostNotes?: string;
+  /** Viewers see a plain space until the host reveals what it is. */
+  secret?: boolean;
+}
+
+/** An area off the board (the Shadow Realm) where players are sent until they escape. */
+export interface BoardZone {
+  id: Id;
+  name: string;
+  slide: Slide;
+  hostNotes?: string;
+}
+
+export interface BoardGameRound {
+  id: Id;
+  name: string;
+  mode: 'boardgame';
+  /** The board's backdrop and decorations; spaces are drawn over it. */
+  slide: Slide;
+  spaces: BoardSpace[];
+  /** Where everyone starts (default: the first space). */
+  start?: Id;
+  /** How a turn's move is decided: dice ("d6", "2d6", a saved dice preset's name) or a saved wheel. */
+  mover: { kind: 'dice'; dice: string } | { kind: 'wheel'; wheel: Id };
+  zones: BoardZone[];
+  /** How to win, shown to the host; public ones are shown on the board too. */
+  winNotes?: string;
+  winPublic?: boolean;
+  hostNotes?: string;
+}
+
+export interface BoardGameState {
+  /** Where each player is: a space, or an off-board zone. */
+  positions: Record<Id, { space?: Id; zone?: Id }>;
+  /** Turn order (player ids) and whose turn it is (index into it). */
+  order: Id[];
+  turn: number;
+  /** The move being shown: the spaces stepped through, animated from `at`. */
+  hop?: { playerId: Id; path: Id[]; at: number };
+  /** A move stopped at a fork: the host picks the way, then it goes on. */
+  fork?: { playerId: Id; at: Id; stepsLeft: number };
+  /** Spaces passed and landed on in the last move, for their action buttons. */
+  last?: { playerId: Id; passed: Id[]; landed?: Id };
+  /** The zone on screen instead of the board (null: the board). */
+  zoneShown?: Id | null;
+  /** Secret spaces the host revealed. */
+  revealed?: Id[];
+}
+

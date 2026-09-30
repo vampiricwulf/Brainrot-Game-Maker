@@ -225,7 +225,7 @@ New tools that every mode can use (built for RPG mode, but not tied to it):
 ### 5.2 Round modes
 
 ```ts
-type RoundMode = 'board' | 'final' | 'rpg';   // 'boardgame' next (§7.13)
+type RoundMode = 'board' | 'final' | 'rpg' | 'boardgame';   // boardgame: §7.13
 
 interface RoundBase {
   id: Id;
@@ -667,9 +667,9 @@ type Who = 'party' | 'selected' | 'picker' | 'ask' | Id;           // 'ask' = th
 - **Map editing in play:** the host can reveal or hide screens one at a time (click → Reveal/Hide), reveal the whole
   map (the Zelda "Map item"), or reset knowledge.
 
-### 7.13 Next: Board game mode (outline)
+### 7.13 Board game mode
 
-This is Magic The Noah's other big format. It comes after RPG mode and gets its own detailed spec then. It reuses the
+This is Magic The Noah's other big format (built in milestone M9; see the README for how it plays). It reuses the
 RPG toolset: avatars, stats, items, shops, actions, wheels and the host-confirmed action card.
 
 - **Board:** a slide with **spaces** placed on it. Each space is a classed object with an index, and the spaces are

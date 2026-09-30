@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { isBoard, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
+  import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
   import { clone, reidRound } from '../lib/ops';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
@@ -16,6 +16,8 @@
   import TiebreakerEditor from './TiebreakerEditor.svelte';
   import StatsItemsEditor from './StatsItemsEditor.svelte';
   import RpgRoundEditor from './rpg/RpgRoundEditor.svelte';
+  import BoardGameEditor from './boardgame/BoardGameEditor.svelte';
+  import { newBoardGameRound } from '../lib/boardgame';
   import RoundActions from './RoundActions.svelte';
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
@@ -46,6 +48,7 @@
     if (mode !== 'final') while (at > 0 && isFinal(game.rounds[at - 1])) at--;
     let round: Round;
     if (mode === 'rpg') round = newRpgRound(game, game.rounds.some(isRpg) ? `Adventure ${game.rounds.filter(isRpg).length + 1}` : 'Adventure');
+    else if (mode === 'boardgame') round = newBoardGameRound(game.rounds.some(isBoardGame) ? `Board game ${game.rounds.filter(isBoardGame).length + 1}` : 'Board game');
     else if (mode === 'final') round = newFinalRound(game.rounds.some(isFinal) ? `Final round ${game.rounds.filter(isFinal).length + 1}` : 'Final Jeopardy!');
     else {
       const boards = game.rounds.slice(0, at).filter(isBoard);
@@ -278,6 +281,8 @@
             <FinalEditor {round} />
           {:else if isRpg(round)}
             <RpgRoundEditor {round} />
+          {:else if isBoardGame(round)}
+            <BoardGameEditor {round} />
           {/if}
         {/key}
       {/if}

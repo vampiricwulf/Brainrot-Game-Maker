@@ -24,6 +24,7 @@
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
   import { addLive, droppedFile, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { rollMover, turnNow } from './boardgame/bgops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { Dir8 } from '../lib/model';
   import {
@@ -658,6 +659,12 @@
         else if (session.phase === 'clue') back();
         break;
       case 'd':
+        // Board games: roll (or spin) the round's own mover.
+        if (session.phase === 'boardgame') {
+          const why = rollMover(game, session, app.live);
+          if (why) toast(why);
+          break;
+        }
         if (app.live.overlay?.kind !== 'dice' || Date.now() >= overlayDoneAt(app.live.overlay)) rollDice(app.live, session, lastDice);
         break;
       case 'w': {
@@ -675,7 +682,8 @@
         toggleScoreboard(app.live);
         break;
       case 'n':
-        if (session.phase === 'board' && session.intro) intro();
+        if (session.phase === 'boardgame') turnNow(game, session, 1);
+        else if (session.phase === 'board' && session.intro) intro();
         else if (session.phase === 'final' && session.finalStep === 'reveal') finalRevealNext();
         else if (session.phase === 'final' && session.finalStep !== 'wagers') {
           finalNext(session, game);

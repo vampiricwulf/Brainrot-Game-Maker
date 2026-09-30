@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, categoryLabel, isBoard, isFinal, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
+import { boardRounds, categoryLabel, isBoard, isBoardGame, isFinal, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -35,6 +35,13 @@ export function allSlides(game: Game): SlideRef[] {
           }
         }
       }
+  game.rounds.forEach((r, ri) => {
+    if (!isBoardGame(r)) return;
+    const name = roundName(r, ri);
+    out.push({ slide: r.slide, where: `${name} (board)` });
+    for (const z of r.zones) out.push({ slide: z.slide, where: `${name} · ${z.name}` });
+    for (const sp of r.spaces) for (const s of actionSlides([...(sp.onPass ?? []), ...(sp.onLand ?? [])])) out.push({ slide: s, where: `${name} · ${sp.name}` });
+  });
   for (const { name, outcome: o } of allOutcomes(game)) for (const s of actionSlides(o.actions)) out.push({ slide: s, where: `${name}: ${o.label}` });
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
   if (game.tiebreaker) {
@@ -113,6 +120,12 @@ export function extraMediaRefs(game: Game): string[] {
           for (const el of look.elements) for (const a of el.role?.actions ?? []) if (a.do === 'sound') out.push(a.media);
       }
     }
+  for (const r of game.rounds)
+    if (isBoardGame(r))
+      for (const sp of r.spaces) {
+        if (sp.icon) out.push(sp.icon);
+        for (const a of [...(sp.onPass ?? []), ...(sp.onLand ?? [])]) if (a.do === 'sound') out.push(a.media);
+      }
   for (const { outcome } of allOutcomes(game)) for (const a of outcome.actions ?? []) if (a.do === 'sound') out.push(a.media);
   return out;
 }

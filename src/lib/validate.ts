@@ -2,8 +2,9 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type Game } from './model';
+import { isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type Game } from './model';
 import { rpgProblems } from './rpg';
+import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
 
 export interface Problem {
@@ -29,6 +30,10 @@ export function validate(game: Game): Problem[] {
     }
     if (isRpg(round)) {
       out.push(...rpgProblems(game, round, name, i));
+      return;
+    }
+    if (isBoardGame(round)) {
+      out.push(...boardGameProblems(game, round, name, i));
       return;
     }
     const r = { ...round, name };

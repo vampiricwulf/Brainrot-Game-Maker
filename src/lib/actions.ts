@@ -1,6 +1,7 @@
 // Running actions (games-maker spec §7.10): the host pressed an object's, item's or wheel slice's button. State
 // changes go through toolset.logged() (undoable); show-only effects (wheels, pop-ups, sounds, timers) go to Live.
-import { newId, PLAYER_WHEEL, type Action, type Game, type Session, type Who, type World, type WorldState } from './model';
+import { newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type Game, type Session, type Who, type World, type WorldState } from './model';
+import { sendTo, spaceById } from './boardgame';
 import { playSound, startTimer, type Live } from './live';
 import { openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
@@ -15,6 +16,9 @@ export interface RunContext {
   /** RPG rounds: the world and its state (moves, reveals). */
   world?: World;
   st?: WorldState;
+  /** Board-game rounds: the round and its state (sending players to spaces and zones). */
+  board?: BoardGameRound;
+  bs?: BoardGameState;
   /** Players the host has selected (the 1–9 keys / chips). */
   selected: string[];
   /** Who "ask" means: the players the host picked on the card. */
@@ -28,6 +32,11 @@ export function targets(ctx: RunContext, who: Who | undefined): string[] {
     case 'all':
       return all;
     case 'party':
+      if (ctx.bs) {
+        // Board games: whoever's turn it is.
+        const cur = ctx.bs.order[ctx.bs.turn];
+        return cur ? [cur] : [];
+      }
       return ctx.st ? (activeParty(ctx.st)?.members ?? []) : ctx.selected.length ? ctx.selected : all;
     case 'selected':
       return ctx.selected;
@@ -42,7 +51,7 @@ const names = (ctx: RunContext, ids: string[]) => ids.map((id) => ctx.session.pl
 
 /** Whether an action needs players to act on (so the card asks for them first). */
 export function needsPlayers(a: Action): boolean {
-  return a.do === 'stat' || a.do === 'item' || a.do === 'score' || (a.do === 'move' && a.who !== 'party');
+  return a.do === 'stat' || a.do === 'item' || a.do === 'score' || ((a.do === 'move' || a.do === 'goto') && a.who !== 'party');
 }
 
 /** A one-line description for buttons and the log ("HP −1", "Give 2 Potion"). */
@@ -78,6 +87,11 @@ export function describeAction(game: Game, a: Action): string {
       return `Timer ${a.seconds}s`;
     case 'note':
       return `📝 ${a.text}`;
+    case 'goto': {
+      const round = game.rounds.find((r) => r.mode === 'boardgame' && (a.zone ? r.zones.some((z) => z.id === a.zone) : r.spaces.some((s) => s.id === a.space)));
+      const board = round?.mode === 'boardgame' ? round : undefined;
+      return `Send to ${a.zone ? (board?.zones.find((z) => z.id === a.zone)?.name ?? 'a zone') : ((board && spaceById(board, a.space)?.name) ?? 'a space')}`;
+    }
   }
 }
 
@@ -171,5 +185,13 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       return text;
     case 'note':
       return a.text;
+    case 'goto': {
+      if (!ctx.board || !ctx.bs) return 'Sending works only in board-game rounds';
+      const who = targets(ctx, a.who);
+      if (!who.length) return 'Pick who it’s for first';
+      const bs = ctx.bs;
+      logged(session, `${text} (${names(ctx, who)})`, () => sendTo(bs, who, { space: a.space, zone: a.zone }));
+      return `${text}: ${names(ctx, who)}`;
+    }
   }
 }

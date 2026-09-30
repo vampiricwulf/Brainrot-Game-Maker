@@ -12,6 +12,7 @@
   import ToolsControls from './host/ToolsControls.svelte';
   import RoundNav from './host/RoundNav.svelte';
   import RpgHost from './rpg/RpgHost.svelte';
+  import BoardHost from './boardgame/BoardHost.svelte';
   import { app } from '../lib/app.svelte';
   import type { Snippet } from 'svelte';
 
@@ -113,7 +114,7 @@
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
-  const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg');
+  const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg' && session.phase !== 'boardgame');
   const introLabel = $derived(
     session.intro?.stage === 'title'
       ? 'Show board ▶'
@@ -219,6 +220,9 @@
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
+    {:else if session.phase === 'boardgame'}
+      <b>{round?.name}</b>
+      <span class="muted hint">D rolls or spins, then ▶ Move · N next turn · click a player's name to select them</span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       <span class="muted">Award the winner with the scoring buttons, then go back to the results.</span>
@@ -253,6 +257,10 @@
 
   {#if session.phase === 'final'}
     <FinalControls {game} {session} armed={finishArmed} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
+  {/if}
+
+  {#if session.phase === 'boardgame'}
+    <BoardHost {game} {session} bind:selected {dual} />
   {/if}
 
   {#if session.phase === 'rpg'}
@@ -363,7 +371,7 @@
     {/if}
     {@render tools?.()}
     <span class="spacer"></span>
-    {#if session.phase === 'board' || session.phase === 'rpg'}
+    {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame'}
       <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
       <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
       {#key session.currentRound}

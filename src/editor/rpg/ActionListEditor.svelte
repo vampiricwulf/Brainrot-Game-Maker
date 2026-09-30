@@ -1,7 +1,7 @@
 <!-- Edit a list of actions (an object's buttons, an item's "Use"). Each becomes a button the host presses in play. -->
 <script lang="ts">
   import { editedGame } from '../../lib/app.svelte';
-  import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type SlideElement, type World } from '../../lib/model';
+  import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
   import MediaPicker from '../slide/MediaPicker.svelte';
@@ -12,12 +12,15 @@
     actions = $bindable(),
     world,
     objects = [],
+    board,
   }: {
     actions: Action[] | undefined;
     /** For "Go to" (moves need a world). */
     world?: World;
     /** Objects on the same screen, for Reveal / Hide. */
     objects?: SlideElement[];
+    /** Board games: for "Send to a space / zone". */
+    board?: BoardGameRound;
   } = $props();
 
   const game = $derived(editedGame());
@@ -35,6 +38,7 @@
     ['question', '❓ Ask a question'],
     ['sound', '🔊 Play a sound'],
     ['move', '🚪 Go to a screen'],
+    ['goto', '📍 Send to a space / zone'],
     ['reveal', '👁 Reveal an object'],
     ['hide', '🙈 Hide an object'],
     ['shop', '🛒 Open a shop'],
@@ -76,6 +80,8 @@
         return { id, do: 'timer', seconds: 30 };
       case 'note':
         return { id, do: 'note', text: '' };
+      case 'goto':
+        return board ? { id, do: 'goto', space: board.spaces[0]?.id, who: 'ask' } : null;
     }
   }
 
@@ -103,7 +109,7 @@
 {#snippet who(a: { who?: string })}
   <select bind:value={a.who} aria-label="Who">
     <option value="ask">Host picks who</option>
-    <option value="party">The party here</option>
+    <option value="party">{board ? 'Whoever’s turn it is' : 'The party here'}</option>
     <option value="selected">Selected players</option>
     <option value="picker">The picker (★)</option>
     <option value="all">Everyone</option>
@@ -177,6 +183,20 @@
           </select>
         {:else if a.do === 'timer'}
           <input type="number" min="1" bind:value={a.seconds} aria-label="Seconds" class="n" /> <span class="small muted">seconds</span>
+        {:else if a.do === 'goto'}
+          <select
+            value={a.zone ? `z:${a.zone}` : `s:${a.space ?? ''}`}
+            onchange={(e) => {
+              const [k, v] = [e.currentTarget.value.slice(0, 1), e.currentTarget.value.slice(2)];
+              a.space = k === 's' ? v : undefined;
+              a.zone = k === 'z' ? v : undefined;
+            }}
+            aria-label="Send to"
+          >
+            {#each board?.spaces ?? [] as sp (sp.id)}<option value="s:{sp.id}">{sp.name}</option>{/each}
+            {#each board?.zones ?? [] as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
+          </select>
+          {@render who(a)}
         {:else if a.do === 'note'}
           <input bind:value={a.text} placeholder="A reminder for you (never on stream)" aria-label="Note" />
         {/if}
@@ -187,8 +207,8 @@
     <button class="small" onclick={() => (adding = !adding)} aria-expanded={adding}>＋ Add action</button>
     {#if adding}
       <div class="menu" role="menu">
-        {#each KINDS as [k, l] (k)}
-          <button role="menuitem" class="small" disabled={k === 'move' && !world} onclick={() => add(k)}>{l}</button>
+        {#each KINDS.filter(([k]) => (k === 'goto' ? !!board : k === 'move' ? !board : true)) as [k, l] (k)}
+          <button role="menuitem" class="small" disabled={(k === 'move' && !world) || (k === 'goto' && !board)} onclick={() => add(k)}>{l}</button>
         {/each}
       </div>
     {/if}

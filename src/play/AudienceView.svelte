@@ -19,6 +19,7 @@
   import Confetti from './Confetti.svelte';
   import ToolOverlay from './tools/ToolOverlay.svelte';
   import RpgStage from './rpg/RpgStage.svelte';
+  import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
   import { boardLayout, themeStyle } from '../lib/theme';
 
@@ -190,6 +191,8 @@
   {/key}
 {:else if session.phase === 'rpg'}
   <RpgStage {game} {session} {role} {onobject} {onavatar} />
+{:else if session.phase === 'boardgame'}
+  <BoardGameStage {game} {session} {role} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
   {#key session.tiebreakerRevealed}
     <div
@@ -228,7 +231,7 @@
   </div>
 {/if}
 
-{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board' || session.phase === 'rpg')}
+{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame')}
   <TimerDisplay timer={live.timer} />
 {/if}
 

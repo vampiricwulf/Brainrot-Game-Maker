@@ -226,7 +226,13 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
 
 /** The part of a session the action log can put back. */
 function rpgState(session: Session): string {
-  return JSON.stringify({ stats: session.stats ?? {}, inventories: session.inventories ?? {}, worlds: session.worlds ?? {}, stock: session.stock ?? {} });
+  return JSON.stringify({
+    stats: session.stats ?? {},
+    inventories: session.inventories ?? {},
+    worlds: session.worlds ?? {},
+    boardgames: session.boardgames ?? {},
+    stock: session.stock ?? {},
+  });
 }
 
 function restore(session: Session, json: string): void {
@@ -234,6 +240,7 @@ function restore(session: Session, json: string): void {
   session.stats = s.stats;
   session.inventories = s.inventories;
   session.worlds = s.worlds;
+  session.boardgames = s.boardgames ?? {};
   session.stock = s.stock;
 }
 

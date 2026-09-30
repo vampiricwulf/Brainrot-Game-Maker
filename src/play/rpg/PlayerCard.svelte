@@ -6,7 +6,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, runAction } from '../../lib/actions';
-  import { formatPoints, newId, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
+  import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
   import {
     addStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statValue,
@@ -21,14 +21,28 @@
     player: p,
     world,
     st,
+    board,
+    bs,
     selected,
     ontoggle,
-  }: { game: Game; session: Session; player: Player; world: World; st: WorldState; selected: string[]; ontoggle: () => void } = $props();
+  }: {
+    game: Game;
+    session: Session;
+    player: Player;
+    /** RPG rounds: the world (avatar position, dropping items on the screen). */
+    world?: World;
+    st?: WorldState;
+    /** Board-game rounds: for items whose "Use" sends players somewhere. */
+    board?: BoardGameRound;
+    bs?: BoardGameState;
+    selected: string[];
+    ontoggle: () => void;
+  } = $props();
 
   const on = $derived(selected.includes(p.id));
   const fields = $derived(statFields(game));
   const items = $derived(inventory(session, p.id));
-  const pos = $derived(st.positions[p.id]);
+  const pos = $derived(st?.positions[p.id]);
   const name = $derived(p.name);
   const currencies = $derived(currencyFields(game));
   let convertAmt = $state<number | null>(null);
@@ -70,7 +84,7 @@
     const def = itemDef(game, e?.item);
     if (!e || !def?.onUse?.length) return;
     if (!confirm(`${name} uses ${def.name}:\n${def.onUse.map((a) => '• ' + describeAction(game, a)).join('\n')}\n\nUse it up?`)) return;
-    const ctx = { game, session, live: app.live, world, st, selected, chosen: [p.id] };
+    const ctx = { game, session, live: app.live, world, st, board, bs, selected, chosen: [p.id] };
     const said = def.onUse.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a)}`));
     if (!def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
     toast(said.join(' · '), 3000);
@@ -78,11 +92,12 @@
 
   function drop(entryId: string): void {
     const e = items.find((x) => x.id === entryId);
-    if (!e || !pos) return;
+    if (!e || !pos || !st) return;
+    const world = st;
     logged(session, `${name} drops ${entryName(game, e)}`, () => {
       const el = droppedObject(game, e, { x: pos.x + 140, y: pos.y });
-      st.added[pos.screen] ??= [];
-      st.added[pos.screen].push(el);
+      world.added[pos.screen] ??= [];
+      world.added[pos.screen].push(el);
       const list = session.inventories?.[p.id];
       const i = list?.findIndex((x) => x.id === entryId) ?? -1;
       if (list && i >= 0) list.splice(i, 1);
@@ -113,18 +128,19 @@
     </button>
     <span class="score">{formatPoints(score(session, p.id), game.settings.currencySymbol)}</span>
     <span class="spacer"></span>
-    {#if pos}
+    {#if pos && st}
+      {@const w = st}
       <button
         class="tiny"
         class:on={pos.down}
         title="Knocked out (shown grey and tipped over)"
-        onclick={() => logged(session, `${name} ${pos.down ? 'gets up' : 'is knocked out'}`, () => (st.positions[p.id].down = !pos.down))}>💫</button
+        onclick={() => logged(session, `${name} ${pos.down ? 'gets up' : 'is knocked out'}`, () => (w.positions[p.id].down = !pos.down))}>💫</button
       >
       <button
         class="tiny"
         class:on={pos.hidden}
         title="Hide their avatar from the screen"
-        onclick={() => logged(session, `${name} ${pos.hidden ? 'shown' : 'hidden'}`, () => (st.positions[p.id].hidden = !pos.hidden))}>🫥</button
+        onclick={() => logged(session, `${name} ${pos.hidden ? 'shown' : 'hidden'}`, () => (w.positions[p.id].hidden = !pos.hidden))}>🫥</button
       >
     {/if}
     <button class="tiny" title="Show {p.name}'s sheet on screen (I)" onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: p.id })}>📺</button>
