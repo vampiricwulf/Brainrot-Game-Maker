@@ -1,7 +1,7 @@
 // Standalone player-only HTML export (spec §2, §8): this very app file plus the game pack embedded
 // as base64. When opened it detects the pack and starts in player mode.
 import { buildPack, type PackProgress } from './pack';
-import { downloadBlob, safeFilename } from './fileio';
+import { safeFilename, saveFile, savedWhere } from './fileio';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
 import { onlineCount } from './usage';
@@ -54,7 +54,10 @@ function selfHtml(): string {
 const WARN = 100 * 1024 ** 2;
 const STRONG = 250 * 1024 ** 2;
 
-export async function exportStandaloneHtml(game: Game, onProgress?: PackProgress): Promise<{ size: number; missing: string[]; online: number } | null> {
+export async function exportStandaloneHtml(
+  game: Game,
+  onProgress?: PackProgress,
+): Promise<{ size: number; missing: string[]; online: number; where: string } | null> {
   const { blob: pack, missing } = await buildPack(game, onProgress);
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
@@ -68,6 +71,7 @@ export async function exportStandaloneHtml(game: Game, onProgress?: PackProgress
     [head, `<script type="application/octet-stream" id="${PACK_ELEMENT_ID}">`, ...(await base64Pieces(pack)), '</script>\n', tail],
     { type: 'text/html' },
   );
-  downloadBlob(`${safeFilename(game.title)}.html`, out);
-  return { size: out.size, missing, online: onlineCount(game) };
+  const name = `${safeFilename(game.title)}.html`;
+  const where = savedWhere(await saveFile(name, out), name);
+  return { size: out.size, missing, online: onlineCount(game), where };
 }

@@ -2,7 +2,7 @@
 import JSZip from 'jszip';
 import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from './media.svelte';
 import { migrateGame, type Game } from './model';
-import { downloadBlob, parseGame, safeFilename } from './fileio';
+import { parseGame, safeFilename, saveFile, savedWhere } from './fileio';
 import { buildZip, type ZipEntry } from './zipwrite';
 
 function mediaPath(ref: { id: string; name: string }): string {
@@ -39,10 +39,11 @@ export async function buildPack(game: Game, onProgress?: PackProgress): Promise<
   return { blob, missing };
 }
 
-export async function savePack(game: Game, onProgress?: PackProgress): Promise<string[]> {
+/** Save the game as a .brainrot pack. Returns the media that couldn't be included and where it was saved. */
+export async function savePack(game: Game, onProgress?: PackProgress): Promise<{ missing: string[]; where: string }> {
   const { blob, missing } = await buildPack(game, onProgress);
-  downloadBlob(`${safeFilename(game.title)}.brainrot`, blob);
-  return missing;
+  const name = `${safeFilename(game.title)}.brainrot`;
+  return { missing, where: savedWhere(await saveFile(name, blob), name) };
 }
 
 export async function openPack(file: Blob): Promise<Game> {

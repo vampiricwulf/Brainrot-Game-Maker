@@ -36,6 +36,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 mod migrate;
+mod saves;
 
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{AppHandle, Emitter, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -283,6 +284,8 @@ fn data_folder(app: &AppHandle, which: &str) -> Option<PathBuf> {
         "settings" => settings_dir(app),
         "old-data" => data_folder(app, "data").and_then(|dir| migrate::old_for(&dir)),
         "old-settings" => settings_dir(app).and_then(|dir| migrate::old_for(&dir)),
+        "saves" => saves::beside_exe(),
+        "saves-documents" => app.path().document_dir().ok().map(|dir| dir.join(saves::FOLDER)),
         _ => None,
     }
 }
@@ -304,6 +307,8 @@ fn data_folders(app: AppHandle) -> serde_json::Value {
         "settings": describe("settings"),
         "oldData": describe("old-data"),
         "oldSettings": describe("old-settings"),
+        "saves": describe("saves"),
+        "savesDocuments": describe("saves-documents"),
         "moved": MOVED_OLD_DATA.load(Ordering::SeqCst),
     })
 }
@@ -354,6 +359,10 @@ fn move_old_data(app: &AppHandle) {
 #[tauri::command]
 fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
     let dir = data_folder(&app, &which).ok_or("That folder wasn't found.")?;
+    // The saves folder is made on first use; opening it before the first save makes it.
+    if which == "saves" && !dir.is_dir() {
+        let _ = std::fs::create_dir_all(&dir);
+    }
     if !dir.is_dir() {
         return Err(format!("{} doesn't exist yet.", dir.display()));
     }
@@ -369,6 +378,81 @@ fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|err| format!("Couldn't open {}: {err}", dir.display()))
+}
+
+/// Save a file (a .brainrot pack, a .json game or an exported .html) into BrainrotSaves next to the exe,
+/// or Documents\BrainrotSaves when the exe's folder can't be written. The bytes come as the raw request
+/// body (big packs), the file name in the `x-name` header (URI-encoded). Returns where it went.
+#[tauri::command]
+fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_json::Value, String> {
+    let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
+        return Err("Nothing to save.".into());
+    };
+    let name = request
+        .headers()
+        .get("x-name")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| urlencoding_decode(v))
+        .and_then(|v| saves::clean_name(&v))
+        .ok_or("That isn't a file name the app can save.")?;
+    let beside = data_folder(&app, "saves");
+    let first_err = match beside.as_deref().map(|dir| saves::write_save(dir, &name, data)) {
+        Some(Ok(path)) => return Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": false })),
+        Some(Err(err)) => Some(err),
+        None => None,
+    };
+    let docs = data_folder(&app, "saves-documents").ok_or("No folder to save in.")?;
+    match saves::write_save(&docs, &name, data) {
+        Ok(path) => Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": true })),
+        Err(err) => Err(format!(
+            "Couldn't save {name}: {}",
+            first_err.map_or_else(|| err.to_string(), |first| format!("{first}; and in Documents: {err}"))
+        )),
+    }
+}
+
+/// `%20`-style decoding of the file name header (headers are ASCII; names may not be).
+fn urlencoding_decode(v: &str) -> Option<String> {
+    let bytes = v.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok()?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+/// The saves in BrainrotSaves (beside the exe, then Documents), newest first, for the Open list.
+#[tauri::command]
+fn list_saves(app: AppHandle) -> serde_json::Value {
+    let mut out = Vec::new();
+    for (place, which) in [("app", "saves"), ("documents", "saves-documents")] {
+        let Some(dir) = data_folder(&app, which) else {
+            continue;
+        };
+        for s in saves::list_saves(&dir) {
+            out.push(serde_json::json!({ "name": s.name, "size": s.size, "modified": s.modified, "place": place }));
+        }
+    }
+    serde_json::json!(out)
+}
+
+/// One save's bytes (for Open), from BrainrotSaves beside the exe or in Documents.
+#[tauri::command]
+fn read_save(app: AppHandle, name: String, place: String) -> Result<tauri::ipc::Response, String> {
+    let name = saves::clean_name(&name).ok_or("That isn't a save.")?;
+    let which = if place == "documents" { "saves-documents" } else { "saves" };
+    let dir = data_folder(&app, which).ok_or("No saves folder.")?;
+    std::fs::read(dir.join(&name))
+        .map(tauri::ipc::Response::new)
+        .map_err(|err| format!("Couldn't open {name}: {err}"))
 }
 
 /// The project's own pages (ℹ About's links); `open_link` opens nothing else.
@@ -622,7 +706,7 @@ fn watch_for_crash(window: &tauri::WebviewWindow) {
                              Discord audio fix was on, and Brainrot Games Maker couldn't note that to start without \
                              the fix next time.\n\n\
                              Brainrot Games Maker closes now. Open it again with --no-audio-fix at the end of a \
-                             shortcut's Target, e.g. \"C:\\Users\\you\\Downloads\\brainrot-games-maker-portable.exe\" \
+                             shortcut's Target, e.g. \"C:\\Users\\you\\Downloads\\brainrot-game-maker-portable.exe\" \
                              --no-audio-fix\n\n\
                              Details: {why}"
                         ),
@@ -791,7 +875,10 @@ fn main() {
             retry_audio_fix,
             data_folders,
             open_data_folder,
-            open_link
+            open_link,
+            save_file,
+            list_saves,
+            read_save
         ])
         .setup(|app| {
             let handle = app.handle();

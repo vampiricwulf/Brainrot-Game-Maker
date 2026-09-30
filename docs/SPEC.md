@@ -30,7 +30,7 @@ decides who gets points, and controls media.
 
 | Artifact | Description | Priority |
 |---|---|---|
-| `brainrot-games-maker.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
+| `brainrot-game-maker.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
 | Game pack `*.brainrot` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
 | Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB. | **P1** |
 | Desktop `.exe` / `.app` | Tauri wrapper around the same build. Adds native file dialogs and large-file handling. | **P2** |
@@ -508,7 +508,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 Legend: **E2E** = checked by `tests/e2e/smoke.mjs` against the built file opened from `file://` in Chromium; **unit** =
 checked by Vitest; **manual** = not automated yet.
 
-- [x] Opening `brainrot-games-maker.html` from disk (no server) loads the editor. **E2E (Chromium)**. Edge is Chromium-based;
+- [x] Opening `brainrot-game-maker.html` from disk (no server) loads the editor. **E2E (Chromium)**. Edge is Chromium-based;
       Firefox is **manual**.
 - [x] A game with 3 rounds of different sizes plus Final can be built and played through. **unit** (round sizes, flow),
       **E2E** (save → reopen of a `.brainrot`).

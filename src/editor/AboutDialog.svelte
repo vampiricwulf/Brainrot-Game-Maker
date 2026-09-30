@@ -67,9 +67,24 @@
     {#if desktopApp}
       <p class="muted">
         The desktop app keeps your autosave, the media you add and its settings in these folders on this PC. Nothing else
-        is written anywhere, except files you save or export yourself.
+        is written anywhere, except files you save or export yourself: those go in a <b>BrainrotSaves</b> folder next to the
+        app.
       </p>
       {#if folders}
+        <div class="folder">
+          <div>
+            <div class="what">Your saves (Save, Export JSON, Export HTML)</div>
+            <code>{folders.saves?.path ?? 'unknown'}</code>
+            {#if !folders.saves?.exists}<div class="muted small">Made the first time you save.</div>{/if}
+            {#if folders.savesDocuments?.exists}
+              <div class="muted small">
+                Also in <code>{folders.savesDocuments.path}</code> (saves made when the app’s folder couldn’t be written).
+                <button class="small ghost" onclick={() => show('saves-documents')}>📂 Open</button>
+              </div>
+            {/if}
+          </div>
+          <button class="small" onclick={() => show('saves')}>📂 Open folder</button>
+        </div>
         <div class="folder">
           <div>
             <div class="what">Autosave, games in progress and media</div>

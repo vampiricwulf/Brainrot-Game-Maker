@@ -1,5 +1,5 @@
 [package]
-name = "brainrot-games-maker"
+name = "brainrot-game-maker"
 version = "0.1.0"
 description = "Brainrot Games Maker desktop app"
 edition = "2021"

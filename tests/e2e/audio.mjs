@@ -290,14 +290,17 @@ try {
       window.__callbacks = {};
       const windows = ['main'];
       window.__TAURI_INTERNALS__ = {
-        invoke: async (cmd, args) => {
-          window.__calls.push([cmd, JSON.parse(JSON.stringify(args ?? {}))]);
+        invoke: async (cmd, args, options) => {
+          window.__calls.push([cmd, args instanceof Uint8Array ? { bytes: args.length, name: decodeURIComponent(options?.headers?.['x-name'] ?? '') } : JSON.parse(JSON.stringify(args ?? {}))]);
+          if (cmd === 'save_file') return { path: `C:\\Games\\BrainrotSaves\\${decodeURIComponent(options.headers['x-name'])}`, fallback: false };
+          if (cmd === 'list_saves') return [];
           if (cmd === 'plugin:webview|create_webview_window') windows.push(args.options.label);
           if (cmd === 'plugin:window|get_all_windows') return windows;
           if (cmd === 'data_folders')
             return {
               data: { path: 'C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker', exists: true },
               settings: { path: 'C:\\Users\\Host\\AppData\\Roaming\\com.brainrotgames.maker', exists: false },
+              saves: { path: 'C:\\Games\\BrainrotSaves', exists: false },
               // After the rename: this start moved the old folders, but the old data folder was left behind.
               ...(o.moved
                 ? { moved: true, oldData: { path: 'C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot', exists: true }, oldSettings: { path: 'x', exists: false } }
@@ -593,12 +596,20 @@ try {
       (await calls(page, 'open_link'))[0].url === 'https://github.com/vampiricwulf/Brainrot-Game-Maker' && context.pages().length === 1,
       "the repo link opens in the default browser (the app's open_link), not in an app window",
     );
-    assert((await about.getByRole('button', { name: '📂 Open folder' }).count()) === 1 && (await about.getByText("Not created: it's only made").count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed)");
-    await about.getByRole('button', { name: '📂 Open folder' }).click();
+    assert((await about.getByRole('button', { name: '📂 Open folder' }).count()) === 2 && (await about.getByText("Not created: it's only made").count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed; the saves folder is made when opened)");
+    assert((await about.innerText()).includes('C:\\Games\\BrainrotSaves'), 'About shows where saves go (BrainrotSaves next to the app)');
+    await about.locator('.folder', { hasText: 'Autosave' }).getByRole('button', { name: '📂 Open folder' }).click();
     await called(page, 'open_data_folder');
     assert(JSON.stringify(await calls(page, 'open_data_folder')) === JSON.stringify([{ which: 'data' }]), 'Open folder asks the app to show the data folder');
     await page.keyboard.press('Escape');
     assert((await about.count()) === 0 && (await notice.count()) === 0, 'Esc closes About, and the notice is gone');
+    // Save goes to BrainrotSaves next to the app (not a download), as raw bytes with the file name.
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await called(page, 'save_file');
+    const saveCall = (await calls(page, 'save_file'))[0];
+    assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0, `Save sends the pack to the app (${JSON.stringify(saveCall)})`);
+    await page.locator('.toast', { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
+    assert(true, 'and says where it went');
     await page.reload();
     await page.getByRole('button', { name: 'ℹ About' }).waitFor();
     assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');

@@ -13,9 +13,9 @@ its autosave, media and settings from the old Jeopardy Builder folders to the ne
 ## Getting the app
 
 - **Download from the [Latest release](../../releases/latest)**. It's rebuilt automatically on every push to `main`:
-  - `brainrot-games-maker.html`: the whole app in one file. Double-click it to open it in **Chrome, Edge or Firefox**.
+  - `brainrot-game-maker.html`: the whole app in one file. Double-click it to open it in **Chrome, Edge or Firefox**.
     Everything works from a file opened from disk.
-  - `brainrot-games-maker-portable.exe`: the Windows desktop app, no install needed.
+  - `brainrot-game-maker-portable.exe`: the Windows desktop app, no install needed.
 - Or build it yourself (see [Development](#development)). It lands in `dist/index.html`.
 
 ## Building a game (Editor)
@@ -135,6 +135,11 @@ you see the progress and a **Cancel** button; a message then says what happened:
   in the UK.
 
 ### Saving and sharing
+
+In the desktop app, **Save**, **Export JSON** and **Export HTML** write into a **BrainrotSaves** folder next to the
+exe (made on the first save; Documents\BrainrotSaves if the exe's folder can't be written), and **Open…** lists the
+games there (newest first), with Browse… for anything else. ℹ About shows the folder with 📂 Open folder. In a browser
+they're downloads.
 
 - Work **autosaves** in the browser. If the browser blocks storage for files opened from disk, the header warns you to use
   Save.
@@ -340,7 +345,7 @@ must repeat the full list:
 
 ```bat
 set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AudioServiceOutOfProcess --autoplay-policy=no-user-gesture-required
-"C:\Users\you\Downloads\brainrot-games-maker-portable.exe"
+"C:\Users\you\Downloads\brainrot-game-maker-portable.exe"
 ```
 
 It works if Task Manager (Details tab, with the "Command line" column) no longer shows an `msedgewebview2.exe` whose
@@ -365,9 +370,9 @@ Turn the Discord audio fix off from outside the app, in either of these ways:
 - **Shortcut** (works with a blank copy still open): right-click the `.exe` › **Create shortcut** (on Windows 11, under
   **Show more options**), then right-click the shortcut › **Properties** and add ` --no-audio-fix` at the very end of
   **Target**, after the closing quote if there is one, e.g.
-  `"C:\Users\you\Downloads\brainrot-games-maker-portable.exe" --no-audio-fix`. Open Brainrot Games Maker once with this
+  `"C:\Users\you\Downloads\brainrot-game-maker-portable.exe" --no-audio-fix`. Open Brainrot Games Maker once with this
   shortcut: it saves the fix as off, and if a blank copy is still open, restarts that copy without the fix a moment
-  later. A Command Prompt works the same way: `"C:\path\to\brainrot-games-maker-portable.exe" --no-audio-fix`.
+  later. A Command Prompt works the same way: `"C:\path\to\brainrot-game-maker-portable.exe" --no-audio-fix`.
 
 If the window is still blank, a WebView2 process of the blank copy may be stuck: in Task Manager, end **Jeopardy
 Builder** and any **Microsoft Edge WebView2** entries (other apps that use WebView2 may need restarting afterwards), or

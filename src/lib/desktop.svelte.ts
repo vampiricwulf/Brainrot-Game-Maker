@@ -110,11 +110,14 @@ export interface DataFolders {
   /** The folders the app had as Jeopardy Builder, while they still exist (normally moved on the first start). */
   oldData?: DataFolder;
   oldSettings?: DataFolder;
+  /** BrainrotSaves next to the exe (where Save puts games), and in Documents (when the exe's folder can't be written). */
+  saves?: DataFolder;
+  savesDocuments?: DataFolder;
   /** This start moved the old Jeopardy Builder folders over. */
   moved?: boolean;
 }
 
-export type FolderName = 'data' | 'settings' | 'old-data' | 'old-settings';
+export type FolderName = 'data' | 'settings' | 'old-data' | 'old-settings' | 'saves' | 'saves-documents';
 
 export async function dataFolders(): Promise<DataFolders | null> {
   if (!inTauri()) return null;
@@ -146,4 +149,46 @@ export async function openLink(url: string): Promise<boolean> {
     console.warn('Could not open the link', err);
     return false;
   }
+}
+
+/** Where a save went: BrainrotSaves next to the exe, or in Documents (`fallback`) when that folder couldn't be written. */
+export interface SavedFile {
+  path: string;
+  fallback: boolean;
+}
+
+/** Save a file into BrainrotSaves (desktop app). Throws the app's message when it can't. */
+export async function saveToSaves(name: string, blob: Blob): Promise<SavedFile> {
+  const { core } = await import('@tauri-apps/api');
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  try {
+    return await core.invoke<SavedFile>('save_file', bytes, { headers: { 'x-name': encodeURIComponent(name) } });
+  } catch (err) {
+    throw new Error(typeof err === 'string' ? err : "Couldn't save the file.");
+  }
+}
+
+export interface SaveEntry {
+  name: string;
+  size: number;
+  /** ms since 1970. */
+  modified: number;
+  place: 'app' | 'documents';
+}
+
+/** The saves in BrainrotSaves, newest first (empty outside the desktop app). */
+export async function listSaves(): Promise<SaveEntry[]> {
+  if (!inTauri()) return [];
+  try {
+    return await invoke<SaveEntry[]>('list_saves');
+  } catch (err) {
+    console.warn('Could not list the saves', err);
+    return [];
+  }
+}
+
+/** One save as a File (to open it like a picked file). */
+export async function readSave(entry: SaveEntry): Promise<File> {
+  const buf = await invoke<ArrayBuffer>('read_save', { name: entry.name, place: entry.place });
+  return new File([buf], entry.name);
 }

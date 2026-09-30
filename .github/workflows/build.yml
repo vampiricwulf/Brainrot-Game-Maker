@@ -44,11 +44,11 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
       - name: Name the single-file app
-        run: mkdir -p out && cp dist/index.html out/brainrot-games-maker.html
+        run: mkdir -p out && cp dist/index.html out/brainrot-game-maker.html
       - uses: actions/upload-artifact@v6
         with:
-          name: brainrot-games-maker
-          path: out/brainrot-games-maker.html
+          name: brainrot-game-maker
+          path: out/brainrot-game-maker.html
 
   windows:
     # The desktop app (Tauri). Skipped for pull requests (desktop.yml covers src-tauri changes there).
@@ -71,11 +71,11 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          Copy-Item src-tauri/target/release/brainrot-games-maker.exe out/brainrot-games-maker-portable.exe
+          Copy-Item src-tauri/target/release/brainrot-game-maker.exe out/brainrot-game-maker-portable.exe
           Get-ChildItem out
       - uses: actions/upload-artifact@v6
         with:
-          name: brainrot-games-maker-windows
+          name: brainrot-game-maker-windows
           path: out/*.exe
 
   release-latest:
@@ -104,8 +104,8 @@ jobs:
           Newest build of \`main\` (${SHORT}): ${SUBJECT}
 
           **Downloads**
-          - \`brainrot-games-maker.html\`: the whole app in one file. Download it and double-click to open it in Chrome, Edge or Firefox.
-          - \`brainrot-games-maker-portable.exe\`: Windows desktop app, no install needed (uses the WebView2 runtime that Windows 10/11 already have).
+          - \`brainrot-game-maker.html\`: the whole app in one file. Download it and double-click to open it in Chrome, Edge or Firefox.
+          - \`brainrot-game-maker-portable.exe\`: Windows desktop app, no install needed (uses the WebView2 runtime that Windows 10/11 already have).
 
           This release is replaced automatically on every push to \`main\`.
           NOTES

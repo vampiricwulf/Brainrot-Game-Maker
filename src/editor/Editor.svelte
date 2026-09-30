@@ -1,4 +1,6 @@
 <script lang="ts">
+  import OpenSaves from './OpenSaves.svelte';
+  import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onMount } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
@@ -91,9 +93,36 @@
     pruneMedia([app.game, app.playGame, app.resumable?.game]);
   }
 
+  /** Desktop app: the saves in BrainrotSaves, listed by Open… (null: the list is closed). */
+  let saveList = $state<SaveEntry[] | null>(null);
+
   async function open(): Promise<void> {
+    if (inTauri()) {
+      const saves = await listSaves();
+      if (saves.length) {
+        saveList = saves;
+        return;
+      }
+    }
+    await browse();
+  }
+
+  async function browse(): Promise<void> {
+    saveList = null;
     const file = await pickFile('.brainrot,.jbr,.zip,.json,application/json,application/zip');
-    if (!file) return;
+    if (file) await openFile(file);
+  }
+
+  async function openSave(s: SaveEntry): Promise<void> {
+    saveList = null;
+    try {
+      await openFile(await readSave(s));
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  }
+
+  async function openFile(file: File): Promise<void> {
     try {
       app.game = await openGameFile(file);
       tab = 0;
@@ -112,9 +141,9 @@
     saving = true;
     packPct = null;
     try {
-      const missing = await savePack($state.snapshot(game), packProgress);
-      if (missing.length) alert(`Saved, but these media files were missing and weren't included:\n${missing.join('\n')}`);
-      else toast('Saved game pack (.brainrot)');
+      const { missing, where } = await savePack($state.snapshot(game), packProgress);
+      if (missing.length) alert(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
+      else toast(where, 5000);
     } catch (e) {
       alert('Save failed: ' + (e as Error).message);
     } finally {
@@ -130,7 +159,7 @@
       const r = await exportStandaloneHtml($state.snapshot(game), packProgress);
       if (r)
         toast(
-          `Exported a playable HTML file (${formatBytes(r.size)}). Double-click it to play.` +
+          `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to|Downloaded) /, '')}. Double-click it to play.` +
             (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
           r.online ? 8000 : 5000,
         );
@@ -180,7 +209,17 @@
     <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
       {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Export HTML'}
     </button>
-    <button class="ghost" onclick={() => saveGameJson($state.snapshot(game))} title="Text only, no media. Handy for hand-editing.">
+    <button
+      class="ghost"
+      onclick={async () => {
+        try {
+          toast(await saveGameJson($state.snapshot(game)), 5000);
+        } catch (e) {
+          alert('Export failed: ' + (e as Error).message);
+        }
+      }}
+      title="Text only, no media. Handy for hand-editing."
+    >
       Export JSON
     </button>
     <span class="spacer"></span>
@@ -208,6 +247,7 @@
     </div>
   {/if}
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
+  {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
 
   <div class="body">
     <nav>

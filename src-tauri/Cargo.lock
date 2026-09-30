@@ -293,7 +293,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "brainrot-games-maker"
+name = "brainrot-game-maker"
 version = "0.1.0"
 dependencies = [
  "serde_json",

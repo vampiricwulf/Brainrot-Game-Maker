@@ -257,7 +257,7 @@
           </li>
           <li>
             Still silent: share your whole screen with Sound on (viewers hear everything your PC plays, including your call: use
-            headphones), or run the show in Chrome or Edge: <b>Save</b> the game (.brainrot), open <code>brainrot-games-maker.html</code> in the
+            headphones), or run the show in Chrome or Edge: <b>Save</b> the game (.brainrot), open <code>brainrot-game-maker.html</code> in the
             browser, <b>Open…</b> the pack and share that browser window.
           </li>
         {:else}
