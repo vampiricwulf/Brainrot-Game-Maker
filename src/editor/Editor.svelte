@@ -363,7 +363,7 @@
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
-    <button class="ghost" onclick={() => (settings = true)} title="Autosaves and how Save names files">⚙ Settings</button>
+    <button class="ghost" onclick={() => (settings = true)} title="Autosaves, how Save names files, and how much undo to remember">⚙ Settings</button>
     <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
     <button class="primary" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>

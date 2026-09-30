@@ -144,9 +144,10 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 - **Open…** lists your saves. Dropping a `.brainrot` file on the editor opens it too.
 - **⬇ Export HTML** makes a single, play-only file to share.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **⬆ Add files…**.
-- **⚙ Settings** (desktop app, next to ℹ About) has these options:
-  - **Autosave** every few minutes. The default is every 5 minutes, keeping the last 3.
-  - **Replace the last save** instead of making `Game (2)`, `Game (3)`…
+- **⚙ Settings** (next to ℹ About) has these options:
+  - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
+  - **Autosave** every few minutes (desktop app). The default is every 5 minutes, keeping the last 3.
+  - **Replace the last save** instead of making `Game (2)`, `Game (3)`… (desktop app)
 
 ## Streaming the sound (Discord, OBS)
 

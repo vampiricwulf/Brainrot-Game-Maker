@@ -18,6 +18,8 @@ done, the Unreleased lines move under that day's heading.
 
 ### Added
 - This changelog.
+- ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
+  never a redo.
 
 ## 2026-09-30
 

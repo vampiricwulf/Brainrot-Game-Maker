@@ -5,7 +5,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { clear, heldMedia, history, jumpTo, MAX_STEPS, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
+  import { clear, heldMedia, history, jumpTo, maxSteps, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
   import { formatBytes, getBlob } from '../lib/media.svelte';
   import { goTo } from '../lib/nav.svelte';
   import InlineAsk from '../play/host/InlineAsk.svelte';
@@ -225,7 +225,7 @@
     {@render ask(0)}
   </div>
   <p class="foot muted">
-    {history.trimmed ? `Older steps weren't kept (the history keeps the last ${MAX_STEPS} steps).` : `The history keeps the last ${MAX_STEPS} steps and survives a reload.`}
+    {history.trimmed ? `Older steps weren't kept (the history keeps the last ${maxSteps()} steps).` : `The history keeps the last ${maxSteps()} steps and survives a reload.`}
     {#if kept.n}
       {kept.n === 1 ? 'A removed file' : `${kept.n} removed files`} ({formatBytes(kept.bytes)}) {kept.n === 1 ? 'is' : 'are'} kept so
       {kept.n === 1 ? 'its step' : 'their steps'} can be undone.

@@ -8,6 +8,7 @@ import { applyOps, diff, mediaIdsIn, mergeOps, opsSize, PathGone, type Op } from
 import { loadGameMedia, pruneMedia, registerLinks, restoreStash } from './media.svelte';
 import { describe, type Place } from './historylabel';
 import { newId, type Game } from './model';
+import { prefs } from './prefs.svelte';
 import { isTextField } from './undokeys';
 import type { GameWatch } from './watch.svelte';
 
@@ -92,7 +93,8 @@ export interface StepOptions {
 /** How an undo or redo was asked for: a key, a button, or a click in the History list. */
 export type Via = 'key' | 'button' | 'list';
 
-export const MAX_STEPS = 500;
+/** How many steps are kept: ⚙ Settings (300 unless changed). */
+export const maxSteps = (): number => prefs.undoSteps;
 export const MAX_BYTES = 32 * 1024 * 1024;
 /** Kept whatever their size. */
 const KEEP_NEWEST = 20;
@@ -310,21 +312,28 @@ function add(e: HistoryEntry): void {
   // A new step drops the undone ones (and the marks among them).
   left(h.entries.slice(h.index));
   unsaved.add(e.id);
-  let entries = [...h.entries.slice(0, h.index), e];
-  let marks = h.index < h.entries.length ? h.marks.filter((m) => m.at <= h.index) : h.marks;
+  h.marks = h.index < h.entries.length ? h.marks.filter((m) => m.at <= h.index) : h.marks;
+  h.entries = [...h.entries.slice(0, h.index), e];
+  h.index = h.entries.length;
+  keepLimits();
+}
+
+/**
+ * Forget the oldest steps beyond the limits (the step count from ⚙ Settings, and the size). Only steps that are
+ * done can go, so lowering the setting never takes away a redo. ⚙ Settings calls this when the count changes.
+ */
+export function keepLimits(): void {
+  const { entries } = h;
   let bytes = entries.reduce((n, x) => n + x.size, 0);
   let drop = 0;
-  while (entries.length - drop > MAX_STEPS || (bytes > MAX_BYTES && entries.length - drop > KEEP_NEWEST)) bytes -= entries[drop++].size;
-  if (drop) {
-    left(entries.slice(0, drop));
-    h.origin = { kind: 'older', label: "Older steps weren't kept", ts: entries[drop - 1].end };
-    h.trimmed += drop;
-    entries = entries.slice(drop);
-    marks = marks.map((m) => ({ ...m, at: m.at - drop })).filter((m) => m.at >= 0);
-  }
-  h.marks = marks;
-  h.entries = entries;
-  h.index = entries.length;
+  while (drop < h.index && (entries.length - drop > maxSteps() || (bytes > MAX_BYTES && entries.length - drop > KEEP_NEWEST))) bytes -= entries[drop++].size;
+  if (!drop) return;
+  left(entries.slice(0, drop));
+  h.origin = { kind: 'older', label: "Older steps weren't kept", ts: entries[drop - 1].end };
+  h.trimmed += drop;
+  h.marks = h.marks.map((m) => ({ ...m, at: m.at - drop })).filter((m) => m.at >= 0);
+  h.entries = entries.slice(drop);
+  h.index -= drop;
 }
 
 /** Apply steps to the game (backward to undo). False when one couldn't be: the history starts again from here. */

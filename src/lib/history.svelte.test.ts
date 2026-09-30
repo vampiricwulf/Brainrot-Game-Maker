@@ -1,3 +1,4 @@
+import { prefs } from './prefs.svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   arriving,
@@ -10,7 +11,8 @@ import {
   jumpTo,
   listen,
   mark,
-  MAX_STEPS,
+  maxSteps,
+  keepLimits,
   nameStep,
   onApplied,
   onNotify,
@@ -386,12 +388,29 @@ describe('undo history: undo, redo, jump', () => {
 });
 
 describe('undo history: limits and marks', () => {
-  it(`keeps the last ${MAX_STEPS} steps`, () => {
-    for (let i = 0; i <= MAX_STEPS + 2; i++) step(null, () => (g.title = `T${i}`));
-    expect(history.entries).toHaveLength(MAX_STEPS);
+  it(`keeps the last ${maxSteps()} steps`, () => {
+    for (let i = 0; i <= maxSteps() + 2; i++) step(null, () => (g.title = `T${i}`));
+    expect(history.entries).toHaveLength(maxSteps());
     expect(history.trimmed).toBe(3);
     expect(history.origin.label).toBe("Older steps weren't kept");
     expect(history.entries[0].label).toBe('Renamed the game “T3”');
+  });
+
+  it('forgets older steps at once when the setting goes down, but never a redo', () => {
+    const before = prefs.undoSteps;
+    try {
+      for (let i = 0; i < 30; i++) step(null, () => (g.title = `T${i}`));
+      undo();
+      undo();
+      prefs.undoSteps = 20;
+      keepLimits();
+      expect(history.entries).toHaveLength(20);
+      expect(history.index).toBe(18);
+      expect(history.entries[0].label).toBe('Renamed the game “T10”');
+      expect(redo()?.label).toBe('Renamed the game “T28”');
+    } finally {
+      prefs.undoSteps = before;
+    }
   });
 
   it('keeps within its memory budget, but always the newest 20', () => {

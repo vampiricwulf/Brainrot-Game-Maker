@@ -1,7 +1,8 @@
-<!-- ⚙ Settings: this computer's preferences (autosaves, how Save names files). Kept in this browser / app, not the game. -->
+<!-- ⚙ Settings: this computer’s preferences (autosaves, how Save names files, how much undo to remember). Kept in this browser / app, not the game. -->
 <script lang="ts">
   import { inTauri } from '../lib/platform';
-  import { DEFAULT_PREFS, prefs, savePrefs } from '../lib/prefs.svelte';
+  import { keepLimits } from '../lib/history.svelte';
+  import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
   const desktop = inTauri();
@@ -57,17 +58,31 @@
       </p>
     {/if}
 
+    <h3>Undo</h3>
+    <label class="field inline">
+      Remember the last
+      <input
+        type="number"
+        min={UNDO_STEPS.min}
+        max={UNDO_STEPS.max}
+        class="n"
+        bind:value={prefs.undoSteps}
+        onchange={() => (savePrefs(), keepLimits())}
+        aria-label="Undo steps to remember"
+      />
+      changes ({UNDO_STEPS.min}–{UNDO_STEPS.max})
+    </label>
+    <p class="muted small">How far Ctrl+Z and the 🕘 History tab can go back. The oldest changes are forgotten first.</p>
+
     <div class="row">
-      <!-- Only the desktop app has settings to change. -->
-      {#if desktop}
-        <button
-          class="ghost small"
-          onclick={() => {
-            Object.assign(prefs, DEFAULT_PREFS);
-            savePrefs();
-          }}>Back to the defaults</button
-        >
-      {/if}
+      <button
+        class="ghost small"
+        onclick={() => {
+          Object.assign(prefs, DEFAULT_PREFS);
+          savePrefs();
+          keepLimits();
+        }}>Back to the defaults</button
+      >
       <span class="spacer"></span>
       <button class="primary" onclick={onclose}>Done</button>
     </div>
