@@ -22,6 +22,8 @@ export const app = $state<{
   storageOk: boolean;
   /** Set while the host edits the game being played (a screen live): the slide editors work on it instead. */
   editGame: Game | null;
+  /** Desktop app: the last autosave file written (⚙ Settings → Autosave). */
+  fileAutosave: { path: string; at: number } | null;
 }>({
   screen: 'editor',
   game: newGame(),
@@ -33,6 +35,7 @@ export const app = $state<{
   toast: '',
   storageOk: true,
   editGame: null,
+  fileAutosave: null,
 });
 
 /** The game the editing components change: the one being played while it's edited live, else the editor's. */

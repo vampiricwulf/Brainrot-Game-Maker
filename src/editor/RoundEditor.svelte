@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { showMenu } from '../lib/contextmenu.svelte';
   import { app } from '../lib/app.svelte';
   import { categoryLabel, clueValue, slideText, type BoardRound } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
@@ -205,6 +206,17 @@
           class:empty={clue.empty}
           class:drop={dropTarget === `t${ci}-${row}`}
           onclick={() => (editing = { cat: ci, row })}
+          oncontextmenu={(e) =>
+            showMenu(e, [
+              { heading: `${categoryLabel(cat) || `Category ${ci + 1}`} · ${sym}${clueValue(round, row, clue)}` },
+              { label: '✎ Edit clue', onclick: () => (editing = { cat: ci, row }) },
+              {
+                label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
+                disabled: clue.empty,
+                onclick: () => (clue.type = clue.type === 'dailyDouble' ? 'standard' : 'dailyDouble'),
+              },
+              { label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty', onclick: () => (clue.empty = !clue.empty) },
+            ])}
           ondragover={(e) => !clue.empty && over(e, `t${ci}-${row}`)}
           ondragleave={() => dropTarget === `t${ci}-${row}` && (dropTarget = null)}
           ondrop={(e) => dropOnTile(e, ci, row)}

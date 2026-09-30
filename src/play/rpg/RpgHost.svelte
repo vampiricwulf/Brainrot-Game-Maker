@@ -3,6 +3,7 @@
   the object clicked on the stage (or every object here), and each player's stats and inventory.
 -->
 <script lang="ts">
+  import { showMenu } from '../../lib/contextmenu.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
@@ -146,6 +147,18 @@
     else selected = [];
   }
 
+  /** Right-click a screen on the minimap: move the party (or some players) there. */
+  function mapMenu(e: MouseEvent, ref: ScreenRef, screen: Screen): void {
+    picked = ref;
+    showMenu(e, [
+      { heading: screen.name },
+      { label: `▶ Move ${party?.name ?? 'the party'} here`, onclick: () => moveHere() },
+      { label: `Only the selected (${selected.length})`, disabled: !selected.length, onclick: () => moveHere(selected) },
+      { sep: true },
+      { label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) },
+    ]);
+  }
+
   function moveHere(who?: string[]): void {
     if (!picked || !world || !st) return;
     const to = picked;
@@ -277,7 +290,7 @@
           <span class="spacer"></span>
           <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere">⤢ Full map</button>
         </div>
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} {picked} onpick={(ref) => (picked = ref)} />
+        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} {picked} onpick={(ref) => (picked = ref)} onmenu={mapMenu} />
         {#if picked && pickedFound}
           <div class="row pick">
             <span>→ <b>{pickedFound.screen.name}</b></span>

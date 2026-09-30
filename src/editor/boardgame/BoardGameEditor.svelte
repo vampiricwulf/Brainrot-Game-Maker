@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
+  import { showMenu } from '../../lib/contextmenu.svelte';
   import { clampToBoard, newBoardSpace, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -21,8 +22,6 @@
   let view = $state<'spaces' | 'backdrop' | 'zones'>('spaces');
   let selId = $state<string | null>(null);
   const sel = $derived(spaceById(round, selId ?? undefined));
-  /** Clicking the board adds a space linked from the selected one. */
-  let adding = $state(true);
   /** The next space clicked is linked from (or unlinked from) the selected one. */
   let linking = $state(false);
   let pickingIcon = $state(false);
@@ -66,11 +65,17 @@
     s.y = at.y;
   }
 
+  /** Ctrl+click (⌘+click) on the board adds a space after the selected one; a plain click deselects. */
   function boardDown(e: PointerEvent): void {
+    if (e.button !== 0) return;
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.backdrop')) return;
     linking = false;
-    if (!adding) return void (selId = null);
-    const p = clampToBoard(toBoard(e).x, toBoard(e).y);
+    if (!(e.ctrlKey || e.metaKey)) return void (selId = null);
+    addSpaceAt(toBoard(e));
+  }
+
+  function addSpaceAt(at: { x: number; y: number }): void {
+    const p = clampToBoard(at.x, at.y);
     const s = newBoardSpace(p.x, p.y, `Space ${round.spaces.length + 1}`, SPACE_COLORS[round.spaces.length % SPACE_COLORS.length]);
     // Inserted after the selected space: it takes over the selected space's links (so a loop stays a loop).
     if (sel) {
@@ -79,6 +84,41 @@
     }
     round.spaces.push(s);
     selId = s.id;
+  }
+
+  /** Right-click: a space's menu, or the board's (add a space there). */
+  function boardMenu(e: MouseEvent): void {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-space]');
+    const s = el ? spaceById(round, el.dataset.space) : undefined;
+    const at = toBoard(e as PointerEvent);
+    if (s) {
+      selId = s.id;
+      showMenu(e, [
+        { heading: s.name },
+        { label: '🏁 Make it Start', onclick: () => (round.start = s.id), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
+        { label: '🔗 Link it to…', onclick: () => (linking = true), hint: 'Then click the space it leads to' },
+        { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
+        { sep: true },
+        { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s) },
+      ]);
+    } else
+      showMenu(e, [
+        { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) },
+        { label: 'Deselect', onclick: () => (selId = null), disabled: !sel },
+      ]);
+  }
+
+  /** Delete / Backspace removes the selected space (not while typing in a field). */
+  function key(e: KeyboardEvent): void {
+    if (view !== 'spaces' || !sel) return;
+    if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      removeSpace(sel);
+    } else if (e.key === 'Escape') {
+      linking = false;
+      selId = null;
+    }
   }
 
   function removeSpace(s: BoardSpace): void {
@@ -100,6 +140,8 @@
 
   const zone = $derived(round.zones.find((z) => z.id === zoneSlide));
 </script>
+
+<svelte:window onkeydown={key} />
 
 <div class="bge">
   <div class="row settings">
@@ -145,7 +187,7 @@
 
   {#if view === 'spaces'}
     <div class="row tools">
-      <label class="check small"><input type="checkbox" bind:checked={adding} /> Click the board to add a space (after the selected one)</label>
+      <span class="muted small">Ctrl+click the board to add a space (after the selected one) · Delete removes the selected space · right-click for more</span>
       {#if linking}<span class="warn small">Click the space {sel?.name} should lead to (again to unlink)…</span>{/if}
       <span class="spacer"></span>
       <span class="muted small">Drag spaces to move them.</span>
@@ -157,6 +199,7 @@
           bind:this={canvas}
           style:transform="scale({scale})"
           onpointerdown={boardDown}
+          oncontextmenu={boardMenu}
           onpointermove={boardMove}
           onpointerup={() => (drag = null)}
           role="application"

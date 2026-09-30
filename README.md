@@ -29,7 +29,8 @@ its autosave, media and settings from the old Jeopardy Builder folders to the ne
 | 🖼 **Media** | Every file in the game, with usage counts and "remove unused". Files that play from the internet show 🌐 and their site, with **Save a copy** and **Check link**. Also **Paste a link** to add one, and a list of online players (YouTube, Google Drive's player). **Replace…** swaps in another file everywhere it's used; a file missing from this browser (e.g. after opening a `.json`, which has no media) is flagged, with **🔗 Replace file…** on it and **🔗 Find missing files…** to put back many at once by file name. |
 | **Final Jeopardy rounds** | Its on-screen **name** (e.g. "Final Brainrot"), category, question/answer slides, think time and host notes. |
 | **RPG rounds** | A **world** of maps, each a grid of **screens** (slides). Add screens on the grid, set each side's exit (auto, blocked with a reason, or a warp to any screen), and per map: what the audience map shows (whole map / discovered / hidden), whether it shows open directions without saying where they lead, diagonal moves, wrapping edges, the move transition and music. **✎ Edit screen** is the slide editor plus object tools: 🚩 **Arrival** points, 📦 **Items** from the catalog, ✏ **Draw a line**, 🖌 **Drawpad…** (draw a whole picture, then insert it) and ⬚ **Hotspot** in the Shape menu. Any element can be an **object**: a name, a class (doorway, item, currency, NPC, shop, hazard, interactable, spawn, blocker), **Secret** (hidden until revealed), host notes, a dialogue slide and **action buttons** (move, spin a wheel, roll dice, pop up a slide or question, play a sound, change a stat, give/take items or points, reveal/hide, timer, open a shop, a note). A screen can have **other looks** (＋ Look: a copy to change, e.g. "the village, on fire") that the host switches to in play. NPCs can hold their own stats, optionally shown to viewers as a badge. Worlds are shared, so a later round can continue the same adventure. |
-| **Board game rounds** | Spaces on a board, linked in a loop or a path: click the board to add a space after the selected one (a new board starts as a loop of 12), drag them around, and 🔗 **Link to…** another space to make a fork; ⇄ makes a link go **both ways** (drawn with an arrow at each end, and
+| **Board game rounds** | Spaces on a board, linked in a loop or a path (a new board starts as a loop of 12): **Ctrl+click** the board to add a space after the selected one (**Delete** removes the selected space), drag them
+around, and 🔗 **Link to…** another space to make a fork; ⇄ makes a link go **both ways** (drawn with an arrow at each end, and
 players never turn straight back along it). Each space has a name, color, icon, actions **when passed** (Start: +2 gold) and **when landed on**, secret (viewers see "?"), and host notes. Also: the **Start** space, how a turn's move is decided (dice such as `d6` / `2d6`, a saved wheel, or 👣 **one space a turn** where the player
 picks the way), the **board backdrop** (a slide), **off-board zones** like the Shadow Realm (each with its own screen), and how to win (secret, or shown on the board). |
 | 📊 **Stats & Items** | **Stats** every player has (numbers as counters, bars or hearts, text, checkboxes, tags), with presets (HP, Gold…), a start value, per-player starting values, and where viewers see them (the stats strip, only the player sheet, or never). A number can be a **currency** (separate from the score). **Items** (icon, price, stackable, worn on the avatar, secret, what "Use" does; a worn item's **look** is its own picture, uploaded or drawn right on an avatar with 🖌 Draw it…, placed by dragging it in a preview or with sliders for position, size, turn and behind-the-avatar), with CSV import/export. **Shops** sell items for a currency stat or for **points** (the score; also what a shop charges when the game has no currency stat), with stock (or unlimited), and shops with the same pool share it. A shop can **buy back** items for a share of the price. |
@@ -140,6 +141,20 @@ In the desktop app, **Save**, **Export JSON** and **Export HTML** write into a *
 exe (made on the first save; Documents\BrainrotSaves if the exe's folder can't be written), and **Open…** lists the
 games there (newest first), with Browse… for anything else. ℹ About shows the folder with 📂 Open folder. In a browser
 they're downloads.
+
+**⚙ Settings** (next to ℹ About) holds this computer's preferences:
+- **Save replaces the game's last save**: off (the default), each Save keeps the older ones and makes Game (2).brainrot,
+  Game (3).brainrot…; on, Save always writes Game.brainrot.
+- **Autosave** (desktop app): a copy of the game every few minutes (5 by default; 0 turns it off), only when it changed,
+  as "Game (autosave 1).brainrot"… in BrainrotSaves, keeping 3 by default (the oldest is replaced). The header shows the
+  time of the last one.
+
+**Right-click** menus: round tabs (move, duplicate, delete), Jeopardy tiles in the editor (Daily Double, leave empty),
+world map screens (edit, duplicate, a new look, delete, or add one), board game spaces (make Start, link, add after,
+delete) and the board (add a space here), and in play: the scoring chips (select, picker, set score), RPG objects
+(card, reveal/hide, remove), avatars (select, sheet, knocked out, hide), the empty stage (text here, full map, map,
+cover), the minimap (move here), inventory items (equip, use, give, drop, remove), board game tokens (their turn,
+sheet, send to a zone or Start) and spaces (put players here, reveal).
 
 - Work **autosaves** in the browser. If the browser blocks storage for files opened from disk, the header warns you to use
   Save.

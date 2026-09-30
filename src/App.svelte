@@ -12,6 +12,10 @@
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
   import Editor from './editor/Editor.svelte';
+  import ContextMenu from './lib/ContextMenu.svelte';
+  import { autosave } from './lib/autosave';
+  import { inTauri } from './lib/platform';
+  import { prefs } from './lib/prefs.svelte';
   import Play from './play/Play.svelte';
 
   /** Base64 game pack when this file is an exported, player-only game. */
@@ -60,6 +64,34 @@
   // Autosave (spec §5.8 / §6.5). Only after the initial load so a blank game never overwrites a draft.
   const saveDraftSoon = debounce(saveDraft, 500);
   // Don't lose the last edits if the tab is closed or hidden right after typing.
+  // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
+  let autosaving = false;
+  let lastAutosaveAt = Date.now();
+  let lastAutosaved = '';
+  onMount(() => {
+    if (!inTauri()) return;
+    lastAutosaved = JSON.stringify($state.snapshot(app.game));
+    const id = setInterval(async () => {
+      if (autosaving || !prefs.autosaveMinutes || Date.now() - lastAutosaveAt < prefs.autosaveMinutes * 60_000) return;
+      lastAutosaveAt = Date.now();
+      const game = $state.snapshot(app.game);
+      const json = JSON.stringify(game);
+      if (json === lastAutosaved || !game.rounds.length) return;
+      autosaving = true;
+      try {
+        const path = await autosave(game, prefs.autosaveKeep);
+        lastAutosaved = json;
+        app.fileAutosave = { path, at: Date.now() };
+      } catch (err) {
+        console.warn('Autosave failed', err);
+        toast(`Autosave failed: ${err instanceof Error ? err.message : err}`, 5000);
+      } finally {
+        autosaving = false;
+      }
+    }, 15_000);
+    return () => clearInterval(id);
+  });
+
   onMount(() => {
     const flush = () => saveDraftSoon.flush();
     const onvis = () => document.visibilityState === 'hidden' && flush();
@@ -184,6 +216,7 @@
   <Play onexit={exitPlay} oncancel={leavePlay} />
 {/if}
 
+<ContextMenu />
 {#if app.toast}
   <div class="toast" role="status">{app.toast}</div>
 {/if}

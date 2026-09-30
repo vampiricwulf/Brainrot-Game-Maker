@@ -3,6 +3,7 @@
   screen, knocked out, and converting score to or from a currency. Every change is one undoable step.
 -->
 <script lang="ts">
+  import { showMenu } from '../../lib/contextmenu.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, runAction } from '../../lib/actions';
@@ -213,7 +214,24 @@
   <div class="inv">
     {#each items as e (e.id)}
       {@const def = itemDef(game, e.item)}
-      <div class="row it">
+      <div
+        class="row it"
+        role="group"
+        aria-label={entryName(game, e)}
+        oncontextmenu={(ev) =>
+          showMenu(ev, [
+            { heading: `${entryName(game, e)}${e.qty > 1 ? ` ×${e.qty}` : ''}` },
+            ...(def?.wearable
+              ? [{ label: e.equipped ? 'Unequip' : 'Equip', onclick: () => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped)) }]
+              : []),
+            ...(def?.onUse?.length ? [{ label: 'Use', onclick: () => use(e.id) }] : []),
+            { sep: true as const },
+            ...session.players.filter((x) => x.id !== p.id).map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
+            ...(pos ? [{ label: '⬇ Drop it here', onclick: () => drop(e.id) }] : []),
+            { sep: true as const },
+            { label: '✕ Remove', danger: true, onclick: () => remove(e.id) },
+          ])}
+      >
         <span class="nm" title={def?.hostNotes ?? def?.description}>
           {entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{def?.secret ? ' 🔒' : ''}
         </span>

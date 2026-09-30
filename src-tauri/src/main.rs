@@ -382,7 +382,8 @@ fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
 
 /// Save a file (a .brainrot pack, a .json game or an exported .html) into BrainrotSaves next to the exe,
 /// or Documents\BrainrotSaves when the exe's folder can't be written. The bytes come as the raw request
-/// body (big packs), the file name in the `x-name` header (URI-encoded). Returns where it went.
+/// body (big packs), the file name in the `x-name` header (URI-encoded). `x-mode: new` never replaces a save
+/// (it becomes "Game (2).brainrot"…); anything else replaces a save of that name. Returns where it went.
 #[tauri::command]
 fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_json::Value, String> {
     let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
@@ -395,14 +396,19 @@ fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_j
         .and_then(|v| urlencoding_decode(v))
         .and_then(|v| saves::clean_name(&v))
         .ok_or("That isn't a file name the app can save.")?;
+    let fresh = request.headers().get("x-mode").and_then(|v| v.to_str().ok()) == Some("new");
+    let write = |dir: &Path| {
+        let name = if fresh { saves::unused_name(dir, &name) } else { name.clone() };
+        saves::write_save(dir, &name, data)
+    };
     let beside = data_folder(&app, "saves");
-    let first_err = match beside.as_deref().map(|dir| saves::write_save(dir, &name, data)) {
+    let first_err = match beside.as_deref().map(write) {
         Some(Ok(path)) => return Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": false })),
         Some(Err(err)) => Some(err),
         None => None,
     };
     let docs = data_folder(&app, "saves-documents").ok_or("No folder to save in.")?;
-    match saves::write_save(&docs, &name, data) {
+    match write(&docs) {
         Ok(path) => Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": true })),
         Err(err) => Err(format!(
             "Couldn't save {name}: {}",

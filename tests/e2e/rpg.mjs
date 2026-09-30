@@ -83,6 +83,19 @@ try {
   assert((await page.locator('.rpg .avatar').count()) === 2, 'both avatars are on the stage');
   assert((await page.locator('.rpg .strip .card').count()) === 2, 'the stats strip shows every player');
 
+  // Right-click on the stage: an avatar's menu, and the empty stage's.
+  await page.locator('.rpg .avatar[data-player-id]').first().click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '📺 Show their sheet' }).click();
+  await page.locator('.sheet').waitFor();
+  assert(true, 'right-click an avatar: show their sheet');
+  await page.keyboard.press('Escape');
+  const stageBox = await page.locator('.rpg').boundingBox();
+  await page.mouse.click(stageBox.x + 30, stageBox.y + 30, { button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: /Full map/ }).click();
+  await page.getByRole('dialog', { name: 'Full map' }).waitFor();
+  assert(true, 'right-click the stage: the full map');
+  await page.keyboard.press('Escape');
+
   // Viewers (single window) never get the secret Potion or the arrival point drawn, nor a click target for them.
   assert((await page.locator('.rpg .hit').count()) === 0, 'secret objects and arrival points get no click target on the viewers’ stage');
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'the secret Potion is not drawn for viewers');

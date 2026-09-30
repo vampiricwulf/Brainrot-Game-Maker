@@ -4,6 +4,7 @@
   ✎ Edit screen to lay out its picture and objects.
 -->
 <script lang="ts">
+  import { showMenu } from '../../lib/contextmenu.svelte';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { toast } from '../../lib/app.svelte';
@@ -191,6 +192,17 @@
                   class:bw={blockedSide(s, 'w')}
                   onclick={() => (selId = s.id)}
                   ondblclick={() => ((selId = s.id), (editing = true))}
+                  oncontextmenu={(e) => {
+                    selId = s.id;
+                    showMenu(e, [
+                      { heading: s.name },
+                      { label: '✎ Edit screen', onclick: () => ((lookId = null), (editing = true)) },
+                      { label: '⧉ Duplicate', onclick: () => duplicateScreen(s) },
+                      { label: '＋ Look (a copy)', onclick: () => (s.variants = [...(s.variants ?? []), newVariant(undefined, s, `Look ${(s.variants?.length ?? 0) + 2}`)]) },
+                      { sep: true },
+                      { label: '🗑 Delete screen', danger: true, onclick: () => removeScreen(s) },
+                    ]);
+                  }}
                   aria-label="Screen {s.name}"
                   title="{s.name}: click for settings, double-click to edit"
                 >
@@ -199,7 +211,12 @@
                   {#if doorways(s).length || DIRS.some((d) => warpSide(s, d))}<span class="door" title="Has doorways or warps">🚪</span>{/if}
                 </button>
               {:else}
-                <button class="cell empty" onclick={() => addScreen(c, r)} aria-label="Add a screen at column {c + 1}, row {r + 1}">＋</button>
+                <button
+                  class="cell empty"
+                  onclick={() => addScreen(c, r)}
+                  oncontextmenu={(e) => showMenu(e, [{ label: '＋ Add a screen here', onclick: () => addScreen(c, r) }])}
+                  aria-label="Add a screen at column {c + 1}, row {r + 1}">＋</button
+                >
               {/if}
             {/each}
           {/each}

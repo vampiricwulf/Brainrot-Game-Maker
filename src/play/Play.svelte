@@ -23,9 +23,11 @@
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
-  import { addLive, droppedFile, objectAt, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
-  import { override } from '../lib/rpg';
-  import { rollMover, turnNow } from './boardgame/bgops';
+  import { addLive, droppedFile, liveText, objectAt, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
+  import { showMenu } from '../lib/contextmenu.svelte';
+  import { sendTo } from '../lib/boardgame';
+  import { audienceSees, override } from '../lib/rpg';
+  import { boardNow, rollMover, turnNow } from './boardgame/bgops';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { Dir8 } from '../lib/model';
@@ -517,6 +519,105 @@
     logged(session, `Move ${name}`, () => Object.assign(override(st, id), at));
   }
 
+  // ---------- Right-click on the stage (host) ----------
+
+  /** Stage coordinates (1920×1080) of a pointer event over the stage. */
+  function stagePoint(e: MouseEvent): { x: number; y: number } {
+    const box = (e.currentTarget as HTMLElement).querySelector('.stage')?.getBoundingClientRect();
+    return box ? { x: ((e.clientX - box.left) / box.width) * SLIDE_W, y: ((e.clientY - box.top) / box.height) * SLIDE_H } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+  }
+
+  const sheet = (id: string) => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id });
+  const toggleSelect = (id: string) => (selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+  function stageMenu(e: MouseEvent): void {
+    if (e.defaultPrevented) return;
+    const t = e.target as HTMLElement;
+    const objId = t.closest<HTMLElement>('[data-object]')?.dataset.object;
+    const playerId = t.closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
+    const spaceId = t.closest<HTMLElement>('[data-space]')?.dataset.space;
+    const who = playerId ? session.players.find((p) => p.id === playerId) : undefined;
+    if (session.phase === 'rpg') {
+      const { st } = rpgNow(game, session);
+      if (!st) return;
+      if (objId) {
+        const found = objectAt(game, session, objId);
+        if (!found) return;
+        const name = found.el.name || found.el.role?.class || 'Object';
+        const shown = audienceSees(found.el, st.objects[objId]);
+        return showMenu(e, [
+          { heading: name },
+          { label: '🗂 Open its card', onclick: () => (rpgObject = objId) },
+          { label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, objId).shown = !shown)) },
+          { sep: true },
+          { label: '🗑 Remove', danger: true, onclick: () => logged(session, `Remove ${name}`, () => (override(st, objId).taken = true)) },
+        ]);
+      }
+      if (who) {
+        const pos = st.positions[who.id];
+        return showMenu(e, [
+          { heading: who.name },
+          { label: selected.includes(who.id) ? 'Deselect' : 'Select', onclick: () => toggleSelect(who.id) },
+          { label: '📺 Show their sheet', onclick: () => sheet(who.id) },
+          { label: pos?.down ? '💫 Gets up' : '💫 Knocked out', onclick: () => logged(session, `${who.name} ${pos?.down ? 'gets up' : 'is knocked out'}`, () => (st.positions[who.id].down = !pos?.down)) },
+          { label: '🫥 Hide their avatar', onclick: () => logged(session, `${who.name} hidden`, () => (st.positions[who.id].hidden = true)) },
+        ]);
+      }
+      const at = stagePoint(e);
+      return showMenu(e, [
+        {
+          label: '＋ Text here…',
+          onclick: () => {
+            const text = prompt('Text to put here (hidden until you reveal it):')?.trim();
+            if (!text) return;
+            const el = liveText(text);
+            el.x = Math.round(at.x - el.w / 2);
+            el.y = Math.round(at.y - el.h / 2);
+            if (addLive(game, session, el, `Text: ${text}`)) rpgObject = el.id;
+          },
+        },
+        { label: '🗺 Full map (jump anywhere)', onclick: () => (rpgMap = true) },
+        { label: st.mapShown ? '🗺 Hide the map from viewers' : '🗺 Show the map to viewers', onclick: () => toggleMap(game, session) },
+        { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) },
+      ]);
+    }
+    if (session.phase === 'boardgame') {
+      const { round, bs } = boardNow(game, session);
+      if (!round || !bs) return;
+      const turnId = bs.order[bs.turn];
+      const turnName = playerName(session, turnId);
+      if (who) {
+        return showMenu(e, [
+          { heading: who.name },
+          { label: '🎲 Make it their turn', disabled: turnId === who.id, onclick: () => logged(session, `${who.name}'s turn`, () => ((bs.turn = bs.order.indexOf(who.id)), (bs.fork = undefined))) },
+          { label: selected.includes(who.id) ? 'Deselect' : 'Select', onclick: () => toggleSelect(who.id) },
+          { label: '📺 Show their sheet', onclick: () => sheet(who.id) },
+          { sep: true },
+          ...round.zones.map((z) => ({ label: `🌀 Send to ${z.name}`, onclick: () => logged(session, `${who.name} → ${z.name}`, () => sendTo(bs, [who.id], { zone: z.id })) })),
+          { label: '🏁 Send to Start', onclick: () => logged(session, `${who.name} → Start`, () => sendTo(bs, [who.id], { space: (round.start ?? round.spaces[0]?.id) })) },
+        ]);
+      }
+      if (spaceId) {
+        const sp = round.spaces.find((s) => s.id === spaceId);
+        if (!sp) return;
+        const movers = selected.length ? selected : turnId ? [turnId] : [];
+        return showMenu(e, [
+          { heading: sp.name },
+          {
+            label: `📍 Put ${selected.length ? `the selected (${selected.length})` : turnName} here`,
+            disabled: !movers.length,
+            onclick: () => logged(session, `${movers.map((m) => playerName(session, m)).join(', ')} → ${sp.name}`, () => sendTo(bs, movers, { space: sp.id })),
+          },
+          {
+            label: '👁 Reveal this space',
+            disabled: !sp.secret || !!bs.revealed?.includes(sp.id),
+            onclick: () => logged(session, `Reveal ${sp.name}`, () => (bs.revealed = [...(bs.revealed ?? []), sp.id])),
+          },
+        ]);
+      }
+    }
+  }
+
   /** An avatar on the stage was dragged (moved on its screen) or clicked (selected). */
   function avatarAct(id: string, at?: { x: number; y: number }): void {
     const { st } = rpgNow(game, session);
@@ -840,6 +941,7 @@
         role="presentation"
         ondragover={(e) => session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault()}
         ondrop={dropOnStage}
+        oncontextmenu={stageMenu}
       >
         <Stage>
           <AudienceView

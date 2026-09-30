@@ -158,11 +158,11 @@ export interface SavedFile {
 }
 
 /** Save a file into BrainrotSaves (desktop app). Throws the app's message when it can't. */
-export async function saveToSaves(name: string, blob: Blob): Promise<SavedFile> {
+export async function saveToSaves(name: string, blob: Blob, mode: 'new' | 'overwrite' = 'overwrite'): Promise<SavedFile> {
   const { core } = await import('@tauri-apps/api');
   const bytes = new Uint8Array(await blob.arrayBuffer());
   try {
-    return await core.invoke<SavedFile>('save_file', bytes, { headers: { 'x-name': encodeURIComponent(name) } });
+    return await core.invoke<SavedFile>('save_file', bytes, { headers: { 'x-name': encodeURIComponent(name), 'x-mode': mode } });
   } catch (err) {
     throw new Error(typeof err === 'string' ? err : "Couldn't save the file.");
   }

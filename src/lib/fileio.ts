@@ -2,6 +2,7 @@
 import { GAME_VERSION, type Game } from './model';
 import { inTauri } from './platform';
 import { saveToSaves, type SavedFile } from './desktop.svelte';
+import { prefs } from './prefs.svelte';
 
 export function downloadText(filename: string, text: string, type = 'application/json'): void {
   downloadBlob(filename, new Blob([text], { type }));
@@ -27,7 +28,8 @@ export async function saveFile(filename: string, blob: Blob): Promise<SavedFile 
     downloadBlob(filename, blob);
     return null;
   }
-  return saveToSaves(filename, blob);
+  // ⚙ Settings: replace the last save, or keep it and make "Game (2).brainrot".
+  return saveToSaves(filename, blob, prefs.overwriteSave ? 'overwrite' : 'new');
 }
 
 /** "Saved to …\\BrainrotSaves\\Game.brainrot" (or "Downloaded Game.brainrot"), for the toast. */

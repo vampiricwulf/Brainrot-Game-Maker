@@ -77,7 +77,7 @@
   let drag = $state<{ id: string; dx: number; dy: number; x: number; y: number; moved: boolean } | null>(null);
 
   function avatarDown(e: PointerEvent, id: string, x: number, y: number): void {
-    if (!onavatar || split) return;
+    if (!onavatar || split || e.button !== 0) return;
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const s = stage?.scale || 1;
@@ -151,6 +151,7 @@
         style:width="{el.w}px"
         style:height="{el.h}px"
         style:transform="rotate({el.rotation}deg)"
+        data-object={el.id}
         onpointerdown={(e) => objDown(e, el.id, el.x, el.y)}
         onpointermove={objMove}
         onpointerup={objUp}
@@ -167,6 +168,7 @@
     {@const y = drag?.id === p.id ? drag.y : pos.y}
     <div
       class="avatar"
+      data-player-id={p.id}
       class:down={pos.down}
       class:draggable={!!onavatar && !split}
       style:left="{x}px"

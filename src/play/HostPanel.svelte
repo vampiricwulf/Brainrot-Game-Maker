@@ -1,5 +1,6 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
+  import { showMenu } from '../lib/contextmenu.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';
@@ -278,7 +279,24 @@
     <div class="players">
       {#each session.players as p, i (p.id)}
         {@const on = selected.includes(p.id)}
-        <div class="p" class:on class:picker={session.currentPickerId === p.id} style:--c={p.color}>
+        <div
+          class="p"
+          class:on
+          class:picker={session.currentPickerId === p.id}
+          style:--c={p.color}
+          role="group"
+          aria-label={p.name}
+          oncontextmenu={(e) =>
+            showMenu(e, [
+              { heading: p.name },
+              { label: on ? 'Deselect' : 'Select', onclick: () => toggle(p.id), disabled: !scoring },
+              {
+                label: session.currentPickerId === p.id ? '★ No picker' : '★ Make the picker',
+                onclick: () => (session.currentPickerId = session.currentPickerId === p.id ? undefined : p.id),
+              },
+              { label: '✎ Set the score…', onclick: () => (editingScore = p.id) },
+            ])}
+        >
           {#if scoring}
             <button
               class="sel"

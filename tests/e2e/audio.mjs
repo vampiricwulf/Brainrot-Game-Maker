@@ -291,7 +291,12 @@ try {
       const windows = ['main'];
       window.__TAURI_INTERNALS__ = {
         invoke: async (cmd, args, options) => {
-          window.__calls.push([cmd, args instanceof Uint8Array ? { bytes: args.length, name: decodeURIComponent(options?.headers?.['x-name'] ?? '') } : JSON.parse(JSON.stringify(args ?? {}))]);
+          window.__calls.push([
+            cmd,
+            args instanceof Uint8Array
+              ? { bytes: args.length, name: decodeURIComponent(options?.headers?.['x-name'] ?? ''), mode: options?.headers?.['x-mode'] }
+              : JSON.parse(JSON.stringify(args ?? {})),
+          ]);
           if (cmd === 'save_file') return { path: `C:\\Games\\BrainrotSaves\\${decodeURIComponent(options.headers['x-name'])}`, fallback: false };
           if (cmd === 'list_saves') return [];
           if (cmd === 'plugin:webview|create_webview_window') windows.push(args.options.label);
@@ -607,9 +612,18 @@ try {
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await called(page, 'save_file');
     const saveCall = (await calls(page, 'save_file'))[0];
-    assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0, `Save sends the pack to the app (${JSON.stringify(saveCall)})`);
+    assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'new', `Save sends the pack to the app, as a new save (${JSON.stringify(saveCall)})`);
     await page.locator('.toast', { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
     assert(true, 'and says where it went');
+    // ⚙ Settings: Save replaces the last save instead.
+    await page.getByRole('button', { name: '⚙ Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await settings.getByText('Save replaces the game’s last save').click();
+    assert((await settings.getByLabel('Autosaves to keep').inputValue()) === '3', 'three autosaves are kept by default');
+    await settings.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForFunction(() => window.__calls.filter((c) => c[0] === 'save_file').length === 2);
+    assert((await calls(page, 'save_file'))[1].mode === 'overwrite', 'with the setting on, Save replaces the last save');
     await page.reload();
     await page.getByRole('button', { name: 'ℹ About' }).waitFor();
     assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');

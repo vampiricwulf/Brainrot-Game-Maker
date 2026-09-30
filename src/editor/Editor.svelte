@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { showMenu } from '../lib/contextmenu.svelte';
+  import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onMount } from 'svelte';
@@ -174,6 +176,7 @@
   const problems = $derived(validate(game));
 
   let about = $state(false);
+  let settings = $state(false);
   // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
   const NOTICE_KEY = 'jb.dataNoticeSeen';
   let dataNotice = $state(inTauri() && !seen());
@@ -224,12 +227,15 @@
     </button>
     <span class="spacer"></span>
     {#if app.storageOk}
-      <span class="muted autosave">Autosaved {inTauri() ? 'on this PC' : 'in this browser'}</span>
+      <span class="muted autosave" title={app.fileAutosave ? `Last autosave file: ${app.fileAutosave.path}` : undefined}>
+        Autosaved {inTauri() ? 'on this PC' : 'in this browser'}{app.fileAutosave ? ` · file ${new Date(app.fileAutosave.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+      </span>
     {:else}
       <span class="autosave warn" title="This browser won't let a file opened from disk store data. Use Save often.">
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
+    <button class="ghost" onclick={() => (settings = true)} title="Autosaves and how Save names files">⚙ Settings</button>
     <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
     <button class="primary" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
@@ -247,6 +253,7 @@
     </div>
   {/if}
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
+  {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
   {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
 
   <div class="body">
@@ -254,7 +261,21 @@
       <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
-        <button class="round-tab" class:active={tab === i} onclick={() => (tab = i)} title={ROUND_MODES[round.mode].label}>
+        <button
+          class="round-tab"
+          class:active={tab === i}
+          onclick={() => (tab = i)}
+          oncontextmenu={(e) =>
+            showMenu(e, [
+              { heading: roundName(round, i) },
+              { label: '◀ Move earlier', onclick: () => moveRound(i, -1), disabled: i === 0 },
+              { label: 'Move later ▶', onclick: () => moveRound(i, 1), disabled: i === game.rounds.length - 1 },
+              { label: '⧉ Duplicate', onclick: () => duplicateRound(i) },
+              { sep: true },
+              { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i) },
+            ])}
+          title={ROUND_MODES[round.mode].label}
+        >
           <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
         </button>
       {/each}

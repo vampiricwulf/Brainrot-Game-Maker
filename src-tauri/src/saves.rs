@@ -48,6 +48,26 @@ pub fn write_save(dir: &Path, name: &str, data: &[u8]) -> io::Result<PathBuf> {
     Ok(path)
 }
 
+/// A name for a new save that doesn't replace one already there: `Game.brainrot`, else `Game (2).brainrot`,
+/// `Game (3).brainrot`…
+pub fn unused_name(dir: &Path, name: &str) -> String {
+    if !dir.join(name).exists() {
+        return name.to_string();
+    }
+    let path = Path::new(name);
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+    // "Game (2)" saved again becomes "Game (3)", not "Game (2) (2)".
+    let base = match stem.rsplit_once(" (") {
+        Some((b, n)) if n.ends_with(')') && n[..n.len() - 1].parse::<u32>().is_ok() => b,
+        _ => stem,
+    };
+    (2..)
+        .map(|n| format!("{base} ({n}).{ext}"))
+        .find(|candidate| !dir.join(candidate).exists())
+        .unwrap_or_else(|| name.to_string())
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SaveInfo {
     pub name: String,
@@ -107,6 +127,18 @@ mod tests {
         // No leftover partial files.
         assert_eq!(list_saves(&dir).len(), 1);
         let _ = fs::remove_dir_all(dir.parent().unwrap());
+    }
+
+    #[test]
+    fn new_saves_get_the_next_free_number() {
+        let dir = temp("unused");
+        assert_eq!(unused_name(&dir, "Game.brainrot"), "Game.brainrot");
+        write_save(&dir, "Game.brainrot", b"1").unwrap();
+        assert_eq!(unused_name(&dir, "Game.brainrot"), "Game (2).brainrot");
+        write_save(&dir, "Game (2).brainrot", b"2").unwrap();
+        assert_eq!(unused_name(&dir, "Game.brainrot"), "Game (3).brainrot");
+        assert_eq!(unused_name(&dir, "Game (2).brainrot"), "Game (3).brainrot");
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

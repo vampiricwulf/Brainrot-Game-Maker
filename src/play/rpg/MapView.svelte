@@ -18,6 +18,7 @@
     only,
     big = false,
     picked = null,
+    onmenu,
   }: {
     world: World;
     st: WorldState | undefined;
@@ -31,6 +32,8 @@
     big?: boolean;
     /** A screen the host picked (outlined). */
     picked?: ScreenRef | null;
+    /** Host: a screen was right-clicked. */
+    onmenu?: (e: MouseEvent, ref: ScreenRef, screen: Screen) => void;
   } = $props();
 
   const maps = $derived((audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps).filter((m) => !only || m.id === only));
@@ -82,6 +85,7 @@
                 style:color={textOn(bg)}
                 disabled={!onpick}
                 onclick={() => onpick?.({ map: m.id, screen: s.id }, s)}
+                oncontextmenu={onmenu ? (e) => onmenu(e, { map: m.id, screen: s.id }, s) : undefined}
                 title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}`}
                 aria-label={audience ? undefined : `${m.name} · ${s.name}`}
               >

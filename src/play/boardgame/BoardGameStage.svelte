@@ -81,7 +81,7 @@
         {#each tokens as t (t.id)}
           {@const p = session.players.find((x) => x.id === t.id)}
           {#if p}
-            <div class="tok on-board" class:current={t.id === turnId} style:left="{t.x}px" style:top="{t.y}px" data-player={p.name}>
+            <div class="tok on-board" class:current={t.id === turnId} style:left="{t.x}px" style:top="{t.y}px" data-player={p.name} data-player-id={p.id}>
               <Avatar player={p} size={t.small ? 64 : 84} />
             </div>
           {/if}
@@ -152,6 +152,12 @@
     display: flex;
     justify-content: center;
     gap: 40px;
+  }
+  /* Labels over the board never catch clicks meant for the tokens and spaces under them. */
+  .turn-banner,
+  .zones,
+  .win {
+    pointer-events: none;
   }
   .turn-banner {
     position: absolute;

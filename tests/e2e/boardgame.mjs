@@ -33,6 +33,22 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Board game/ }).click();
   assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'a new board has a loop of 12 spaces');
+  // Ctrl+click adds a space (a plain click only deselects); Delete removes the selected one; right-click has both.
+  const canvasBox = await page.locator('.canvas-box').boundingBox();
+  await page.mouse.click(canvasBox.x + canvasBox.width * 0.5, canvasBox.y + canvasBox.height * 0.5);
+  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'a plain click on the board adds nothing');
+  await page.keyboard.down('Control');
+  await page.mouse.click(canvasBox.x + canvasBox.width * 0.5, canvasBox.y + canvasBox.height * 0.5);
+  await page.keyboard.up('Control');
+  assert((await page.getByRole('button', { name: /^Space / }).count()) === 13, 'Ctrl+click adds a space');
+  await page.keyboard.press('Delete');
+  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'Delete removes the selected space');
+  await page.getByRole('button', { name: 'Space Space 5' }).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '＋ Add a space after it' }).click();
+  assert((await page.getByRole('button', { name: /^Space / }).count()) === 13, 'right-click a space: add a space after it');
+  await page.getByRole('button', { name: 'Space Space 13' }).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
+  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'and delete it');
   // A fork: Space 3 can also go straight to Space 7.
   await page.getByRole('button', { name: 'Space Space 3' }).click();
   await page.getByRole('button', { name: '🔗 Link to…' }).click();
@@ -73,6 +89,13 @@ try {
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
   assert((await page.locator('.stage .on-board').count()) === 2, 'both tokens are on the board');
+
+  // Right-click a token: make it their turn.
+  await page.locator('.stage .on-board[data-player="Player 2"]').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🎲 Make it their turn' }).click();
+  assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 2'), "right-click a token: make it their turn");
+  await page.locator('.stage .on-board[data-player="Player 1"]').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🎲 Make it their turn' }).click();
 
   // Roll with D: the result fills in the steps.
   await page.keyboard.press('d');
