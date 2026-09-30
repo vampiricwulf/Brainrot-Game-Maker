@@ -42,9 +42,6 @@
     <label class="check">
       <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
     </label>
-    <label class="check">
-      <input type="checkbox" bind:checked={s.finalAllowNonPositive} /> Players with a score of 0 or less can play the final round
-    </label>
     <label class="field">
       Points symbol
       <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" />

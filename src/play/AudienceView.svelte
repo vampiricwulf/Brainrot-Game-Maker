@@ -173,7 +173,7 @@
     {/key}
     {#if session.dd?.stage === 'question' && ddPlayer}
       <div class="dd-badge" style:border-color={ddPlayer.color}>
-        <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double · {formatPoints(session.dd.wager ?? 0, sym)}
+        <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double{#if session.dd.shown} · {formatPoints(session.dd.wager ?? 0, sym)}{/if}
       </div>
     {/if}
   {/if}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
+import { migrateGame, newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
@@ -16,6 +16,8 @@ import { applyAction } from './tools';
 function setup(players = 3) {
   const game = jeopardyGame();
   for (let i = 0; i < players; i++) game.players.push({ id: newId(), name: `P${i + 1}`, color: `#00000${i}` });
+  // These tests go by the TV rule: players with 0 or less sit out the Final.
+  for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = false;
   const session = newSession(game);
   const [a, b, c] = session.players.map((p) => p.id);
   return { game, session, a, b, c };
@@ -578,6 +580,26 @@ describe('final wagers', () => {
     expect([finalWagersOk(session), finalWagersOk(session, true)]).toEqual([false, true]);
     session.final!.wagers[b] = 0;
     expect(finalWagersOk(session)).toBe(true);
+  });
+
+  it('lets players with 0 or less play a Final that allows it (the default for a new one)', () => {
+    const { game, session, a, b, c } = setup();
+    for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = newFinalRound().allowNonPositive;
+    applyScore(session, game, [a], 1000, 'x');
+    applyScore(session, game, [b], -200, 'x');
+    goToRound(session, game, 1);
+    expect([...session.final!.players].sort()).toEqual([a, b, c].sort());
+  });
+
+  it('carries the old game setting over to each Final round', () => {
+    const old = jeopardyGame();
+    for (const r of old.rounds) if (r.mode === 'final') delete r.allowNonPositive;
+    (old.settings as unknown as Record<string, unknown>).finalAllowNonPositive = true;
+    const g = migrateGame(JSON.parse(JSON.stringify(old)));
+    expect(g.rounds.filter((r) => r.mode === 'final').map((r) => (r as FinalRound).allowNonPositive)).toEqual([true]);
+    expect('finalAllowNonPositive' in g.settings).toBe(false);
+    delete (old.settings as unknown as Record<string, unknown>).finalAllowNonPositive;
+    expect((migrateGame(JSON.parse(JSON.stringify(old))).rounds.find((r) => r.mode === 'final') as FinalRound).allowNonPositive).toBe(false);
   });
 });
 

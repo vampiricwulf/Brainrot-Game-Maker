@@ -256,9 +256,7 @@ export interface GameSettings {
   maxPlayers: number;
   /** Start a clue's countdown automatically when it opens (if it has a timer). */
   timerAutoStart: boolean;
-  /** Let players with $0 or less play the final round. */
-  finalAllowNonPositive: boolean;
-  roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
+    roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
 }
 
 /** Optional sounds played on the audience side at key moments (spec §9). */
@@ -400,6 +398,8 @@ export interface FinalRound {
   questionSlide: Slide;
   answerSlide: Slide;
   timerSeconds: number;
+  /** Players with a score of 0 or less can play it too (they can only wager 0 unless the host ignores the limits). */
+  allowNonPositive?: boolean;
   hostNotes?: string;
 }
 
@@ -515,7 +515,8 @@ export interface Session {
   /** Round intro sequence in progress (spec §6.3 step 0). */
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
   /** Daily Double in progress for the open clue. */
-  dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number } | null;
+  /** `shown`: the host put the wager on screen (viewers don't see it until then, like Final wagers). */
+  dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number; shown?: boolean } | null;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
@@ -916,7 +917,7 @@ export function newRound(name: string, cats = 6, values: number[] = DEFAULT_VALU
 }
 
 export function newFinalRound(name = 'Final Jeopardy!'): FinalRound {
-  return { id: newId(), name, mode: 'final', category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30 };
+  return { id: newId(), name, mode: 'final', category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30, allowNonPositive: true };
 }
 
 export function newGame(): Game {
@@ -933,7 +934,6 @@ export function newGame(): Game {
       rollOffDie: 20,
       pickerFollowsAward: true,
       timerAutoStart: true,
-      finalAllowNonPositive: false,
       roundIntro: { titleCard: true, tileFill: true, categoryReveal: 'click' },
       maxPlayers: 8,
     },
@@ -1012,6 +1012,10 @@ export function migrateGame(input: Game): Game {
   g.version = GAME_VERSION;
   g.rounds = (data.rounds ?? []).map((r) => (r.mode ? r : ({ ...(r as object), mode: 'board' } as BoardRound)));
   g.settings = { ...d.settings, ...(data.settings ?? {}) };
+  // "0 or less can play the final round" was a game setting; each Final round has its own now.
+  const old = g.settings as GameSettings & { finalAllowNonPositive?: boolean };
+  for (const r of g.rounds) if (isFinal(r)) r.allowNonPositive ??= old.finalAllowNonPositive ?? false;
+  delete old.finalAllowNonPositive;
   g.media ??= [];
   // Links only ever point at web pages (a hand-edited game must not smuggle in javascript: or file:).
   for (const m of g.media) {

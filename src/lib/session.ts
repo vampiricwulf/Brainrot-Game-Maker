@@ -540,7 +540,7 @@ export function currentFinal(session: Session, game: Game): FinalRound | undefin
  * is checked again because scores may have changed, keeping what was entered for players who are still in.
  */
 export function startFinal(session: Session, game: Game, round: FinalRound): void {
-  const eligible = session.players.filter((p) => game.settings.finalAllowNonPositive || score(session, p.id) > 0).map((p) => p.id);
+  const eligible = session.players.filter((p) => round.allowNonPositive || score(session, p.id) > 0).map((p) => p.id);
   // Reveal in TV order: lowest score first.
   const order = [...eligible].sort((a, b) => score(session, a) - score(session, b));
   const saved = session.final?.roundId === round.id ? { state: session.final, step: session.finalStep } : session.finals?.[round.id];

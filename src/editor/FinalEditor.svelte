@@ -29,6 +29,10 @@
   </label>
   <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" /></label>
   <label class="field">Think time (seconds)<input type="number" min="5" bind:value={round.timerSeconds} /></label>
+  <label class="check">
+    <input type="checkbox" checked={round.allowNonPositive ?? true} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
+    Players with a score of 0 or less can play it
+  </label>
   <span class="muted hint">Wagers are entered privately by the host during the game, then revealed player by player.</span>
 </div>
 <label class="field notes">
@@ -68,8 +72,11 @@
     align-self: end;
     font-size: 12px;
   }
-  .grid input {
+  .grid input:not([type='checkbox']) {
     width: 280px;
+  }
+  .grid .check {
+    align-self: end;
   }
   .tabs {
     display: flex;

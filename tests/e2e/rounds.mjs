@@ -44,6 +44,8 @@ try {
   await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
   assert((await roundNames()).at(-1) === 'Final round 2', 'a second Final gets its own name');
   await page.getByLabel('Name (shown on screen)').fill('Midgame Wager');
+  // TV rule for this one: players with $0 sit it out.
+  await page.getByLabel('Players with a score of 0 or less can play it').uncheck();
   await page.getByLabel('Category').fill('Snacks');
   await page.getByRole('button', { name: '◀ Move earlier' }).click();
   await page.getByRole('button', { name: '◀ Move earlier' }).click();

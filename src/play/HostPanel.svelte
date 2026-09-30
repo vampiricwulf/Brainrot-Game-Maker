@@ -238,7 +238,13 @@
     {:else if session.phase === 'clue' && info}
       <b>{categoryLabel(info.category)}</b>
       <span class="val">{formatPoints(info.value, sym)}</span>
-      {#if session.dd?.stage === 'question'}<span class="ddtag">DD {formatPoints(session.dd.wager ?? 0, sym)}</span>{/if}
+      {#if session.dd?.stage === 'question'}
+        {@const dd = session.dd}
+        <span class="ddtag">DD {formatPoints(dd.wager ?? 0, sym)}</span>
+        <button class="ghost small" onclick={() => (dd.shown = !dd.shown)} title="Viewers don't see the wager until you show it">
+          {dd.shown ? 'Hide wager' : 'Show wager'}
+        </button>
+      {/if}
       <span class="muted">·</span>
       {#if session.revealed}
         <span class="revealed">Answer is showing</span>

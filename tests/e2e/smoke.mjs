@@ -658,6 +658,9 @@ await page.getByRole('button', { name: 'Done' }).click();
 await page.getByRole('button', { name: 'Final Jeopardy!', exact: true }).click();
 await page.getByLabel('Name (shown on screen)').fill('Final Brainrot');
 assert((await page.getByRole('button', { name: 'Final Brainrot', exact: true }).count()) === 1, 'final round renamed (editor nav follows)');
+const zeroCanPlay = page.getByLabel('Players with a score of 0 or less can play it');
+assert(await zeroCanPlay.isChecked(), 'a new Final lets players with 0 or less play');
+await zeroCanPlay.uncheck();
 
 // The Final is a round of its own, with its own mode bar and slide editor.
 assert((await page.locator('.ra .mode').innerText()).includes('Final Jeopardy'), 'the Final round shows its mode');
@@ -954,6 +957,9 @@ assert(await page.getByRole('button', { name: 'Show question ▶' }).isDisabled(
 await page.locator('.dd input[type=number]').fill('500');
 await page.getByRole('button', { name: 'Show question ▶' }).click();
 await page.locator('.dd-badge').waitFor();
+assert(!(await page.locator('.dd-badge').innerText()).includes('500'), 'viewers don\'t see the Daily Double wager until the host shows it');
+await page.getByRole('button', { name: 'Show wager' }).click();
+assert((await page.locator('.dd-badge').innerText()).includes('$500'), 'Show wager puts it on screen');
 assert((await page.locator('.award input').inputValue()) === '500', 'wager prefilled as the amount');
 await page.keyboard.press('Enter');
 assert((await scoreOf(1)) === '$850', 'Daily Double wager awarded to the chosen player');
@@ -995,7 +1001,7 @@ await page.getByRole('button', { name: 'Yes', exact: true }).click();
 await page.locator('.final-label').waitFor();
 assert((await page.locator('.final-label').innerText()) === 'FINAL BRAINROT', 'renamed final round shows on screen');
 const eligible = await page.locator('.fj input[type=checkbox]:checked').count();
-assert(eligible === 2, 'players with $0 sit out of Final by default');
+assert(eligible === 2, 'players with $0 sit out of a Final that says so');
 await page.getByRole('button', { name: /take wagers/ }).click();
 await page.getByText('Make your wagers…').waitFor();
 const wagers = page.locator('.fj .wagers input');
