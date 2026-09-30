@@ -3,7 +3,7 @@
   the object clicked on the stage (or every object here), and each player's stats and inventory.
 -->
 <script lang="ts">
-  import { showMenu } from '../../lib/contextmenu.svelte';
+  import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';

@@ -24,7 +24,7 @@
   import { watchSinks } from '../lib/audioout.svelte';
   import { lastAction, logged, redoAction, undoAction } from '../lib/toolset';
   import { addLive, droppedFile, liveText, objectAt, regroupAll, rpgNow, stepParty, toggleMap } from './rpg/hostops';
-  import { showMenu } from '../lib/contextmenu.svelte';
+  import { showMenu } from '../lib/menustate.svelte';
   import { sendTo } from '../lib/boardgame';
   import { audienceSees, override } from '../lib/rpg';
   import { boardNow, rollMover, turnNow } from './boardgame/bgops';

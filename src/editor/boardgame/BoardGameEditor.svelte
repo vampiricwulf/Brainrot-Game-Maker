@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
-  import { showMenu } from '../../lib/contextmenu.svelte';
+  import { showMenu } from '../../lib/menustate.svelte';
   import { clampToBoard, newBoardSpace, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';

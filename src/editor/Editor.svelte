@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { showMenu } from '../lib/contextmenu.svelte';
+  import { showMenu } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';

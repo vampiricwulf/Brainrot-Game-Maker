@@ -3,7 +3,7 @@
   screen, knocked out, and converting score to or from a currency. Every change is one undoable step.
 -->
 <script lang="ts">
-  import { showMenu } from '../../lib/contextmenu.svelte';
+  import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, runAction } from '../../lib/actions';

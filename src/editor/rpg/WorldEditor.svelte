@@ -4,7 +4,7 @@
   ✎ Edit screen to lay out its picture and objects.
 -->
 <script lang="ts">
-  import { showMenu } from '../../lib/contextmenu.svelte';
+  import { showMenu } from '../../lib/menustate.svelte';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { toast } from '../../lib/app.svelte';

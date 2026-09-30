@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { showMenu } from '../lib/contextmenu.svelte';
+  import { showMenu } from '../lib/menustate.svelte';
   import { app } from '../lib/app.svelte';
   import { categoryLabel, clueValue, slideText, type BoardRound } from '../lib/model';
   import { slideHasContent } from '../lib/usage';

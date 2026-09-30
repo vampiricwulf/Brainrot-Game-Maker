@@ -1,6 +1,6 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
-  import { showMenu } from '../lib/contextmenu.svelte';
+  import { showMenu } from '../lib/menustate.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, usedTiles } from '../lib/session';

@@ -1,7 +1,7 @@
 <!-- The open right-click menu (see contextmenu.svelte.ts): kept on screen, closed by a click elsewhere, Esc or scrolling. -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { closeMenu, contextMenu } from './contextmenu.svelte';
+  import { closeMenu, contextMenu } from './menustate.svelte';
 
   let box = $state<HTMLDivElement>();
   let pos = $state({ x: 0, y: 0 });
