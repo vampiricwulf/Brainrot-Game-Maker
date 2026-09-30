@@ -1,12 +1,13 @@
 <!-- Theme presets + full override (spec §5.7), with a live board preview. -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
+  import { step } from '../lib/history.svelte';
   import { fontChoices } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { isBoard, newId, newRound } from '../lib/model';
   import { newSession } from '../lib/session';
-  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, type Theme, type ThemePreset } from '../lib/theme';
+  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, type ThemePreset } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -33,16 +34,11 @@
   });
   const live = newLive();
 
-  // A preset replaces every color and font, so it offers an Undo until the theme changes again.
-  let undoPreset = $state<{ label: string; before: Theme; after: string } | null>(null);
-  const canUndoPreset = $derived(!!undoPreset && JSON.stringify(t) === undoPreset.after);
-
+  // A preset replaces every color and font, so the note at the bottom offers Undo.
   function applyPreset(p: ThemePreset): void {
-    const before = $state.snapshot(t) as Theme;
     // A preset changes colors and fonts, not the images or layout.
     const { boardImage, banner, bannerHeight, bannerFit, scoreBar } = t;
-    game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar };
-    undoPreset = { label: PRESETS[p].label, before, after: JSON.stringify(game.theme) };
+    step(`Theme preset: ${PRESETS[p].label}`, () => (game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar }), { notify: true });
   }
 
   const COLORS: [keyof typeof t, string][] = [
@@ -66,12 +62,6 @@
         </button>
       {/each}
     </div>
-    {#if canUndoPreset && undoPreset}
-      <div class="row undo-preset" role="status">
-        <span class="muted small">🎨 Theme set to {undoPreset.label}</span>
-        <button class="small" onclick={() => ((game.theme = undoPreset!.before), (undoPreset = null))}>Undo</button>
-      </div>
-    {/if}
 
     <h4>Colors</h4>
     <div class="grid">
@@ -197,9 +187,6 @@
   .preset.on {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
-  }
-  .undo-preset {
-    margin-top: 8px;
   }
   .sw {
     display: grid;

@@ -3,6 +3,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
+  import { step } from '../../lib/history.svelte';
   import { newId, type Game, type Session, type WheelPreset } from '../../lib/model';
   import { editWheel, resetWheelEdits, wheelPool, type WheelLike } from '../../lib/overlay';
   import { newSegment, onSlices, type PoolSlice } from '../../lib/tools';
@@ -33,10 +34,13 @@
   let askOverwrite = $state(false);
   let nameBox = $state<HTMLInputElement>();
 
-  /** A saved wheel goes into the game being played and, when it's the same game, the one in the editor. */
-  function keep(change: (g: Game) => void): void {
+  /**
+   * A saved wheel goes into the game being played and, when it's the same game, the one in the editor (a step of the
+   * editor's undo history, named `label`).
+   */
+  function keep(label: string, change: (g: Game) => void): void {
     change(game);
-    if (app.game.id === game.id && app.game !== game) change(app.game);
+    if (app.game.id === game.id && app.game !== game) step(label, () => change(app.game), { during: 'play' });
   }
 
   function ask(what: 'save' | 'overwrite'): void {
@@ -59,7 +63,7 @@
       spinDurationMs: preset?.spinDurationMs ?? 5000,
       removeAfterLanding: preset?.removeAfterLanding ?? false,
     };
-    keep((g) => g.wheels.push(JSON.parse(JSON.stringify(wheel))));
+    keep(`Saved wheel “${name}” from the show`, (g) => g.wheels.push(JSON.parse(JSON.stringify(wheel))));
     // The wheel on screen is now that saved wheel.
     o.wheelId = wheel.id;
     o.name = name;
@@ -73,7 +77,7 @@
     askOverwrite = false;
     if (!preset || !on.length) return;
     const id = preset.id;
-    keep((g) => {
+    keep(`Saved wheel “${preset.name}” from the show`, (g) => {
       const w = g.wheels.find((x) => x.id === id);
       if (w) w.segments = JSON.parse(JSON.stringify(on));
     });

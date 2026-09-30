@@ -5,7 +5,7 @@
 <script lang="ts">
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
-  import { LAYER_ICON, layerLabel, type LayerAction } from './layerlabel';
+  import { LAYER_ICON, layerLabel, type LayerAction } from '../../lib/layerlabel';
 
   let {
     x,

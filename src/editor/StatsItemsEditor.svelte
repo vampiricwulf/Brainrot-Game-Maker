@@ -4,6 +4,8 @@
 -->
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
+  import { take } from '../lib/nav.svelte';
+  import { step } from '../lib/history.svelte';
   import { downloadText, pickFile } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allActions, worldObjects } from '../lib/refs';
@@ -16,14 +18,20 @@
   const game = $derived(app.game);
   let iconFor = $state<string | null>(null);
   let openItem = $state<string | null>(null);
+  // An undo or redo of an item's settings opens them.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab === 'stats' && place.item) openItem = place.item;
+  });
 
   function addField(f: StatField): void {
     game.statFields = [...(game.statFields ?? []), f];
   }
 
+  // Deleting is done at once: the note at the bottom offers Undo.
   function removeField(f: StatField): void {
-    if (!confirm(`Delete the stat "${f.name}"? Values players have for it are dropped.`)) return;
-    game.statFields = (game.statFields ?? []).filter((x) => x.id !== f.id);
+    step(`Deleted stat “${f.name}”`, () => (game.statFields = (game.statFields ?? []).filter((x) => x.id !== f.id)), { notify: true });
   }
 
   function addItem(): ItemDef {
@@ -34,12 +42,19 @@
   }
 
   function removeItem(it: ItemDef): void {
-    if (!confirm(`Delete "${it.name}" from the catalog?`)) return;
-    game.items = (game.items ?? []).filter((x) => x.id !== it.id);
-    for (const s of game.shops ?? []) s.stock = s.stock.filter((x) => x.item !== it.id);
-    // Objects that were it are picked up by their own name now; buttons that gave or took it have nothing chosen.
-    for (const w of game.worlds ?? []) for (const el of worldObjects(w)) if (el.role?.class === 'item' && el.role.item === it.id) el.role.item = undefined;
-    for (const a of allActions(game)) if (a.do === 'item' && a.item === it.id) a.item = '';
+    const shops = (game.shops ?? []).filter((s) => s.stock.some((x) => x.item === it.id)).length;
+    const also = shops ? ` · also from ${shops} shop${shops === 1 ? '' : 's'}` : '';
+    step(
+      `Deleted item “${it.name}”${also}`,
+      () => {
+        game.items = (game.items ?? []).filter((x) => x.id !== it.id);
+        for (const s of game.shops ?? []) s.stock = s.stock.filter((x) => x.item !== it.id);
+        // Objects that were it are picked up by their own name now; buttons that gave or took it have nothing chosen.
+        for (const w of game.worlds ?? []) for (const el of worldObjects(w)) if (el.role?.class === 'item' && el.role.item === it.id) el.role.item = undefined;
+        for (const a of allActions(game)) if (a.do === 'item' && a.item === it.id) a.item = '';
+      },
+      { notify: true },
+    );
   }
 
   /** Tags are typed as a list, "poisoned, cursed" (read when the field is left, so a comma being typed stays put). */
@@ -101,22 +116,24 @@
     const start = col('name') >= 0 ? 1 : 0;
     const n = col('name') >= 0 ? col('name') : 0;
     let added = 0;
-    for (const r of rows.slice(start)) {
-      const name = r[n]?.trim();
-      if (!name) continue;
-      const price = Number(r[col('price')] ?? '');
-      const slot = r[col('wearable')]?.trim().toLowerCase();
-      const existing = game.items?.find((i) => i.name.toLowerCase() === name.toLowerCase());
-      const it: ItemDef = existing ?? { id: newId(), name, stackable: true };
-      if (!isNaN(price) && r[col('price')] !== undefined && r[col('price')] !== '') it.price = price;
-      if (col('stackable') >= 0) it.stackable = !/^(no|false|0)$/i.test(r[col('stackable')]?.trim() ?? '');
-      if (slot === 'head' || slot === 'hand' || slot === 'body' || slot === 'badge') it.wearable = { slot };
-      if (col('description') >= 0 && r[col('description')]) it.description = r[col('description')];
-      if (!existing) {
-        game.items = [...(game.items ?? []), it];
-        added++;
+    step(`Imported items from “${file.name}”`, () => {
+      for (const r of rows.slice(start)) {
+        const name = r[n]?.trim();
+        if (!name) continue;
+        const price = Number(r[col('price')] ?? '');
+        const slot = r[col('wearable')]?.trim().toLowerCase();
+        const existing = game.items?.find((i) => i.name.toLowerCase() === name.toLowerCase());
+        const it: ItemDef = existing ?? { id: newId(), name, stackable: true };
+        if (!isNaN(price) && r[col('price')] !== undefined && r[col('price')] !== '') it.price = price;
+        if (col('stackable') >= 0) it.stackable = !/^(no|false|0)$/i.test(r[col('stackable')]?.trim() ?? '');
+        if (slot === 'head' || slot === 'hand' || slot === 'body' || slot === 'badge') it.wearable = { slot };
+        if (col('description') >= 0 && r[col('description')]) it.description = r[col('description')];
+        if (!existing) {
+          game.items = [...(game.items ?? []), it];
+          added++;
+        }
       }
-    }
+    });
     toast(`Imported ${rows.length - start} item row(s): ${added} new`);
   }
 </script>
@@ -137,7 +154,7 @@
     <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Custom stat</button>
   </div>
   {#each game.statFields ?? [] as f (f.id)}
-    <div class="field-row">
+    <div class="field-row" data-place="stat:{f.id}">
       <input class="name" bind:value={f.name} aria-label="Stat name" />
       <select bind:value={f.type} aria-label="{f.name} type">
         <option value="number">Number</option>
@@ -151,7 +168,8 @@
           <label class="small">Start<input type="number" class="n" value={Number(f.start ?? 0)} oninput={(e) => (f.start = +e.currentTarget.value)} /></label>
           <label class="small">Min<input type="number" class="n" value={f.min ?? ''} oninput={(e) => (f.min = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
           <label class="small">Max<input type="number" class="n" value={f.max ?? ''} oninput={(e) => (f.max = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
-          <select bind:value={f.display} aria-label="{f.name} shown as">
+          <!-- (A stat without a display shows as a number: showing the field doesn't fill it in.) -->
+          <select bind:value={() => f.display ?? 'counter', (v) => (f.display = v)} aria-label="{f.name} shown as">
             <option value="counter">Number</option>
             <option value="bar">Bar</option>
             <option value="hearts">Hearts</option>
@@ -258,7 +276,7 @@
     <button class="ghost small" onclick={exportCsv} disabled={!game.items?.length}>Export CSV</button>
   </div>
   {#each game.items ?? [] as it (it.id)}
-    <div class="item">
+    <div class="item" data-place="item:{it.id}">
       <div class="item-row">
         <div class="pop">
           <button class="icon" onclick={() => (iconFor = it.id)} aria-label="Icon for {it.name}" title="Icon">
@@ -314,7 +332,7 @@
   {#each game.shops ?? [] as s (s.id)}
     <!-- What the shop charges: with its currency stat deleted, that's the first currency (or points). -->
     {@const cur = shopCurrency(game, s)}
-    <div class="shop">
+    <div class="shop" data-place="shop:{s.id}">
       <div class="row">
         <input class="name" bind:value={s.name} aria-label="Shop name" />
         <label class="small">
@@ -344,7 +362,9 @@
           />%
         </label>
         <span class="spacer"></span>
-        <button class="ghost small" onclick={() => confirm(`Delete "${s.name}"?`) && (game.shops = (game.shops ?? []).filter((x) => x.id !== s.id))}>Delete shop</button>
+        <button class="ghost small" onclick={() => step(`Deleted shop “${s.name}”`, () => (game.shops = (game.shops ?? []).filter((x) => x.id !== s.id)), { notify: true })}>
+          Delete shop
+        </button>
       </div>
       <table>
         <tbody>

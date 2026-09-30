@@ -1,7 +1,8 @@
 <!-- Every file in the game, with usage counts and cleanup (spec §5.5), and everything that plays from the internet. -->
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
-  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile } from '../lib/media.svelte';
+  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
+  import { attachBlobSwap, step, stepAsync } from '../lib/history.svelte';
   import { allEmbeds, mediaUsage } from '../lib/usage';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
@@ -38,8 +39,9 @@
     return '';
   }
 
-  function remove(ids: string[]): void {
-    game.media = game.media.filter((m) => !ids.includes(m.id));
+  /** Done at once: the note at the bottom offers Undo (the files stay stored while a step can bring them back). */
+  function remove(ids: string[], label: string): void {
+    step(label, () => (game.media = game.media.filter((m) => !ids.includes(m.id))), { notify: true });
   }
 
   function pickFiles(accept: string, multiple: boolean): Promise<File[]> {
@@ -54,12 +56,16 @@
     });
   }
 
-  /** Put a new file in place of this one (every use of it follows). */
+  /** Put a new file in place of this one (every use of it follows). Undo puts the old one back. */
   async function replace(m: MediaRef): Promise<void> {
     const [f] = await pickFiles(ACCEPT[m.kind], false);
     if (!f) return;
     try {
-      await replaceMediaFile(game, m.id, f);
+      await stepAsync(`Replaced file “${m.name}” with “${f.name}”`, async () => {
+        const before = await stashMedia(m.id);
+        await replaceMediaFile(game, m.id, f);
+        attachBlobSwap({ id: m.id, before, after: await stashMedia(m.id) });
+      });
       toast(`"${f.name}" is in place: everything that used this file shows it now`);
     } catch (e) {
       toast((e as Error).message, 6000);
@@ -140,7 +146,7 @@
         hint="Add from a link: the game saves a copy when the site allows it, e.g. https://files.catbox.moe/abc123.mp3"
       />
     </div>
-    <button disabled={!unused.length} onclick={() => confirm(`Remove ${unused.length} unused file${unused.length === 1 ? '' : 's'}?`) && remove(unused.map((m) => m.id))}>
+    <button disabled={!unused.length} onclick={() => remove(unused.map((m) => m.id), `Removed ${unused.length} unused file${unused.length === 1 ? '' : 's'}`)}>
       🧹 Remove unused ({unused.length})
     </button>
   </div>
@@ -155,7 +161,7 @@
   <div class="grid">
     {#each game.media as m (m.id)}
       {@const n = usage.get(m.id) ?? 0}
-      <div class="card" class:unused={!n}>
+      <div class="card" class:unused={!n} data-place="media:{m.id}">
         <div class="thumb">
           {#if m.kind === 'image' && mediaUrls[m.id]}
             <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
@@ -196,7 +202,7 @@
           {:else}
             <button class="ghost small" onclick={() => replace(m)} title="Swap in another file; every place it's used follows">Replace…</button>
           {/if}
-          <button class="ghost small" onclick={() => (!n || confirm(`"${m.name}" is used ${n}×. Remove it anyway?`)) && remove([m.id])}>Remove</button>
+          <button class="ghost small" onclick={() => remove([m.id], `Removed file “${m.name}”${n ? ` (used ${n}×)` : ''}`)}>Remove</button>
         </div>
       </div>
     {/each}

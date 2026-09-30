@@ -255,8 +255,8 @@
   }
 
   function up(): void {
-    // Every drag that began (and told onstart) ends with onchange; a selection box changes nothing.
-    const ended = !!drag && drag.kind !== 'marquee';
+    // Every drag that began (and told onstart) ends with onchange, a selection box too (it changes nothing).
+    const ended = !!drag;
     drag = null;
     marquee = null;
     guides = { x: [], y: [] };

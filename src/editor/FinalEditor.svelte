@@ -1,12 +1,21 @@
 <!-- A Final Jeopardy round: category, think time and the question/answer slides. -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
+  import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { finalName, type FinalRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   let { round }: { round: FinalRound } = $props();
   let side = $state<'q' | 'a'>('q');
+
+  // An undo or redo here shows the side it changed.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab === 'round' && place.round === untrack(() => round.id) && place.part?.kind === 'final' && place.part.side) side = place.part.side;
+  });
 
   // There is no "this round" of clues here, so round scopes cover the whole game.
   const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));

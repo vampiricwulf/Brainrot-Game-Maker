@@ -6,7 +6,7 @@
   import { tick } from 'svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
-  import { LAYER_ICON, layerLabel } from './layerlabel';
+  import { LAYER_ICON, layerLabel } from '../../lib/layerlabel';
 
   let {
     elements,
@@ -127,6 +127,7 @@
       class:drop-after={dropAt?.id === el.id && dropAt.after}
       class:dragging={dragId === el.id}
       data-layer={el.id}
+      data-place="el:{el.id}"
       role="listitem"
       draggable="true"
       ondragstart={(e) => {

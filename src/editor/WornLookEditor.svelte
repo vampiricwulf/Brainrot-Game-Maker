@@ -6,6 +6,7 @@
   import { editedGame } from '../lib/app.svelte';
   import { mediaUrls } from '../lib/media.svelte';
   import { addMediaFile } from '../lib/media.svelte';
+  import { stepAsync } from '../lib/history.svelte';
   import { SLIDE_H, SLIDE_W, type ItemDef, type Wearable } from '../lib/model';
   import { SLOT_PLACE, wornPlace } from '../lib/toolset';
   import AvatarToken from '../lib/rpg/AvatarToken.svelte';
@@ -53,13 +54,16 @@
   /** A drawing made on the big avatar: its picture, placed where it was drawn. */
   async function insertDrawing(png: Blob, box: { x: number; y: number; w: number; h: number }): Promise<void> {
     drawing = false;
-    const ref = await addMediaFile(game, png, `${item.name || 'item'}.png`);
-    w.image = ref.id;
-    w.x = round((box.x + box.w / 2 - SLIDE_W / 2) / PAD_AVATAR);
-    w.y = round((box.y + box.h / 2 - SLIDE_H / 2) / PAD_AVATAR);
-    w.w = round(box.w / PAD_AVATAR);
-    w.rotate = undefined;
-    item.icon ??= ref.id;
+    // The picture's file and the look: one step.
+    await stepAsync('Added drawing', async () => {
+      const ref = await addMediaFile(game, png, `${item.name || 'item'}.png`);
+      w.image = ref.id;
+      w.x = round((box.x + box.w / 2 - SLIDE_W / 2) / PAD_AVATAR);
+      w.y = round((box.y + box.h / 2 - SLIDE_H / 2) / PAD_AVATAR);
+      w.w = round(box.w / PAD_AVATAR);
+      w.rotate = undefined;
+      item.icon ??= ref.id;
+    });
   }
 </script>
 

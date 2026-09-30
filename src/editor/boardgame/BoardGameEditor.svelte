@@ -4,9 +4,10 @@
   decided, and how to win.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
-  import { SnapshotHistory } from '../../lib/editing';
+  import { take } from '../../lib/nav.svelte';
+  import { begin, history, redo, step, undo } from '../../lib/history.svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { clampToBoard, newBoardSpace, nextSpaceName, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
@@ -32,49 +33,37 @@
   let pickingIcon = $state(false);
   let zoneSlide = $state<string | null>(null);
 
+  // An undo or redo here shows the view it changed: the space selected, the backdrop, the zone (and its screen).
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab !== 'round' || place.round !== untrack(() => round.id) || !place.part) return;
+    const part = place.part;
+    if (part.kind === 'space') {
+      view = 'spaces';
+      selId = part.space;
+    } else if (part.kind === 'backdrop') view = 'backdrop';
+    else if (part.kind === 'zone') {
+      view = 'zones';
+      if (part.inSlide) zoneSlide = part.zone;
+    }
+  });
+
   let boxW = $state(0);
   const scale = $derived(boxW / SLIDE_W || 1);
-  let drag: { id: string; dx: number; dy: number; moved: boolean } | null = null;
+  let drag: { id: string; dx: number; dy: number } | null = null;
   let canvas = $state<HTMLDivElement>();
 
-  // ---------- Undo (Ctrl+Z / Ctrl+Shift+Z): the spaces, their links and buttons, the start and the zones ----------
-  // Like the slide editor: edits are grouped into one step after a pause, a delete or a finished drag at once.
-  const snap = () => JSON.stringify({ spaces: round.spaces, zones: round.zones, start: round.start ?? null });
-  const hist = untrack(() => new SnapshotHistory(snap()));
-  let hv = $state(0);
-  let pending = $state(false);
-  $effect(() => {
-    const now = snap();
-    pending = now !== hist.last;
-    if (!pending) return;
-    const t = setTimeout(() => !drag && commit(), 400);
-    return () => clearTimeout(t);
-  });
-  const canUndo = $derived(hv >= 0 && (pending || hist.undoStack.length > 0));
-  const canRedo = $derived(hv >= 0 && !pending && hist.redoStack.length > 0);
-
-  function commit(): void {
-    if (hist.commit(snap())) hv++;
-    pending = false;
-  }
-  function restore(s: string | null): void {
-    hv++;
-    if (s === null) return;
-    const d = JSON.parse(s) as { spaces: BoardSpace[]; zones: BoardZone[]; start: string | null };
-    round.spaces = d.spaces;
-    round.zones = d.zones;
-    round.start = d.start ?? undefined;
-    pending = false;
-    linking = false;
-  }
-  const undo = () => restore(hist.undo(snap()));
-  const redo = () => restore(hist.redo(snap()));
+  // ---------- Undo: the game's history (Ctrl+Z / Ctrl+Shift+Z are the editor's) ----------
+  // A drag is one step, and so is a delete.
+  let endDrag: (() => void) | null = null;
+  onDestroy(() => endDrag?.());
 
   // "Deleted Space 3 · Undo" on the board, until the next change.
-  let notice = $state<{ text: string; at: number } | null>(null);
+  let notice = $state<{ text: string; at: string | null } | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   function tell(text: string): void {
-    notice = { text, at: hv };
+    notice = { text, at: history.top };
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => (notice = null), 6000);
   }
@@ -93,7 +82,9 @@
     }
     selId = s.id;
     const p = toBoard(e);
-    drag = { id: s.id, dx: p.x - s.x, dy: p.y - s.y, moved: false };
+    drag = { id: s.id, dx: p.x - s.x, dy: p.y - s.y };
+    endDrag?.();
+    endDrag = begin();
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -107,7 +98,6 @@
     if (!s) return;
     const p = toBoard(e);
     const at = clampToBoard(p.x - drag.dx, p.y - drag.dy);
-    if (Math.abs(at.x - s.x) + Math.abs(at.y - s.y) > 2) drag.moved = true;
     s.x = at.x;
     s.y = at.y;
   }
@@ -156,20 +146,13 @@
   }
 
   /**
-   * Delete / Backspace removes the selected space, Ctrl+Z / Ctrl+Shift+Z undo and redo. Not while typing in a field,
-   * nor while a dialog is open over the board (a pop-up slide being edited, a picker): those keys are its own.
+   * Delete / Backspace removes the selected space. Not while typing in a field, nor while a dialog is open over the
+   * board (a pop-up slide being edited, a picker): those keys are its own.
    */
   function key(e: KeyboardEvent): void {
     if (e.defaultPrevented || document.querySelector('[role="dialog"]')) return;
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
     const k = e.key.toLowerCase();
-    // (The backdrop's slide editor has undo of its own.)
-    if (view !== 'backdrop' && (e.ctrlKey || e.metaKey) && (k === 'z' || k === 'y')) {
-      e.preventDefault();
-      if (k === 'y' || e.shiftKey) redo();
-      else undo();
-      return;
-    }
     if (view !== 'spaces' || !sel) return;
     if (k === 'delete' || k === 'backspace') {
       e.preventDefault();
@@ -191,17 +174,17 @@
   }
 
   function removeSpace(s: BoardSpace): void {
-    commit();
-    // Spaces that led here now lead where it led (when it had one way on).
-    for (const p of previousOf(round, s.id)) {
-      p.next = p.next.filter((n) => n !== s.id);
-      if (s.next.length === 1 && s.next[0] !== p.id && !p.next.includes(s.next[0])) p.next.push(s.next[0]);
-    }
-    round.spaces = round.spaces.filter((x) => x.id !== s.id);
-    if (round.start === s.id) round.start = undefined;
-    unlinkGotos({ space: s.id });
+    step(`Deleted space “${s.name}”`, () => {
+      // Spaces that led here now lead where it led (when it had one way on).
+      for (const p of previousOf(round, s.id)) {
+        p.next = p.next.filter((n) => n !== s.id);
+        if (s.next.length === 1 && s.next[0] !== p.id && !p.next.includes(s.next[0])) p.next.push(s.next[0]);
+      }
+      round.spaces = round.spaces.filter((x) => x.id !== s.id);
+      if (round.start === s.id) round.start = undefined;
+      unlinkGotos({ space: s.id });
+    });
     selId = null;
-    commit();
     tell(`Deleted ${s.name}`);
   }
 
@@ -212,16 +195,30 @@
     round.zones = [...round.zones, { id: newId(), name, slide }];
   }
 
+  /** Done at once (with its screen): the note at the bottom offers Undo. */
   function removeZone(z: BoardZone): void {
-    if (!confirm(`Delete the zone "${z.name}" and its screen?`)) return;
-    round.zones = round.zones.filter((x) => x.id !== z.id);
-    unlinkGotos({ zone: z.id });
+    step(
+      `Deleted zone “${z.name}”`,
+      () => {
+        round.zones = round.zones.filter((x) => x.id !== z.id);
+        unlinkGotos({ zone: z.id });
+      },
+      { notify: true },
+    );
   }
 
   const zone = $derived(round.zones.find((z) => z.id === zoneSlide));
 </script>
 
-<svelte:window onkeydown={key} />
+<!-- A drag ends wherever the pointer is let go (it's one undo step). -->
+<svelte:window
+  onkeydown={key}
+  onpointerup={() => {
+    endDrag?.();
+    endDrag = null;
+    drag = null;
+  }}
+/>
 
 <div class="bge">
   <div class="row settings">
@@ -233,7 +230,9 @@
         value={round.mover.kind === 'wheel' ? round.mover.wheel : round.mover.kind}
         onchange={(e) => {
           const v = e.currentTarget.value;
-          round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
+          step(`Move by: ${e.currentTarget.selectedOptions[0]?.text}`, () => {
+            round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
+          });
         }}
       >
         {#if moverWheel && !game.wheels.some((w) => w.id === moverWheel)}<option value={moverWheel}>⚠ Deleted wheel — pick another</option>{/if}
@@ -272,8 +271,8 @@
       {#if linking}<span class="warn small">Click the space {sel?.name} should lead to (again to unlink)…</span>{/if}
       <span class="spacer"></span>
       <span class="muted small">Drag spaces to move them.</span>
-      <button class="ghost small" onclick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-      <button class="ghost small" onclick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+      <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo">↶</button>
+      <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo">↷</button>
     </div>
     <div class="main">
       <div class="canvas-box" bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
@@ -284,18 +283,13 @@
           onpointerdown={boardDown}
           oncontextmenu={boardMenu}
           onpointermove={boardMove}
-          onpointerup={() => {
-            // A finished drag is one undo step.
-            if (drag?.moved) commit();
-            drag = null;
-          }}
           role="application"
           aria-label="Board"
         >
           <div class="backdrop"><SlideView slide={round.slide} mode="edit" fallbackBg="#1d5e3a" /></div>
           <BoardSpaces {round} selected={selId} ondown={spaceDown} />
         </div>
-        {#if notice && notice.at === hv && !pending}
+        {#if notice && notice.at === history.top && !history.pending}
           <div class="notice" role="status">
             <span>{notice.text}</span>
             <button class="small" onclick={() => ((notice = null), undo())}>Undo</button>
@@ -366,7 +360,7 @@
     <div class="zones">
       <p class="muted small">Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's actions or the host panel.</p>
       {#each round.zones as z (z.id)}
-        <div class="row zone">
+        <div class="row zone" data-place="zone:{z.id}">
           <input bind:value={z.name} aria-label="Zone name" />
           <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
           <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>

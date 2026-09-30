@@ -3,7 +3,7 @@
 // so autosaved drafts keep their media. The .brainrot pack is the portable copy.
 // Media added from an online link is downloaded into the same store when the site allows it; when it
 // doesn't, the MediaRef keeps the link (`url`) and plays straight from the internet.
-import { delMany, getMany, keys, set } from 'idb-keyval';
+import { del, delMany, get, getMany, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
 import { clipboard } from './clipboard.svelte';
@@ -45,6 +45,41 @@ export function getBlob(id: string): Blob | undefined {
 export async function putMedia(id: string, blob: Blob): Promise<void> {
   registerBlob(id, blob);
   // Storage unavailable or full: media lives in memory until the game is saved (the header says so).
+  await write(() => set(KEY(id), blob));
+}
+
+/**
+ * Keep a copy of a file's bytes (memory and storage) under a new id, so an undo can put them back after they're
+ * replaced. Returns that id, or null when the file has no stored bytes (a link, a missing file).
+ */
+export async function stashMedia(id: string): Promise<string | null> {
+  const blob = blobs.get(id);
+  if (!blob) return null;
+  const stash = `stash-${newId()}`;
+  blobs.set(stash, blob);
+  await write(() => set(KEY(stash), blob));
+  return stash;
+}
+
+/**
+ * Make a stashed copy file `id`'s bytes again (null: the file had none, so it has none again). The picture changes at
+ * once when the copy is in memory; after a reload it's read from storage first.
+ */
+export async function restoreStash(id: string, stash: string | null): Promise<void> {
+  if (!stash) {
+    forget(id);
+    blobs.delete(id);
+    delete mediaUrls[id];
+    await write(() => del(KEY(id)));
+    return;
+  }
+  let blob = blobs.get(stash);
+  if (!blob) {
+    blob = await get<Blob>(KEY(stash)).catch(() => undefined);
+    if (!blob) return;
+    blobs.set(stash, blob);
+  }
+  registerBlob(id, blob);
   await write(() => set(KEY(id), blob));
 }
 
@@ -95,16 +130,17 @@ async function otherCopiesOpen(): Promise<boolean> {
 
 /**
  * Delete stored media not referenced by any of the given games (or by the saved game in progress, or by what's on the
- * in-app clipboard: a slide copied in the last game can be pasted into the next one).
+ * in-app clipboard: a slide copied in the last game can be pasted into the next one), nor `held`: files and stashed
+ * copies that the undo history can bring back.
  */
-export async function pruneMedia(games: (Game | null | undefined)[]): Promise<void> {
+export async function pruneMedia(games: (Game | null | undefined)[], held: ReadonlySet<string> = new Set()): Promise<void> {
   // Every copy of the app opened from disk shares one storage: with another copy open (a second tab
   // or window), its media would look unused here, so leave storage alone.
   const shared = await otherCopiesOpen();
   // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it.
   const saved = (await loadPlay())?.game;
   // Checked again once the stored files are listed: media added while this runs must survive.
-  const keep = () => new Set([...[...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []), ...clipboard.media.map((m) => m.id)]);
+  const keep = () => new Set([...[...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []), ...clipboard.media.map((m) => m.id), ...held]);
   if (!shared) {
     try {
       const stored = await keys();

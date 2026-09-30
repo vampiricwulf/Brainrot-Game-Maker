@@ -45,7 +45,7 @@
 />
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" tabindex="-1" bind:this={modal}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" data-undo="off" tabindex="-1" bind:this={modal}>
     <h2>Brainrot Games Maker</h2>
     <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>

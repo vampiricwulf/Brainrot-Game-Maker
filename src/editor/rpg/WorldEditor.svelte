@@ -4,10 +4,13 @@
   ✎ Edit screen to lay out its picture and objects.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
+  import { take } from '../../lib/nav.svelte';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { toast } from '../../lib/app.svelte';
+  import { step } from '../../lib/history.svelte';
   import { newId, type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
   import { DIR_ARROW, DIR_NAME, DIRS, exitOf, freshObjectIds, newScreen, newVariant, newWorldMap, sameRef, screenAt } from '../../lib/rpg';
@@ -34,6 +37,17 @@
   let lookId = $state<string | null>(null);
   let musicFor = $state<'map' | 'screen' | null>(null);
 
+  // An undo or redo in this world shows its map with the screen selected, or the screen (or look) being edited.
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place?.tab !== 'world' || place.world !== untrack(() => world.id) || !place.map) return;
+    mapId = place.map;
+    if (place.screen) selId = place.screen;
+    lookId = place.inSlide ? (place.look ?? null) : lookId;
+    editing = !!(place.inSlide && place.screen);
+  });
+
   const map = $derived(world.maps.find((m) => m.id === mapId) ?? world.maps[0]);
   const sel = $derived(map?.screens.find((s) => s.id === selId));
   const look = $derived(sel?.variants?.find((v) => v.id === lookId));
@@ -45,10 +59,10 @@
     selId = m.screens[0].id;
   }
 
+  // Deleting is done at once: the note at the bottom offers Undo.
   function removeMap(m: WorldMap): void {
     if (world.maps.length <= 1) return;
-    if (!confirm(`Delete the map "${m.name}" and its ${m.screens.length} screen(s)?`)) return;
-    world.maps = world.maps.filter((x) => x.id !== m.id);
+    step(`Deleted map “${m.name}”`, () => (world.maps = world.maps.filter((x) => x.id !== m.id)), { notify: true });
     mapId = world.maps[0].id;
     selId = null;
   }
@@ -60,8 +74,7 @@
   }
 
   function removeScreen(s: Screen): void {
-    if (!confirm(`Delete the screen "${s.name}"?`)) return;
-    map.screens = map.screens.filter((x) => x.id !== s.id);
+    step(`Deleted screen “${s.name}”`, () => (map.screens = map.screens.filter((x) => x.id !== s.id)), { notify: true });
     selId = null;
     editing = false;
   }
@@ -85,7 +98,7 @@
     // Its own objects and looks: taking the copy's Potion leaves the original's, and its Chest reveals its own Potion.
     for (const v of copy.variants ?? []) v.id = newId();
     freshObjectIds([copy.slide, ...(copy.variants ?? []).map((v) => v.slide)]);
-    map.screens.push(copy);
+    step(`Duplicated screen “${s.name}”`, () => map.screens.push(copy));
     selId = copy.id;
   }
 
@@ -112,21 +125,23 @@
   }
 
   function removeLook(s: Screen, v: ScreenVariant): void {
-    if (!confirm(`Delete the look "${v.name}" of ${s.name}?`)) return;
-    s.variants = s.variants?.filter((x) => x.id !== v.id);
+    step(`Deleted look “${v.name}” of ${s.name}`, () => (s.variants = s.variants?.filter((x) => x.id !== v.id)), { notify: true });
     if (lookId === v.id) lookId = null;
   }
 
-  function resize(cols: number, rows: number, field: HTMLInputElement): void {
-    const outside = map.screens.filter((s) => s.col >= cols || s.row >= rows);
-    if (outside.length && !confirm(`${outside.length} screen(s) are outside the new size and will be deleted. Go on?`)) {
-      // Kept the old size: show it again in the field.
-      field.value = String(field.name === 'cols' ? map.cols : map.rows);
-      return;
-    }
-    map.screens = map.screens.filter((s) => s.col < cols && s.row < rows);
-    map.cols = cols;
-    map.rows = rows;
+  /** Screens outside the new size are deleted with it (the note at the bottom offers Undo). */
+  function resize(cols: number, rows: number): void {
+    const outside = map.screens.filter((s) => s.col >= cols || s.row >= rows).length;
+    const gone = outside ? ` (deleted ${outside} screen${outside === 1 ? '' : 's'})` : '';
+    step(
+      `Resized map “${map.name}” to ${cols}×${rows}${gone}`,
+      () => {
+        map.screens = map.screens.filter((s) => s.col < cols && s.row < rows);
+        map.cols = cols;
+        map.rows = rows;
+      },
+      { notify: !!outside },
+    );
   }
 
   const blockedSide = (s: Screen, d: Dir8) => s.exits?.[d]?.kind === 'blocked';
@@ -152,7 +167,7 @@
   <div class="we">
     <div class="tabs" role="tablist" aria-label="Maps">
       {#each world.maps as m, i (m.id)}
-        <button role="tab" class:on={m.id === map?.id} aria-selected={m.id === map?.id} onclick={() => ((mapId = m.id), (selId = null))}>
+        <button role="tab" class:on={m.id === map?.id} aria-selected={m.id === map?.id} data-place="map:{m.id}" onclick={() => ((mapId = m.id), (selId = null))}>
           {i === 0 ? '🗺' : '🏠'} {m.name}
         </button>
       {/each}
@@ -165,10 +180,10 @@
         <div class="grid">
           <label class="field">Name<input bind:value={map.name} /></label>
           <label class="field">
-            Columns<input type="number" name="cols" min="1" max="16" value={map.cols} onchange={(e) => resize(Math.max(1, Math.min(16, +e.currentTarget.value)), map.rows, e.currentTarget)} />
+            Columns<input type="number" min="1" max="16" value={map.cols} onchange={(e) => resize(Math.max(1, Math.min(16, +e.currentTarget.value)), map.rows)} />
           </label>
           <label class="field">
-            Rows<input type="number" name="rows" min="1" max="16" value={map.rows} onchange={(e) => resize(map.cols, Math.max(1, Math.min(16, +e.currentTarget.value)), e.currentTarget)} />
+            Rows<input type="number" min="1" max="16" value={map.rows} onchange={(e) => resize(map.cols, Math.max(1, Math.min(16, +e.currentTarget.value)))} />
           </label>
           <label class="field">
             Audience sees
@@ -213,6 +228,7 @@
                 <button
                   class="cell screen"
                   class:sel={s.id === selId}
+                  data-place="screen:{s.id}"
                   class:bn={blockedSide(s, 'n')}
                   class:be={blockedSide(s, 'e')}
                   class:bs={blockedSide(s, 's')}

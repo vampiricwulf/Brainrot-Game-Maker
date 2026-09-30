@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, loadDraft, loadPlay, saveDraft, savePlay, testStorage, usePlayerStorage, watchWrites, type SavedPlay } from './lib/persist';
+  import { clearPlay, debounce, dropStraySteps, loadEditor, loadPlay, saveEditor, savePlay, testStorage, usePlayerStorage, watchWrites, type SavedPlay } from './lib/persist';
   import { openPack } from './lib/pack';
   import { unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
-  import { holdOpenLock, loadGameMedia, pruneMedia } from './lib/media.svelte';
-  import { migrateGame } from './lib/model';
+  import { holdOpenLock, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
+  import { validate, type Problem } from './lib/validate';
+  import { migrateGame, newId } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
   import { migrateSession, newSession, rebaseSession } from './lib/session';
   import { newLive } from './lib/live';
@@ -16,6 +17,9 @@
   import { autosave } from './lib/autosave';
   import { inTauri } from './lib/platform';
   import { prefs } from './lib/prefs.svelte';
+  import { watchGame, type GameWatch } from './lib/watch.svelte';
+  import { arriving, commit, heldMedia, history, listen, mark, startHistory, toSave } from './lib/history.svelte';
+  import type { Game } from './lib/model';
   import Play from './play/Play.svelte';
 
   /** Base64 game pack when this file is an exported, player-only game. */
@@ -48,16 +52,26 @@
       return;
     }
     holdOpenLock();
-    const [draft, play, ok] = await Promise.all([loadDraft(), loadPlay(), testStorage()]);
+    const [editor, play, ok] = await Promise.all([loadEditor(), loadPlay(), testStorage()]);
     app.storageOk = ok;
-    if (draft) {
-      app.game = migrateGame(draft);
+    /** Removed files the undo history can bring back. */
+    let held = new Set<string>();
+    if (editor.draft) {
+      // The undo history goes on from before the reload, unless bringing the draft up to date changed it (its steps
+      // wouldn't fit it any more).
+      const plain = JSON.stringify(editor.draft);
+      const game = migrateGame(editor.draft);
+      const saved = editor.history && JSON.stringify(game) === plain ? editor.history : undefined;
+      app.game = game;
+      arriving({ kind: 'reopened', label: `Reopened “${game.title}”` }, saved);
+      held = heldMedia(saved?.steps ?? []);
+      void dropStraySteps(saved?.saved.ids ?? []);
       await loadGameMedia(app.game);
-    }
+    } else arriving({ kind: 'new', label: 'New game' });
     // A finished game stays too, so its results can still be viewed after a reload.
     if (play) app.resumable = resumed(play);
     // Drop stored media that no saved game uses any more.
-    await pruneMedia([app.game, app.resumable?.game]);
+    await pruneMedia([app.game, app.resumable?.game], held);
     loaded = true;
   });
 
@@ -74,37 +88,66 @@
     app.storageOk = false;
   });
 
-  // Autosave (spec §5.8 / §6.5). Only after the initial load so a blank game never overwrites a draft.
-  const saveDraftSoon = debounce(saveDraft, 500);
+  // The game in the editor, watched for changes: the autosaves write its plain copy (watch.svelte.ts), instead of
+  // copying the whole game on every keystroke, which made typing lag in big games.
+  let watch: GameWatch | null = null;
+  let watching: Game | null = null;
+  // Autosave (spec §5.8 / §6.5), with the undo history. Only after the initial load so a blank game never overwrites a
+  // draft.
+  const saveEditorSoon = debounce(() => watch && saveEditor({ draft: watch.value(), ...toSave(newId()) }), 500);
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
   const savePlaySoon = debounce(savePlay, 300);
-  // Don't lose the last edits if the tab is closed or hidden right after typing.
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
   let lastAutosaveAt = Date.now();
-  let lastAutosaved = '';
-  // Changes count from the game as it arrives (the draft at the start, Open…, New), so an unchanged game is never
-  // autosaved.
+  let autosavedRev = 0;
+
+  // The editor's checklist, worked out from the watcher's plain copy a moment after changes stop: reading the whole
+  // game through its proxies on every keystroke made typing in a clue lag in big games. (Whether files are missing
+  // depends on the ones loaded, too.)
+  let problems = $state.raw<Problem[]>([]);
+  const checkSoon = debounce(() => watch && (problems = validate(watch.value())), 300);
+  $effect(() => {
+    void Object.keys(mediaUrls).length;
+    untrack(checkSoon);
+  });
+
+  // Each game that arrives (the draft at the start, New, Open…) gets its own watcher, started once the game is on
+  // screen (its first reading takes a moment on a big game) and outside this effect. Its checklist is worked out
+  // at once.
   $effect(() => {
     const game = app.game;
-    untrack(() => {
-      lastAutosaved = JSON.stringify($state.snapshot(game));
-      lastAutosaveAt = Date.now();
-    });
+    if (!loaded || playerOnly) return;
+    problems = untrack(() => validate(game));
+    requestAnimationFrame(() => setTimeout(() => startWatch(game)));
   });
+  function startWatch(game: Game): void {
+    if (app.game !== game || watching === game) return;
+    watch?.destroy();
+    watch = watchGame(game);
+    watching = game;
+    watch.subscribe(saveEditorSoon);
+    watch.subscribe(checkSoon);
+    saveEditorSoon();
+    startHistory(game, watch);
+    // Changes count from the game as it arrives, so an unchanged game is never autosaved.
+    autosavedRev = watch.rev;
+    lastAutosaveAt = Date.now();
+  }
   onMount(() => {
     if (!inTauri()) return;
     const id = setInterval(async () => {
-      if (autosaving || !prefs.autosaveMinutes || Date.now() - lastAutosaveAt < prefs.autosaveMinutes * 60_000) return;
+      if (autosaving || !watch || !prefs.autosaveMinutes || Date.now() - lastAutosaveAt < prefs.autosaveMinutes * 60_000) return;
       lastAutosaveAt = Date.now();
-      const game = $state.snapshot(app.game);
-      const json = JSON.stringify(game);
-      if (json === lastAutosaved || !game.rounds.length) return;
+      const game = watch.value();
+      const rev = watch.rev;
+      if (rev === autosavedRev || !game.rounds.length) return;
       autosaving = true;
       try {
         const path = await autosave(game, prefs.autosaveKeep);
-        lastAutosaved = json;
+        autosavedRev = rev;
         app.fileAutosave = { path, at: Date.now() };
+        mark('autosaved', `Autosaved to ${path.split(/[\\/]/).pop()}`);
       } catch (err) {
         console.warn('Autosave failed', err);
         toast(`Autosave failed: ${err instanceof Error ? err.message : err}`, 5000);
@@ -120,8 +163,24 @@
     if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
   }
 
+  // Every press, a key in another field and focus moving on start a new undo step (history.svelte.ts).
+  onMount(() => (playerOnly ? undefined : listen()));
+  // Steps made, undone or redone (and saves, plays…) are saved with the draft.
+  $effect(() => {
+    void [history.entries, history.index, history.marks, history.origin];
+    if (loaded && !playerOnly) saveEditorSoon();
+  });
+
+  // Don't lose the last edits if the tab is closed or hidden right after typing (they're a step of their own then).
   onMount(() => {
-    const flush = () => (saveDraftSoon.flush(), savePlaySoon.flush());
+    const flush = () => {
+      if (watch) {
+        commit();
+        saveEditorSoon();
+      }
+      saveEditorSoon.flush();
+      savePlaySoon.flush();
+    };
     const onvis = () => document.visibilityState === 'hidden' && flush();
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onvis);
@@ -129,10 +188,6 @@
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onvis);
     };
-  });
-  $effect(() => {
-    const snap = $state.snapshot(app.game);
-    if (loaded && !playerOnly) saveDraftSoon(snap);
   });
   $effect(() => {
     const game = $state.snapshot(app.playGame);
@@ -155,7 +210,8 @@
       )
     )
       return;
-    saveDraftSoon.flush();
+    mark('played', 'Played');
+    saveEditorSoon.flush();
     app.playGame = clone(app.game);
     app.session = newSession(app.playGame);
     app.live = newLive();
@@ -243,7 +299,7 @@
       <button class="ghost" onclick={discardResume}>Discard</button>
     </div>
   {/if}
-  <Editor onplay={startPlay} />
+  <Editor onplay={startPlay} {problems} />
 {:else}
   <Play onexit={exitPlay} oncancel={leavePlay} />
 {/if}

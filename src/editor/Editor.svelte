@@ -3,13 +3,13 @@
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
   import { clone, reidRound } from '../lib/ops';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
-  import { pickFile, saveGameJson } from '../lib/fileio';
+  import { pickFile, safeFilename, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
   import { formatBytes } from '../lib/media.svelte';
@@ -30,12 +30,20 @@
   import { inTauri } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
-  import { validate } from '../lib/validate';
+  import { validate, type Problem } from '../lib/validate';
+  import { arriving, history, mark, onApplied, redo, step, undo } from '../lib/history.svelte';
+  import { goTo, take, type Place } from '../lib/nav.svelte';
+  import { itemIdsIn } from '../lib/historyops';
+  import { rpgRounds } from '../lib/rpg';
+  import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
+  import HistoryNotice from './HistoryNotice.svelte';
+  import HistoryPanel from './HistoryPanel.svelte';
 
-  let { onplay }: { onplay: () => void } = $props();
+  /** `problems`: the checklist, worked out by the app a moment after changes stop. */
+  let { onplay, problems }: { onplay: () => void; problems: Problem[] } = $props();
 
-  // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | round index
-  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | number>(0);
+  // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
+  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
   const game = $derived(app.game);
   $effect(() => {
     registerGameFonts(game);
@@ -43,6 +51,42 @@
   $effect(() => {
     document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
   });
+
+  // Where an undo or redo changed something: that tab (the parts inside it open the rest, see nav.svelte.ts).
+  const handled = { seq: 0 };
+  $effect(() => {
+    const place = take(handled);
+    if (place) untrack(() => show(place));
+  });
+  function show(place: Place): void {
+    if (place.tab === 'round') {
+      const i = game.rounds.findIndex((r) => r.id === place.round);
+      if (i >= 0) tab = i;
+    } else if (place.tab === 'world') {
+      // The round on screen if it plays that world, else the first round that does (a world no round plays stays put).
+      const on = typeof tab === 'number' ? game.rounds[tab] : undefined;
+      const playing = rpgRounds(game).filter((r) => r.world === place.world);
+      const r = playing.find((x) => x === on) ?? playing[0];
+      if (r) tab = game.rounds.indexOf(r);
+      else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`, 5000);
+    } else if (place.tab !== 'title') tab = place.tab;
+  }
+
+  // The round on screen stays on screen when an undo puts back (or takes away) a round before it; when it takes away
+  // the round itself, its neighbour shows (as when it's deleted).
+  let shownRound: string | undefined;
+  $effect(() => {
+    shownRound = typeof tab === 'number' ? game.rounds[tab]?.id : undefined;
+  });
+  onMount(() =>
+    onApplied((e, dir, via) => {
+      const i = game.rounds.findIndex((r) => r.id === shownRound);
+      if (typeof tab === 'number') tab = i >= 0 ? i : Math.max(0, Math.min(tab, game.rounds.length - 1));
+      // Then on to where it changed (the History tab shows it in its list).
+      const place = dir < 0 ? e.undoPlace : e.place;
+      if (via !== 'list' && tab !== 'history' && place) goTo(place, itemIdsIn(e.ops));
+    }),
+  );
 
   /** Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last. */
   function addRound(mode: RoundMode): void {
@@ -70,19 +114,11 @@
     );
   }
 
-  /** What goes with a deleted round, for the confirm (an RPG's world stays: other rounds can play it). */
-  const GOES_WITH: Record<RoundMode, string> = {
-    board: ' and all its clues?',
-    final: ' and its question and answer?',
-    rpg: '? Its world of screens stays in the game.',
-    boardgame: ' and all its spaces?',
-  };
-
   // Moving, copying or deleting a round keeps the same tab on screen (a round's right-click menu can act on
-  // another round). The round on screen follows its own move, and its copy shows the copy.
+  // another round). The round on screen follows its own move, and its copy shows the copy. Deleting is done at
+  // once: the note at the bottom offers Undo (an RPG round's world stays, other rounds can play it).
   function removeRound(i: number): void {
-    if (!confirm(`Delete "${roundName(game.rounds[i], i)}"${GOES_WITH[game.rounds[i].mode]}`)) return;
-    game.rounds.splice(i, 1);
+    step(`Deleted round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i, 1), { notify: true });
     if (typeof tab === 'number' && tab > i) tab--;
     // The round on screen went: show its neighbour. With none left, tab 0 is the "add your first round" screen.
     else if (tab === i) tab = Math.max(0, Math.min(i, game.rounds.length - 1));
@@ -91,8 +127,10 @@
   function moveRound(i: number, delta: number): void {
     const j = i + delta;
     if (j < 0 || j >= game.rounds.length) return;
-    const [r] = game.rounds.splice(i, 1);
-    game.rounds.splice(j, 0, r);
+    step(`Moved round “${roundName(game.rounds[i], i)}” ${delta < 0 ? 'earlier' : 'later'}`, () => {
+      const [r] = game.rounds.splice(i, 1);
+      game.rounds.splice(j, 0, r);
+    });
     if (tab === i) tab = j;
     else if (tab === j) tab = i;
   }
@@ -101,12 +139,13 @@
   function duplicateRound(i: number): void {
     const copy = reidRound(clone($state.snapshot(game.rounds[i]) as Round));
     copy.name = `${roundName(game.rounds[i], i)} (copy)`;
-    game.rounds.splice(i + 1, 0, copy);
+    step(`Duplicated round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i + 1, 0, copy));
     if (typeof tab === 'number' && tab >= i) tab++;
   }
 
   function newFile(): void {
     if (!confirm('Start a new game? Save this one first if you want to keep it.')) return;
+    arriving({ kind: 'new', label: 'New game' });
     app.game = newGame();
     // A new game has no rounds: start on the screen that adds the first one.
     tab = 0;
@@ -156,6 +195,7 @@
       } catch {
         throw new Error(`"${file.name}" is missing parts a game needs (was it edited by hand?), so it wasn't opened.`);
       }
+      arriving({ kind: 'opened', label: `Opened “${opened.title}”` });
       app.game = opened;
       tab = 0;
       toast(`Opened "${app.game.title}"`);
@@ -181,13 +221,34 @@
 
   /**
    * Ctrl+S saves the game (in a browser it would save this app's page instead), except in a dialog: finish that first
-   * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one).
+   * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one). Ctrl+Z / Ctrl+Y undo and redo.
    */
   function onkeydown(e: KeyboardEvent): void {
+    const key = undoKeyOf(e);
+    if (key) return undoKey(e, key);
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) toast('Close this window first, then save (Ctrl+S)');
     else if (!saving && !e.repeat) save();
+  }
+
+  // The text field in focus, so Ctrl+Z can stay its own while it has typing of its own.
+  const fields = createFieldTracker();
+
+  /**
+   * Ctrl+Z / Ctrl+Y go through the game's undo history, except in a text field with typing of its own (the field's
+   * own undo takes that back first), in a window that isn't about the game (⚙ Settings, ℹ About, Open: nothing
+   * happens), and in the image editor and the drawpad, which undo their own drafts (they take the key first; in the
+   * image editor's own boxes and sliders, nothing happens either).
+   */
+  function undoKey(e: KeyboardEvent, key: 'undo' | 'redo'): void {
+    if (e.defaultPrevented || fields.native(e, key)) return;
+    // Never the browser's own undo, which would change the last field typed in, wherever it is.
+    e.preventDefault();
+    if (document.querySelector('[data-undo="off"]')) return;
+    if (key === 'undo') undo('key');
+    else redo('key');
+    fields.afterGlobal();
   }
 
   async function save(): Promise<void> {
@@ -195,6 +256,7 @@
     packPct = null;
     try {
       const { missing, where } = await savePack($state.snapshot(game), packProgress);
+      mark('saved', `Saved “${safeFilename(game.title)}.brainrot”`);
       if (missing.length) alert(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast(where, 5000);
     } catch (e) {
@@ -210,12 +272,14 @@
     packPct = null;
     try {
       const r = await exportStandaloneHtml($state.snapshot(game), packProgress);
-      if (r)
+      if (r) {
+        mark('exported', 'Exported HTML');
         toast(
           `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to|Downloaded) /, '')}. Double-click it to play.` +
             (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
           r.online ? 8000 : 5000,
         );
+      }
       if (r?.missing.length) alert(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
     } catch (e) {
       alert('Export failed: ' + (e as Error).message);
@@ -223,8 +287,6 @@
       exporting = false;
     }
   }
-
-  const problems = $derived(validate(game));
 
   let about = $state(false);
   let settings = $state(false);
@@ -254,12 +316,14 @@
   }
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
 <svelte:document {ondrop} />
 
 <div class="editor">
   <header>
-    <input class="title" bind:value={game.title} aria-label="Game title" />
+    <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
+    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
+    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
     <button onclick={newFile}>New</button>
     <button onclick={open}>Open…</button>
     <button
@@ -277,6 +341,7 @@
       onclick={async () => {
         try {
           toast(await saveGameJson($state.snapshot(game)), 5000);
+          mark('exported', 'Exported JSON');
         } catch (e) {
           alert('Export failed: ' + (e as Error).message);
         }
@@ -327,6 +392,7 @@
         <button
           class="round-tab"
           class:active={tab === i}
+          data-place="round:{round.id}"
           onclick={() => (tab = i)}
           oncontextmenu={(e) =>
             showMenu(e, [
@@ -347,6 +413,9 @@
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
       <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
+      <button class:active={tab === 'history'} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
+        🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
+      </button>
       <div class="navlabel muted">End</div>
       <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')}>
         Tiebreaker {game.tiebreaker ? '' : '(off)'}
@@ -380,6 +449,8 @@
           <ToolsEditor />
         {:else if tab === 'theme'}
           <ThemeEditor />
+        {:else if tab === 'history'}
+          <HistoryPanel />
         {:else if game.rounds[tab]}
           {@const i = tab}
           {@const round = game.rounds[i]}
@@ -420,6 +491,7 @@
       {/key}
     </main>
   </div>
+  <HistoryNotice quiet={tab === 'history'} />
 </div>
 
 <style>
@@ -467,7 +539,7 @@
   .title {
     font-size: 18px;
     font-weight: 600;
-    width: min(420px, 40vw);
+    width: min(340px, 28vw);
   }
   .autosave {
     font-size: 12px;
@@ -506,6 +578,10 @@
     border-right: 1px solid var(--border);
     background: var(--panel);
     overflow-y: auto;
+  }
+  /* At 720 px high the nav scrolls: its buttons keep their height. */
+  nav > * {
+    flex-shrink: 0;
   }
   nav > button {
     text-align: left;

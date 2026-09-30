@@ -152,7 +152,9 @@ try {
   assert((await rows.count()) === 2 && (await modal.locator('.notice').innerText()).includes('Deleted image'), 'Delete removes a board image and says so');
   await page.keyboard.press('Control+z');
   assert((await order()) === 'through.png,behind.png,blocker.png', `Ctrl+Z puts it back where it was (${await order()})`);
+  assert((await modal.getByRole('button', { name: /Copy selected to other rounds/ }).count()) === 1, 'and selects it again');
   await shot('bi-2-decor-editor');
+  await page.keyboard.press('Escape');
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();
   await modal.getByRole('button', { name: 'Done' }).click();

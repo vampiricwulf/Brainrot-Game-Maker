@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
+  import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { stepClue, textStyleTargets } from '../lib/ops';
   import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
-  import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
+  import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
 
   let {
@@ -25,11 +26,12 @@
   let questionField = $state<HTMLTextAreaElement>();
   let emptyBox = $state<HTMLInputElement>();
 
-  // Both slides keep undo history from the moment the clue opens, so typing the answer in its quick
-  // field while the question slide is showing is still a step Ctrl+Z can undo on the answer slide.
+  // An undo or redo on this clue shows the side it changed.
+  const handled = { seq: 0 };
   $effect(() => {
-    const c = clue;
-    if (c) untrack(() => [c.questionSlide, c.answerSlide].forEach(trackSlide));
+    const place = take(handled);
+    const part = place?.tab === 'round' ? place.part : undefined;
+    if (part?.kind === 'clue' && part.side && part.clue === untrack(() => clue?.id)) side = part.side;
   });
 
   // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next (on an

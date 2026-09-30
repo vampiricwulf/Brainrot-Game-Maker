@@ -1,8 +1,14 @@
-// Autosave to IndexedDB (spec §5.8, §6.5): the editor draft and the in-progress play session.
-import { del, get, set } from 'idb-keyval';
+// Autosave to IndexedDB (spec §5.8, §6.5): the editor draft with its undo history, and the in-progress play session.
+import { del, delMany, get, getMany, keys, set, setMany } from 'idb-keyval';
+import type { SavedHistory, StoredStep } from './history.svelte';
 import type { Game, Session } from './model';
 
 const DRAFT_KEY = 'editorDraft';
+/** New with every draft written: the undo history written with it says which draft it goes with. */
+const DRAFT_REV_KEY = 'editorDraftRev';
+const HISTORY_KEY = 'editorHistory';
+/** Each step of the undo history is stored once, on its own. */
+const stepKey = (id: string) => `${HISTORY_KEY}:${id}`;
 const PLAY_KEY = 'playSession';
 
 export interface SavedPlay {
@@ -38,8 +44,46 @@ export async function write(fn: () => Promise<void>): Promise<void> {
   }
 }
 
-export const loadDraft = () => safe(() => get<Game>(DRAFT_KEY));
-export const saveDraft = (game: Game) => write(() => set(DRAFT_KEY, game));
+/** The draft and its undo history: which steps, where it is, and the steps new or changed since the last write. */
+export interface EditorSave {
+  draft: Game;
+  history: SavedHistory;
+  steps: StoredStep[];
+  /** Steps no longer in the history. */
+  dropped: string[];
+}
+
+/** The draft and its history are written together (one transaction), so they always match. */
+export const saveEditor = (s: EditorSave) =>
+  write(async () => {
+    const steps = s.steps.map((e): [string, StoredStep] => [stepKey(e.id), e]);
+    await setMany([[DRAFT_KEY, s.draft], [DRAFT_REV_KEY, s.history.rev], [HISTORY_KEY, s.history], ...steps]);
+    if (s.dropped.length) await delMany(s.dropped.map(stepKey));
+  });
+
+/**
+ * The draft, and its undo history when that was written with this very draft (another copy of the app, or a version
+ * from before the history, may have written the draft since) and all its steps are there.
+ */
+export async function loadEditor(): Promise<{ draft?: Game; history?: { saved: SavedHistory; steps: StoredStep[] } }> {
+  const [draft, rev, saved] = (await safe(() => getMany([DRAFT_KEY, DRAFT_REV_KEY, HISTORY_KEY]))) ?? [];
+  if (!draft) return {};
+  const game = draft as Game;
+  const index = saved as SavedHistory | undefined;
+  if (index?.v !== 1 || index.rev !== rev || index.gameId !== game.id) return { draft: game };
+  const steps = await safe(() => getMany<StoredStep>(index.ids.map(stepKey)));
+  if (!steps || steps.some((x) => !x)) return { draft: game };
+  return { draft: game, history: { saved: index, steps: steps as StoredStep[] } };
+}
+
+/** Delete stored steps that aren't in the history kept (left from a history not restored, or a crash mid-write). */
+export async function dropStraySteps(keep: readonly string[]): Promise<void> {
+  const kept = new Set(keep.map(stepKey));
+  await safe(async () => {
+    const all = await keys();
+    await delMany(all.filter((k) => typeof k === 'string' && k.startsWith(`${HISTORY_KEY}:`) && !kept.has(k)));
+  });
+}
 
 // Exported player-only files keep their own saved game (keyed per game) so they never touch the builder's.
 let playKey = PLAY_KEY;
