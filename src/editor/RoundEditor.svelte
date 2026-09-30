@@ -3,7 +3,7 @@
   import { app } from '../lib/app.svelte';
   import { categoryLabel, clueValue, slideText, type BoardRound } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
-  import { addCategory, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
+  import { addCategory, categoryHasContent, clueHasContent, duplicateCategory, moveCategory, removeCategory, scaleValues, setRowCount } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls } from '../lib/media.svelte';
@@ -77,7 +77,13 @@
       max="10"
       value={round.categories.length}
       onchange={(e) => {
-        const n = Math.max(1, Math.min(10, +e.currentTarget.value || 1));
+        const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
+        // Fewer categories drops the last ones: ask first if any has something in it (there's no undo here).
+        const gone = round.categories.length - n;
+        if (round.categories.slice(n).some(categoryHasContent) && !confirm(`Remove the last ${gone === 1 ? 'category and its' : `${gone} categories and their`} clues?`)) {
+          e.currentTarget.value = String(round.categories.length);
+          return;
+        }
         while (round.categories.length < n) addCategory(round);
         while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
         e.currentTarget.value = String(round.categories.length);
@@ -92,7 +98,13 @@
       max="10"
       value={round.values.length}
       onchange={(e) => {
-        setRowCount(round, +e.currentTarget.value || 1);
+        const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
+        const gone = round.values.length - n;
+        if (round.categories.some((c) => c.clues.slice(n).some(clueHasContent)) && !confirm(`Remove the bottom ${gone === 1 ? 'row' : `${gone} rows`} of clues?`)) {
+          e.currentTarget.value = String(round.values.length);
+          return;
+        }
+        setRowCount(round, n);
         e.currentTarget.value = String(round.values.length);
       }}
     />

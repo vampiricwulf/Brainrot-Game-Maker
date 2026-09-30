@@ -19,3 +19,28 @@ export function showMenu(e: MouseEvent, items: MenuEntry[]): void {
 export function closeMenu(): void {
   contextMenu.open = null;
 }
+
+/**
+ * `use:dropdown={close}` on a menu that drops from a button (＋ Add round, Shape ▾), so it keys like a
+ * right-click menu: its first item takes focus, ↑/↓ move between items, and Esc closes it (focus goes
+ * back to the button). A click outside is the menu's own backdrop.
+ */
+export function dropdown(box: HTMLElement, close: () => void): { destroy: () => void } {
+  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const items = () => [...box.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+  function key(e: KeyboardEvent): void {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      close();
+      opener?.focus();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const list = items();
+      const at = list.indexOf(document.activeElement as HTMLButtonElement);
+      list[(at + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length]?.focus();
+    }
+  }
+  items()[0]?.focus();
+  box.addEventListener('keydown', key);
+  return { destroy: () => box.removeEventListener('keydown', key) };
+}

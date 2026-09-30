@@ -4,7 +4,9 @@
   pass through them to the tiles.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { SnapshotHistory } from '../lib/editing';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
@@ -31,6 +33,8 @@
   let hidden = $state<string[]>([]);
   let hovered = $state<string | null>(null);
   let picking = $state<'add' | 'replace' | null>(null);
+  /** The Replace… button its picker drops from. */
+  let replaceFrom = $state<HTMLElement>();
   let editingImage = $state<string | null>(null);
   let canvasEl = $state<HTMLDivElement>();
   let menu = $state<{ x: number; y: number; stack: SlideElement[] } | null>(null);
@@ -54,6 +58,54 @@
   const live = newLive();
 
   const topZ = () => Math.max(0, ...decor.map((d) => d.zIndex)) + 1;
+
+  // ---------- Undo history (Ctrl+Z / Ctrl+Y), as in the slide editor ----------
+  // Typing and sliders are grouped into one step after a pause; adding, deleting, restacking or a
+  // finished drag is recorded at once.
+  const snapshot = () => JSON.stringify(round.decor ?? []);
+  const hist = new SnapshotHistory(untrack(snapshot));
+  let hv = $state(0);
+  let pending = $state(false);
+  let dragging = false;
+  $effect(() => {
+    const now = snapshot();
+    pending = now !== hist.last;
+    if (!pending) return;
+    const t = setTimeout(() => !dragging && commit(), 400);
+    return () => clearTimeout(t);
+  });
+  const canUndo = $derived(hv >= 0 && (pending || hist.undoStack.length > 0));
+  const canRedo = $derived(hv >= 0 && !pending && hist.redoStack.length > 0);
+
+  function commit(): void {
+    if (hist.commit(snapshot())) hv++;
+    pending = false;
+  }
+  /** Record a discrete edit as its own undo step. */
+  function edit(fn: () => void): void {
+    commit();
+    fn();
+    commit();
+  }
+  function restore(s: string | null): void {
+    hv++;
+    if (s === null) return;
+    const d = JSON.parse(s) as BoardDecor[];
+    round.decor = d;
+    pending = false;
+    selected = selected.filter((id) => d.some((x) => x.id === id));
+  }
+  const undo = () => restore(hist.undo(snapshot()));
+  const redo = () => restore(hist.redo(snapshot()));
+
+  // "Deleted image · Undo" on the board, until the next change or a few seconds.
+  let notice = $state<{ text: string; undo?: () => void; at: number } | null>(null);
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  function tell(text: string, undoFn?: () => void): void {
+    notice = { text, undo: undoFn, at: hv };
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => (notice = null), 6000);
+  }
 
   /** round.decor, created on first use (assign first, then read back: pushing to `??= []` would miss the proxy). */
   function items(): BoardDecor[] {
@@ -80,8 +132,10 @@
       d.x = Math.round(at.x - w / 2);
       d.y = Math.round(at.y - h / 2);
     }
-    items().push(d);
-    selected = [d.id];
+    edit(() => {
+      items().push(d);
+      selected = [d.id];
+    });
   }
 
   async function addFiles(files: FileList | File[], at?: { x: number; y: number }): Promise<void> {
@@ -102,11 +156,14 @@
   }
 
   function picked(id: string): void {
-    if (picking === 'replace' && single) {
-      single.media = id;
-      single.editedMedia = undefined;
-      single.edits = undefined;
-    } else add(id);
+    const el = single;
+    if (picking === 'replace' && el)
+      edit(() => {
+        el.media = id;
+        el.editedMedia = undefined;
+        el.edits = undefined;
+      });
+    else add(id);
     picking = null;
   }
 
@@ -118,28 +175,39 @@
   }
 
   function remove(): void {
+    const gone = decor.filter((d) => selected.includes(d.id) && !d.locked);
     const locked = decor.filter((d) => selected.includes(d.id) && d.locked).length;
-    round.decor = decor.filter((d) => !selected.includes(d.id) || d.locked);
-    selected = selected.filter((id) => decor.some((d) => d.id === id));
-    if (locked) toast(lockedNote(locked, 'image'));
+    if (!gone.length) {
+      if (locked) tell(lockedNote(locked, 'image'));
+      return;
+    }
+    edit(() => {
+      round.decor = decor.filter((d) => !gone.includes(d));
+      selected = selected.filter((id) => decor.some((d) => d.id === id));
+    });
+    tell(`Deleted ${gone.length === 1 ? 'image' : `${gone.length} images`}${locked ? ` · ${lockedNote(locked, 'image')}` : ''}`, undo);
   }
 
   function duplicate(): void {
-    const copies = decor.filter((d) => selected.includes(d.id)).map((d) => ({ ...clone(d), id: newId(), x: d.x + 30, y: d.y + 30, zIndex: topZ() }));
-    items().push(...copies);
-    selected = copies.map((c) => c.id);
+    edit(() => {
+      const copies = decor.filter((d) => selected.includes(d.id)).map((d) => ({ ...clone(d), id: newId(), x: d.x + 30, y: d.y + 30, zIndex: topZ() }));
+      items().push(...copies);
+      selected = copies.map((c) => c.id);
+    });
   }
 
   function order(dir: 'front' | 'back' | 'up' | 'down'): void {
-    restack(decor, selected, dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir);
+    edit(() => restack(decor, selected, dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir));
   }
 
   function menuAction(a: LayerAction): void {
-    if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restack(decor, selected, a);
+    if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') edit(() => restack(decor, selected, a));
     else if (a === 'duplicate') duplicate();
-    else if (a === 'lock' || a === 'unlock') {
-      for (const d of decor) if (selected.includes(d.id)) d.locked = a === 'lock' || undefined;
-    } else if (a === 'hide') {
+    else if (a === 'lock' || a === 'unlock')
+      edit(() => {
+        for (const d of decor) if (selected.includes(d.id)) d.locked = a === 'lock' || undefined;
+      });
+    else if (a === 'hide') {
       hidden = [...hidden, ...selected];
       selected = [];
     } else if (a === 'delete') remove();
@@ -171,7 +239,12 @@
       if (list.length) selected = [list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length].id];
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       const up = e.code === 'BracketRight';
-      restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward');
+      edit(() => restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward'));
+    } else if (mod && k === 'z') {
+      if (e.shiftKey) redo();
+      else undo();
+    } else if (mod && k === 'y') {
+      redo();
     } else if (k === 'escape') {
       if (selected.length) selected = [];
       else onclose();
@@ -235,6 +308,8 @@
         Copy {selected.length ? 'selected' : 'all'} to other rounds
       </button>
       <span class="spacer"></span>
+      <button class="ghost" onclick={undo} disabled={!canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
+      <button class="ghost" onclick={redo} disabled={!canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
       <button class="primary" onclick={onclose}>Done</button>
     </header>
 
@@ -255,16 +330,37 @@
             {hidden}
             bind:hovered
             onmenu={(m) => (menu = m)}
-            onchange={() => {}}
+            onstart={() => {
+              commit();
+              dragging = true;
+            }}
+            onchange={() => {
+              dragging = false;
+              commit();
+            }}
             ondblclick={(el) => el.kind === 'image' && (editingImage = el.id)}
           />
         </Stage>
+        {#if notice && notice.at === hv && !pending}
+          <div class="notice" role="status">
+            <span>{notice.text}</span>
+            {#if notice.undo}
+              <button
+                class="small"
+                onclick={() => {
+                  const fn = notice?.undo;
+                  notice = null;
+                  fn?.();
+                }}>Undo</button>
+            {/if}
+          </div>
+        {/if}
       </div>
 
       <aside class="side">
         <section>
           <h4>Layers <span class="muted">(top first)</span></h4>
-          <LayersPanel elements={decor} {game} bind:selected bind:hidden bind:hovered />
+          <LayersPanel elements={decor} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
         </section>
         {#if single}
           <section class="board-opts">
@@ -275,11 +371,11 @@
             </label>
             <label class="check">
               <input type="checkbox" checked={!!single.behind} onchange={(e) => (single.behind = e.currentTarget.checked || undefined)} />
-              Behind the tiles <span class="muted">(peeks through the gaps)</span>
+              <span>Behind the tiles <span class="muted">(peeks through the gaps)</span></span>
             </label>
             <label class="check" class:dim={single.behind}>
               <input type="checkbox" checked={!!single.clickThrough} onchange={(e) => (single.clickThrough = e.currentTarget.checked || undefined)} />
-              Click-through <span class="muted">(clicks reach the tiles under it)</span>
+              <span>Click-through <span class="muted">(clicks reach the tiles under it)</span></span>
             </label>
           </section>
           <Inspector
@@ -288,13 +384,14 @@
             onorder={order}
             onduplicate={duplicate}
             ondelete={remove}
-            onreplace={() => (picking = 'replace')}
+            onreplace={(from) => ((picking = 'replace'), (replaceFrom = from))}
             onapplystyle={() => {}}
             onuploadfont={() => {}}
             oneditimage={() => (editingImage = single!.id)}
+            onedit={edit}
           />
           {#if picking === 'replace'}
-            <div class="pop"><MediaPicker kind="image" onpick={picked} onclose={() => (picking = null)} /></div>
+            <MediaPicker kind="image" anchor={replaceFrom} onpick={picked} onclose={() => (picking = null)} />
           {/if}
         {:else if selected.length > 1}
           <p class="muted">{selected.length} images selected.</p>
@@ -361,6 +458,7 @@
     min-height: 0;
   }
   .canvas {
+    position: relative;
     aspect-ratio: 16 / 9;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -388,6 +486,22 @@
   }
   .dim {
     opacity: 0.5;
+  }
+  .notice {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    translate: -50% 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 8px 6px 14px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+    z-index: 2000;
   }
   .pop {
     position: relative;

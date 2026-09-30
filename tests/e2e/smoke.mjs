@@ -428,6 +428,30 @@ assert((await insp.count()) === 0, 'the inspector hides while previewing');
 await page.keyboard.press('Escape');
 assert((await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 && (await hits()) === 2, 'Esc stops the preview, and Backspace during it deleted nothing');
 
+// Esc closes what's open over the slide (the Shape menu, draw mode, the link box), not the clue editor.
+const clueOpen = async () => (await page.locator('[aria-label="Edit clue"]').count()) === 1;
+await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+await page.keyboard.press('Escape');
+assert((await page.getByRole('button', { name: '▭ Rectangle' }).count()) === 0 && (await clueOpen()), 'Esc closes the Shape menu, not the clue');
+await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+await page.getByRole('button', { name: '✏ Draw a line' }).click();
+assert((await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1, 'draw mode says so on the slide');
+await page.keyboard.press('Escape');
+assert((await page.locator('.draw').count()) === 0 && (await clueOpen()), 'Esc stops drawing, not the clue');
+await page.getByRole('button', { name: '🌐 Link' }).click();
+await page.locator('.canvas').click({ position: { x: 3, y: 3 } });
+await page.keyboard.press('Escape');
+assert((await page.locator('.linkbox').count()) === 0 && (await clueOpen()), 'Esc closes the link box, not the clue');
+// The drawpad keeps its keys: E picks its eraser, and Delete doesn't reach the text box selected behind it.
+await page.locator('.canvas .hit').last().click();
+await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+await page.getByRole('button', { name: '🖌 Drawpad…' }).click();
+await page.keyboard.press('e');
+await page.keyboard.press('Delete');
+assert((await page.getByRole('button', { name: '🧽 Eraser' }).getAttribute('aria-pressed')) === 'true', 'E in the drawpad picks its eraser');
+await page.keyboard.press('Escape');
+assert((await page.locator('[aria-label="Drawpad"]').count()) === 0 && (await hits()) === 2 && (await clueOpen()), 'keys in the drawpad stay there, and Esc closes just the drawpad');
+
 // Preview plays sound: the audio clip and the video play unmuted, and stop with the preview.
 await page.getByRole('button', { name: '🔊 Audio' }).click();
 await page.locator('.picker .item', { hasText: 'beep.wav' }).click();

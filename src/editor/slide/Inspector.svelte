@@ -32,12 +32,14 @@
     onorder: (dir: 'front' | 'back' | 'up' | 'down') => void;
     onduplicate: () => void;
     ondelete: () => void;
-    onreplace: () => void;
+    /** Replace the file: a picker drops from `from`, the button that asked. */
+    onreplace: (from: HTMLElement) => void;
     /** "Use this style elsewhere" (not offered when missing). */
     onapplystyle?: (el: TextEl, scope: string) => void;
     /** Offer "this category" scopes for it. */
     stylecategory?: boolean;
-    onuploadfont: () => void;
+    /** Upload a font: a picker drops from `from`, the ＋ button. */
+    onuploadfont: (from: HTMLElement) => void;
     oneditimage?: () => void;
     /** Makes a discrete change (locking) by calling `change`, so an undo history can record it as one step. */
     onedit?: (change: () => void) => void;
@@ -103,7 +105,7 @@
             {#each fonts as f}<option value={f.css} style:font-family={f.css}>{f.label}</option>{/each}
             {#if !fonts.some((f) => f.css === el.font)}<option value={el.font}>{el.font.split(',')[0]}</option>{/if}
           </select>
-          <button class="small" onclick={onuploadfont} aria-label="Upload a font file" title="Upload a .ttf/.otf/.woff font">＋</button>
+          <button class="small" onclick={(e) => onuploadfont(e.currentTarget)} aria-label="Upload a font file" title="Upload a .ttf/.otf/.woff font">＋</button>
         </div>
       </label>
       <div class="grid2">
@@ -222,7 +224,7 @@
       <label class="field">Rounded corners<input type="number" min="0" value={el.radius ?? 0} oninput={(e) => (el.radius = num(e.currentTarget.value))} /></label>
       <div class="row">
         {#if oneditimage}<button onclick={oneditimage}>🎨 Edit image…</button>{/if}
-        <button onclick={onreplace}>Replace…</button>
+        <button onclick={(e) => onreplace(e.currentTarget)}>Replace…</button>
       </div>
       {@render liveNote()}
     </section>
@@ -282,7 +284,7 @@
         {/if}
         <button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))}>Test link ↗</button>
       {:else}
-        <button class="small" onclick={onreplace}>Replace file…</button>
+        <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
         {@render liveNote()}
       {/if}
       {#if !sitePlayer && (el.kind !== 'embed' || el.embedKind !== 'remoteImage')}

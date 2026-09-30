@@ -14,6 +14,11 @@ export interface Problem {
   level: 'warn' | 'info';
 }
 
+/** "1 clue", "3 clues" ("category" → "categories"). */
+function plural(n: number, word: string): string {
+  return `${n} ${n === 1 ? word : word.endsWith('y') ? `${word.slice(0, -1)}ies` : `${word}s`}`;
+}
+
 export function validate(game: Game): Problem[] {
   const out: Problem[] = [];
   if (!game.players.length) out.push({ text: 'No players yet (you can also add them before starting)', tab: 'setup', level: 'info' });
@@ -40,26 +45,26 @@ export function validate(game: Game): Problem[] {
     const playable = playableClues(r);
     if (!playable.length) out.push({ text: `${r.name}: no playable tiles`, tab: i, level: 'warn' });
     const unnamed = r.categories.filter((c) => !c.title.trim() && !c.image).length;
-    if (unnamed) out.push({ text: `${r.name}: ${unnamed} category name(s) blank`, tab: i, level: 'warn' });
+    if (unnamed) out.push({ text: `${r.name}: ${plural(unnamed, 'category')} with no name`, tab: i, level: 'warn' });
     const tools = playable.filter((c) => c.type === 'wheel' || c.type === 'dice');
     const noQ = playable.filter((c) => !tools.includes(c) && !slideHasContent(c.questionSlide)).length;
     const noA = playable.filter((c) => !tools.includes(c) && !slideHasContent(c.answerSlide)).length;
-    if (noQ) out.push({ text: `${r.name}: ${noQ} clue(s) with no question`, tab: i, level: 'warn' });
-    if (noA) out.push({ text: `${r.name}: ${noA} clue(s) with no answer`, tab: i, level: 'warn' });
+    if (noQ) out.push({ text: `${r.name}: ${plural(noQ, 'clue')} with no question`, tab: i, level: 'warn' });
+    if (noA) out.push({ text: `${r.name}: ${plural(noA, 'clue')} with no answer`, tab: i, level: 'warn' });
     const broken = tools.filter((c) =>
       c.type === 'wheel' ? c.wheelId !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === c.wheelId) : !game.dice.some((d) => d.id === c.diceId),
     ).length;
-    if (broken) out.push({ text: `${r.name}: ${broken} wheel/dice tile(s) with nothing chosen`, tab: i, level: 'warn' });
+    if (broken) out.push({ text: `${r.name}: ${plural(broken, 'wheel/dice tile')} with nothing chosen`, tab: i, level: 'warn' });
   });
 
 
   const known = new Set(game.media.map((m) => m.id));
   const missingRefs = [...mediaUsage(game).keys()].filter((id) => !known.has(id)).length;
   const missingFiles = game.media.filter((m) => !mediaUrls[m.id]).length;
-  if (missingRefs || missingFiles) out.push({ text: `${missingRefs + missingFiles} media file(s) missing`, tab: 'media', level: 'warn' });
+  if (missingRefs || missingFiles) out.push({ text: `${plural(missingRefs + missingFiles, 'media file')} missing`, tab: 'media', level: 'warn' });
   // (A live link already played when it was added; its type is often unknown from the address.)
   const unplayable = game.media.filter((m) => !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
-  if (unplayable) out.push({ text: `${unplayable} video/audio file(s) this browser may not play`, tab: 'media', level: 'warn' });
+  if (unplayable) out.push({ text: `${plural(unplayable, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
 
   const links = game.media.filter((m) => m.url);
   const online = onlineCount(game);
@@ -67,7 +72,7 @@ export function validate(game: Game): Problem[] {
   const life = links.map((m) => linkLifetime(m));
   const expired = life.filter((l) => l === 'expired').length;
   const temporary = life.filter((l) => l === 'temporary').length;
-  if (expired) out.push({ text: `${expired} online link(s) expired: add those files again`, tab: 'media', level: 'warn' });
-  if (temporary) out.push({ text: `${temporary} online link(s) stop working soon (temporary upload sites): save a copy or add the files`, tab: 'media', level: 'warn' });
+  if (expired) out.push({ text: `${plural(expired, 'online link')} expired: add ${expired === 1 ? 'that file' : 'those files'} again`, tab: 'media', level: 'warn' });
+  if (temporary) out.push({ text: `${plural(temporary, 'online link')} ${temporary === 1 ? 'stops' : 'stop'} working soon (temporary upload sites): save a copy or add the files`, tab: 'media', level: 'warn' });
   return out;
 }

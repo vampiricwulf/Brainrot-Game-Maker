@@ -2,7 +2,7 @@
   import { onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { textStyleTargets } from '../lib/ops';
+  import { stepClue, textStyleTargets } from '../lib/ops';
   import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor, { trackSlide } from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -20,11 +20,10 @@
   const cat = $derived(round.categories[pos.cat]);
   const clue = $derived(cat?.clues[pos.row]);
   const sym = $derived(app.game.settings.currencySymbol);
-  const rows = $derived(round.values.length);
-  const cats = $derived(round.categories.length);
   let side = $state<'q' | 'a'>('q');
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
+  let emptyBox = $state<HTMLInputElement>();
 
   // Both slides keep undo history from the moment the clue opens, so typing the answer in its quick
   // field while the question slide is showing is still a step Ctrl+Z can undo on the answer slide.
@@ -33,21 +32,24 @@
     if (c) untrack(() => [c.questionSlide, c.answerSlide].forEach(trackSlide));
   });
 
-  // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next.
-  const focusQuestion = () => tick().then(() => questionField?.focus());
+  // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next (on an
+  // empty tile, the Empty tile box that brings it back).
+  const focusQuestion = () => tick().then(() => (questionField ?? emptyBox)?.focus());
   onMount(() => void focusQuestion());
 
-  // Walk clues column by column (down a category, then on to the next one).
-  function step(d: number): void {
-    const idx = pos.cat * rows + pos.row + d;
-    if (idx < 0 || idx >= rows * cats) return;
-    pos = { cat: Math.floor(idx / rows), row: idx % rows };
+  // Walk clues column by column (down a category, then on to the next one), past empty tiles.
+  const prev = $derived(stepClue(round, pos, -1));
+  const next = $derived(stepClue(round, pos, 1));
+  function step(d: 1 | -1): void {
+    const to = d > 0 ? next : prev;
+    if (!to) return;
+    pos = to;
     side = 'q';
     focusQuestion();
   }
 
   function typing(e: Event): boolean {
-    return !!(e.target as HTMLElement)?.closest?.('input, textarea, select');
+    return !!(e.target as HTMLElement)?.closest?.('input:not([type="checkbox"]), textarea, select');
   }
 
   function onkey(e: KeyboardEvent): void {
@@ -77,8 +79,8 @@
         </div>
         <span class="spacer"></span>
         <span class="muted small keys">Ctrl+Enter next clue · Alt+←/→ previous/next</span>
-        <button onclick={() => step(-1)} disabled={pos.cat === 0 && pos.row === 0} title="Alt+← or Shift+Ctrl+Enter">◀ Prev</button>
-        <button onclick={() => step(1)} disabled={pos.cat === cats - 1 && pos.row === rows - 1} title="Alt+→ or Ctrl+Enter">Next ▶</button>
+        <button onclick={() => step(-1)} disabled={!prev} title="Alt+← or Shift+Ctrl+Enter">◀ Prev</button>
+        <button onclick={() => step(1)} disabled={!next} title="Alt+→ or Ctrl+Enter">Next ▶</button>
         <button class="primary" onclick={onclose}>Done</button>
       </header>
 
@@ -106,11 +108,12 @@
           </select>
           {#if !app.game.dice.length}<span class="muted small">Make some in the 🎡 Wheels & Dice tab</span>{/if}
         {/if}
-        <label class="check"><input type="checkbox" bind:checked={clue.empty} /> Empty tile (not playable)</label>
+        <label class="check"><input type="checkbox" bind:this={emptyBox} bind:checked={clue.empty} /> Empty tile (not playable)</label>
         <label class="check">
           Value
           <input
             type="number"
+            disabled={clue.empty}
             placeholder={String(round.values[pos.row])}
             value={clue.value ?? ''}
             oninput={(e) => (clue.value = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
@@ -122,6 +125,7 @@
             type="number"
             min="0"
             class="secs"
+            disabled={clue.empty}
             placeholder={app.game.settings.defaultTimerSeconds ? String(app.game.settings.defaultTimerSeconds) : 'none'}
             value={clue.timerSeconds ?? ''}
             oninput={(e) => (clue.timerSeconds = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
@@ -132,6 +136,7 @@
           Tile shows
           <input
             class="face"
+            disabled={clue.empty}
             placeholder="the value"
             value={clue.tileFace?.text ?? ''}
             oninput={(e) => (clue.tileFace = { ...clue.tileFace, text: e.currentTarget.value || undefined })}
@@ -142,7 +147,7 @@
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
             <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image">✕</button>
           {:else}
-            <button class="small" onclick={() => (facePicker = true)} title="Show an image on the tile">🖼 Tile image</button>
+            <button class="small" onclick={() => (facePicker = true)} disabled={clue.empty} title="Show an image on the tile">🖼 Tile image</button>
           {/if}
           {#if facePicker}
             <MediaPicker
@@ -160,7 +165,9 @@
           below is optional; it shows after the {clue.type} is closed.
         </p>
       {/if}
-      {#if !clue.empty}
+      {#if clue.empty}
+        <p class="muted empty-note">⬚ This tile is left empty on the board. Untick <b>Empty tile</b> to use it.</p>
+      {:else}
         <!-- Quick text: the main text of each slide, so plain clues never need the canvas. Tab moves along. -->
         <div class="quick">
           <label class="field">
@@ -223,7 +230,7 @@
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
-    width: min(1400px, 100%);
+    width: min(1800px, 100%);
     /* A fixed-height column: the slide editor takes whatever height the fields above leave. */
     height: 100%;
     overflow: auto;
@@ -256,8 +263,16 @@
   .opts input[type='number'] {
     width: 100px;
   }
+  /* An empty tile has no type, value, timer or face. */
+  .opts :is(input, select):disabled {
+    opacity: 0.45;
+  }
   .hint {
     margin: 0;
+  }
+  .empty-note {
+    margin: 24px 0;
+    text-align: center;
   }
   .secs {
     width: 70px;

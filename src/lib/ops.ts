@@ -1,5 +1,29 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, type Category, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, type Category, type Clue, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
+import { slideHasContent } from './usage';
+
+/** Something was written or added to this clue (a new clue has none of it). */
+export function clueHasContent(clue: Clue): boolean {
+  return slideHasContent(clue.questionSlide) || slideHasContent(clue.answerSlide) || !!clue.hostNotes?.trim() || !!clue.tileFace?.text || !!clue.tileFace?.image;
+}
+
+/** A category with clues, an image or its own name (not the "Category 3" it started with). */
+export function categoryHasContent(cat: Category): boolean {
+  return !!cat.image || (!!cat.title.trim() && !/^Category \d+$/.test(cat.title.trim())) || cat.clues.some(clueHasContent);
+}
+
+/**
+ * The next clue `d` steps along the clue editor's walk (down a category, then on to the next one), skipping
+ * empty tiles, or null past either end.
+ */
+export function stepClue(round: BoardRound, pos: { cat: number; row: number }, d: 1 | -1): { cat: number; row: number } | null {
+  const rows = round.values.length;
+  for (let idx = pos.cat * rows + pos.row + d; idx >= 0 && idx < round.categories.length * rows; idx += d) {
+    const at = { cat: Math.floor(idx / rows), row: idx % rows };
+    if (!round.categories[at.cat].clues[at.row]?.empty) return at;
+  }
+  return null;
+}
 
 export function setRowCount(round: BoardRound, rows: number): void {
   rows = Math.max(1, Math.min(10, Math.floor(rows)));

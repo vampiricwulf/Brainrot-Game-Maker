@@ -5,7 +5,8 @@
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
   // handles keyboard shortcuts, copy and paste (and becoming active clears the other's selection),
-  // so a shortcut never reaches a slide that's out of sight. None does while an image editor is open.
+  // so a shortcut never reaches a slide that's out of sight. None does while an image editor or the
+  // drawpad is open (their keys are their own).
   interface Instance {
     clear(): void;
   }
@@ -52,6 +53,7 @@
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
   import { clipboard } from '../../lib/clipboard.svelte';
+  import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
@@ -108,6 +110,8 @@
   let selected = $state<string[]>([]);
   let picker = $state<MediaKind | null>(null);
   let replacing = $state<string | null>(null);
+  /** The Inspector button (Replace…, font ＋) its picker drops from. */
+  let pickerFrom = $state<HTMLElement>();
   let shapeMenu = $state(false);
   /** ✏ Draw is on: the next drag on the canvas draws a line. */
   let drawing = $state(false);
@@ -168,6 +172,11 @@
   });
   $effect(() => {
     if (!imageEl) return;
+    imageEditors++;
+    return () => imageEditors--;
+  });
+  $effect(() => {
+    if (!drawpad) return;
     imageEditors++;
     return () => imageEditors--;
   });
@@ -524,6 +533,7 @@
       commit();
       selected = [];
       shapeMenu = false;
+      drawing = false;
       picker = null;
       linkBox = null;
       previewKey++;
@@ -531,7 +541,19 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    if (!inCharge() || typing(e) || picker || menu) return;
+    if (!inCharge() || menu) return;
+    // Esc first closes whatever is open over the slide (the Shape menu, the link box, a file picker) or
+    // stops drawing, and goes no further (in the clue editor, it would close the whole clue).
+    if (e.key === 'Escape' && (shapeMenu || linkBox || drawing || picker)) {
+      e.stopImmediatePropagation();
+      shapeMenu = false;
+      linkBox = null;
+      drawing = false;
+      picker = null;
+      replacing = null;
+      return;
+    }
+    if (typing(e) || picker || shapeMenu) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     if (previewing) {
@@ -621,7 +643,8 @@
   function oncopy(e: ClipboardEvent): void {
     if (!inCharge() || typing(e) || previewing || !selected.length) return;
     e.preventDefault();
-    toast(`Copied ${copyItems(e.clipboardData)} item(s)`);
+    const n = copyItems(e.clipboardData);
+    toast(`Copied ${n} item${n === 1 ? '' : 's'}`);
   }
 
   function oncut(e: ClipboardEvent): void {
@@ -707,9 +730,15 @@
         {#if picker === 'audio' && !replacing}<MediaPicker kind="audio" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
-        <button onclick={() => (shapeMenu = !shapeMenu)}>◼ Shape ▾</button>
+        <!-- While drawing, this is the way out (the slide says how to draw). -->
+        {#if drawing}
+          <button class="primary" onclick={() => (drawing = false)} title="Stop drawing (Esc)">■ Stop drawing</button>
+        {:else}
+          <button onclick={() => (shapeMenu = !shapeMenu)} aria-expanded={shapeMenu}>◼ Shape ▾</button>
+        {/if}
         {#if shapeMenu}
-          <div class="menu">
+          <div class="backdrop" onclick={() => (shapeMenu = false)} role="presentation"></div>
+          <div class="menu" use:dropdown={() => (shapeMenu = false)}>
             <button onclick={() => addShape('rect')}>▭ Rectangle</button>
             <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
             <button onclick={() => addShape('line')}>― Line</button>
@@ -791,24 +820,27 @@
         disabled={!slide.background.image && !slide.background.color}
         title="Reset background">✕ BG</button>
     </fieldset>
-    <span class="spacer"></span>
-    <button class="ghost small" onclick={copySlide}>Copy slide</button>
-    <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide}>Paste slide</button>
-    <button class="small" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
-      {previewing ? '■ Stop preview' : '▶ Preview'}
-    </button>
-    {#if previewing}
-      <button class="ghost small" onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
-    {/if}
-    <button
-      class="ghost small"
-      onclick={() => ((previewMuted = !previewMuted), previewing && previewKey++)}
-      aria-pressed={previewMuted}
-      aria-label={previewMuted ? 'Preview sound is off' : 'Preview sound is on'}
-      title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}
-    >{previewMuted ? '🔇' : '🔈'}</button>
-    <button class="ghost small" onclick={undo} disabled={previewing || !canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
-    <button class="ghost small" onclick={redo} disabled={previewing || !canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
+    <!-- One group that keeps to the right and wraps as a whole, so 🔈 ↶ ↷ never end up alone on a line.
+         Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
+         is always there, hidden until then, and the Preview button has room for both of its labels. -->
+    <div class="right">
+      <button class="ghost small" onclick={copySlide}>Copy slide</button>
+      <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide}>Paste slide</button>
+      <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
+      <button class="small swap" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
+        <span class:hide={previewing}>▶ Preview</span>
+        <span class:hide={!previewing}>■ Stop preview</span>
+      </button>
+      <button
+        class="ghost small"
+        onclick={() => ((previewMuted = !previewMuted), previewing && previewKey++)}
+        aria-pressed={previewMuted}
+        aria-label={previewMuted ? 'Preview sound is off' : 'Preview sound is on'}
+        title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}
+      >{previewMuted ? '🔇' : '🔈'}</button>
+      <button class="ghost small" onclick={undo} disabled={previewing || !canUndo} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
+      <button class="ghost small" onclick={redo} disabled={previewing || !canRedo} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">↷</button>
+    </div>
   </div>
 
   <div class="body">
@@ -859,6 +891,8 @@
           <!-- A click on the slide stops the preview. A YouTube embed keeps its own clicks (they stay
                inside its frame), so it can still be started or paused here. -->
           <div class="ribbon preview">PREVIEW · click to stop</div>
+        {:else if drawing}
+          <div class="ribbon drawing">✏ DRAWING · drag to draw a line · hold Shift as you let go to close it · Esc to stop</div>
         {:else if badge}
           <div class="ribbon">{badge}</div>
         {/if}
@@ -899,24 +933,26 @@
           onorder={order}
           onduplicate={duplicate}
           ondelete={() => remove()}
-          onreplace={() => {
+          onreplace={(from) => {
             if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
               replacing = single.id;
               picker = single.kind;
+              pickerFrom = from;
             }
           }}
           onapplystyle={styletargets ? applyStyle : undefined}
           {stylecategory}
-          onuploadfont={() => {
+          onuploadfont={(from) => {
             replacing = null;
             picker = 'font';
+            pickerFrom = from;
           }}
           oneditimage={single.kind === 'image' ? () => (editingImage = single!.id) : undefined}
           onedit={edit}
           {objectsection}
         />
         {#if picker && replacing === single.id}
-          <div class="pop-anchor"><MediaPicker kind={picker} onpick={picked} onclose={() => ((picker = null), (replacing = null))} /></div>
+          <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
         {/if}
       {:else if selected.length > 1}
         <p class="muted">{selected.length} items selected.</p>
@@ -951,7 +987,7 @@
         </div>
       {/if}
       {#if picker === 'font'}
-        <div class="pop-anchor"><MediaPicker kind="font" onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} /></div>
+        <MediaPicker kind="font" anchor={pickerFrom} onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} />
       {/if}
     </aside>
   </div>
@@ -995,6 +1031,28 @@
   }
   .menu button {
     text-align: left;
+  }
+  /* A click anywhere else closes the Shape menu. */
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+  }
+  .right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-left: auto;
+  }
+  .hide {
+    visibility: hidden;
+  }
+  .swap {
+    display: inline-grid;
+    justify-items: center;
+  }
+  .swap > span {
+    grid-area: 1 / 1;
   }
   .linkbox {
     position: absolute;
@@ -1093,9 +1151,6 @@
     max-height: 190px;
     overflow-y: auto;
   }
-  .pop-anchor {
-    position: relative;
-  }
   .ribbon {
     position: absolute;
     top: calc(var(--pb) + 8px);
@@ -1109,7 +1164,8 @@
     letter-spacing: 0.1em;
     pointer-events: none;
   }
-  .ribbon.preview {
+  .ribbon.preview,
+  .ribbon.drawing {
     background: var(--accent);
     color: #fff;
   }
@@ -1135,10 +1191,15 @@
   .se.fill {
     flex: 1 1 0;
     min-height: 300px;
+    container-type: size;
   }
   .fill .body {
     flex: 1 1 0;
     grid-template-rows: minmax(0, 1fr);
+    /* The slide's column is no wider than the slide gets at this height (100cqh is the whole editor: about
+       40px of it is the toolbar, and 30px the pasteboard around the slide), so the inspector takes the
+       rest instead of leaving a gap beside the slide. */
+    grid-template-columns: minmax(0, calc((100cqh - 70px) * 16 / 9 + 30px)) minmax(300px, 1fr);
   }
   .fill .cell {
     container-type: size;
@@ -1162,7 +1223,9 @@
     }
     .fill .body {
       grid-template-rows: none;
+      grid-template-columns: 1fr;
     }
+    .se.fill,
     .fill .cell {
       container-type: normal;
     }

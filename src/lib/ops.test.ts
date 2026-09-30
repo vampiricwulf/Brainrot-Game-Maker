@@ -3,7 +3,7 @@ import { jeopardyGame } from './testgame';
 import { newRound, type TextEl, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { restyle, textStyleTargets } from './ops';
+import { categoryHasContent, clueHasContent, restyle, stepClue, textStyleTargets } from './ops';
 
 const mainText = (s: { elements: { kind: string }[] }) => s.elements.find((e) => e.kind === 'text') as TextEl;
 
@@ -40,5 +40,50 @@ describe('use this style elsewhere', () => {
     expect([target.color, target.size, target.text]).toEqual(['#ff00ff', 64, 'Keep me']);
     undo();
     expect([target.color, target.size, target.text]).toEqual(['#ffffff', 110, 'Keep me']);
+  });
+});
+
+describe('the clue editor walk (Prev / Next, Ctrl+Enter)', () => {
+  it('goes down a category, then on to the next one, and stops at either end', () => {
+    const round = newRound('R', 2, [100, 200]);
+    expect(stepClue(round, { cat: 0, row: 0 }, 1)).toEqual({ cat: 0, row: 1 });
+    expect(stepClue(round, { cat: 0, row: 1 }, 1)).toEqual({ cat: 1, row: 0 });
+    expect(stepClue(round, { cat: 1, row: 0 }, -1)).toEqual({ cat: 0, row: 1 });
+    expect(stepClue(round, { cat: 0, row: 0 }, -1)).toBeNull();
+    expect(stepClue(round, { cat: 1, row: 1 }, 1)).toBeNull();
+  });
+
+  it('skips empty tiles, and has nowhere to go when only empty tiles are left that way', () => {
+    const round = newRound('R', 2, [100, 200]);
+    round.categories[0].clues[1].empty = true;
+    expect(stepClue(round, { cat: 0, row: 0 }, 1)).toEqual({ cat: 1, row: 0 });
+    expect(stepClue(round, { cat: 1, row: 0 }, -1)).toEqual({ cat: 0, row: 0 });
+    round.categories[1].clues[0].empty = true;
+    round.categories[1].clues[1].empty = true;
+    expect(stepClue(round, { cat: 0, row: 0 }, 1)).toBeNull();
+  });
+});
+
+describe('what shrinking a board would lose', () => {
+  it('counts written clues, notes, tile faces, images and names of your own, not a fresh category', () => {
+    const round = newRound('R', 2, [100, 200]);
+    const [a, b] = round.categories;
+    expect(categoryHasContent(a)).toBe(false);
+    expect(clueHasContent(a.clues[0])).toBe(false);
+    mainText(a.clues[1].answerSlide).text = 'An answer';
+    expect(clueHasContent(a.clues[1])).toBe(true);
+    expect(categoryHasContent(a)).toBe(true);
+    b.clues[0].hostNotes = 'say it slowly';
+    expect(clueHasContent(b.clues[0])).toBe(true);
+    b.clues[0].hostNotes = undefined;
+    b.clues[0].tileFace = { image: 'img1' };
+    expect(clueHasContent(b.clues[0])).toBe(true);
+    b.clues[0].tileFace = undefined;
+    expect(categoryHasContent(b)).toBe(false);
+    b.title = 'Movies';
+    expect(categoryHasContent(b)).toBe(true);
+    b.title = '';
+    b.image = 'img2';
+    expect(categoryHasContent(b)).toBe(true);
   });
 });

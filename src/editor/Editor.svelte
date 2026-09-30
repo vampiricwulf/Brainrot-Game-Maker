@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { showMenu } from '../lib/menustate.svelte';
+  import { dropdown, showMenu } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
@@ -64,11 +64,22 @@
     tab = at;
   }
 
+  /** What goes with a deleted round, for the confirm (an RPG's world stays: other rounds can play it). */
+  const GOES_WITH: Record<RoundMode, string> = {
+    board: ' and all its clues?',
+    final: ' and its question and answer?',
+    rpg: '? Its world of screens stays in the game.',
+    boardgame: ' and all its spaces?',
+  };
+
+  // Moving, copying or deleting a round keeps the same tab on screen (a round's right-click menu can act on
+  // another round). The round on screen follows its own move, and its copy shows the copy.
   function removeRound(i: number): void {
-    if (!confirm(`Delete "${roundName(game.rounds[i], i)}"${isBoard(game.rounds[i]) ? ' and all its clues' : ''}?`)) return;
+    if (!confirm(`Delete "${roundName(game.rounds[i], i)}"${GOES_WITH[game.rounds[i].mode]}`)) return;
     game.rounds.splice(i, 1);
-    // With none left, tab 0 is the "add your first round" screen.
-    tab = Math.max(0, Math.min(i, game.rounds.length - 1));
+    if (typeof tab === 'number' && tab > i) tab--;
+    // The round on screen went: show its neighbour. With none left, tab 0 is the "add your first round" screen.
+    else if (tab === i) tab = Math.max(0, Math.min(i, game.rounds.length - 1));
   }
 
   function moveRound(i: number, delta: number): void {
@@ -76,7 +87,8 @@
     if (j < 0 || j >= game.rounds.length) return;
     const [r] = game.rounds.splice(i, 1);
     game.rounds.splice(j, 0, r);
-    tab = j;
+    if (tab === i) tab = j;
+    else if (tab === j) tab = i;
   }
 
   /** A copy right after the original, with fresh ids everywhere (so used tiles and saved sessions never mix them up). */
@@ -84,7 +96,7 @@
     const copy = reidRound(clone($state.snapshot(game.rounds[i]) as Round));
     copy.name = `${roundName(game.rounds[i], i)} (copy)`;
     game.rounds.splice(i + 1, 0, copy);
-    tab = i + 1;
+    if (typeof tab === 'number' && tab >= i) tab++;
   }
 
   function newFile(): void {
@@ -282,7 +294,8 @@
       <div class="add">
         <button class="ghost" aria-expanded={addMenu} onclick={() => (addMenu = !addMenu)}>＋ Add round</button>
         {#if addMenu}
-          <div class="add-menu" role="menu">
+          <div class="backdrop" onclick={() => (addMenu = false)} role="presentation"></div>
+          <div class="add-menu" role="menu" use:dropdown={() => (addMenu = false)}>
             {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
               <button role="menuitem" onclick={() => addRound(mode as RoundMode)} title={m.hint}>
                 <span aria-hidden="true">{m.icon}</span> {m.label}
@@ -418,7 +431,15 @@
     display: flex;
     flex-direction: column;
   }
+  /* A click anywhere else closes the Add round menu. */
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+  }
   .add-menu {
+    position: relative;
+    z-index: 50;
     display: flex;
     flex-direction: column;
     gap: 4px;
