@@ -209,6 +209,15 @@ try {
   await key('Control+z');
   assert((await page.getByPlaceholder('Type the answer…').inputValue()) === '' && (await page.getByRole('tab', { name: /Answer slide/ }).getAttribute('aria-selected')) === 'true', 'undoing the answer shows the answer slide');
   await shot('final-1280');
+  // A key on a round's tab is the tab's alone, even with a slide item selected.
+  await page.getByRole('tab', { name: /Question slide/ }).click();
+  await page.locator('.canvas .hit').first().click();
+  const slideItems = await page.locator('.canvas .hit').count();
+  await tabs.nth(0).focus();
+  await key('ArrowDown');
+  await key('Delete');
+  assert((await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'), 'Delete on a round tab deletes the round, not the selected slide item too');
+  await key('Control+z');
   await page.getByRole('button', { name: /^Tiebreaker/ }).click();
   await page.getByLabel('Include a tiebreaker clue').check();
   await page.getByPlaceholder('Type the tiebreaker question…').fill('How many rizz?');
