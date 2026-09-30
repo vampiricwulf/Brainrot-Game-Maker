@@ -25,6 +25,13 @@ done, the Unreleased lines move under that day's heading.
   duplicate, clear or delete; arrow keys move around the board, `Enter` opens a clue, `Delete` clears it, `Ctrl+C` /
   `Ctrl+V` copy a whole clue (across rounds and games); insert, move or delete rows anywhere; `Alt`+arrows in the clue
   editor go to the clue above, below or beside; the Final and Tiebreaker get quick Question / Answer fields. (84d5e19)
+- **Board game editor**: select several spaces (`Shift`-click or a box) and move, colour or delete them together;
+  arrow keys nudge, `Tab` steps through spaces, `Ctrl+D` duplicates; `Alt`-drag (or ⊕) links two spaces, and a link's
+  right-click menu makes it two-way, reverses or removes it; zones reorder and have ↶ ↷. (83427b3)
+- **Lists everywhere** (wheel slices, wheels & dice, stats, items, shops and their stock, action buttons, players):
+  drag ⋮⋮ or `Alt`+`↑`/`↓` to reorder, ⧉ / `Ctrl+D` to duplicate, a right-click menu, and deletes with Undo. `Enter`
+  in a slice or player name adds the next one; dice faces fill from a list; "＋ Something to sell ▾" lists your items
+  (or drag an item's 📦 onto a shop); action buttons copy and paste between objects and games. (83427b3)
 - **Drop files where they go**: item icons, avatars, space icons, worn looks, theme background and banner, music,
   sounds, outcome media, the tile image, and any open picker (which also takes a pasted image). (0e2b57e)
 - **⌨ Editor shortcuts sheet** (the ⌨ button next to ℹ About, or `?`). (0e2b57e)
