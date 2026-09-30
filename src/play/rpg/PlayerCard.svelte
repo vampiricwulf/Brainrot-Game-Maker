@@ -294,13 +294,6 @@
         class="row it"
         role="group"
         aria-label={entryName(game, e)}
-        draggable="true"
-        ondragstart={(ev) => {
-          itemDrag.now = { from: p.id, entryId: e.id, n: howMany(e.id, e.qty) };
-          ev.dataTransfer?.setData('text/x-item', e.id);
-          if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
-        }}
-        ondragend={dragDone}
         oncontextmenu={(ev) =>
           showMenu(ev, [
             { heading: `${entryName(game, e)}${e.qty > 1 ? ` ×${e.qty}` : ''}` },
@@ -315,7 +308,19 @@
             { label: '✕ Remove', danger: true, onclick: () => remove(e.id) },
           ])}
       >
-        <span class="nm" title="{entryName(game, e)}{about ? `: ${about}` : ''} · drag onto another player to give it{pos ? ', or onto the stage to drop it there' : ''}">
+        <!-- Only the name drags: a press on the buttons, the amount box or Give → that moves a little is still a press. -->
+        <span
+          class="nm"
+          draggable="true"
+          ondragstart={(ev) => {
+            itemDrag.now = { from: p.id, entryId: e.id, n: howMany(e.id, e.qty) };
+            ev.dataTransfer?.setData('text/x-item', e.id);
+            if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+          }}
+          ondragend={dragDone}
+          role="presentation"
+          title="{entryName(game, e)}{about ? `: ${about}` : ''} · drag onto another player to give it{pos ? ', or onto the stage to drop it there' : ''}"
+        >
           {entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{def?.secret ? ' 🔒' : ''}
         </span>
         <!-- The buttons stay together: on the name's line, or all on the next one. -->
@@ -427,7 +432,7 @@
       box-shadow: 0 0 0 4px var(--c), 0 0 18px var(--c);
     }
   }
-  .it[draggable='true'] {
+  .it .nm[draggable='true'] {
     cursor: grab;
   }
   .row {

@@ -122,10 +122,15 @@
     dropHover.at = to?.space ? `space:${to.space}` : to?.zone ? `zone:${to.zone}` : null;
   }
 
-  function tokenUp(e: PointerEvent): void {
-    const d = drag;
+  /** The browser took the pointer away (a touch gesture, say): the token goes back where it was. */
+  function tokenCancel(): void {
     drag = null;
     dropHover.at = null;
+  }
+
+  function tokenUp(e: PointerEvent): void {
+    const d = drag;
+    tokenCancel();
     if (!d) return;
     if (!d.moved) return ontoken?.(d.id);
     // Anywhere else, it goes back where it was.
@@ -177,6 +182,7 @@
               onpointerdown={(e) => tokenDown(e, t)}
               onpointermove={tokenMove}
               onpointerup={tokenUp}
+              onpointercancel={tokenCancel}
               role="presentation"
             >
               <AvatarToken player={p} size={t.small ? 64 : 84} worn={wornItems(game, session, p.id)} name={false} />
@@ -243,9 +249,11 @@
     z-index: 11;
     filter: drop-shadow(0 0 12px #ffcc00);
   }
+  /* No text selection from a drag: a selected name would be dragged off as text next time. */
   .on-board.grab {
     cursor: grab;
     touch-action: none;
+    user-select: none;
   }
   /* Following the pointer (no easing behind it). */
   .on-board.dragging {

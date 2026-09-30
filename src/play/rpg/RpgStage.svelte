@@ -142,11 +142,16 @@
     dragGhost.now = off && player ? { x: e.clientX, y: e.clientY, player } : null;
   }
 
-  function avatarUp(e: PointerEvent): void {
-    const d = drag;
+  /** The browser took the pointer away (a touch gesture, say): the avatar goes back where it was. */
+  function avatarCancel(): void {
     drag = null;
     dropHover.at = null;
     dragGhost.now = null;
+  }
+
+  function avatarUp(e: PointerEvent): void {
+    const d = drag;
+    avatarCancel();
     const pos = d && st?.positions[d.id];
     if (!d || !pos || !world) return;
     if (!d.moved) return onavatar?.(d.id);
@@ -199,6 +204,10 @@
     const on = objDrag.moved ? pickerOver(e) : undefined;
     dropHover.at = on ? `player:${on}` : null;
   }
+  function objCancel(): void {
+    objDrag = null;
+    dropHover.at = null;
+  }
   function objUp(e: PointerEvent): void {
     const d = objDrag;
     const on = d?.moved ? pickerOver(e) : undefined;
@@ -239,6 +248,7 @@
         onpointerdown={(e) => objDown(e, el)}
         onpointermove={objMove}
         onpointerup={objUp}
+        onpointercancel={objCancel}
         onclick={(e) => e.stopPropagation()}
         onkeydown={(e) => e.key === 'Enter' && onobject(el.id)}
         aria-label="Object: {el.name || el.role?.class}"
@@ -262,6 +272,7 @@
       onpointerdown={(e) => avatarDown(e, p.id, pos)}
       onpointermove={avatarMove}
       onpointerup={avatarUp}
+      onpointercancel={avatarCancel}
       role="presentation"
     >
       <AvatarToken player={p} size={120} worn={wornItems(game, session, p.id)} />
@@ -389,9 +400,11 @@
       top 0.25s ease;
     filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
   }
+  /* No text selection from a drag: a selected name would be dragged off as text next time. */
   .avatar.draggable {
     cursor: grab;
     touch-action: none;
+    user-select: none;
   }
   /* Following the pointer (no easing behind it). */
   .avatar.dragging {

@@ -438,19 +438,19 @@
       </div>
 
       <div class="mapbox">
-        <div class="row mini-head">
+        <!-- A picked screen's buttons go up here, beside ⤢ Full map: the map keeps its size, so both clicks of a double-click land on the same screen. -->
+        <div class="row mini-head" class:pick={!!(picked && pickedFound)}>
+          {#if picked && pickedFound}
+            <span class="shrink name" title={pickedFound.screen.name}>→ <b>{pickedFound.screen.name}</b></span>
+            <button class="small primary shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}">Move {party?.name ?? 'party'} here</button>
+            {#if selected.length}<button class="small shrink" onclick={() => moveHere(selected, `${selected.length} selected`)} title="Move only the {selected.length} selected to {pickedFound.screen.name}">Only selected ({selected.length})</button>{/if}
+            <button class="small ghost" onclick={() => (picked = null)} aria-label="Cancel">✕</button>
+          {/if}
           <span class="spacer"></span>
-          <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere">⤢ Full map</button>
+          <!-- With a screen picked, just ⤢: its buttons need the room. -->
+          <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map">⤢{picked && pickedFound ? '' : ' Full map'}</button>
         </div>
         <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} />
-        {#if picked && pickedFound}
-          <div class="row pick">
-            <span>→ <b>{pickedFound.screen.name}</b></span>
-            <button class="small primary" onclick={() => moveHere()}>Move {party?.name ?? 'party'} here</button>
-            {#if selected.length}<button class="small" onclick={() => moveHere(selected, `${selected.length} selected`)}>Only selected ({selected.length})</button>{/if}
-            <button class="small ghost" onclick={() => (picked = null)}>✕</button>
-          </div>
-        {/if}
       </div>
 
       <div class="side">
@@ -625,15 +625,27 @@
     flex-direction: column;
     gap: 4px;
   }
-  .pick {
-    font-size: 12px;
-  }
   .pad-token {
     position: absolute;
     transform: translate(-50%, -50%);
   }
+  /* One line, so the map below keeps its size (a long name is cut short). */
   .mini-head {
     gap: 4px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  .pick {
+    font-size: 12px;
+  }
+  .pick .shrink {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The screen's name gives way first (it's lit on the map), so the buttons keep their words. */
+  .pick .name {
+    flex-shrink: 100;
   }
   .side {
     flex: 1 1 320px;

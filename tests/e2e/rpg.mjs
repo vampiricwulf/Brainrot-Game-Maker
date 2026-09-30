@@ -447,7 +447,13 @@ try {
   const stageNow = await page.locator('.rpg').boundingBox();
   await dragBy(page, avatars.first(), { x: stageNow.x + stageNow.width + 40, y: stageNow.y + stageNow.height / 2 });
   assert((await where()).includes('Screen B1'), 'an avatar dragged off the east edge walks through to the screen there');
-  await page.locator('.rh .mapbox .cell[aria-label="Overworld · Start"]').dblclick();
+  // Picking a screen on the minimap leaves the map as it was, so both clicks of a double-click land on the same screen.
+  const startCell = page.locator('.rh .mapbox .cell[aria-label="Overworld · Start"]');
+  const cellBefore = JSON.stringify(await startCell.boundingBox());
+  await startCell.click();
+  assert(JSON.stringify(await startCell.boundingBox()) === cellBefore, 'picking a screen on the minimap leaves the map where it was');
+  await page.waitForTimeout(450);
+  await startCell.dblclick();
   await page.waitForTimeout(250);
   assert((await where()).includes('Start'), 'a double-click on the minimap moves the party there');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-direct.png` });

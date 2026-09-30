@@ -667,7 +667,11 @@
     if (session.phase === 'rpg') {
       const { st } = rpgNow(game, session);
       if (!st) return;
-      if (objId) return showMenu(e, objectMenu(game, session, objId, { open: () => ((hideControls = false), (rpgObject = objId)), removed: (text) => toast(text, 3000) }));
+      if (objId) {
+        // Removed: its card closes, as with the Delete key.
+        const removed = (text: string) => (toast(text, 3000), rpgObject === objId && (rpgObject = null));
+        return showMenu(e, objectMenu(game, session, objId, { open: () => ((hideControls = false), (rpgObject = objId)), removed }));
+      }
       const at = stagePoint(e);
       return showMenu(e, [
         // The host panel asks for the text (with the controls hidden, they come back for it).
