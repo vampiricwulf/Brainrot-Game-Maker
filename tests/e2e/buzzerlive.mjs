@@ -160,7 +160,7 @@ try {
   await big(p2).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   await host.keyboard.press('Enter');
-  await p2.locator('#me').getByText('Player 2 · 0').waitFor();
+  await p2.locator('#me').getByText('Player 2 · $0').waitFor();
   assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');
 
   // ---------- A tie: 🎲 Roll for it sets who answers first ----------
@@ -175,7 +175,7 @@ try {
   await press(p2);
   await host.getByText('Tie: Player 1 & Player 2').waitFor();
   await big(p1).getByText('Tie!').waitFor();
-  assert((await small(p2).innerText()) === 'The host is rolling for it', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host is rolling for it"');
+  assert((await small(p2).innerText()) === 'The host decides who goes first', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"');
   await host.getByRole('button', { name: '🎲 Roll for it' }).click();
   const won = await Promise.race([p1, p2].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
   const [rollWin, rollSecond] = won === 0 ? [p1, p2] : [p2, p1];
@@ -190,7 +190,7 @@ try {
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Leave', exact: true }).click();
-  await p1.getByText('The game is over').waitFor();
+  await p1.locator('main').getByText('The game is over').waitFor();
   assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, 'Exit closes the room: phones say the game is over');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);

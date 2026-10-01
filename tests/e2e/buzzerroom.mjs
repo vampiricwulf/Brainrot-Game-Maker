@@ -176,7 +176,7 @@ try {
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
   await dee.getByLabel('Your name').fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
-  await dee.getByText('Waiting for the host to let you in…').waitFor();
+  await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
   await shot(bob, 'lobby');
   const pend = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee waiting');
   const deeConn = pend.phones.find((p) => p.pendingName === 'Dee').conn;
@@ -189,7 +189,7 @@ try {
 
   // A clue opens, buzzers closed: Bob buzzes early and is locked out for a moment.
   setState({ phase: 'closed', clue: { text: 'This planet is red' } });
-  await ann.getByText('This planet is red').waitFor();
+  await ann.locator('main').getByText('This planet is red').waitFor();
   assert((await big(ann).innerText()) === 'Get ready…', 'phones show the clue and "Get ready…"');
   await bob.keyboard.press('Space');
   await big(bob).getByText('Too early').waitFor();
@@ -269,7 +269,7 @@ try {
   const tied = await host.wait((m) => m.t === 'queue' && m.armId === 4 && m.tie, 'the tie');
   assert(tied.tie.slice().sort().join() === 'a,d', 'buzzes with the same reaction time tie: the host is told, nobody is picked');
   await big(ann).getByText('Tie!').waitFor();
-  assert((await small(dee).innerText()) === 'The host is rolling for it', 'tied phones say "Tie! The host is rolling for it"');
+  assert((await small(dee).innerText()) === 'The host decides who goes first', 'tied phones say "Tie! The host decides who goes first"');
   await shot(ann, 'tie');
   setState({ phase: 'answering', armId: 4, answering: 'd', rollOrder: ['d', 'a'] });
   await big(dee).getByText("You're answering!").waitFor();
@@ -291,20 +291,20 @@ try {
   const bobSaved = await bob.evaluate((k) => localStorage.getItem(k), key);
   assert(!!bobSaved && JSON.parse(bobSaved).seatId === 'b', "Bob's phone keeps its seat token");
   host.send({ t: 'kick', seatId: 'b' });
-  await bob.getByText('The host took your seat back').waitFor();
+  await bob.locator('main').getByText('The host took your seat back').waitFor();
   await bob.getByRole('button', { name: 'Pick a seat' }).click();
   await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isEnabled(), "kicked: Bob's seat is free again");
   // Even a phone that missed the kick (offline) can't come back with the old token.
   await bob.evaluate(([k, v]) => localStorage.setItem(k, v), [key, bobSaved]);
   await bob.reload();
-  await bob.getByText('Your seat was given back. Tap your name again.').waitFor();
+  await bob.locator('main').getByText('Your seat was given back. Tap your name again.').waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isEnabled(), 'the revoked token is refused; Bob picks again');
 
   // The host closes the room.
   host.send({ t: 'close' });
-  await ann.getByText('The game is over').waitFor();
-  await dee.getByText('The game is over').waitFor();
+  await ann.locator('main').getByText('The game is over').waitFor();
+  await dee.locator('main').getByText('The game is over').waitFor();
   assert((await fetch(`${base}/api/rooms/${room.code}`)).status === 404, 'closing ends the room for everyone');
 
   // New rooms are limited: 6 a minute from one address (here a made-up one: wrangler dev takes CF-Connecting-IP as
