@@ -147,7 +147,7 @@ input:focus { outline: none; border-color: var(--accent); }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10%;
+  padding: 8%;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -156,9 +156,9 @@ input:focus { outline: none; border-color: var(--accent); }
   text-align: center;
   background: color-mix(in srgb, var(--seat) 28%, var(--bg));
   color: var(--text);
-  transition: transform 80ms ease-out, background-color 120ms;
+  transition: transform 80ms ease-out;
 }
-#buzz-big { font-size: clamp(30px, 11vw, 64px); font-weight: 900; line-height: 1.05; overflow-wrap: anywhere; }
+#buzz-big { font-size: clamp(26px, 9vw, 60px); font-weight: 900; line-height: 1.05; overflow-wrap: break-word; max-width: 100%; }
 #buzz-small { font-size: clamp(16px, 4.5vw, 22px); opacity: 0.85; }
 #buzz.pressed { transform: scale(0.95); }
 
