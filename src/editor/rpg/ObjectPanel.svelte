@@ -1,6 +1,8 @@
 <!-- RPG screens: what the selected item is (its class), what it does, and whether viewers see it. -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { editedGame } from '../../lib/app.svelte';
+  import { step } from '../../lib/history.svelte';
   import { textSlide, type ObjectClass, type Slide, type SlideElement, type World } from '../../lib/model';
   import { findIn, OBJECT_CLASSES } from '../../lib/rpg';
   import { currencyFields } from '../../lib/toolset';
@@ -31,12 +33,42 @@
   }
 
   const target = $derived(el.role?.to ? findIn(world, el.role.to) : null);
+
+  const who = () => (el.name?.trim() ? `“${el.name.trim()}”` : 'the character');
+  let statsEl = $state<HTMLElement>();
+
+  /** A character's own stat: the typing goes to its name. */
+  function addStat(): void {
+    const r = el.role;
+    if (!r) return;
+    r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }];
+    void tick().then(() => {
+      const names = statsEl?.querySelectorAll<HTMLInputElement>('input[aria-label="Stat name"]');
+      const last = names?.[names.length - 1];
+      last?.focus();
+      last?.select();
+    });
+  }
+
+  // Deleting is done at once: the note at the bottom offers Undo.
+  function removeStat(i: number): void {
+    const r = el.role;
+    const st = r?.stats?.[i];
+    if (!r || !st) return;
+    step(`Deleted stat “${st.name || 'Stat'}” of ${who()}`, () => r.stats?.splice(i, 1), { notify: true });
+  }
+
+  function removeDialogue(): void {
+    const r = el.role;
+    if (!r?.dialogue) return;
+    step(`Deleted the dialogue slide of ${who()}`, () => (r.dialogue = undefined), { notify: true });
+  }
   const others = $derived(slide.elements.filter((e) => e.id !== el.id));
 </script>
 
 <section class="obj">
   <h4>Object</h4>
-  <label class="field">Name<input bind:value={el.name} placeholder="e.g. Old Man, Cave door" /></label>
+  <label class="field">Name<input bind:value={el.name} placeholder="e.g. Old Man, Cave door" data-field="object-name" /></label>
   <label class="field">
     Class
     <select value={el.role?.class ?? ''} onchange={(e) => setClass(e.currentTarget.value)} aria-label="Object class">
@@ -81,20 +113,20 @@
         </select>
       </div>
     {:else if r.class === 'npc'}
-      <div class="stats">
+      <div class="stats" bind:this={statsEl}>
         {#each r.stats ?? [] as s, i (i)}
           <div class="row">
             <input bind:value={s.name} placeholder="Power" aria-label="Stat name" />
             <input type="number" bind:value={s.value} class="n" aria-label="{s.name || 'Stat'} value" />
-            <button class="ghost tiny" onclick={() => r.stats?.splice(i, 1)} aria-label="Delete stat" title="Delete stat">🗑</button>
+            <button class="ghost tiny" onclick={() => removeStat(i)} aria-label="Delete stat" title="Delete stat">🗑</button>
           </div>
         {/each}
-        <div class="row"><button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button></div>
+        <div class="row"><button class="small" onclick={addStat}>＋ Stat (power, HP…)</button></div>
         {#if r.stats?.length}<label class="check small"><input type="checkbox" bind:checked={r.statsShown} /> Viewers see its stats</label>{/if}
       </div>
       <div class="row">
         <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? 'Edit dialogue slide…' : '＋ Dialogue slide'}</button>
-        {#if r.dialogue}<button class="ghost tiny" onclick={() => (r.dialogue = undefined)} aria-label="Delete dialogue" title="Delete dialogue">🗑</button>{/if}
+        {#if r.dialogue}<button class="ghost tiny" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue">🗑</button>{/if}
       </div>
     {/if}
     {#if r.class === 'npc' || r.class === 'shop'}

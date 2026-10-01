@@ -12,6 +12,7 @@
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../../lib/clipboard.svelte';
+  import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { nameStep, step, stepAsync } from '../../lib/history.svelte';
   import { addMediaFile } from '../../lib/media.svelte';
   import { type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
@@ -203,10 +204,12 @@
 
   // ---------- Screens ----------
 
+  /** A new screen in this cell, selected, with the focus on it (the cell's ＋ button it replaced is gone). */
   function addScreen(col: number, row: number): void {
     const s = newScreen(col, row);
     map.screens.push(s);
     selectOnly(s);
+    void tick().then(() => focusCell(col, row, true));
   }
 
   /**
@@ -267,6 +270,8 @@
     const moved = step(null, () => {
       const ok = moveScreens(map, list.map((s) => s.id), dc, dr, true);
       if (ok && `${map.cols}×${map.rows}` !== size) nameStep(`${list.length === 1 ? `Moved screen “${list[0].name}”` : `Moved ${list.length} screens`} (the map grew to ${map.cols}×${map.rows})`);
+      // (Several: the ones moved, not the ones swapped out of their way too.)
+      else if (ok && list.length > 1) nameStep(`Moved ${list.length} screens`);
       return ok;
     });
     if (!moved) return;
@@ -306,7 +311,12 @@
   function nudge(list: Screen[], dc: number, dr: number): void {
     if (!list.length) return;
     const focused = !!gridEl?.contains(document.activeElement);
-    const moved = step(null, () => moveScreens(map, list.map((s) => s.id), dc, dr));
+    const moved = step(null, () => {
+      const ok = moveScreens(map, list.map((s) => s.id), dc, dr);
+      // (Several: the ones moved, not the ones swapped out of their way too.)
+      if (ok && list.length > 1) nameStep(`Moved ${list.length} screens`);
+      return ok;
+    });
     if (!moved) return;
     cursor = [cursor[0] + dc, cursor[1] + dr];
     if (list.length === 1) cursor = [list[0].col, list[0].row];
@@ -637,7 +647,10 @@
   function screenDown(e: PointerEvent, s: Screen): void {
     swallow = false;
     e.stopPropagation();
-    if (e.button !== 0 || picking || e.shiftKey || e.ctrlKey || e.metaKey) return;
+    if (e.button !== 0 || picking) return;
+    // Alt+drag draws a box from anywhere, on a map full of screens too (as in the slide editor).
+    if (e.altKey) return boxFrom(e);
+    if (e.shiftKey || e.ctrlKey || e.metaKey) return;
     const ids = selIds.includes(s.id) ? picked.map((x) => x.id) : [s.id];
     drag = { ids, anchor: s.id, from: map.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, on: false };
   }
@@ -646,6 +659,13 @@
   function gridDown(e: PointerEvent): void {
     swallow = false;
     if (e.button !== 0 || picking) return;
+    boxFrom(e);
+  }
+
+  /** Start a box at the pointer (Shift or Ctrl keeps the screens selected now). */
+  function boxFrom(e: PointerEvent): void {
+    // (Alt+drag mustn't drag the screen's picture, or select text.)
+    if (e.altKey) e.preventDefault();
     box = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, on: false, base: e.shiftKey || e.ctrlKey || e.metaKey ? [...selIds] : [] };
   }
 
@@ -810,7 +830,7 @@
     else if (mod && k === 'd' && picked.length) {
       e.preventDefault();
       duplicateScreens(picked);
-    } else if (mod && k === 'c' && sel && !window.getSelection()?.toString()) {
+    } else if (mod && k === 'c' && sel && !copyIsTheBrowsers(document.activeElement, window.getSelection())) {
       e.preventDefault();
       copyToClipboard(sel);
     } else if (mod && k === 'v' && clipboard.screen) {
@@ -1005,6 +1025,7 @@
                   {@const here = cur[0] === c && cur[1] === r}
                   <div class="gc" role="gridcell" aria-selected={!!s && selIds.includes(s.id)}>
                     {#if s}
+                      {@const code = /^Screen ([A-Z]\d+)$/.exec(s.name)?.[1]}
                       <button
                         class="cell screen"
                         class:sel={selIds.includes(s.id)}
@@ -1030,7 +1051,7 @@
                         title={picking ? `Lead there: ${s.name}` : `${s.name}: click for settings, double-click to edit, drag to move`}
                       >
                         <div class="thumb"><Stage><SlideView slide={s.slide} mode="edit" /></Stage></div>
-                        <span class="nm">{s.name}</span>
+                        <span class="nm">{#if code}<span class="long">Screen </span>{code}{:else}{s.name}{/if}</span>
                         {#if isStart(s)}<span class="start" title="The party starts here">🏁</span>{/if}
                         {#if doorways(s).length || DIRS.some((d) => warpSide(s, d))}<span class="door" title="Has doorways or warps">🚪</span>{/if}
                       </button>
@@ -1209,7 +1230,7 @@
             </label>
           {:else if picked.length > 1}
             <h4>{picked.length} screens selected</h4>
-            <p class="muted small">Drag one of them to move them all (Alt+arrows too). Shift/Ctrl+click adds or takes one away.</p>
+            <p class="muted small">Drag one of them to move them all (Alt+arrows too). Shift/Ctrl+click adds or takes one away; Alt+drag draws a box.</p>
             <div class="row">
               <button class="small" onclick={() => duplicateScreens(picked)} title="Ctrl+D">⧉ Duplicate</button>
               <button class="ghost small" onclick={() => removeScreens(picked)} title="Delete">Delete</button>
@@ -1224,7 +1245,7 @@
             <p class="muted small">
               Drop pictures on the map to make screens. Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the
               screen, Delete deletes it, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste it, F2 renames, Esc deselects.
-              Shift/Ctrl+click or draw a box to pick several.
+              Shift/Ctrl+click or draw a box to pick several (from an empty cell, or Alt+drag from anywhere).
             </p>
           {/if}
         </aside>
@@ -1383,6 +1404,8 @@
     padding: 0;
     border-radius: 6px;
     overflow: hidden;
+    /* (Its name's size follows the cell's: a 16-wide map's cells are narrow.) */
+    container-type: inline-size;
   }
   .cell.empty {
     border: 2px dashed var(--border);
@@ -1440,6 +1463,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* A narrow cell: a smaller name over two lines, and a default name is just its cell ("B3"). */
+  @container (max-width: 110px) {
+    .cell .nm {
+      left: 2px;
+      bottom: 2px;
+      padding: 0 3px;
+      max-width: calc(100% - 4px);
+      font-size: 10px;
+      line-height: 1.15;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .cell .nm .long {
+      display: none;
+    }
   }
   .door {
     position: absolute;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFieldTracker, isTextField, undoKeyOf } from './undokeys';
+import { copyIsTheBrowsers, createFieldTracker, isTextField, undoKeyOf } from './undokeys';
 
 const key = (k: string, mods: { ctrl?: boolean; meta?: boolean; shift?: boolean; alt?: boolean } = { ctrl: true }) => ({
   key: k,
@@ -93,5 +93,31 @@ describe('field tracker', () => {
     expect(t.native({ target: input() }, 'undo')).toBe(false);
     t.focusin({ target: { tagName: 'BUTTON' } as unknown as EventTarget });
     expect(t.native({ target: el }, 'undo')).toBe(false);
+  });
+});
+
+describe('Ctrl+C: the editor’s copy or the browser’s', () => {
+  const node = (inside: unknown[] = []) => ({ contains: (n: unknown) => inside.includes(n) });
+  const sel = (text: string, anchor: unknown, focus = anchor) => ({ isCollapsed: !text, anchorNode: anchor, focusNode: focus, toString: () => text });
+  it('copies the focused thing, whatever text is selected elsewhere', () => {
+    const word = {};
+    const tile = node([word]);
+    // (The round name selected when the round was added.)
+    expect(copyIsTheBrowsers(tile, sel('Round 3', {}))).toBe(false);
+    expect(copyIsTheBrowsers(tile, sel('', word))).toBe(false);
+    expect(copyIsTheBrowsers(tile, null)).toBe(false);
+    expect(copyIsTheBrowsers(null, sel('', {}))).toBe(false);
+  });
+  it('leaves it to the browser in a text field, or with text selected in the focused thing', () => {
+    const word = {};
+    expect(copyIsTheBrowsers(node([word]), sel('Memes', word))).toBe(true);
+    expect(copyIsTheBrowsers(node([word]), sel('Memes', {}, word))).toBe(true);
+    expect(copyIsTheBrowsers({ tagName: 'INPUT', type: 'text' }, null)).toBe(true);
+    expect(copyIsTheBrowsers({ tagName: 'TEXTAREA' }, sel('', null))).toBe(true);
+    expect(copyIsTheBrowsers({ ...node(), isContentEditable: true }, null)).toBe(true);
+    // Text selected with the mouse, nothing in focus.
+    expect(copyIsTheBrowsers(null, sel('Click a screen', {}))).toBe(true);
+    expect(copyIsTheBrowsers({ tagName: 'BODY', contains: () => true }, sel('Click a screen', {}))).toBe(true);
+    expect(copyIsTheBrowsers({ tagName: 'INPUT', type: 'checkbox', contains: () => false }, sel('x', {}))).toBe(false);
   });
 });

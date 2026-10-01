@@ -183,7 +183,7 @@ describe('board game: moving', () => {
     round.zones = [];
     round.spaces = round.spaces.filter((s) => s.id !== ids[7]);
     expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toContain('Board: 2 buttons on spaces point nowhere (on “Space 5”)');
-    round.spaces[4].onLand.pop();
+    round.spaces[4].onLand!.pop();
     expect(boardGameProblems(game, round, 'Board', 1).find((p) => p.text.includes('button'))).toEqual({
       text: 'Board: a button on “Space 5” points nowhere',
       tab: 1,

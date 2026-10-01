@@ -21,6 +21,30 @@ export function isTextField(el: unknown): el is HTMLInputElement | HTMLTextAreaE
   return x?.tagName === 'TEXTAREA' || (x?.tagName === 'INPUT' && TEXT_TYPES.has(x.type ?? 'text'));
 }
 
+/** What copyIsTheBrowsers needs of a selection (window.getSelection()). */
+export interface SelectionLike {
+  isCollapsed: boolean;
+  anchorNode: unknown;
+  focusNode: unknown;
+  toString(): string;
+}
+
+/**
+ * Ctrl+C on something the editor copies itself (a tile, a screen, board spaces): whether the browser should copy
+ * instead. It should when the focus is in a text field, or when text is selected inside the focused thing. Text
+ * selected anywhere else doesn't count: a round's name the editor selected when the round was added stays selected
+ * after the focus leaves it, and used to take every Ctrl+C.
+ */
+export function copyIsTheBrowsers(focused: unknown, sel: SelectionLike | null | undefined): boolean {
+  const el = focused as { contains?: (n: unknown) => boolean; isContentEditable?: boolean; tagName?: string } | null | undefined;
+  if (isTextField(focused) || el?.isContentEditable) return true;
+  if (!sel || sel.isCollapsed || !sel.toString()) return false;
+  // Nothing in focus (text selected with the mouse leaves it on the page): the selected text is what's copied.
+  if (!el || el.tagName === 'BODY') return true;
+  if (!el.contains) return false;
+  return (!!sel.anchorNode && el.contains(sel.anchorNode)) || (!!sel.focusNode && el.contains(sel.focusNode));
+}
+
 /** Follows the focused text field, to tell when Ctrl+Z / Ctrl+Y should stay native there. */
 export function createFieldTracker() {
   let field: HTMLInputElement | HTMLTextAreaElement | null = null;

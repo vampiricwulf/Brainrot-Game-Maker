@@ -4,6 +4,7 @@
   import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
+  import { copyIsTheBrowsers } from '../lib/undokeys';
   import { categoryLabel, clueValue, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
@@ -234,7 +235,7 @@
     } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey) {
       e.preventDefault();
       clearTile(p);
-    } else if (mod && !e.altKey && k === 'c' && !window.getSelection()?.toString()) {
+    } else if (mod && !e.altKey && k === 'c' && !copyIsTheBrowsers(e.currentTarget, window.getSelection())) {
       e.preventDefault();
       copyTile(p);
     } else if (mod && !e.altKey && k === 'v') {
