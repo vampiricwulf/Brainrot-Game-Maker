@@ -583,7 +583,8 @@
 <ContextMenu />
 <AskDialog />
 {#if app.toast && !app.onAir}
-  <div class="toast" data-over-modal>{app.toast}</div>
+  <!-- (Screen readers hear it from the live region: announce.ts.) -->
+  <div class="toast" data-over-modal aria-hidden="true">{app.toast}</div>
 {/if}
 
 <style>

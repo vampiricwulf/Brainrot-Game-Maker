@@ -332,8 +332,9 @@
     border: none;
     background: transparent;
   }
+  /* Darkened, the screen's name still bright enough to read on a stream (an inset shadow sits under the words). */
   .cell.discovered {
-    filter: saturate(0.25) brightness(0.6);
+    box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.5);
   }
   .cell.unknown {
     opacity: 0.45;

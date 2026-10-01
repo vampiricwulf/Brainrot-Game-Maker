@@ -54,7 +54,7 @@
 
 {#if notice && !quiet}
   {@const { kind, entry } = notice}
-  <div class="history-notice" data-over-modal title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
+  <div class="history-notice" data-over-modal role="region" aria-label="Last change" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
     <span class="text">
       {#if kind === 'made'}
         {entry.label}
