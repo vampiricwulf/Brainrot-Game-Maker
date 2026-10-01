@@ -113,7 +113,7 @@ try {
   await page.getByRole('menuitem', { name: /20-space loop/ }).click();
   await page.waitForTimeout(100);
   assert(await page.evaluate(() => document.activeElement?.hasAttribute('data-round-name')), 'a template round has the focus on its name');
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 20, 'the 20-space loop template has 20 spaces');
+  assert((await page.locator('.canvas [data-space]').count()) === 20, 'the 20-space loop template has 20 spaces');
   t = await tabs();
   assert(t.at(-1).includes('Final'), 'a template round goes before the Final');
   await page.locator('nav > button.round-tab').first().click({ button: 'right' });
@@ -126,7 +126,7 @@ try {
 
   // ---------- Board-game space buttons in the editor ----------
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).first().click();
-  await page.getByRole('button', { name: 'Space Space 2' }).click();
+  await page.locator('.canvas').getByRole('button', { name: 'Space 2', exact: true }).click();
   await page.getByRole('button', { name: '＋ Add button' }).last().click();
   assert((await page.getByRole('menuitem', { name: '⏭ Skip next turn' }).count()) === 1, 'a space offers ⏭ Skip next turn');
   assert((await page.getByRole('menuitem', { name: '↔ Move ±N spaces' }).count()) === 1, '↔ Move ±N spaces');

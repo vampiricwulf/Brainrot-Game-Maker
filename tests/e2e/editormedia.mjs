@@ -246,7 +246,7 @@ try {
   // ---------- Board game: a picture dropped on a space is its icon, on the empty board its background ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Board game/ }).click();
-  const space3 = page.getByRole('button', { name: 'Space Space 3' });
+  const space3 = page.locator('.canvas').getByRole('button', { name: 'Space 3', exact: true });
   await drop(space3, [['coin.png', 'image/png']]);
   assert((await space3.locator('img').count()) === 1 && (await page.locator('.side img.ic').count()) === 1, 'a picture dropped on a space is its icon (and selects it)');
   const board = page.locator('.canvas-box .canvas');

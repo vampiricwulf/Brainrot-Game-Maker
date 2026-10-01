@@ -20,6 +20,9 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 const toast = () => page.locator('.toast').innerText();
+// The editor's board: its spaces are buttons named after them.
+const spaces = page.locator('.canvas [data-space]');
+const space = (name) => page.locator('.canvas').getByRole('button', { name, exact: true });
 const tokenOn = async (name) =>
   page.evaluate((n) => {
     const t = document.querySelector(`.stage .on-board[data-player="${n}"]`);
@@ -32,39 +35,39 @@ try {
 
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Board game/ }).click();
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'a new board has a loop of 12 spaces');
+  assert((await spaces.count()) === 12, 'a new board has a loop of 12 spaces');
   // Ctrl+click adds a space (a plain click only deselects); Delete removes the selected one; right-click has both.
   const canvasBox = await page.locator('.canvas-box').boundingBox();
   await page.mouse.click(canvasBox.x + canvasBox.width * 0.5, canvasBox.y + canvasBox.height * 0.5);
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'a plain click on the board adds nothing');
+  assert((await spaces.count()) === 12, 'a plain click on the board adds nothing');
   await page.keyboard.down('Control');
   await page.mouse.click(canvasBox.x + canvasBox.width * 0.5, canvasBox.y + canvasBox.height * 0.5);
   await page.keyboard.up('Control');
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 13, 'Ctrl+click adds a space');
+  assert((await spaces.count()) === 13, 'Ctrl+click adds a space');
   await page.keyboard.press('Delete');
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'Delete removes the selected space');
-  await page.getByRole('button', { name: 'Space Space 5' }).click({ button: 'right' });
+  assert((await spaces.count()) === 12, 'Delete removes the selected space');
+  await space('Space 5').click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '＋ Add a space after it' }).click();
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 13, 'right-click a space: add a space after it');
-  await page.getByRole('button', { name: 'Space Space 13' }).click({ button: 'right' });
+  assert((await spaces.count()) === 13, 'right-click a space: add a space after it');
+  await space('Space 13').click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
-  assert((await page.getByRole('button', { name: /^Space / }).count()) === 12, 'and delete it');
+  assert((await spaces.count()) === 12, 'and delete it');
   // A fork: Space 3 can also go straight to Space 7.
-  await page.getByRole('button', { name: 'Space Space 3' }).click();
+  await space('Space 3').click();
   await page.getByRole('button', { name: '🔗 Link to…' }).click();
-  await page.getByRole('button', { name: 'Space Space 7' }).click();
+  await space('Space 7').click();
   assert((await page.locator('.side').innerText()).includes('A fork'), 'linking a second way makes a fork');
   assert((await page.locator('.side').getByRole('button', { name: '🗑 Delete space' }).count()) === 1, 'the space card’s Delete space has its 🗑');
   // Both ways: one line with an arrow at each end.
   const arrowsBefore = await page.locator('.canvas line[marker-start]').count();
-  await page.getByRole('button', { name: 'Space Space 2' }).click();
+  await space('Space 2').click();
   await page.getByRole('button', { name: 'Both ways with Space 3' }).click();
   assert((await page.locator('.side').innerText()).includes('↔ Space 3'), 'a link can be made both ways');
   assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore + 1, 'a two-way link is drawn with arrows at both ends');
   await page.getByRole('button', { name: 'Both ways with Space 3' }).click();
   assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore, 'and back to one way');
   // Start gives points when passed.
-  await page.getByRole('button', { name: 'Space Start' }).click();
+  await space('Start').click();
   // Its menu closes on a second click, like the other menus, and on Esc (the focus goes back to the button).
   const addAction = page.locator('.side .actions').first().getByRole('button', { name: '＋ Add button' });
   await addAction.click();
@@ -75,13 +78,92 @@ try {
   assert((await page.getByRole('menu').count()) === 0 && (await addAction.evaluate((b) => b === document.activeElement)), 'and on Esc, back to its button');
   await addAction.click();
   await page.getByRole('menuitem', { name: /Change the score/ }).click();
+  assert(await page.locator('.side .actions').first().getByLabel('Points').evaluate((e) => e === document.activeElement), 'a new button has the focus on its first setting');
   await page.locator('.side .actions').first().getByLabel('Points').fill('100');
   await page.locator('.side .actions').first().getByLabel('Who').selectOption('party');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-editor.png` });
+
+  // ---------- The keyboard: the board is one tab stop ----------
+  const active = () => page.evaluate(() => ({ label: document.activeElement?.getAttribute('aria-label'), space: !!document.activeElement?.closest('[data-space]'), side: !!document.activeElement?.closest('.side'), tag: document.activeElement?.tagName }));
+  const picked = () => page.locator('.canvas .space.sel').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  const note = page.locator('.history-notice');
+  await page.locator('[data-round-name]').focus();
+  let tabs = 0;
+  while (!(await active()).space && tabs < 25) {
+    await page.keyboard.press('Tab');
+    tabs++;
+  }
+  assert((await active()).label === 'Start', `Tab from the round's name reaches the board, at the selected space (${tabs} tabs)`);
+  await page.keyboard.press('Tab');
+  assert((await active()).side, `the next Tab leaves the board for the space's settings (${JSON.stringify(await active())})`);
+  await page.keyboard.press('Shift+Tab');
+  assert((await active()).label === 'Start', 'Shift+Tab comes back to it');
+  await page.keyboard.press('ArrowRight');
+  assert((await active()).label === 'Space 2' && (await picked()).join() === 'Space 2', 'the arrow keys go from space to space');
+  await page.keyboard.press('Enter');
+  assert((await active()).label === 'Space name' && (await page.getByLabel('Space name').inputValue()) === 'Space 2', 'Enter opens its settings');
+  await space('Space 2').click();
+  await page.keyboard.press('F2');
+  await page.keyboard.type('Lava');
+  assert((await spaces.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).includes('Lava'), 'F2 renames it');
+  await space('Lava').click();
+  await page.keyboard.press('F2');
+  await page.keyboard.type('Space 2');
+  await space('Space 2').click();
+  // Copy and paste, with Ctrl+C / Ctrl+V on the board.
+  await page.keyboard.press('Control+c');
+  assert((await toast()).startsWith('Copied Space 2'), 'Ctrl+C copies the space');
+  await page.keyboard.press('Control+v');
+  assert((await spaces.count()) === 13 && (await picked()).join() === 'Space 13' && (await active()).label === 'Space 13', 'Ctrl+V pastes a copy (named afresh), selected, with the focus');
+  await page.keyboard.press('Control+z');
+  assert((await spaces.count()) === 12, 'one Ctrl+Z takes it back');
+  // Several: Ctrl+D and the right-click menu.
+  await space('Space 2').click();
+  await page.keyboard.press('Shift+ArrowRight');
+  assert((await picked()).join() === 'Space 2,Space 3', 'Shift+arrow picks several');
+  await page.keyboard.press('Control+d');
+  assert((await spaces.count()) === 14 && (await picked()).length === 2 && !(await picked()).includes('Space 2'), 'Ctrl+D duplicates all of them (the copies are selected)');
+  await page.keyboard.press('Control+z');
+  await space('Space 2').click();
+  await space('Space 3').click({ modifiers: ['Shift'] });
+  await space('Space 3').click({ button: 'right' });
+  const several = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(['⧉ Duplicate them', '📋 Copy 2 spaces', '🗑 Delete 2 spaces'].every((x) => several.some((t) => t.startsWith(x))), `right-click on several: duplicate, copy, delete (${several.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: /Copy 2 spaces/ }).click();
+  await space('Space 3').focus();
+  await page.keyboard.press('Delete');
+  assert((await spaces.count()) === 10 && (await note.innerText()).includes('Deleted 2 spaces'), 'Delete deletes them, with the app’s note (and its Undo)');
+  await note.getByRole('button', { name: '↶ Undo' }).click();
+  assert((await spaces.count()) === 12, 'which brings them back');
+  // Pasted where the board is right-clicked: both, with the link between them.
+  const cbox = await page.locator('.canvas-box').boundingBox();
+  await page.mouse.click(cbox.x + cbox.width * 0.45, cbox.y + cbox.height * 0.55, { button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '📋 Paste 2 spaces here' }).click();
+  assert((await spaces.count()) === 14 && (await picked()).length === 2, 'the board’s menu pastes the copied spaces there');
+  await page.locator('.side').getByRole('button', { name: /Delete 2 spaces/ }).click();
+  assert((await spaces.count()) === 12, 'and they go again');
+  await space('Start').click();
+
+  // Move by › ＋ New dice…: the box says Dice (not "＋ New dice…"), and the dice stay linked when renamed.
+  await page.getByLabel('Move by').selectOption('new-dice');
+  const dicePop = page.getByRole('dialog', { name: 'Dice' });
+  await dicePop.waitFor();
+  await dicePop.getByLabel('Dice name').fill('Big dice');
+  await dicePop.getByRole('button', { name: 'Close' }).click();
+  const diceBox = page.locator('.bge input[list="bg-dice"]');
+  assert((await page.getByLabel('Move by').inputValue()) === 'dice' && (await diceBox.inputValue()) === 'Big dice', 'after ＋ New dice…, Move by says Dice and the new dice are the ones rolled');
+  await page.getByRole('button', { name: '✎ Edit dice' }).click();
+  await dicePop.getByLabel('Dice name').fill('Huge dice');
+  await dicePop.getByRole('button', { name: 'Close' }).click();
+  assert((await diceBox.inputValue()) === 'Huge dice' && (await page.getByRole('button', { name: '✎ Edit dice' }).count()) === 1, 'renaming the dice keeps them (they are linked by id, not name)');
+  await diceBox.fill('d6');
+  assert(!(await page.getByRole('button', { name: '✎ Edit dice' }).count()), 'typing standard dice rolls those instead');
+
   // A zone.
   await page.getByRole('tab', { name: /Off-board zones/ }).click();
   await page.getByRole('button', { name: '＋ Zone' }).click();
   assert((await page.getByLabel('Zone name').inputValue()) === 'Shadow Realm', 'the first zone is the Shadow Realm');
+  assert(await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length), '＋ Zone puts the typing in its name');
 
   // Play with two players, straight to the board game.
   await playWithPlayers(page, 2);
@@ -228,7 +310,7 @@ try {
   const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
   const saved = resolve('test-results/boardgame-save.json');
   await json.saveAs(saved);
-  await page.getByRole('button', { name: 'Space Space 5' }).click();
+  await space('Space 5').click();
   await page.keyboard.press('Delete');
   await page.waitForTimeout(500);
   await openGameFile(page, saved);
@@ -237,7 +319,7 @@ try {
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
   assert(
-    (await page.getByRole('button', { name: /^Space / }).count()) === 12 && (await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()),
+    (await spaces.count()) === 12 && (await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()),
     'a game opened over the board starts its undo afresh (Ctrl+Z brings back nothing from before)',
   );
 
