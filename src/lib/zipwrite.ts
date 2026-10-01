@@ -1,4 +1,5 @@
-// A small ZIP writer for .brainrot packs (stored, no compression: media is already compressed).
+// A small ZIP writer for .brainrot packs (stored, no compression: media is already compressed; only game.json, which
+// is text, is deflated).
 // The archive is a Blob made of the headers plus the original media Blobs, so saving never copies
 // the media into memory, and checksums are computed in chunks that give the page time to breathe.
 // (A zip library copied every file into memory first, which froze big games for seconds and could
@@ -39,6 +40,18 @@ async function crcOf(blob: Blob, onBytes: (n: number) => void): Promise<number> 
 export interface ZipEntry {
   name: string;
   data: Blob;
+  /** Compress it (text): deflated by the browser, stored if it can't or it wouldn't be smaller. */
+  deflate?: boolean;
+}
+
+/** `blob` deflated (raw, as zips hold it), or null when the browser can't. */
+async function deflated(blob: Blob): Promise<Blob | null> {
+  if (typeof CompressionStream === 'undefined') return null;
+  try {
+    return await new Response(blob.stream().pipeThrough(new CompressionStream('deflate-raw'))).blob();
+  } catch {
+    return null;
+  }
 }
 
 const LIMIT = 0xffffffff; // no zip64: every size and offset must fit in 32 bits (4 GB)
@@ -51,7 +64,7 @@ function dosTime(d: Date): { time: number; date: number } {
 }
 
 /**
- * Build a stored zip. Entries whose data can't be read are left out and reported in `failed`.
+ * Build a zip (stored, but for entries marked `deflate`). Entries whose data can't be read are left out and reported in `failed`.
  * `onProgress(done, total)` reports bytes checksummed.
  */
 export async function buildZip(
@@ -77,31 +90,35 @@ export async function buildZip(
     }
     const name = enc.encode(e.name);
     const size = e.data.size;
-    if (size > LIMIT || offset + 30 + name.length + size > LIMIT) throw new Error('This game is too big to save as one pack (over 4 GB).');
+    const packed = e.deflate ? await deflated(e.data) : null;
+    const zipped = !!packed && packed.size < size;
+    const data = zipped ? packed : e.data;
+    const stored = data.size;
+    if (size > LIMIT || offset + 30 + name.length + stored > LIMIT) throw new Error('This game is too big to save as one pack (over 4 GB).');
     const local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true); // version needed
     local.setUint16(6, 0x0800, true); // names are UTF-8
-    local.setUint16(8, 0, true); // stored
+    local.setUint16(8, zipped ? 8 : 0, true); // deflated or stored
     local.setUint16(10, time, true);
     local.setUint16(12, date, true);
     local.setUint32(14, crc, true);
-    local.setUint32(18, size, true);
+    local.setUint32(18, stored, true);
     local.setUint32(22, size, true);
     local.setUint16(26, name.length, true);
     local.setUint16(28, 0, true);
-    parts.push(local.buffer, name as Uint8Array<ArrayBuffer>, e.data);
+    parts.push(local.buffer, name as Uint8Array<ArrayBuffer>, data);
 
     const cd = new DataView(new ArrayBuffer(46));
     cd.setUint32(0, 0x02014b50, true);
     cd.setUint16(4, 20, true); // made by
     cd.setUint16(6, 20, true); // needed
     cd.setUint16(8, 0x0800, true);
-    cd.setUint16(10, 0, true);
+    cd.setUint16(10, zipped ? 8 : 0, true);
     cd.setUint16(12, time, true);
     cd.setUint16(14, date, true);
     cd.setUint32(16, crc, true);
-    cd.setUint32(20, size, true);
+    cd.setUint32(20, stored, true);
     cd.setUint32(24, size, true);
     cd.setUint16(28, name.length, true);
     cd.setUint32(42, offset, true); // disk, attributes and comment stay 0
@@ -110,7 +127,7 @@ export async function buildZip(
     rec.set(name, 46);
     central.push(rec);
 
-    offset += 30 + name.length + size;
+    offset += 30 + name.length + stored;
     count++;
   }
   const cdSize = central.reduce((n, r) => n + r.length, 0);

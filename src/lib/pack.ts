@@ -21,7 +21,9 @@ export type PackProgress = (done: number, total: number) => void;
  */
 export async function buildPack(game: Game, onProgress?: PackProgress): Promise<{ blob: Blob; missing: string[] }> {
   await loadGameMedia(game);
-  const entries: ZipEntry[] = [{ name: 'game.json', data: new Blob([JSON.stringify(game, null, 2)], { type: 'application/json' }) }];
+  // game.json is compact and deflated (a big game's text shrinks to a tenth); older packs have it stored and indented,
+  // and open the same.
+  const entries: ZipEntry[] = [{ name: 'game.json', data: new Blob([JSON.stringify(game)], { type: 'application/json' }), deflate: true }];
   const missing: string[] = [];
   const byPath = new Map<string, string>();
   for (const ref of game.media) {

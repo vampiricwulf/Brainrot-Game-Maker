@@ -61,6 +61,14 @@ try {
   await page.waitForTimeout(900);
   assert((await names()).join() === 'Bo,Cy', 'Enter in a name adds the next player, typing in their name');
   assert((await page.getByRole('button', { name: 'Move Bo down' }).count()) === 1 && (await page.getByRole('button', { name: 'Move Cy up' }).count()) === 1, '▲/▼ say whose they are');
+  // Wide windows put the rules beside the players: a player's row still fits on one line there.
+  for (const width of [1400, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    const nameBox = await page.getByLabel('Player 1 name').boundingBox();
+    const del = await page.getByRole('button', { name: 'Delete Bo' }).boundingBox();
+    assert(del.y < nameBox.y + nameBox.height, `at ${width}px a player's ▲ ▼ 🗑 stay on their row's line`);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // ---------- The sticky Start bar, with 📋 Game rules open, at 1280×720 ----------
   const rules = await openRules(page);

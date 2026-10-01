@@ -32,6 +32,7 @@
   import { GAME_FILES, isGameFile, pickFile, safeFilename, saveGameJson } from '../lib/fileio';
   import { readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
+  import { buzzerBase } from '../lib/remote.svelte';
   import { formatBytes, loadGameMedia, pruneMedia } from '../lib/media.svelte';
   import { askToKeepStorage } from '../lib/persist';
   import SoundsPanel from './SoundsPanel.svelte';
@@ -51,8 +52,8 @@
   import { inTauri } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
-  import { validate, type Problem } from '../lib/validate';
-  import { checklistLines, type ChecklistLine } from '../lib/checklist';
+  import { validate } from '../lib/validate';
+  import { boardPlace, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
   import { arriving, commit, history, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
@@ -68,8 +69,8 @@
   import { clipboard } from '../lib/clipboard.svelte';
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
 
-  /** `problems`: the checklist, worked out by the app a moment after changes stop. */
-  let { onplay, problems }: { onplay: () => void; problems: Problem[] } = $props();
+  /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
+  let { onplay, checklist }: { onplay: () => void; checklist: ChecklistLine[] } = $props();
 
   // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
   let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
@@ -286,9 +287,6 @@
 
   // ---------- Checklist ----------
 
-  /** The checklist, one line a round. */
-  const checklist = $derived(checklistLines(game, problems));
-
   /**
    * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen or
    * a board game's space has the focus).
@@ -297,7 +295,9 @@
     // Players are set on the ▶ Play screen.
     if (line.tab === 'play') return onplay();
     tab = line.tab;
-    const place = line.place;
+    // (The line is worked out a moment after changes stop: a board's first tile to finish is looked up now.)
+    const round = typeof line.tab === 'number' ? game.rounds[line.tab] : undefined;
+    const place = (round && isBoard(round) && boardPlace(game, round)) || line.place;
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
@@ -584,12 +584,14 @@
 
   let exporting = $state(false);
   async function exportHtml(): Promise<void> {
+    // A file with nothing to play: the player couldn't add a round there.
+    if (!game.rounds.length) return void toast('Add a round first (＋ Add round): the exported file is for playing, and this game has no rounds yet.', 5000);
     if (!(await askName())) return;
     exporting = true;
     packPct = null;
     const point = savePoint();
     try {
-      const r = await whileWriting(() => exportStandaloneHtml($state.snapshot(game), packProgress));
+      const r = await whileWriting(() => exportStandaloneHtml($state.snapshot(game), packProgress, buzzerBase()));
       if (r) {
         mark('exported', 'Exported HTML', point);
         toast(

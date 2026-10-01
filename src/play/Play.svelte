@@ -89,11 +89,17 @@
   let {
     onexit,
     oncancel,
+    gameRev = 0,
+    gameCopy,
   }: {
     /** Leave the game (it stays saved and resumable). */
     onexit: () => void;
     /** Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is saved or cleared. */
     oncancel: () => void;
+    /** Goes up when the game in play changes (App's watcher). */
+    gameRev?: number;
+    /** That watcher's plain copy of the game (null until it has started). Never read inside an effect. */
+    gameCopy?: () => Game | null;
   } = $props();
 
   // Play is only mounted when these exist.
@@ -164,18 +170,50 @@
 
   // Mirror state to the audience window whenever it changes. Before Start, viewers get a "Starting soon" card and no
   // session: the board would give away the categories the round intro reveals.
+  // The game goes as App's plain copy (its watcher), and only while a window is open: copying the whole game on every
+  // change made ▶ Play and each rule ticked lag in big games. What changed goes together a moment later, the game
+  // first, so a viewer never gets a session or overlay that refers to a part of the game it hasn't got yet.
+  const viewers = $derived(audience.open || scoresWindow.open);
+  let sentGame: Game | null = null;
+  let outSession: Parameters<typeof pushSession>[0] | null = null;
+  let outLive: Parameters<typeof pushLive>[0] | null = null;
+  let sendQueued = false;
+  let left = false;
+  $effect(() => () => (left = true));
+  function sendSoon(): void {
+    if (sendQueued) return;
+    sendQueued = true;
+    queueMicrotask(() => {
+      sendQueued = false;
+      if (left || !(audience.open || scoresWindow.open)) return;
+      // (Until the watcher has started, a copy of its own.)
+      const g = gameCopy?.() ?? $state.snapshot(game);
+      if (g !== sentGame) pushGame((sentGame = g));
+      if (outSession) pushSession(outSession);
+      if (outLive) pushLive(outLive);
+      outSession = outLive = null;
+    });
+  }
   $effect(() => {
-    const g = $state.snapshot(game);
-    if (audience.open || scoresWindow.open) pushGame(g);
+    void gameRev;
+    // A window opened again gets the game again.
+    if (!viewers) sentGame = null;
+    else sendSoon();
   });
   $effect(() => {
     // The action log (the host's undo history) and the buzzer room's key stay here: viewers never need them.
     const { actionLog, actionRedo, remote, ...s } = session;
-    if ((audience.open || scoresWindow.open) && !app.pregame) pushSession($state.snapshot(s));
+    if (viewers && !app.pregame) {
+      outSession = $state.snapshot(s);
+      sendSoon();
+    }
   });
   $effect(() => {
     const l = $state.snapshot(app.live);
-    if (audience.open || scoresWindow.open) pushLive(app.pregame ? { ...l, pregame: true } : l);
+    if (viewers) {
+      outLive = app.pregame ? { ...l, pregame: true } : l;
+      sendSoon();
+    }
   });
   // Score pops belong to the moment: a new clue, the Daily Double splash, another round or Final step clears them. Back to
   // the board from a clue they stay (over the score bar there).

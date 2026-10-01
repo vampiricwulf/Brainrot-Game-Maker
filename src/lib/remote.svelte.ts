@@ -2,6 +2,7 @@
 // said). Reactive, for the pre-game card and the host panel.
 import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
 import type { SavedRoom } from './persist';
+import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
 import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus } from './roomlink';
 
@@ -10,9 +11,12 @@ export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? ''
 
 const clean = (url: string) => url.trim().replace(/\/+$/, '');
 
-/** Where rooms are made: ⚙ Settings › Buzzer server, else the built-in one. '' when neither is set (no phone buzzers). */
+/**
+ * Where rooms are made: ⚙ Settings › Buzzer server, else (an exported game) the one it was exported with, else the
+ * built-in one. '' when none is set (no phone buzzers).
+ */
 export function buzzerBase(): string {
-  return clean(prefs.buzzerServer || DEFAULT_BUZZER_URL);
+  return clean(prefs.buzzerServer || embeddedBuzzerServer() || DEFAULT_BUZZER_URL);
 }
 
 export const remote = $state<{

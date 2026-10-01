@@ -27,7 +27,8 @@
   import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
   import { claimEditor, watchEditor } from './lib/editorlock';
   import { hasWork } from './lib/recent';
-  import { validate, type Problem } from './lib/validate';
+  import { validate } from './lib/validate';
+  import { checklistLines, type ChecklistLine } from './lib/checklist';
   import { migrateGame, newId } from './lib/model';
   import { audienceTitle, closeAudienceWindow, openAudienceWindow } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
@@ -262,8 +263,10 @@
   // The editor's checklist, worked out from the watcher's plain copy a moment after changes stop: reading the whole
   // game through its proxies on every keystroke made typing in a clue lag in big games. (Whether files are missing
   // depends on the ones loaded, too.)
-  let problems = $state.raw<Problem[]>([]);
-  const checkSoon = debounce(() => watch && (problems = validate(watch.value())), 300);
+  let checklist = $state.raw<ChecklistLine[]>([]);
+  /** The checklist's lines (one a round) for this game: the watcher's plain copy, or the game itself as it arrives. */
+  const check = (game: Game) => (checklist = checklistLines(game, validate(game)));
+  const checkSoon = debounce(() => watch && check(watch.value()), 300);
   $effect(() => {
     void Object.keys(mediaUrls).length;
     untrack(checkSoon);
@@ -275,7 +278,7 @@
   $effect(() => {
     const game = app.game;
     if (!loaded || !editing) return;
-    problems = untrack(() => validate(game));
+    untrack(() => check(game));
     requestAnimationFrame(() => setTimeout(() => startWatch(game)));
   });
   function startWatch(game: Game): void {
@@ -373,6 +376,8 @@
     playWatch.subscribe(() => playRev++);
     playRev++;
   }
+  /** The game in play as plain JSON (the audience window gets it), or null until its watcher has started. */
+  const playCopy = () => (playWatch && playWatched === app.playGame ? playWatch.value() : null);
   $effect(() => {
     void playRev;
     const session = $state.snapshot(app.session);
@@ -385,7 +390,9 @@
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
 
   async function startPlay(): Promise<void> {
-    if (!app.game.rounds.length) return toast('Add a round first (＋ Add round)', 4000);
+    // (A player-only file has no ＋ Add round: one with no rounds can only be exported again from the builder.)
+    if (!app.game.rounds.length)
+      return toast(playerOnly ? 'This game has no rounds to play: ask whoever made it for a new copy.' : 'Add a round first (＋ Add round)', 5000);
     const saved = app.resumable;
     if (
       saved &&
@@ -576,9 +583,9 @@
       {/if}
     </div>
   {/if}
-  <Editor onplay={startPlay} {problems} />
+  <Editor onplay={startPlay} {checklist} />
 {:else}
-  <Play onexit={exitPlay} oncancel={leavePlay} />
+  <Play onexit={exitPlay} oncancel={leavePlay} gameRev={playRev} gameCopy={playCopy} />
 {/if}
 
 {#snippet modeAsk()}

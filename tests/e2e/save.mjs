@@ -90,7 +90,9 @@ try {
   const [again] = await Promise.all([a.waitForEvent('download'), a.keyboard.press('Control+s')]);
   assert(again.suggestedFilename() === 'Two-tabs.brainrot', 'Ctrl+S saves the game pack');
 
-  // Export HTML: a playable file that includes the pack.
+  // Export HTML: a playable file that includes the pack (a game needs a round to be exported).
+  await a.getByRole('button', { name: '＋ Add round' }).click();
+  await a.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   const html = await exportHtml(a);
   assert(statSync(await html.path()).size > 3 * 1024 * 1024, 'the exported HTML includes the media');
   const player = await context.newPage();
@@ -103,8 +105,6 @@ try {
   assert(true, 'the exported HTML opens as a player');
 
   // Reopening the saved pack restores the game and its files. The game being edited has a round now, so Open… asks first.
-  await a.getByRole('button', { name: '＋ Add round' }).click();
-  await a.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   dialogs.length = 0;
   await openGameFile(a, await pack.path());
   await answerReplace(a, 'Discard');

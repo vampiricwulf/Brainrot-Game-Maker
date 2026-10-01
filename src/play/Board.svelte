@@ -82,12 +82,12 @@
             <div class="title has-image" class:revealing={!!intro}>
               <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
               {#if cat.showTitleOverImage && cat.title}
-                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, text: cat.title }}><div>{softHyphens(cat.title)}</div></div>
+                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}><div>{softHyphens(cat.title)}</div></div>
               {/if}
             </div>
           {:else}
             <!-- Never so small it can't be read on a scaled-down stream: at the smallest size, long words are hyphenated. -->
-            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, text: cat.title }}>
+            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}>
               <div>{softHyphens(cat.title)}</div>
             </div>
           {/if}
@@ -122,9 +122,9 @@
               <img src={mediaUrls[clue.tileFace.image]} alt="" draggable="false" onerror={imgFallback} />
             {/if}
             {#if clue.tileFace?.text}
-              <span class="face" use:autofit={{ size: 84, enabled: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>
+              <span class="face" use:autofit={{ size: 84, enabled: true, cache: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>
             {:else if !clue.tileFace?.image}
-              <span class="face" use:autofit={{ size: 84, min: 24, noBreak: true, enabled: true, group: valueGroup, text: value }}><span class="v">{value}</span></span>
+              <span class="face" use:autofit={{ size: 84, min: 24, noBreak: true, enabled: true, cache: true, group: valueGroup, text: value }}><span class="v">{value}</span></span>
             {/if}
           {/if}
         </button>

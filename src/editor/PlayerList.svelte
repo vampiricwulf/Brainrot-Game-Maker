@@ -289,8 +289,12 @@
     width: 16px;
     text-align: right;
   }
+  /* Narrower when the row is short of room (the pre-game screen's column), so ▲ ▼ 🗑 stay on the row's line; up to
+     200px when there's room. */
   .name {
-    width: 200px;
+    flex: 1 1 110px;
+    min-width: 110px;
+    max-width: 200px;
     border-left-width: 6px;
   }
   /* The same width on every row (a long name ends in "…"), so the rows line up and wrap at the same place. */
@@ -316,7 +320,7 @@
     align-items: center;
   }
   .score input {
-    width: 90px;
+    width: 72px;
   }
   .pop {
     position: relative;

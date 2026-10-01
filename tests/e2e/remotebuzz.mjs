@@ -4,10 +4,10 @@
 // the player (and the audience plate), the queue of buzzes, a wrong answer locking them out, → Next in line, ↺ Reset
 // buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, and Exit closing the room.
 import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, exportHtml, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -103,6 +103,24 @@ try {
   await settings.getByText('✔ The buzzer server is answering').waitFor();
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');
   await settings.getByRole('button', { name: 'Done' }).click();
+
+  // ---------- Export HTML takes the buzzer server along (another computer has no Settings for it) ----------
+  {
+    const download = await exportHtml(page, 'Buzz Night');
+    mkdirSync('test-results', { recursive: true });
+    const saved = resolve('test-results/buzz-export.html');
+    await download.saveAs(saved);
+    const html = readFileSync(saved, 'utf8');
+    assert(/id="jb-pack"[^>]*data-buzzer="https:\/\/buzz\.test"/.test(html), 'the exported file carries the buzzer server');
+    const other = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const p2 = watch(await other.newPage(), 'export');
+    await p2.goto(pathToFileURL(saved).href);
+    await p2.getByRole('button', { name: '▶ Play' }).click();
+    const card2 = p2.getByRole('region', { name: 'Phone buzzers' });
+    await card2.getByLabel(/Buzzer mode/).waitFor();
+    assert((await card2.getByText(/aren't set up/).count()) === 0, 'and phone buzzers work in it on a browser without that setting');
+    await other.close();
+  }
 
   // ---------- Pre-game: players; 📋 Game rules has no buzzer options (they're on the 📱 Phone buzzers card) ----------
   await playWithPlayers(page, 3);

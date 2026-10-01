@@ -16,7 +16,7 @@ export interface ChecklistLine {
 }
 
 /** A tile that still needs something: a question and an answer, or for a wheel or dice tile, its wheel or dice. */
-function unfinished(game: Game, round: BoardRound) {
+function unfinished(game: Game, round: BoardRound, firstOnly = false) {
   const out: { category: string; clue: string }[] = [];
   // Column by column, like the clue editor's Next.
   for (const cat of round.categories)
@@ -29,8 +29,17 @@ function unfinished(game: Game, round: BoardRound) {
           : !!tileDice(game, c.diceId)
         : slideHasContent(c.questionSlide) && slideHasContent(c.answerSlide);
       if (!done) out.push({ category: cat.id, clue: c.id });
+      if (firstOnly && out.length) return out;
     }
   return out;
+}
+
+/** Where a board's checklist line goes: its first unfinished tile, else its first nameless category (none: undefined). */
+export function boardPlace(game: Game, round: BoardRound): Place | undefined {
+  const first = unfinished(game, round, true)[0];
+  const nameless = round.categories.find((c) => !c.title.trim() && !c.image);
+  if (first) return { tab: 'round', round: round.id, part: { kind: 'clue', ...first, onBoard: true } };
+  if (nameless) return { tab: 'round', round: round.id, part: { kind: 'category', category: nameless.id } };
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -66,9 +75,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
     const name = roundName(round, i);
     if (isBoard(round)) {
       const todo = unfinished(game, round);
-      const nameless = round.categories.find((c) => !c.title.trim() && !c.image);
-      if (todo.length) line.place = { tab: 'round', round: round.id, part: { kind: 'clue', ...todo[0], onBoard: true } };
-      else if (nameless) line.place = { tab: 'round', round: round.id, part: { kind: 'category', category: nameless.id } };
+      line.place = boardPlace(game, round) ?? line.place;
       if (line.details.length > 1) {
         const others = line.details.length - line.details.filter((d) => /clues? with no (question|answer)|wheel\/dice tile/.test(d)).length;
         line.text = !todo.length
