@@ -1,5 +1,6 @@
 // Remote buzzers, end to end: the buzzer room (buzzer/) under `wrangler dev` (local, no Cloudflare account), a fake
-// host on a plain WebSocket, and three phones in Chromium on the real phone page. Needs `npm ci` in buzzer/ first.
+// host on a plain WebSocket, and four phones in Chromium on the real phone page, their sockets passed through Playwright
+// (to slow one down, or to make two buzzes tie). Then the limit on new rooms. Needs `npm ci` in buzzer/ first.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -80,6 +81,53 @@ async function connectHost(code, token) {
   };
 }
 
+/**
+ * A phone's WebSocket, passed through Playwright: `delay` ms each way (a slow network), when each buzz reached the
+ * server (`sent`), when each armed view reached the page (`armedAt`), and `rewrite` to change a buzz on its way.
+ */
+async function tap(page) {
+  const t = { delay: 0, sent: [], armedAt: {}, rewrite: null };
+  await page.routeWebSocket(/\/ws\//, (ws) => {
+    const server = ws.connectToServer();
+    const later = (fn) => (t.delay ? setTimeout(fn, t.delay) : fn());
+    const toServer = (m) =>
+      later(() => {
+        const j = JSON.parse(m);
+        if (j.t === 'buzz') t.sent.push({ ...j, at: Date.now() });
+        server.send(m);
+      });
+    ws.onMessage((m) => {
+      const j = JSON.parse(String(m));
+      if (j.t === 'buzz' && t.rewrite) t.rewrite(j, (k) => toServer(JSON.stringify(k)));
+      else toServer(String(m));
+    });
+    server.onMessage((m) =>
+      later(() => {
+        const j = JSON.parse(String(m));
+        if (j.t === 'view' && j.view.phase === 'armed') t.armedAt[j.view.armId] ??= Date.now();
+        ws.send(m);
+      }),
+    );
+  });
+  return t;
+}
+
+/** Holds the next buzz from each of these phones, then lets them all go with the same reaction time: a tie. */
+function tieThem(taps) {
+  const held = [];
+  for (const t of taps)
+    t.rewrite = (j, send) => {
+      held.push({ t, j, send });
+      if (held.length < taps.length) return;
+      // As long as both really took (a little less than the time since each saw BUZZ!), so the room believes it.
+      const reactMs = Math.min(...held.map((h) => Date.now() - h.t.armedAt[h.j.armId])) - 20;
+      for (const h of held) {
+        h.t.rewrite = null;
+        h.send({ ...h.j, reactMs });
+      }
+    };
+}
+
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 let browser;
 const errors = [];
@@ -131,11 +179,13 @@ try {
   setState({});
 
   browser = await chromium.launch({ executablePath });
+  const taps = new Map();
   const phone = async (label, width = 360) => {
     const ctx = await browser.newContext({ viewport: { width, height: 740 }, hasTouch: true, isMobile: true });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push(`[${label}] ${e.message}`));
     pages.push([label, page]);
+    taps.set(page, await tap(page));
     return page;
   };
   const big = (p) => p.locator('#buzz-big');
@@ -191,24 +241,31 @@ try {
   await big(bob).getByText('Too early').waitFor();
   assert(/wait \ds/.test(await small(bob).innerText()), 'Bob buzzed early (Space): "Too early — wait 1s"');
 
-  // Armed: Bob is still locked; Ann and Dee race, one wins.
+  // Armed: Bob is still locked; Ann and Dee race, Ann reacts faster.
   setState({ phase: 'armed', armId: 1 });
   await big(ann).getByText('BUZZ!').waitFor();
+  await big(dee).getByText('BUZZ!').waitFor();
   assert(await ann.locator('#buzz.armed').isVisible(), 'BUZZ! once armed');
   await shot(ann, 'armed');
   await shot(bob, 'early');
   await press(bob);
   const lockedNow = await big(bob).innerText();
-  await Promise.all([press(ann), press(dee)]);
+  await press(ann);
+  await sleep(150);
+  await press(dee);
   const first = await host.wait((m) => m.t === 'buzz' && m.armId === 1 && m.rank === 1, 'the winner');
   const second = await host.wait((m) => m.t === 'buzz' && m.armId === 1 && m.rank === 2, 'the runner-up');
-  assert(['a', 'd'].includes(first.seatId) && ['a', 'd'].includes(second.seatId) && first.seatId !== second.seatId, `one winner (${first.seatId}), the other ranked 2 (${second.afterMs} ms later)`);
+  assert(first.seatId === 'a' && second.seatId === 'd' && second.afterMs >= 100, `Ann reacted first and wins; Dee is 2nd (${second.afterMs} ms slower)`);
+  assert(taps.get(ann).sent[0]?.reactMs >= 0 && taps.get(dee).sent[0]?.reactMs >= 0, `phones send their reaction time with the buzz (Ann ${taps.get(ann).sent[0]?.reactMs} ms)`);
   assert(!host.got.some((m) => m.t === 'buzz' && m.seatId === 'b'), `Bob's buzz while locked didn't count (${lockedNow})`);
-  const [winner, loser] = first.seatId === 'a' ? [ann, dee] : [dee, ann];
-  const winnerName = first.seatId === 'a' ? 'Ann' : 'Dee';
+  const queue1 = await host.wait((m) => m.t === 'queue' && m.armId === 1 && m.queue.length === 2, 'the queue');
+  assert(queue1.queue.map((q) => q.seatId).join() === 'a,d', 'the host gets the queue, fastest first');
+  const [winner, loser] = [ann, dee];
+  const winnerName = 'Ann';
   await big(winner).getByText("You're answering!").waitFor();
-  await big(loser).getByText('Too late').waitFor();
-  assert((await small(loser).innerText()) === `${winnerName} is answering`, `"You're answering!" for ${winnerName}, "Too late — ${winnerName} is answering" for the other`);
+  await small(winner).getByText(/^You were first by \d\.\d\d s$/).waitFor();
+  await big(loser).getByText("You're 2nd").waitFor();
+  assert(/^\d\.\d\d s behind Ann$/.test(await small(loser).innerText()), `"You were first by …" for Ann, "You're 2nd — ${await small(loser).innerText()}" for Dee`);
   await small(bob).getByText(`${winnerName} is answering`).waitFor();
   await shot(winner, 'first');
   await shot(loser, 'late');
@@ -223,6 +280,49 @@ try {
   const bobWins = await host.wait((m) => m.t === 'buzz' && m.armId === 2 && m.rank === 1, 'arm 2 winner');
   assert(bobWins.seatId === 'b', 'the locked-out player can\'t buzz; Bob wins the re-arm');
   await big(bob).getByText("You're answering!").waitFor();
+
+  // A slow network doesn't lose: Cat's phone is 200 ms behind each way, Dee's isn't. Cat presses first; her buzz
+  // reaches the room after Dee's, and she still wins (the room counts her reaction from when her phone lit up).
+  const cat = await phone('cat');
+  const catTap = taps.get(cat);
+  catTap.delay = 200;
+  await cat.goto(`${base}/${room.code}`);
+  await cat.getByRole('button', { name: 'Cat' }).click();
+  await cat.locator('#me').getByText('Cat').waitFor({ timeout: 10_000 });
+  await sleep(1200); // its first round trips timed (three quick pings)
+  setState({ phase: 'armed', armId: 3, answering: null, lockedOut: [] });
+  await big(dee).getByText('BUZZ!').waitFor();
+  await big(cat).getByText('BUZZ!').waitFor();
+  await press(cat);
+  await sleep(100);
+  await press(dee);
+  const fair = await host.wait((m) => m.t === 'buzz' && m.armId === 3 && m.rank === 1, 'arm 3 winner');
+  const catAt = catTap.sent.find((b) => b.armId === 3)?.at;
+  const deeAt = taps.get(dee).sent.find((b) => b.armId === 3)?.at;
+  assert(deeAt < catAt, `Dee's buzz reached the room first (${catAt - deeAt} ms before Cat's)`);
+  assert(fair.seatId === 'c', 'but Cat, who pressed first on a slow network, wins');
+  await big(cat).getByText("You're answering!").waitFor();
+  await big(dee).getByText("You're 2nd").waitFor();
+  assert(/behind Cat$/.test(await small(dee).innerText()), `Dee: "You're 2nd — ${await small(dee).innerText()}"`);
+
+  // A tie: Ann's and Dee's buzzes say the same reaction time. Nobody answers until the host decides (here: a roll).
+  setState({ phase: 'armed', armId: 4, answering: null, lockedOut: [] });
+  await big(ann).getByText('BUZZ!').waitFor();
+  await big(dee).getByText('BUZZ!').waitFor();
+  tieThem([taps.get(ann), taps.get(dee)]);
+  await press(ann);
+  await press(dee);
+  const tied = await host.wait((m) => m.t === 'queue' && m.armId === 4 && m.tie, 'the tie');
+  assert(tied.tie.slice().sort().join() === 'a,d', 'buzzes with the same reaction time tie: the host is told, nobody is picked');
+  await big(ann).getByText('Tie!').waitFor();
+  assert((await small(dee).innerText()) === 'The host is rolling for it', 'tied phones say "Tie! The host is rolling for it"');
+  await shot(ann, 'tie');
+  setState({ phase: 'answering', armId: 4, answering: 'd', rollOrder: ['d', 'a'] });
+  await big(dee).getByText("You're answering!").waitFor();
+  await small(dee).getByText('You won the roll').waitFor();
+  await big(ann).getByText("You're 2nd").waitFor();
+  assert((await small(ann).innerText()) === 'Tie — you rolled 2nd', 'the roll sets the order: Dee answers, Ann "Tie — you rolled 2nd"');
+  hs = { ...hs, rollOrder: undefined };
 
   // Back to the board; Ann reloads and gets her seat back without picking.
   setState({ phase: 'lobby', clue: null, answering: null, lockedOut: [], scores: { a: 200, b: 400 } });
@@ -252,6 +352,21 @@ try {
   await ann.getByText('The game is over').waitFor();
   await dee.getByText('The game is over').waitFor();
   assert((await fetch(`${base}/api/rooms/${room.code}`)).status === 404, 'closing ends the room for everyone');
+
+  // New rooms are limited: 6 a minute from one address (here a made-up one: wrangler dev takes CF-Connecting-IP as
+  // sent; Cloudflare sets it itself), so the 7th quick one is turned away. Not right before a new minute starts.
+  const s = new Date().getSeconds();
+  if (s > 45) await sleep((61 - s) * 1000);
+  const statuses = [];
+  let refused;
+  for (let i = 0; i < 7; i++) {
+    const r = await fetch(`${base}/api/rooms`, { method: 'POST', headers: { Origin: 'null', 'CF-Connecting-IP': '203.0.113.7' } });
+    statuses.push(r.status);
+    if (r.status === 429) refused = { body: await r.json(), cors: r.headers.get('access-control-allow-origin') };
+  }
+  assert(statuses.join() === '200,200,200,200,200,200,429', `the 7th new room in a minute from one address is refused (${statuses.join()})`);
+  assert(refused.body.error === 'Too many new rooms — wait a minute' && refused.cors === '*', 'with a 429 the app can read: "Too many new rooms — wait a minute"');
+  assert((await fetch(`${base}/api/rooms`, { method: 'POST' })).status === 200, 'another address can still make one');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Buzzer room E2E passed.');
