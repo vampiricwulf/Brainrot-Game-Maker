@@ -145,8 +145,8 @@
       {:else if o.kind === 'sheet'}
         {@const i = session.players.findIndex((p) => p.id === o.playerId)}
         <b>📺 {session.players[i]?.name ?? 'Player'}'s sheet</b>
-        <button class="small" disabled={i <= 0} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i - 1].id })}>◀</button>
-        <button class="small" disabled={i >= session.players.length - 1} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i + 1].id })}>▶</button>
+        <button class="small" disabled={i <= 0} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i - 1].id })} aria-label="Previous player's sheet">◀</button>
+        <button class="small" disabled={i >= session.players.length - 1} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i + 1].id })} aria-label="Next player's sheet">▶</button>
       {:else if o.kind === 'shop'}
         <b>🛒 {game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}</b>
       {:else}
@@ -271,7 +271,7 @@
     font-size: 12px;
   }
   .tiny {
-    font-size: 10px;
+    font-size: 12px;
     padding: 0 4px;
   }
   select.small {

@@ -847,7 +847,7 @@
         class="ghost small"
         onclick={() => edit(() => (slide.background = {}))}
         disabled={!slide.background.image && !slide.background.color}
-        title="Reset background">✕ BG</button>
+        title="Reset background">↺ BG</button>
     </fieldset>
     <!-- One group that keeps to the right and wraps as a whole, so 🔈 ↶ ↷ never end up alone on a line.
          Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
@@ -1171,7 +1171,7 @@
   .layers-box summary {
     cursor: pointer;
     margin-bottom: 6px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);

@@ -158,7 +158,7 @@ await page.locator('.cat textarea').first().fill('Links');
 await page.locator('.tile').nth(0).click();
 await page.locator('.quick textarea').first().fill('Saved and live media');
 await page.getByRole('button', { name: '🖼 Image' }).click();
-await page.locator('.picker').getByText('Direct file link, e.g. https://files.catbox.moe/abc123.mp3').waitFor();
+await page.locator('.picker').getByText('Direct file link, e.g. https://files.catbox.moe/abc123.png').waitFor();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://litter.catbox.moe/frog1.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas img').waitFor();
@@ -420,7 +420,7 @@ assert(
 );
 
 // ---------- The exported HTML plays live links too ----------
-const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export HTML' }).click()]);
+const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
 mkdirSync('test-results', { recursive: true });
 const exported = resolve('test-results/links-exported.html');
 await html.saveAs(exported);

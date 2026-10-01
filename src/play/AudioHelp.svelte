@@ -119,9 +119,9 @@
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" use:modal>
     <div class="row">
-      <h2>🔊 Streaming the sound</h2>
+      <h2 class="modal-title">🔊 Streaming the sound</h2>
       <span class="spacer"></span>
-      <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
 
     {#if capture}
@@ -308,6 +308,7 @@
         </ol>
       </details>
     {/if}
+    <div class="modal-foot"><button class="primary" onclick={onclose}>Done</button></div>
   </div>
 </div>
 

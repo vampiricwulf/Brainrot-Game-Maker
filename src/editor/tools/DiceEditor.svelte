@@ -55,7 +55,7 @@
             <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
           </label>
           <span class="spacer"></span>
-          <button class="ghost small" onclick={() => preset.dice.splice(i, 1)} disabled={preset.dice.length <= 1}>✕ Delete die</button>
+          <button class="ghost small" onclick={() => preset.dice.splice(i, 1)} disabled={preset.dice.length <= 1}>🗑 Delete die</button>
         </div>
         {#if d.customFaces}
           <div class="faces">
@@ -92,7 +92,7 @@
       <div class="face">
         <input type="number" bind:value={t.min} class="n" aria-label="From" />–<input type="number" bind:value={t.max} class="n" aria-label="To" />
         <OutcomeEditor outcome={t.outcome} placeholder="What happens" />
-        <button class="ghost small" onclick={() => preset.totalOutcomes?.splice(i, 1)}>✕</button>
+        <button class="ghost small" onclick={() => preset.totalOutcomes?.splice(i, 1)} aria-label="Delete this total" title="Delete">🗑</button>
       </div>
     {/each}
     <div>

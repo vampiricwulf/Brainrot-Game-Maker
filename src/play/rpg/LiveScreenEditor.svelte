@@ -37,13 +37,14 @@
 <div class="backdrop" role="presentation">
   <div class="modal" role="dialog" aria-label="Edit {title} live" use:modal>
     <div class="row">
-      <b>✎ {title}</b>
+      <b class="modal-title">✎ {title}</b>
       <span class="muted small">
         {onAir ? 'Live: viewers see changes as you make them.' : 'Off air: viewers see it when the party gets here.'} They stay in this game unless you press
         💾 Keep in game.
       </span>
       <span class="spacer"></span>
       <button class="primary" onclick={onclose}>Done</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="body"><ScreenEditor {world} {screen} {slide} /></div>
   </div>

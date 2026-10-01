@@ -1,6 +1,6 @@
 <!-- Big reveal of a wheel slice / die face: label, optional details, image/GIF/video/audio. -->
 <script lang="ts">
-  import { scale } from 'svelte/transition';
+  import { scale } from '../../lib/motion.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, Outcome } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';

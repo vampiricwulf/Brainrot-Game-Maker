@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { getContext, onDestroy } from 'svelte';
-  import { fade } from 'svelte/transition';
+  import { fade } from '../../lib/motion.svelte';
   import { textOn } from '../../lib/colors';
   import { currentPlayer, fanOut, HOP_MS, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';

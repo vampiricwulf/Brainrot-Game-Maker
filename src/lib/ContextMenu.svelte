@@ -22,7 +22,10 @@
   });
 
   function run(fn: () => void): void {
+    // A dropped menu gives its button the focus back first, so a window the item opens returns it there on close.
+    const from = contextMenu.open?.from;
     closeMenu();
+    from?.focus();
     fn();
   }
 
@@ -109,7 +112,7 @@
     margin-left: auto;
     padding-left: 16px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
   }
   button:hover:not(:disabled) {
@@ -131,7 +134,7 @@
   }
   .heading {
     padding: 4px 10px 2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     opacity: 0.7;
   }

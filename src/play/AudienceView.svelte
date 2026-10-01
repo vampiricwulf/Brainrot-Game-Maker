@@ -4,7 +4,7 @@
   stage and the host's mirror in dual mode.
 -->
 <script lang="ts">
-  import { fade, fly, scale } from 'svelte/transition';
+  import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import { finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';

@@ -1,6 +1,7 @@
 <!-- Lightweight canvas confetti for the winner screen. -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { calmStream } from '../lib/motion.svelte';
 
   let { colors = ['#ffcc00', '#ffffff', '#e6194b', '#3cb44b', '#4363d8', '#f032e6'] }: { colors?: string[] } = $props();
   let canvas: HTMLCanvasElement;
@@ -11,7 +12,8 @@
     const H = (canvas.height = 1080);
     const parts = Array.from({ length: 260 }, () => ({
       x: Math.random() * W,
-      y: -Math.random() * H,
+      // Reduced motion: the confetti lies still all over the screen instead of falling.
+      y: calmStream() ? Math.random() * H : -Math.random() * H,
       vx: (Math.random() - 0.5) * 4,
       vy: 3 + Math.random() * 5,
       r: Math.random() * Math.PI,
@@ -38,7 +40,7 @@
         ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 2)));
         ctx.restore();
       }
-      raf = requestAnimationFrame(tick);
+      if (!calmStream()) raf = requestAnimationFrame(tick);
     };
     tick();
     return () => cancelAnimationFrame(raf);

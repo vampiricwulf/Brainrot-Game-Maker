@@ -53,7 +53,10 @@ page.on('dialog', (d) => {
   if (d.type() === 'confirm') confirms.push(d.message());
   d.accept();
 });
-/** Runs `action`, answers the confirm it raises (OK or Cancel) and returns its message ('' if none came). */
+/**
+ * Runs `action`, answers the question it raises (OK or Cancel) and returns its message ('' if none came). The app asks
+ * in its own window (role="alertdialog": its safe answer first, then OK); New and Open still use the browser's confirm().
+ */
 async function answerDialog(action, accept) {
   let message = null;
   nextDialog = (d) => {
@@ -61,7 +64,16 @@ async function answerDialog(action, accept) {
     return accept ? d.accept() : d.dismiss();
   };
   await action();
-  for (let i = 0; i < 20 && message === null; i++) await page.waitForTimeout(50);
+  const ask = page.getByRole('alertdialog');
+  for (let i = 0; i < 20 && message === null; i++) {
+    if (await ask.count()) {
+      message = await ask.locator('#ask-text').innerText();
+      await ask.locator('.end button')[accept ? 'last' : 'first']().click();
+      await ask.waitFor({ state: 'detached' });
+      break;
+    }
+    await page.waitForTimeout(50);
+  }
   nextDialog = null;
   return message ?? '';
 }
@@ -174,7 +186,8 @@ const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used') && e.
 await page.goto(url);
 await addClassicRounds(page);
 // ℹ About: version, build and links; in a browser it explains the data stays in this browser (no folders).
-await page.getByRole('button', { name: 'ℹ About' }).click();
+await page.getByRole('button', { name: /^More:/ }).click();
+await page.getByRole('menuitem', { name: 'ℹ About' }).click();
 const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
 const aboutText = await about.innerText();
 assert(/Version\s+\d+\.\d+\.\d+ \(single HTML file\)/.test(aboutText) && /Build\s+(\w{7}, )?\d{4}-\d\d-\d\d/.test(aboutText), 'About shows the version and build');
@@ -724,7 +737,7 @@ await segs.nth(1).locator('input.label').fill('Sing a song');
 assert((await segs.count()) === 2, 'wheel editor: slices added/removed, weights and score effect set');
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 await page.locator('.tile').nth(4).click();
-await page.getByLabel('Type').selectOption('wheel');
+await page.getByRole('combobox', { name: /^Type/ }).selectOption('wheel');
 await page.getByLabel('Which wheel').selectOption({ label: 'Punishment Wheel' });
 await page.getByLabel('Empty tile (not playable)').check();
 assert(await page.getByLabel('Which wheel').isDisabled(), 'an empty tile disables its wheel picker like its other fields');
@@ -734,7 +747,7 @@ assert((await page.locator('.tile').nth(4).innerText()).includes('🎡'), 'tile 
 
 // A Daily Double on the 4th tile.
 await page.locator('.tile').nth(3).click();
-await page.getByLabel('Type').selectOption('dailyDouble');
+await page.getByRole('combobox', { name: /^Type/ }).selectOption('dailyDouble');
 await page.getByRole('button', { name: 'Done' }).click();
 assert((await page.locator('.tile').nth(3).innerText()).includes('DD'), 'tile marked as Daily Double in the editor');
 await shot('2-round-editor');
@@ -1101,7 +1114,7 @@ await page.getByRole('button', { name: '🎡 Wheel' }).click();
 // A '?' typed into a text box is just a question mark, not the shortcuts list.
 await page.locator('.tl textarea').click();
 await page.keyboard.type('Who is next?');
-assert((await page.locator('[aria-label="Keyboard shortcuts"]').count()) === 0, "typing '?' in the quick-wheel box doesn't open the shortcuts");
+assert((await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0, "typing '?' in the quick-wheel box doesn't open the shortcuts");
 await page.locator('.tl textarea').fill('');
 await page.getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
 await page.getByRole('button', { name: 'Spin!' }).click();
@@ -1360,7 +1373,7 @@ assert(discardMsg.includes('Discard the saved game'), 'Discard asks before delet
 await page.getByRole('button', { name: 'Resume game' }).waitFor({ state: 'detached' });
 
 // Standalone player-only HTML export: opens straight into a Play screen with everything embedded.
-const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export HTML' }).click()]);
+const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
 assert(html.suggestedFilename().endsWith('.html'), 'Export HTML downloads a .html file');
 mkdirSync('test-results', { recursive: true });
 const exported = resolve('test-results/exported-game.html');

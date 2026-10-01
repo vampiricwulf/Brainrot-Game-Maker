@@ -89,6 +89,7 @@
         <button onclick={() => step(-1)} disabled={!prev} title="Shift+Ctrl+Enter">◀ Prev</button>
         <button onclick={() => step(1)} disabled={!next} title="Ctrl+Enter">Next ▶</button>
         <button class="primary" onclick={onclose}>Done</button>
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
       </header>
 
       <div class="opts row">
@@ -156,7 +157,7 @@
         <div class="pop">
           {#if clue.tileFace?.image}
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
-            <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image">✕</button>
+            <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image" aria-label="Remove tile image">−</button>
           {:else}
             <button
               class="small"

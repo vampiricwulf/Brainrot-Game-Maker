@@ -388,7 +388,7 @@
   .grip {
     cursor: grab;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: -2px;
     padding: 0 2px 0 3px;
     user-select: none;
@@ -446,7 +446,7 @@
     font-size: 12px;
   }
   .tiny {
-    font-size: 10px;
+    font-size: 12px;
     padding: 0 4px;
   }
 </style>

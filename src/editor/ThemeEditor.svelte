@@ -58,8 +58,8 @@
   <div class="controls">
     <div class="presets">
       {#each Object.entries(PRESETS) as [key, p]}
-        <button class="preset" class:on={t.preset === key} onclick={() => applyPreset(key as ThemePreset)}>
-          <span class="sw" style:background={p.theme.tile} style:color={p.theme.value} style:font-family={p.theme.valueFont}>$400</span>
+        <button class="preset" class:on={t.preset === key} aria-pressed={t.preset === key} onclick={() => applyPreset(key as ThemePreset)}>
+          <span class="sw" aria-hidden="true" style:background={p.theme.tile} style:color={p.theme.value} style:font-family={p.theme.valueFont}>$400</span>
           {p.label}{t.preset === key && presetEdited(t) ? ' (edited)' : ''}
         </button>
       {/each}
@@ -104,14 +104,14 @@
         <span>Background image</span>
         {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} />{/if}
         <button class="small" onclick={() => (picking = 'bg')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.boardImage = id) }}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
-        {#if t.boardImage}<button class="small ghost" onclick={() => (t.boardImage = undefined)} title="Remove">✕</button>{/if}
+        {#if t.boardImage}<button class="small ghost" onclick={() => (t.boardImage = undefined)} title="Remove" aria-label="Remove background image">−</button>{/if}
         {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
       <div class="row pop">
         <span title="A logo or show title across the top of the board">Banner above the board</span>
         {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" onerror={imgFallback} />{/if}
         <button class="small" onclick={() => (picking = 'banner')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.banner = id) }}>{t.banner ? 'Change…' : 'Choose…'}</button>
-        {#if t.banner}<button class="small ghost" onclick={() => (t.banner = undefined)} title="Remove">✕</button>{/if}
+        {#if t.banner}<button class="small ghost" onclick={() => (t.banner = undefined)} title="Remove" aria-label="Remove banner">−</button>{/if}
         {#if picking === 'banner'}<MediaPicker kind="image" onpick={(id) => ((t.banner = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
       {#if t.banner}
@@ -163,7 +163,7 @@
   }
   h4 {
     margin: 16px 0 6px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);

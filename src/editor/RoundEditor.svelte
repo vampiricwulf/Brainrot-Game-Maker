@@ -311,6 +311,11 @@
   // Done at once: the note at the bottom offers Undo.
   function deleteCat(ci: number): void {
     step(`Deleted category “${categoryLabel(round.categories[ci])}”`, () => removeCategory(round, ci), { notify: true });
+    // The focus goes on to the category now in its place (or the last one), not to the page.
+    void tick().then(() => {
+      const dels = document.querySelectorAll<HTMLButtonElement>('.cat-tools button[aria-label^="Delete category"]');
+      dels[Math.min(ci, dels.length - 1)]?.focus();
+    });
   }
 
   function clearCat(ci: number): void {
@@ -540,22 +545,23 @@
             <label class="check" title="Show the category name on top of the image">
               <input type="checkbox" bind:checked={cat.showTitleOverImage} /> Name
             </label>
-            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)">✕</button>
+            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)" aria-label="Remove {categoryLabel(cat)}'s image">−</button>
           </div>
         {/if}
         <div class="cat-tools">
           <span class="grip" aria-hidden="true" title="Drag to move the category · right-click it for more">⋮⋮</span>
-          <button class="ghost small" onclick={() => moveCat(ci, ci - 1)} disabled={ci === 0} title="Move left">◀</button>
-          <button class="ghost small" onclick={() => moveCat(ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right">▶</button>
+          <button class="ghost small" onclick={() => moveCat(ci, ci - 1)} disabled={ci === 0} title="Move left" aria-label="Move {categoryLabel(cat)} left">◀</button>
+          <button class="ghost small" onclick={() => moveCat(ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right" aria-label="Move {categoryLabel(cat)} right">▶</button>
           <button
             class="ghost small"
             onclick={() => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci))}
             disabled={round.categories.length >= 10}
-            title="Duplicate">⧉</button>
+            title="Duplicate"
+            aria-label="Duplicate {categoryLabel(cat)}">⧉</button>
           <!-- Done at once: the note at the bottom offers Undo. -->
-          <button class="ghost small" onclick={() => deleteCat(ci)} disabled={round.categories.length <= 1} title="Delete">✕</button>
+          <button class="ghost small" onclick={() => deleteCat(ci)} disabled={round.categories.length <= 1} title="Delete category" aria-label="Delete category {categoryLabel(cat)}">🗑</button>
           <span class="pop">
-            <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)">🖼</button>
+            <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)" aria-label="Image for {categoryLabel(cat)}">🖼</button>
             {#if catPicker === ci}
               <MediaPicker kind="image" onpick={(id) => ((cat.image = id), (catPicker = null))} onclose={() => (catPicker = null)} />
             {/if}
@@ -572,8 +578,11 @@
         {@const face = clue.tileFace?.image && !clue.empty ? mediaUrls[clue.tileFace.image] : undefined}
         {@const p = { cat: ci, row }}
         {@const target = dropTarget === `t${ci}-${row}`}
+        {@const value = clue.empty ? `row ${row + 1}` : `${sym}${clueValue(round, row, clue)}`}
+        {@const what = clue.empty ? 'empty space' : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}`}
         <button
           class="tile"
+          aria-label="{categoryLabel(cat) || `Category ${ci + 1}`}, {value}: {what}"
           class:empty={clue.empty}
           class:drop={target}
           class:lifted={tileDrag?.cat === ci && tileDrag.row === row}
@@ -759,7 +768,7 @@
     right: 4px;
     bottom: 2px;
     text-align: center;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
     color: #fff;
@@ -772,11 +781,11 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .cat-img-opts select {
     padding: 2px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .cat-img-opts .check {
     gap: 3px;
@@ -825,7 +834,7 @@
     width: 60px !important;
   }
   .dd {
-    font-size: 11px;
+    font-size: 12px;
     background: #7a00ff;
     color: #fff;
     border-radius: 4px;
@@ -833,7 +842,7 @@
     margin-left: 4px;
   }
   .badge {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
   }
   .q {
@@ -852,6 +861,6 @@
     color: var(--warn);
   }
   .small {
-    font-size: 11px;
+    font-size: 12px;
   }
 </style>

@@ -486,7 +486,7 @@
   .missing {
     position: absolute;
     bottom: 4px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--bad);
   }
   .nm {
@@ -511,7 +511,7 @@
     padding: 1px 4px;
   }
   .meta {
-    font-size: 11px;
+    font-size: 12px;
   }
   .small {
     font-size: 12px;

@@ -182,7 +182,7 @@
       { label: '▲ Move up', onclick: () => moveWare(s, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => moveWare(s, i, i + 1), disabled: i === s.stock.length - 1, keys: 'Alt+↓' },
       { sep: true },
-      { label: '✕ Remove from shop', danger: true, onclick: () => unstock(s, i) },
+      { label: '− Remove from shop', danger: true, onclick: () => unstock(s, i) },
     ]);
   }
 
@@ -338,7 +338,7 @@
         </select>
         <input type="color" value={f.color ?? '#ffcc00'} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
         <button class="ghost small" onclick={() => duplicate('stat', f)} aria-label="Duplicate {f.name}" title="Duplicate (Ctrl+D)">⧉</button>
-        <button class="ghost small" onclick={() => removeField(f)} aria-label="Delete {f.name}">✕</button>
+        <button class="ghost small" onclick={() => removeField(f)} aria-label="Delete {f.name}" title="Delete">🗑</button>
       </div>
     {/each}
   </div>
@@ -482,7 +482,7 @@
           <label class="check small" title="Only the host sees it in inventories"><input type="checkbox" bind:checked={it.secret} /> Secret</label>
           <button class="ghost small" onclick={() => (openItem = openItem === it.id ? null : it.id)} aria-expanded={openItem === it.id}>More</button>
           <button class="ghost small" onclick={() => duplicate('item', it)} aria-label="Duplicate {it.name}" title="Duplicate, with its buttons and look (Ctrl+D)">⧉</button>
-          <button class="ghost small" onclick={() => removeItem(it)} aria-label="Delete {it.name}">✕</button>
+          <button class="ghost small" onclick={() => removeItem(it)} aria-label="Delete {it.name}" title="Delete">🗑</button>
         </div>
         {#if openItem === it.id}
           <div class="more">
@@ -615,7 +615,7 @@
                   </label>
                 </td>
                 <td>
-                  <button class="ghost small" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">✕</button>
+                  <button class="ghost small" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">−</button>
                 </td>
               </tr>
             {/each}

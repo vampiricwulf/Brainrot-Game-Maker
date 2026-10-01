@@ -184,13 +184,13 @@
     white-space: nowrap;
   }
   .nm {
-    font-size: 11px;
+    font-size: 12px;
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .small {
-    font-size: 11px;
+    font-size: 12px;
   }
 </style>

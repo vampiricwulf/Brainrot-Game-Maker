@@ -14,9 +14,9 @@
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" use:modal data-undo="off">
     <div class="row">
-      <h2>⚙ Settings</h2>
+      <h2 class="modal-title">⚙ Settings</h2>
       <span class="spacer"></span>
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
 
     <h3>Saving</h3>
@@ -74,6 +74,16 @@
       changes ({UNDO_STEPS.min}–{UNDO_STEPS.max})
     </label>
     <p class="muted small">How far Ctrl+Z and the 🕘 History tab can go back. The oldest changes are forgotten first.</p>
+
+    <h3>Motion</h3>
+    <label class="check">
+      <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
+      Reduce motion on stream
+    </label>
+    <p class="muted small">
+      Viewers get no pop-ins, fly-ins, board fill-in or falling confetti: things just appear. The wheel and the dice still
+      spin. The editor and the host’s controls follow your computer’s “reduce motion” setting.
+    </p>
 
     <div class="row">
       <button

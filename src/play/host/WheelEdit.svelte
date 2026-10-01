@@ -129,7 +129,7 @@
             <td class="pct">{chance(s)}</td>
             <td>
               {#if !o.players}
-                <button class="ghost small" aria-label={`Remove ${s.label}`} onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>✕</button>
+                <button class="ghost small" aria-label={`Remove ${s.label}`} title="Remove" onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>−</button>
               {/if}
             </td>
           </tr>
@@ -196,7 +196,7 @@
   th {
     text-align: left;
     font-weight: normal;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
     padding: 0 4px;
   }

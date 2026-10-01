@@ -271,7 +271,7 @@
     flex-wrap: wrap;
   }
   .cls {
-    font-size: 11px;
+    font-size: 12px;
     padding: 1px 6px;
     border-radius: 6px;
     background: var(--panel-2);
@@ -327,7 +327,7 @@
     color: var(--bad);
   }
   .tiny {
-    font-size: 11px;
+    font-size: 12px;
     padding: 0 6px;
   }
   .small {

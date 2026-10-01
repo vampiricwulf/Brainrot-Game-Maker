@@ -63,7 +63,7 @@
         {#if media}
           {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} />{/if}
           <span class="small">{media.name}</span>
-          <button class="ghost small" onclick={() => (outcome.media = undefined)}>✕</button>
+          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="Remove {media.name}" title="Remove">−</button>
         {/if}
         {#each ['image', 'video', 'audio'] as const as k}
           {@const what = k === 'image' ? 'a picture' : k === 'video' ? 'a video' : 'a sound'}

@@ -108,7 +108,7 @@
     flex-wrap: wrap;
   }
   .tag {
-    font-size: 11px;
+    font-size: 12px;
     padding: 1px 6px;
     border-radius: 6px;
     background: var(--panel-2);

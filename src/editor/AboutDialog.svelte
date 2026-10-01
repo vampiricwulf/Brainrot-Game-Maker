@@ -45,7 +45,7 @@
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
   <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" use:modal data-undo="off">
-    <h2>Brainrot Games Maker</h2>
+    <div class="row"><h2 class="modal-title">ℹ Brainrot Games Maker</h2><span class="spacer"></span><button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button></div>
     <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>
       <dt>Version</dt>
@@ -129,7 +129,7 @@
         <b>Save</b> (.brainrot) to keep a copy.
       </p>
     {/if}
-    <div class="end"><button class="primary" onclick={onclose}>Close</button></div>
+    <div class="modal-foot"><button class="primary" onclick={onclose}>Done</button></div>
   </div>
 </div>
 
@@ -212,9 +212,5 @@
   }
   .small {
     font-size: 12px;
-  }
-  .end {
-    display: flex;
-    justify-content: flex-end;
   }
 </style>

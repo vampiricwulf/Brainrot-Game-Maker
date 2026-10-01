@@ -190,7 +190,7 @@
 <div class="backdrop-modal" role="presentation">
   <div class="modal" role="dialog" aria-modal="true" aria-label={title} use:modal>
     <div class="row head">
-      <b>🖌 {title}</b>
+      <b class="modal-title">🖌 {title}</b>
       {#if discarding}
         <InlineAsk text="Throw away this drawing?" ok="Throw away" cancel="Keep drawing" danger onok={oncancel} oncancel={() => (discarding = false)} />
       {:else}
@@ -199,6 +199,7 @@
       <span class="spacer"></span>
       <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={insert} disabled={!strokes.length || busy}>Insert drawing</button>
+      <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="row tools" role="toolbar" aria-label="Drawing tools">
       <button class:on={tool === 'pen'} aria-pressed={tool === 'pen'} onclick={() => (tool = 'pen')} title="Pen (B)">✏ Pen</button>
@@ -206,7 +207,7 @@
       <button class:on={tool === 'erase'} aria-pressed={tool === 'erase'} onclick={() => (tool = 'erase')} title="Eraser (E)">🧽 Eraser</button>
       <span class="sep"></span>
       {#each COLORS as c (c)}
-        <button class="swatch" class:on={color === c} style:background={c} onclick={() => (color = c)} aria-label="Color {c}"></button>
+        <button class="swatch" class:on={color === c} aria-pressed={color === c} style:background={c} onclick={() => (color = c)} aria-label="Color {c}"></button>
       {/each}
       <input type="color" bind:value={color} aria-label="Pen color" />
       <span class="sep"></span>

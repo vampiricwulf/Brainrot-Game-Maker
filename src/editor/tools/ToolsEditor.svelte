@@ -181,16 +181,17 @@
 </p>
 
 <div class="layout">
-  <nav>
+  <!-- Not a second nav and main: the editor's own are around it. -->
+  <section class="list" aria-label="Wheels and dice">
     <div class="head muted">🎡 Wheels</div>
     {@render group('wheel', game.wheels)}
     <button class="ghost" onclick={() => add('wheel')}>＋ New wheel</button>
     <div class="head muted">🎲 Dice</div>
     {@render group('dice', game.dice)}
     <button class="ghost" onclick={() => add('dice')}>＋ New dice</button>
-  </nav>
+  </section>
 
-  <main>
+  <section>
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>
@@ -208,7 +209,7 @@
     {:else}
       <p class="muted">Pick a wheel or dice on the left, or make a new one. Standard dice (d4–d100, 2d6, any "NdS") are always available during play without setting anything up.</p>
     {/if}
-  </main>
+  </section>
 </div>
 
 <style>
@@ -223,7 +224,7 @@
     grid-template-columns: 200px minmax(0, 1fr);
     gap: 16px;
   }
-  nav,
+  .list,
   .group {
     display: flex;
     flex-direction: column;
@@ -233,12 +234,12 @@
     display: flex;
     flex-direction: column;
   }
-  nav button {
+  .list button {
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  nav button.active {
+  .list button.active {
     background: var(--accent-fill);
     border-color: var(--accent-fill);
     color: #fff;

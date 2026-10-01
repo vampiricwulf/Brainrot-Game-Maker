@@ -150,13 +150,13 @@ try {
   await page.getByLabel('Send to').selectOption({ label: '🌀 Shadow Realm' });
   await page.locator('.stage .zones').waitFor();
   assert((await page.locator('.stage .zones').innerText()).includes('Shadow Realm: Player 2'), 'the board lists who is in the Shadow Realm');
-  await page.getByLabel('On screen').selectOption({ label: '📺 Shadow Realm' });
+  await page.getByLabel('On screen', { exact: true }).selectOption({ label: '📺 Shadow Realm' });
   await page.locator('.stage .zone-players').waitFor();
   assert((await page.locator('.stage .zone-players').innerText()).includes('Player 2'), 'the zone can be put on screen, with its players');
 
   // On the stage: a click on a token selects the player, a token dragged onto a space sends them there, and a click on
   // a space opens its card (Esc closes it).
-  await page.getByLabel('On screen').selectOption({ label: '📺 The board' });
+  await page.getByLabel('On screen', { exact: true }).selectOption({ label: '📺 The board' });
   const token1 = page.locator('.stage .on-board[data-player="Player 1"]');
   await token1.click();
   assert((await page.locator('.bh .pc.on').count()) === 1, 'clicking a token selects that player');
@@ -185,6 +185,8 @@ try {
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   await page.getByLabel('Move by').selectOption('step');
   await page.getByRole('button', { name: '▶ Play' }).click();
+  // The game left behind can still be resumed: the app asks (in its own window) before starting a new one.
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForTimeout(450);
@@ -209,7 +211,7 @@ try {
   await page.getByRole('button', { name: 'Leave', exact: true }).click();
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.getByRole('button', { name: /Board game/ }).click();
-  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON' }).click()]);
+  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
   const saved = resolve('test-results/boardgame-save.json');
   await json.saveAs(saved);
   await page.getByRole('button', { name: 'Space Space 5' }).click();

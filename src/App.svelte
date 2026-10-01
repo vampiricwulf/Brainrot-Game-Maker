@@ -14,6 +14,8 @@
   import { clone } from './lib/ops';
   import Editor from './editor/Editor.svelte';
   import ContextMenu from './lib/ContextMenu.svelte';
+  import AskDialog from './lib/AskDialog.svelte';
+  import { ask } from './lib/ask.svelte';
   import { autosave } from './lib/autosave';
   import { inTauri } from './lib/platform';
   import { prefs } from './lib/prefs.svelte';
@@ -198,16 +200,17 @@
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
 
-  function startPlay(): void {
+  async function startPlay(): Promise<void> {
     if (!app.game.rounds.length) return toast('Add a round first (＋ Add round)', 4000);
     const saved = app.resumable;
     if (
       saved &&
       saved.session.phase !== 'end' &&
-      !confirm(
+      !(await ask(
         `A game in progress ("${saved.game.title}", saved ${savedTime(saved.savedAt)}) can still be resumed. ` +
-          'Start a new game anyway?\n\nThe saved game is replaced once you press "Start game". Cancel keeps it.',
-      )
+          'Start a new game anyway?\n\nThe saved game is replaced once you press "Start game".',
+        { ok: 'Start a new game', cancel: 'Keep it' },
+      ))
     )
       return;
     mark('played', 'Played');
@@ -239,7 +242,7 @@
 
   async function discardResume(): Promise<void> {
     const saved = app.resumable;
-    if (saved && saved.session.phase !== 'end' && !confirm(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`))
+    if (saved && saved.session.phase !== 'end' && !(await ask(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`, { ok: 'Discard', cancel: 'Keep', danger: true })))
       return;
     app.resumable = null;
     await clearPlay();
@@ -305,8 +308,9 @@
 {/if}
 
 <ContextMenu />
+<AskDialog />
 {#if app.toast && !app.onAir}
-  <div class="toast" role="status">{app.toast}</div>
+  <div class="toast" role="status" data-over-modal>{app.toast}</div>
 {/if}
 
 <style>

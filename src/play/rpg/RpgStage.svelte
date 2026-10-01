@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { getContext, onDestroy } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly } from '../../lib/motion.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import { isRpg, SLIDE_H, SLIDE_W, type Game, type Position, type Screen, type ScreenRef, type Session, type SlideElement } from '../../lib/model';

@@ -35,6 +35,11 @@ function inertOutside(box: HTMLElement): HTMLElement[] {
   return changed;
 }
 
+/** `use:takeFocus` on the safe answer of a question that just appeared (Keep, Stay, Cancel). */
+export function takeFocus(node: HTMLElement): void {
+  queueMicrotask(() => node.isConnected && node.focus());
+}
+
 export function modal(node: HTMLElement, opts: ModalOptions = {}) {
   let options = opts;
   const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
@@ -52,7 +57,9 @@ export function modal(node: HTMLElement, opts: ModalOptions = {}) {
   function onkey(e: KeyboardEvent): void {
     if (stack.at(-1) !== node || e.defaultPrevented) return;
     if (e.key === 'Escape' && options.esc) {
+      // Before the page's own Esc handlers, so it closes this window and nothing under it.
       e.preventDefault();
+      e.stopImmediatePropagation();
       options.esc();
       return;
     }
@@ -69,15 +76,15 @@ export function modal(node: HTMLElement, opts: ModalOptions = {}) {
       list[0].focus();
     }
   }
-  // On the window, so a press with the focus lost to <body> (a button that just disappeared) still stays inside.
-  window.addEventListener('keydown', onkey);
+  // On the window (capturing), so a press with the focus lost to <body> (a button that just disappeared) still stays inside.
+  window.addEventListener('keydown', onkey, true);
 
   return {
     update(o: ModalOptions = {}) {
       options = o;
     },
     destroy() {
-      window.removeEventListener('keydown', onkey);
+      window.removeEventListener('keydown', onkey, true);
       const i = stack.lastIndexOf(node);
       if (i >= 0) stack.splice(i, 1);
       for (const el of changed) el.inert = false;

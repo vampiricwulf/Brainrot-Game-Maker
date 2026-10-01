@@ -59,7 +59,7 @@
           class="ghost small"
           onclick={() => deleteWorld(world)}
           disabled={sharing > 0}
-          title={sharing ? 'Another round plays this world' : 'Delete this world and all its maps and screens'}>Delete world</button
+          title={sharing ? 'Another round plays this world' : 'Delete this world and all its maps and screens'}>🗑 Delete world</button
         >
         <label class="field">World name<input bind:value={world.name} /></label>
         <label class="field start">

@@ -98,9 +98,9 @@
 
 <aside>
   <header class="row">
-    <button class="tab" class:on={tab === 'history'} onclick={() => (tab = 'history')}>🕘 History</button>
-    <button class="tab" class:on={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({steps.length})</button>
-    <button class="tab" class:on={tab === 'rolls'} onclick={() => (tab = 'rolls')}>Rolls ({session.rollLog?.length ?? 0})</button>
+    <button class="tab" class:on={tab === 'history'} aria-pressed={tab === 'history'} onclick={() => (tab = 'history')}>🕘 History</button>
+    <button class="tab" class:on={tab === 'scores'} aria-pressed={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({steps.length})</button>
+    <button class="tab" class:on={tab === 'rolls'} aria-pressed={tab === 'rolls'} onclick={() => (tab = 'rolls')}>Rolls ({session.rollLog?.length ?? 0})</button>
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
   </header>
@@ -388,7 +388,7 @@
     color: var(--muted);
   }
   .time {
-    font-size: 11px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
   .icon {

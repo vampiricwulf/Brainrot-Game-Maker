@@ -22,9 +22,10 @@
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label={title} use:modal bind:this={box}>
     <div class="row">
-      <b>{title}</b>
+      <b class="modal-title">✎ {title}</b>
       <span class="spacer"></span>
       <button class="primary" onclick={onclose}>Done</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="body"><SlideEditor {slide} fill placeholder="Click to type" /></div>
   </div>

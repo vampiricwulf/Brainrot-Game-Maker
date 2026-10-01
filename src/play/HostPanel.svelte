@@ -1,6 +1,7 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
   import { textOn } from '../lib/colors';
+  import { takeFocus } from '../lib/modal';
   import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
@@ -455,7 +456,8 @@
   <div class="row nav">
     {#if session.phase === 'clue' && !ddWager}
       {#if !toolOnly}
-        <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)">
+        <!-- A clue just opened: the focus is here (not lost on the tile that went away). -->
+        <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)" use:takeFocus>
           {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
         </button>
       {/if}
@@ -495,10 +497,10 @@
     </span>
     <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
     <button onclick={onplayers}>👥 Players</button>
-    <button class="cover-toggle" class:on={app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
+    <button class="cover-toggle" class:on={app.live.cover} aria-pressed={!!app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
       ⏸ Cover
     </button>
-    <button onclick={onhide} title="H">Hide controls</button>
+    <button onclick={onhide} title="H">🙈 Hide controls</button>
     {#if askExit}
       <InlineAsk
         text={session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : 'Leave this game? You can resume it from the editor.'}
@@ -509,7 +511,7 @@
         oncancel={() => (askExit = false)}
       />
     {:else}
-      <button class="ghost" onclick={() => (askExit = true)}>Exit</button>
+      <button class="ghost" onclick={() => (askExit = true)}>🚪 Exit</button>
     {/if}
   </div>
 </div>
@@ -637,7 +639,7 @@
     padding: 6px 12px;
   }
   .key {
-    font-size: 10px;
+    font-size: 12px;
     opacity: 0.7;
     margin-right: 4px;
   }

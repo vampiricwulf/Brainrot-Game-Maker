@@ -238,8 +238,8 @@
             >{p?.name}</button>
             <span class="muted small">{formatPoints(score(session, id), sym)} · wager {formatPoints(f.wagers[id] ?? 0, sym)}</span>
             <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
-            <button class="small good" class:on={res === 'right'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, true))}>✔ Right</button>
-            <button class="small bad" class:on={res === 'wrong'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, false))}>✘ Wrong</button>
+            <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, true))}>✔ Right</button>
+            <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, false))}>✘ Wrong</button>
           </div>
         {/each}
       </div>
@@ -336,7 +336,7 @@
   .grip {
     cursor: grab;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: -2px;
     user-select: none;
   }

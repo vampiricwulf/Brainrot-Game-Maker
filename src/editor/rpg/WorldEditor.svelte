@@ -1177,7 +1177,7 @@
                       </select>
                       {#if rule?.kind === 'warp'}
                         <ScreenPicker {world} value={rule.to} label="to" onchange={(ref) => ref && (rule.to = ref)} />
-                        <button class="ghost small" class:on={picking?.screen === sel.id && picking.dir === d} onclick={() => (picking = { map: map.id, screen: sel.id, dir: d })}>
+                        <button class="ghost small" class:on={picking?.screen === sel.id && picking.dir === d} aria-pressed={picking?.screen === sel.id && picking.dir === d} onclick={() => (picking = { map: map.id, screen: sel.id, dir: d })}>
                           🎯 Pick on the map
                         </button>
                       {:else if rule?.kind === 'blocked'}
@@ -1464,7 +1464,7 @@
     height: 20px;
     padding: 0;
     border-radius: 50%;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1;
     pointer-events: auto;
     opacity: 0;

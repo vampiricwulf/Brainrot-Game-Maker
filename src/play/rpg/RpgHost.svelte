@@ -317,7 +317,7 @@
       </button>
       {#if st.parties.length > 1}
         <button class="small" onclick={() => regroupAll(game, session)} title="G: everyone back together, here">🤝 Regroup</button>
-        <button class="small" class:on={st.split} onclick={() => (st.split = !st.split)} title="Show every party's screen at once">▦ Split view</button>
+        <button class="small" class:on={st.split} aria-pressed={!!st.split} onclick={() => (st.split = !st.split)} title="Show every party's screen at once">▦ Split view</button>
       {/if}
       {#if game.shops?.length}
         <select
@@ -334,7 +334,7 @@
           {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
         </select>
       {/if}
-      <button class="small" class:on={st.mapShown} onclick={() => toggleMap(game, session)} title="M: the map on screen">🗺 Map</button>
+      <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="M: the map on screen">🗺 Map</button>
     </div>
 
     <div class="row improv">

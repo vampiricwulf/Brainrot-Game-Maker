@@ -109,8 +109,8 @@
         <span class="spacer"></span>
         {#if audio[key]}
           <span class="file" title={nameOf(audio[key])}>🔊 {nameOf(audio[key]) ?? 'missing file'}</span>
-          <button class="small ghost" onclick={() => preview(audio[key]!)} title="Preview">▶</button>
-          <button class="small ghost" onclick={() => (audio[key] = undefined)} title="Remove">✕</button>
+          <button class="small ghost" onclick={() => preview(audio[key]!)} title="Preview" aria-label="Preview {label}">▶</button>
+          <button class="small ghost" onclick={() => (audio[key] = undefined)} title="Remove" aria-label="Remove {label} sound">−</button>
         {/if}
         <div class="pop">
           <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => (audio[key] = id) }}>{audio[key] ? 'Change…' : 'Choose…'}</button>

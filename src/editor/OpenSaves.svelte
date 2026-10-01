@@ -30,11 +30,11 @@
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Open a game" use:modal data-undo="off">
     <div class="row">
-      <b>Open a game</b>
+      <b class="modal-title">📂 Open a game</b>
       <span class="spacer"></span>
       <button class="ghost small" onclick={showFolder} title="Show the BrainrotSaves folder">📂 Saves folder</button>
       <button onclick={onbrowse}>Browse…</button>
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <p class="muted small">Your saves in BrainrotSaves ({where}). Browse… opens a game from anywhere else.</p>
     <div class="list">
@@ -45,6 +45,7 @@
         </button>
       {/each}
     </div>
+    <div class="modal-foot"><button onclick={onclose}>Cancel</button></div>
   </div>
 </div>
 
