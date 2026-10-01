@@ -43,7 +43,7 @@
       ondragstart={draggable ? (e) => e.dataTransfer?.setData('text/x-player', p.id) : undefined}
       title={draggable ? 'Right-click for their menu · drag onto a party to join it' : undefined}
     >
-      <Avatar player={p} size={compact ? 44 : 64} />
+      <Avatar player={p} size={compact ? 64 : 92} />
       <div class="info">
         <div class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</div>
         <div class="stats">
@@ -85,13 +85,14 @@
   .strip.one-row {
     flex-wrap: nowrap;
   }
+  /* Big enough to read once the stream is scaled down (720p, a phone): about 1.5× the old size. */
   .card {
     display: flex;
     align-items: center;
     min-width: 0;
-    gap: 8px;
-    padding: 6px 12px 6px 6px;
-    border-radius: 40px;
+    gap: 12px;
+    padding: 8px 18px 8px 8px;
+    border-radius: 60px;
     background: rgba(0, 0, 0, 0.65);
     border: 3px solid var(--c);
     color: #fff;
@@ -111,7 +112,7 @@
   }
   .name {
     font-family: 'Anton', 'Oswald', sans-serif;
-    font-size: 26px;
+    font-size: 38px;
     line-height: 1;
     padding: 3px 10px;
     border-radius: 6px;
@@ -122,18 +123,25 @@
     white-space: nowrap;
   }
   .compact .name {
-    font-size: 18px;
+    font-size: 26px;
   }
   .stats {
     display: flex;
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-    font-size: 22px;
+    font-size: 32px;
     font-weight: 700;
   }
+  /* One row of cards: the bars give way before anything goes onto a second line. */
+  .one-row .stats {
+    flex-wrap: nowrap;
+  }
+  .stats > * {
+    flex: none;
+  }
   .compact .stats {
-    font-size: 16px;
+    font-size: 24px;
   }
   .score {
     color: #ffcc00;
@@ -141,19 +149,21 @@
   .bar {
     position: relative;
     display: inline-block;
-    width: 150px;
-    height: 24px;
-    border-radius: 12px;
+    width: 190px;
+    min-width: 70px;
+    flex: 0 1 190px;
+    height: 34px;
+    border-radius: 17px;
     background: rgba(255, 255, 255, 0.15);
     overflow: hidden;
   }
   .compact .bar {
-    width: 100px;
-    height: 20px;
+    width: 140px;
+    height: 28px;
   }
   .compact .lbl {
-    font-size: 13px;
-    line-height: 20px;
+    font-size: 19px;
+    line-height: 28px;
   }
   .fill {
     position: absolute;
@@ -165,8 +175,8 @@
     position: relative;
     display: block;
     text-align: center;
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 23px;
+    line-height: 34px;
     text-shadow: 1px 1px 0 #000;
   }
   .hearts {

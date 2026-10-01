@@ -282,7 +282,12 @@ try {
   const liveEd = page.getByRole('dialog', { name: /Edit Start.* live/ });
   await liveEd.waitFor();
   assert((await liveEd.getByRole('button', { name: /Lava/ }).count()) > 0 || (await liveEd.innerText()).includes('Lava'), 'the live editor has the drawn object');
-  await liveEd.getByRole('button', { name: 'Done' }).click();
+  // Esc is Done, after the editor's own Esc (the object it opened with is selected: that comes off first).
+  for (let i = 0; i < 3 && (await liveEd.count()); i++) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+  }
+  assert(!(await liveEd.count()), 'Esc closes the live screen editor (after its own Esc steps)');
   assert(await page.getByRole('button', { name: 'Object: Lava' }).isVisible(), 'after editing it is still on the stage');
   await page.keyboard.press('Escape');
 
@@ -327,10 +332,12 @@ try {
   assert((await firstCard.getByLabel(/ HP$/).inputValue()) === '10', 'undo puts the HP back');
 
   // Map and cover.
-  await page.keyboard.press('m');
+  await page.keyboard.press('v');
   await page.locator('.rpg .map-ov').waitFor();
-  assert(true, 'M shows the map to viewers');
-  await page.keyboard.press('m');
+  assert(true, 'V shows the map to viewers');
+  await page.keyboard.press('v');
+  await page.waitForTimeout(300);
+  assert(!(await page.locator('.rpg .map-ov').count()), 'V again takes the map off the screen');
   await page.keyboard.press('b');
   await page.locator('.cover').waitFor();
   assert(true, 'B covers the screen');

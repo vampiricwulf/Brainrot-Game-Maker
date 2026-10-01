@@ -15,6 +15,7 @@
   import { toast } from '../../lib/app.svelte';
   import { rpgNow } from '../rpg/hostops';
   import { setPicker } from '../../lib/toolset';
+  import { copyText, standingsText } from '../standings';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
@@ -151,6 +152,9 @@
         <b>🛒 {game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}</b>
       {:else}
         <b>📊 Scoreboard on screen</b>
+        <button class="small" onclick={() => copyText(standingsText(game, session), 'Standings copied: paste them in chat')} title="The standings as one line of text, for chat">
+          📋 Copy standings
+        </button>
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}

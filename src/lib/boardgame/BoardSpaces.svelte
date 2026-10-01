@@ -180,7 +180,7 @@
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.7);
     color: #fff;
-    font-size: 26px;
+    font-size: 30px;
     white-space: nowrap;
   }
 </style>

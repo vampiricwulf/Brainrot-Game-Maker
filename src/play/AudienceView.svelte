@@ -6,8 +6,9 @@
 <script lang="ts">
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
-  import { finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';
+  import { onMount } from 'svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
@@ -79,6 +80,23 @@
   const finalRound = $derived(currentFinal(session, game));
   const finalCategorySlide = $derived(textSlide(finalRound ? finalRound.category || finalName(finalRound) : ''));
   const finalLabel = $derived(finalRound ? finalName(finalRound).toUpperCase() : '');
+  // With no category the big slide already says the Final's name: no second, smaller one over it.
+  const finalLabelShown = $derived(!!finalRound?.category?.trim());
+  /** The Final's players whose wager is in (a ✔ on their score plate while wagers are taken). */
+  const wagersIn = $derived(
+    session.phase === 'final' && session.finalStep === 'wagers' && session.final
+      ? session.final.players.filter((id) => typeof session.final?.wagers[id] === 'number')
+      : [],
+  );
+  const stream = $derived(game.settings.stream);
+  /** The "Starting soon" countdown's clock (ticks only while there's one). */
+  let clock = $state(Date.now());
+  onMount(() => {
+    const id = setInterval(() => live.soonAt && (clock = Date.now()), 250);
+    return () => clearInterval(id);
+  });
+  const soonLeft = $derived(live.soonAt ? Math.max(0, Math.ceil((live.soonAt - clock) / 1000)) : null);
+  const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived.by(() => {
     const r = game.rounds[session.currentRound];
@@ -91,6 +109,8 @@
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
   const bannerUrl = $derived(game.theme?.banner ? mediaUrls[game.theme.banner] : undefined);
   const layout = $derived(boardLayout(game.theme, !!bannerUrl));
+  /** On the board, score pops sit over the score bar. */
+  const popsOnBar = $derived(session.phase === 'board' && !session.intro && layout.score ? layout.score : null);
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
   const ties = $derived(tiedLeaders(session));
@@ -108,8 +128,10 @@
   <!-- The host is still on the pre-game screen. -->
   <div class="full title-card" in:fade={{ duration: 300 }}>
     <div class="soon">
+      {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
       <div class="round-name">{game.title}</div>
-      <div class="soon-text">Starting soon…</div>
+      <div class="soon-text">{stream?.soonText?.trim() || 'Starting soon…'}</div>
+      {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
     </div>
   </div>
 {:else if session.phase === 'board'}
@@ -151,11 +173,14 @@
   {/if}
 {:else if session.phase === 'clue' && info}
   {#if session.dd?.stage === 'splash'}
-    <div class="full dd" in:scale={{ start: 0.05, duration: 700 }}>
-      <div class="dd-text">DAILY<br />DOUBLE!</div>
-      {#if ddPlayer}
-        <div class="dd-player" style:background={ddPlayer.color} style:color={textOn(ddPlayer.color)}>{ddPlayer.name}</div>
-      {/if}
+    <!-- The background fills the stage at once; only what's on it spins in (no black corners). -->
+    <div class="full dd">
+      <div class="dd-in" in:scale={{ start: 0.05, duration: 700 }}>
+        <div class="dd-text">DAILY<br />DOUBLE!</div>
+        {#if ddPlayer}
+          <div class="dd-player" style:background={ddPlayer.color} style:color={textOn(ddPlayer.color)}>{ddPlayer.name}</div>
+        {/if}
+      </div>
     </div>
   {:else}
     <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown. -->
@@ -171,6 +196,9 @@
         {#if !waiting}<SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />{/if}
       </div>
     {/key}
+    {#if stream?.clueCaption && !waiting}
+      <div class="caption">{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
+    {/if}
     {#if session.dd?.stage === 'question' && ddPlayer}
       <div class="dd-badge" style:border-color={ddPlayer.color}>
         <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double{#if session.dd.shown}{` · ${formatPoints(session.dd.wager ?? 0, sym)}`}{/if}
@@ -188,9 +216,11 @@
       in:fade={{ duration: 400 }}
     >
       {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
-        <div class="final-label">{finalLabel}</div>
+        {#if finalLabelShown}<div class="final-label">{finalLabel}</div>{/if}
         <SlideView slide={finalCategorySlide} />
         {#if session.finalStep === 'wagers'}<div class="final-sub">Make your wagers…</div>{/if}
+        <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
+        <div class="score-area"><ScoreBar {game} {session} host={!!onact} lit={null} ticks={wagersIn} /></div>
       {:else if session.finalStep === 'question'}
         {#if finalRound}<SlideView slide={finalRound.questionSlide} {role} />{/if}
       {:else if session.finalStep === 'answer'}
@@ -220,7 +250,7 @@
           {/if}
         </div>
         <div class="score-area">
-          <ScoreBar {game} {session} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} />
+          <ScoreBar {game} {session} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} lit={session.final?.current ?? null} />
         </div>
       {/if}
     </div>
@@ -245,7 +275,7 @@
 {:else if session.phase === 'end'}
   {@const ranked = places(session)}
   <!-- The tiebreaker line takes a row's room. -->
-  <div class="full end" in:fade={{ duration: 500 }} style:--n={ranked.length + (tieOpen ? 1 : 0)}>
+  <div class="full end" in:fade={{ duration: 500 }} style:--n={ranked.length}>
     {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} />{/if}
     <h1>
       {#if tieOpen}
@@ -258,7 +288,6 @@
         Game over
       {/if}
     </h1>
-    {#if tieOpen}<div class="end-sub">Tiebreaker coming up…</div>{/if}
     <ol>
       {#each ranked as { player, score: s, place }, i (player.id)}
         <li style:--c={player.color} in:fly={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
@@ -279,7 +308,13 @@
   <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} {onshopbuy} />
 {/if}
 
-<div class="pops" style:bottom={session.phase === 'board' ? '270px' : '40px'}>
+<!-- On the board they sit over the score bar (not over the tiles), elsewhere near the foot of the stage. -->
+<div
+  class="pops"
+  style:top={popsOnBar ? `${popsOnBar.top + popsOnBar.height / 2}px` : undefined}
+  style:bottom={popsOnBar ? undefined : '40px'}
+  class:on-bar={!!popsOnBar}
+>
   {#each live.pops as p (p.id)}
     <div class="pop" style:background={p.color} style:color={textOn(p.color)} in:fly={{ y: 80, duration: 250 }} out:fade>
       {p.text}
@@ -290,7 +325,10 @@
 <!-- Panic button: viewers see only the cover card (the host's copy shows it faded, to keep working underneath). -->
 {#if live.cover}
   <div class="cover" class:host={role === 'mirror'}>
-    <div class="cover-card">⏸ Be right back</div>
+    <div class="cover-in">
+      {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
+      <div class="cover-card"><span class="pause" aria-hidden="true"></span>{stream?.coverText?.trim() || 'Be right back'}</div>
+    </div>
   </div>
 {/if}
 
@@ -321,10 +359,34 @@
     opacity: 0.35;
     pointer-events: none;
   }
+  .cover-in {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px;
+  }
   .cover-card {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+    padding: 0 60px;
     font: 120px 'Anton', 'Oswald', sans-serif;
     color: var(--value);
+    text-align: center;
     text-shadow: 6px 6px 0 #000;
+  }
+  /* Two bars, drawn: the ⏸ character is thin or missing in many fonts. */
+  .pause {
+    flex: none;
+    width: 90px;
+    height: 110px;
+    background: linear-gradient(to right, currentColor 0 34%, transparent 34% 66%, currentColor 66%);
+    filter: drop-shadow(6px 6px 0 #000);
+  }
+  .card-img {
+    max-width: 1400px;
+    max-height: 300px;
+    object-fit: contain;
   }
   /* Board screen, back to front: background, images behind the tiles, banner + board, score bar, images on top. */
   .board-screen {
@@ -413,20 +475,32 @@
   .soon .round-name {
     font-size: 150px;
   }
-  .soon-text {
+  .soon-text,
+  .soon-count {
     font-family: var(--board-font);
     font-size: 70px;
     font-weight: 800;
     color: #fff;
+    text-align: center;
+    padding: 0 60px;
     text-shadow: 5px 5px 0 #000;
   }
+  .soon-count {
+    font-family: var(--value-font);
+    font-size: 110px;
+    color: var(--value);
+    font-variant-numeric: tabular-nums;
+  }
   .dd {
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle, #ff3dcb 0%, #7a00ff 35%, var(--tile) 70%);
+  }
+  .dd-in {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 40px;
-    background: radial-gradient(circle, #ff3dcb 0%, #7a00ff 35%, var(--tile) 70%);
     animation: dd-spin 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   @keyframes dd-spin {
@@ -484,7 +558,8 @@
   }
   .final-sub {
     position: absolute;
-    bottom: 80px;
+    /* Above the score bar. */
+    bottom: 250px;
     width: 100%;
     text-align: center;
     font-size: 60px;
@@ -568,15 +643,6 @@
     color: var(--value);
     text-shadow: 6px 6px 0 #000;
   }
-  .end-sub {
-    position: relative;
-    z-index: 6;
-    margin: calc(-20px * var(--k)) 0 calc(30px * var(--k));
-    font-family: var(--board-font);
-    font-size: calc(56px * var(--k));
-    font-weight: 800;
-    text-shadow: 4px 4px 0 #000;
-  }
   .end ol {
     position: relative;
     z-index: 6;
@@ -621,6 +687,24 @@
     justify-content: center;
     pointer-events: none;
     z-index: 10;
+  }
+  .pops.on-bar {
+    transform: translateY(-50%);
+  }
+  .caption {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    z-index: 15;
+    padding: 8px 22px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-family: var(--board-font);
+    font-size: 36px;
+    font-weight: 800;
+    text-transform: uppercase;
+    pointer-events: none;
   }
   .pop {
     font-family: var(--value-font);

@@ -31,10 +31,25 @@
   });
   /** Viewers are looking at this screen (the party is on it, or a party is in split view). */
   const onAir = $derived(!!st && (st.split ? occupiedScreens(st) : [focusRef(st)]).some((r) => r?.screen === screen.id));
+
+  let box = $state<HTMLElement>();
+  /**
+   * Esc is Done, once the screen editor's own Esc steps are over (they come first: out of a field, the link box or a
+   * picker, then the selection). Not while a picker or another dialog is open over this one.
+   */
+  function key(e: KeyboardEvent): void {
+    if (e.key !== 'Escape' || (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) return;
+    const dialogs = document.querySelectorAll('[role="dialog"]');
+    if (dialogs[dialogs.length - 1] !== box) return;
+    e.stopImmediatePropagation();
+    onclose();
+  }
 </script>
 
+<svelte:window onkeydown={key} />
+
 <div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-label="Edit {title} live">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit {title} live" bind:this={box}>
     <div class="row">
       <b>✎ {title}</b>
       <span class="muted small">
@@ -42,7 +57,7 @@
         💾 Keep in game.
       </span>
       <span class="spacer"></span>
-      <button class="primary" onclick={onclose}>Done</button>
+      <button class="primary" onclick={onclose} title="Esc">Done</button>
     </div>
     <div class="body"><ScreenEditor {world} {screen} {slide} /></div>
   </div>

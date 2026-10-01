@@ -3,7 +3,7 @@ import { newGame, type BoardGameRound, type Game } from './model';
 import { newSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems,
+  boardGameProblems, rimSpots,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -226,3 +226,19 @@ describe('board game: turn order', () => {
   });
 });
 
+
+describe('board game: tokens on a space', () => {
+  it('sit along the top of its rim, clear of its number and name, and apart from each other', () => {
+    for (const [n, r] of [[1, 42], [2, 42], [3, 42], [4, 32], [6, 32], [8, 32]]) {
+      const spots = rimSpots(n, r);
+      expect(spots).toHaveLength(n);
+      for (const s of spots) {
+        // Out past the space's middle (its number), and never below its sides (its name is under it).
+        expect(Math.hypot(s.dx, s.dy)).toBeGreaterThanOrEqual(58 + r - 13);
+        expect(s.dy).toBeLessThanOrEqual(r);
+      }
+      for (let i = 1; i < n; i++) expect(Math.hypot(spots[i].dx - spots[i - 1].dx, spots[i].dy - spots[i - 1].dy)).toBeGreaterThanOrEqual(2 * r - 1);
+    }
+    expect(rimSpots(1, 42)[0]).toEqual({ dx: 0, dy: -88 });
+  });
+});

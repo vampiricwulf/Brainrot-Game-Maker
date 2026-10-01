@@ -19,6 +19,7 @@
     world,
     st,
     ctx,
+    dual = false,
     onclose,
     onedit,
     onkeep,
@@ -28,6 +29,8 @@
     world: World;
     st: WorldState;
     ctx: RunContext;
+    /** An audience window is open: viewers don't see this card. */
+    dual?: boolean;
     onclose: () => void;
     /** Open its screen in the live editor (to move, resize, restyle or fully set it up). */
     onedit?: () => void;
@@ -143,7 +146,7 @@
   <div class="row head">
     <b>{title}</b>
     {#if role}<span class="cls">{role.class}</span>{/if}
-    <span class="vis" class:off={!seen}>{seen ? '👁 Viewers see it' : '🙈 Hidden from viewers'}</span>
+    <span class="vis" class:off={!seen}>{seen ? '👁 Viewers see it' : dual ? '🙈 Hidden from viewers' : '🙈 Not on the stage (viewers can see this card)'}</span>
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
   </div>

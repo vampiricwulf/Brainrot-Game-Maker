@@ -919,8 +919,15 @@ await aud.locator('.board .tile.used').nth(1).waitFor();
 assert(await aud.locator('.board .tile').nth(2).evaluate((e) => e.classList.contains('used')), 'audience board shows the used tile');
 if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
 if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
-const closeMsg = await answerDialog(() => page.getByRole('button', { name: '📺 Close audience window' }).click(), true);
-assert(closeMsg.includes('stream capture will go black'), 'closing the audience window asks first');
+// Closing it asks inline (a browser dialog would show on stream): Keep it, then Close it.
+await page.getByRole('button', { name: '📺 Close audience window' }).click();
+assert((await page.locator('.panel .ask').innerText()).includes('stream capture goes black'), 'closing the audience window asks first, inline');
+await page.getByRole('button', { name: 'Keep it' }).click();
+await page.waitForTimeout(200);
+assert(!aud.isClosed(), 'Keep it leaves the audience window open');
+await page.getByRole('button', { name: '📺 Close audience window' }).click();
+await page.waitForTimeout(450);
+await page.getByRole('button', { name: 'Close it' }).click();
 if (!aud.isClosed()) await aud.waitForEvent('close', { timeout: 3000 });
 assert(aud.isClosed(), 'audience window closes from the host');
 
@@ -992,7 +999,7 @@ await page.getByRole('button', { name: 'Cancel', exact: true }).click();
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Yes', exact: true }).click();
-await page.locator('.final-label').waitFor();
+await page.locator('.fj').waitFor();
 // …and it can be undone: back to the board without a second round intro.
 await page.getByRole('button', { name: '◀ Back to Jeopardy!' }).click();
 await page.locator('.board').waitFor();
@@ -1003,8 +1010,9 @@ await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Yes', exact: true }).click();
 
 // Final Jeopardy: eligible players, private wagers, one-by-one reveal.
-await page.locator('.final-label').waitFor();
-assert((await page.locator('.final-label').innerText()) === 'FINAL BRAINROT', 'renamed final round shows on screen');
+await page.locator('.fj').waitFor();
+assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('FINAL BRAINROT'), 'renamed final round shows on screen');
+assert(!(await page.locator('.final-label').count()), 'with no category, its name shows once (no small label over it)');
 const eligible = await page.locator('.fj input[type=checkbox]:checked').count();
 assert(eligible === 2, 'players with $0 sit out of a Final that says so');
 await page.getByRole('button', { name: /take wagers/ }).click();

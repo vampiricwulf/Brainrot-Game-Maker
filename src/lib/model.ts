@@ -257,6 +257,8 @@ export interface GameSettings {
   /** Start a clue's countdown automatically when it opens (if it has a timer). */
   timerAutoStart: boolean;
     roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
+  /** What viewers see around the game (set on the pre-game screen): the cards' words and the captions. */
+  stream?: { soonText?: string; coverText?: string; clueCaption?: boolean; placeCaption?: boolean };
 }
 
 /** Optional sounds played on the audience side at key moments (spec §9). */

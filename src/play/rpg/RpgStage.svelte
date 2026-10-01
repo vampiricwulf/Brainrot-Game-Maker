@@ -65,6 +65,7 @@
     session.players.length > 12 && party ? session.players.filter((p) => party.members.includes(p.id)) : session.players,
   );
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
+  const placeCaption = $derived(!!game.settings.stream?.placeCaption);
   const music = $derived.by(() => {
     const ref = panes[0];
     const found = world && ref ? findIn(world, ref) : null;
@@ -299,8 +300,11 @@
           {#if split}
             <div class="pane-label">
               {st.parties.find((pt) => pt.members.some((m) => st.positions[m]?.screen === ref.screen))?.name ?? ''}
-              {#if hostCopy}· {found.screen.name}{/if}
+              {#if hostCopy || placeCaption}· {found.screen.name}{/if}
             </div>
+          {:else if placeCaption}
+            <!-- Where the party is, for viewers (an option on the pre-game screen). -->
+            <div class="pane-label place" class:low={bar === 'top'}>📍 {found.screen.name}</div>
           {/if}
         </div>
       {/if}
@@ -354,6 +358,15 @@
     background: rgba(0, 0, 0, 0.7);
     color: #fff;
     font: 48px 'Anton', 'Oswald', sans-serif;
+  }
+  .pane-label.place {
+    z-index: 20;
+    font-size: 40px;
+    pointer-events: none;
+  }
+  .pane-label.place.low {
+    top: auto;
+    bottom: 20px;
   }
   .hit {
     position: absolute;

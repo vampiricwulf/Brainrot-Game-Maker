@@ -314,7 +314,7 @@
     {/if}
 
     <div class="row">
-      {#if round.winNotes}<span class="notes" title={round.winPublic ? 'Shown on the board' : 'Only you see this'}>🏆 {round.winNotes}{round.winPublic ? '' : ' (secret)'}</span>{/if}
+      {#if round.winNotes}<span class="notes" title={round.winPublic ? 'Shown on the board' : dual ? 'Only you see this' : 'Not on the board (viewers can see it here, in this window)'}>🏆 {round.winNotes}{round.winPublic ? '' : dual ? ' (secret)' : ' (not on the board)'}</span>{/if}
       {#if round.hostNotes && !dual}<span class="notes">📝 {round.hostNotes}</span>{/if}
       {#if !dual}
         {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}

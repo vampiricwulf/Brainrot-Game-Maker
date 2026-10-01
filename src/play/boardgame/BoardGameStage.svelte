@@ -8,7 +8,7 @@
   import { getContext, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { textOn } from '../../lib/colors';
-  import { currentPlayer, fanOut, HOP_MS, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
+  import { currentPlayer, HOP_MS, rimSpots, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import type { Game, Session } from '../../lib/model';
@@ -81,12 +81,12 @@
     for (const [spaceId, ids] of groups) {
       const sp = spaceById(round, spaceId);
       if (!sp) continue;
-      const spots = fanOut(ids.length);
       const small = ids.length > 3;
+      const spots = rimSpots(ids.length, small ? 32 : 42);
       // On a space near the top (boards made before spaces started lower), a token that would slip under the turn
       // banner, the win notes or the stats strip comes down just enough to stay in sight. The board itself stays as it is.
       const lowest = clearTop + (small ? 32 : 42);
-      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: Math.max(lowest, sp.y + spots[i].dy - 40), small }));
+      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: Math.max(lowest, sp.y + spots[i].dy), small }));
     }
     return out;
   });

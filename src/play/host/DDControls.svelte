@@ -8,11 +8,14 @@
   let {
     game,
     session,
+    dual = false,
     onshow,
     oncancel,
   }: {
     game: Game;
     session: Session;
+    /** An audience window is open: viewers don't see this window. */
+    dual?: boolean;
     onshow: (playerId: string, wager: number) => void;
     /** Back to the board, the tile kept (Esc, even in the wager box). */
     oncancel: () => void;
@@ -72,6 +75,9 @@
     <span class="spacer"></span>
     <button class="primary" disabled={!playerId || !valid} onclick={() => onshow(playerId, wager!)}>Show question ▶</button>
   </div>
+  {#if !dual}
+    <span class="exposed">⚠ Viewers can see this: they see this window, the wager as you type it too.</span>
+  {/if}
 </div>
 
 <style>
@@ -88,6 +94,10 @@
     border-width: 2px;
   }
   .small {
+    font-size: 12px;
+  }
+  .exposed {
+    color: var(--warn);
     font-size: 12px;
   }
   input[type='number'] {

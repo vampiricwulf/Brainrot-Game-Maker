@@ -137,6 +137,7 @@
     onplayers: () => void;
     onhide: () => void;
     onexit: () => void;
+    /** Open the audience window, or close it (the panel has asked first). */
     onaudience: () => void;
     /** Open the streaming-sound help (Test sound, output device). */
     onsound: () => void;
@@ -168,13 +169,14 @@
   });
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
-  const finalStepText = {
+  const finalStepText = $derived({
     category: 'Category on screen',
-    wagers: 'Taking wagers (only you see them)',
+    // Single window: viewers see this window, the wager boxes too.
+    wagers: dual ? 'Taking wagers (only you see them)' : 'Taking wagers (viewers can see them in this window)',
     question: 'Question on screen',
     answer: 'Answer on screen',
     reveal: 'Player reveals',
-  } as const;
+  });
   /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
   const cancelBlocked = $derived(!ddWager && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
@@ -187,6 +189,11 @@
   const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
   /** Exit was pressed: it asks inline (a browser dialog would show on stream). */
   let askExit = $state(false);
+  /** 📺 Close audience window was pressed: it asks inline too (it's usually the stream capture). */
+  let askCloseAudience = $state(false);
+  $effect(() => {
+    if (!dual) askCloseAudience = false;
+  });
 
   function toggle(id: string): void {
     selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
@@ -203,7 +210,7 @@
     game.settings.deductOnWrong && session.phase === 'clue' && !!info && (session.dd?.stage !== 'question' || session.dd.playerId === id);
 </script>
 
-<div class="panel" class:dual class:side>
+<div class="panel" class:dual class:side class:slim={side && session.phase === 'final'}>
   <div class="status row">
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
@@ -244,7 +251,11 @@
       {#if session.dd?.stage === 'question'}
         {@const dd = session.dd}
         <span class="ddtag">DD {formatPoints(dd.wager ?? 0, sym)}</span>
-        <button class="ghost small" onclick={() => (dd.shown = !dd.shown)} title="Viewers don't see the wager until you show it">
+        <button
+          class="ghost small"
+          onclick={() => (dd.shown = !dd.shown)}
+          title={dual ? "Viewers don't see the wager until you show it" : 'Puts the wager on the slide (viewers can see this window anyway)'}
+        >
           {dd.shown ? 'Hide wager' : 'Show wager'}
         </button>
       {/if}
@@ -258,7 +269,7 @@
         <span class="muted">Answer hidden</span>
         <span class="muted hint">· click the slide or press R to reveal</span>
       {/if}
-      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes">📝 {info.clue.hostNotes}</span>{/if}
+      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes: viewers can see them in this window">📝 {info.clue.hostNotes}</span>{/if}
       <!-- Up here, away from the nav row, so it's never hit by a double-click meant for something else. -->
       <button
         class="small ghost"
@@ -325,13 +336,13 @@
 
   {#if ddWager}
     {#key info?.clue.id}
-      <DDControls {game} {session} onshow={onddshow} oncancel={oncancelclue} />
+      <DDControls {game} {session} {dual} onshow={onddshow} oncancel={oncancelclue} />
     {/key}
   {/if}
 
   {#if session.phase === 'final'}
     <div class="mode-host">
-      <FinalControls {game} {session} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
+      <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
     </div>
   {/if}
 
@@ -409,13 +420,21 @@
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}
+          <!-- Just the marks (the value is in their names): the chips keep their width, so opening a clue doesn't wrap the
+               row and shrink the stage. -->
           {#if quickFor(p.id)}
-            <button class="small right" onclick={() => onright(p.id)} title="Correct: award the value to {p.name} only">
-              ✔ +{formatPoints(quickValue, sym)}
-            </button>
-            <button class="small wrong" onclick={() => onwrong(p.id)} title="Wrong: deduct the value from {p.name}">
-              ✘ −{formatPoints(quickValue, sym)}
-            </button>
+            <button
+              class="small quick right"
+              onclick={() => onright(p.id)}
+              aria-label="Right: {p.name} +{formatPoints(quickValue, sym)}"
+              title="Correct: award {formatPoints(quickValue, sym)} to {p.name} only">✔</button
+            >
+            <button
+              class="small quick wrong"
+              onclick={() => onwrong(p.id)}
+              aria-label="Wrong: {p.name} −{formatPoints(quickValue, sym)}"
+              title="Wrong: deduct {formatPoints(quickValue, sym)} from {p.name}">✘</button
+            >
           {/if}
         </div>
       {/each}
@@ -476,7 +495,6 @@
       {/key}
       <span class="divider" aria-hidden="true"></span>
     {/if}
-    <button onclick={onaudience} class:on={dual} title="A opens or focuses it">{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
     <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
     <!-- Right-click either one for the whole history. Kept together when the row wraps. -->
     <span class="pair">
@@ -499,6 +517,23 @@
       ⏸ Cover
     </button>
     <button onclick={onhide} title="H">Hide controls</button>
+    <!-- Out here with Exit, away from the everyday buttons: closing it blacks out the stream capture, so it asks first. -->
+    {#if askCloseAudience}
+      <InlineAsk
+        text="Close the audience window? Your stream capture goes black."
+        ok="Close it"
+        cancel="Keep it"
+        danger
+        onok={() => ((askCloseAudience = false), onaudience())}
+        oncancel={() => (askCloseAudience = false)}
+      />
+    {:else}
+      <button
+        onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
+        class:on={dual}
+        title={dual ? 'Close the audience window (A brings it to the front)' : 'A opens or focuses it'}
+      >{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+    {/if}
     {#if askExit}
       <InlineAsk
         text={session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : 'Leave this game? You can resume it from the editor.'}
@@ -548,6 +583,21 @@
     flex-shrink: 0;
     border-top: none;
     border-left: 1px solid var(--border);
+  }
+  /* With an audience window the stage here is only a preview: the controls get more of the width (two player cards a
+     row in RPG and board-game rounds, so less scrolling). */
+  .panel.side.dual {
+    width: clamp(420px, 36vw, 720px);
+  }
+  /* The Final's controls are narrow: the stage keeps more of the width. */
+  .panel.side.slim {
+    width: 420px;
+  }
+  /* The Final's steps keep their buttons in sight: the score chips under them give up their room (and scroll) first. */
+  .slim > .players {
+    flex-shrink: 1000;
+    min-height: 0;
+    overflow: auto;
   }
   .side > .nav,
   .side > .nav :global(.tl) {
@@ -648,6 +698,9 @@
   }
   .score-edit {
     width: 100px;
+  }
+  .quick {
+    padding: 4px 8px;
   }
   .right {
     color: var(--good);
