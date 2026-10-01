@@ -765,6 +765,7 @@
     </div>
   {/if}
 
+  <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
   <div class="body">
     <nav aria-label="Editor">
       <div class="navlabel muted">Rounds</div>
@@ -920,6 +921,23 @@
       {/key}
     </main>
   </div>
+  {#snippet failed(error: unknown, reset: () => void)}
+    <!-- A game the editor can't show (a file damaged in a way nothing caught): say so, with the way back, instead of a
+         half-drawn screen. -->
+    <div class="body broken" role="alert">
+      <h2>This game can't be shown</h2>
+      <p class="muted">{error instanceof Error ? error.message : String(error)}</p>
+      <div class="row">
+        {#if previous}
+          {@const prev = previous}
+          <button class="primary" onclick={async () => (await reopen(prev), reset())}>↶ Back to “{prev.title}”</button>
+        {/if}
+        <button onclick={async () => (await newFile(), reset())}>Start a new game</button>
+        <button class="ghost" onclick={reset}>Try again</button>
+      </div>
+    </div>
+  {/snippet}
+  </svelte:boundary>
   <HistoryNotice quiet={tab === 'history'} />
 </div>
 
@@ -1031,6 +1049,12 @@
     flex: 1;
     display: flex;
     min-height: 0;
+  }
+  .broken {
+    flex-direction: column;
+    gap: 10px;
+    padding: 40px;
+    align-items: flex-start;
   }
   nav {
     width: 220px;
