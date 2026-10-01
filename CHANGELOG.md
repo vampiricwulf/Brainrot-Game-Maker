@@ -34,6 +34,7 @@ done, the Unreleased lines move under that day's heading.
 
 ### Added
 - This changelog.
+- README: fresh screenshots (the new host column in RPG and board game rounds) and one of the 🕘 History tab.
 - **Jeopardy board editor**: drag round tabs to reorder them (`Alt`+`↑`/`↓`, `Delete`, `F2`, `Ctrl+D` on a tab); drag a
   tile onto another to swap the clues (`Ctrl`-drag copies); drag category headers and right-click them to insert,
   duplicate, clear or delete; arrow keys move around the board, `Enter` opens a clue, `Delete` clears it, `Ctrl+C` /

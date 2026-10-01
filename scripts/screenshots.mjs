@@ -80,6 +80,10 @@ try {
   await page.getByRole('button', { name: 'Space Start' }).click();
   await shot('boardgame-editor');
 
+  // Every change so far, in the History tab.
+  await page.getByRole('button', { name: /History/ }).first().click();
+  await shot('history');
+
   // Play with three players.
   await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();

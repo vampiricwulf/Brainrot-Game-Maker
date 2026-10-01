@@ -71,8 +71,11 @@ along.
 
 **Right-click** almost anything for a quick menu. This works on rounds, tiles, map screens, spaces, avatars and items.
 
-**Undo** (`Ctrl+Z`, `Ctrl+Shift+Z` to redo) works in slides, board images and the board game editor. Removing categories or
-rows that have clues in them asks first.
+**Undo** (`Ctrl+Z`, `Ctrl+Y` to redo) covers every change in the editor and takes you to where it happened. Deleting
+doesn't ask first: a "Deleted … · Undo" note brings it back. The **🕘 History** tab lists every change and jumps back to
+any point; it survives a reload (⚙ Settings sets how many changes it keeps, 300 by default).
+
+![The History tab](docs/screenshots/history.png)
 
 ## Hosting
 
