@@ -381,43 +381,52 @@ fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
 }
 
 /// Save a file (a .brainrot pack, a .json game or an exported .html) into BrainrotSaves next to the exe,
-/// or Documents\BrainrotSaves when the exe's folder can't be written. The bytes come as the raw request
+/// or Documents\BrainrotSaves when the app may not write in the exe's folder. The bytes come as the raw request
 /// body (big packs), the file name in the `x-name` header (URI-encoded). `x-mode: new` never replaces a save
 /// (it becomes "Game (2).brainrot"…); `backup` replaces a save of that name and keeps the one it replaces as
-/// "Game.brainrot.bak" (and the one before as .bak2); anything else (autosaves) just replaces it. Returns where
-/// it went.
+/// "Game.brainrot.bak" (and the one before as .bak2); anything else (autosaves) just replaces it. `x-docs-name`
+/// and `x-docs-mode`: the same for Documents (the page knows which saves there are this game's), else as above.
+/// Returns where it went. Async, so the window doesn't freeze while a big file is written.
 #[tauri::command]
-fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_json::Value, String> {
+async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_json::Value, String> {
     let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
         return Err("Nothing to save.".into());
     };
-    let name = request
-        .headers()
-        .get("x-name")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| urlencoding_decode(v))
-        .and_then(|v| saves::clean_name(&v))
-        .ok_or("That isn't a file name the app can save.")?;
-    let mode = request.headers().get("x-mode").and_then(|v| v.to_str().ok());
-    let write = |dir: &Path| match mode {
-        Some("new") => saves::write_save(dir, &saves::unused_name(dir, &name), data, 0),
-        Some("backup") => saves::write_save(dir, &name, data, saves::BACKUPS),
-        _ => saves::write_save(dir, &name, data, 0),
+    let header = |key: &str| request.headers().get(key).and_then(|v| v.to_str().ok());
+    let file_name = |key: &str| header(key).and_then(urlencoding_decode).and_then(|v| saves::clean_name(&v));
+    let name = file_name("x-name").ok_or("That isn't a file name the app can save.")?;
+    let mode = header("x-mode");
+    let docs_name = file_name("x-docs-name").unwrap_or_else(|| name.clone());
+    let docs_mode = header("x-docs-mode").or(mode);
+    let write = |dir: &Path, name: &str, mode: Option<&str>| match mode {
+        Some("new") => saves::write_save(dir, &saves::unused_name(dir, name), data, 0),
+        Some("backup") => saves::write_save(dir, name, data, saves::BACKUPS),
+        _ => saves::write_save(dir, name, data, 0),
     };
     let beside = data_folder(&app, "saves");
-    let first_err = match beside.as_deref().map(write) {
+    let first_err = match beside.as_deref().map(|dir| write(dir, &name, mode)) {
         Some(Ok(path)) => return Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": false })),
+        // Only a folder the app may not write in sends the save to Documents: a full disk or a file another
+        // program holds open is said as it is (a save in Documents would leave versions in two folders).
+        Some(Err(err)) if !saves::may_fall_back(&err) => return Err(format!("Couldn't save {name}: {err}")),
         Some(Err(err)) => Some(err),
         None => None,
     };
     let docs = data_folder(&app, "saves-documents").ok_or("No folder to save in.")?;
-    match write(&docs) {
+    match write(&docs, &docs_name, docs_mode) {
         Ok(path) => Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": true })),
         Err(err) => Err(format!(
             "Couldn't save {name}: {}",
             first_err.map_or_else(|| err.to_string(), |first| format!("{first}; and in Documents: {err}"))
         )),
     }
+}
+
+/// Run file work off the main thread (a big file would freeze the window meanwhile).
+async fn off_main<T: Send + 'static>(work: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|err| format!("Couldn't finish: {err}"))?
 }
 
 /// `%20`-style decoding of the file name header (headers are ASCII; names may not be).
@@ -455,12 +464,15 @@ fn list_saves(app: AppHandle) -> serde_json::Value {
 
 /// One save's bytes (for Open), from BrainrotSaves beside the exe or in Documents.
 #[tauri::command]
-fn read_save(app: AppHandle, name: String, place: String) -> Result<tauri::ipc::Response, String> {
+async fn read_save(app: AppHandle, name: String, place: String) -> Result<tauri::ipc::Response, String> {
     let name = saves::clean_name(&name).ok_or("That isn't a save.")?;
     let dir = saves_folder(&app, &place)?;
-    std::fs::read(dir.join(&name))
-        .map(tauri::ipc::Response::new)
-        .map_err(|err| format!("Couldn't open {name}: {err}"))
+    off_main(move || {
+        std::fs::read(dir.join(&name))
+            .map(tauri::ipc::Response::new)
+            .map_err(|err| format!("Couldn't open {name}: {err}"))
+    })
+    .await
 }
 
 /// BrainrotSaves beside the exe ("app") or in Documents ("documents").
@@ -515,11 +527,14 @@ fn opened_file() -> Option<String> {
 
 /// The waiting game file's bytes; it's no longer waiting afterwards.
 #[tauri::command]
-fn take_opened_file() -> Result<tauri::ipc::Response, String> {
+async fn take_opened_file() -> Result<tauri::ipc::Response, String> {
     let path = OPENED.lock().unwrap_or_else(|e| e.into_inner()).take().ok_or("No file to open.")?;
-    std::fs::read(&path)
-        .map(tauri::ipc::Response::new)
-        .map_err(|err| format!("Couldn't open {}: {err}", path.display()))
+    off_main(move || {
+        std::fs::read(&path)
+            .map(tauri::ipc::Response::new)
+            .map_err(|err| format!("Couldn't open {}: {err}", path.display()))
+    })
+    .await
 }
 
 /// The host page writes what's still pending (the last edits, the game in play) when the window is closed:
@@ -529,8 +544,11 @@ static PAGE_FLUSHES: AtomicBool = AtomicBool::new(false);
 static CLOSING: AtomicBool = AtomicBool::new(false);
 /// Event for the host page: write what's pending, then call close_app.
 const CLOSE_EVENT: &str = "close-requested";
-/// How long the page gets for that before the window closes anyway.
+/// How long the page gets for that before the window closes anyway (unless it says it's waiting for a save: hold_close).
 const CLOSE_WAIT: Duration = Duration::from_secs(3);
+/// Counts the clicks on ✕ the page was told about; the page holding the window open says which one it answered.
+static CLOSE_ASKED: AtomicUsize = AtomicUsize::new(0);
+static CLOSE_HELD: AtomicUsize = AtomicUsize::new(0);
 
 #[tauri::command]
 fn flush_on_close() {
@@ -545,9 +563,29 @@ fn close_app(app: AppHandle) {
     }
 }
 
+/// The page is writing a save and asks the host to wait (it calls close_app once it's done, or told to close
+/// anyway): the window stays open past CLOSE_WAIT, and the next ✕ asks the page again.
+#[tauri::command]
+fn hold_close() {
+    hold_this_close();
+}
+
+fn hold_this_close() {
+    CLOSE_HELD.store(CLOSE_ASKED.load(Ordering::SeqCst), Ordering::SeqCst);
+    CLOSING.store(false, Ordering::SeqCst);
+}
+
 /// Whether a click on the host window's ✕ waits for the page first (and tells it to write), or closes now.
-fn wait_for_page_on_close() -> bool {
-    PAGE_FLUSHES.load(Ordering::SeqCst) && !CLOSING.swap(true, Ordering::SeqCst)
+/// Returns which click it is, for close_after_wait.
+fn wait_for_page_on_close() -> Option<usize> {
+    (PAGE_FLUSHES.load(Ordering::SeqCst) && !CLOSING.swap(true, Ordering::SeqCst))
+        .then(|| CLOSE_ASKED.fetch_add(1, Ordering::SeqCst) + 1)
+}
+
+/// After CLOSE_WAIT: close the window, unless the page held it open since that click (a save is being written,
+/// and the page answered: it's alive and closes the window itself).
+fn close_after_wait(click: usize) -> bool {
+    CLOSE_HELD.load(Ordering::SeqCst) != click
 }
 
 /// The project's own pages (ℹ About's links); `open_link` opens nothing else.
@@ -832,7 +870,13 @@ fn build_main(app: &AppHandle, args: Option<&'static str>, page_script: &str) ->
         // Tauri's handler would take every drop instead.
         .disable_drag_drop_handler()
         .initialization_script(page_script)
-        .on_new_window(move |url, features| open_popup(&handle, url, features));
+        .on_new_window(move |url, features| open_popup(&handle, url, features))
+        // The game's title in the title bar (and the taskbar), as the page sets it.
+        .on_document_title_changed(|window, title| {
+            if !title.trim().is_empty() {
+                let _ = window.set_title(&title);
+            }
+        });
     if let Some(args) = args {
         builder = builder.additional_browser_args(args);
     }
@@ -979,7 +1023,8 @@ fn main() {
             opened_file,
             take_opened_file,
             flush_on_close,
-            close_app
+            close_app,
+            hold_close
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -997,7 +1042,10 @@ fn main() {
             }
             match event {
                 // The page writes its last edits first (it closes the window itself), within CLOSE_WAIT.
-                WindowEvent::CloseRequested { api, .. } if wait_for_page_on_close() => {
+                WindowEvent::CloseRequested { api, .. } => {
+                    let Some(click) = wait_for_page_on_close() else {
+                        return;
+                    };
                     api.prevent_close();
                     if let Err(err) = window.emit_to("main", CLOSE_EVENT, ()) {
                         eprintln!("couldn't tell the page the window is closing: {err}");
@@ -1005,7 +1053,9 @@ fn main() {
                     let window = window.clone();
                     std::thread::spawn(move || {
                         std::thread::sleep(CLOSE_WAIT);
-                        let _ = window.destroy();
+                        if close_after_wait(click) {
+                            let _ = window.destroy();
+                        }
                     });
                 }
                 // Closing the host window ends the app, even if the audience window is still open.
@@ -1046,6 +1096,23 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn closing_while_a_save_is_written_waits_for_it() {
+        // (The only test that touches these.)
+        PAGE_FLUSHES.store(true, Ordering::SeqCst);
+        let first = wait_for_page_on_close().expect("the page is told first");
+        // A second click before the page answers closes at once.
+        assert_eq!(wait_for_page_on_close(), None);
+        // The page answers that a save is being written: the window stays open past CLOSE_WAIT…
+        hold_this_close();
+        assert!(!close_after_wait(first));
+        // …and the next click tells the page again, closing after CLOSE_WAIT if it doesn't answer this time.
+        let second = wait_for_page_on_close().expect("the page is told again");
+        assert!(close_after_wait(second));
+        hold_this_close();
+        assert!(!close_after_wait(second));
     }
 
     #[test]

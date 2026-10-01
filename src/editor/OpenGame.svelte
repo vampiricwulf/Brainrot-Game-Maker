@@ -5,7 +5,6 @@
   import { onMount } from 'svelte';
   import { modal } from '../lib/modal';
   import type { RecentEntry } from '../lib/recent';
-  import { inTauri } from '../lib/platform';
 
   let {
     recent,
@@ -28,18 +27,13 @@
   let list = $state<HTMLElement>();
   onMount(() => list?.querySelector<HTMLElement>('button')?.focus());
   const when = (ms: number) => new Date(ms).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  /** An earlier version of a game also listed (newer) above it: two kept copies of one game are told apart. */
+  const earlier = (e: RecentEntry) => recent.some((x) => x !== e && x.gameId === e.gameId && x.closedAt > e.closedAt);
 </script>
 
-<svelte:window
-  onkeydown={(e) => {
-    if (e.key !== 'Escape') return;
-    e.stopImmediatePropagation();
-    onclose();
-  }}
-/>
-
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" use:modal data-undo="off">
+  <!-- Esc closes it when it's the window on top (Forget's question over it takes Esc first). -->
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" use:modal={{ esc: onclose }} data-undo="off">
     <div class="row">
       <b class="modal-title" id="open-heading">📂 Open a game</b>
       <span class="spacer"></span>
@@ -52,18 +46,19 @@
       history. They're kept in this browser only, so use Save for a copy that lasts.
     </p>
     <p class="muted small">
-      Browse… opens a game file: a .brainrot, or an exported .html game{inTauri() ? ', or an older version Save kept (Game.brainrot.bak)' : ''}.{saves
-        ? ' BrainrotSaves… lists your saves and exported games.'
-        : ''}
+      Browse… opens a game file: a .brainrot, a .json, an exported .html game, or an older version the desktop app's Save
+      kept (Game.brainrot.bak).{saves ? ' BrainrotSaves… lists your saves and exported games.' : ''}
     </p>
     <div class="list" bind:this={list}>
       {#each recent as e (e.key)}
         <div class="game">
           <button class="pick" onclick={() => onreopen(e)}>
             <b>{e.title}</b>
-            <span class="muted small">{e.rounds} round{e.rounds === 1 ? '' : 's'} · replaced {when(e.closedAt)}</span>
+            <span class="muted small"
+              >{earlier(e) ? 'earlier version · ' : ''}{e.rounds} round{e.rounds === 1 ? '' : 's'} · kept {when(e.closedAt)}</span
+            >
           </button>
-          <button class="ghost small" onclick={() => onforget(e)} title="Stop keeping this game (its files are cleaned up)">Forget</button>
+          <button class="ghost small" onclick={() => onforget(e)} title="Stop keeping this game (asks first: its files are cleaned up)">Forget</button>
         </div>
       {/each}
     </div>

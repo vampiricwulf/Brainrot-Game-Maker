@@ -145,15 +145,16 @@ async function sameBytes(a: Blob, b: Blob): Promise<boolean> {
 }
 
 /**
- * Another game's files, read from its file (`held`, by id) and not stored yet, made ready to go into `into`: one with the
- * id of a file of `into` but other bytes (from another copy of the same game, changed since) gets a new id, and so does
- * every reference to it in `other`. Returns the game so changed, the files to store, and the new ids (the copies).
+ * Another game's files, read from its file (`held`, by id) and not stored yet, made ready to be stored: one with the id
+ * of a file this browser already holds (`existing`: this game's, a recent game's…) but other bytes (from another copy of
+ * the same game, changed since) gets a new id, and so does every reference to it in `other`, so storing it never changes
+ * what another game shows. Returns the game so changed, the files to store (one already held with the same bytes isn't),
+ * and the new ids (the copies).
  */
 export async function settleFiles(
-  into: Pick<Game, 'media'>,
   other: Game,
   held: ReadonlyMap<string, Blob>,
-  mine: (id: string) => Blob | undefined,
+  existing: (id: string) => Blob | undefined | Promise<Blob | undefined>,
 ): Promise<{ game: Game; store: [string, Blob][]; copies: Set<string> }> {
   let json = JSON.stringify(other);
   const store: [string, Blob][] = [];
@@ -161,17 +162,13 @@ export async function settleFiles(
   for (const ref of other.media) {
     const blob = held.get(ref.id);
     if (!blob) continue;
-    const here = into.media.find((m) => m.id === ref.id);
-    const ours = here && mine(ref.id);
-    // This game's own file (or one it has lost, which the other game's bytes bring back).
-    if (here && (!ours || (await sameBytes(ours, blob)))) {
-      if (!ours) store.push([ref.id, blob]);
-      continue;
-    }
-    if (!here) {
+    const ours = await existing(ref.id);
+    // Not held yet (or lost, which these bytes bring back), or the very same file.
+    if (!ours) {
       store.push([ref.id, blob]);
       continue;
     }
+    if (await sameBytes(ours, blob)) continue;
     const id = newId();
     json = json.split(JSON.stringify(ref.id)).join(JSON.stringify(id));
     store.push([id, blob]);

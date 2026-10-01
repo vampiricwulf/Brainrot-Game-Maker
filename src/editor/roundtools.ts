@@ -7,9 +7,8 @@ import { pickFile } from '../lib/fileio';
 import { step } from '../lib/history.svelte';
 import { ROUND_MODES } from '../lib/modes';
 import { roundName, type Game } from '../lib/model';
-import { openGameFile } from '../lib/pack';
-import { addBundledRound, copiesMessage, copyRound, placeFor, settleFiles, uniqueName } from '../lib/roundcopy';
-import { getBlob, loadGameMedia, putMedia } from '../lib/media.svelte';
+import { readGameFile, storeFiles } from '../lib/pack';
+import { addBundledRound, copiesMessage, copyRound, placeFor, uniqueName } from '../lib/roundcopy';
 import { addSampleGame, TEMPLATES, type Template } from '../lib/samples';
 import { validate } from '../lib/validate';
 import type { MenuEntry } from '../lib/menustate.svelte';
@@ -60,21 +59,19 @@ export function copiedFiles(source: Game, refs: readonly { id: string; name: str
 }
 
 /**
- * Ask for a .brainrot (or .json) game and open it to take things from into `into`. Its files are stored, except where
- * this game already has the same file; one with the id of a file here but other bytes (another copy of this game, changed
- * since) comes in under a new id (see copiedFiles). Null when cancelled or it can't be read.
+ * Ask for a .brainrot (or .json) game and open it to take things from. Its files are stored, except where this browser
+ * already has the same file; one with the id of a file here but other bytes (another copy of this game, changed since)
+ * comes in under a new id (see copiedFiles). Null when cancelled or it can't be read.
  */
-export async function pickOtherGame(into: Game): Promise<Game | null> {
+export async function pickOtherGame(): Promise<Game | null> {
   const file = await pickFile('.brainrot,.jbr,.zip,.json,application/json,application/zip');
   if (!file) return null;
   try {
-    const held = new Map<string, Blob>();
-    const read = await openGameFile(file, async (id, blob) => void held.set(id, blob));
-    validate(read);
-    await loadGameMedia(into);
-    const { game: g, store, copies } = await settleFiles(into, read, held, getBlob);
-    for (const [id, blob] of store) await putMedia(id, blob);
-    fileCopies.set(g, copies);
+    const read = await readGameFile(file);
+    validate(read.game);
+    await storeFiles(read);
+    const g = read.game;
+    fileCopies.set(g, read.copies);
     return g;
   } catch (e) {
     void tell(`“${file.name}” couldn’t be read: ${(e as Error).message}`);

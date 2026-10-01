@@ -15,10 +15,20 @@ export interface Ask {
 /** What's waiting for an answer, oldest first (one shows at a time). */
 export const asks = $state<Ask[]>([]);
 
-/** Asks a yes/no question: true for `ok`, false for `cancel` (also Esc and the ✕). */
-export function ask(text: string, opts: { ok?: string; cancel?: string; danger?: boolean } = {}): Promise<boolean> {
+/**
+ * Asks a yes/no question: true for `ok`, false for `cancel` (also Esc and the ✕). `until`: once that's settled, the
+ * question goes away by itself, answered false (it no longer matters).
+ */
+export function ask(text: string, opts: { ok?: string; cancel?: string; danger?: boolean; until?: Promise<unknown> } = {}): Promise<boolean> {
   return new Promise((resolve) => {
-    asks.push({ text, ok: opts.ok ?? 'OK', cancel: opts.cancel ?? 'Cancel', danger: opts.danger, answer: resolve });
+    const a: Ask = { text, ok: opts.ok ?? 'OK', cancel: opts.cancel ?? 'Cancel', danger: opts.danger, answer: resolve };
+    asks.push(a);
+    opts.until?.finally(() => {
+      const i = asks.indexOf(a);
+      if (i < 0) return;
+      asks.splice(i, 1);
+      resolve(false);
+    });
   });
 }
 

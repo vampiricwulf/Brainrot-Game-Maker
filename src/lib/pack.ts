@@ -1,10 +1,11 @@
 // .brainrot game packs (called .jbr before the rename; same format): a zip holding game.json + media/<id>.<ext> (spec §8).
 import JSZip from 'jszip';
-import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from './media.svelte';
+import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks, storedBlob } from './media.svelte';
+import { settleFiles } from './roundcopy';
 import { migrateGame, type Game } from './model';
 import { parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
 import { buildZip, type ZipEntry } from './zipwrite';
-import { packInHtml, unpackEmbedded } from './export';
+import { MAX_HTML_CHARS, packInHtml, TOO_BIG, unpackEmbedded } from './export';
 
 function mediaPath(ref: { id: string; name: string }): string {
   const ext = extOf(ref.name);
@@ -88,6 +89,8 @@ export async function openGameFile(file: File, put: PutMedia = putMedia): Promis
   const zip = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
   const name = file.name.replace(/\.bak\d*$/i, '');
   if (!zip && (/\.html?$/i.test(name) || file.type === 'text/html')) {
+    // (A browser can't read a file this long as text.)
+    if (file.size > MAX_HTML_CHARS) throw new Error(TOO_BIG);
     const inside = packInHtml(await file.text());
     if (!inside) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
     return openPack(await unpackEmbedded(inside.pack, inside.cut), undefined, put);
@@ -98,4 +101,31 @@ export async function openGameFile(file: File, put: PutMedia = putMedia): Promis
     return game;
   }
   return openPack(file, undefined, put);
+}
+
+/** A game read from a file, its files held apart until `storeFiles` (see readGameFile). */
+export interface ReadGame {
+  game: Game;
+  /** Its files to store, by id. */
+  files: [string, Blob][];
+  /** Ids given to its files that had the id of another file here (see settleFiles). */
+  copies: Set<string>;
+}
+
+/**
+ * Read a game file without storing anything: its files are held until `storeFiles`, once the game is really taken (it
+ * replaced the game in the editor). A file with the id of one this browser holds but other bytes (an older copy of the same
+ * game) gets a new id in the game read, so opening it never changes the files of the game in the editor, or of a recent game.
+ */
+export async function readGameFile(file: File): Promise<ReadGame> {
+  const held = new Map<string, Blob>();
+  const read = await openGameFile(file, async (id, blob) => void held.set(id, blob));
+  const { game, store, copies } = await settleFiles(read, held, storedBlob);
+  return { game, files: store, copies };
+}
+
+/** Store the files of a game read by readGameFile, and load the ones it shares with what's stored already. */
+export async function storeFiles(read: Pick<ReadGame, 'game' | 'files'>): Promise<void> {
+  for (const [id, blob] of read.files) await putMedia(id, blob);
+  await loadGameMedia(read.game);
 }

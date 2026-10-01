@@ -30,7 +30,7 @@
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
   import { GAME_FILES, isGameFile, pickFile, safeFilename, saveGameJson } from '../lib/fileio';
-  import { openGameFile, savePack } from '../lib/pack';
+  import { readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
   import { formatBytes, loadGameMedia, pruneMedia } from '../lib/media.svelte';
   import { askToKeepStorage } from '../lib/persist';
@@ -54,7 +54,9 @@
   import { validate, type Problem } from '../lib/validate';
   import { checklistLines, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
-  import { arriving, commit, history, mark, onApplied, onApplying, redo, savedSinceChange, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import { arriving, commit, history, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import { whileWriting } from '../lib/desktop.svelte';
+  import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
@@ -177,7 +179,7 @@
   /** Import rounds…: the other game, while its rounds are picked. */
   let importFrom = $state<Game | null>(null);
   async function importRounds(): Promise<void> {
-    importFrom = await pickOtherGame(game);
+    importFrom = await pickOtherGame();
   }
 
   // Moving, copying or deleting a round keeps the same tab on screen (a round's right-click menu can act on
@@ -312,8 +314,8 @@
 
   /** The question being asked before this game is replaced (null: none). */
   let asking = $state<{ heading: string; title: string; answer: (c: ReplaceChoice) => void } | null>(null);
-  /** The game just replaced, which "↶ Reopen previous game" brings back (null: no note). */
-  let previous = $state<{ key: string; title: string } | null>(null);
+  /** The game just replaced, which "↶ Reopen previous game" brings back (null: no note), and kept games that made room. */
+  let previous = $state<{ key: string; title: string; dropped?: string[] } | null>(null);
 
   /** Counts the questions asked, so an older one answered late doesn't close a newer one. */
   let asked = 0;
@@ -338,11 +340,13 @@
 
   /**
    * Put `next` in place of this game, keeping this one in Recent games when it has anything in it. `history`: the
-   * undo history it comes with (a recent game's); `spare`: the recent game being reopened. False when it didn't happen.
+   * undo history it comes with (a recent game's); `spare`: the recent game being reopened; `read`: the file it was read
+   * from, whose files are stored only now (so a game that isn't opened after all never changes the stored ones). False
+   * when it didn't happen.
    */
-  async function replaceGame(next: Game, origin: Omit<Origin, 'ts'>, history?: RecentGame['history'], spare?: string): Promise<boolean> {
+  async function replaceGame(next: Game, origin: Omit<Origin, 'ts'>, history?: RecentGame['history'], spare?: string, read?: ReadGame): Promise<boolean> {
     const old = game;
-    let kept: string | null = null;
+    let kept: { key: string; dropped: string[] } | null = null;
     if (hasWork(old)) {
       kept = await keepRecent($state.snapshot(old) as Game, wholeHistory(), spare);
       const title = old.title.trim() || 'Untitled Game';
@@ -357,11 +361,12 @@
       )
         return false;
     }
+    if (read) await storeFiles(read);
     arriving(origin, history, !!history);
     app.game = next;
     // A new game has no rounds: tab 0 is the screen that adds the first one.
     tab = 0;
-    previous = kept ? { key: kept, title: old.title.trim() || 'Untitled Game' } : null;
+    previous = kept ? { key: kept.key, title: old.title.trim() || 'Untitled Game', dropped: kept.dropped } : null;
     pruneMedia([app.game, app.playGame, app.resumable?.game]);
     return true;
   }
@@ -408,6 +413,12 @@
   }
 
   async function forget(e: RecentEntry): Promise<void> {
+    const sure = await ask(`Forget “${e.title}”? It's removed from this browser with its files and undo history, and can't be brought back.`, {
+      ok: 'Forget',
+      cancel: 'Keep it',
+      danger: true,
+    });
+    if (!sure) return;
     await forgetRecent(e.key);
     if (previous?.key === e.key) previous = null;
     const left = (recentKept = await listRecent());
@@ -432,11 +443,12 @@
   }
 
   async function openFile(file: File): Promise<void> {
-    // Asked once the file is chosen (a cancelled picker asks nothing).
-    if (!(await mayReplace(`Open “${file.name}”?`))) return;
+    let read: ReadGame;
     let opened: Game;
     try {
-      opened = await openGameFile(file);
+      // Read and checked first: a file that isn't a game asks nothing. Its files are stored once it replaces this game.
+      read = await readGameFile(file);
+      opened = read.game;
       // A hand-edited file missing parts the editor needs would break the page: check it before it replaces this game
       // (what can be filled in was, see migrateGame).
       const problem = gameProblem(opened);
@@ -450,7 +462,8 @@
     } catch (e) {
       return void tell((e as Error).message);
     }
-    if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` })) toast(`Opened “${opened.title}”`);
+    if (!(await mayReplace(`Open “${file.name}”?`))) return;
+    if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` }, undefined, undefined, read)) toast(`Opened “${opened.title}”`);
   }
 
   // Desktop app: a game file the app was opened with ("Open with…") opens like Open….
@@ -462,7 +475,7 @@
     e.preventDefault();
     const file = Array.from(e.dataTransfer.files).find((f) => isGameFile(f.name));
     if (file) openFile(file);
-    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A .brainrot game dropped here opens.', 5000);
+    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A game file (.brainrot, .json, exported .html) dropped here opens.', 5000);
   }
 
   let saving = $state(false);
@@ -521,27 +534,35 @@
   /** Games already asked for a name (asked once: "Untitled Game" is a fine name if the host says so). */
   const named = new Set<string>();
 
+  /** The first Save (or Export HTML) of an untitled game asks for its name, once. False when that was cancelled. */
+  async function askName(): Promise<boolean> {
+    if ((game.title.trim() && game.title.trim() !== 'Untitled Game') || named.has(game.id)) return true;
+    const name = await new Promise<string | null>((answer) => (naming = answer));
+    naming = null;
+    if (name === null) return false;
+    named.add(game.id);
+    if (name !== game.title) step(`Named the game “${name}”`, () => (game.title = name));
+    return true;
+  }
+
   /** Save the game as a .brainrot pack. True when it was saved. */
   async function save(): Promise<boolean> {
-    if ((!game.title.trim() || game.title.trim() === 'Untitled Game') && !named.has(game.id)) {
-      const name = await new Promise<string | null>((answer) => (naming = answer));
-      naming = null;
-      if (name === null) return false;
-      named.add(game.id);
-      if (name !== game.title) step(`Named the game “${name}”`, () => (game.title = name));
-    }
+    if (!(await askName())) return false;
     saving = true;
     packPct = null;
     askToKeepStorage();
+    // Changes made while the file is written aren't in it: the save is marked where the game was when it started.
+    const point = savePoint();
     try {
-      const { missing, where, file } = await savePack($state.snapshot(game), packProgress);
+      const { missing, where, file } = await whileWriting(() => savePack($state.snapshot(game), packProgress));
       // The file it was written as: the desktop app may have picked another name ("Game (2).brainrot").
-      mark('saved', `Saved “${file}”`);
+      mark('saved', `Saved “${file}”`, point);
       if (missing.length) void tell(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast(where, 5000);
       return true;
     } catch (e) {
-      void tell('Save failed: ' + (e as Error).message);
+      // (The save picker was closed.)
+      if (!isCancel(e)) void tell('Save failed: ' + (e as Error).message);
       return false;
     } finally {
       saving = false;
@@ -550,21 +571,23 @@
 
   let exporting = $state(false);
   async function exportHtml(): Promise<void> {
+    if (!(await askName())) return;
     exporting = true;
     packPct = null;
+    const point = savePoint();
     try {
-      const r = await exportStandaloneHtml($state.snapshot(game), packProgress);
+      const r = await whileWriting(() => exportStandaloneHtml($state.snapshot(game), packProgress));
       if (r) {
-        mark('exported', 'Exported HTML');
+        mark('exported', 'Exported HTML', point);
         toast(
-          `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to|Downloaded) /, '')}. Double-click it to play.` +
+          `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to |Saved |Download started: )/, '')}. Double-click it to play.` +
             (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
           r.online ? 8000 : 5000,
         );
       }
       if (r?.missing.length) void tell(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
     } catch (e) {
-      void tell('Export failed: ' + (e as Error).message);
+      if (!isCancel(e)) void tell('Export failed: ' + (e as Error).message);
     } finally {
       exporting = false;
     }
@@ -587,11 +610,12 @@
   }
 
   async function exportJson(): Promise<void> {
+    const point = savePoint();
     try {
-      toast(await saveGameJson($state.snapshot(game)), 5000);
-      mark('exported', 'Exported JSON');
+      toast(await whileWriting(() => saveGameJson($state.snapshot(game))), 5000);
+      mark('exported', 'Exported JSON', point);
     } catch (e) {
-      void tell('Export failed: ' + (e as Error).message);
+      if (!isCancel(e)) void tell('Export failed: ' + (e as Error).message);
     }
   }
   // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
@@ -700,7 +724,10 @@
   {#if previous}
     {@const prev = previous}
     <div class="data-notice" role="status">
-      <span>“{prev.title}” was replaced. It's kept in Open… → Recent games.</span>
+      <span
+        >“{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}
+          {prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
+      >
       <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
       <button class="small ghost" onclick={() => (previous = null)} aria-label="Dismiss">✕</button>
     </div>

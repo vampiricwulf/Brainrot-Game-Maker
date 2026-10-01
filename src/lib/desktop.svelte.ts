@@ -1,7 +1,7 @@
 // Desktop app (.exe) only: facts the native side hands the host page at startup, and the
 // "Discord audio fix" setting (see src-tauri/src/main.rs).
 import { inTauri } from './platform';
-import { tell } from './ask.svelte';
+import { ask, tell } from './ask.svelte';
 
 declare global {
   interface Window {
@@ -154,22 +154,31 @@ export async function openLink(url: string): Promise<boolean> {
   }
 }
 
-/** Where a save went: BrainrotSaves next to the exe, or in Documents (`fallback`) when that folder couldn't be written. */
+/**
+ * Where a save went: BrainrotSaves next to the exe, or in Documents (`fallback`) when the app may not write in its own
+ * folder; in a browser, where its save picker put it (`picked`: `path` is then only the file's name).
+ */
 export interface SavedFile {
   path: string;
   fallback: boolean;
+  picked?: boolean;
 }
+
+type SaveMode = 'new' | 'backup' | 'overwrite';
 
 /**
  * Save a file into BrainrotSaves (desktop app). `new`: never replace a save ("Game (2).brainrot"…); `backup`: replace
  * it, keeping the one replaced as "Game.brainrot.bak" (and the one before as .bak2); `overwrite`: just replace it.
- * Throws the app's message when it can't.
+ * `docs`: the name and mode in Documents\BrainrotSaves, if the app may not write in its own folder (the same by
+ * default). Throws the app's message when it can't.
  */
-export async function saveToSaves(name: string, blob: Blob, mode: 'new' | 'backup' | 'overwrite' = 'overwrite'): Promise<SavedFile> {
+export async function saveToSaves(name: string, blob: Blob, mode: SaveMode = 'overwrite', docs?: { name: string; mode: SaveMode }): Promise<SavedFile> {
   const { core } = await import('@tauri-apps/api');
   const bytes = new Uint8Array(await blob.arrayBuffer());
+  const headers: Record<string, string> = { 'x-name': encodeURIComponent(name), 'x-mode': mode };
+  if (docs) Object.assign(headers, { 'x-docs-name': encodeURIComponent(docs.name), 'x-docs-mode': docs.mode });
   try {
-    return await core.invoke<SavedFile>('save_file', bytes, { headers: { 'x-name': encodeURIComponent(name), 'x-mode': mode } });
+    return await core.invoke<SavedFile>('save_file', bytes, { headers });
   } catch (err) {
     throw new Error(typeof err === 'string' ? err : "Couldn't save the file.");
   }
@@ -245,21 +254,59 @@ function openWaiting(): void {
     .catch((err) => void tell(err instanceof Error ? err.message : String(err)));
 }
 
+/** Saves, exports and autosaves being written now (closing the window asks first, see flushOnClose). */
+let writes = 0;
+let writesDone: (() => void)[] = [];
+
+/** Run a save, export or autosave: closing the app's window meanwhile asks whether to wait for it. */
+export async function whileWriting<T>(fn: () => Promise<T>): Promise<T> {
+  writes++;
+  try {
+    return await fn();
+  } finally {
+    if (--writes === 0) for (const done of writesDone.splice(0)) done();
+  }
+}
+
+/** Resolves once no save is being written (at once when none is). */
+export function writesFinished(): Promise<void> {
+  return writes ? new Promise((r) => writesDone.push(r)) : Promise.resolve();
+}
+
+/** A save is being written now. */
+export const writing = (): boolean => writes > 0;
+
+/** Asked when the window is closed while a save is written. */
+export const CLOSE_ASK = 'A save is in progress. Closing now would cut it off.\n\nThe app closes by itself once it’s done.';
+
 /**
  * When the app's window is closed: run `flush` (it writes the last edits), then close once those writes are done (the
- * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits.
+ * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits. While a save,
+ * export or autosave is being written, it asks first: Wait (the app closes once it's done) or Close anyway.
  */
 export function flushOnClose(flush: () => void): void {
   if (!isHost()) return;
+  /** Waiting for a save to finish before closing (the ✕ clicked again changes nothing). */
+  let waiting = false;
   import('@tauri-apps/api/event')
     .then(({ listen }) =>
       listen('close-requested', async () => {
+        if (waiting) return void invoke('hold_close').catch(() => {});
         try {
           flush();
           // A read waits for every write started before it (IndexedDB runs them in order).
           await new Promise((r) => setTimeout(r));
           await (await import('idb-keyval')).get('__probe');
+          if (writing()) {
+            waiting = true;
+            // The window stays open for as long as this takes.
+            await invoke('hold_close');
+            const done = writesFinished();
+            const anyway = await ask(CLOSE_ASK, { ok: 'Close anyway', cancel: 'Wait', danger: true, until: done });
+            if (!anyway) await done;
+          }
         } finally {
+          waiting = false;
           await invoke('close_app');
         }
       }),

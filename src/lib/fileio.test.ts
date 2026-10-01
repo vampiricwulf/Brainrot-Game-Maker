@@ -15,7 +15,12 @@ describe('file names from titles', () => {
 
   it('drop what a file name can’t hold, and dashes left at the ends', () => {
     expect(safeFilename('💀 Brainrot Night')).toBe('Brainrot-Night');
-    expect(safeFilename('a/b\\c:d*e?f"g<h>i|j')).toBe('abcdefghij');
+    expect(safeFilename('a/b\\c:d*e?f"g<h>i|j')).toBe('a-b-c-d-e-fg-h-i-j');
+    // Words and numbers stay apart; quotes just go.
+    expect(safeFilename('Part 1/2')).toBe('Part-1-2');
+    expect(safeFilename('Round 1:2')).toBe('Round-1-2');
+    expect(safeFilename('Bob’s Quiz')).toBe('Bobs-Quiz');
+    expect(safeFilename('"Best" of 2024')).toBe('Best-of-2024');
     expect(safeFilename(' - Quiz - ')).toBe('Quiz');
     expect(safeFilename('💀💀')).toBe('game');
     expect(safeFilename('')).toBe('game');
