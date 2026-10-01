@@ -609,12 +609,22 @@ export function listen(target: Pick<EventTarget, 'addEventListener' | 'removeEve
     session++;
     if (h.pending && e.target !== pendingTarget) wait(SETTLE_MS);
   };
+  // A change from another field than the last one that changed (a colour picker moved on to the next colour, a number
+  // typed in the next box without a key or click the page sees) starts a step of its own: it isn't "2 changes" of one.
+  // (Captured before the field's own handler changes the game.) A slider dragged on stays the same field.
+  let lastInput: EventTarget | null = null;
+  const input = (e: Event) => {
+    if (h.pending && lastInput && e.target !== lastInput) commit();
+    lastInput = e.target;
+  };
   const on: [string, (e: Event) => void][] = [
     ['pointerdown', down],
     ['pointerup', up],
     ['pointercancel', up],
     ['keydown', key],
     ['focusin', focus],
+    ['input', input],
+    ['change', input],
   ];
   for (const [type, fn] of on) target.addEventListener(type, fn, true);
   return () => {

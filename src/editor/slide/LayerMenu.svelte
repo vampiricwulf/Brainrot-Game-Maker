@@ -45,6 +45,7 @@
   const top = $derived(Math.max(4, Math.min(y, window.innerHeight - h - 4)));
   const anyLocked = $derived(selected.some((e) => e.locked));
   const anyUnlocked = $derived(selected.some((e) => !e.locked));
+  const unlocked = $derived(selected.filter((e) => !e.locked).length);
   const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
   const oneImage = $derived(selected.length === 1 && selected[0].kind === 'image');
   const ALIGNS: [Align, string][] = [['left', 'Left'], ['hcenter', 'Center'], ['right', 'Right'], ['top', 'Top'], ['vcenter', 'Middle'], ['bottom', 'Bottom']];
@@ -112,8 +113,13 @@
       Align<kbd>{aligning ? '▾' : '▸'}</kbd>
     </button>
     {#if aligning}
-      <div class="aligns" role="group" aria-label="Align to the slide">
+      <!-- One item lines up with the slide; several with each other. -->
+      <div class="aligns" role="group" aria-label={unlocked > 1 ? 'Line up the selected items' : 'Align to the slide'}>
         {#each ALIGNS as [how, label] (how)}<button role="menuitem" onclick={() => act(`align-${how}`)}>{label}</button>{/each}
+        {#if unlocked > 2}
+          <button role="menuitem" class="wide" onclick={() => act('align-hdistribute')}>Space evenly across</button>
+          <button role="menuitem" class="wide" onclick={() => act('align-vdistribute')}>Space evenly down</button>
+        {/if}
       </div>
     {/if}
     {#if anyUnlocked}<button role="menuitem" onclick={() => act('lock')}>🔒 Lock</button>{/if}
@@ -198,6 +204,9 @@
   .aligns button {
     justify-content: center;
     font-size: 12px;
+  }
+  .aligns .wide {
+    grid-column: 1 / -1;
   }
   .pick img {
     width: 28px;

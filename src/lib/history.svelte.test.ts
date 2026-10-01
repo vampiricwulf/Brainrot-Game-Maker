@@ -162,6 +162,24 @@ describe('undo history: steps', () => {
     expect(history.entries).toHaveLength(2);
   });
 
+  it('starts a new step when another field changes (a colour picker, no key or click seen), not while one goes on', async () => {
+    const [a, b] = [field('a'), field('b')];
+    win.fire('input', a);
+    g.title = 'Colour 1';
+    await seen();
+    win.fire('input', a);
+    g.title = 'Colour 2';
+    await seen();
+    expect(history.entries).toHaveLength(0);
+    win.fire('input', b);
+    expect(history.entries).toHaveLength(1);
+    g.rounds[0].name = 'Other';
+    await seen();
+    vi.advanceTimersByTime(1000);
+    expect(history.entries).toHaveLength(2);
+    expect(history.entries[1].label).not.toMatch(/changes/);
+  });
+
   it('joins typing in one field across pauses, and drops it when the text is back', async () => {
     const box = field('question');
     focus(win, box);

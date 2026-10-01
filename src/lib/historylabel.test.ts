@@ -129,6 +129,27 @@ describe('step labels', () => {
     expect(r.place).toMatchObject({ inSlide: true, element: npc.id });
   });
 
+  it("names a slide's background and a text box's effects as the editor does", () => {
+    const q = (g: Game) => board(g).categories[0].clues[1].questionSlide;
+    const text = (g: Game) => q(g).elements[0] as TextEl;
+    expect(step((g) => (q(g).background.color = '#333333')).label).toBe('Slide background color #333333');
+    expect(step((g) => (q(g).background.image = 'm1')).label).toBe('Slide background picture');
+    const coloured = (g: Game) => (q(g).background = { color: '#111111' });
+    const before = sample();
+    coloured(before);
+    const after = structuredClone(before);
+    q(after).background = {};
+    expect(describeStep(diff(before, after), before, after).label).toBe('Removed the slide background color');
+    expect(step((g) => (text(g).stroke = { color: '#000000', width: 6 })).label).toMatch(/^Added an outline to text box/);
+    expect(step((g) => (text(g).shadow = undefined)).label).toMatch(/^Removed the drop shadow from text box/);
+    expect(step((g) => (text(g).size = 80)).label).toMatch(/^Changed text size of text box/);
+    const outlined = sample();
+    text(outlined).stroke = { color: '#000000', width: 6 };
+    const wider = structuredClone(outlined);
+    text(wider).stroke!.width = 20;
+    expect(describeStep(diff(outlined, wider), outlined, wider).label).toMatch(/^Changed outline width of text box/);
+  });
+
   it('names moves, resizes and restacks of slide items', () => {
     const el = (g: Game) => screens(g)[1].slide.elements;
     expect(step((g) => ((el(g)[1].x += 10), (el(g)[1].y += 5))).label).toBe('Moved object “Old Man”');
@@ -166,7 +187,8 @@ describe('step labels', () => {
     expect(describeStep(diff(own, back), own, back).label).toBe('Built-in Daily Double sound');
     expect(step((g) => (g.settings.buzzer = true))).toMatchObject({ label: 'Rule: Buzzer mode on', where: 'Play › Phone buzzers' });
     expect(step((g) => (g.theme = { ...g.theme, preset: 'neon', tile: '#000' })).label).toBe('Theme preset: Brainrot Neon');
-    expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile #123456');
+    expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile color #123456');
+    expect(step((g) => ((g.theme.tile = '#123456'), (g.theme.boardText = '#abcdef'))).label).toBe('Theme: tile color, category name color');
     // The new value, in words.
     expect(step((g) => (g.theme.stageBg = 'green')).label).toBe('Theme: stage background chroma green');
     expect(step((g) => (g.theme.scoreBar = 'top')).label).toBe('Theme: score bar top');

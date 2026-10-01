@@ -11,7 +11,7 @@
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
-  import { align, centreOn, restack, type Pt } from '../lib/layers';
+  import { align, centreOn, clampOnto, restack, type Pt } from '../lib/layers';
   import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
   import { freeOffset } from '../lib/editing';
   import { boardRounds, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
@@ -120,6 +120,7 @@
     if (at) {
       d.x = Math.round(at.x - w / 2);
       d.y = Math.round(at.y - h / 2);
+      clampOnto(d, SLIDE_W, SLIDE_H);
     }
     edit(() => {
       items().push(d);
