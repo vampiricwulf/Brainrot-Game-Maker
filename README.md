@@ -25,6 +25,9 @@ Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
 3. Add players under **⚙ Setup & Players**.
 4. Press **▶ Play**.
 
+New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **Import clues…**
+on a board takes a sheet pasted from Google Sheets or Excel, and **Find** (`Ctrl+F`) searches the whole game.
+
 ![The editor](docs/screenshots/editor.png)
 
 ## Round modes
@@ -35,7 +38,7 @@ A game is a list of rounds, and each round has a mode. You can reorder, duplicat
 |---|---|
 | 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, and images on categories and tiles. |
 | ⭐ **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
-| 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, NPCs and doorways. |
+| 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | 🎲 **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
 
 Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube, arranged freely.
@@ -97,7 +100,20 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 - 🎲 Dice
 - 🎡 Wheels, including a built-in **Pick a player** wheel. Several wheels can spin at once.
 - 🏁 Who goes first
-- 📊 Scores
+- 📊 Scores (with 📋 Copy standings for chat)
+
+**Buzzer mode** (Setup › Rules): the first player number pressed answers and the others are locked out with a buzz;
+`0` opens the buzzers again. Players can also buzz from the audience window with their own keys. Viewers see
+"🔔 Ann is answering" whenever one player is picked during a clue.
+
+**Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
+off in Setup › Sounds.
+
+**For OBS:** Theme › Stage background can be chroma green or magenta for keying, and **▭** (or `Shift+A`) opens a
+scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown.
+
+**Single-window mode shows viewers everything on screen**, including wagers as you type them, answers, host notes and
+hidden objects. Use the separate audience window when that matters.
 
 ![Two wheels spinning together](docs/screenshots/wheels.png)
 
@@ -141,11 +157,14 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 | `N` | Next step (intro, Final, next turn) |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` | Start/pause the timer |
-| `D` / `W` / `O` / `S` | Dice / wheel / roll-off / scoreboard |
+| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off / scoreboard |
+| `K` or `B` | "Be right back" cover (every round) |
+| `0` | Select everyone or no one (in buzzer mode: open the buzzers again) |
+| `Shift+A` | Scores-only window |
 | `Space` / `←` `→` / `M` | Play/pause, seek, mute media |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
-| `J` (RPG) | Full map |
-| `I` / `B` (RPG, board game) | Player sheet / "Be right back" cover |
+| `J` / `V` (RPG) | Full map / map on screen |
+| `I` (RPG, board game) | Player sheet |
 | Numpad or `Alt`+arrows (RPG) | Move the party |
 
 ## Saving
@@ -153,13 +172,19 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 - **Save** (`Ctrl+S`) writes a `.brainrot` pack: the game plus all its media.
   - In the desktop app, saves go in a **BrainrotSaves** folder next to the `.exe`.
   - In a browser, they're downloads.
-- **Open…** lists your saves. Dropping a `.brainrot` file on the editor opens it too.
+- **Open…** lists your **Recent games** (a game replaced by New or Open… can be reopened, with its undo history) and,
+  in the desktop app, BrainrotSaves. It also opens exported HTML files. Dropping a `.brainrot` on the editor opens it,
+  and the desktop app opens a game file you open it with.
+- New and Open… ask **Save first / Discard / Cancel** when the game has unsaved changes. Only one browser tab edits at a
+  time.
 - **⬇ Export HTML** makes a single, play-only file to share.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **⬆ Add files…**.
-- **⚙ Settings** (next to ℹ About) has these options:
+- **⚙ Settings** (in the header's ⋯ menu, with Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
+  - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
   - **Autosave** every few minutes (desktop app). The default is every 5 minutes, keeping the last 3.
-  - **Replace the last save** instead of making `Game (2)`, `Game (3)`… (desktop app)
+  - **Save replaces the game's last save** and keeps the two before it as `.bak` / `.bak2` (desktop app, on by
+    default); off makes `Game (2)`, `Game (3)`… instead. Autosaves are kept per game.
 
 ## Streaming the sound (Discord, OBS)
 

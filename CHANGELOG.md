@@ -35,6 +35,26 @@ done, the Unreleased lines move under that day's heading.
 - The play history says who bought or sold in a shop ("Ann buys Potion") and which party moved once there are several
   ("Party 2 west"). ＋ Text in an RPG round opens the new text's card. The in-play keys list mentions `R` hiding the
   answer again, `Ctrl+Y`, and `Esc` closing a card. (1d763ac)
+- **Single-window mode says plainly that viewers see everything on screen**: wagers as they're typed, answers, host
+  notes and hidden objects. The display choice before the game recommends the audience window when that matters.
+  (737022c)
+- The stage keeps one size between the board and a clue, and through every Final step. `B` covers the stage in every
+  round (it was also Esc on a clue); `V` shows the RPG map and `M` always mutes. Score pops clear on the next clue and
+  sit over the scores; wheel labels are never upside down; long names fit on score plates; the stats strip is bigger.
+  Closing the audience window asks in the page, next to Exit. (737022c)
+- **Desktop Save replaces the game's last save** and keeps the two before it as `.bak` / `.bak2` (it used to make a
+  new "Game (2)" every time). Autosaves are kept per game, and slots past the number kept are deleted. (769dbf8)
+- Big RPG maps open several times faster in the editor, and host actions on big games are much quicker. (769dbf8)
+- **New and Open… ask Save first / Discard / Cancel**, and the game they replace stays in **Recent games** with its
+  undo history ("↶ Reopen previous game"). The first Save of an untitled game asks for its name. Only one browser tab
+  edits at a time; another opens paused with "Edit here instead". (64eba3f, 3b61fc0)
+- Exported player files say they're the host's copy, count RPG and board game rounds, keep their files in memory
+  (an older export no longer changes the builder's pictures) and keep a game in progress per export. (64eba3f, 708fd3b)
+- The editor header's Export JSON, ⚙ Settings, ⌨ shortcuts and ℹ About moved into a **⋯** menu, so the header fits at
+  125% and 150% zoom. Questions and errors appear in the page instead of the browser's pop-ups. 🗑 deletes, − removes
+  and ✕ closes everywhere, and every window has the same ✕ and Done / Cancel. (4729d75)
+- **Readable colours**: text on player colours picks black or white by contrast, the Pastel theme's stage text is
+  dark, and filled buttons are darker. (4729d75)
 
 ### Added
 - Dice tiles can use standard dice (d4–d100, 2d6). "＋ New wheel…" / "＋ New dice…" right in the clue editor and in a
@@ -75,6 +95,25 @@ done, the Unreleased lines move under that day's heading.
   tab and map tab keys. (84ad8f2, 7180280, 86f9f05, f3405d5)
 - ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
   never a redo.
+- **Buzzer mode** (Setup › Rules): during a clue the first player number pressed answers and the others are locked out
+  with a buzz; `0` opens the buzzers again. Players can buzz from the audience window with their own keys. Viewers see
+  "🔔 Ann is answering" while one player is picked. (3a6c269)
+- RPG, board game and Final rounds open on a **title card**, like boards. **Built-in sounds**, on by default (round
+  intro, tile, Daily Double, buzz, right, wrong, reveal, time's up, dice, wheel, board move, winner); each can be
+  previewed, replaced or switched off. (3a6c269)
+- **For OBS**: a chroma green or magenta stage background, and a scores-only window (▭ or `Shift+A`) for a
+  lower-third. Editable "Starting soon" and cover cards with a countdown; optional category/value and screen-name
+  captions; the Final shows scores while wagers come in; 📋 Copy standings in 📊 Scores. (737022c, 3a6c269)
+- **Try a sample game**, starter templates in ＋ Add round, Import round from a .brainrot, and Copy / Paste round.
+  **Find** (`Ctrl+F` or 🔍) searches clues, screens, spaces, items, wheels, players and files. **Import clues…** pastes
+  a board from Google Sheets, Excel or a CSV. Save as my theme. A "Most players" rule. Board game spaces can move a
+  player ±N, skip a turn or roll again. (a80620f, 90b9fce)
+- Desktop app: opens a game file it's opened with, lists exported HTML games in Open…, and opens `.bak` backups.
+  Open… in the browser opens exported HTML games too. (769dbf8, 13b208f)
+- ℹ About shows whether the browser keeps the game's storage. ⚙ Settings › **Reduce motion on stream**; the editor
+  and host controls follow the computer's reduce-motion setting. (64eba3f, 4729d75)
+- Keyboard and screen reader: every window keeps focus inside and returns it on close; focus stays put after adding,
+  duplicating or deleting rounds and categories; icon buttons, board tiles, sidebar tabs and toggles have names. (4729d75)
 
 ### Fixed
 - Later boards no longer keep doubling their values; long category names aren't cut off; the Daily Double count is
@@ -92,6 +131,12 @@ done, the Unreleased lines move under that day's heading.
   the wager box, so typed numbers no longer select players. Redo names a multi-player award's players in the same order
   as Undo. A shop, a player's sheet or an object's pop-up no longer stays on stream into the next round, and a card left
   open no longer swallows the first `Esc` in a later clue. `P` then `0` no longer leaves `P` waiting. (cca172e, 8318135)
+- When storage was full, added files and undo history could be lost while the header said ✓ Autosaved. Failed
+  writes are now tried again and the warning stays until everything is stored; closing the tab asks first. (64eba3f)
+- Hand-edited games are repaired where it's obvious, and Open… names what it can't use. A cut-off export says it's
+  incomplete. (64eba3f, 13b208f)
+- Desktop saves are synced to disk before they replace the old file, and closing the window keeps the last edits.
+  (769dbf8)
 
 ## 2026-09-30
 
