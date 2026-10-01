@@ -24,12 +24,23 @@
  * someone holds: kick (or removing the seat from the game).
  *
  * An early buzz (while 'closed') locks the seat, not the socket, so a reload doesn't clear it.
+ *
+ * Kicks: the kicked phone (its socket and its browser's device id) can't take that seat again for KICK_BLOCK_MS (it can
+ * take another free one). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
+ *
+ * Full rooms: phones without a seat that have done nothing for IDLE_MS (viewers who opened the link, extra tabs) don't
+ * hold a place: when MAX_PHONES are connected, the oldest of them is turned away ('denied full', closed; it tries again
+ * later) to make room. With none to turn away a newcomer still gets in, up to MAX_SOCKETS, but only to come back to its
+ * seat with a token; anything else turns it away. The host is told ('full').
  */
 import {
   BUZZ_PROTOCOL,
   phoneView,
   TIE_MS,
+  clip,
+  cleanName,
   type BuzzPhase,
+  type DenyReason,
   type HostState,
   type PhoneInfo,
   type QueuedBuzz,
@@ -38,9 +49,22 @@ import {
   type Seat,
 } from '../../src/lib/buzzproto';
 
+/** Phones connected at most, not counting idle ones without a seat (see Full rooms above). */
 export const MAX_PHONES = 24;
-/** Messages bigger than this (bytes) are dropped unread. */
-export const HOST_MSG_MAX = 8 * 1024;
+/** Sockets at most, counting newcomers let in over MAX_PHONES to come back with a seat's token. */
+export const MAX_SOCKETS = 40;
+/** A phone without a seat that hasn't joined, asked, buzzed or left for this long can be turned away when full. */
+export const IDLE_MS = 10_000;
+/** A kicked phone can't take that seat again for this long. */
+export const KICK_BLOCK_MS = 2 * 60_000;
+/** Messages bigger than this (bytes) are dropped unread (the host is told when its state is too big). */
+export const HOST_MSG_MAX = 32 * 1024;
+export const TOO_BIG = 'The game is too big for the buzzer room to pass on (too many players or very long names)';
+/** A seat's name as phones see it, and the room's title (characters). */
+export const SEAT_NAME_MAX = 40;
+export const TITLE_MAX = 200;
+/** A status line for the phones (characters). */
+export const STATUS_MAX = 120;
 export const PHONE_MSG_MAX = 1024;
 /** A new player's name (phones type it). */
 export const NAME_MAX = 24;
@@ -99,6 +123,8 @@ export interface RoomSaved {
   race: Race | null;
   /** Seat id → when its early-buzz lock ends. */
   earlyLocks: Record<string, number>;
+  /** Seat id → the phones kicked from it (sockets, device ids) and until when they can't take it again. */
+  blocks?: Record<string, { until: number; conns: string[]; devices: string[] }>;
 }
 
 /** What each phone socket keeps (stored on the socket, so it survives hibernation). */
@@ -108,6 +134,8 @@ export interface PhoneSaved {
   pendingName?: string;
   /** The last few round trips the room timed (ms, newest last). */
   rtts?: number[];
+  /** The id its browser sent with a join or a request to join (kept for kicks). */
+  device?: string;
 }
 
 export interface RoomDeps {
@@ -118,6 +146,8 @@ export interface RoomDeps {
   toPhone(conn: string, msg: RoomToPhone): void;
   saveRoom(saved: RoomSaved): void;
   savePhone(phone: PhoneSaved): void;
+  /** Close a phone's socket (it was turned away and told 'denied full' already). */
+  dropPhone(conn: string): void;
   /** Run fn in ms (the grace window); returns a handle for cancel. */
   schedule(ms: number, fn: () => void): unknown;
   cancel(handle: unknown): void;
@@ -131,6 +161,10 @@ interface Phone extends PhoneSaved {
   joins: Window;
   /** serverNow of pongs sent and not yet echoed (only those count as a sync). */
   pongs: number[];
+  /** When it last joined, asked, buzzed or left (or connected). */
+  active: number;
+  /** Let in over MAX_PHONES: only a seat's token keeps it (see Full rooms). */
+  hold?: boolean;
 }
 
 interface Window {
@@ -176,6 +210,8 @@ export class Room {
   /** The last queue / results sent this arm, so unchanged ones aren't sent again. */
   private lastQueue = '';
   private lastResults = new Map<string, string>();
+  /** When the host was last told the room is full. */
+  private lastFull = -Infinity;
 
   constructor(
     private code: string,
@@ -188,7 +224,8 @@ export class Room {
     // A race saved by an older version of the room (no queue) is dropped.
     if (this.s.race && !Array.isArray(this.s.race.queue)) this.s.race = null;
     this.hostHere = hostHere;
-    for (const p of phones) this.phones.set(p.conn, { ...p, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, pongs: [] });
+    const now = this.deps.now();
+    for (const p of phones) this.phones.set(p.conn, { ...p, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, pongs: [], active: now });
     // Woken (or restarted) in the middle of a grace window: finish it on time, or at once if that's past.
     const race = this.s.race;
     if (race && race.graceUntil !== undefined && !race.decided)
@@ -210,8 +247,14 @@ export class Room {
     this.lastPhones = '';
     this.lastQueue = '';
     this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now() });
+    this.settle();
     this.sync();
     this.announce();
+    // A buzz won while the host was away never reached it: it hears it again (a host that had it already ignores it).
+    const race = this.s.race;
+    const st = this.s.state;
+    if (race?.decided && race.winner && st?.phase === 'answering' && st.answering === race.winner && st.armId === race.armId)
+      this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: race.winner, rank: 1, afterMs: 0 });
   }
 
   hostClose(): void {
@@ -223,6 +266,7 @@ export class Room {
   hostMessage(raw: unknown): 'close' | void {
     this.settle();
     if (!this.allow(this.hostRate, HOST_RATE, 1000)) return;
+    if (typeof raw === 'string' && (raw.length > HOST_MSG_MAX || bytes(raw) > HOST_MSG_MAX)) return this.deps.toHost({ t: 'error', message: TOO_BIG });
     const m = parse(raw, HOST_MSG_MAX);
     if (!m) return;
     switch (m.t) {
@@ -285,6 +329,7 @@ export class Room {
     // Seats gone from the game free their tokens and phones.
     for (const id of Object.keys(this.s.tokens)) if (!seatIds.has(id)) this.freeSeat(id);
     for (const id of Object.keys(this.s.earlyLocks)) if (!seatIds.has(id) || this.s.earlyLocks[id] <= now) delete this.s.earlyLocks[id];
+    for (const id of Object.keys(this.s.blocks ?? {})) if (!seatIds.has(id) || this.s.blocks![id].until <= now) delete this.s.blocks![id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
       for (const p of this.phones.values()) if (p.pendingName !== undefined) {
@@ -353,7 +398,13 @@ export class Room {
   }
 
   private kick(seatId: string): void {
-    if (!this.s.tokens[seatId] && ![...this.phones.values()].some((p) => p.seatId === seatId)) return;
+    const holders = [...this.phones.values()].filter((p) => p.seatId === seatId);
+    if (!this.s.tokens[seatId] && !holders.length) return;
+    // The kicked phone can't just tap the same name again (a troll with the code from the stream).
+    const conns = new Set(holders.map((p) => p.conn));
+    if (this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
+    const devices = new Set(holders.flatMap((p) => (p.device ? [p.device] : [])));
+    (this.s.blocks ??= {})[seatId] = { until: this.deps.now() + KICK_BLOCK_MS, conns: [...conns], devices: [...devices] };
     this.freeSeat(seatId, true);
     this.save();
   }
@@ -376,12 +427,67 @@ export class Room {
 
   /** A phone connected. false when the room is full (the caller tells it and closes it). */
   phoneOpen(conn: string): boolean {
-    if (this.phones.size >= MAX_PHONES) return false;
-    const p: Phone = { conn, seatId: null, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, pongs: [] };
+    const now = this.deps.now();
+    if (this.countedPhones() >= MAX_PHONES || this.phones.size >= MAX_SOCKETS) this.turnAwayIdle(now);
+    if (this.phones.size >= MAX_SOCKETS) {
+      this.tellFull();
+      return false;
+    }
+    const p: Phone = { conn, seatId: null, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, pongs: [], active: now };
+    if (this.countedPhones() >= MAX_PHONES) p.hold = true;
     this.phones.set(conn, p);
     this.deps.savePhone(strip(p));
     this.sync();
     return true;
+  }
+
+  /** Phones that hold a place: all but those let in on hold. */
+  private countedPhones(except?: Phone): number {
+    let n = 0;
+    for (const p of this.phones.values()) if (p !== except && !p.hold) n++;
+    return n;
+  }
+
+  /** Turns away the phone without a seat that has been idle longest (more than IDLE_MS). false: there is none. */
+  private turnAwayIdle(now: number): boolean {
+    let oldest: Phone | undefined;
+    for (const p of this.phones.values())
+      if (!p.seatId && p.pendingName === undefined && now - p.active > IDLE_MS && (!oldest || p.active < oldest.active)) oldest = p;
+    if (!oldest) return false;
+    this.turnAway(oldest);
+    return true;
+  }
+
+  /** 'full': the phone is told and its socket closed (it tries again in a while). */
+  private turnAway(p: Phone): void {
+    this.phones.delete(p.conn);
+    this.deps.toPhone(p.conn, { t: 'denied', reason: 'full' });
+    this.deps.dropPhone(p.conn);
+    this.tellFull();
+    this.sync();
+  }
+
+  /** The host hears that the room is full (at most every few seconds). */
+  private tellFull(): void {
+    const now = this.deps.now();
+    if (!this.hostHere || now - this.lastFull < 5000) return;
+    this.lastFull = now;
+    this.deps.toHost({ t: 'full' });
+  }
+
+  /**
+   * A phone let in over MAX_PHONES wants a seat without a token, or to join as someone new: only if there's room now
+   * (an idle phone can be turned away for it); else it is turned away itself. true: it was.
+   */
+  private turnedAway(p: Phone): boolean {
+    if (!p.hold) return false;
+    if (this.countedPhones(p) >= MAX_PHONES) this.turnAwayIdle(this.deps.now());
+    if (this.countedPhones(p) >= MAX_PHONES) {
+      this.turnAway(p);
+      return true;
+    }
+    delete p.hold;
+    return false;
   }
 
   phoneClose(conn: string): void {
@@ -395,6 +501,11 @@ export class Room {
     if (!p || !this.allow(p.rate, PHONE_RATE, 1000)) return;
     const m = parse(raw, PHONE_MSG_MAX);
     if (!m) return;
+    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave') p.active = this.deps.now();
+    if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
+      p.device = m.device;
+      this.deps.savePhone(strip(p));
+    }
     switch (m.t) {
       case 'join':
         if (typeof m.seatId !== 'string' || (m.token !== undefined && typeof m.token !== 'string')) return;
@@ -445,7 +556,7 @@ export class Room {
   }
 
   private join(p: Phone, seatId: string, token?: string): void {
-    const deny = (reason: 'taken' | 'unknown-seat' | 'bad-token') => this.deps.toPhone(p.conn, { t: 'denied', reason });
+    const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
     if (!this.s.state?.seats.some((x) => x.id === seatId)) return deny('unknown-seat');
     if (p.seatId === seatId) return; // already there
     const held = this.s.tokens[seatId];
@@ -460,6 +571,7 @@ export class Room {
       }
       if (p.seatId) this.freeSeat(p.seatId);
       delete p.pendingName;
+      delete p.hold;
       p.seatId = seatId;
       p.lastView = p.lastSeats = undefined;
       this.s.holders[seatId] = p.conn;
@@ -469,6 +581,10 @@ export class Room {
       return;
     }
     if (held) return deny('taken');
+    if (this.s.state.locked) return deny('locked');
+    const block = this.s.blocks?.[seatId];
+    if (block && block.until > this.deps.now() && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)))) return deny('blocked');
+    if (this.turnedAway(p)) return;
     if (p.seatId) this.freeSeat(p.seatId);
     delete p.pendingName;
     this.seat(p, seatId);
@@ -487,9 +603,16 @@ export class Room {
   }
 
   private askNew(p: Phone, raw: string): void {
-    const name = raw.trim().replace(/\s+/g, ' ').slice(0, NAME_MAX).trim();
+    const name = cleanName(raw, NAME_MAX);
     if (!name || p.seatId) return;
-    if (!this.s.state?.allowNew) return this.deps.toPhone(p.conn, { t: 'denied', reason: 'no-new' });
+    const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
+    const st = this.s.state;
+    if (st?.locked) return deny('locked');
+    if (!st?.allowNew) return deny('no-new');
+    // A second "Ann": if it's her, she taps her name; if not, she picks another one.
+    const key = (a: string) => a.toLocaleLowerCase().replace(/\s+/g, '');
+    if (st.seats.some((x) => key(x.name) === key(name))) return deny('name-taken');
+    if (this.turnedAway(p)) return;
     p.pendingName = name;
     this.deps.savePhone(strip(p));
     this.deps.toPhone(p.conn, { t: 'waiting' });
@@ -503,6 +626,7 @@ export class Room {
     const now = this.deps.now();
     const result = (outcome: 'pending' | 'late' | 'early' | 'locked', extra: { lockedUntil?: number } = {}) =>
       this.deps.toPhone(p.conn, { t: 'result', armId, outcome, ...extra });
+    if (st.phase === 'closed' && st.done) return result('late'); // the clue is over: no penalty
     if (st.phase === 'closed') {
       // Pressing again while closed starts the penalty over, as on the show.
       if (st.earlyLockMs > 0) this.s.earlyLocks[seatId] = now + st.earlyLockMs;
@@ -647,10 +771,12 @@ export class Room {
       seats: (st?.seats ?? []).map((x) => ({ ...x, taken: !!this.s.tokens[x.id] })),
       allowNew: st?.allowNew ?? false,
       hostHere: this.hostHere,
+      ...(st?.locked ? { locked: true } : {}),
+      ...(st?.status?.text ? { note: st.status.text } : {}),
     } satisfies RoomToPhone);
     for (const p of this.phones.values()) {
       if (p.seatId && st) {
-        const view = phoneView(st, p.seatId);
+        const view = { ...phoneView(st, p.seatId), hostHere: this.hostHere };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;
@@ -694,6 +820,7 @@ const strip = (p: Phone): PhoneSaved => ({
   seatId: p.seatId,
   ...(p.pendingName !== undefined ? { pendingName: p.pendingName } : {}),
   ...(p.rtts?.length ? { rtts: p.rtts } : {}),
+  ...(p.device ? { device: p.device } : {}),
 });
 
 // ---- checking untrusted messages ----
@@ -727,7 +854,7 @@ export function cleanState(x: unknown): HostState | null {
   for (const s of x.seats.slice(0, 64)) {
     if (!isObj(s) || typeof s.id !== 'string' || !s.id || s.id.length > 64 || typeof s.name !== 'string') return null;
     if (seats.some((o) => o.id === s.id)) continue;
-    seats.push({ id: s.id, name: s.name.trim().slice(0, 40), color: typeof s.color === 'string' && COLOR.test(s.color) ? s.color : '#4f7cff' });
+    seats.push({ id: s.id, name: cleanName(s.name, SEAT_NAME_MAX), color: typeof s.color === 'string' && COLOR.test(s.color) ? s.color : '#4f7cff' });
   }
   const ids = new Set(seats.map((s) => s.id));
   let clue: HostState['clue'] = null;
@@ -740,8 +867,21 @@ export function cleanState(x: unknown): HostState | null {
   for (const [k, v] of Object.entries(x.scores)) if (ids.has(k) && typeof v === 'number' && Number.isFinite(v)) scores[k] = v;
   const answering = typeof x.answering === 'string' && ids.has(x.answering) ? x.answering : null;
   const rollOrder = Array.isArray(x.rollOrder) ? [...new Set(x.rollOrder.filter((id): id is string => typeof id === 'string' && ids.has(id)))] : [];
+  // Added later (optional).
+  const extra: Partial<HostState> = {};
+  if (isObj(x.done)) extra.done = { by: typeof x.done.by === 'string' && ids.has(x.done.by) ? x.done.by : null };
+  if (isObj(x.status) && typeof x.status.text === 'string' && x.status.text.trim()) {
+    const st: NonNullable<HostState['status']> = { text: clip(x.status.text.trim(), STATUS_MAX) };
+    if (Array.isArray(x.status.seats) && typeof x.status.seatsText === 'string' && x.status.seatsText.trim()) {
+      st.seats = x.status.seats.filter((id): id is string => typeof id === 'string' && ids.has(id));
+      st.seatsText = clip(x.status.seatsText.trim(), STATUS_MAX);
+    }
+    extra.status = st;
+  }
+  if (typeof x.currency === 'string' && x.currency) extra.currency = clip(x.currency, 8);
+  if (x.locked === true) extra.locked = true;
   return {
-    title: x.title.slice(0, 200),
+    title: clip(x.title, TITLE_MAX),
     seats,
     allowNew: x.allowNew,
     phase: x.phase as BuzzPhase,
@@ -752,5 +892,6 @@ export function cleanState(x: unknown): HostState | null {
     lockedOut: x.lockedOut.filter((id): id is string => typeof id === 'string' && ids.has(id)),
     earlyLockMs: Number.isFinite(x.earlyLockMs) ? Math.max(0, Math.min(10_000, Math.round(x.earlyLockMs))) : 0,
     scores,
+    ...extra,
   };
 }

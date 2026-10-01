@@ -61,6 +61,18 @@ export interface HostState {
   /** A buzz while 'closed' locks that phone out for this long once the buzzers open (0 = no penalty). */
   earlyLockMs: number;
   scores: Record<string, number>;
+  // ---- Added later (all optional: an older room drops them, an older app leaves them out) ----
+  /** The clue is over (answered right): phones say so instead of "Get ready". by: who got it. Only with 'closed'. */
+  done?: { by?: string | null } | null;
+  /**
+   * A short line for the phones when there's no buzzing (a Daily Double, a Final, an RPG round, the host setting up…).
+   * The seats in `seats` see `seatsText` instead (the Daily Double's player: "Daily Double — you're up!").
+   */
+  status?: { text: string; seats?: string[]; seatsText?: string } | null;
+  /** The points symbol ("$"), for the scores phones show. */
+  currency?: string;
+  /** 🔒 Seats locked: nobody new takes a seat or asks to join; only phones with a seat's token come back. */
+  locked?: boolean;
 }
 
 /** What one phone sees. Built by phoneView() only. */
@@ -73,6 +85,14 @@ export interface PhoneView {
   answering: { name: string; color: string; you: boolean } | null;
   /** This phone's player; null until it has a seat. */
   you: (Seat & { score: number; lockedOut: boolean }) | null;
+  // ---- Added later (optional: an older room leaves them out) ----
+  /** The clue is over: who got it (null: not said). */
+  done?: { by: { name: string; color: string; you: boolean } | null };
+  /** HostState.status as this phone should see it. */
+  status?: string;
+  currency?: string;
+  /** false while the host's connection is gone (the room adds it). */
+  hostHere?: boolean;
 }
 
 export function phoneView(s: HostState, seatId: string | null): PhoneView {
@@ -85,7 +105,35 @@ export function phoneView(s: HostState, seatId: string | null): PhoneView {
     clue: s.phase === 'lobby' ? null : s.clue ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) } : null,
     answering: a ? { name: a.name, color: a.color, you: a.id === seatId } : null,
     you: seat ? { id: seat.id, name: seat.name, color: seat.color, score: s.scores[seat.id] ?? 0, lockedOut: s.lockedOut.includes(seat.id) } : null,
+    ...doneView(s, seatId),
+    ...(s.status?.text ? { status: seatId && s.status.seatsText && s.status.seats?.includes(seatId) ? s.status.seatsText : s.status.text } : {}),
+    ...(s.currency ? { currency: s.currency } : {}),
   };
+}
+
+function doneView(s: HostState, seatId: string | null): Pick<PhoneView, 'done'> {
+  if (!s.done || s.phase !== 'closed') return {};
+  const by = s.done.by ? s.seats.find((x) => x.id === s.done!.by) : undefined;
+  return { done: { by: by ? { name: by.name, color: by.color, you: by.id === seatId } : null } };
+}
+
+/**
+ * A name typed on a phone made safe to show: no control or invisible formatting characters (bidi overrides,
+ * zero-width spaces…; a zero-width joiner inside an emoji stays), spaces squeezed, at most `max` characters (whole
+ * characters, with "…" when cut).
+ */
+export function cleanName(raw: string, max: number): string {
+  const chars = Array.from(raw);
+  const pic = /\p{Extended_Pictographic}/u;
+  const invisible = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
+  const kept = chars.filter((c, i) => !invisible.test(c) || (c === '\u200d' && pic.test(chars[i - 1] ?? '') && pic.test(chars[i + 1] ?? '')));
+  return clip(kept.join('').replace(/\s+/g, ' ').trim(), max);
+}
+
+/** At most `max` characters (whole ones: an emoji isn't cut in half), ending in "…" when cut. */
+export function clip(s: string, max: number): string {
+  const chars = Array.from(s);
+  return chars.length <= max ? s : `${chars.slice(0, Math.max(0, max - 1)).join('').trimEnd()}…`;
 }
 
 /** A phone as the host sees it in its list. */
@@ -136,14 +184,19 @@ export type RoomToHost =
   | { t: 'queue'; armId: number; queue: QueuedBuzz[]; tie?: string[] }
   | { t: 'phones'; phones: PhoneInfo[] }
   | { t: 'pong'; at: number; serverNow: number }
-  | { t: 'error'; message: string };
+  | { t: 'error'; message: string }
+  /** Added later: a phone was turned away because the room is full (too many phones connected). */
+  | { t: 'full' };
 
 /** A phone → room. */
 export type PhoneMsg =
-  /** Claim a seat. With a token (from an earlier 'joined') it takes the seat back even if another socket holds it. */
-  | { t: 'join'; seatId: string; token?: string }
+  /**
+   * Claim a seat. With a token (from an earlier 'joined') it takes the seat back even if another socket holds it.
+   * device (added later): a random id this browser keeps, so a kick can keep that phone off the seat for a while.
+   */
+  | { t: 'join'; seatId: string; token?: string; device?: string }
   /** Ask to join as a new player (only when allowNew). */
-  | { t: 'new'; name: string }
+  | { t: 'new'; name: string; device?: string }
   /** reactMs: ms from this phone showing BUZZ! for armId to the press (old phones leave it out). */
   | { t: 'buzz'; armId: number; reactMs?: number }
   | { t: 'leave' }
@@ -151,14 +204,20 @@ export type PhoneMsg =
   /** Sent straight back on every pong, echoing its serverNow, so the room can time the round trip itself. */
   | { t: 'sync'; serverNow: number };
 
+/** Added later: 'locked' (🔒 the host locked the seats), 'blocked' (kicked from that seat a moment ago), 'name-taken'. */
+export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken';
+
 /** The room → a phone. */
 export type RoomToPhone =
-  /** On connect and whenever seats change: the seats and which are free. */
-  | { t: 'seats'; title: string; seats: (Seat & { taken: boolean })[]; allowNew: boolean; hostHere: boolean }
+  /**
+   * On connect and whenever seats change: the seats and which are free. Added later: locked (🔒 nobody new can take a
+   * seat), note (HostState.status's text, e.g. "The host is setting up — hang on").
+   */
+  | { t: 'seats'; title: string; seats: (Seat & { taken: boolean })[]; allowNew: boolean; hostHere: boolean; locked?: boolean; note?: string }
   /** This phone holds seatId; keep token (localStorage, per room code) to come back after a refresh. */
   | { t: 'joined'; seatId: string; token: string }
   | { t: 'waiting' }
-  | { t: 'denied'; reason: 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' }
+  | { t: 'denied'; reason: DenyReason }
   | { t: 'view'; view: PhoneView }
   /**
    * This phone's own buzz, sent again whenever its place in the queue changes. 'pending' = counted, the room is still

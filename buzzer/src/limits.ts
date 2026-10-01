@@ -10,6 +10,7 @@ export const DAILY_ROOMS = 1000;
 
 export const TOO_MANY_ROOMS = 'Too many new rooms — wait a minute';
 export const BUSY_TODAY = 'The buzzer server is busy today — try again tomorrow';
+export const TOO_MANY_LOOKUPS = 'Too many tries — wait a minute';
 
 /** Today's count (day: YYYY-MM-DD, UTC). */
 export interface DayCount {

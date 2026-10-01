@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { cleanState, GRACE_MS, MAX_PHONES, median, MIN_REACT_MS, rankKey, Room, type PhoneSaved, type RoomSaved } from './room';
+import {
+  cleanState,
+  GRACE_MS,
+  IDLE_MS,
+  KICK_BLOCK_MS,
+  MAX_PHONES,
+  MAX_SOCKETS,
+  median,
+  MIN_REACT_MS,
+  rankKey,
+  Room,
+  TOO_BIG,
+  type PhoneSaved,
+  type RoomSaved,
+} from './room';
 
 const seats = [
   { id: 'a', name: 'Ann', color: '#ff0000' },
@@ -33,6 +47,7 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   const host: RoomToHost[] = [];
   const inbox = new Map<string, RoomToPhone[]>();
   const phoneSaves = new Map<string, PhoneSaved>();
+  const dropped: string[] = [];
   let saves = 0;
   const room = new Room(
     'BCDF',
@@ -43,6 +58,7 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
       toPhone: (c, m) => (inbox.get(c) ?? inbox.set(c, []).get(c)!).push(m),
       saveRoom: () => saves++,
       savePhone: (p) => phoneSaves.set(p.conn, p),
+      dropPhone: (c) => dropped.push(c),
       schedule: (ms, fn) => {
         timers.push({ at: t.now + ms, fn, id: ++timerId });
         return timerId;
@@ -66,7 +82,7 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   });
   const hostLast = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type).at(-1) as Extract<RoomToHost, { t: T }> | undefined;
   const hostAll = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type) as Extract<RoomToHost, { t: T }>[];
-  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, saves: () => saves };
+  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, dropped, saves: () => saves };
 }
 
 /** Host connected and sent a state; phones a, b, c seated on seats a, b, c. */
@@ -194,7 +210,7 @@ describe('seats', () => {
     p.send({ t: 'new', name: '   A very long name that goes on and on   ' });
     expect(p.last('waiting')).toEqual({ t: 'waiting' });
     const info = g.hostLast('phones')?.phones.find((x) => x.conn === 'n1');
-    expect(info?.pendingName).toBe('A very long name that go');
+    expect(info?.pendingName).toBe('A very long name that g…');
     expect(info?.pendingName?.length).toBeLessThanOrEqual(24);
     // Accept: the host adds the seat to its state first.
     const d = { id: 'd', name: 'A very long', color: '#123456' };
@@ -223,12 +239,115 @@ describe('seats', () => {
     expect(p.last('denied')?.reason).toBe('taken');
   });
 
-  it('caps the room at 24 phones', () => {
+  it('idle phones without a seat make way: 24 open pages never lock out a real player', () => {
     const g = setup();
-    for (let i = 0; i < MAX_PHONES; i++) expect(g.room.phoneOpen('p' + i)).toBe(true);
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    for (let i = 0; i < MAX_PHONES; i++) {
+      expect(g.room.phoneOpen('v' + i)).toBe(true);
+      g.t.now += 10;
+    }
+    // All still fresh: a newcomer gets in, but only to come back to a seat with its token.
+    const late = g.phone('late');
+    late.send({ t: 'join', seatId: 'a' });
+    expect(late.last('denied')?.reason).toBe('full');
+    expect(g.dropped).toEqual(['late']);
+    expect(g.hostLast('full')).toEqual({ t: 'full' });
+    // Once they've sat idle a while, the oldest one makes way for a real player.
+    g.t.now += IDLE_MS + 1;
+    const ann = g.phone('ann');
+    ann.send({ t: 'join', seatId: 'a' });
+    expect(ann.last('joined')?.seatId).toBe('a');
+    expect(g.dropped).toEqual(['late', 'v0']);
+    expect(g.phoneOf('v0').last('denied')?.reason).toBe('full');
+    expect(g.room.phoneCount).toBe(MAX_PHONES);
+  });
+
+  it('a phone with its seat token always gets back in, even when the room is full', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state({ allowNew: true }) });
+    const ann = g.phone('ann');
+    ann.send({ t: 'join', seatId: 'a' });
+    const token = ann.last('joined')!.token;
+    for (let i = 1; i < MAX_PHONES; i++) g.phone('v' + i).send({ t: 'join', seatId: 'zzz' }); // busy, not idle
+    const back = g.phone('ann-again');
+    back.send({ t: 'join', seatId: 'a', token });
+    expect(back.last('joined')?.seatId).toBe('a');
+    const other = g.phone('other');
+    other.send({ t: 'new', name: 'Dee' });
+    expect(other.last('denied')?.reason).toBe('full');
+    // Seated phones and those waiting on the host are never turned away to make room.
+    g.t.now += IDLE_MS * 3;
+    const wait = g.phone('w');
+    wait.send({ t: 'new', name: 'Eve' });
+    expect(wait.last('waiting')).toBeDefined();
+    g.t.now += IDLE_MS * 3;
+    for (let i = 0; i < 30; i++) g.room.phoneOpen('more' + i);
+    expect(g.dropped).toContain('v1');
+    expect(g.dropped).not.toContain('ann-again');
+    expect(g.dropped).not.toContain('w');
+  });
+
+  it('never holds more than MAX_SOCKETS sockets', () => {
+    const g = setup();
+    for (let i = 0; i < MAX_SOCKETS; i++) {
+      expect(g.room.phoneOpen('p' + i)).toBe(true);
+      g.room.phoneMessage('p' + i, JSON.stringify({ t: 'leave' })); // busy
+    }
     expect(g.room.phoneOpen('one-too-many')).toBe(false);
     g.room.phoneClose('p0');
     expect(g.room.phoneOpen('now-fits')).toBe(true);
+  });
+
+  it('a kicked phone cannot take the same seat again for a while (it can take another); other phones can', () => {
+    const g = game();
+    g.pb.send({ t: 'join', seatId: 'b', device: 'dev-b' }); // already there: only tells the room its device
+    g.send({ t: 'kick', seatId: 'b' });
+    g.pb.send({ t: 'join', seatId: 'b' });
+    expect(g.pb.last('denied')?.reason).toBe('blocked');
+    // Reloaded (a new socket), same browser: still blocked.
+    const again = g.phone('pb2');
+    again.send({ t: 'join', seatId: 'b', device: 'dev-b' });
+    expect(again.last('denied')?.reason).toBe('blocked');
+    g.send({ t: 'state', state: state({ seats: [...seats, { id: 'd', name: 'Dee', color: '#123456' }] }) });
+    again.send({ t: 'join', seatId: 'd', device: 'dev-b' });
+    expect(again.last('joined')?.seatId).toBe('d');
+    const someone = g.phone('x');
+    someone.send({ t: 'join', seatId: 'b', device: 'dev-x' });
+    expect(someone.last('joined')?.seatId).toBe('b');
+    // Two minutes on, the block is over.
+    g.send({ t: 'kick', seatId: 'b' });
+    g.t.now += KICK_BLOCK_MS + 1;
+    g.pb.send({ t: 'join', seatId: 'b' });
+    expect(g.pb.last('joined')?.seatId).toBe('b');
+  });
+
+  it('🔒 locked seats: only a seat token gets a seat; nobody new can ask', () => {
+    const g = game({ allowNew: true });
+    const token = g.pa.last('joined')!.token;
+    g.send({ t: 'state', state: state({ allowNew: true, locked: true }) });
+    const p = g.phone('p');
+    expect(p.last('seats')?.locked).toBe(true);
+    g.send({ t: 'kick', seatId: 'c' });
+    p.send({ t: 'join', seatId: 'c' });
+    expect(p.last('denied')?.reason).toBe('locked');
+    p.send({ t: 'new', name: 'Dee' });
+    expect(p.last('denied')?.reason).toBe('locked');
+    const back = g.phone('pa2');
+    back.send({ t: 'join', seatId: 'a', token });
+    expect(back.last('joined')?.seatId).toBe('a');
+  });
+
+  it("names typed on phones are cleaned, and an existing player's name is refused", () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state({ allowNew: true }) });
+    const p = g.phone('p');
+    p.send({ t: 'new', name: '\u202eann\u200b' });
+    expect(p.last('denied')?.reason).toBe('name-taken');
+    p.send({ t: 'new', name: ' D\u200bee\u0007  \u{1F468}\u200d\u{1F469}\u200d\u{1F467} ' });
+    expect(g.hostLast('phones')?.phones.find((x) => x.conn === 'p')?.pendingName).toBe('Dee \u{1F468}\u200d\u{1F469}\u200d\u{1F467}');
   });
 });
 
@@ -649,6 +768,63 @@ describe('sending', () => {
     expect(v).not.toContain('Bob');
   });
 
+  it('seated phones see when the host is gone and back', () => {
+    const g = game();
+    expect(g.pa.last('view')?.view.hostHere).toBe(true);
+    g.room.hostClose();
+    expect(g.pa.last('view')?.view.hostHere).toBe(false);
+    g.room.hostOpen();
+    expect(g.pa.last('view')?.view.hostHere).toBe(true);
+  });
+
+  it('a clue answered right: phones say who got it, and a buzz now is no early buzz', () => {
+    const g = game();
+    g.arm(1);
+    g.send({ t: 'state', state: state({ phase: 'closed', armId: 1, clue: { text: 'Q?' }, done: { by: 'b' } }) });
+    expect(g.pa.last('view')?.view.done).toEqual({ by: { name: 'Bob', color: '#00ff00', you: false } });
+    expect(g.pb.last('view')?.view.done?.by?.you).toBe(true);
+    g.pa.send({ t: 'buzz', armId: 1 });
+    expect(g.pa.last('result')?.outcome).toBe('late');
+    expect(g.room.saved.earlyLocks).toEqual({});
+    // Not with another phase (an older host never sends it).
+    g.send({ t: 'state', state: state({ phase: 'lobby', done: { by: 'b' } }) });
+    expect(g.pa.last('view')?.view.done).toBeUndefined();
+  });
+
+  it('a status line: its seats see their own words (the Daily Double player), the rest and the seat list the line', () => {
+    const g = game();
+    const p = g.phone('viewer');
+    g.send({ t: 'state', state: state({ status: { text: 'Daily Double: Ann', seats: ['a'], seatsText: "Daily Double — you're up!" }, currency: '€' }) });
+    expect(g.pa.last('view')?.view.status).toBe("Daily Double — you're up!");
+    expect(g.pb.last('view')?.view.status).toBe('Daily Double: Ann');
+    expect(g.pb.last('view')?.view.currency).toBe('€');
+    expect(p.last('seats')?.note).toBe('Daily Double: Ann');
+    g.send({ t: 'state', state: state() });
+    expect(g.pb.last('view')?.view.status).toBeUndefined();
+  });
+
+  it('a host that dropped mid-race hears who won when it comes back', () => {
+    const g = game();
+    g.arm(1);
+    g.room.hostClose();
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 300 });
+    g.tick(GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('b');
+    const before = g.host.length;
+    g.room.hostOpen();
+    // It still says "armed" (it never heard): the winner stands, and the buzz comes again.
+    g.arm(1);
+    expect(g.host.slice(before)).toContainEqual({ t: 'buzz', armId: 1, seatId: 'b', rank: 1, afterMs: 0 });
+    expect(g.room.saved.state?.phase).toBe('answering');
+    // Back mid-window (the room slept): the window is decided as the host comes back.
+    g.arm(2);
+    g.room.hostClose();
+    g.pc.send({ t: 'buzz', armId: 2, reactMs: 300 });
+    g.t.now += GRACE_MS + 50; // the timer never ran
+    g.room.hostOpen();
+    expect(g.hostLast('buzz')).toMatchObject({ armId: 2, seatId: 'c', rank: 1 });
+  });
+
   it('phones see when the host leaves', () => {
     const g = setup();
     g.room.hostOpen();
@@ -685,10 +861,11 @@ describe('untrusted input', () => {
     g.room.phoneMessage('pa', JSON.stringify({ t: 'join', seatId: 5 }));
     g.room.phoneMessage('pa', JSON.stringify({ t: 'buzz', armId: '1' }));
     g.room.phoneMessage('unknown-conn', JSON.stringify({ t: 'ping', at: 1 }));
-    g.room.hostMessage(JSON.stringify({ t: 'state', state: state({ title: 'x'.repeat(9000) }) }));
+    g.room.hostMessage(JSON.stringify({ t: 'state', state: state({ title: 'x'.repeat(40_000) }) }));
     expect(g.pa.msgs()).toEqual([]);
-    // The oversized phone ping above was dropped but the same ping is fine for the host (under 8 KB).
-    expect(g.host.slice(hostBefore).map((m) => m.t)).toEqual(['pong']);
+    // The oversized phone ping above was dropped but the same ping is fine for the host (under 32 KB); a state too big
+    // to take is refused out loud (the host shows it), not dropped in silence.
+    expect(g.host.slice(hostBefore)).toEqual([{ t: 'pong', at: 1, serverNow: 10_000 }, { t: 'error', message: TOO_BIG }]);
     expect(g.room.saved.state?.title).toBe('Quiz night');
   });
 
@@ -718,6 +895,28 @@ describe('untrusted input', () => {
     expect(s.clue).toEqual({ text: 'Q' });
     expect(cleanState({ ...state(), armId: -1 })).toBeNull();
     expect(cleanState({ ...state(), seats: [{ id: '', name: 'x' }] })).toBeNull();
+  });
+
+  it('cleanState cuts long names with "…" (never mid-emoji) and checks the later fields', () => {
+    const long = 'Bartholomew-Maximilian-the-Magnificent🎉🎉🎉';
+    const s = cleanState({
+      ...state(),
+      seats: [{ id: 'a', name: long, color: '#ff0000' }],
+      title: 'T'.repeat(300),
+      done: { by: 'nobody' },
+      status: { text: '  Final Jeopardy  ', seats: ['a', 'zz', 3], seatsText: 'Wager!' },
+      currency: '$$$$$$$$$$$$',
+      locked: 'yes',
+    })!;
+    expect(Array.from(s.seats[0].name)).toHaveLength(40);
+    expect(s.seats[0].name.endsWith('🎉…')).toBe(true);
+    expect(s.title).toHaveLength(200);
+    expect(s.done).toEqual({ by: null });
+    expect(s.status).toEqual({ text: 'Final Jeopardy', seats: ['a'], seatsText: 'Wager!' });
+    expect(s.currency).toHaveLength(8);
+    expect(s.locked).toBeUndefined();
+    const plain = cleanState(state())!;
+    expect('done' in plain || 'status' in plain || 'currency' in plain || 'locked' in plain).toBe(false);
   });
 
   it('rate-limits each socket', () => {

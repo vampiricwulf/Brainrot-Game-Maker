@@ -6,11 +6,12 @@
  * finishes it from storage (see room.ts).
  *
  * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT) and DAILY_ROOMS a day in all
- * (RoomCounter, one Durable Object for the whole server).
+ * (RoomCounter, one Durable Object for the whole server). Looking rooms up and phones connecting are limited per
+ * address too (LOOKUP_LIMIT, PHONE_LIMIT), so a script can't try every code to find live rooms.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { BUZZ_PROTOCOL, ROOM_ALPHABET, ROOM_CODE_LENGTH, isRoomCode, type NewRoom, type RoomToHost, type RoomToPhone } from '../../src/lib/buzzproto';
-import { BUSY_TODAY, countRoom, TOO_MANY_ROOMS, type DayCount } from './limits';
+import { BUSY_TODAY, countRoom, TOO_MANY_LOOKUPS, TOO_MANY_ROOMS, type DayCount } from './limits';
 import { Room, emptyRoom, type PhoneSaved, type RoomSaved } from './room';
 
 export interface Env {
@@ -18,6 +19,10 @@ export interface Env {
   ROOM_COUNTER: DurableObjectNamespace<RoomCounter>;
   /** New rooms per address per minute (Workers Rate Limiting). */
   NEW_ROOM_LIMIT: RateLimit;
+  /** Room lookups (GET /api/rooms/:code) per address per minute. */
+  LOOKUP_LIMIT: RateLimit;
+  /** Phone connections (/ws/:code without a host token) per address per minute. */
+  PHONE_LIMIT: RateLimit;
   ASSETS: Fetcher;
 }
 
@@ -64,9 +69,9 @@ export default {
 
     if (path === '/api/health') return json({ ok: true, protocol: BUZZ_PROTOCOL });
 
+    // Cloudflare sets CF-Connecting-IP to the caller's address (a caller can't choose it).
+    const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
     if (path === '/api/rooms' && request.method === 'POST') {
-      // Cloudflare sets CF-Connecting-IP to the caller's address (a caller can't choose it).
-      const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
       if (!(await env.NEW_ROOM_LIMIT.limit({ key: ip })).success) return json({ error: TOO_MANY_ROOMS }, 429);
       if (!(await env.ROOM_COUNTER.getByName('rooms').take())) return json({ error: BUSY_TODAY }, 503);
       for (let i = 0; i < 10; i++) {
@@ -79,6 +84,7 @@ export default {
 
     const room = path.match(/^\/api\/rooms\/([A-Za-z]+)$/);
     if (room && request.method === 'GET') {
+      if (!(await env.LOOKUP_LIMIT.limit({ key: ip })).success) return json({ error: TOO_MANY_LOOKUPS }, 429);
       const code = room[1].toUpperCase();
       const open = isRoomCode(code) && (await env.BUZZ_ROOM.getByName(code).isOpen());
       return json({ code, open }, open ? 200 : 404);
@@ -89,6 +95,9 @@ export default {
       const code = ws[1].toUpperCase();
       if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket', { status: 426, headers: CORS });
       if (!isRoomCode(code)) return new Response('No such room', { status: 404, headers: CORS });
+      // Phones only: the host has its token (and a wrong one is turned away by the room).
+      if (!url.searchParams.has('host') && !(await env.PHONE_LIMIT.limit({ key: ip })).success)
+        return new Response(TOO_MANY_LOOKUPS, { status: 429, headers: CORS });
       return env.BUZZ_ROOM.getByName(code).fetch(request);
     }
 
@@ -133,6 +142,7 @@ export class BuzzRoom extends DurableObject<Env> {
             seatId: a.seatId,
             ...(a.pendingName !== undefined ? { pendingName: a.pendingName } : {}),
             ...(Array.isArray(a.rtts) ? { rtts: a.rtts } : {}),
+            ...(typeof a.device === 'string' ? { device: a.device } : {}),
           });
         else if (a?.role === 'host' && s.readyState === OPEN) hostHere = true;
       }
@@ -161,6 +171,15 @@ export class BuzzRoom extends DurableObject<Env> {
         // Not after wipe(): a timer left over from an ended room mustn't bring its storage back.
         saveRoom: (s) => void (this.meta && this.ctx.storage.put('room', s)),
         savePhone: (p) => this.ctx.getWebSockets(p.conn)[0]?.serializeAttachment({ role: 'phone', ...p } satisfies Attachment),
+        dropPhone: (conn) => {
+          for (const s of this.ctx.getWebSockets(conn)) {
+            try {
+              s.close(4001, 'full');
+            } catch {
+              // already closing
+            }
+          }
+        },
         schedule: (ms, fn) => setTimeout(fn, ms),
         cancel: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
       },
