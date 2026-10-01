@@ -58,8 +58,7 @@ done, the Unreleased lines move under that day's heading.
 
 ### Fixed
 - Opening a tab right after an undo or redo no longer jumps back to the undone place (a clue editor could reopen over
-  the board). This was also why about half the CI builds failed. (see the commit "Undo's jump ends at your next click
-  or key")
+  the board). This was also why about half the CI builds failed. (a58527b)
 - A wheel or dice clue, screen, set of buttons, slide item or slide pasted into another game brings its wheels and
   dice along instead of showing "⚠ Deleted wheel". (84ad8f2, f3405d5)
 - `Delete`, arrows and `Ctrl+D` on a round tab or header button no longer also act on the selected slide items, board
