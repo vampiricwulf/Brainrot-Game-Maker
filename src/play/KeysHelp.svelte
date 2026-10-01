@@ -1,5 +1,7 @@
 <!-- Host keyboard shortcuts (spec §6.8). -->
 <script lang="ts">
+  import { app } from '../lib/app.svelte';
+
   let {
     onclose,
     area = null,
@@ -14,7 +16,7 @@
       title: 'Everywhere',
       keys: [
         ['1 – 9', 'Select / deselect player N (for scoring)'],
-        ['0', 'Select everyone, or no one'],
+        ['0', 'Select everyone, or no one (buzzer mode, during a clue: open the buzzers again)'],
         ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
         ['P then 1 – 9', 'Make player N the current picker'],
         ['Esc', 'Close the log, a tool or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
@@ -26,6 +28,7 @@
         ['Right-click a player', 'Their menu: on the stage (avatar, token, strip, score plate) or in the host panel'],
         ['L', 'Log: the history (go back to any point), scores and rolls'],
         ['A', 'Open / focus the audience window (never closes it)'],
+        ['Shift+A', 'Open / focus the scores window: only the score plates and the countdown, for a lower third in OBS'],
         ['H', 'Hide / show the host controls'],
         ['F', 'Full-screen'],
         ['?', 'This list'],
@@ -47,16 +50,25 @@
     {
       title: 'Jeopardy board',
       keys: [
-        ['N', 'Round intro: the next step'],
+        ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
         ['R', 'Reveal the answer (again: hide it)'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
         ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
       ],
     },
     {
+      // A player-only file has no editor: no Setup to point to.
+      title: app.playerOnly ? 'Buzzer mode' : 'Buzzer mode (Setup › Rules)',
+      keys: [
+        ['1 – 9', 'During a clue: player N buzzes in; the first one answers, the rest are locked out'],
+        ['0', 'During a clue: open the buzzers again'],
+        ['Buzz-in keys', 'Pressed in the audience window, they buzz players 1, 2, 3… in (there, those letters only buzz)'],
+      ],
+    },
+    {
       title: 'Final',
       keys: [
-        ['N', 'Next step; in the reveals: show the wager, then the next player'],
+        ['N', 'Title card: start the round; then the next step; in the reveals: show the wager, then the next player'],
         ['Shift+N', 'Reveals: back to the player before'],
         ['1 – 9', 'Reveals: spotlight the Nth player'],
         ['C / X', 'Reveals: the spotlit player is right / wrong (or right-click their score plate)'],
@@ -66,6 +78,7 @@
     {
       title: 'RPG',
       keys: [
+        ['N', 'Title card: start the round'],
         ['Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],
         ['Alt+Q W E A D Z X C / Alt+arrows', 'Move the party (laptop keys)'],
         ['J', 'The full map: jump the party (or some players) to any screen'],
@@ -80,7 +93,7 @@
       keys: [
         ['D', 'Roll the round’s dice (or spin its wheel): the result fills in the steps'],
         ['Enter', 'With nobody selected: move the steps (on a one-space board, the only way on)'],
-        ['N / Shift+N', 'Next / previous player’s turn'],
+        ['N / Shift+N', 'Title card: start the round (N); then the next / previous player’s turn'],
         ['I', 'The selected player’s sheet on screen'],
         ['Alt+← / → on a name', 'Move them earlier / later in the turn order (or drag the chip)'],
       ],

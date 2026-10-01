@@ -7,6 +7,7 @@ import { categoryLabel, clueValue, formatPoints, roundName, type Action, type Ga
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
 import { PRESETS, type ThemePreset } from './theme';
+import { cueName, hasBuiltin, type CueKey } from './sounds';
 
 export type Side = 'q' | 'a';
 
@@ -338,8 +339,9 @@ const RULES: Record<string, string> = {
   titleCard: 'Round title card',
   tileFill: 'Tile fill animation',
   categoryReveal: 'Category reveal',
+  buzzer: 'Buzzer mode',
+  buzzKeys: 'Buzz-in keys',
 };
-const SOUNDS: Record<string, string> = { roundIntro: 'round intro', dailyDouble: 'Daily Double', timesUp: "time's up", finalThink: 'think music', winner: 'winner' };
 const FIELDS: Record<string, string> = {
   hostNotes: 'host notes',
   winNotes: 'win notes',
@@ -358,6 +360,7 @@ const FIELDS: Record<string, string> = {
   onPass: 'passing buttons',
   variants: 'looks',
   statFields: 'stats',
+  stageBg: 'stage background',
 };
 /** Fields that are words people type: a change says what they say now. */
 const TEXTS = new Set(['text', 'category', 'hostNotes', 'details', 'description', 'label', 'winNotes', 'notes']);
@@ -508,7 +511,12 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     const rule = RULES[k] ?? fieldName(k);
     return typeof v === 'boolean' ? `Rule: ${rule} ${v ? 'on' : 'off'}` : `Rule: ${rule} = ${v ?? 'off'}`;
   }
-  if (top === 'audio') return v === undefined ? `Removed the ${SOUNDS[k] ?? fieldName(k)} sound` : `Changed the ${SOUNDS[k] ?? fieldName(k)} sound`;
+  if (top === 'audio') {
+    const name = cueName(String(k)) ?? fieldName(k);
+    if (v === '') return `Turned off the ${name} sound`;
+    if (v === undefined) return hasBuiltin(k as CueKey) ? `Built-in ${name} sound` : `Removed the ${name} sound`;
+    return `Changed the ${name} sound`;
+  }
   if (top === 'theme') {
     const preset = sets.find((o) => o.k === 'preset' && o.p.length === 1);
     if (preset) return `Theme preset: ${PRESETS[preset.a as ThemePreset]?.label ?? preset.a}`;

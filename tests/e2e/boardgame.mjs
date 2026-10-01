@@ -94,6 +94,8 @@ try {
   await page.waitForTimeout(450);
   const yes = page.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible()) await yes.click();
+  // The round opens on its title card: clicking it goes on.
+  await page.locator('.stage-box .title-card').click();
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
   assert((await page.locator('.stage .on-board').count()) === 2, 'both tokens are on the board');
@@ -192,6 +194,8 @@ try {
   await page.waitForTimeout(450);
   if (await yes.isVisible()) await yes.click();
   await page.locator('.bh').waitFor();
+  // Its title card has a Skip intro too.
+  await page.getByRole('button', { name: 'Skip intro' }).click();
   assert(!(await page.getByRole('button', { name: /Roll/ }).count()), 'one-space boards have no dice');
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 2' }).click();
   assert((await toast()).includes('Landed on Space 2'), 'a player moves one space');

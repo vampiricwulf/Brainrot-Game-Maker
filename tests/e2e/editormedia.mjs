@@ -65,7 +65,7 @@ try {
   assert((await bgRow.locator('img').count()) === 1, 'Ctrl+Y puts both back');
   // The wrong kind is refused, with a toast, and isn't added.
   await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  const soundBtn = page.getByRole('button', { name: 'Choose…' }).first();
+  const soundBtn = page.getByRole('button', { name: 'Choose file…' }).first();
   await drop(soundBtn, [['cat.png', 'image/png']]);
   assert((await toast.innerText()).includes('"cat.png" isn\'t a sound') && (await mediaCount()) === 1, 'a picture dropped on a sound slot is refused with a toast');
 

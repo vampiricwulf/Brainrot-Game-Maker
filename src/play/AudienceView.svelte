@@ -6,7 +6,7 @@
 <script lang="ts">
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
-  import { categoryLabel, finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';
   import { onMount } from 'svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
@@ -23,7 +23,10 @@
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
   import type { AvatarDrop } from './rpg/hostops';
-  import { boardLayout, themeStyle } from '../lib/theme';
+  import { boardLayout, STAGE_KEYS, themeStyle } from '../lib/theme';
+  import AnsweringPlate from './AnsweringPlate.svelte';
+  import CuePlayer from './CuePlayer.svelte';
+  import { soundUrl } from './cues';
 
   let {
     game,
@@ -113,6 +116,24 @@
   const popsOnBar = $derived(session.phase === 'board' && !session.intro && layout.score ? layout.score : null);
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
+  /** The round's title card, for an RPG, board-game or Final round (a board round has its own, before the tiles fill in). */
+  const introName = $derived.by(() => {
+    const r = game.rounds[session.currentRound];
+    if (session.intro?.stage !== 'title' || session.phase === 'board' || !r) return null;
+    return isFinal(r) ? finalName(r) : roundName(r, session.currentRound);
+  });
+  const answering = $derived(session.phase === 'clue' && !session.dd && live.answering ? byId[live.answering] : undefined);
+  const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
+  // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
+  // started) stays quiet: an audience window opened mid-game doesn't replay the round intro.
+  let heard = '';
+  let cueNow = $state<string | null>(null);
+  $effect(() => {
+    const c = live.sound;
+    if (!c || c.nonce === heard) return;
+    heard = c.nonce;
+    cueNow = !c.at || Date.now() - c.at < 4000 ? c.nonce : null;
+  });
   const ties = $derived(tiedLeaders(session));
   /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
   const tieOpen = $derived(!!ties.length && !session.coWinners);
@@ -134,6 +155,17 @@
       {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
     </div>
   </div>
+{:else if introName}
+  <div
+    class="full title-card"
+    class:clickable={!!onact}
+    onclick={() => act('intro')}
+    role="presentation"
+    in:scale={{ start: 0.3, duration: 600 }}
+    out:fade={{ duration: 250 }}
+  >
+    <div class="round-name">{introName}</div>
+  </div>
 {:else if session.phase === 'board'}
   {#if session.intro?.stage === 'title'}
     <div
@@ -148,7 +180,7 @@
     </div>
   {:else}
     <div class="board-screen" in:fade={{ duration: 200 }}>
-      <div class="board-bg" style:top="{layout.bg.top}px" style:height="{layout.bg.height}px"></div>
+      <div class="board-bg" style:top="{layout.bg.top}px" style:height="{layout.bg.height}px" style:background={game.theme?.boardImage ? undefined : keyColor}></div>
       {#if decorBehind.length}<div class="layer behind"><DecorLayer items={decorBehind} /></div>{/if}
       {#if layout.banner && bannerUrl}
         <div class="banner" style:top="{layout.banner.top}px" style:height="{layout.banner.height}px">
@@ -304,6 +336,10 @@
   <TimerDisplay timer={live.timer} />
 {/if}
 
+{#if answering}
+  <AnsweringPlate player={answering} />
+{/if}
+
 {#if live.overlay}
   <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} {onshopbuy} />
 {/if}
@@ -333,11 +369,13 @@
 {/if}
 
 <!-- Game sound cue: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
-{#if role !== 'mirror' && live.sound && mediaUrls[live.sound.media]}
+{#if role !== 'mirror' && live.sound && live.sound.nonce === cueNow && soundUrl(live.sound.media)}
   {#key live.sound.nonce}
-    <audio use:autoPlay={mediaUrls[live.sound.media]}></audio>
+    <audio use:autoPlay={soundUrl(live.sound.media)!}></audio>
   {/key}
 {/if}
+<!-- The dice, wheel and board-move sounds, timed with the animations. -->
+{#if role !== 'mirror'}<CuePlayer {game} {session} {live} />{/if}
 </div>
 
 <style>

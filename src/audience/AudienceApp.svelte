@@ -1,4 +1,7 @@
-<!-- The audience window (#audience): a clean, control-free view for OBS window capture. -->
+<!--
+  The audience window (#audience): a clean, control-free view for OBS window capture. With `scores`, the scores-only
+  window (#audience-scores): just the score plates and the countdown, for a lower third (no sound plays there).
+-->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { registerBlob, registerLinks } from '../lib/media.svelte';
@@ -12,6 +15,10 @@
   import { registerGameFonts } from '../lib/fonts';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
+  import ScoresView from '../play/ScoresView.svelte';
+  import { STAGE_KEYS } from '../lib/theme';
+
+  let { scores = false }: { scores?: boolean } = $props();
 
   let game = $state<Game | null>(null);
   let session = $state<Session | null>(null);
@@ -35,6 +42,11 @@
 
   onMount(() => {
     const viaOpener = !!window.opener;
+    // The scores window only talks to the host that opened it (on the channel, the host would take it for the audience window).
+    if (!viaOpener && scores) {
+      status = 'no-host';
+      return;
+    }
     if (!viaOpener) {
       try {
         channel = new BroadcastChannel(CHANNEL_NAME);
@@ -53,7 +65,7 @@
           // Files that play from their link never arrive as blobs.
           registerLinks(m.game);
           registerGameFonts(m.game);
-          document.title = audienceTitle(m.game);
+          document.title = scores ? audienceTitle(m.game).replace(/Audience$/, 'Scores') : audienceTitle(m.game);
           status = 'connected';
           break;
         case 'session':
@@ -152,10 +164,25 @@
    */
   function forwardKey(e: KeyboardEvent): void {
     if (NO_GESTURE.includes(e.key) && e.key !== 'Escape') return;
+    // Buzzer mode's buzz-in keys (Setup): during a clue, the Nth key buzzes player N in; otherwise they do nothing here.
+    const buzz = game?.settings.buzzer && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 ? buzzKey(e.key) : 0;
+    if (buzz) {
+      e.preventDefault();
+      if (session?.phase === 'clue' && !session.dd) send({ type: 'key', key: { key: String(buzz), code: `Digit${buzz}`, shiftKey: false, ctrlKey: false, altKey: false, metaKey: false } });
+      return;
+    }
     const { key, code, shiftKey, ctrlKey, altKey, metaKey } = e;
     send({ type: 'key', key: { key, code, shiftKey, ctrlKey, altKey, metaKey } });
     if (!ctrlKey && !metaKey && !/^F\d+$/.test(key)) e.preventDefault();
   }
+
+  /** Which player (1–9) a buzz-in key is for, or 0. */
+  function buzzKey(key: string): number {
+    const at = (game?.settings.buzzKeys ?? '').toUpperCase().slice(0, 9).indexOf(key.toUpperCase());
+    return at < 0 || key === ' ' ? 0 : at + 1;
+  }
+
+  const keyColor = $derived(game?.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
 
   /** A file dropped on this window is ignored: the browser would open it in place of the stream. */
   function ignoreFiles(e: DragEvent): void {
@@ -178,8 +205,19 @@
 />
 
 <!-- A touch only counts once the finger lifts, hence pointerup too. -->
-<div class="aud" class:idle ondblclick={toggleFullscreen} onpointerdown={activate} onpointerup={activate} role="presentation">
-  {#if game && (session || live.pregame)}
+<div
+  class="aud"
+  class:idle
+  style:background={keyColor}
+  style:--letterbox={keyColor}
+  ondblclick={toggleFullscreen}
+  onpointerdown={activate}
+  onpointerup={activate}
+  role="presentation"
+>
+  {#if game && scores}
+    <ScoresView {game} {session} {live} />
+  {:else if game && (session || live.pregame)}
     <Stage>
       <!-- Before Start the host sends no session yet: AudienceView shows its "Starting soon" card. -->
       <AudienceView {game} session={session ?? newSession(game)} {live} role="audience" />
@@ -187,15 +225,15 @@
   {:else}
     <div class="msg">
       {#if status === 'no-host'}
-        <h1>Audience window</h1>
-        <p>Open this from the host's <b>📺 Audience window</b> button in Play mode.</p>
+        <h1>{scores ? 'Scores window' : 'Audience window'}</h1>
+        <p>Open this from the host's <b>{scores ? '▭ Scores window' : '📺 Audience window'}</b> button in Play mode.</p>
       {:else}
         <p>Waiting for the host…</p>
       {/if}
     </div>
   {/if}
   <!-- Only while the mouse is over the window, so it stays off the stream (the host panel warns too). -->
-  {#if !activated && status === 'connected' && !idle}
+  {#if !activated && !scores && status === 'connected' && !idle}
     <div class="activate">Click anywhere in this window once so it can play sound</div>
   {/if}
   {#if status === 'host-left'}

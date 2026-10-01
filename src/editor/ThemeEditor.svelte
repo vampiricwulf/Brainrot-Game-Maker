@@ -64,8 +64,8 @@
   // A preset replaces every color and font, so the note at the bottom offers Undo.
   function applyPreset(p: ThemePreset): void {
     // A preset changes colors and fonts, not the images or layout.
-    const { boardImage, banner, bannerHeight, bannerFit, scoreBar, clueFont, clueColor } = t;
-    step(`Theme preset: ${PRESETS[p].label}`, () => (game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar, clueFont, clueColor }), {
+    const { boardImage, banner, bannerHeight, bannerFit, scoreBar, clueFont, clueColor, stageBg } = t;
+    step(`Theme preset: ${PRESETS[p].label}`, () => (game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar, clueFont, clueColor, stageBg }), {
       notify: true,
     });
   }
@@ -194,6 +194,14 @@
           <option value="bottom">Bottom</option>
           <option value="top">Top</option>
           <option value="hidden">Hidden (use the 📊 Scores overlay)</option>
+        </select>
+      </label>
+      <label class="field" title="Fills the space around the stage, behind the board and around the scores window's plates, for OBS's Chroma Key filter">
+        Stage background (OBS)
+        <select value={t.stageBg ?? ''} onchange={(e) => (t.stageBg = (e.currentTarget.value || undefined) as typeof t.stageBg)}>
+          <option value="">Theme colors</option>
+          <option value="green">Chroma green</option>
+          <option value="magenta">Chroma magenta</option>
         </select>
       </label>
     </div>

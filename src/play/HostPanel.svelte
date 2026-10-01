@@ -17,6 +17,7 @@
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
   import { app } from '../lib/app.svelte';
+  import { scoresWindow } from '../lib/sync.svelte';
   import type { Snippet } from 'svelte';
 
   let {
@@ -67,6 +68,7 @@
     onhide,
     onexit,
     onaudience,
+    onscores,
     onsound,
     oncloseoverlay,
   }: {
@@ -139,6 +141,8 @@
     onexit: () => void;
     /** Open the audience window, or close it (the panel has asked first). */
     onaudience: () => void;
+    /** Open or close the scores-only window (a lower third for OBS). */
+    onscores: () => void;
     /** Open the streaming-sound help (Test sound, output device). */
     onsound: () => void;
     oncloseoverlay: () => void;
@@ -151,11 +155,14 @@
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
+  const buzzing = $derived(!!game.settings.buzzer && session.phase === 'clue' && !session.dd);
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
   const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg' && session.phase !== 'boardgame');
   const introLabel = $derived(
     session.intro?.stage === 'title'
-      ? 'Show board ▶'
+      ? isBoard(round)
+        ? 'Show board ▶'
+        : 'Start the round ▶'
       : session.intro?.stage === 'fill'
         ? 'Reveal categories ▶'
         : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${isBoard(round) ? round.categories.length : 0} ▶`,
@@ -327,7 +334,7 @@
   <SoundWarnings {dual} onhelp={onsound} />
   <MediaControls {dual} />
 
-  {#if session.phase === 'board' && session.intro}
+  {#if session.intro}
     <div class="row">
       <button class="primary" onclick={onintronext} title="N">{introLabel}</button>
       <button class="ghost" onclick={onskipintro}>Skip intro</button>
@@ -463,7 +470,14 @@
       <button class="bad" disabled={!selected.length || !amount} onclick={() => onaward(-1)} title="Shift+Enter">
         − Deduct
       </button>
-      {#if selected.length}
+      {#if buzzing}
+        <!-- Buzzer mode: the first number pressed answers, the others are locked out until the buzzers open again. -->
+        {#if selected.length}
+          <button class="ghost" onclick={() => (selected = [])} title="0: let everyone buzz in again">🔔 Open the buzzers</button>
+        {:else}
+          <span class="muted hint">🔔 Buzzers open: the first number pressed (1–{Math.min(9, session.players.length) || 9}) answers</span>
+        {/if}
+      {:else if selected.length}
         <button class="ghost" onclick={() => (selected = [])} title="Esc">Clear selection</button>
       {:else}
         <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}, 0 for everyone), then Award ⏎ / Deduct ⇧⏎</span>
@@ -528,11 +542,22 @@
         oncancel={() => (askCloseAudience = false)}
       />
     {:else}
-      <button
-        onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
-        class:on={dual}
-        title={dual ? 'Close the audience window (A brings it to the front)' : 'A opens or focuses it'}
-      >{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+      <!-- The scores-only window (a lower third for OBS) goes with it, as a small button so the row doesn't grow. -->
+      <span class="pair">
+        <button
+          onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
+          class:on={dual}
+          title={dual ? 'Close the audience window (A brings it to the front)' : 'A opens or focuses it'}
+        >{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+        <button
+          onclick={onscores}
+          class:on={scoresWindow.open}
+          aria-label={scoresWindow.open ? 'Close the scores window' : 'Scores window'}
+          title={scoresWindow.open
+            ? 'Close the scores window'
+            : 'Scores window: only the score plates and the countdown, for a lower-third capture in OBS (Shift+A)'}>▭</button
+        >
+      </span>
     {/if}
     {#if askExit}
       <InlineAsk

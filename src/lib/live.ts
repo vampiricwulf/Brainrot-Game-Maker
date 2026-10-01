@@ -27,6 +27,8 @@ export interface TimerState {
 export interface SoundCue {
   media: string;
   nonce: string;
+  /** When the host started it (Date.now()): a window that gets it much later doesn't play it. */
+  at?: number;
 }
 
 /**
@@ -119,6 +121,8 @@ export interface Live {
   pregame?: boolean;
   /** When the show starts (ms timestamp): the "Starting soon" card counts down to it. */
   soonAt?: number;
+  /** The one player selected during a clue (buzzer mode: the first in): viewers see "🔔 Ann is answering". */
+  answering?: Id | null;
 }
 
 export function newLive(): Live {
@@ -176,5 +180,5 @@ export function addTime(live: Live, seconds: number): void {
 }
 
 export function playSound(live: Live, media: string | undefined): void {
-  live.sound = media ? { media, nonce: newId() } : null;
+  live.sound = media ? { media, nonce: newId(), at: Date.now() } : null;
 }

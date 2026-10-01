@@ -1,33 +1,12 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
   import { step } from '../lib/history.svelte';
-  import { mediaUrls } from '../lib/media.svelte';
-  import type { GameAudio } from '../lib/model';
   import PlayerList from './PlayerList.svelte';
-  import MediaPicker from './slide/MediaPicker.svelte';
-  import { mediaDrop } from '../lib/mediadrop';
+  import SoundSlots from './SoundSlots.svelte';
 
   const s = $derived(app.game.settings);
-  const audio = $derived(app.game.audio);
-  let picking = $state<keyof GameAudio | null>(null);
   /** Most players a game can have (the stats strip and the player list stay readable). */
   const MAX_PLAYERS = 20;
-
-  const SOUNDS: [keyof GameAudio, string, string][] = [
-    ['roundIntro', 'Round intro', 'Plays with the round title card'],
-    ['dailyDouble', 'Daily Double', 'Plays with the Daily Double splash'],
-    ['timesUp', "Time's up", 'Plays when a countdown runs out'],
-    ['finalThink', 'Final round think music', 'Plays when the final question appears'],
-    ['winner', 'Winner', 'Plays on the winner screen'],
-  ];
-
-  const nameOf = (id?: string) => app.game.media.find((m) => m.id === id)?.name;
-  let previewEl = $state<HTMLAudioElement>();
-  function preview(id: string): void {
-    if (!previewEl) return;
-    previewEl.src = mediaUrls[id];
-    previewEl.play();
-  }
 </script>
 
 <section>
@@ -57,6 +36,20 @@
     <label class="check">
       <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
     </label>
+    <label class="check">
+      <input type="checkbox" bind:checked={s.buzzer} /> Buzzer mode: the first number pressed in a clue answers, the rest are locked out
+    </label>
+    {#if s.buzzer}
+      <label class="field">
+        Buzz-in keys in the audience window (player 1, 2, 3…)
+        <input
+          value={s.buzzKeys ?? ''}
+          oninput={(e) => (s.buzzKeys = e.currentTarget.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 9) || undefined)}
+          placeholder="e.g. QPZM (blank: none)"
+          maxlength="9"
+        />
+      </label>
+    {/if}
     <label class="field">
       Points symbol
       <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" />
@@ -104,7 +97,7 @@
 <section>
   <h2>Round intro</h2>
   <div class="grid">
-    <label class="check"><input type="checkbox" bind:checked={s.roundIntro.titleCard} /> Show the round's title card</label>
+    <label class="check"><input type="checkbox" bind:checked={s.roundIntro.titleCard} /> Show each round's title card</label>
     <label class="check"><input type="checkbox" bind:checked={s.roundIntro.tileFill} /> Tiles fill in with an animation</label>
     <label class="field">
       Reveal categories
@@ -119,30 +112,8 @@
 
 <section>
   <h2>Sounds</h2>
-  <p class="muted">Optional audio files played on stream at key moments.</p>
-  <audio bind:this={previewEl}></audio>
-  <div class="sounds">
-    {#each SOUNDS as [key, label, hint]}
-      <div class="sound">
-        <div>
-          <b>{label}</b>
-          <div class="muted small">{hint}</div>
-        </div>
-        <span class="spacer"></span>
-        {#if audio[key]}
-          <span class="file" title={nameOf(audio[key])}>🔊 {nameOf(audio[key]) ?? 'missing file'}</span>
-          <button class="small ghost" onclick={() => preview(audio[key]!)} title="Preview">▶</button>
-          <button class="small ghost" onclick={() => (audio[key] = undefined)} title="Remove">✕</button>
-        {/if}
-        <div class="pop">
-          <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => (audio[key] = id) }}>{audio[key] ? 'Change…' : 'Choose…'}</button>
-          {#if picking === key}
-            <MediaPicker kind="audio" onpick={(id) => ((audio[key] = id), (picking = null))} onclose={() => (picking = null)} />
-          {/if}
-        </div>
-      </div>
-    {/each}
-  </div>
+  <p class="muted">Played on stream at key moments: short built-in sounds, or your own audio files. Untick one to switch it off.</p>
+  <SoundSlots />
 </section>
 
 <style>
@@ -169,29 +140,5 @@
   /* A label that wraps keeps its checkbox full size. */
   .check input[type='checkbox'] {
     flex: none;
-  }
-  .sounds {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .sound {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-  .file {
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
-  }
-  .pop {
-    position: relative;
   }
 </style>

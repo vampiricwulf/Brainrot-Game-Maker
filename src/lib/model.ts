@@ -260,13 +260,32 @@ export interface GameSettings {
     roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
   /** What viewers see around the game (set on the pre-game screen): the cards' words and the captions. */
   stream?: { soonText?: string; coverText?: string; clueCaption?: boolean; placeCaption?: boolean };
+  /** Buzzer mode: during a clue, the first player number pressed answers and the others are locked out (0 opens it again). */
+  buzzer?: boolean;
+  /** Buzzer mode: keys that buzz players 1, 2, 3… in from the audience window (e.g. "QPZM"). */
+  buzzKeys?: string;
 }
 
-/** Optional sounds played on the audience side at key moments (spec §9). */
+/**
+ * Sounds played on the audience side at key moments (spec §9). Each one is an audio file's id, '' for none, or
+ * left out for the app's built-in sound (see sounds.ts; the think music has none).
+ */
 export interface GameAudio {
   roundIntro?: Id;
+  tileOpen?: Id;
   dailyDouble?: Id;
+  /** Buzzer mode: the first player in. */
+  buzz?: Id;
+  right?: Id;
+  wrong?: Id;
+  reveal?: Id;
   timesUp?: Id;
+  dice?: Id;
+  /** Each slice passing the pointer while a wheel spins. */
+  wheelTick?: Id;
+  wheelLand?: Id;
+  /** A board-game token moving. */
+  move?: Id;
   finalThink?: Id;
   winner?: Id;
 }

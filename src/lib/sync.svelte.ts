@@ -43,6 +43,8 @@ export type AudienceMsg = { type: 'hello' } | { type: 'audience-event'; event: A
 export type ChannelMsg = { from: 'host'; msg: HostMsg } | { from: 'audience'; msg: AudienceMsg };
 
 export const AUDIENCE_HASH = '#audience';
+/** The scores-only window: the score plates and the countdown, for a lower-third capture in OBS. */
+export const SCORES_HASH = '#audience-scores';
 export const CHANNEL_NAME = 'brainrot-games-sync';
 
 /** The audience window's title: Discord and OBS list the window by it ("My Game · Audience"). */
@@ -84,6 +86,14 @@ function makeChannel(): BroadcastChannel | null {
 let channel: BroadcastChannel | null = null;
 
 function post(msg: HostMsg): void {
+  // The scores window only shows the game's state (no sound, no media controls).
+  if (scoresWin && !scoresWin.closed && SCORES_MSGS.has(msg.type)) {
+    try {
+      scoresWin.postMessage(msg, '*');
+    } catch (err) {
+      console.warn('Scores window sync failed', err);
+    }
+  }
   if (win && !win.closed) {
     try {
       // file:// pages have an opaque "null" origin, so a specific targetOrigin can't be used.
@@ -174,8 +184,9 @@ export function onAudienceKey(fn: (key: AudienceKey) => void): () => void {
   };
 }
 
-if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH) {
+if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location.hash !== SCORES_HASH) {
   window.addEventListener('message', (e: MessageEvent<AudienceMsg>) => {
+    if (scoresWin && e.source === scoresWin) return fromScores(e.data);
     if (!win || e.source !== win) return;
     fromAudience(e.data);
   });
@@ -259,6 +270,57 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
   audience.open = true;
   watchClosed(() => !win || win.closed);
   return true;
+}
+
+// ---------- The scores-only window ----------
+
+const SCORES_MSGS = new Set<HostMsg['type']>(['game', 'session', 'live', 'media', 'bye']);
+let scoresWin: Window | null = null;
+let scoresPoll: ReturnType<typeof setInterval> | undefined;
+/** open: the scores-only window exists. */
+export const scoresWindow = $state({ open: false });
+
+function fromScores(msg: AudienceMsg): void {
+  if (msg?.type === 'hello') {
+    // Everything it needs, to it alone: the files (fonts, avatars) too.
+    const to = (m: HostMsg) => scoresWin?.postMessage(m, '*');
+    if (last.game) {
+      const items = last.game.media.flatMap((ref) => {
+        const blob = ref.url ? undefined : getBlob(ref.id);
+        return blob ? [{ id: ref.id, blob }] : [];
+      });
+      if (items.length) to({ type: 'media', items });
+      to({ type: 'game', game: last.game });
+    }
+    if (last.session) to({ type: 'session', session: last.session });
+    if (last.live) to({ type: 'live', live: last.live });
+  } else if (msg?.type === 'key') keyHandler?.(msg.key);
+  else if (msg?.type === 'bye') scoresClosed();
+}
+
+function scoresClosed(): void {
+  scoresWindow.open = false;
+  scoresWin = null;
+  clearInterval(scoresPoll);
+}
+
+/** Open (or focus) the scores-only window. Must be called from a click. False if the popup was blocked. */
+export function openScoresWindow(): boolean {
+  if (scoresWin && !scoresWin.closed) {
+    scoresWin.focus();
+    return true;
+  }
+  scoresWin = window.open(location.href.split('#')[0] + SCORES_HASH, 'jb-audience-scores', 'popup=yes,width=1280,height=240');
+  if (!scoresWin) return false;
+  scoresWindow.open = true;
+  clearInterval(scoresPoll);
+  scoresPoll = setInterval(() => (!scoresWin || scoresWin.closed) && scoresClosed(), 700);
+  return true;
+}
+
+export function closeScoresWindow(): void {
+  scoresWin?.close();
+  scoresClosed();
 }
 
 export function closeAudienceWindow(): void {

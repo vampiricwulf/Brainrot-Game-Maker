@@ -31,7 +31,12 @@ export interface Theme {
   /** The main text of question and answer slides, game-wide (see cluetext.ts). Unset: a new text box's look. */
   clueFont?: string;
   clueColor?: string;
+  /** For OBS's chroma key: a flat green or magenta around the stage, behind the board and in the scores-only view. */
+  stageBg?: 'green' | 'magenta';
 }
+
+/** The chroma-key colors (OBS's Chroma Key filter's own presets). */
+export const STAGE_KEYS = { green: '#00ff00', magenta: '#ff00ff' } as const;
 
 export const PRESETS: Record<ThemePreset, { label: string; theme: Omit<Theme, 'preset'> }> = {
   classic: {
