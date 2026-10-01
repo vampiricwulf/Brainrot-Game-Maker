@@ -63,7 +63,7 @@
       keys: [
         ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz)'],
         ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone'],
-        ['U', 'Open the buzzers (when Setup says you open them after reading the clue; after a right answer, for the rest)'],
+        ['U', 'Open the buzzers (when they open on your key, after reading the clue; after a right answer, for the rest)'],
         ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the buzzers open for the others'],
       ],
     },
