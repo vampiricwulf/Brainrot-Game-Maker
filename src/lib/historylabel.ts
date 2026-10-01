@@ -216,9 +216,9 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       at.crumbs.push('Game title');
       go({ tab: 'title' });
       break;
-    // The rules and the players are set on the ▶ Play screen (no place in the editor shows them).
+    // The rules, the buzzers and the players are set on the ▶ Play screen (no place in the editor shows them).
     case 'settings':
-      at.crumbs.push('Play', path[1] === 'stream' ? 'On stream' : 'Game rules');
+      at.crumbs.push('Play', path[1] === 'stream' ? 'On stream' : BUZZ_SETTINGS.has(path[1]) ? 'Phone buzzers' : 'Game rules');
       at.icon = '⚙';
       break;
     case 'audio':
@@ -342,6 +342,8 @@ const RULES: Record<string, string> = {
   phoneJoin: 'New players from their phone',
   earlyBuzzLock: 'Early buzz wait',
 };
+/** Settings on the pre-game screen's 📱 Phone buzzers card (the rest are in ⚙ Game rules). */
+const BUZZ_SETTINGS = new Set(['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock']);
 const FIELDS: Record<string, string> = {
   hostNotes: 'host notes',
   winNotes: 'win notes',

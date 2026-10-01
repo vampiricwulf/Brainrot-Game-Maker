@@ -148,7 +148,7 @@ describe('step labels', () => {
     const back = structuredClone(own);
     delete back.audio.dailyDouble;
     expect(describeStep(diff(own, back), own, back).label).toBe('Built-in Daily Double sound');
-    expect(step((g) => (g.settings.buzzer = true)).label).toBe('Rule: Buzzer mode on');
+    expect(step((g) => (g.settings.buzzer = true))).toMatchObject({ label: 'Rule: Buzzer mode on', where: 'Play › Phone buzzers' });
     expect(step((g) => (g.theme = { ...g.theme, preset: 'neon', tile: '#000' })).label).toBe('Theme preset: Brainrot Neon');
     expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile');
     const file = step((g) => g.media.push({ id: 'm2', name: 'clip.mp4', mime: 'video/mp4', size: 1, kind: 'video' }));

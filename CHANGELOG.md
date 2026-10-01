@@ -46,7 +46,8 @@ done, the Unreleased lines move under that day's heading.
 - **Buzzer mode moved to the pre-game screen**: the 📱 Phone buzzers card turns it on and sets its options (when the
   buzzers open, new players from their phone, the early-buzz wait); they are saved with the game and are no longer
   among the rules. Mid-game, the 📱 chip's list can change when the buzzers open. In buzzer mode the number keys simply
-  pick who answers, by hand (over a phone's buzz); `0` resets the buzzers. (4306034)
+  pick who answers, by hand (over a phone's buzz); `0` resets the buzzers. The 🕘 History places these changes in
+  Play › Phone buzzers. (4306034)
 - **Buzzer mode: a wrong answer locks that player out of the clue** and opens the buzzers again for the others (a
   rebound); `0` still opens them for everyone, a right answer closes them, and a new tile starts afresh. New option
   (now on the 📱 Phone buzzers card): **Open the buzzers when the clue opens, or when I press `U`** (after reading it;
