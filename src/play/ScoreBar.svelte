@@ -10,6 +10,8 @@
     onpicker,
     hint = 'Click to make this player the current picker',
     host = false,
+    lit,
+    ticks = [],
   }: {
     game: Game;
     session: Session;
@@ -18,8 +20,16 @@
     hint?: string;
     /** The host's copy: right-clicking a plate gives that player's menu. */
     host?: boolean;
+    /** The player lit up instead of the picker (the Final's spotlight; null: nobody). */
+    lit?: string | null;
+    /** Players with a ✔ on their plate (their Final wager is in). */
+    ticks?: string[];
   } = $props();
   const sym = $derived(game.settings.currencySymbol);
+  const litId = $derived(lit === undefined ? session.currentPickerId : lit);
+  // Few players: wider plates, so long names fit. Long names take a smaller font, then a second line, before "…".
+  const wide = $derived(session.players.length <= 4);
+  const nameSize = (name: string) => (name.length > 16 ? 28 : name.length > 11 ? 32 : 36);
 </script>
 
 <div class="bar">
@@ -27,15 +37,17 @@
     {@const s = score(session, p.id)}
     <button
       class="plate"
-      class:picker={session.currentPickerId === p.id}
+      class:picker={litId === p.id}
+      class:wide
       style:--c={p.color}
       data-player-id={host ? p.id : undefined}
       disabled={!onpicker}
       onclick={() => onpicker?.(p.id)}
       title={onpicker ? hint : undefined}
     >
-      <span class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
+      <span class="name" style:background={p.color} style:color={textOn(p.color)} style:font-size="{nameSize(p.name)}px">{p.name}</span>
       <span class="score" class:neg={s < 0}>{formatPoints(s, sym)}</span>
+      {#if ticks.includes(p.id)}<span class="tick" title="Wager in">✔</span>{/if}
     </button>
   {/each}
 </div>
@@ -51,6 +63,7 @@
     background: linear-gradient(var(--scorebar-bg, #050835), #000);
   }
   .plate {
+    position: relative;
     flex: 1 1 0;
     max-width: 320px;
     min-width: 0;
@@ -63,6 +76,9 @@
     background: var(--tile);
     cursor: pointer;
     transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .plate.wide {
+    max-width: 420px;
   }
   .plate:disabled {
     opacity: 1;
@@ -77,9 +93,28 @@
     font-size: 36px;
     font-weight: 800;
     padding: 6px 10px;
-    white-space: nowrap;
+    line-height: 1.1;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .tick {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #1f9d55;
+    border: 3px solid #fff;
+    color: #fff;
+    font-size: 26px;
+    font-weight: 900;
   }
   .score {
     flex: 1;

@@ -34,7 +34,18 @@
     const [x2, y2] = pt(end);
     return `M 0 0 L ${x1} ${y1} A ${R} ${R} 0 ${end - start > 180 ? 1 : 0} 1 ${x2} ${y2} Z`;
   }
-  const fontFor = (span: number, label: string) => Math.max(18, Math.min(56, span * 1.6, 900 / Math.max(4, label.length)));
+  /** A label runs along its slice's middle, from just past the hub to just inside the rim. */
+  const HUB = 76;
+  const RIM = R * 0.93;
+  const LEN = RIM - HUB;
+  const MID = (HUB + RIM) / 2;
+  /** Roughly how wide the bold board font is, per character, for its size. */
+  const CHAR = 0.6;
+  const shown = (label: string) => (label.length > 30 ? label.slice(0, 29) + '…' : label);
+  /** As big as the slice's width allows, and small enough for the label to fit between the hub and the rim. */
+  const fontFor = (span: number, label: string) => Math.max(14, Math.min(56, span * 1.6, LEN / (CHAR * Math.max(4, label.length))));
+  /** On the left half (where it is right now), a label is turned the other way round so it never reads upside down. */
+  const flipped = (mid: number) => ((((mid + rot) % 360) + 360) % 360) > 180;
 </script>
 
 <svg viewBox="-470 -500 940 1000" class="wheel">
@@ -43,16 +54,21 @@
       {@const a = angles[i]}
       {@const mid = (a.start + a.end) / 2}
       <path d={path(a.start, a.end)} fill={s.color} stroke="#000" stroke-width="3" data-slice={i} />
+      {@const label = shown(s.label)}
+      {@const size = fontFor(a.end - a.start, label)}
       <g transform="rotate({mid})" data-slice={i}>
+        <!-- Squeezed to fit when the font's guess runs long: it never crosses the rim or the hub. -->
         <text
           x="0"
-          y={-R * 0.58}
+          y={-MID}
           fill={textOn(s.color)}
-          font-size={fontFor(a.end - a.start, s.label)}
+          font-size={size}
           text-anchor="middle"
           dominant-baseline="middle"
-          transform="rotate(-90 0 {-R * 0.58})"
-        >{s.label.length > 22 ? s.label.slice(0, 21) + '…' : s.label}</text>
+          textLength={CHAR * size * label.length > LEN * 0.92 ? LEN : undefined}
+          lengthAdjust="spacingAndGlyphs"
+          transform="rotate({flipped(mid) ? 90 : -90} 0 {-MID})"
+        >{label}</text>
       </g>
     {/each}
     <circle class="rim" r="60" fill="#111" stroke-width="8" />

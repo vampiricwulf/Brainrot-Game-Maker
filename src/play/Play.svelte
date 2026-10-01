@@ -41,7 +41,7 @@
   import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
-  import type { ActionEvent, Dir8, Player, ScoreEvent } from '../lib/model';
+  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
   import {
     audience,
     audienceTitle,
@@ -107,6 +107,11 @@
   let bgSpace = $state<string | null>(null);
   /** The player whose score the host panel is asking for (✎ Set the score… in their menu). */
   let editingScore = $state<string | null>(null);
+  /**
+   * Single window: the host panel's box while the ⌨ keys or 👥 Players are open. They show in there, never over the stage
+   * viewers see (the panel grows for them, as for a tool menu).
+   */
+  let panelBox = $state<{ top: number; left: number; width: number; height: number } | null>(null);
   /** What each combined Undo took back (from the score log or the action log), so Redo goes back the same way. */
   const undone = $state<Undone[]>([]);
 
@@ -114,9 +119,9 @@
   const dual = $derived(audience.open);
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
-  // RPG and board-game rounds have a tall host panel: on a wide window it goes beside the stage instead of under it, so
-  // the stage keeps a good share.
-  const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
+  // RPG, board-game and Final rounds have a tall host panel (the Final's wagers and reveal rows): on a wide window it goes
+  // beside the stage instead of under it, so the stage keeps a good share, the same size all through the Final.
+  const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'final'));
 
   // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.
   const pending = new Set<ReturnType<typeof setTimeout>>();
@@ -143,6 +148,20 @@
     const l = $state.snapshot(app.live);
     if (audience.open) pushLive(app.pregame ? { ...l, pregame: true } : l);
   });
+  // Score pops belong to the moment: a new clue, the Daily Double splash, another round or Final step clears them. Back to
+  // the board from a clue they stay (over the score bar there).
+  let popsAt = '';
+  let popsPhase = untrack(() => session.phase);
+  $effect(() => {
+    const c = session.currentClue;
+    const at = `${session.phase} ${session.currentRound} ${c ? `${c.round}.${c.cat}.${c.row}` : ''} ${session.dd?.stage ?? ''} ${session.finalStep ?? ''}`;
+    untrack(() => {
+      const fromClue = popsPhase === 'clue' && session.phase === 'board';
+      if (at !== popsAt && !fromClue && app.live.pops.length) app.live.pops = [];
+      popsAt = at;
+      popsPhase = session.phase;
+    });
+  });
   // "Press N again to finish" only applies right where it was armed, and not once a judgment is taken back (Ctrl+Z).
   $effect(() => {
     void session.phase;
@@ -150,10 +169,43 @@
     void finalUnjudged(session).length;
     finishArmed = false;
   });
+  $effect(() => {
+    if (dual || !(showKeys || showPlayers)) return void (panelBox = null);
+    // The list needs the controls (H hid them).
+    hideControls = false;
+    let ro: ResizeObserver | undefined;
+    const read = () => {
+      const el = document.querySelector<HTMLElement>('.play > .panel');
+      if (!el) return;
+      if (!ro) (ro = new ResizeObserver(read)).observe(el);
+      const r = el.getBoundingClientRect();
+      panelBox = { top: r.top, left: r.left, width: r.width, height: r.height };
+    };
+    // After the panel is back and has grown.
+    const raf = requestAnimationFrame(read);
+    window.addEventListener('resize', read);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener('resize', read);
+    };
+  });
   // "Ignore the limits" is for the wagers being entered now, not the next Final's.
   $effect(() => {
     void session.phase;
     wagerLimitsOff = false;
+  });
+  /** Controls hidden: the "Show controls" button shows for a moment only after the mouse moves (else it's on stream). */
+  let pointerMoved = $state(false);
+  let pointerTimer: ReturnType<typeof setTimeout> | undefined;
+  function pointerMove(): void {
+    if (!hideControls) return;
+    pointerMoved = true;
+    clearTimeout(pointerTimer);
+    pointerTimer = setTimeout(() => (pointerMoved = false), 2500);
+  }
+  $effect(() => {
+    if (!hideControls) pointerMoved = false;
   });
   // Single window with the controls hidden: the whole window is on stream, so no toast pops up over the stage.
   $effect(() => {
@@ -248,10 +300,10 @@
       );
   }
 
-  /** The host panel's audience button: closing mid-game asks first, since it's usually the stream capture. */
+  /** The host panel's audience button (it asks before closing, since it's usually the stream capture). */
   function toggleAudience(): void {
     if (!audience.open) openAudience();
-    else if (confirm('Close the audience window? Your stream capture will go black.')) closeAudienceWindow();
+    else closeAudienceWindow();
   }
 
   function pop(text: string, color: string): void {
@@ -884,6 +936,7 @@
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;
     app.pregame = false;
+    app.live.soonAt = undefined;
     // A game can open with a Final or an RPG round: those start through goToRound (no board intro).
     if (!isBoard(game.rounds[0])) return goToRound(session, game, 0);
     startIntro(session, game);
@@ -929,6 +982,21 @@
     );
     toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
   }
+
+  // ---------- On stream (pre-game) ----------
+
+  type StreamSettings = NonNullable<GameSettings['stream']>;
+  const stream = $derived(game.settings.stream ?? {});
+
+  /** A stream card's words or a caption, here and in the editor's copy of this game (kept, undoable there). */
+  function setStream<K extends keyof StreamSettings>(key: K, value: StreamSettings[K], label: string): void {
+    const apply = (g: Game) => (g.settings.stream = { ...g.settings.stream, [key]: value });
+    apply(game);
+    if (app.game.id === game.id) step(label, () => apply(app.game), { during: 'play' });
+  }
+
+  /** Minutes the "Starting soon" card counts down from. */
+  let soonMinutes = $state(5);
 
   function addSamplePlayers(): void {
     for (const name of ['Alex', 'Sam', 'Jordan']) {
@@ -1067,18 +1135,18 @@
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'm', 'j'].includes(k)) {
+    // RPG rounds: the full map (J), regroup (G) and the map on screen for viewers (V; M mutes the media, as anywhere).
+    if (session.phase === 'rpg' && !e.shiftKey && ['g', 'v', 'j'].includes(k)) {
       e.preventDefault();
       if (k === 'j') rpgMap = true;
       else if (k === 'g') regroupAll(game, session);
       else toggleMap(game, session);
       return;
     }
-    // The toolset's keys in RPG and board-game rounds: a player's sheet (I) and the cover (B, like K everywhere).
-    if ((session.phase === 'rpg' || session.phase === 'boardgame') && !e.shiftKey && (k === 'i' || k === 'b')) {
+    // The toolset's key in RPG and board-game rounds: a player's sheet (I).
+    if ((session.phase === 'rpg' || session.phase === 'boardgame') && !e.shiftKey && k === 'i') {
       e.preventDefault();
-      if (k === 'b') app.live.cover = !app.live.cover;
-      else if (app.live.overlay?.kind === 'sheet') {
+      if (app.live.overlay?.kind === 'sheet') {
         // I again: the next selected player's sheet, then closed.
         const at = selected.indexOf(app.live.overlay.playerId);
         const next = selected[at + 1];
@@ -1125,7 +1193,6 @@
         revealToggle();
         break;
       case 'escape':
-      case 'b':
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
         else if (rpgObject) rpgObject = null;
@@ -1181,7 +1248,9 @@
         else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
         else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
         break;
+      // The cover, in every round (B as well, the key many stream tools use for "be right back").
       case 'k':
+      case 'b':
         app.live.cover = !app.live.cover;
         break;
       case 'p':
@@ -1235,6 +1304,7 @@
 
 <svelte:window
   onkeydown={onkey}
+  onpointermove={pointerMove}
   onkeydowncapture={(e) => (tabbing = e.key === 'Tab')}
   onpointerdowncapture={() => (tabbing = false)}
   onfocusin={(e) => {
@@ -1265,14 +1335,71 @@
     <div class="modes">
       <button class="mode" class:on={!dual} onclick={() => dual && closeAudienceWindow()}>
         <b>Single window</b>
-        <span class="muted">Viewers see this window. Press H to hide the host controls.</span>
+        <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
       </button>
       <button class="mode" class:on={dual} onclick={() => !dual && openAudience()}>
-        <b>📺 Separate audience window</b>
+        <b>📺 Separate audience window <span class="tag">Recommended</span></b>
         <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
       </button>
     </div>
+    {#if !dual}
+      <p class="warn small exposed">
+        ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
+        and hidden objects shown in the controls. To keep those secret, use the audience window.
+      </p>
+    {/if}
     <SoundWarnings {dual} onhelp={() => (showSound = true)} />
+
+    <h2>On stream</h2>
+    <div class="stream-opts">
+      <label>
+        <span>“Starting soon” card</span>
+        <input
+          value={stream.soonText ?? ''}
+          placeholder="Starting soon…"
+          onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, 'Starting soon card text')}
+        />
+      </label>
+      <div class="row">
+        <span class="muted small">Countdown on it:</span>
+        {#if app.live.soonAt}
+          <button class="small" onclick={() => (app.live.soonAt = undefined)}>■ Stop countdown</button>
+        {:else}
+          <label class="check small">
+            <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
+          </label>
+          <button class="small" disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
+            ▶ Start countdown
+          </button>
+        {/if}
+      </div>
+      <label>
+        <span>Cover card (K)</span>
+        <input
+          value={stream.coverText ?? ''}
+          placeholder="Be right back"
+          onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, 'Cover card text')}
+        />
+      </label>
+      <span class="muted small">The theme's banner picture shows on both cards, when there is one.</span>
+      <label class="check small">
+        <input
+          type="checkbox"
+          checked={!!stream.clueCaption}
+          onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, 'Category and value caption on clues')}
+        />
+        Show the category and value on clue screens (“MEMES · $400”)
+      </label>
+      <label class="check small">
+        <input
+          type="checkbox"
+          checked={!!stream.placeCaption}
+          onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, 'Screen name caption in RPG rounds')}
+        />
+        Show the screen's name in RPG rounds
+      </label>
+    </div>
+
     <div class="row">
       <button class="small" onclick={() => (showSound = true)}>🔊 Sound for Discord / OBS…</button>
       <span class="muted small">Test the sound, pick where it plays, and see how to stream it.</span>
@@ -1308,7 +1435,7 @@
   </div>
 {:else}
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. -->
-  <div class="play" class:hidden={hideControls} class:side oncontextmenu={playerMenuAt} role="presentation">
+  <div class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers)} oncontextmenu={playerMenuAt} role="presentation">
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
       <div
@@ -1352,7 +1479,7 @@
       </div>
     {/if}
     {#if hideControls}
-      <button class="show-controls" onclick={() => (hideControls = false)} title="H">Show controls</button>
+      <button class="show-controls" class:shown={pointerMoved} onclick={() => (hideControls = false)} title="H">Show controls</button>
     {:else}
       <HostPanel
         {game}
@@ -1415,7 +1542,7 @@
     {/if}
   </div>
   {#if showKeys}
-    <KeysHelp onclose={() => (showKeys = false)} />
+    <KeysHelp area={panelBox} onclose={() => (showKeys = false)} />
   {/if}
   {#if showLog}
     <ScoreLog {game} {session} {sym} bind:tab={logTab} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
@@ -1424,6 +1551,11 @@
     <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster). -->
     <div
       class="backdrop"
+      class:in-panel={!!panelBox}
+      style:top={panelBox ? `${panelBox.top}px` : undefined}
+      style:left={panelBox ? `${panelBox.left}px` : undefined}
+      style:width={panelBox ? `${panelBox.width}px` : undefined}
+      style:height={panelBox ? `${panelBox.height}px` : undefined}
       role="presentation"
       onclick={(e) => (e.target === e.currentTarget ? closePlayers() : commitRoster())}
       onchange={commitRoster}
@@ -1493,6 +1625,27 @@
   .small {
     font-size: 12px;
   }
+  .stream-opts {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stream-opts > label:not(.check) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stream-opts > label:not(.check) > span {
+    width: 150px;
+    flex: none;
+  }
+  .stream-opts > label:not(.check) > input {
+    flex: 1;
+    max-width: 360px;
+  }
+  .mins {
+    width: 70px;
+  }
   .checks {
     border: 1px solid var(--warn);
     border-radius: 8px;
@@ -1551,12 +1704,21 @@
     aspect-ratio: 16 / 9;
     max-height: 75%;
   }
+  /* Under the stage, the host info reads across in columns (a wide, short strip), not one long empty column. */
   .side > .stage-area.dual > :global(.info) {
     width: auto;
     flex: 1;
     min-height: 0;
     border-left: none;
     border-top: 1px solid var(--border);
+    display: block;
+    columns: 260px;
+    column-fill: auto;
+    column-gap: 24px;
+    overflow: auto hidden;
+  }
+  .side > .stage-area.dual > :global(.info > *) {
+    break-inside: avoid;
   }
   .modes {
     display: grid;
@@ -1575,6 +1737,14 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
   }
+  .tag {
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    font-size: 11px;
+    font-weight: 600;
+  }
   @media (max-width: 640px) {
     .modes {
       grid-template-columns: 1fr;
@@ -1589,15 +1759,28 @@
     pointer-events: none;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
   }
+  /* Out of sight (it would be on stream) until the mouse moves; keyboard focus shows it too. */
   .show-controls {
     position: fixed;
     right: 8px;
     bottom: 8px;
-    opacity: 0.15;
+    opacity: 0;
     font-size: 11px;
+    transition: opacity 0.3s;
   }
-  .show-controls:hover {
+  .show-controls.shown {
+    opacity: 0.7;
+  }
+  .show-controls:hover,
+  .show-controls:focus-visible {
     opacity: 1;
+  }
+  /* The host panel beside the stage: messages show at its foot, not over the stage. */
+  :global(body:has(.play.side) .toast) {
+    left: auto;
+    right: 12px;
+    transform: none;
+    max-width: 400px;
   }
   .backdrop {
     position: fixed;
@@ -1610,6 +1793,14 @@
     place-items: center;
     z-index: 100;
     padding: 16px;
+  }
+  /* Single window: over the host panel only (it grows for it), never the stage viewers see. */
+  .play.roomy:not(.side) > :global(.panel) {
+    min-height: min(62vh, 440px);
+  }
+  .backdrop.in-panel {
+    inset: auto;
+    padding: 8px;
   }
   .modal {
     background: var(--panel);

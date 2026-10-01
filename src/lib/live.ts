@@ -117,6 +117,8 @@ export interface Live {
   cover?: boolean;
   /** The host is still on the pre-game screen: viewers see a "Starting soon" card (the board would give it away). */
   pregame?: boolean;
+  /** When the show starts (ms timestamp): the "Starting soon" card counts down to it. */
+  soonAt?: number;
 }
 
 export function newLive(): Live {

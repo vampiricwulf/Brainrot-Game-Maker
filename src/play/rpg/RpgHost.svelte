@@ -334,7 +334,7 @@
           {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
         </select>
       {/if}
-      <button class="small" class:on={st.mapShown} onclick={() => toggleMap(game, session)} title="M: the map on screen">🗺 Map</button>
+      <button class="small" class:on={st.mapShown} onclick={() => toggleMap(game, session)} title="V: the map on screen">🗺 Map</button>
     </div>
 
     <div class="row improv">
@@ -463,7 +463,7 @@
       <div class="side">
         {#if obj}
           {#key obj.el.id}
-            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={() => keep({ map: obj.map.id, screen: obj.screen.id })} />
+            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} {dual} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={() => keep({ map: obj.map.id, screen: obj.screen.id })} />
           {/key}
         {:else}
           <div class="muted small">Objects here (or click one on the stage):</div>

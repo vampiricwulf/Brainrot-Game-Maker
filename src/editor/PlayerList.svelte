@@ -174,7 +174,7 @@
       <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
       <span class="chip" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
-        <label class="field score">Start score<input type="number" bind:value={p.startScore} /></label>
+        <label class="field score">Start score<input type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" /></label>
       {/if}
       <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
       <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move down">▼</button>

@@ -66,8 +66,15 @@
     position: absolute;
     inset: 0;
     z-index: 40;
-    /* The theme's tile color, darkened (see-through), fading to black. */
-    background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--tile) 65%, rgb(0 0 0 / 0.8)), rgba(0, 0, 20, 0.96));
+    /* The theme's tile color, darkened, fading to black. What's behind is blurred and dim enough not to be read through. */
+    background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--tile) 45%, rgb(0 0 0 / 0.9)), rgba(0, 0, 20, 0.97));
+    backdrop-filter: blur(8px);
+  }
+  /* The tools' titles (a wheel's or dice's name, "Who goes first?") on a solid pill of their own. */
+  .ov :global(.title) {
+    padding: 4px 28px;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.82);
   }
   .clickable {
     cursor: pointer;

@@ -93,8 +93,8 @@ try {
   await page.getByRole('button', { name: 'Midgame Wager ▶' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
-  await page.locator('.final-label').waitFor();
-  assert((await page.locator('.final-label').innerText()) === 'MIDGAME WAGER', 'the next round is the Final in the middle of the game');
+  await page.locator('.fj').waitFor();
+  assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('MIDGAME WAGER'), 'the next round is the Final in the middle of the game');
   await page.getByRole('button', { name: /◀ Back to Jeopardy!/ }).waitFor();
   assert(true, 'its Back button goes to the round before it');
   // Through the Final: wagers, question, answer, then judge the one player who can play.
@@ -115,8 +115,8 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
   const picker = page.getByRole('combobox', { name: 'Go to round' });
   await picker.selectOption({ label: '⭐ Final Jeopardy!' });
-  await page.locator('.final-label').waitFor();
-  assert((await page.locator('.final-label').innerText()) === 'FINAL JEOPARDY!', 'the round picker jumps straight to any round');
+  await page.locator('.fj').waitFor();
+  assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('FINAL JEOPARDY!'), 'the round picker jumps straight to any round');
   // This Final lets players with $0 play: they can only wager $0, so it's filled in and Show question waits on no one else.
   await page.getByRole('button', { name: /take wagers/ }).click();
   const wagerBoxes = page.locator('.fj .wagers input');

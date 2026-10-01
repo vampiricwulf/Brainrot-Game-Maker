@@ -20,10 +20,14 @@
   /** A die from d2 to d1000 (a blank box, or a d1 that would tie every round, can't be rolled). */
   const sidesOk = $derived(!!sides && sides >= 2 && sides <= 1000);
 
+  /** The button that opened the menu: Esc gives it the focus back. */
+  let opener: HTMLElement | null = null;
+
   /** Open (or close) a menu from its button: over the host panel only, unless there's an audience window. */
   async function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): Promise<void> {
     const b = e.currentTarget as HTMLElement;
     menu = menu === m ? null : m;
+    opener = b;
     // Measured once it's open: the host panel grows to make room for it (see HostPanel).
     await tick();
     const panel = b.closest('.panel')?.getBoundingClientRect();
@@ -62,15 +66,16 @@
     if (menu && e.key === 'Escape') {
       e.stopImmediatePropagation();
       menu = null;
+      opener?.focus();
     }
   }}
 />
 
 <div class="tl">
   <div class="pop">
-    <button onclick={(e) => toggle('dice', e)} title="D rolls the last dice">🎲 Dice</button>
+    <button onclick={(e) => toggle('dice', e)} title="D rolls the last dice" aria-haspopup="dialog" aria-expanded={menu === 'dice'}>🎲 Dice</button>
     {#if menu === 'dice'}
-      <div class="menu" style:max-height={room === undefined ? undefined : `${room}px`}>
+      <div class="menu" role="dialog" aria-label="Dice" style:max-height={room === undefined ? undefined : `${room}px`}>
         <div class="grid">
           {#each QUICK_DICE as q}<button class="small" onclick={() => dice(q.sides, q.count, q.label)}>{q.label}</button>{/each}
         </div>
@@ -88,9 +93,9 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={(e) => toggle('wheel', e)}>🎡 Wheel</button>
+    <button onclick={(e) => toggle('wheel', e)} aria-haspopup="dialog" aria-expanded={menu === 'wheel'}>🎡 Wheel</button>
     {#if menu === 'wheel'}
-      <div class="menu" style:max-height={room === undefined ? undefined : `${room}px`}>
+      <div class="menu" role="dialog" aria-label="Wheels" style:max-height={room === undefined ? undefined : `${room}px`}>
         <div class="wl">
           <button
             class="small item"
@@ -127,9 +132,9 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone">🏁 Who goes first</button>
+    <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone" aria-haspopup="dialog" aria-expanded={menu === 'rolloff'}>🏁 Who goes first</button>
     {#if menu === 'rolloff'}
-      <div class="menu" style:max-height={room === undefined ? undefined : `${room}px`}>
+      <div class="menu" role="dialog" aria-label="Who goes first" style:max-height={room === undefined ? undefined : `${room}px`}>
         <div class="muted small">Everyone included rolls; tied leaders re-roll.</div>
         {#each session.players as p (p.id)}
           <label class="check small">

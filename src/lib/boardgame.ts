@@ -243,12 +243,23 @@ export function shownSpace(bs: BoardGameState, playerId: Id, now: number): Id | 
   return bs.positions[playerId]?.space;
 }
 
-/** Spots around a space's center for the players on it, so tokens don't cover each other. */
-export function fanOut(n: number, radius = 70): { dx: number; dy: number }[] {
-  if (n <= 1) return [{ dx: 0, dy: 0 }];
+/** A board space's radius (BoardSpaces draws them 116px across), and how far a token may tuck in over its rim. */
+const SPACE_R = 58;
+const TUCK = 12;
+
+/**
+ * Where `n` tokens of radius `r` sit on a space: side by side along the top of its rim, never over its number or its
+ * name below it. A crowd moves out a little so the tokens don't cover each other, and goes no lower than the sides.
+ */
+export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
+  let ring = SPACE_R + r - TUCK;
+  // The angle between two neighbours' centers at that distance; together they reach a little past the sides at most.
+  const stepAt = (d: number) => 2 * Math.asin(Math.min(1, (r + 3) / d));
+  while ((n - 1) * stepAt(ring) > Math.PI * 1.1 && ring < 400) ring += 8;
+  const step = stepAt(ring);
   return Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-    return { dx: Math.round(Math.cos(a) * radius), dy: Math.round(Math.sin(a) * radius) };
+    const a = -Math.PI / 2 + (i - (n - 1) / 2) * step;
+    return { dx: Math.round(Math.cos(a) * ring), dy: Math.round(Math.sin(a) * ring) };
   });
 }
 

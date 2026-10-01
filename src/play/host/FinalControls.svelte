@@ -10,6 +10,7 @@
   let {
     game,
     session,
+    dual = false,
     armed = false,
     override = $bindable(false),
     onstep,
@@ -18,6 +19,8 @@
   }: {
     game: Game;
     session: Session;
+    /** An audience window is open: viewers don't see this window. */
+    dual?: boolean;
     /** Everyone is judged and N was pressed once: the next N finishes. */
     armed?: boolean;
     /** "Ignore the limits" is ticked (bound, so N follows it too). */
@@ -156,7 +159,11 @@
         {/each}
       </div>
     {:else if session.finalStep === 'wagers'}
-      <span class="muted">Enter each wager (only you see these).</span>
+      {#if dual}
+        <span class="muted">Enter each wager (only you see these).</span>
+      {:else}
+        <span class="exposed">⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.</span>
+      {/if}
       <div class="wagers">
         {#each f.players as id, i (id)}
           {@const p = byId[id]}
@@ -186,11 +193,14 @@
         <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} /> Ignore the limits
       </label>
     {:else if session.finalStep === 'reveal'}
-      <span class="muted">
-        Go one by one: spotlight → show wager → mark right or wrong. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Click a name
-        here or on the stage to spotlight it.
-        <span class="small">Keys: N shows the wager, then the next player · Shift+N back · 1–9 spotlight · C right · X wrong.</span>
-      </span>
+      <!-- The how-to folds away: the rows (and the stage) keep the room. -->
+      <details class="how">
+        <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
+        <span class="muted small">
+          Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
+          then the next player · Shift+N back · 1–9 spotlight · C right · X wrong.
+        </span>
+      </details>
       <div class="order" role="list" aria-label="Reveal order" bind:this={orderEl}>
         {#each f.order as id, i (id)}
           {@const p = byId[id]}
@@ -304,13 +314,17 @@
     flex-direction: column;
     gap: 4px;
   }
+  .how summary {
+    cursor: pointer;
+    font-size: 12px;
+  }
   .pl {
     position: relative;
     display: flex;
     gap: 6px;
     align-items: center;
     flex-wrap: wrap;
-    padding: 3px 6px;
+    padding: 2px 6px;
     border-radius: 8px;
     border: 2px solid transparent;
   }
@@ -356,6 +370,10 @@
   }
   button.on {
     box-shadow: 0 0 0 2px #fff;
+  }
+  .exposed {
+    color: var(--warn);
+    font-size: 12px;
   }
   .armed {
     color: var(--good);

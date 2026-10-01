@@ -1,9 +1,9 @@
 <!-- End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. -->
 <script lang="ts">
-  import { toast } from '../../lib/app.svelte';
-  import { formatPoints, isFinal, roundName, type Game, type Session } from '../../lib/model';
-  import { nameList, places, tiedLeaders } from '../../lib/session';
+  import { isFinal, roundName, type Game, type Session } from '../../lib/model';
+  import { nameList, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
+  import { copyText, standingsText } from '../standings';
 
   let {
     game,
@@ -27,30 +27,7 @@
   const lastIndex = $derived(game.rounds.length - 1);
   const last = $derived(game.rounds[lastIndex]);
 
-  /** "🏆 Brainrot Night: 🥇 Sam $4,200 · 🥈 Alex $3,100 · 🥉 Jo $0" for chat or Discord. Tied players share a place and a medal. */
-  function resultsText(): string {
-    const medals = ['🥇', '🥈', '🥉'];
-    const sym = game.settings.currencySymbol;
-    const ranked = places(session).map((r) => `${medals[r.place - 1] ?? `${r.place}.`} ${r.player.name} ${formatPoints(r.score, sym)}`);
-    return `🏆 ${game.title}${session.coWinners && ties.length ? ' (co-winners)' : ''}: ${ranked.join(' · ')}`;
-  }
-
-  async function copyResults(): Promise<void> {
-    const text = resultsText();
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // No async clipboard (older browsers, some file:// pages): fall back to a hidden textarea.
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.append(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      ta.remove();
-      if (!ok) return toast("Couldn't copy the results");
-    }
-    toast('Results copied: paste them in chat');
-  }
+  const copyResults = () => copyText(standingsText(game, session), 'Results copied: paste them in chat');
 </script>
 
 {#if ties.length && !session.coWinners}

@@ -80,7 +80,12 @@
     border: 3px solid #000;
     font: calc(var(--s) * 0.22) 'Anton', 'Oswald', sans-serif;
     text-shadow: 1px 1px 0 #000;
-    white-space: nowrap;
     position: relative;
+    /* A long name takes two lines under its avatar instead of running into the next player's. */
+    max-width: calc(var(--s) * 1.5);
+    width: max-content;
+    text-align: center;
+    line-height: 1.1;
+    overflow-wrap: break-word;
   }
 </style>
