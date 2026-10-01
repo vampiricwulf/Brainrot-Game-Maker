@@ -90,7 +90,7 @@ try {
 
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
-  assert(await page.evaluate(() => document.activeElement?.matches('nav .round-tab.active')), 'a new round puts the focus on its tab');
+  assert(await page.evaluate(() => document.activeElement?.matches('main [data-round-name]')), 'a new round puts the focus in its name field');
 
   // ---------- Readable colors ----------
   const play = page.getByRole('button', { name: '▶ Play' });
