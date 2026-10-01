@@ -253,6 +253,8 @@ const ie = page.locator('[aria-label="Edit image"]');
 await ie.locator('.canvas-host canvas').waitFor();
 await ie.getByRole('button', { name: '⟳ 90°' }).click();
 await ie.getByRole('button', { name: '⇋ Flip H' }).click();
+// (Adjust starts folded, so a tool's options are in sight.)
+await ie.locator('summary', { hasText: 'Adjust' }).click();
 await ie.locator('.slider', { hasText: 'Brightness' }).locator('input').fill('140');
 await ie.getByRole('button', { name: '✂ Crop' }).click();
 await ie.getByRole('button', { name: '1:1' }).click();

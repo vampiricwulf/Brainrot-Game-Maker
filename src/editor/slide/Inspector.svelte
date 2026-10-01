@@ -52,6 +52,8 @@
   const liveRef = $derived('media' in el ? game.media.find((m) => m.id === el.media && m.url) : undefined);
   /** Google Drive's or Streamable's own player: no playback options apply. */
   const sitePlayer = $derived(el.kind === 'embed' && (el.embedKind === 'drive' || el.embedKind === 'streamable'));
+  /** Start at / Stop at: empty is none, and never before 0. */
+  const seconds = (v: string) => (v === '' || !Number.isFinite(+v) ? undefined : Math.max(0, +v));
   const lock = (on: boolean) => edit(() => (el.locked = on || undefined));
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
@@ -103,7 +105,7 @@
       <h4>Text box</h4>
       <label class="field">
         Text
-        <textarea bind:this={textArea} bind:value={el.text} rows="4" placeholder="Type here…"></textarea>
+        <textarea bind:this={textArea} bind:value={el.text} rows="4" placeholder="Type here…" dir="auto"></textarea>
       </label>
       <label class="field">
         Font
@@ -322,9 +324,12 @@
           </label>
         {/if}
         <div class="grid2">
-          <label class="field">Start at (s)<input type="number" min="0" step="0.1" value={el.startAt ?? ''} oninput={(e) => (el.startAt = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
-          <label class="field">Stop at (s)<input type="number" min="0" step="0.1" value={el.endAt ?? ''} oninput={(e) => (el.endAt = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+          <label class="field">Start at (s)<input type="number" min="0" step="0.1" value={el.startAt ?? ''} oninput={(e) => (el.startAt = seconds(e.currentTarget.value))} /></label>
+          <label class="field">Stop at (s)<input type="number" min="0" step="0.1" value={el.endAt ?? ''} oninput={(e) => (el.endAt = seconds(e.currentTarget.value))} /></label>
         </div>
+        {#if el.endAt !== undefined && el.endAt <= (el.startAt ?? 0)}
+          <p class="warn small" role="status">Stop at isn't after Start at, so it's ignored: the clip plays to its end.</p>
+        {/if}
         <label class="field">Volume {Math.round(el.volume * 100)}%<input type="range" min="0" max="1" step="0.05" bind:value={el.volume} /></label>
       {/if}
     </section>

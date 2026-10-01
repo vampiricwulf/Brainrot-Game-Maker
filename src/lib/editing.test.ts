@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, isMediaLink, knobPlacement, SnapshotHistory } from './editing';
+import { aspectCrop, freeOffset, isMediaLink, knobPlacement, officeTextPaste, playRange, SnapshotHistory } from './editing';
 
 describe('slide undo history', () => {
   it('undoes a change made a moment ago (before its debounce committed it)', () => {
@@ -115,5 +115,32 @@ describe('aspect-locked crop', () => {
     const v = aspectCrop('se', { x: 0.1, y: 0.1, w: 0.4, h: 0.3 }, 0.05, 0.15, 0.75);
     expect(v.h).toBeCloseTo(0.45);
     expect(v.w).toBeCloseTo(0.6);
+  });
+});
+
+describe('pasting from Office', () => {
+  const word = '<html xmlns:o="urn:schemas-microsoft-com:office:office"><p class=MsoNormal>Hello</p></html>';
+  it('Word, PowerPoint and Excel text (with the picture of it they add) goes in as text', () => {
+    expect(officeTextPaste(word, 'Hello', 1)).toBe(true);
+    expect(officeTextPaste('<table><tr><td>1</td></tr></table>', '1', 1)).toBe(true);
+  });
+  it('a picture is still a picture', () => {
+    expect(officeTextPaste('', '', 1)).toBe(false);
+    expect(officeTextPaste('<img src="x.png">', 'x.png', 1)).toBe(false);
+    expect(officeTextPaste(word, '', 1)).toBe(false);
+    expect(officeTextPaste(word, 'Hello', 2)).toBe(false);
+  });
+});
+
+describe('a clip’s Start at and Stop at', () => {
+  it('a stop at or before the start is no stop (a loop no longer seeks back forever)', () => {
+    expect(playRange(5, 5)).toEqual({ start: 5, end: undefined });
+    expect(playRange(5, 2)).toEqual({ start: 5, end: undefined });
+    expect(playRange(2, 5)).toEqual({ start: 2, end: 5 });
+  });
+  it('never starts before 0', () => {
+    expect(playRange(-3, 4)).toEqual({ start: 0, end: 4 });
+    expect(playRange(undefined, undefined)).toEqual({ start: 0, end: undefined });
+    expect(playRange(NaN, -1)).toEqual({ start: 0, end: undefined });
   });
 });

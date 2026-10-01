@@ -78,7 +78,7 @@
   style:border-radius={el.background ? `${el.background.radius}px` : undefined}
 >
   <!-- (On one line: the text keeps its spaces and line breaks, so none may sneak in around it.) -->
-  <div class="inner" class:ghost>{#if chars.length}{#each chars as c, i}<span class="tw" style:animation-delay="{times[i]}s">{c}</span>{/each}{:else}{ghost ? placeholder : el.text}{/if}</div>
+  <div class="inner" class:ghost dir="auto">{#if chars.length}{#each chars as c, i}<span class="tw" style:animation-delay="{times[i]}s">{c}</span>{/each}{:else}{ghost ? placeholder : el.text}{/if}</div>
 </div>
 {#if edit && fitted.overflow && el.text}
   <div class="nofit" title="Make the box bigger or the text shorter">⚠ Text doesn't fit</div>

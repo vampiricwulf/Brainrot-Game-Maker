@@ -242,6 +242,7 @@
             Question
             <textarea
               bind:this={questionField}
+              dir="auto"
               data-field="q"
               rows="2"
               placeholder="Type the question…"
@@ -253,6 +254,7 @@
             Answer (hidden until revealed)
             <textarea
               bind:this={answerField}
+              dir="auto"
               data-field="a"
               rows="2"
               placeholder="Type the answer…"

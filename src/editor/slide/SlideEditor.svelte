@@ -1,6 +1,6 @@
 <!-- Freeform 16:9 slide editor (spec §5.3): toolbar, canvas with handles, and an inspector. -->
 <script module lang="ts">
-  import { freeOffset, isMediaLink } from '../../lib/editing';
+  import { freeOffset, isMediaLink, officeTextPaste } from '../../lib/editing';
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
   // handles keyboard shortcuts, copy and paste (and becoming active clears the other's selection),
@@ -25,14 +25,15 @@
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
-  import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingOurs } from '../../lib/clipboard.svelte';
+  import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingGone, pastingOurs } from '../../lib/clipboard.svelte';
+  import { announce } from '../../lib/announce';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
   import { warnIfUnplayable } from '../../lib/mediadrop';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
-  import { align as alignTo, centreOn, clampOnto, restack, type Pt, type Restack } from '../../lib/layers';
+  import { align as alignTo, centreOn, clampOnto, elementsAt, keepOnStage, restack, type Pt, type Restack } from '../../lib/layers';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
     type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
@@ -48,7 +49,7 @@
   import ImageEditor from './ImageEditor.svelte';
   import LayersPanel from './LayersPanel.svelte';
   import LayerMenu from './LayerMenu.svelte';
-  import { lockedNote, type Align, type LayerAction } from '../../lib/layerlabel';
+  import { layerLabel, lockedNote, type Align, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
   import { itemsFor, placeElement, take } from '../../lib/nav.svelte';
   import { gameUndo, slideHistory } from '../../lib/slideundo.svelte';
@@ -319,6 +320,7 @@
           if (el.kind === 'image') {
             el.editedMedia = undefined;
             el.edits = undefined;
+            el.uneditedSize = undefined;
           }
         });
       return;
@@ -446,7 +448,11 @@
   function duplicate(): void {
     edit(() => {
       const copies = slide.elements.filter((e) => selected.includes(e.id)).map((e) => ({ ...clone(e), id: newId(), x: e.x + 30, y: e.y + 30 }));
-      for (const c of copies) c.zIndex = topZ();
+      for (const c of copies) {
+        c.zIndex = topZ();
+        // (A copy of an item at the bottom-right edge stays partly on the slide.)
+        keepOnStage(c, SLIDE_W, SLIDE_H);
+      }
       slide.elements.push(...copies);
       selected = copies.map((c) => c.id);
     });
@@ -503,7 +509,24 @@
     const j = i < 0 && dir < 0 ? -1 : i + dir;
     if (j >= list.length || (j < 0 && !selected.length)) return false;
     selected = j < 0 ? [] : [list[j].id];
+    // Screen readers hear which item it is: "Rectangle, 2 of 5, locked".
+    if (j < 0) announce('Nothing selected');
+    else announce(`${layerLabel(list[j], game)}, ${j + 1} of ${list.length}${list[j].locked ? ', locked' : ''}`);
     return true;
+  }
+
+  /**
+   * Shift+F10 or the menu key on the canvas: the right-click menu for the selection (at its middle), or for the slide
+   * when nothing is selected.
+   */
+  function keyMenu(): void {
+    const stageEl = canvasEl?.querySelector('.stage');
+    if (!stageEl) return;
+    const r = stageEl.getBoundingClientRect();
+    const last = slide.elements.find((e) => e.id === selected[selected.length - 1]);
+    const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    const stack = last ? elementsAt(slide.elements.filter((e) => !hidden.includes(e.id)), at) : [];
+    menu = { x: r.left + (at.x / SLIDE_W) * r.width, y: r.top + (at.y / SLIDE_H) * r.height, at, stack };
   }
 
   function align(how: Align): void {
@@ -544,6 +567,15 @@
       selected = [];
     });
     tell('Pasted the copied slide', undoApi.undo);
+  }
+
+  /**
+   * Delete / Backspace remove the selected items only from the canvas, the page itself or a Layers row: on the
+   * Inspector's buttons and checkboxes they're nothing (it was easy to lose an item there).
+   */
+  function deletesItems(): boolean {
+    const a = document.activeElement;
+    return !a || a === document.body || !!canvasEl?.contains(a) || !!a.closest('.layers-box [data-layer]');
   }
 
   function typing(e: Event): boolean {
@@ -605,6 +637,9 @@
     const onCanvas = !!canvasEl?.contains(document.activeElement);
     if (k === 'tab' && !mod && !e.altKey && onCanvas && slide.elements.length) {
       if (cycle(e.shiftKey ? -1 : 1)) e.preventDefault();
+    } else if (onCanvas && (k === 'contextmenu' || (k === 'f10' && e.shiftKey && !mod && !e.altKey))) {
+      e.preventDefault();
+      keyMenu();
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       e.preventDefault();
       const up = e.code === 'BracketRight';
@@ -638,7 +673,7 @@
       e.preventDefault();
       if (e.key.length === 1) single.text += e.key;
       focusText(false);
-    } else if ((k === 'delete' || k === 'backspace') && selected.length) {
+    } else if ((k === 'delete' || k === 'backspace') && selected.length && deletesItems()) {
       e.preventDefault();
       remove();
     } else if (k === 'escape' && selected.length) {
@@ -656,6 +691,8 @@
         if (k === 'arrowright') el.x += step;
         if (k === 'arrowup') el.y -= step;
         if (k === 'arrowdown') el.y += step;
+        // Never all the way off the slide (where it could only be found in the Layers list).
+        keepOnStage(el, SLIDE_W, SLIDE_H);
       }
     }
   }
@@ -717,15 +754,20 @@
     if (!inCharge() || typing(e) || previewing) return;
     const data = e.clipboardData;
     const files = data?.files;
-    if (files?.length) {
+    const text = data?.getData('text/plain') ?? '';
+    // (Word, PowerPoint and Excel put a picture of the text alongside it: the text is what was meant.)
+    if (files?.length && !officeTextPaste(data?.getData('text/html') ?? '', text, files.length)) {
       e.preventDefault();
       dropFiles(files, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
       return;
     }
-    const text = data?.getData('text/plain') ?? '';
     if (pastingOurs(data ?? null)) {
       e.preventDefault();
       pasteItems();
+    } else if (pastingGone(data ?? null)) {
+      // Copied in another tab or before a reload: the items themselves aren't here (only "2 slide items").
+      e.preventDefault();
+      toast('Those items were copied in another tab or before the page reloaded: copy them again here', 5000);
     } else if (text.trim()) {
       e.preventDefault();
       addTextContent(text.trim());
@@ -911,9 +953,10 @@
         ondragover={(e) => e.preventDefault()}
         {ondrop}
         onpointerdown={(e) => e.target === canvasEl && (selected = [])}
+        oncontextmenu={(e) => e.target === canvasEl && e.preventDefault()}
         onclick={() => previewing && togglePreview()}
         role="region"
-        aria-label="Slide canvas. Tab and Shift+Tab pick the items on it. Drop files or links here."
+        aria-label="Slide canvas. Tab and Shift+Tab pick the items on it, Shift+F10 opens the menu for the selection. Drop files or links here."
       >
         <Stage>
           {#if previewing}

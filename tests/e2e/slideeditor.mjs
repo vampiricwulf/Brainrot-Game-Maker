@@ -1,7 +1,9 @@
 // Slide editor fixes: number fields that can't save "nothing", a box drawn beside a text box's words (and Alt+drag),
 // snapping while resizing, lining up and spacing several items, items dropped at the edge, the BG swatch's colour,
 // Esc on an Inspector checkbox, room for text effects, the typewriter, one copy of a file dropped twice, 🎨 Apply
-// keeping a turned picture in its box, Replace redoing edits, and the History's names for these.
+// keeping a turned picture's size (and Use original its old one), the image editor's tool options and slider undo,
+// Replace redoing edits, the History's names for these, pastes from Word and from another tab, nudging off the slide,
+// Tab saying which item it picked, and Shift+F10's menu.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -131,7 +133,10 @@ try {
   await drag([200, 150], [1500, 800]);
   const afterBox = await drawn();
   assert(afterBox[0].x === text0.x && afterBox[0].y === text0.y, 'dragging beside the words doesn’t move the full-slide text box');
-  assert((await page.locator('.side').innerText()).includes('2 items selected'), 'it draws a box that selects what it touches');
+  assert(
+    (await insp.locator('h4', { hasText: 'Shape' }).count()) === 1,
+    'it draws a box that selects what it touches, but not the full-slide text it was drawn on',
+  );
   await page.keyboard.press('Escape');
   await click(200, 150);
   assert((await insp.locator('h4', { hasText: 'Text box' }).count()) === 1, 'a click beside the words still selects the text box');
@@ -139,7 +144,7 @@ try {
   await drag([1450, 750], [1800, 1000], { alt: true });
   const rect = (await drawn()).find((e) => e.w === 300);
   assert(rect.x === 1400 && rect.y === 700, 'Alt+drag starting on the rectangle draws a box instead of moving it');
-  assert((await page.locator('.side').innerText()).includes('2 items selected'), 'and selects what the box touches (the rectangle and the text box)');
+  assert((await page.locator('.side').innerText()).includes('2 items selected'), 'and selects what the box touches (the rectangle, and the text box it reaches past the bottom of)');
 
   // ---------- Snapping while resizing ----------
   await addRect(100, 100, 200, 100);
@@ -169,6 +174,10 @@ try {
   const xs = (await rects()).sort((a, b) => a.x - b.x);
   const gaps = xs.slice(1).map((e, i) => e.x - (xs[i].x + xs[i].w));
   assert(Math.max(...gaps) - Math.min(...gaps) <= 1 && xs[0].x === 100 && xs[3].x + xs[3].w === 1700, `Space evenly leaves equal gaps between them (${gaps.join(', ')})`);
+  // Delete with the focus still on that button is nothing (it used to delete the four); on the canvas it deletes.
+  await page.keyboard.press('Delete');
+  assert((await rects()).length === 4, 'Delete on a focused side-panel button leaves the selected items alone');
+  await canvas.focus();
   await page.keyboard.press('Delete');
   // (Clicks go through the locked text box: the Layers list unlocks it.)
   await page.locator('.layers .row').first().getByRole('button', { name: /^Unlock: / }).click();
@@ -212,14 +221,42 @@ try {
   const editPic = (await drawn()).find((e) => e.img);
   await click(editPic.x + editPic.w / 2, editPic.y + editPic.h / 2);
   await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
+  // The chosen tool's options are in sight (they were below Rotate and eight Adjust sliders).
+  const ie = page.getByRole('dialog', { name: 'Edit image' });
+  await ie.getByRole('button', { name: '🖌 Draw' }).click();
+  const brushBox = await ie.getByLabel('Brush color').boundingBox();
+  assert(brushBox && brushBox.y + brushBox.height < 900, '🖌 Draw shows its brush options in sight');
+  // Keys on a slider are one undo step per burst, from the first change.
+  await ie.locator('summary', { hasText: 'Adjust' }).click();
+  const bright = ie.locator('.slider', { hasText: 'Brightness' }).locator('input');
+  await bright.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  assert((await bright.inputValue()) === '103' && (await ie.getByRole('button', { name: '↶ Undo' }).isEnabled()), 'arrow keys on a slider can be undone');
+  await ie.getByRole('button', { name: '↶ Undo' }).click();
+  assert((await bright.inputValue()) === '100', 'one Undo takes back the whole burst');
+  await ie.getByRole('button', { name: '✋ Move' }).click();
   await page.getByRole('button', { name: '⟳ 90°' }).click();
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   await page.waitForTimeout(500);
   const turned = (await drawn()).find((e) => e.id === editPic.id);
   assert(
-    turned.h === editPic.h && turned.w < editPic.w && Math.abs(turned.x + turned.w / 2 - (editPic.x + editPic.w / 2)) <= 1,
-    `the turned picture fits inside its old box, centred where it was (${turned.w}×${turned.h})`,
+    Math.abs(turned.w - editPic.h) <= 1 && Math.abs(turned.h - editPic.w) <= 1 && Math.abs(turned.x + turned.w / 2 - (editPic.x + editPic.w / 2)) <= 1,
+    `the turned picture swaps its width and height, centred where it was (${editPic.w}×${editPic.h} → ${turned.w}×${turned.h})`,
   );
+  // Apply again (nothing changed): it doesn't shrink.
+  await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
+  await page.getByRole('button', { name: 'Apply', exact: true }).click();
+  await page.waitForTimeout(500);
+  const again = (await drawn()).find((e) => e.id === editPic.id);
+  assert(Math.abs(again.w - turned.w) <= 1 && Math.abs(again.h - turned.h) <= 1, `applying again keeps its size (${again.w}×${again.h})`);
+  // Use original goes back to the box it had before it was edited.
+  await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
+  await page.getByRole('button', { name: 'Use original' }).click();
+  await page.waitForTimeout(300);
+  const orig = (await drawn()).find((e) => e.id === editPic.id);
+  assert(orig.w === editPic.w && orig.h === editPic.h, `Use original brings back its size from before (${orig.w}×${orig.h})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(300);
 
   // ---------- The History names these ----------
   await page.getByLabel('Slide background color').evaluate((i) => {
@@ -264,6 +301,66 @@ try {
   assert(labels.includes('Slide background color #333333'), 'History: “Slide background color #333333”');
   assert(labels.includes('Added an outline to text box'), 'History: “Added an outline to text box …”');
   assert(!/\b\d+ changes\b/.test(labels), 'no “N changes” steps');
+
+  // ---------- Pastes, Tab through the items, the keyboard's menu, nudging off the slide ----------
+  await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
+  await page.locator('.grid .tile').nth(1).click();
+  await clue.waitFor();
+  await click(960, 540);
+  await page.keyboard.press('Escape');
+  await canvas.focus();
+  const paste = (types, withPicture) =>
+    page.evaluate(
+      async ([types, withPicture]) => {
+        const d = new DataTransfer();
+        for (const [k, v] of Object.entries(types)) d.setData(k, v);
+        if (withPicture) {
+          const c = new OffscreenCanvas(20, 10);
+          c.getContext('2d').fillRect(0, 0, 20, 10);
+          d.items.add(new File([await c.convertToBlob({ type: 'image/png' })], 'image.png', { type: 'image/png' }));
+        }
+        window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: d, bubbles: true, cancelable: true }));
+      },
+      [types, withPicture],
+    );
+  const word = '<html xmlns:o="urn:schemas-microsoft-com:office:office"><body><p class=MsoNormal>Pasted from Word</p></body></html>';
+  await paste({ 'text/plain': 'Pasted from Word', 'text/html': word }, true);
+  await page.waitForTimeout(500);
+  assert(
+    /pasted from word/i.test(await canvas.locator('.slide').innerText()) && (await canvas.locator('.slide img').count()) === 0,
+    'text pasted from Word goes in as text, not as the picture of it Word adds',
+  );
+  const count = (await drawn()).length;
+  await paste({ 'text/plain': '2 slide items', 'application/x-brainrot-slide-items': 'from-another-tab' }, false);
+  await page.waitForTimeout(300);
+  assert((await toast.innerText()).includes('copy them again') && (await drawn()).length === count, 'items copied in another tab ask to be copied again (no "2 slide items" text)');
+
+  await addRect(1700, 500, 100, 100);
+  await canvas.focus();
+  for (let i = 0; i < 30; i++) await page.keyboard.press('Shift+ArrowRight');
+  assert(Number(await posField('X').inputValue()) === 1880, 'nudging stops with some of the item still on the slide');
+  await setNumber(posField('X'), 2000);
+  assert((await page.locator('.layers-box').innerText()).includes('off the slide'), 'the Layers list flags an item that is off the slide');
+  await setNumber(posField('X'), 1700);
+
+  await canvas.focus();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  await page.waitForFunction(() => /, 1 of \d+/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(true, 'Tab on the canvas says which item it picked ("…, 1 of 2")');
+  await page.keyboard.press('Shift+F10');
+  const menu = page.getByRole('menu', { name: 'Slide item menu' });
+  await menu.waitFor();
+  const focused = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
+  // (The rectangle sits on the text box: the menu starts with picking between the two.)
+  assert(
+    (await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitemradio' && (await focused()).includes('Rectangle'),
+    'Shift+F10 opens the menu for the selection, its first item focused',
+  );
+  await page.keyboard.press('End');
+  assert((await focused()).startsWith('Delete'), 'End goes to its last item');
+  await page.keyboard.press('Escape');
+  assert((await menu.count()) === 0 && (await page.evaluate(() => document.activeElement?.classList.contains('canvas'))), 'Esc closes it, back on the canvas');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSlide editor E2E passed.');

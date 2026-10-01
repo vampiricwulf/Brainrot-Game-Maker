@@ -42,7 +42,10 @@ export function bounds(b: Box): { x: number; y: number; w: number; h: number } {
   return { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - h / 2, w, h };
 }
 
-/** Boxes a drag-to-select rectangle (any two corners) touches. */
+/**
+ * Boxes a drag-to-select rectangle (any two corners) touches, leaving out any the whole rectangle is inside of: the box
+ * was drawn on it (a full-slide question text, a background picture), to pick what's on top of it.
+ */
 export function touchedBy<T extends Box>(els: T[], a: Pt, b: Pt): T[] {
   const x0 = Math.min(a.x, b.x);
   const x1 = Math.max(a.x, b.x);
@@ -50,7 +53,9 @@ export function touchedBy<T extends Box>(els: T[], a: Pt, b: Pt): T[] {
   const y1 = Math.max(a.y, b.y);
   return els.filter((e) => {
     const r = bounds(e);
-    return r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0;
+    const touches = r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0;
+    const around = r.x <= x0 && r.x + r.w >= x1 && r.y <= y0 && r.y + r.h >= y1;
+    return touches && !around;
   });
 }
 
@@ -182,4 +187,24 @@ export function centreOn(els: { x: number; y: number; w: number; h: number }[], 
     e.x += dx;
     e.y += dy;
   }
+}
+
+/** None of the item (as drawn: a turned one by the box around it) is on the stage. */
+export function offStage(e: Placed, W = 1920, H = 1080): boolean {
+  const b = drawn(e);
+  return b.x + b.w <= 0 || b.y + b.h <= 0 || b.x >= W || b.y >= H;
+}
+
+/**
+ * Keep at least part of an item on the stage (a nudge or a duplicate that would push it off): `keep` px of it (all of it
+ * when it's smaller) stays on each axis.
+ */
+export function keepOnStage(e: Placed, W = 1920, H = 1080, keep = 40): void {
+  const b = drawn(e);
+  const kx = Math.min(keep, b.w);
+  const ky = Math.min(keep, b.h);
+  const dx = Math.max(kx - (b.x + b.w), Math.min(0, W - kx - b.x));
+  const dy = Math.max(ky - (b.y + b.h), Math.min(0, H - ky - b.y));
+  e.x = Math.round(e.x + dx);
+  e.y = Math.round(e.y + dy);
 }

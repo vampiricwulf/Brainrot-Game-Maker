@@ -65,3 +65,12 @@ describe('fitting a box (score plates, board values, category names)', () => {
     expect(s.endsWith('­tic')).toBe(true);
   });
 });
+
+describe('fitting pages of text pasted into a slide', () => {
+  it("doesn't search for a size when nothing fits even at the smallest (each try lays out all of it)", () => {
+    const tries: string[] = [];
+    const r = fitWith({ size: 90, min: 12, enabled: true }, (size, wrap) => (tries.push(`${size}${wrap}`), true));
+    expect(r).toMatchObject({ size: 12, overflow: true, wrap: 'anywhere' });
+    expect(tries).toEqual(['90normal', '12normal', '12anywhere']);
+  });
+});

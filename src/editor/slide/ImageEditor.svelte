@@ -4,18 +4,19 @@
 -->
 <script lang="ts">
   import { modal } from '../../lib/modal';
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
   import { step, stepAsync } from '../../lib/history.svelte';
   import { newId, SLIDE_H, SLIDE_W, type ImageEdits, type ImageEl } from '../../lib/model';
-  import { aspectCrop, fitAspect } from '../../lib/editing';
+  import { aspectCrop, fitAspect, resizeAround } from '../../lib/editing';
   import { fontChoices } from '../../lib/fonts';
   import { linkHost } from '../../lib/links';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
-    canvasToBlob, defaultEdits, fitCrop, itemAt, loadImage, orientedSize, outputSize, renderEdited, renderOriented, STICKERS,
+    angleToOutput, angleToSource, canvasToBlob, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize,
+    placedOverlays, renderEdited, renderForSave, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
   } from '../../lib/imageedit';
 
   let { el, onclose }: { el: ImageEl; onclose: () => void } = $props();
@@ -26,7 +27,7 @@
   // What the edits were when the editor opened: closing with anything else asks first. (Opening the
   // Crop tool adds a full-image crop, which isn't an edit.)
   const snapshot = (e: ImageEdits) => JSON.stringify({ ...e, crop: e.crop && (e.crop.x || e.crop.y || e.crop.w < 1 || e.crop.h < 1) ? e.crop : undefined });
-  const opened = snapshot(untrack(() => edits));
+  let opened = snapshot(untrack(() => edits));
   let img = $state<HTMLImageElement | null>(null);
   let tool = $state<'move' | 'crop' | 'draw' | 'text' | 'sticker'>('move');
   let selectedId = $state<string | null>(null);
@@ -49,23 +50,57 @@
     c.style.height = `${Math.round(c.height * k)}px`;
   });
 
+  const SLIDERS: [keyof ImageEdits, string, number, number, number][] = [
+    ['brightness', 'Brightness', 0, 200, 100],
+    ['contrast', 'Contrast', 0, 200, 100],
+    ['saturation', 'Saturation', 0, 300, 100],
+    ['hue', 'Hue', -180, 180, 0],
+    ['blur', 'Blur', 0, 30, 0],
+    ['grayscale', 'Grayscale', 0, 100, 0],
+    ['sepia', 'Sepia', 0, 100, 0],
+    ['invert', 'Invert', 0, 100, 0],
+  ];
+  // Adjust starts folded (its eight sliders pushed the Draw and Sticker options out of sight), unless it's in use.
+  let adjustOpen = $state(untrack(() => SLIDERS.some(([k, , , , def]) => edits[k] !== def)));
+
   const fonts = $derived(fontChoices(game));
   const selText = $derived(edits.texts.find((t) => t.id === selectedId));
   const selSticker = $derived(edits.stickers.find((s) => s.id === selectedId));
   const out = $derived(img ? outputSize(img.naturalWidth, img.naturalHeight, edits) : { w: 0, h: 0 });
   const oriented = $derived(img ? orientedSize(img.naturalWidth, img.naturalHeight, edits.rotate) : { w: 1, h: 1 });
+  // Captions, stickers and strokes are kept on the source picture (so a crop or a turn takes them along); the pointer
+  // and the sliders work on the image as it shows, so these convert between the two.
+  const nat = $derived(img ? { w: img.naturalWidth, h: img.naturalHeight } : { w: 1, h: 1 });
+  const placed = $derived(placedOverlays(edits, nat.w, nat.h));
+  /** Sizes on the finished image per size on the source (both as fractions of their widths). */
+  const sizeK = $derived(sizeToOutput(nat.w, nat.h, edits));
+  const onSource = (p: { x: number; y: number }) => toSource(p, nat.w, nat.h, edits);
+  const shown = (p: { x: number; y: number }) => toOutput(p, nat.w, nat.h, edits);
+  const r4 = (v: number) => Math.round(v * 10000) / 10000;
 
   // A picture that plays from its link can't be edited (the browser won't let a page read another site's
   // pixels), so the editor asks to save a copy in the game first.
   const linked = $derived(!!source?.url);
   function load(): void {
-    loadImage(mediaUrls[el.media]).then((i) => (img = i)).catch(() => toast("Couldn't load the original image"));
+    loadImage(mediaUrls[el.media])
+      .then((i) => {
+        img = i;
+        // Edits saved before overlays were kept on the source picture: moved there now (they look the same).
+        const up = (e: ImageEdits) => migrateEdits(e, i.naturalWidth, i.naturalHeight);
+        const same = snapshot(edits) === opened;
+        edits = up(edits);
+        if (same) opened = snapshot(edits);
+        history = history.map((s) => JSON.stringify(up(JSON.parse(s))));
+        future = future.map((s) => JSON.stringify(up(JSON.parse(s))));
+      })
+      .catch(() => toast("Couldn't load the original image"));
   }
   onMount(() => {
     if (!untrack(() => source?.url)) load();
   });
 
-  // Re-render the preview (capped at ~1200px) whenever the edits change.
+  // Re-render the preview (capped at ~1200px) whenever the edits change. While cropping it shows the whole picture
+  // (with its captions and stickers), the crop box over it.
   let raf = 0;
   $effect(() => {
     const snap = JSON.stringify(edits);
@@ -75,7 +110,11 @@
     raf = requestAnimationFrame(() => {
       const e = JSON.parse(snap) as ImageEdits;
       const k = Math.min(1, 1200 / Math.max(img!.naturalWidth, img!.naturalHeight));
-      rendered = t === 'crop' ? renderOriented(img!, { ...e }, k) : renderEdited(img!, e, k);
+      try {
+        rendered = renderEdited(img!, t === 'crop' ? { ...e, crop: undefined } : e, k);
+      } catch {
+        return;
+      }
       if (host) {
         host.replaceChildren(rendered);
       }
@@ -86,21 +125,47 @@
   let history = $state<string[]>([]);
   let future = $state<string[]>([]);
   function commit(): void {
+    burst = null;
     history.push(JSON.stringify(edits));
     if (history.length > 60) history.shift();
     future = [];
   }
   function undo(): void {
+    burst = null;
     const prev = history.pop();
     if (!prev) return;
     future.push(JSON.stringify(edits));
     edits = JSON.parse(prev);
   }
   function redo(): void {
+    burst = null;
     const next = future.pop();
     if (!next) return;
     history.push(JSON.stringify(edits));
     edits = JSON.parse(next);
+  }
+
+  // The side panel's sliders, fields, colours and the font list: one undo step per burst of changes to one of them (a
+  // slider dragged, arrow keys held, a caption typed), starting with the first change, by pointer or keyboard.
+  let burst: { target: EventTarget | null; before: string; done: boolean } | null = null;
+  let burstTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Before a press or key in the panel: what the edits were, in case it changes something. */
+  function beforeInput(e: Event): void {
+    if (e.type === 'keydown' && burst && burst.target === e.target) return;
+    burst = { target: e.target, before: JSON.stringify(edits), done: false };
+  }
+  /** After a change in the panel: its burst's first change records the step (later ones join it). */
+  function afterInput(e: Event): void {
+    if (!burst || burst.target !== e.target) beforeInput(e);
+    const b = burst!;
+    if (!b.done && b.before !== JSON.stringify(edits)) {
+      history.push(b.before);
+      if (history.length > 60) history.shift();
+      future = [];
+      b.done = true;
+    }
+    clearTimeout(burstTimer);
+    burstTimer = setTimeout(() => burst === b && (burst = null), 1000);
   }
 
   /** Cancel (Esc, the Cancel button): ask before throwing edits away. */
@@ -129,16 +194,36 @@
 
   /** The caption or sticker under the point: the box it draws (not a circle). */
   function hit(p: { x: number; y: number }): string | null {
-    return itemAt(p, out.w || 1, out.h || 1, edits, measure);
+    return itemAt(p, out.w || 1, out.h || 1, placed, measure);
+  }
+
+  /** A new caption at `p` (fractions of the image as it shows), level on the image as it shows. */
+  function addCaption(p: { x: number; y: number }): void {
+    commit();
+    const at = onSource(p);
+    const t = { id: newId(), text: 'YOUR TEXT', x: at.x, y: at.y, size: 0.09 / sizeK, color: '#ffffff', stroke: '#000000', strokeWidth: 0.12, font: 'Impact, Anton, sans-serif', rotation: angleToSource(0, edits) };
+    edits.texts.push(t);
+    selectedId = t.id;
+    setTimeout(() => (document.getElementById('ie-text') as HTMLTextAreaElement | null)?.select(), 0);
+  }
+
+  function addSticker(p: { x: number; y: number }): void {
+    commit();
+    const at = onSource(p);
+    const s = { id: newId(), emoji: sticker, x: at.x, y: at.y, size: 0.15 / sizeK, rotation: angleToSource(0, edits) };
+    edits.stickers.push(s);
+    selectedId = s.id;
   }
 
   function down(e: PointerEvent): void {
-    if (!box || e.button !== 0) return;
+    // (While cropping, only the crop box takes the pointer.)
+    if (!box || e.button !== 0 || tool === 'crop') return;
     const p = frac(e);
     box.setPointerCapture(e.pointerId);
     if (tool === 'draw') {
       commit();
-      edits.strokes.push({ color: brush.color, size: brush.size / 100, erase: brush.erase, points: [p.x, p.y] });
+      const at = onSource(p);
+      edits.strokes.push({ color: brush.color, size: brush.size / 100 / sizeK, erase: brush.erase, points: [r4(at.x), r4(at.y)] });
       drag = { kind: 'stroke' };
       return;
     }
@@ -146,21 +231,13 @@
     if (id) {
       selectedId = id;
       const it = edits.texts.find((t) => t.id === id) ?? edits.stickers.find((s) => s.id === id)!;
-      drag = { kind: 'item', id, dx: it.x - p.x, dy: it.y - p.y, moved: false };
+      const o = shown(it);
+      drag = { kind: 'item', id, dx: o.x - p.x, dy: o.y - p.y, moved: false };
       return;
     }
-    if (tool === 'text') {
-      commit();
-      const t = { id: newId(), text: 'YOUR TEXT', x: p.x, y: p.y, size: 0.09, color: '#ffffff', stroke: '#000000', strokeWidth: 0.12, font: 'Impact, Anton, sans-serif', rotation: 0 };
-      edits.texts.push(t);
-      selectedId = t.id;
-      setTimeout(() => (document.getElementById('ie-text') as HTMLTextAreaElement | null)?.select(), 0);
-    } else if (tool === 'sticker') {
-      commit();
-      const s = { id: newId(), emoji: sticker, x: p.x, y: p.y, size: 0.15, rotation: 0 };
-      edits.stickers.push(s);
-      selectedId = s.id;
-    } else selectedId = null;
+    if (tool === 'text') addCaption(p);
+    else if (tool === 'sticker') addSticker(p);
+    else selectedId = null;
   }
 
   function move(e: PointerEvent): void {
@@ -168,20 +245,20 @@
     const p = frac(e);
     if (drag.kind === 'stroke') {
       const s = edits.strokes[edits.strokes.length - 1];
-      s.points.push(Math.round(p.x * 10000) / 10000, Math.round(p.y * 10000) / 10000);
+      const at = onSource(p);
+      s.points.push(r4(at.x), r4(at.y));
     } else if (drag.kind === 'item') {
       const d = drag;
       const it = edits.texts.find((t) => t.id === d.id) ?? edits.stickers.find((s) => s.id === d.id);
+      if (!it) return;
       const nx = Math.min(1, Math.max(0, p.x + d.dx));
       const ny = Math.min(1, Math.max(0, p.y + d.dy));
-      if (it && !d.moved && (nx !== it.x || ny !== it.y)) {
+      const o = shown(it);
+      if (!d.moved && (Math.abs(nx - o.x) > 1e-6 || Math.abs(ny - o.y) > 1e-6)) {
         commit();
         d.moved = true;
       }
-      if (it) {
-        it.x = Math.min(1, Math.max(0, p.x + d.dx));
-        it.y = Math.min(1, Math.max(0, p.y + d.dy));
-      }
+      if (d.moved) Object.assign(it, onSource({ x: nx, y: ny }));
     } else if (drag.kind === 'crop') {
       const c = edits.crop!;
       const { o, mode } = drag;
@@ -232,10 +309,12 @@
     }
   }
 
-  function rotateBy(d: number): void {
+  /** ⟲ / ⟳ 90°: the crop turns with the picture (the same part stays cropped, its shape turned too). */
+  function rotateBy(d: 90 | -90): void {
     commit();
     edits.rotate = (((edits.rotate + d) % 360) + 540) % 360 - 180;
-    edits.crop = undefined;
+    if (edits.crop) edits.crop = turnCrop(edits.crop, d > 0 ? 1 : -1);
+    if (cropAspect !== 'free') cropAspect = 1 / cropAspect;
   }
 
   function removeSelected(): void {
@@ -247,15 +326,23 @@
 
   function resetAll(): void {
     commit();
-    edits = defaultEdits();
+    edits = { ...defaultEdits(), v: 2 };
     selectedId = null;
+  }
+
+  // The tool's options come first in the side panel; picking a tool brings them into view.
+  let aside = $state<HTMLElement>();
+  function pickTool(k: typeof tool): void {
+    if (k === 'crop') startCrop();
+    else tool = k;
+    void tick().then(() => aside?.scrollTo({ top: 0 }));
   }
 
   async function apply(): Promise<void> {
     if (!img || !source) return;
     saving = true;
     try {
-      const canvas = renderEdited(img, JSON.parse(JSON.stringify(edits)), 1);
+      const canvas = renderForSave(img, JSON.parse(JSON.stringify(edits)));
       const alpha = /png|gif|webp|svg/.test(source.mime) || edits.rotate % 90 !== 0;
       const type = alpha ? 'image/png' : 'image/jpeg';
       const blob = await canvasToBlob(canvas, type, 0.92);
@@ -263,9 +350,11 @@
       // The edited file and the image showing it: one undo step.
       await stepAsync('Edited image', async () => {
         const ref = await addMediaFile(game, blob, `${base}-edited.${alpha ? 'png' : 'jpg'}`);
+        // The size it had before its first edit, for Use original.
+        if (!el.editedMedia && !el.uneditedSize) el.uneditedSize = { w: el.w, h: el.h };
         el.editedMedia = ref.id;
         el.edits = JSON.parse(JSON.stringify(edits));
-        // Match the box to the new shape so nothing looks squashed: as big as fits in the old box, where it was, on the slide.
+        // Match the box to the new shape so nothing looks squashed: about as big as it was, where it was, on the slide.
         Object.assign(el, fitAspect(el, canvas.width / canvas.height, SLIDE_W, SLIDE_H));
       });
       toast('Image edited (original kept)');
@@ -279,8 +368,13 @@
 
   function revert(): void {
     step('Back to the original image', () => {
+      // Its size before it was edited (or, edited before that was kept, the original's shape at about this size).
+      const was = el.uneditedSize;
+      if (was) Object.assign(el, resizeAround(el, was.w, was.h, SLIDE_W, SLIDE_H));
+      else if (img) Object.assign(el, fitAspect(el, img.naturalWidth / img.naturalHeight, SLIDE_W, SLIDE_H));
       el.editedMedia = undefined;
       el.edits = undefined;
+      el.uneditedSize = undefined;
     });
     toast('Back to the original image');
     onclose();
@@ -316,17 +410,6 @@
       removeSelected();
     }
   }
-
-  const SLIDERS: [keyof ImageEdits, string, number, number, number][] = [
-    ['brightness', 'Brightness', 0, 200, 100],
-    ['contrast', 'Contrast', 0, 200, 100],
-    ['saturation', 'Saturation', 0, 300, 100],
-    ['hue', 'Hue', -180, 180, 0],
-    ['blur', 'Blur', 0, 30, 0],
-    ['grayscale', 'Grayscale', 0, 100, 0],
-    ['sepia', 'Sepia', 0, 100, 0],
-    ['invert', 'Invert', 0, 100, 0],
-  ];
 </script>
 
 <svelte:window onkeydowncapture={onkey} />
@@ -366,7 +449,7 @@
 
     <div class="tools row">
       {#each [['move', '✋ Move'], ['crop', '✂ Crop'], ['draw', '🖌 Draw'], ['text', '🅣 Text'], ['sticker', '😂 Sticker']] as [k, l]}
-        <button class:on={tool === k} aria-pressed={tool === k} onclick={() => (k === 'crop' ? startCrop() : (tool = k as typeof tool))}>{l}</button>
+        <button class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k as typeof tool)}>{l}</button>
       {/each}
     </div>
 
@@ -401,7 +484,7 @@
             </div>
           {/if}
           {#if tool !== 'crop'}
-            {#each [...edits.texts, ...edits.stickers] as it (it.id)}
+            {#each [...placed.texts, ...placed.stickers] as it (it.id)}
               {#if it.id === selectedId}
                 <div class="sel" style:left="{it.x * 100}%" style:top="{it.y * 100}%"></div>
               {/if}
@@ -410,7 +493,9 @@
         </div>
       </div>
 
-      <aside>
+      <!-- (A press or key on a slider or field starts an undo step; its first change records it.) -->
+      <aside bind:this={aside} onpointerdowncapture={beforeInput} onkeydowncapture={beforeInput} oninput={afterInput} onchange={afterInput}>
+        <!-- The chosen tool's options first, then turning and the adjustments. -->
         {#if tool === 'crop'}
           <h4>Crop</h4>
           <div class="row">
@@ -422,32 +507,10 @@
           <button class="small primary" onclick={() => (tool = 'move')}>Done cropping</button>
         {/if}
 
-        <h4>Rotate & flip</h4>
-        <div class="row">
-          <button class="small" onclick={() => rotateBy(-90)}>⟲ 90°</button>
-          <button class="small" onclick={() => rotateBy(90)}>⟳ 90°</button>
-          <button class="small" class:on={edits.flipH} aria-pressed={!!edits.flipH} onclick={() => (commit(), (edits.flipH = !edits.flipH))}>⇋ Flip H</button>
-          <button class="small" class:on={edits.flipV} aria-pressed={!!edits.flipV} onclick={() => (commit(), (edits.flipV = !edits.flipV))}>⇵ Flip V</button>
-        </div>
-        <label class="field">Angle {edits.rotate}°<input type="range" min="-180" max="180" step="1" bind:value={edits.rotate} onpointerdown={commit} /></label>
-        <label class="field">
-          Size {Math.round(edits.scale * 100)}% ({out.w}×{out.h})
-          <input type="range" min="0.1" max="2" step="0.05" bind:value={edits.scale} onpointerdown={commit} />
-        </label>
-
-        <h4>Adjust</h4>
-        {#each SLIDERS as [k, label, min, max, def]}
-          <label class="field slider">
-            <span>{label} <span class="muted">{edits[k]}</span>{#if edits[k] !== def}<button class="tiny ghost" onclick={() => (commit(), ((edits as unknown as Record<string, number>)[k] = def))} aria-label="Reset {label}" title="Reset">↺</button>{/if}</span>
-            <input type="range" {min} {max} value={edits[k] as number} onpointerdown={commit}
-              oninput={(e) => ((edits as unknown as Record<string, number>)[k] = +e.currentTarget.value)} />
-          </label>
-        {/each}
-
         {#if tool === 'draw'}
           <h4>Brush</h4>
           <div class="row">
-            <input type="color" bind:value={brush.color} />
+            <input type="color" bind:value={brush.color} aria-label="Brush color" />
             <label class="check small"><input type="checkbox" bind:checked={brush.erase} /> Eraser</label>
             <button class="small" onclick={() => (commit(), edits.strokes.pop())} disabled={!edits.strokes.length}>Undo stroke</button>
             <button class="small" onclick={() => (commit(), (edits.strokes = []))} disabled={!edits.strokes.length}>Clear</button>
@@ -460,33 +523,61 @@
           <div class="stickers">
             {#each STICKERS as s}<button class:on={sticker === s} aria-pressed={sticker === s} onclick={() => (sticker = s)}>{s}</button>{/each}
           </div>
+          <button class="small" onclick={() => addSticker({ x: 0.5, y: 0.5 })} disabled={!img}>＋ Put {sticker} in the middle</button>
         {/if}
 
         {#if tool === 'text' && !selText}
           <p class="muted small">Click the image to add meme text, or drag existing text to move it.</p>
+          <button class="small" onclick={() => addCaption({ x: 0.5, y: 0.5 })} disabled={!img}>＋ Add text in the middle</button>
         {/if}
 
         {#if selText}
           <h4>Text</h4>
-          <textarea id="ie-text" rows="2" bind:value={selText.text}></textarea>
-          <select bind:value={selText.font}>
+          <textarea id="ie-text" rows="2" bind:value={selText.text} aria-label="Caption text" dir="auto"></textarea>
+          <select bind:value={selText.font} aria-label="Caption font">
             <option value="Impact, Anton, sans-serif">Impact (meme)</option>
             {#each fonts as f}<option value={f.css}>{f.label}</option>{/each}
           </select>
-          <label class="field">Size<input type="range" min="0.02" max="0.3" step="0.005" bind:value={selText.size} /></label>
+          <label class="field">Size<input type="range" min="0.02" max="0.3" step="0.005" value={selText.size * sizeK} oninput={(e) => (selText!.size = +e.currentTarget.value / sizeK)} /></label>
           <div class="row">
             <label class="check small">Fill <input type="color" bind:value={selText.color} /></label>
             <label class="check small">Outline <input type="color" bind:value={selText.stroke} /></label>
           </div>
           <label class="field">Outline width<input type="range" min="0" max="0.3" step="0.01" bind:value={selText.strokeWidth} /></label>
-          <label class="field">Rotation {selText.rotation}°<input type="range" min="-180" max="180" bind:value={selText.rotation} /></label>
+          {@const turn = Math.round(angleToOutput(selText.rotation, edits))}
+          <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selText!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
           <button class="small bad" onclick={removeSelected}>Delete text</button>
         {:else if selSticker}
           <h4>Sticker {selSticker.emoji}</h4>
-          <label class="field">Size<input type="range" min="0.03" max="0.6" step="0.01" bind:value={selSticker.size} /></label>
-          <label class="field">Rotation {selSticker.rotation}°<input type="range" min="-180" max="180" bind:value={selSticker.rotation} /></label>
+          <label class="field">Size<input type="range" min="0.03" max="0.6" step="0.01" value={selSticker.size * sizeK} oninput={(e) => (selSticker!.size = +e.currentTarget.value / sizeK)} /></label>
+          {@const turn = Math.round(angleToOutput(selSticker.rotation, edits))}
+          <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selSticker!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
           <button class="small bad" onclick={removeSelected}>Delete sticker</button>
         {/if}
+
+        <h4>Rotate & flip</h4>
+        <div class="row">
+          <button class="small" onclick={() => rotateBy(-90)}>⟲ 90°</button>
+          <button class="small" onclick={() => rotateBy(90)}>⟳ 90°</button>
+          <button class="small" class:on={edits.flipH} aria-pressed={!!edits.flipH} onclick={() => (commit(), (edits.flipH = !edits.flipH))}>⇋ Flip H</button>
+          <button class="small" class:on={edits.flipV} aria-pressed={!!edits.flipV} onclick={() => (commit(), (edits.flipV = !edits.flipV))}>⇵ Flip V</button>
+        </div>
+        <label class="field">Angle {edits.rotate}°<input type="range" min="-180" max="180" step="1" bind:value={edits.rotate} /></label>
+        <label class="field">
+          Size {Math.round(edits.scale * 100)}% ({out.w}×{out.h})
+          <input type="range" min="0.1" max="2" step="0.05" bind:value={edits.scale} />
+        </label>
+
+        <details class="adjust" bind:open={adjustOpen}>
+          <summary><h4>Adjust</h4></summary>
+          {#each SLIDERS as [k, label, min, max, def]}
+            <label class="field slider">
+              <span>{label} <span class="muted">{edits[k]}</span>{#if edits[k] !== def}<button class="tiny ghost" onclick={() => (commit(), ((edits as unknown as Record<string, number>)[k] = def))} aria-label="Reset {label}" title="Reset">↺</button>{/if}</span>
+              <input type="range" {min} {max} value={edits[k] as number}
+                oninput={(e) => ((edits as unknown as Record<string, number>)[k] = +e.currentTarget.value)} />
+            </label>
+          {/each}
+        </details>
       </aside>
     </div>
   </div>
@@ -627,6 +718,16 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
+  }
+  .adjust summary {
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .adjust summary h4 {
+    display: inline;
+  }
+  .adjust .field {
+    margin-top: 6px;
   }
   .slider span {
     display: flex;

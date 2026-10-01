@@ -8,6 +8,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
   import { LAYER_ICON, layerLabel } from '../../lib/layerlabel';
+  import { offStage } from '../../lib/layers';
 
   let {
     elements,
@@ -190,6 +191,8 @@
         >
           {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
           <span class="txt">{layerLabel(el, game)}</span>
+          <!-- (Nowhere on the slide: this list is the only way to find it.) -->
+          {#if offStage(el)}<span class="off-slide" title="Off the slide: players won't see it. Move it back with the X and Y fields.">⚠ off the slide</span>{/if}
         </button>
       {/if}
       <button class="ico" class:on={!isHidden} onclick={() => toggleHidden(el)} aria-label={`${isHidden ? 'Show while editing' : 'Hide while editing'}: ${name}`} title={isHidden ? 'Show while editing' : 'Hide while editing (still shows in the game)'}>
@@ -301,6 +304,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .off-slide {
+    flex: none;
+    font-size: 12px;
+    color: var(--warn);
   }
   .ico {
     padding: 2px 4px;

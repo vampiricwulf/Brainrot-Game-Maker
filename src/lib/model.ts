@@ -105,6 +105,8 @@ export interface ImageEl extends ElementBase {
   /** Result of the image editor (M6); shown instead of `media` when set. */
   editedMedia?: Id;
   edits?: ImageEdits;
+  /** The box's size before the image editor first changed its shape: Use original goes back to it. */
+  uneditedSize?: { w: number; h: number };
   radius?: number;
 }
 
@@ -172,6 +174,12 @@ export type ElementKind = SlideElement['kind'];
 
 /** Non-destructive image edits (spec §5.4). Positions/sizes are fractions of the output image. */
 export interface ImageEdits {
+  /**
+   * 2: captions, stickers and brush strokes are placed on the source picture (fractions of it, sizes as fractions of its
+   * width, angles before its turn), so they stay put through a crop, a turn or a flip. Missing (edits saved before):
+   * they're fractions of the finished image (see migrateEdits).
+   */
+  v?: 2;
   /** Fractions of the rotated image. */
   crop?: { x: number; y: number; w: number; h: number };
   rotate: number;
