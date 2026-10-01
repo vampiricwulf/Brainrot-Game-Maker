@@ -6,7 +6,7 @@
     ['0', 'Select everyone, or no one'],
     ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
     ['R', 'Reveal the answer (again: hide it)'],
-    ['Esc / B', 'Close the log or the tool overlay, go back to the board (the tile is used up), or clear the selection'],
+    ['Esc / B', 'Close the log, the tool overlay or an RPG object’s / board space’s card, go back to the board (the tile is used up), or clear the selection'],
     ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given for it)'],
     ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back on the board'],
     ['N', 'Next step (round intro, final round; in the reveals: show the wager, then the next player)'],
