@@ -174,6 +174,8 @@ export class BuzzRoom extends DurableObject<Env> {
         dropPhone: (conn) => {
           for (const s of this.ctx.getWebSockets(conn)) {
             try {
+              // Forgotten at once: a room woken from hibernation before the socket is gone mustn't count it again.
+              s.serializeAttachment(null);
               s.close(4001, 'full');
             } catch {
               // already closing
