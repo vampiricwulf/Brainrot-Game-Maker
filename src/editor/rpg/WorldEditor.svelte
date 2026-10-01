@@ -16,7 +16,7 @@
   import { addMediaFile } from '../../lib/media.svelte';
   import { type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
-  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newVariant, newWorldMap, sameRef, screenAt } from '../../lib/rpg';
+  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newVariant, newWorldMap, sameRef, screenAt, screenGrid } from '../../lib/rpg';
   import {
     copyScreen,
     deleteLine,
@@ -77,6 +77,8 @@
   });
 
   const map = $derived(world.maps.find((m) => m.id === mapId) ?? world.maps[0]);
+  /** Its screens by cell: the grid below looks every cell up on each render (a search per cell made big maps slow). */
+  const grid = $derived(screenGrid(map));
   const picked = $derived(map ? map.screens.filter((s) => selIds.includes(s.id)) : []);
   const sel = $derived(picked.length === 1 ? picked[0] : undefined);
   const look = $derived(sel?.variants?.find((v) => v.id === lookId));
@@ -999,7 +1001,7 @@
             {#each Array.from({ length: map.rows }, (_, r) => r) as r (r)}
               <div class="gr" role="row">
                 {#each Array.from({ length: map.cols }, (_, c) => c) as c (c)}
-                  {@const s = screenAt(map, c, r)}
+                  {@const s = grid.get(`${c},${r}`)}
                   {@const here = cur[0] === c && cur[1] === r}
                   <div class="gc" role="gridcell" aria-selected={!!s && selIds.includes(s.id)}>
                     {#if s}
@@ -1081,9 +1083,9 @@
             {:else}
               {#each map.screens as s (s.id)}
                 {#each SEAMS as d (d)}
-                  {@const n = gridNeighbour(map, s, d)}
+                  {@const n = gridNeighbour(map, s, d, grid)}
                   {#if n}
-                    {@const shut = seamBlocked(map, s, d)}
+                    {@const shut = seamBlocked(map, s, d, grid)}
                     <button
                       class="seam"
                       class:shut

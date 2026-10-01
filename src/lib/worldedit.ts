@@ -4,7 +4,7 @@
 // does; only a move to another map rewrites where they look for it.
 import { isRpg, newId, type Dir8, type Game, type Screen, type ScreenRef, type ScreenVariant, type SlideElement, type World, type WorldMap } from './model';
 import { allActions, worldObjects } from './refs';
-import { DIR_VEC, DIRS, freshObjectIds, OPPOSITE, screenAt } from './rpg';
+import { DIR_VEC, DIRS, freshObjectIds, OPPOSITE, screenAt, type ScreenGrid } from './rpg';
 
 /** The most columns (and rows) a map has. */
 export const MAX_GRID = 16;
@@ -149,14 +149,14 @@ export function deleteLine(map: WorldMap, axis: 'col' | 'row', at: number): Scre
 }
 
 /** The screen next to `s` on the grid in direction `d` (the grid's own neighbour: edges don't wrap). */
-export function gridNeighbour(map: WorldMap, s: Screen, d: Dir8): Screen | undefined {
+export function gridNeighbour(map: WorldMap, s: Screen, d: Dir8, grid?: ScreenGrid): Screen | undefined {
   const [dx, dy] = DIR_VEC[d];
-  return screenAt(map, s.col + dx, s.row + dy);
+  return screenAt(map, s.col + dx, s.row + dy, grid);
 }
 
 /** Is the passage between `s` and its neighbour in direction `d` blocked (from either side)? */
-export function seamBlocked(map: WorldMap, s: Screen, d: Dir8): boolean {
-  const n = gridNeighbour(map, s, d);
+export function seamBlocked(map: WorldMap, s: Screen, d: Dir8, grid?: ScreenGrid): boolean {
+  const n = gridNeighbour(map, s, d, grid);
   return s.exits?.[d]?.kind === 'blocked' || n?.exits?.[OPPOSITE[d]]?.kind === 'blocked';
 }
 

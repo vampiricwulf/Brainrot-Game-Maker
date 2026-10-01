@@ -19,7 +19,7 @@
   import { prefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
   import { arriving, commit, heldMedia, history, listen, mark, startHistory, toSave } from './lib/history.svelte';
-  import type { Game } from './lib/model';
+  import type { Game, Session } from './lib/model';
   import Play from './play/Play.svelte';
 
   /** Base64 game pack when this file is an exported, player-only game. */
@@ -96,7 +96,7 @@
   // draft.
   const saveEditorSoon = debounce(() => watch && saveEditor({ draft: watch.value(), ...toSave(newId()) }), 500);
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
-  const savePlaySoon = debounce(savePlay, 300);
+  const savePlaySoon = debounce((session: Session) => playWatch && savePlay(playWatch.value(), session), 300);
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
   let lastAutosaveAt = Date.now();
@@ -189,11 +189,34 @@
       document.removeEventListener('visibilitychange', onvis);
     };
   });
+  // The game in play is saved with its session after every host action. Only the session is copied each time: the game
+  // (which play changes now and then: RPG screens kept, wheels made…) is watched like the editor's, and the watcher's
+  // plain copy is written. Copying the whole game on every click made scoring lag in big games.
+  let playWatch: GameWatch | null = null;
+  let playWatched: Game | null = null;
+  /** Goes up when the game in play changes. */
+  let playRev = $state(0);
   $effect(() => {
-    const game = $state.snapshot(app.playGame);
+    const game = app.playGame;
+    if (game === playWatched) return;
+    playWatch?.destroy();
+    playWatch = playWatched = null;
+    // Started outside this effect (the watcher can't start inside one).
+    if (game) queueMicrotask(() => startPlayWatch(game));
+  });
+  function startPlayWatch(game: Game): void {
+    if (app.playGame !== game || playWatched === game) return;
+    playWatch?.destroy();
+    playWatch = watchGame(game);
+    playWatched = game;
+    playWatch.subscribe(() => playRev++);
+    playRev++;
+  }
+  $effect(() => {
+    void playRev;
     const session = $state.snapshot(app.session);
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
-    if (loaded && !app.pregame && game && session) savePlaySoon(game, session);
+    if (loaded && !app.pregame && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();

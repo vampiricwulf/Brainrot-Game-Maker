@@ -68,15 +68,15 @@ export function worldById(game: Game, id: string | undefined): World | undefined
   return id ? game.worlds?.find((w) => w.id === id) : undefined;
 }
 
-export function findScreen(game: Game, worldId: string, ref: ScreenRef | undefined | null): { world: World; map: WorldMap; screen: Screen } | null {
-  const world = worldById(game, worldId);
-  const map = world?.maps.find((m) => m.id === ref?.map);
-  const screen = map?.screens.find((s) => s.id === ref?.screen);
-  return world && map && screen ? { world, map, screen } : null;
+/** A map's screens by grid cell ("col,row"), for looking up many cells at once: screenAt alone goes through them all. */
+export type ScreenGrid = ReadonlyMap<string, Screen>;
+
+export function screenGrid(map: WorldMap): ScreenGrid {
+  return new Map(map.screens.map((s) => [`${s.col},${s.row}`, s]));
 }
 
-export function screenAt(map: WorldMap, col: number, row: number): Screen | undefined {
-  return map.screens.find((s) => s.col === col && s.row === row);
+export function screenAt(map: WorldMap, col: number, row: number, grid?: ScreenGrid): Screen | undefined {
+  return grid ? grid.get(`${col},${row}`) : map.screens.find((s) => s.col === col && s.row === row);
 }
 
 export const sameRef = (a: ScreenRef | null | undefined, b: ScreenRef | null | undefined) => !!a && !!b && a.map === b.map && a.screen === b.screen;
