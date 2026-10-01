@@ -241,7 +241,7 @@ export interface SavedRoom {
   screen: 'pregame' | 'editor';
   savedAt: number;
   /**
-   * The pre-game screen's settings (buzzers, 📋 Game rules): a reload right after changing one can come back before the
+   * The pre-game screen's settings (buzzers, ⚖ Game rules): a reload right after changing one can come back before the
    * editor's copy of it is written. (Only a reload back onto the pre-game screen uses them: in the editor, its own copy
    * is the one to keep.)
    */

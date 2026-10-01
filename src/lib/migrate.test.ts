@@ -145,7 +145,7 @@ describe('buzzer settings', () => {
   });
 });
 
-describe('📋 Game rules: what can be typed', () => {
+describe('⚖ Game rules: what can be typed', () => {
   it('a clue countdown is whole seconds, at least 1; blank or 0 is none', () => {
     expect(countdownSeconds('')).toBeNull();
     expect(countdownSeconds('0')).toBeNull();

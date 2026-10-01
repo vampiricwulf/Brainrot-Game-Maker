@@ -18,6 +18,7 @@
     override = $bindable(false),
     onstep,
     onreveal,
+    onrevealnext,
     onjudge,
     onback,
   }: {
@@ -31,6 +32,8 @@
     override?: boolean;
     onstep: () => void;
     onreveal: () => void;
+    /** N in the reveals: show the spotlit player's wager, then go on to the next player. */
+    onrevealnext: () => void;
     /** Mark a player right or wrong in the reveals (with its sound, as C / X). */
     onjudge: (id: string, right: boolean) => void;
     /** Back to the round before this Final (wagers entered so far are kept). */
@@ -171,6 +174,38 @@
     void tick().then(() => orderEl?.querySelector(`[data-row="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
   });
 
+  /**
+   * What N does next in the reveals, for the main button until everyone is judged: show the spotlit player's wager,
+   * or go on to the next player still to judge (none: the spotlit one is waiting on Right or Wrong).
+   */
+  const revealStep = $derived.by((): { label: string; disabled?: string } => {
+    const fs = f;
+    const cur = fs?.current && fs.order.includes(fs.current) ? fs.current : undefined;
+    if (fs && cur && !fs.shown[cur] && !fs.results[cur]) return { label: 'Show wager ▶' };
+    if (fs && cur && fs.order.every((id) => id === cur || fs.results[id]))
+      return { label: 'Next player ▶', disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
+    return { label: 'Next player ▶' };
+  });
+
+  // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room).
+  const HOW_KEY = 'jb.finalHowSeen';
+  let howOpen = $state(readHowOpen());
+  function readHowOpen(): boolean {
+    try {
+      return localStorage.getItem(HOW_KEY) !== '1';
+    } catch {
+      return false;
+    }
+  }
+  $effect(() => {
+    if (session.finalStep !== 'reveal') return;
+    try {
+      localStorage.setItem(HOW_KEY, '1');
+    } catch {
+      // Storage may be off (private mode): it opens again next time.
+    }
+  });
+
   const after = $derived(game.rounds[session.currentRound + 1]);
   const goOn = $derived(after ? `Next: ${roundName(after, session.currentRound + 1)} ▶` : 'Finish game ▶');
   const labels = $derived({
@@ -237,7 +272,7 @@
       </label>
     {:else if session.finalStep === 'reveal'}
       <!-- The how-to folds away: the rows (and the stage) keep the room. -->
-      <details class="how">
+      <details class="how" bind:open={howOpen}>
         <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
         <span class="muted small">
           Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
@@ -344,6 +379,10 @@
         <span class="ask">{unjudged} player{unjudged === 1 ? '' : 's'} not judged yet · finish anyway?</span>
         <button class="primary small" onclick={next}>Finish</button>
         <button class="small" onclick={() => (askFinish = false)}>Keep judging</button>
+      {:else if session.finalStep === 'reveal' && unjudged}
+        <!-- Until everyone is judged the main button is N's next step; finishing early asks first. -->
+        <button class="ghost" onclick={next}>{goOn}</button>
+        <button class="primary" onclick={onrevealnext} disabled={!!revealStep.disabled} title={revealStep.disabled ?? 'N'}>{revealStep.label}</button>
       {:else}
         <button class="primary" onclick={session.finalStep === 'question' ? onreveal : next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
           {labels[session.finalStep ?? 'category']}

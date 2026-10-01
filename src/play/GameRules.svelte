@@ -1,5 +1,5 @@
 <!--
-  📋 Game rules (scoring, most players, timers, the round intro; the buzzers are on the 📱 Phone buzzers card). On the
+  ⚖ Game rules (scoring, most players, timers, the round intro; the buzzers are on the 📱 Phone buzzers card). On the
   pre-game screen, folded away until opened (this computer remembers whether it was open); mid-game, the same rules
   open in a window from the host panel (`folded={false}`). Saved with the game: the play screen keeps the editor's copy
   of it in step (an undoable change in its history).
@@ -127,7 +127,7 @@
 {#if folded}
   <details class="rules" bind:open data-place="play:rules">
     <!-- A heading of its own, so the rules' sections aren't read as part of the card above. -->
-    <summary><h2>📋 Game rules</h2> <span class="muted small">{gist}</span></summary>
+    <summary><h2>⚖ Game rules</h2> <span class="muted small">{gist}</span></summary>
     {@render body()}
   </details>
 {:else}

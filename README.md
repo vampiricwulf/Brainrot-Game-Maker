@@ -103,7 +103,7 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 
 Press **▶ Play** to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
 `Alt`+arrows to reorder; type a name and press `Enter` for the next one; they're kept with the game for next time),
-open **📋 Game rules** for scoring, the most players, timers and the round intro, and turn on phone buzzers on the
+open **⚖ Game rules** for scoring, the most players, timers and the round intro, and turn on phone buzzers on the
 **📱 Phone buzzers** card (all saved with the game too). `Ctrl+Z` / `Ctrl+Y` undo and redo the changes made there (the
 same steps as the editor's 🕘 History, where **Go there** brings you back to this screen). Then pick one of two modes.
 Viewers see a "Starting soon…" card until you press **Start game**, which stays at the foot of the window however long
@@ -114,7 +114,7 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
   notes and controls.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **Award** or **Deduct**.
-The rules can change mid-game too: **📋** next to 👥 Players in the host panel opens 📋 Game rules (they count at once
+The rules can change mid-game too: **⚖ Rules** next to 👥 Players in the host panel opens ⚖ Game rules (they count at once
 and are kept with the game), and at the most players 👥 Players offers **Raise Most players**.
 Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.
 Nothing pops up over the stage: questions for the host (a locked door, naming a new screen…) appear in the host panel.

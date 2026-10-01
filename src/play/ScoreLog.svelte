@@ -291,6 +291,12 @@
     flex-direction: column;
     gap: 6px;
   }
+  /* A long list scrolls: its rows keep their height (shrunk, a row that wraps would overlap the next). */
+  .step,
+  .item,
+  .round {
+    flex-shrink: 0;
+  }
   .step {
     display: flex;
     flex-direction: column;

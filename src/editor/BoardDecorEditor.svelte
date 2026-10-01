@@ -66,7 +66,7 @@
   });
 
   // The board as it looks at the start of this round, minus anything hidden while editing.
-  // The score bar as it'll be on stream: with as many players as the game can have (📋 Most players), or as many as
+  // The score bar as it'll be on stream: with as many players as the game can have (⚖ Most players), or as many as
   // picked here. The game's own players first, then made-up ones.
   let previewPlayers = $state(untrack(() => mostPlayers(game.settings.maxPlayers, game.players.length)));
   const DEMO = ['Alex', 'Sam', 'Jordan', 'Riley', 'Casey', 'Morgan', 'Jamie', 'Taylor', 'Quinn', 'Avery'];

@@ -4,6 +4,7 @@
   import { nameList, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
+  import InlineAsk from './InlineAsk.svelte';
 
   let {
     game,
@@ -30,7 +31,9 @@
   const lastIndex = $derived(game.rounds.length - 1);
   const last = $derived(game.rounds[lastIndex]);
 
-  const copyResults = () => copyText(standingsText(game, session), 'Results copied: paste them in chat');
+  const copyStandings = () => copyText(standingsText(game, session), 'Standings copied: paste them in chat');
+  /** 🔁 Rematch was pressed: it asks inline first (the results go, and it's one click from Copy standings). */
+  let askRematch = $state(false);
 </script>
 
 {#if ties.length && !session.coWinners}
@@ -62,8 +65,12 @@
   {#if last}
     <button class="ghost" onclick={onback}>{isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`}</button>
   {/if}
-  <button onclick={copyResults} title="Copy the standings as one line of text">📋 Copy results</button>
-  <button onclick={onrematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>
+  <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
+  {#if askRematch}
+    <InlineAsk text="Start a rematch? Scores go back to 0." ok="🔁 Rematch" cancel="Stay" onok={onrematch} oncancel={() => (askRematch = false)} />
+  {:else}
+    <button onclick={() => (askRematch = true)} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>
+  {/if}
 </div>
 
 <style>

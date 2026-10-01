@@ -8,7 +8,7 @@
 <section>
   <h2>Sounds</h2>
   <div class="elsewhere" role="note">
-    <span>Looking for the players, the 📋 Game rules (timers, the round intro) or the phone buzzers? They're set on the ▶ Play screen, before the game starts.</span>
+    <span>Looking for the players, the ⚖ Game rules (timers, the round intro) or the phone buzzers? They're set on the ▶ Play screen, before the game starts.</span>
     {#if onplay}
       <button class="small" onclick={onplay} disabled={!canPlay} title={canPlay ? "" : "Add a round first"}>Open the Play screen ›</button>
     {/if}

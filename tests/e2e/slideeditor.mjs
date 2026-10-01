@@ -362,6 +362,25 @@ try {
   await page.keyboard.press('Escape');
   assert((await menu.count()) === 0 && (await page.evaluate(() => document.activeElement?.classList.contains('canvas'))), 'Esc closes it, back on the canvas');
 
+  // ---------- 🖼 Image on a question alone: the picture on top, the question in a band under it (one undo step) ----------
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.locator('.grid .tile').nth(7).click();
+  await clue.waitFor();
+  await click(960, 540);
+  await insp.locator('textarea').fill('Who is this?');
+  await page.getByRole('button', { name: '🖼 Image' }).click();
+  await page.getByRole('dialog', { name: 'Choose image' }).dispatchEvent('drop', { dataTransfer: await picture('face.png', 800, 600, '#00aa00') });
+  await canvas.locator('.slide .el img').waitFor();
+  const laid = await drawn();
+  const newPic = laid.find((e) => e.img);
+  const qText = laid.find((e) => !e.img);
+  assert(newPic.y + newPic.h <= qText.y && qText.y + qText.h <= 1080 && qText.h >= 300, `a new picture goes above the question, the text in a band under it (picture ${newPic.y}–${newPic.y + newPic.h}, text ${qText.y}–${qText.y + qText.h})`);
+  await canvas.focus();
+  await page.keyboard.press('Control+z');
+  await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
+  const restored = (await drawn())[0];
+  assert(restored.y === 90 && restored.h === 900, 'one Ctrl+Z takes the picture away and puts the text back as it was');
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSlide editor E2E passed.');
 } finally {

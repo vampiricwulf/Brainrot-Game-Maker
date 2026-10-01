@@ -119,7 +119,7 @@
   /** The 📜 Log's tab (L opens the one used last, 🕘 History to begin with). */
   let logTab = $state<LogTab>('history');
   let showPlayers = $state(false);
-  /** 📋 Game rules mid-game (the host panel's 📋): the same rules as before the game, in a window. */
+  /** ⚖ Game rules mid-game (the host panel's ⚖ Rules): the same rules as before the game, in a window. */
   let showRules = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
@@ -241,7 +241,7 @@
     void finalUnjudged(session).length;
     finishArmed = false;
   });
-  // H hid the controls, but a list (?, L, 👥 Players, 📋 Rules) or a wager to type (a Daily Double's, the Final's) needs
+  // H hid the controls, but a list (?, L, 👥 Players, ⚖ Rules) or a wager to type (a Daily Double's, the Final's) needs
   // them: they come back for it, and hide again once it's done (unless the host pressed H meanwhile).
   const needControls = $derived(
     (!dual && (showKeys || showPlayers || showRules || showLog)) ||
@@ -774,7 +774,7 @@
 
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
   function addPhonePlayer(conn: string, name: string): void {
-    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (📋 Game rules › Most players)`);
+    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (⚖ Game rules › Most players)`);
     let who = clip(name.trim(), SEAT_NAME_MAX) || `Player ${session.players.length + 1}`;
     // Never a second "Ann": the new one is "Ann 2".
     const taken = (n: string) => session.players.some((x) => x.name.trim().toLowerCase() === n.toLowerCase());
@@ -1550,6 +1550,12 @@
 
   function start(): void {
     if (!session.players.length) return;
+    // A board short of Daily Doubles (a new one's ⭐ Daily Doubles 1, none placed) would play without them: the rest go
+    // in at random now, each board a step as 🎲 Place now is.
+    const placed = game.rounds.flatMap((r, ri) => (isBoard(r) && dailyDoublesShort(r) ? [{ n: placeDailyDoubles(ri, false), name: r.name }] : []));
+    const n = placed.reduce((a, p) => a + p.n, 0);
+    const where = nameList(placed.filter((p) => p.n).map((p) => p.name));
+    if (n) toast(`⭐ Placed ${n} Daily Double${n === 1 ? '' : 's'} at random in ${where} (${n === 1 ? 'it wasn’t' : 'they weren’t'} on the board yet)`, 5000);
     // (The players are kept with the game as they're changed here: see keepRoster.)
     // A picture chosen for a player here was stored in the editor's game: the game being played gets it too.
     for (const p of session.players) {
@@ -1585,13 +1591,15 @@
    * Scatter the missing Daily Doubles now (in this game and in the editor's copy, so they're kept).
    * The ones placed by hand stay where they are.
    */
-  function placeDailyDoubles(ri: number): void {
+  function placeDailyDoubles(ri: number, tell = true): number {
     const r = game.rounds[ri];
-    if (!isBoard(r)) return;
+    if (!isBoard(r)) return 0;
     const dds = () => r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'dailyDouble').map((cl) => cl.id));
     const before = new Set(dds());
     const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
     const added = new Set(dds().filter((id) => !before.has(id)));
+    // (Placed on the way into the game: nowhere to put one, no step.)
+    if (!n && !tell) return 0;
     const edited = app.game.rounds.find((x) => x.id === r.id);
     step(
       `Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`,
@@ -1601,8 +1609,17 @@
       },
       { during: 'play' },
     );
-    toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
+    if (tell) toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
+    return n;
   }
+
+  /** Daily Doubles the boards want (their ⭐ Daily Doubles box) but haven't got: Start game places them at random. */
+  const unplacedDDs = $derived(
+    game.rounds.reduce((n, r) => {
+      const short = isBoard(r) ? dailyDoublesShort(r) : null;
+      return n + (short ? short.want - short.placed : 0);
+    }, 0),
+  );
 
   // ---------- The game's players and rules (pre-game) ----------
 
@@ -1637,12 +1654,12 @@
     });
   });
 
-  /** The settings 📋 Game rules sets. */
+  /** The settings ⚖ Game rules sets. */
   const RULES = [
     'allowNegativeScores', 'deductOnWrong', 'pickerFollowsAward', 'currencySymbol', 'maxPlayers', 'defaultTimerSeconds', 'timerAutoStart',
     'roundIntro',
   ] as const satisfies readonly (keyof GameSettings)[];
-  // 📋 Game rules changes the game being played (before it, or mid-game from the host panel); the editor's copy of
+  // ⚖ Game rules changes the game being played (before it, or mid-game from the host panel); the editor's copy of
   // the game keeps each change (undoable there).
   let rulesSeen = '';
   $effect(() => {
@@ -2257,14 +2274,16 @@
               />
               Show the category and value on clue screens (“MEMES · $400”)
             </label>
-            <label class="check small">
-              <input
-                type="checkbox"
-                checked={!!stream.placeCaption}
-                onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
-              />
-              Show the screen's name in RPG rounds
-            </label>
+            {#if game.rounds.some(isRpg)}
+              <label class="check small">
+                <input
+                  type="checkbox"
+                  checked={!!stream.placeCaption}
+                  onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                />
+                Show the screen's name in RPG rounds
+              </label>
+            {/if}
             {#if phonesOn}
               <label class="check small">
                 <input
@@ -2315,6 +2334,12 @@
       <button class="ghost" onclick={backToEditor}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
       <span class="spacer"></span>
       {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
+      {#if unplacedDDs}
+        <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
+        <span class="muted small" title="Place them yourself in the editor, or with 🎲 Place now in the checks above">
+          ⭐ {unplacedDDs} Daily Double{unplacedDDs === 1 ? '' : 's'} not placed: Start puts {unplacedDDs === 1 ? 'it' : 'them'} on the board at random
+        </span>
+      {/if}
       <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add players to start'}>
         Start game ▶
       </button>
@@ -2412,6 +2437,7 @@
         ontiebreakerdone={tiebreakerDone}
         oncowinners={winnerCue}
         onjudge={judge}
+        onrevealnext={finalRevealNext}
         onlog={(tab) => {
           if (tab) logTab = tab;
           showLog = !!tab || !showLog;
@@ -2538,7 +2564,7 @@
   {/if}
 {/if}
 {#if showRules && !app.pregame}
-  <!-- 📋 Game rules mid-game: changes count at once, and are kept with the game in the editor (undoable there). -->
+  <!-- ⚖ Game rules mid-game: changes count at once, and are kept with the game in the editor (undoable there). -->
   <div
     class="backdrop"
     class:in-panel={!!panelBox}
@@ -2551,7 +2577,7 @@
   >
     <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false) }}>
       <div class="row">
-        <h2 class="modal-title">📋 Game rules</h2>
+        <h2 class="modal-title">⚖ Game rules</h2>
         <span class="spacer"></span>
         <button class="ghost modal-x" onclick={() => (showRules = false)} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
@@ -2678,7 +2704,7 @@
     flex-direction: column;
     gap: 4px;
   }
-  /* The way out and Start: stuck to the foot of the window, however long the page above (an open 📋 Game rules). */
+  /* The way out and Start: stuck to the foot of the window, however long the page above (an open ⚖ Game rules). */
   .actions {
     position: sticky;
     bottom: 0;

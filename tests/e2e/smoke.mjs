@@ -671,7 +671,7 @@ await page.getByRole('button', { name: 'Done' }).click();
 
 // The final round can be renamed.
 await page.getByRole('button', { name: 'Final Jeopardy!', exact: true }).click();
-await page.getByLabel('Name (shown on screen)').fill('Final Brainrot');
+await page.locator('.grid input[data-round-name]').fill('Final Brainrot');
 assert((await page.getByRole('button', { name: 'Final Brainrot', exact: true }).count()) === 1, 'final round renamed (editor nav follows)');
 const zeroCanPlay = page.getByLabel('Players with a score of 0 or less can play it');
 assert(await zeroCanPlay.isChecked(), 'a new Final lets players with 0 or less play');
@@ -814,15 +814,21 @@ assert(await page.getByText('Pick who answered').isVisible(), 'with nobody selec
 await page.keyboard.press('Enter');
 await page.getByText('Select a player first').waitFor();
 assert(true, 'Enter with nobody selected says why nothing happened');
-await page.locator('.panel .p').nth(2).locator('.wrong').click();
+await page.locator('.panel .p').nth(2).locator('button.wrong').click();
 assert((await scoreOf(2)) === '−$200', 'quick wrong deducts the clue value');
+// Marked on this clue: the chip says so, and the same quick button is off (a second ✘ would take the points again).
+assert(
+  (await page.locator('.panel .p').nth(2).locator('.mark').innerText()) === '✘ −$200' && (await page.locator('.panel .p').nth(2).locator('button.wrong').isDisabled()),
+  'a player marked ✘ shows “✘ −$200” on their chip, and their ✘ is off for this clue',
+);
+assert(await page.locator('.panel .p').nth(1).locator('button.right').isDisabled(), 'a player already awarded on this clue can’t be ✔ again (＋ Award still can)');
 // One-click correct: awards the value and makes that player the picker.
-await page.locator('.panel .p').nth(1).locator('.right').click();
-assert((await scoreOf(1)) === '$550', 'quick ✔ awards the clue value to one player');
-assert(await page.locator('.panel .p').nth(1).evaluate((e) => e.classList.contains('picker')), 'the player marked right becomes the picker (★)');
+await page.locator('.panel .p').nth(2).locator('button.right').click();
+assert((await scoreOf(2)) === '$0', 'quick ✔ awards the clue value to one player');
+assert(await page.locator('.panel .p').nth(2).evaluate((e) => e.classList.contains('picker')), 'the player marked right becomes the picker (★)');
 await page.keyboard.press('Control+z');
-assert((await scoreOf(1)) === '$350', 'Ctrl+Z takes the quick ✔ back');
-assert((await page.locator('.toast').innerText()).includes('Undid +$200 (Player 2)'), 'the undo toast says what was undone');
+assert((await scoreOf(2)) === '−$200', 'Ctrl+Z takes the quick ✔ back');
+assert((await page.locator('.toast').innerText()).includes('Undid +$200 (Player 3)'), 'the undo toast says what was undone');
 assert(
   (await page.locator('.toast button').count()) === 0 && (await page.locator('.toast').evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none',
   'the toast has no buttons and lets clicks through to the host nav row under it',
@@ -1009,7 +1015,7 @@ await page.getByRole('button', { name: '▦ Done ▶ board' }).dblclick();
 await page.locator('.board').waitFor();
 await page.waitForTimeout(300);
 assert((await page.locator('.final-label').count()) === 0 && (await page.locator('.round-name').count()) === 0, 'double-clicking Done stays on this round');
-if (await page.locator('.nav > .backdrop').count()) await page.locator('.nav > .backdrop').click();
+if (await page.locator('.nav .backdrop').count()) await page.locator('.nav .backdrop').click();
 
 // Moving on with tiles left takes an inline second click.
 await page.waitForTimeout(450); // round buttons ignore clicks right after they appear
@@ -1262,21 +1268,29 @@ assert(pickerName === winnerName, `roll-off winner (${winnerName}) is the curren
 await page.evaluate(() =>
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => void (window.__copied = t) } }),
 );
-await page.getByRole('button', { name: '📋 Copy results' }).click();
+await page.getByRole('button', { name: '📋 Copy standings' }).click();
 const copied = await page.evaluate(() => window.__copied);
 assert(
   copied?.startsWith('🏆 Untitled Game (co-winners): 🥇 Player') && copied.match(/🥇 Player \d \$850/g)?.length === 2,
-  `Copy results puts the standings on the clipboard, co-winners sharing 🥇 (${copied})`,
+  `Copy standings puts the standings on the clipboard, co-winners sharing 🥇 (${copied})`,
 );
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
 assert((await page.getByText('Select a player first').count()) === 0, 'Enter on the end screen (no award row) does nothing');
-// Rematch, then back out: the finished game can still be viewed from the editor.
+// Rematch (it asks first: Stay keeps the results), then back out: the finished game can still be viewed from the editor.
+await page.getByRole('button', { name: '🔁 Rematch' }).click();
+await page.getByText('Start a rematch? Scores go back to 0.').waitFor();
+await page.getByRole('button', { name: 'Stay', exact: true }).click();
+assert((await page.locator('.end h1').count()) === 1, 'Stay on “Start a rematch?” keeps the results');
+await page.getByRole('button', { name: '🔁 Rematch' }).click();
+await page.waitForTimeout(450);
 await page.getByRole('button', { name: '🔁 Rematch' }).click();
 await page.getByRole('button', { name: '◀ Back to editor' }).click();
 await page.getByRole('button', { name: 'View results' }).click();
 await page.locator('.end h1').waitFor();
 assert(true, 'after Rematch → Back to editor, View results brings the finished game back');
+await page.getByRole('button', { name: '🔁 Rematch' }).click();
+await page.waitForTimeout(450);
 await page.getByRole('button', { name: '🔁 Rematch' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rematchNames = await page.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));

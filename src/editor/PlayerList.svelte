@@ -47,7 +47,7 @@
     record?: (label: string, fn: () => void) => void;
     /** Right-click a row for its menu (the pre-game screen). */
     rowMenu?: boolean;
-    /** At the most players: raise 📋 Game rules › Most players by one (left out when it can't go higher). */
+    /** At the most players: raise ⚖ Game rules › Most players by one (left out when it can't go higher). */
     onraise?: () => void;
   } = $props();
   let list = $state<HTMLElement>();
@@ -232,7 +232,7 @@
       {players.length}/{max} players · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>
     {#if players.length >= max && onraise}
-      <button class="small" onclick={onraise} title="📋 Game rules › Most players">Raise Most players to {max + 1}</button>
+      <button class="small" onclick={onraise} title="⚖ Game rules › Most players">Raise Most players to {max + 1}</button>
     {/if}
   </div>
   {#if undone}

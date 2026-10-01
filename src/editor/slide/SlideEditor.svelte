@@ -1,6 +1,6 @@
 <!-- Freeform 16:9 slide editor (spec §5.3): toolbar, canvas with handles, and an inspector. -->
 <script module lang="ts">
-  import { freeOffset, isMediaLink, officeTextPaste } from '../../lib/editing';
+  import { freeOffset, isMediaLink, officeTextPaste, placeNewPicture } from '../../lib/editing';
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
   // handles keyboard shortcuts, copy and paste (and becoming active clears the other's selection),
@@ -28,7 +28,7 @@
   import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingGone, pastingOurs } from '../../lib/clipboard.svelte';
   import { announce } from '../../lib/announce';
   import { dropdown } from '../../lib/menustate.svelte';
-  import { addMediaFile, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
+  import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
   import { warnIfUnplayable } from '../../lib/mediadrop';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
@@ -232,7 +232,8 @@
   const describe = (els: SlideElement[]) => (els.length === 1 ? NAMES[els[0].kind] : `${els.length} items`);
 
   // ---------- Adding elements ----------
-  function add(el: SlideElement, at?: { x: number; y: number }): void {
+  /** `also`: more changes in the same undo step (moving the question's text out of a new picture's way). */
+  function add(el: SlideElement, at?: { x: number; y: number }, also?: () => void): void {
     edit(() => {
       el.zIndex = topZ();
       if (at) {
@@ -241,6 +242,7 @@
         el.y = Math.round(at.y - el.h / 2);
         clampOnto(el, SLIDE_W, SLIDE_H);
       }
+      also?.();
       slide.elements.push(el);
       selected = [el.id];
     });
@@ -278,23 +280,13 @@
     });
   }
 
-  function imageSize(id: string): Promise<{ w: number; h: number }> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const s = Math.min(1100 / img.naturalWidth, 700 / img.naturalHeight, 1.5);
-        resolve({ w: Math.round(img.naturalWidth * s) || 960, h: Math.round(img.naturalHeight * s) || 540 });
-      };
-      img.onerror = () => resolve({ w: 960, h: 540 });
-      img.src = mediaUrls[id];
-    });
-  }
-
   /** Put a file on the slide. `gif`: a GIF turned into a video (GIPHY, Imgur .gifv), so it loops silently. */
   async function addMedia(kind: MediaKind, id: string, at?: { x: number; y: number }, gif = false): Promise<void> {
     if (kind === 'image') {
-      const { w, h } = await imageSize(id);
-      add(newImageEl(id, w, h), at);
+      const { w, h } = await slideImageSize(id);
+      const el = newImageEl(id, w, h);
+      // Not dropped somewhere: clear of the text (a question alone moves into a band under the picture, the same step).
+      add(el, at, at ? undefined : () => placeNewPicture(slide.elements, el));
     } else if (kind === 'video') {
       const v = newVideoEl(id);
       if (gif) Object.assign(v, { loop: true, muted: true });

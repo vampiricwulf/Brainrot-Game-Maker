@@ -13,6 +13,14 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **Start game places a board's missing Daily Doubles**: a new board says ⭐ Daily Doubles 1 but has none placed, and
+  used to play without one. Now Start puts any that aren't placed on the board at random (each board a step in 🕘
+  History, as 🎲 Place now is) and says so in a toast. The pre-game screen says how many aren't placed yet next to
+  Start game, not only in the folded checks.
+- **A player's chip shows how they were marked on the open clue** ("✘ −$400", "✔ +$400"), and pressing the same ✔ or
+  ✘ again on that clue does nothing (it's greyed out), so a second ✘ no longer takes the points twice. ＋ Award and
+  − Deduct still give or take more on purpose.
+- **The host's status line says when ⏸ Cover is on**: "⏸ Viewers see the cover (K to uncover)".
 - **⏭ Skip** in the host panel, for the player answering on a phone buzz: they pass with no points taken (they can't
   buzz again on that clue), and the next in the buzz order answers.
 - **A volume for each sound** in 🔊 Sounds (0–100%, full volume to begin with): the game plays it that loud, and
@@ -98,6 +106,27 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **A picture added to a clue's question no longer lands on its text**: with only the question on the slide, the
+  picture goes in the upper part and the question's text box moves into a band under it (one undo step). With more on
+  the slide, it goes beside, above or below the text where it fits best. (A picture dropped at a spot still goes there.)
+- **Dropping a picture on a tile in the round editor asks where it goes**: "Put it in the question" (the default,
+  Enter) or "Use as the tile's face" (shown on the board instead of the value until it's picked). Before, it always
+  became the tile's face. The tip under the board says so.
+- **Go to round asks first when clues are left**, like Next round ▶ does ("12 clues left · go to Double Jeopardy!?");
+  Cancel puts the list back on the round being played.
+- **The Final's player reveals**: the main button is the next step (Show wager ▶, then Next player ▶, as N does) until
+  everyone is judged, and only then Finish game ▶; finishing early is still there as a smaller button (and still asks).
+  The how-to above the players is open the first time on a computer, folded after that.
+- **🔁 Rematch asks first** ("Start a rematch? Scores go back to 0."), as 🚪 Exit does.
+- **After a wheel lands or the dice come up, Close is the main button**, and Spin again / Roll again a plain one.
+- **The host panel's own buttons stay in one place**: 📜 Log, 👥 Players, Rules, ⏸ Cover, 🙈 Hide controls, 📺 Audience
+  window, the scores window and 🚪 Exit sit together at the bottom right in every state, so they no longer jump to
+  another row on a Daily Double or as the window narrows.
+- **📋 means Copy standings everywhere**: the end screen's "📋 Copy results" is now "📋 Copy standings", as in 📊 Scores,
+  and the host panel's rules button is "⚖ Rules" (Game rules is ⚖ on the pre-game screen too).
+- **The same words for the same things**: the round intro and every title card say "click the screen or press N to
+  go on"; the Final's name field is "Round name", as on a board.
+- **"Show the screen's name in RPG rounds"** on the pre-game screen only shows in a game that has an RPG round.
 - **A wrong answer goes to the next in the buzz order**: with phone buzzers, the next player who buzzed (and hasn't
   missed the clue) answers at once, instead of the buzzers opening again for a later buzz to jump the queue. The
   buzzers only open again for the rest once everyone in the order has had their go. A phone that's out of the clue
@@ -310,6 +339,7 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **📜 Log › Scores and 🕘 History rows no longer overlap** when a long entry wraps onto a second line.
 - **New, then Open… or New again straight away, asks before replacing the game**: a title typed into a new game in
   the moment before its undo history started wasn't counted as a change, so it could be replaced without asking.
 - **Exit closes the audience window** (and the scores window), also after the host page was reloaded (it no longer
