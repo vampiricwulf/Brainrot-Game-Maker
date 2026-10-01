@@ -229,8 +229,14 @@ try {
   assert((await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1', 'the host panel lists both, fastest first');
 
   // Wrong: Player 2 is locked out, the buzzers open again for the rest (the rebound), and Player 1 is next in line.
+  console.log('DEBUG focus before Shift+Enter:', await host.evaluate(() => { const a = document.activeElement; return a ? `${a.tagName}.${a.className} ${a.getAttribute('aria-label') ?? ''} ${(a.textContent ?? '').slice(0, 40)}` : '(none)'; }));
   await host.keyboard.press('Shift+Enter');
-  await small(p2).getByText('You already answered this one').waitFor();
+  await small(p2).getByText('You already answered this one').waitFor({ timeout: 10_000 }).catch(async (e) => {
+    for (const [n, p] of [['p1', p1], ['p2', p2]]) console.log(`DEBUG ${n}:`, await big(p).innerText(), '|', await small(p).innerText());
+    console.log('DEBUG host panel:', JSON.stringify((await host.locator('.panel').innerText()).slice(0, 800)));
+    console.log('DEBUG selected:', JSON.stringify(await selected()));
+    throw e;
+  });
   await big(p1).getByText('BUZZ!').waitFor();
   assert(true, 'a wrong answer locks Player 2 out and reopens the buzzers for Player 1');
   await host.getByRole('button', { name: '→ Next in line: Player 1' }).click();
