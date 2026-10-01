@@ -32,8 +32,8 @@ export interface Seat {
 /**
  * - lobby: no clue open (the board, between rounds, before the game). Phones show their name and score.
  * - closed: a clue is open but buzzers aren't armed yet (the host is reading). A buzz now is early.
- * - armed: buzzers are open; the first buzz wins.
- * - answering: someone is answering (answering is set); others wait.
+ * - armed: buzzers are open; the fastest buzz wins.
+ * - answering: someone is answering (answering is set; null while a tie waits on the host); others wait.
  */
 export type BuzzPhase = 'lobby' | 'closed' | 'armed' | 'answering';
 
