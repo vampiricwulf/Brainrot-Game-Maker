@@ -33,10 +33,9 @@ jobs:
       - name: Buzzer room (buzzer/) dependencies and type check
         run: npm ci && npm run check
         working-directory: buzzer
+      # The tests drive a build with no buzzer server baked in, so they behave the same whether or not the repository
+      # has one; the tests that need a server set it themselves. The release file is rebuilt with it below.
       - run: npm run build
-        env:
-          # The phone buzzers' server (a repository variable; blank: phone buzzers are off in this build).
-          VITE_BUZZER_URL: ${{ vars.BUZZER_URL }}
       - name: Install Chromium (headless shell) for the end-to-end test
         run: npx playwright-core install --with-deps --only-shell chromium
       - name: End-to-end test (drives the built file from file://)
@@ -50,6 +49,11 @@ jobs:
           name: e2e-debug
           path: test-results/
           if-no-files-found: ignore
+      - name: Build the release file with the buzzer server
+        run: npm run build
+        env:
+          # The phone buzzers' server (a repository variable; blank: phone buzzers are off in this build).
+          VITE_BUZZER_URL: ${{ vars.BUZZER_URL }}
       - name: Name the single-file app
         run: mkdir -p out && cp dist/index.html out/brainrot-game-maker.html
       - uses: actions/upload-artifact@v6
