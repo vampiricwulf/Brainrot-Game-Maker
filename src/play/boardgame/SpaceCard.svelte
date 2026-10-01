@@ -8,6 +8,7 @@
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction } from '../../lib/actions';
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
+  import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { playerName, runSpace, sendNow } from './bgops';
 
@@ -33,7 +34,7 @@
   } = $props();
 
   const who = $derived(selected.length ? selected : turnId ? [turnId] : []);
-  const whoNames = $derived(who.map((id) => playerName(session, id)).join(', ') || 'nobody');
+  const whoNames = $derived(nameList(who.map((id) => playerName(session, id))) || 'nobody');
   const on = $derived(session.players.filter((p) => bs.positions[p.id]?.space === space.id));
   const hidden = $derived(!!space.secret && !bs.revealed?.includes(space.id));
   const isStart = $derived((round.start ?? round.spaces[0]?.id) === space.id);

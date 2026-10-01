@@ -6,7 +6,7 @@ import { playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
 import { actionProblem } from './refs';
-import { applyScore } from './session';
+import { applyScore, nameList } from './session';
 import { activeParty, moveTo, override } from './rpg';
 import { addStat, giveItem, itemDef, logged, setStat, statFields, takeItem } from './toolset';
 
@@ -48,7 +48,7 @@ export function targets(ctx: RunContext, who: Who | undefined): string[] {
   }
 }
 
-const names = (ctx: RunContext, ids: string[]) => ids.map((id) => ctx.session.players.find((p) => p.id === id)?.name ?? '?').join(', ');
+const names = (ctx: RunContext, ids: string[]) => nameList(ids.map((id) => ctx.session.players.find((p) => p.id === id)?.name ?? '?'));
 
 /** Whether an action needs players to act on (so the card asks for them first). */
 export function needsPlayers(a: Action): boolean {

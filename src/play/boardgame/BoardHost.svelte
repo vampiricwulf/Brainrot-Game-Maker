@@ -14,7 +14,7 @@
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow } from './bgops';
+  import { boardNow, busyZones, moveNow, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
 
   let {
@@ -130,12 +130,12 @@
   function shuffle(): void {
     if (!bs) return;
     const b = bs;
-    logged(session, 'Shuffle the turn order', () => {
-      const o = [...b.order];
-      for (let i = o.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [o[i], o[j]] = [o[j], o[i]];
-      }
+    const o = [...b.order];
+    for (let i = o.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [o[i], o[j]] = [o[j], o[i]];
+    }
+    logged(session, `Shuffle the turn order: ${turnOrder(session, o)}`, () => {
       b.order = o;
       b.turn = 0;
     });

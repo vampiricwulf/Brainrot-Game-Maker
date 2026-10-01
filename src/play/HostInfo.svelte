@@ -1,7 +1,7 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, places, playerName, tiedLeaders } from '../lib/session';
+  import { currentClueInfo, currentFinal, nameList, places, playerName, tiedLeaders } from '../lib/session';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -96,7 +96,7 @@
       {#if rpg.st.parties.length > 1}
         <div class="label">Parties</div>
         <ul>
-          {#each rpg.st.parties as pt (pt.id)}<li>{pt.name}: {pt.members.map((m) => playerName(session, m)).join(', ')}</li>{/each}
+          {#each rpg.st.parties as pt (pt.id)}<li>{pt.name}: {nameList(pt.members.map((m) => playerName(session, m)))}</li>{/each}
         </ul>
       {/if}
     {/if}
@@ -116,7 +116,7 @@
       <div class="meta"><span class="cat">Game over</span></div>
       {#if ties.length}
         <div class="label">Tie for first</div>
-        <div class="q">{ties.map((p) => p.name).join(', ')}: settle it in the panel below</div>
+        <div class="q">{nameList(ties.map((p) => p.name))}: settle it in the panel below</div>
       {/if}
     {:else}
       <div class="meta"><span class="cat">{game.rounds[session.currentRound]?.name ?? ''}</span></div>

@@ -97,13 +97,13 @@ describe('dragging avatars on the RPG stage', () => {
 
   it('sends players to another screen as one step (side by side where dropped), and undo brings them back', () => {
     const { game, session, st, beach, start } = withBeach();
-    expect(sendPlayers(game, session, ['p0', 'p1'], beach, { at: { x: 900, y: 500 } })).toBe('Ann, Bob → Beach');
+    expect(sendPlayers(game, session, ['p0', 'p1'], beach, { at: { x: 900, y: 500 } })).toBe('Ann & Bob → Beach');
     expect([st.positions.p0.screen, st.positions.p1.screen, st.positions.p2.screen]).toEqual([beach.screen, beach.screen, start.screen]);
     expect([st.positions.p0.x, st.positions.p1.x, st.positions.p0.y]).toEqual([815, 985, 500]);
     // They're a party of their own, and viewers follow them.
     expect(st.parties.map((p) => p.members)).toEqual([['p2'], ['p0', 'p1']]);
     expect(st.active).toBe(st.parties[1].id);
-    expect(session.actionLog?.at(-1)?.text).toBe('Ann, Bob → Beach');
+    expect(session.actionLog?.at(-1)?.text).toBe('Ann & Bob → Beach');
     undoAction(session, game);
     expect(Object.values(session.worlds!)[0].positions.p0.screen).toBe(start.screen);
   });

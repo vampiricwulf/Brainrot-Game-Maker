@@ -71,7 +71,7 @@ describe('the play history', () => {
       ['roll', '2d6: Total: 7', undefined],
       ['action', 'Ann buys a Sword', 0],
       ['score', '+$500 (Bob) · Adjustment', 0],
-      ['score', '+$400 × 2 (Ann, Bob) · Jeopardy! · Memes $400', 0],
+      ['score', '+$400 × 2 (Ann & Bob) · Jeopardy! · Memes $400', 0],
     ]);
     // Back to here: how many Undos each row is behind (the roll marks a moment).
     expect(rows.map((r) => r.steps)).toEqual([0, 1, 2, 2, 3, 4]);
@@ -89,7 +89,7 @@ describe('the play history', () => {
       ['2d6: Total: 7', '', 0],
       ['Ann buys a Sword', 'done', 0],
       ['+$500 (Bob) · Adjustment', 'done', 1],
-      ['+$400 × 2 (Ann, Bob) · Jeopardy! · Memes $400', 'off', 2],
+      ['+$400 × 2 (Ann & Bob) · Jeopardy! · Memes $400', 'off', 2],
     ]);
   });
 
@@ -118,7 +118,7 @@ describe('the play history', () => {
     expect(timelineRows(session, game, '$').map((r) => r.text)).toEqual([
       '−$100 (Bob) · Final Jeopardy! ✘',
       '$0 (Ann) · Final Jeopardy! ✔',
-      '+$400 × 2 (Ann, Bob) · x',
+      '+$400 × 2 (Ann & Bob) · x',
     ]);
   });
 

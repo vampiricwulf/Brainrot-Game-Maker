@@ -56,6 +56,7 @@
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { onMount, untrack } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
 
   let {
     onexit,
@@ -110,6 +111,11 @@
 
   const sym = $derived(game.settings.currencySymbol);
   const dual = $derived(audience.open);
+  /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
+  const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
+  // RPG and board-game rounds have a tall host panel: on a wide window it goes beside the stage instead of under it, so
+  // the stage keeps a good share.
+  const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
 
   // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.
   const pending = new Set<ReturnType<typeof setTimeout>>();
@@ -1301,7 +1307,7 @@
   </div>
 {:else}
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. -->
-  <div class="play" class:hidden={hideControls} oncontextmenu={playerMenuAt} role="presentation">
+  <div class="play" class:hidden={hideControls} class:side oncontextmenu={playerMenuAt} role="presentation">
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
       <div
@@ -1392,6 +1398,7 @@
         }}
         onplayers={openPlayers}
         {dual}
+        {side}
         onaudience={toggleAudience}
         onsound={() => (showSound = true)}
         oncloseoverlay={closeOverlay}
@@ -1526,6 +1533,29 @@
   .stage-area.dual > :global(.info) {
     width: min(360px, 35vw);
     flex-shrink: 0;
+  }
+  /* The host panel beside the stage (see `side`). With an audience window, the host info goes under the stage. */
+  .play.side {
+    flex-direction: row;
+  }
+  .side > .stage-area {
+    min-width: 0;
+    min-height: 0;
+  }
+  .side > .stage-area.dual {
+    flex-direction: column;
+  }
+  .side > .stage-area.dual > .stage-box {
+    flex: none;
+    aspect-ratio: 16 / 9;
+    max-height: 75%;
+  }
+  .side > .stage-area.dual > :global(.info) {
+    width: auto;
+    flex: 1;
+    min-height: 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
   }
   .modes {
     display: grid;

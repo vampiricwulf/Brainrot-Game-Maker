@@ -117,6 +117,22 @@ try {
   await picker.selectOption({ label: '⭐ Final Jeopardy!' });
   await page.locator('.final-label').waitFor();
   assert((await page.locator('.final-label').innerText()) === 'FINAL JEOPARDY!', 'the round picker jumps straight to any round');
+  // This Final lets players with $0 play: they can only wager $0, so it's filled in and Show question waits on no one else.
+  await page.getByRole('button', { name: /take wagers/ }).click();
+  const wagerBoxes = page.locator('.fj .wagers input');
+  const showQuestion = page.getByRole('button', { name: 'Show question ▶' });
+  const zeroes = page.locator('.fj .wagers .chip').filter({ hasText: 'can only wager $0' });
+  assert(
+    (await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).inputValue()))).join('|') === '|0' && (await zeroes.count()) === 1,
+    'a player at $0 gets a wager of $0 filled in, and the host panel says they can only wager $0',
+  );
+  assert(await showQuestion.isDisabled(), 'Show question still waits for the player who can wager more');
+  await wagerBoxes.first().fill('100');
+  assert(await showQuestion.isEnabled(), 'and nobody at $0 holds it up');
+  await wagerBoxes.nth(1).fill('50');
+  assert(await showQuestion.isDisabled(), 'more than $0 is over their max');
+  await page.getByLabel('Ignore the limits').check();
+  assert(await showQuestion.isEnabled(), 'unless the limits are ignored');
   await context.close();
 
   // A game saved by Jeopardy Builder (format version 1): the Final becomes the last round.

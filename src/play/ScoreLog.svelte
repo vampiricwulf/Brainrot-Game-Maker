@@ -5,7 +5,7 @@
 <script lang="ts">
   import { roundName, type Game, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
-  import { stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
+  import { nameList, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
   import InlineAsk from './host/InlineAsk.svelte';
 
@@ -118,6 +118,7 @@
         {:else}
           {@const row = it.row}
           {@const back = !undone(row) && row.steps > 0}
+          {@const reopen = row.kind === 'score' && row.clueId && onreopen && session.used[row.clueId] ? row.clueId : undefined}
           <div
             class="item"
             class:redo={undone(row)}
@@ -137,17 +138,18 @@
               {:else}•{/if}
             </span>
             <span class="text">{row.text}</span>
-            <span class="acts">
-              {#if row.kind === 'score' && row.clueId && onreopen && session.used[row.clueId]}
-                {@const clueId = row.clueId}
-                <button class="small ghost" onclick={() => onreopen(clueId)} title="Put this tile back on the board">↶ Reopen tile</button>
-              {/if}
-              {#if undone(row)}
-                <button class="small" onclick={() => jump(row)} title="Redo {row.steps} step{row.steps === 1 ? '' : 's'}, up to this one">↷ Redo to here</button>
-              {:else if back}
-                <button class="small" onclick={() => jump(row)} title="Undo the {row.steps} step{row.steps === 1 ? '' : 's'} after this">↶ Back to here</button>
-              {/if}
-            </span>
+            {#if reopen || undone(row) || back}
+              <span class="acts">
+                {#if reopen}
+                  <button class="small ghost" onclick={() => onreopen?.(reopen)} title="Put this tile back on the board">↶ Reopen tile</button>
+                {/if}
+                {#if undone(row)}
+                  <button class="small" onclick={() => jump(row)} title="Redo {row.steps} step{row.steps === 1 ? '' : 's'}, up to this one">↷ Redo to here</button>
+                {:else if back}
+                  <button class="small" onclick={() => jump(row)} title="Undo the {row.steps} step{row.steps === 1 ? '' : 's'} after this">↶ Back to here</button>
+                {/if}
+              </span>
+            {/if}
           </div>
         {/if}
       {:else}
@@ -176,7 +178,7 @@
           <div><span>{icon[r.source]}</span> <b>{r.name}</b> <span class="muted small">{time(r.ts)}</span></div>
           <div>{r.result}</div>
           {#if r.playerIds?.length}
-            <div class="small">For: {r.playerIds.map((id) => byId[id]?.name ?? '?').join(', ')}</div>
+            <div class="small">For: {nameList(r.playerIds.map((id) => byId[id]?.name ?? '?'))}</div>
           {/if}
         </div>
       {:else}
@@ -208,7 +210,7 @@
               {expanded[step.key] ? '▾' : '▸'} {step.events.length} players
             </button>
             <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
-            <span class="why muted">{step.events.map((e) => name(e.playerId)).join(', ')} · {first.reason} · {time(first.ts)}</span>
+            <span class="why muted">{nameList(step.events.map((e) => name(e.playerId)))} · {first.reason} · {time(first.ts)}</span>
             <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? 'Restore all' : 'Undo all'}</button>
           </div>
           {#if expanded[step.key]}
@@ -240,7 +242,7 @@
     right: 0;
     top: 0;
     bottom: 0;
-    width: min(420px, 100vw);
+    width: min(460px, 100vw);
     background: var(--panel);
     border-left: 1px solid var(--border);
     z-index: 50;
@@ -351,9 +353,9 @@
     gap: 2px;
   }
   .item {
-    position: relative;
     display: grid;
-    grid-template-columns: 62px 26px 1fr;
+    grid-template-columns: 56px 24px minmax(0, 1fr) auto;
+    column-gap: 6px;
     align-items: center;
     min-height: 30px;
     padding: 3px 6px;
@@ -406,16 +408,18 @@
     font-size: 13px;
     overflow-wrap: anywhere;
   }
-  /* The row's buttons show over its end when it's pointed at or tabbed to (they stay in the tab order). */
+  /* A row without buttons has the whole width for its text. */
+  .text:last-child {
+    grid-column: 3 / -1;
+  }
+  /*
+    The row's buttons have their own column at its end (one above the other when there are two), so they never cover
+    its text; they show when it's pointed at or tabbed to (they stay in the tab order).
+  */
   .acts {
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
     display: flex;
-    gap: 4px;
-    padding-left: 16px;
-    background: linear-gradient(to right, transparent, var(--panel-2) 14px);
+    flex-direction: column;
+    gap: 2px;
     opacity: 0;
     pointer-events: none;
   }

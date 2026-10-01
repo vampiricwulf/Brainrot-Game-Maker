@@ -4,7 +4,7 @@
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
-  import { currentFinal, finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, score } from '../../lib/session';
+  import { currentFinal, finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, nameList, score } from '../../lib/session';
   import { logged, startStep } from '../../lib/toolset';
 
   let {
@@ -32,7 +32,7 @@
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const problems = $derived(finalWagerProblems(session, override));
   const wagersOk = $derived(finalWagersOk(session, override));
-  const names = (ids: string[]) => ids.map((id) => byId[id]?.name ?? '?').join(', ');
+  const names = (ids: string[]) => nameList(ids.map((id) => byId[id]?.name ?? '?'));
   const title = $derived.by(() => {
     const r = currentFinal(session, game);
     return r ? finalName(r) : 'the Final';
@@ -178,7 +178,7 @@
               onkeydown={(e) => e.key === 'Enter' && wagerEnter(i)}
               bind:this={wagerBoxes[i]}
             />
-            <span class="muted small">max {formatPoints(cap, sym)}</span>
+            <span class="muted small">{cap || override ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}</span>
           </label>
         {/each}
       </div>
