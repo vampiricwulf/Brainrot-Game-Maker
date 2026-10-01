@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TextEl } from '../model';
   import { autofit, type FitResult } from '../autofit';
+  import { textBleed, typewriterChars, typewriterTimes } from '../textfx';
 
   let {
     el,
@@ -8,6 +9,7 @@
     edit = false,
     placeholder,
     onfit,
+    typewriter,
   }: {
     el: TextEl;
     /** Drawn straight on the tile color: plain white text follows the theme's stage text color (dark on Pastel). */
@@ -16,6 +18,8 @@
     edit?: boolean;
     placeholder?: string;
     onfit?: (r: FitResult) => void;
+    /** Play: the typewriter entrance (the letters appear one by one; all at once with reduced motion). */
+    typewriter?: { delay: number; duration: number };
   } = $props();
 
   let fitted = $state<FitResult>({ size: 0, overflow: false });
@@ -29,9 +33,14 @@
     if (el.glow) parts.push(`0 0 ${el.glow.blur}px ${el.glow.color}`, `0 0 ${el.glow.blur * 2}px ${el.glow.color}`);
     return parts.join(', ') || 'none';
   });
+  // Room inside the box for the outline, shadow and glow, so they're never cut off at its edge.
+  const bleed = $derived(textBleed(el));
+  const pad = $derived((el.background ? el.background.padding || 0 : 0) + bleed);
+  const chars = $derived(typewriter && !ghost ? typewriterChars(el.text) : []);
+  const times = $derived(typewriter ? typewriterTimes(chars.length, typewriter.delay, typewriter.duration) : []);
   // Everything besides the words that changes the text's layout (the words are watched directly).
   const layoutKey = $derived(
-    `${el.font}|${el.w}x${el.h}|${el.lineHeight}|${el.letterSpacing}|${el.uppercase}|${el.weight}|${el.italic}|${el.stroke?.width}|${el.background?.padding}|${ghost}`,
+    `${el.font}|${el.w}x${el.h}|${el.lineHeight}|${el.letterSpacing}|${el.uppercase}|${el.weight}|${el.italic}|${pad}|${ghost}`,
   );
 </script>
 
@@ -62,10 +71,11 @@
   style:-webkit-text-stroke={el.stroke && el.stroke.width > 0 ? `${el.stroke.width}px ${el.stroke.color}` : undefined}
   style:paint-order="stroke fill"
   style:background={el.background?.color}
-  style:padding={el.background ? `${el.background.padding}px` : undefined}
+  style:padding={pad ? `${pad}px` : undefined}
   style:border-radius={el.background ? `${el.background.radius}px` : undefined}
 >
-  <div class="inner" class:ghost>{ghost ? placeholder : el.text}</div>
+  <!-- (On one line: the text keeps its spaces and line breaks, so none may sneak in around it.) -->
+  <div class="inner" class:ghost>{#if chars.length}{#each chars as c, i}<span class="tw" style:animation-delay="{times[i]}s">{c}</span>{/each}{:else}{ghost ? placeholder : el.text}{/if}</div>
 </div>
 {#if edit && fitted.overflow && el.text}
   <div class="nofit" title="Make the box bigger or the text shorter">⚠ Text doesn't fit</div>
@@ -81,6 +91,15 @@
     box-sizing: border-box;
     white-space: pre-wrap;
     overflow-wrap: break-word;
+  }
+  /* Typewriter: each letter shows at its own moment (app.css ends the wait at once when motion is reduced). */
+  .tw {
+    animation: tw-in 1ms linear backwards;
+  }
+  @keyframes tw-in {
+    from {
+      opacity: 0;
+    }
   }
   .ghost {
     opacity: 0.45;

@@ -66,8 +66,11 @@
   style:background-image={[bgImage ? cssUrl(bgImage) : '', slide.background.gradient ?? ''].filter(Boolean).join(', ') || undefined}
   style:background-size={slide.background.fit ?? 'cover'}
 >
+  <!-- The typewriter entrance: a text box types its own letters; any other item wipes in from the left. -->
   {#each sorted as el (el.id)}
-    {@const anim = mode === 'play' ? el.entrance : undefined}
+    {@const entrance = mode === 'play' ? el.entrance : undefined}
+    {@const typed = entrance?.type === 'typewriter' && el.kind === 'text'}
+    {@const anim = typed ? undefined : entrance}
     <div
       class="el {anim ? `anim anim-${anim.type}` : ''}"
       class:secret={el.secret}
@@ -90,6 +93,7 @@
           edit={mode === 'edit'}
           placeholder={el.id === mainText ? placeholder : undefined}
           onfit={mode === 'edit' && onfit ? (r) => onfit(el.id, r) : undefined}
+          typewriter={typed ? entrance : undefined}
         />
       {:else if el.kind === 'image'}
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}

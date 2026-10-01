@@ -58,7 +58,7 @@
   const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
 
   const fonts = $derived(fontChoices(game));
-  const ENTRANCES: [EntranceType | '', string][] = [
+  const ENTRANCES: [EntranceType | '', string][] = $derived([
     ['', 'None'],
     ['fade', 'Fade in'],
     ['pop', 'Pop'],
@@ -66,13 +66,17 @@
     ['slide-right', 'Slide from right'],
     ['slide-up', 'Slide from bottom'],
     ['slide-down', 'Slide from top'],
-    ['typewriter', 'Typewriter reveal'],
+    // A text box types its letters one by one; anything else wipes in from the left (the same saved setting).
+    ['typewriter', el.kind === 'text' ? 'Typewriter (letter by letter)' : 'Wipe in'],
     ['shake', 'Shake'],
     ['spin', 'Spin in'],
-  ];
+  ]);
 
   function setEntrance(type: string): void {
-    el.entrance = type ? { type: type as EntranceType, delay: el.entrance?.delay ?? 0, duration: el.entrance?.duration ?? 0.6 } : undefined;
+    // Typing out a text takes about as long as reading it (20 letters a second, 1 to 5 seconds), unless a time was set.
+    const typing = type === 'typewriter' && el.kind === 'text' && !el.entrance;
+    const duration = typing ? Math.min(5, Math.max(1, Math.round((el as TextEl).text.length / 2) / 10)) : (el.entrance?.duration ?? 0.6);
+    el.entrance = type ? { type: type as EntranceType, delay: el.entrance?.delay ?? 0, duration } : undefined;
   }
 
   // svelte-ignore state_referenced_locally
