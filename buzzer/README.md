@@ -43,8 +43,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **The host comes back**: a buzz the room decided while the host was away is sent again when it reconnects, so the
   host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped").
 - Phone-typed names lose control and invisible formatting characters (a zero-width joiner inside an emoji stays), and a
-  new player can't ask to join under an existing player's name (`name-taken`). Names are at most 40 characters and end
-  in "…" when cut. A host state too big to take (32 KB) is answered with an `error`, not dropped in silence.
+  new player can't ask to join under an existing player's name (`name-taken`). A name typed on a phone is at most 24
+  characters, and a seat's name (sent by the host) at most 40; both end in "…" when cut. A host state too big to take (32 KB) is answered with an `error`, not dropped in silence.
 - Rooms end when the host closes them, 6 hours after the host's last message, or 30 minutes after being made if the
   host never connects. The app keeps a room open while the host is back in the editor from the pre-game screen (phones
   are told "The host is setting up — hang on"), and gets back into it after a reload there.

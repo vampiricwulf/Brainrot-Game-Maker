@@ -52,6 +52,10 @@ try {
   const cards = await page.locator('.first-round .mode').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
   assert(cards.length === 4 && cards[0] === cards[1] && cards[2] === cards[3] && cards[1] < cards[2], `the four mode cards sit two by two (${cards})`);
   assert((await page.locator('main').count()) === 1, 'one main landmark');
+  // A game with no rounds isn't exported: the file couldn't be played (and has no ＋ Add round).
+  await page.getByRole('button', { name: 'Export HTML' }).click();
+  await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();
+  assert((await page.getByRole('dialog', { name: 'Name your game' }).count()) === 0, 'Export HTML with no rounds says to add one, and exports nothing');
 
   // ---------- Board values and focus ----------
   await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).click();

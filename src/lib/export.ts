@@ -74,6 +74,22 @@ export function packInfo(): { exported: string | null; cut: boolean } {
   return { exported: el?.dataset.exported ?? null, cut: !!size && (el?.textContent?.trim().length ?? 0) < size };
 }
 
+/**
+ * The buzzer server the exported file was made with (⚙ Settings › Buzzer server in the builder), so phone buzzers work
+ * in it on any computer. '' when it has none (or isn't an exported game).
+ */
+export function embeddedBuzzerServer(): string {
+  try {
+    const url = document.getElementById(PACK_ELEMENT_ID)?.dataset.buzzer?.trim() ?? '';
+    return /^https?:\/\//i.test(url) ? url : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Text for an HTML attribute's value (in double quotes). */
+const attr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
 export async function unpackEmbedded(b64: string, cut = false): Promise<Blob> {
   if (cut) throw new Error(CUT_OFF);
   // fetch() on a data: URL decodes large base64 far more efficiently than atob().
@@ -126,9 +142,11 @@ function selfHtml(): string {
 const WARN = 100 * 1024 ** 2;
 const STRONG = 250 * 1024 ** 2;
 
+/** `buzzer`: the buzzer server the exported file uses for phone buzzers ('' for none). */
 export async function exportStandaloneHtml(
   game: Game,
   onProgress?: PackProgress,
+  buzzer = '',
 ): Promise<{ size: number; missing: string[]; online: number; where: string } | null> {
   const { blob: pack, missing } = await buildPack(game, onProgress);
   if (tooBigForHtml(pack.size)) {
@@ -147,7 +165,8 @@ export async function exportStandaloneHtml(
   // the pack is (so a cut-off copy can tell) and when it was exported.
   const pieces = await base64Pieces(pack);
   const size = pieces.reduce((n, p) => n + p.length, 0);
-  const open = `<script type="application/octet-stream" id="${PACK_ELEMENT_ID}" data-size="${size}" data-exported="${Date.now()}">`;
+  const server = buzzer ? ` data-buzzer="${attr(buzzer)}"` : '';
+  const open = `<script type="application/octet-stream" id="${PACK_ELEMENT_ID}" data-size="${size}" data-exported="${Date.now()}"${server}>`;
   const out = new Blob([head, open, ...pieces, '</script>\n', tail], { type: 'text/html' });
   const name = `${safeFilename(game.title)}.html`;
   const where = savedWhere(await saveFile(name, out, game.id), name);

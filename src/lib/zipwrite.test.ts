@@ -43,6 +43,23 @@ describe('zip writer', () => {
     expect(Object.keys(zip.files).sort()).toEqual(['game.json', 'media/ok.png']);
   });
 
+  it('deflates the entries marked for it (game.json), and stores one that would not get smaller', async () => {
+    const text = JSON.stringify(Array.from({ length: 2000 }, (_, i) => ({ id: `c${i}`, question: 'What is the answer?' })));
+    const { blob } = await buildZip([
+      { name: 'game.json', data: new Blob([text]), deflate: true },
+      { name: 'tiny.txt', data: new Blob(['a']), deflate: true },
+      { name: 'media/x.png', data: new Blob([text]) },
+    ]);
+    expect(blob.size).toBeLessThan(text.length * 1.3);
+    const raw = new DataView(await blob.arrayBuffer());
+    // Each local header's method: 8 deflated, 0 stored.
+    expect(raw.getUint16(8, true)).toBe(8);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer(), { checkCRC32: true });
+    expect(await zip.file('game.json')!.async('string')).toBe(text);
+    expect(await zip.file('tiny.txt')!.async('string')).toBe('a');
+    expect(await zip.file('media/x.png')!.async('string')).toBe(text);
+  });
+
   it('reports progress over the bytes it checks', async () => {
     const seen: number[] = [];
     await buildZip([{ name: 'a', data: new Blob([new Uint8Array(5 * 1024 * 1024)]) }], (done, total) => seen.push(done / total));

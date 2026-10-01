@@ -33,6 +33,11 @@ export interface AutofitOptions {
    * they read as one set instead of one odd number shrunk on its own.
    */
   group?: string;
+  /**
+   * Keep the fit, and reuse it for a box with the same text, size and styles (see fits): only for a box whose size never
+   * follows its content (a board's tiles and titles).
+   */
+  cache?: boolean;
   /** Told the fitted size after every fit (the slide editor shows it). */
   onfit?: (r: FitResult) => void;
 }
@@ -138,6 +143,36 @@ interface Box {
   natural?: number;
 }
 
+/**
+ * Fits already worked out for boxes that ask for it (`cache`), by everything a fit depends on (fitKey): the size and line breaking kept. Going back to a
+ * big board puts up a hundred boxes with the text and box sizes they had a moment ago, and fitting them again took a
+ * third of a second on a slow PC. Forgotten when a font finishes loading (the same font name then draws differently).
+ */
+const fits = new Map<string, { result: FitResult; last: Try }>();
+const MAX_FITS = 3000;
+
+/** The text, the box and every style that changes how the text lays out (the font size aside: fitting sets it). */
+function fitKey(node: HTMLElement, o: AutofitOptions): string {
+  const css = (el: Element) => {
+    const cs = getComputedStyle(el);
+    return [cs.fontFamily, cs.fontWeight, cs.fontStyle, cs.fontStretch, cs.letterSpacing, cs.wordSpacing, cs.textTransform, cs.lineHeight, cs.whiteSpace, cs.padding, cs.boxSizing].join('/');
+  };
+  const inner = node.firstElementChild;
+  return [
+    node.clientWidth,
+    node.clientHeight,
+    o.size,
+    o.enabled,
+    o.min,
+    o.floor,
+    !!o.hyphenate,
+    !!o.noBreak,
+    css(node),
+    inner ? css(inner) : '',
+    node.innerHTML,
+  ].join('|');
+}
+
 /** Boxes waiting for a fit, fitted together in a microtask (before the next paint). */
 const waiting = new Set<Box>();
 
@@ -147,24 +182,38 @@ function request(box: Box): void {
 }
 
 function fitAll(): void {
-  let live = [...waiting]
-    .filter((box) => box.node.isConnected)
-    .map((box) => {
-      const steps = fitting(box.opts());
-      return { box, steps, step: steps.next() };
-    });
+  const done = (box: Box, r: FitResult) => {
+    box.natural = r.size;
+    const g = box.opts().group;
+    if (g) groups.add(g);
+    else box.fitted(r);
+  };
+  // (Fonts still loading: what's measured now won't hold, so it isn't kept.)
+  const keep = !document.fonts || document.fonts.status === 'loaded';
+  // The keys are all read before any box changes: one layout for the lot.
+  const todo = [...waiting].filter((box) => box.node.isConnected).map((box) => ({ box, key: box.opts().cache ? fitKey(box.node, box.opts()) : '' }));
   waiting.clear();
+  let live = todo.flatMap(({ box, key }) => {
+    const known = key ? fits.get(key) : undefined;
+    if (known) {
+      applyTry(box.node, known.last, box.opts().hyphenate);
+      done(box, known.result);
+      return [];
+    }
+    const steps = fitting(box.opts());
+    return [{ box, key, steps, step: steps.next(), last: undefined as Try | undefined }];
+  });
   while (live.length) {
     // Every box sets its size first, then every box is measured: one layout for the lot.
-    for (const { box, step } of live) applyTry(box.node, step.value as Try, box.opts().hyphenate);
+    for (const x of live) applyTry(x.box.node, (x.last = x.step.value as Try), x.box.opts().hyphenate);
     for (const x of live) x.step = x.steps.next(overflows(x.box.node, !!x.box.opts().noBreak));
     live = live.filter((x) => {
       if (!x.step.done) return true;
-      const r = x.step.value;
-      x.box.natural = r.size;
-      const g = x.box.opts().group;
-      if (g) groups.add(g);
-      else x.box.fitted(r);
+      if (keep && x.key) {
+        if (fits.size >= MAX_FITS) fits.delete(fits.keys().next().value!);
+        fits.set(x.key, { result: x.step.value, last: x.last! });
+      }
+      done(x.box, x.step.value);
       return false;
     });
   }
@@ -212,6 +261,7 @@ function unwatch(box: Box): void {
 }
 
 function fitEverything(): void {
+  fits.clear();
   boxes.forEach(request);
 }
 

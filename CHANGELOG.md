@@ -11,6 +11,9 @@ done, the Unreleased lines move under that day's heading.
 ## Unreleased
 
 ### Added
+- **An exported HTML file keeps your buzzer server**: the server set in ⚙ Settings › Buzzer server goes into the file,
+  so phone buzzers work when it's played on another computer (that computer's own setting still comes first, if it
+  has one). Before, the file said "Phone buzzers aren't set up in this copy" with no way to fix it there.
 - **Screen readers hear the game**: the host panel's status line, awards and score changes ("Ann +$200, now $1,200"),
   the phone buzz order, a tie, who is answering, toasts and the undo notes are read out from one polite live region
   that's always on the page. A burst of changes is said once, together. (8bb6edc, c34ccb7, 8b514bd, 65c0fb7)
@@ -98,6 +101,11 @@ done, the Unreleased lines move under that day's heading.
   Items, instead of a dead end. (ad6b92d)
 
 ### Changed
+- **Smaller game files, quicker to open**: Save and Export HTML pack the game's text compressed (pictures and sounds as
+  before). A big text-only game's exported HTML went from 7.4 MB to 1.9 MB and opens in about a quarter of the time.
+  Older `.brainrot` packs and exported files open as before.
+- **Export HTML needs a round**: with no rounds yet it says to add one (＋ Add round) instead of making a file that
+  can't be played.
 - **Recent games keeps the last 8 games** New and Open… replaced (was 3), as long as their files fit in about 1 GB
   together. When one has to go to make room, the note says so ("Removed the oldest kept game: Quiz"). A game with only
   a title isn't kept (and New doesn't ask about it). Two versions of the same game are both kept, each marked with when
@@ -388,6 +396,15 @@ done, the Unreleased lines move under that day's heading.
 - **Wheel editor on a 1280-wide window**: the preview gives way so each slice's row fits on one line.
 - **Screen readers** hear which player chips are picked ("This was for", a score effect's "For:" and "Steal from:").
 - The quick dice box's hint says what it takes: "1–20 dice of 2–1000 sides".
+- **Big games are quicker in play**: ▶ Play and every change to the game mid-game (ticking a rule in 📋 Game rules) no
+  longer copy the whole game each time for the audience window: it gets the copy already kept for saving, and only
+  while it's open. On a slow PC a big game's ▶ Play takes half as long, and a rule ticked no longer freezes the host
+  window for about a second. Going back to a big board from a clue reuses the board's text sizes worked out before
+  (the fitting took 170–250 ms there, now about 30 ms).
+- **Typing in a big game's editor is quicker**: the sidebar checklist is worked out a moment after you stop typing,
+  not on every key.
+- **Player rows on the pre-game screen stay on one line** on wide windows (1400 px and up): ▲ ▼ 🗑 no longer drop
+  under the name; the name box narrows a little instead.
 - **A wrong answer with negative scores off counts even from a player on $0**: nothing is taken, but it's logged as
   wrong (✘), the wrong sound plays, and with phone buzzers that player is locked out of the clue and the buzzers open
   for the rest. Before, it did nothing at all, so the player could keep buzzing.

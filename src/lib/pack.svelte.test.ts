@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { describe, expect, it, vi } from 'vitest';
-import { readGameFile, storeFiles } from './pack';
+import { buildPack, readGameFile, storeFiles } from './pack';
+import { buildZip } from './zipwrite';
 import { getBlob, registerBlob } from './media.svelte';
 import { newGame, newRound, type Game, type MediaRef } from './model';
 
@@ -44,5 +45,36 @@ describe('opening a game file', () => {
     expect(await getBlob(copy)!.text()).toBe('older');
     expect(await getBlob('fresh')!.text()).toBe('fresh');
     expect(getBlob('changed')).toBe(mine);
+  });
+});
+
+describe('game packs', () => {
+  const game = () => {
+    const g = newGame();
+    g.title = 'Packed';
+    g.rounds.push(newRound('R', 1));
+    return g;
+  };
+
+  it('writes game.json compact and deflated, and opens it again', async () => {
+    const g = game();
+    const { blob } = await buildPack(g);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer(), { checkCRC32: true });
+    const text = await zip.file('game.json')!.async('string');
+    expect(text).toBe(JSON.stringify(g));
+    // (Method 8: deflated.)
+    expect(new DataView(await blob.arrayBuffer()).getUint16(8, true)).toBe(8);
+    const read = await readGameFile(new File([blob], 'Packed.brainrot'));
+    expect(read.game.title).toBe('Packed');
+    expect(read.game.rounds).toHaveLength(1);
+  });
+
+  it('still opens an older pack, its game.json stored and indented', async () => {
+    const g = game();
+    const { blob } = await buildZip([{ name: 'game.json', data: new Blob([JSON.stringify(g, null, 2)]) }]);
+    expect(new DataView(await blob.arrayBuffer()).getUint16(8, true)).toBe(0);
+    const read = await readGameFile(new File([blob], 'Old.brainrot'));
+    expect(read.game.title).toBe('Packed');
+    expect(read.game.rounds).toHaveLength(1);
   });
 });

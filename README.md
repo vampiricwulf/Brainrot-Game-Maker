@@ -217,24 +217,31 @@ left with the screen covered comes back covered.
 
 ### Keyboard shortcuts
 
+The main ones (press `?` during the game for all of them):
+
 | Key | Action |
 |---|---|
 | `1`–`9` | Select player N |
+| `P` then `1`–`9` | Make player N the current picker |
 | `Enter` / `Shift+Enter` | Award / deduct |
 | `R` | Reveal / hide the answer (the countdown stops) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
 | `N` | Next step (intro, Final, next turn) |
 | `C` / `X` | Final reveal: right / wrong |
-| `T` | Start/pause the timer |
+| `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players) / scoreboard |
 | `K` or `B` | "Be right back" cover (every round): the countdown and the clue's video wait under it |
 | `0` | Select everyone or no one (in buzzer mode: reset the buzzers) |
 | `U` | Buzzer mode: open the buzzers (when they open on your key) |
-| `Shift+A` | Scores-only window |
+| `A` / `Shift+A` | Open (or focus) the audience window / the scores-only window |
+| `L` | Log: the history (go back to any point), scores and rolls |
+| `H` | Hide / show the host controls |
+| `F` | Full-screen |
 | `Space` / `←` `→` / `M` | Play/pause, seek, mute media |
+| `Y` | Open YouTube / online media in its own window |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
-| `J` / `V` (RPG) | Full map / map on screen |
+| `J` / `V` / `G` (RPG) | Full map / map on screen / regroup everyone here |
 | `I` (RPG, board game) | Player sheet |
 | Numpad or `Alt`+arrows (RPG) | Move the party |
 
@@ -268,6 +275,8 @@ left with the screen covered comes back covered.
   - **Autosave** every few minutes (desktop app). The default is every 5 minutes, keeping the last 3.
   - **Save replaces the game's last save** and keeps the two before it as `.bak` / `.bak2` (desktop app, on by
     default); off makes `Game (2)`, `Game (3)`… instead. Autosaves are kept per game.
+  - **Buzzer server**: where phone buzzer rooms are made, with a **Test** button (the release builds come with one).
+    An exported HTML file keeps the server it was exported with.
 
 ## Streaming the sound (Discord, OBS)
 
@@ -305,6 +314,7 @@ npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file)
 npm run check          # type-check
 npm test               # unit tests
+(cd buzzer && npm ci)  # once: the buzzer server's packages (its e2e tests run it)
 npm run test:e2e       # end-to-end tests on the built file
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
