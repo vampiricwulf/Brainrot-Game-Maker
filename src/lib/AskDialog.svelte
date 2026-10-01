@@ -1,23 +1,37 @@
-<!-- The question or message waiting in ask.svelte.ts: the safe answer has the focus, Esc and ✕ give it. -->
+<!-- The question or message waiting in ask.svelte.ts: its question as the title, the safe answer (left) has the focus,
+     Esc and ✕ give it. -->
 <script lang="ts">
-  import { answer, asks } from './ask.svelte';
+  import { answer, asks, splitAsk } from './ask.svelte';
   import { modal } from './modal';
 
   const a = $derived(asks[0]);
+  const parts = $derived(a ? splitAsk(a) : null);
 </script>
 
-{#if a}
+{#if a && parts}
   {#key a}
     <!-- Its keys are its own: none reach the editor's or the host's shortcuts underneath. -->
-    <div class="backdrop" role="presentation" onkeydown={(e) => e.stopPropagation()}>
-      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="ask-text" data-undo="off" use:modal={{ esc: () => answer(false) }}>
-        <div class="row">
-          <p id="ask-text">{a.text}</p>
-          <button class="ghost close" onclick={() => answer(false)} aria-label="Close" title="Close (Esc)">✕</button>
+    <div class="modal-backdrop ask-backdrop" role="presentation" onkeydown={(e) => e.stopPropagation()}>
+      <div
+        class="modal sm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="ask-title"
+        aria-describedby={parts.body ? 'ask-body' : undefined}
+        data-undo="off"
+        use:modal={{ esc: () => answer(false) }}
+      >
+        <div class="modal-head">
+          <!-- (#ask-text: the whole message, title and all.) -->
+          <div id="ask-text" class="text">
+            <h2 class="modal-title" id="ask-title">{parts.title}</h2>
+            {#if parts.body}<p id="ask-body">{parts.body}</p>{/if}
+          </div>
+          <button class="ghost modal-x" onclick={() => answer(false)} aria-label="Close" title="Close (Esc)">✕</button>
         </div>
-        <div class="row end">
+        <div class="modal-foot">
           {#if a.cancel}
-            <button onclick={() => answer(false)} data-autofocus>{a.cancel}</button>
+            <button class="ghost" onclick={() => answer(false)} data-autofocus>{a.cancel}</button>
             <button class={a.danger ? 'bad' : 'primary'} onclick={() => answer(true)}>{a.ok}</button>
           {:else}
             <button class="primary" onclick={() => answer(true)} data-autofocus>{a.ok}</button>
@@ -29,43 +43,24 @@
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    padding: 16px;
+  /* Over any window it was asked from. */
+  .ask-backdrop {
+    z-index: var(--z-ask);
   }
-  .modal {
-    width: min(520px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 16px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  .row {
-    display: flex;
-    gap: 8px;
+  .modal-head {
     align-items: flex-start;
   }
-  .end {
-    justify-content: flex-end;
-  }
-  p {
+  .text {
     flex: 1;
-    margin: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  h2,
+  p {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     line-height: 1.45;
-  }
-  .close {
-    padding: 2px 8px;
   }
 </style>

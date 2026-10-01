@@ -226,8 +226,8 @@ describe('link messages', () => {
   const link = parseMediaLink('https://litter.catbox.moe/abc.mp4') as MediaLink;
   const permanent = parseMediaLink('https://files.catbox.moe/abc.mp4') as MediaLink;
   it('say what happened', () => {
-    expect(linkMessages.saved(permanent)).toBe('Saved a copy in your game. It works offline now.');
-    expect(linkMessages.saved(link)).toBe('Saved a copy in your game. It works offline now (the link itself expires within 3 days).');
+    expect(linkMessages.saved(permanent)).toBe('Stored in your game: it works offline now.');
+    expect(linkMessages.saved(link)).toBe('Stored in your game: it works offline now (the link itself expires within 3 days).');
     expect(linkMessages.live(permanent, false)).toBe(
       "This site doesn't let the game save a copy, so it will play from files.catbox.moe during the show. You'll need internet. The desktop app can save a copy.",
     );

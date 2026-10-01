@@ -298,7 +298,7 @@ export async function addMediaFile(
   const { mime, kind, blob } = await checkedFile(file, name);
   const twin = await identicalMedia(game, blob, kind);
   if (twin) {
-    toast(`“${twin.name}” is already in 🖼 Media: using that one`, 3500);
+    toast(`“${twin.name}” is already in 🖼 Media: using that one`);
     return twin;
   }
   // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.
@@ -416,14 +416,14 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
   throw failure;
 }
 
-/** A live-link file's bytes, downloaded for "Save a copy" (see keepLinkCopy). */
+/** A live-link file's bytes, downloaded for "Store in game" (see keepLinkCopy). */
 export interface LinkCopy {
   blob: Blob;
   mime: string;
 }
 
 /**
- * "Save a copy", first half: download a live-link file's bytes (null: it's no longer a link). Nothing in the game
+ * "Store in game", first half: download a live-link file's bytes (null: it's no longer a link). Nothing in the game
  * changes yet: keepLinkCopy puts them in, as one step however long the download took.
  */
 export async function fetchLinkCopy(game: Game, id: string, job: DownloadJob = {}): Promise<LinkCopy | null> {
@@ -455,7 +455,7 @@ export async function fetchLinkCopy(game: Game, id: string, job: DownloadJob = {
 }
 
 /**
- * "Save a copy", second half: the downloaded bytes become the file's. It keeps its id, so every place that uses it
+ * "Store in game", second half: the downloaded bytes become the file's. It keeps its id, so every place that uses it
  * keeps working, now offline. False when it's no longer a link (Undo took it back meanwhile…).
  */
 export async function keepLinkCopy(game: Game, id: string, copy: LinkCopy): Promise<boolean> {

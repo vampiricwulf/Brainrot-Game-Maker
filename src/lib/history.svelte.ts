@@ -372,7 +372,7 @@ function apply(list: HistoryEntry[], dir: 1 | -1): boolean {
   }
   if (gone) {
     restart({ kind: 'restarted', label: "History restarted: a step couldn't be undone" });
-    toast("A step couldn't be undone, so the undo history starts again from here", 6000);
+    toast("A step couldn't be undone, so the undo history starts again from here");
   }
   return !gone;
 }

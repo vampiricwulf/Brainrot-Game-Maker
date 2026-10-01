@@ -124,6 +124,7 @@ try {
   assert((await tileText(0, 0)).includes('Who is Pepe?') && !(await tileText(3, 2)).includes('Who is Pepe?'), 'Ctrl+Z swaps them back');
   {
     // (Ctrl pressed once the drag is under way, as the browser's drag needs.)
+    await tile(4, 4).scrollIntoViewIfNeeded();
     const [a, b] = [await tile(1, 0).boundingBox(), await tile(4, 4).boundingBox()];
     await page.mouse.move(a.x + 20, a.y + 20);
     await page.mouse.down();
@@ -239,7 +240,7 @@ try {
 
   // A wheel tile pasted into another game brings its wheel along (not "⚠ Deleted wheel").
   await page.getByRole('button', { name: /Wheels & Dice/ }).click();
-  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  await page.getByRole('button', { name: '＋ Add wheel' }).click();
   await tabs.nth(0).click();
   await tile(2, 2).click();
   await page.locator('select').first().selectOption('wheel');

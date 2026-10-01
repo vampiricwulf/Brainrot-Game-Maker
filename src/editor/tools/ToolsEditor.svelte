@@ -3,6 +3,7 @@
   and dice tiles, the host's menus): drag them in the list, or right-click for more.
 -->
 <script lang="ts">
+  import PageHeader from '../PageHeader.svelte';
   import { tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { take } from '../../lib/nav.svelte';
@@ -174,50 +175,49 @@
   </div>
 {/snippet}
 
-<h2>Wheels & Dice</h2>
-<p class="muted">
-  Saved with the game. The host can spin or roll any of them during play, and a tile can be a wheel or dice tile.
-  There's also a built-in <b>🎯 Pick a player</b> wheel with a slice for each player, in their colors.
-</p>
+<div class="page">
+<PageHeader title="Wheels & Dice" sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile." />
 
 <div class="layout">
   <!-- Not a second nav and main: the editor's own are around it. -->
   <section class="list" aria-label="Wheels and dice">
     <div class="head muted">🎡 Wheels</div>
     {@render group('wheel', game.wheels)}
-    <button class="ghost" onclick={() => add('wheel')}>＋ New wheel</button>
+    <button class="ghost" onclick={() => add('wheel')}>＋ Add wheel</button>
     <div class="head muted">🎲 Dice</div>
     {@render group('dice', game.dice)}
-    <button class="ghost" onclick={() => add('dice')}>＋ New dice</button>
+    <button class="ghost" onclick={() => add('dice')}>＋ Add dice</button>
   </section>
 
   <section aria-label="Wheel or dice">
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>
-        <button class="ghost small" onclick={() => dup('wheel', wheel)} title="A copy of this wheel, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost small danger" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
+        <button class="ghost" onclick={() => dup('wheel', wheel)} title="A copy of this wheel, right after it (Ctrl+D)">⧉ Duplicate</button>
+        <button class="ghost danger" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
       </div>
       {#key wheel.id}<WheelEditor {wheel} />{/key}
     {:else if dice}
       <div class="row top">
         <span class="spacer"></span>
-        <button class="ghost small" onclick={() => dup('dice', dice)} title="A copy of these dice, right after them (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost small danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
+        <button class="ghost" onclick={() => dup('dice', dice)} title="A copy of these dice, right after them (Ctrl+D)">⧉ Duplicate</button>
+        <button class="ghost danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
     {:else}
-      <p class="muted">Pick a wheel or dice on the left, or make a new one. Standard dice (d4–d100, 2d6, any "NdS") are always available during play without setting anything up.</p>
+      <p class="muted">
+        Pick a wheel or dice on the left, or add one. Standard dice (d4–d100, 2d6, any "NdS") and a <b>🎯 Pick a player</b> wheel
+        (a slice for each player, in their colors) are always there during play, without setting anything up.
+      </p>
     {/if}
   </section>
 </div>
+</div>
 
 <style>
-  h2 {
-    margin: 0 0 4px;
-  }
   p {
     margin: 0 0 12px;
+    max-width: 720px;
   }
   .layout {
     display: grid;
@@ -253,12 +253,6 @@
   }
   .top {
     margin-bottom: 8px;
-  }
-  .small {
-    font-size: 12px;
-  }
-  .danger {
-    color: var(--bad);
   }
   @media (max-width: 760px) {
     .layout {

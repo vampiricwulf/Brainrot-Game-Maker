@@ -28,7 +28,7 @@
     if (!h) return;
     onclose();
     const to = goTo(h.place);
-    if (!to) return toast('It was deleted since', 3000);
+    if (!to) return toast('It was deleted since');
     focusThere(to === h.place ? h.focus : undefined, placeKey(to));
   }
 
@@ -83,11 +83,10 @@
   }}
 />
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Find" use:modal data-undo="off">
-    <div class="row">
+<div class="modal-backdrop find-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+  <div class="modal find" role="dialog" aria-modal="true" aria-label="Find" use:modal data-undo="off">
+    <div class="modal-head">
       <h2 class="modal-title">🔍 Find</h2>
-      <span class="spacer"></span>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="row">
@@ -107,7 +106,7 @@
         use:focus
       />
     </div>
-    <p class="muted small" role="status">
+    <p class="hint" role="status">
       {#if !query.trim()}
         Type some words: every one must be there (capitals don’t matter).
       {:else if !hits.length}
@@ -144,29 +143,15 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.5);
-    display: grid;
-    justify-items: center;
-    align-items: start;
-    padding: 10vh 16px 16px;
+  /* Near the top, where the results have room to grow downwards. */
+  .find-backdrop {
+    place-items: start center;
+    padding-top: max(48px, 10vh);
   }
-  .modal {
+  .find {
     width: min(680px, 100%);
     max-height: 75vh;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  p {
-    margin: 0;
+    overflow: hidden;
   }
   .row {
     display: flex;
@@ -203,9 +188,6 @@
     min-width: 0;
   }
   .w {
-    font-size: 12px;
-  }
-  .small {
     font-size: 12px;
   }
 </style>

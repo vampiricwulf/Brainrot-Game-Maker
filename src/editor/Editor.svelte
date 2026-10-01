@@ -106,10 +106,10 @@
       const playing = rpgRounds(game).filter((r) => r.world === place.world);
       const r = playing.find((x) => x === on) ?? playing[0];
       if (r) tab = game.rounds.indexOf(r);
-      else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`, 5000);
+      else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`);
     } else if (place.tab === 'play') {
       // The players, the rules… are on the ▶ Play screen: Go there opens it, at that part.
-      if (!game.rounds.length) return void toast('That’s on the ▶ Play screen: add a round first (＋ Add round)', 4000);
+      if (!game.rounds.length) return void toast('That’s on the ▶ Play screen: add a round first (＋ Add round)');
       app.pregameAt = place.part;
       onplay();
     } else if (place.tab !== 'title') tab = place.tab;
@@ -375,7 +375,6 @@
         !lossAccepted &&
         !(await ask(`“${title}” couldn't be kept in Recent games (this browser's storage is full or blocked), so it would be lost. Replace it anyway?`, {
           ok: 'Replace it',
-          cancel: 'Keep it',
           danger: true,
         }))
       )
@@ -436,11 +435,10 @@
   }
 
   async function forget(e: RecentEntry): Promise<void> {
-    const sure = await ask(`Forget “${e.title}”? It's removed from this browser with its files and undo history, and can't be brought back.`, {
-      ok: 'Forget',
-      cancel: 'Keep it',
-      danger: true,
-    });
+    const sure = await ask(
+      `Delete “${e.title}” from Recent games? This browser's copy goes for good, with its files and undo history. Game files you saved aren't touched.`,
+      { ok: 'Delete', danger: true },
+    );
     if (!sure) return;
     await forgetRecent(e.key);
     if (previous?.key === e.key) previous = null;
@@ -499,7 +497,7 @@
     e.preventDefault();
     const file = Array.from(e.dataTransfer.files).find((f) => isGameFile(f.name));
     if (file) openFile(file);
-    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A game file (.brainrot, .json, exported .html) dropped here opens.', 5000);
+    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A game file (.brainrot, .json, exported .html) dropped here opens.');
   }
 
   let saving = $state(false);
@@ -582,7 +580,7 @@
       // The file it was written as: the desktop app may have picked another name ("Game (2).brainrot").
       mark('saved', `Saved “${file}”`, point);
       if (missing.length) void tell(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
-      else toast(where, 5000);
+      else toast(where);
       return true;
     } catch (e) {
       // (The save picker was closed.)
@@ -596,7 +594,7 @@
   let exporting = $state(false);
   async function exportHtml(): Promise<void> {
     // A file with nothing to play: the player couldn't add a round there.
-    if (!game.rounds.length) return void toast('Add a round first (＋ Add round): the exported file is for playing, and this game has no rounds yet.', 5000);
+    if (!game.rounds.length) return void toast('Add a round first (＋ Add round): the exported file is for playing, and this game has no rounds yet.');
     if (!(await askName())) return;
     exporting = true;
     packPct = null;
@@ -608,7 +606,6 @@
         toast(
           `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to |Saved |Download started: )/, '')}. Double-click it to play.` +
             (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
-          r.online ? 8000 : 5000,
         );
       }
       if (r?.missing.length) void tell(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
@@ -638,7 +635,7 @@
   async function exportJson(): Promise<void> {
     const point = savePoint();
     try {
-      toast(await whileWriting(() => saveGameJson($state.snapshot(game))), 5000);
+      toast(await whileWriting(() => saveGameJson($state.snapshot(game))));
       mark('exported', 'Exported JSON', point);
     } catch (e) {
       if (!isCancel(e)) void tell('Export failed: ' + (e as Error).message);
@@ -828,10 +825,12 @@
           </button>
         {/if}
       {/each}
-      <!-- Played after the rounds, when the game ends in a tie. -->
-      <button class:active={tab === 'tiebreaker'} aria-current={tab === 'tiebreaker' ? 'page' : undefined} onclick={() => (tab = 'tiebreaker')} title="Played after the last round when players tie for the win">
-        <span aria-hidden="true">🤝</span> Tiebreaker{game.tiebreaker ? '' : ' (off)'}
-      </button>
+      <!-- Played after the rounds, when the game ends in a tie (once there's a round for it to follow). -->
+      {#if game.rounds.length || game.tiebreaker}
+        <button class:active={tab === 'tiebreaker'} aria-current={tab === 'tiebreaker' ? 'page' : undefined} onclick={() => (tab = 'tiebreaker')} title="Played after the last round when players tie for the win">
+          <span aria-hidden="true">🤝</span> Tiebreaker{game.tiebreaker ? '' : ' (off)'}
+        </button>
+      {/if}
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <div class="navlabel muted">Game</div>
       <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
@@ -844,7 +843,8 @@
       </button>
 
       {#if checklist.length}
-        <div class="problems">
+        <!-- Orange only when something needs fixing (notes alone are grey). -->
+        <div class="problems" class:warn={checklist.some((l) => l.level === 'warn')}>
           <div class="navlabel">Checklist</div>
           {#each checklist as line}
             <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
@@ -880,6 +880,8 @@
           {@const i = tab}
           {@const round = game.rounds[i]}
           {#key round.id}
+            <!-- (A form round reads best at the pages' width; boards and maps fill the screen.) -->
+            <div class:page={isFinal(round)}>
             <RoundActions
               {round}
               index={i}
@@ -897,6 +899,7 @@
             {:else if isBoardGame(round)}
               <BoardGameEditor {round} />
             {/if}
+            </div>
           {/key}
         {:else if !game.rounds.length}
           <div class="first-round">
@@ -953,11 +956,14 @@
   .first-round p {
     margin: 0;
   }
+  .first-round h2 {
+    font-size: 20px;
+  }
   .first-round .modes {
     display: grid;
     /* Two by two: the four modes never leave one alone on a row. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
   .first-round .mode,
   .first-round .sample {
@@ -965,7 +971,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-    padding: 14px;
+    padding: 16px;
     text-align: left;
     white-space: normal;
   }
@@ -993,7 +999,7 @@
     flex-shrink: 0;
   }
   .title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     width: min(340px, 28vw);
     min-width: 120px;
@@ -1039,10 +1045,7 @@
     background: rgba(79, 124, 255, 0.12);
     border-bottom: 1px solid var(--accent);
   }
-  .data-notice .small {
-    font-size: 12px;
-  }
-  .warn {
+  .autosave.warn {
     color: var(--warn);
   }
   .body {
@@ -1052,7 +1055,7 @@
   }
   .broken {
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     padding: 40px;
     align-items: flex-start;
   }
@@ -1100,6 +1103,9 @@
   .problems {
     margin-top: 8px;
     font-size: 12px;
+    color: var(--muted);
+  }
+  .problems.warn {
     color: var(--warn);
   }
   .problem {

@@ -61,7 +61,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         });
       }
     } else if (r.mode === 'final') {
-      look('⭐', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="final-category"]');
+      look('🏆', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="final-category"]');
       look('❓', slideWords(r.questionSlide), `${rn} › Question`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
     } else if (r.mode === 'boardgame') {

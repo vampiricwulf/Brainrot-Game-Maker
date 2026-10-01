@@ -65,20 +65,19 @@
 />
 
 <!-- (A click outside doesn't close it: a sheet pasted in isn't lost to a stray click.) -->
-<div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Import clues" use:modal data-undo="off">
-    <div class="row">
-      <h2 class="modal-title">📋 Import clues</h2>
-      <span class="spacer"></span>
+<div class="modal-backdrop" role="presentation">
+  <div class="modal import" role="dialog" aria-modal="true" aria-label="Import clues" use:modal data-undo="off">
+    <div class="modal-head">
+      <h2 class="modal-title">📥 Import clues</h2>
       <button class="ghost modal-x" onclick={close} aria-label="Close" title="Close (Esc): what's pasted is kept for next time">✕</button>
     </div>
-    <p class="muted small">
+    <p class="hint">
       Copy the cells in Google Sheets or Excel and paste them here, or choose a CSV or TSV file. Columns: <b>category, value, question, answer</b>
       (a first row naming them can put them in any order).
     </p>
     <div class="row">
       <button onclick={chooseFile}>Choose file…</button>
-      {#if from}<span class="muted small">{from}</span>{/if}
+      {#if from}<span class="hint">{from}</span>{/if}
       <span class="spacer"></span>
       {#if text}<button class="ghost small" onclick={() => ((text = ''), (from = null))}>Clear</button>{/if}
     </div>
@@ -94,7 +93,7 @@
       <label class="check"><input type="radio" bind:group={mode} value="fill" /> Fill empty tiles</label>
       <label class="check"><input type="radio" bind:group={mode} value="replace" /> Replace the board</label>
       <span class="spacer"></span>
-      <span class="muted small" role="status">
+      <span class="hint" role="status">
         {#if !text.trim()}
           Nothing to import yet
         {:else if !clues.length}
@@ -120,13 +119,12 @@
           {/each}
         {/each}
       </div>
-      <p class="muted small">
+      <p class="hint">
         {mode === 'fill' ? 'Highlighted tiles get the imported clues. Tiles with something on them stay as they are.' : 'The board becomes the imported categories (rows and values too).'}
       </p>
     {/if}
 
-    <div class="row">
-      <span class="spacer"></span>
+    <div class="modal-foot">
       <button class="ghost" onclick={close}>Cancel</button>
       <button class="primary" onclick={apply} disabled={!plan?.placed}>Import {plan?.placed ? `${plan.placed} clue${plan.placed === 1 ? '' : 's'}` : ''}</button>
     </div>
@@ -134,30 +132,8 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
+  .import {
     width: min(900px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  h2,
-  p {
-    margin: 0;
   }
   .row {
     display: flex;
@@ -199,8 +175,5 @@
   }
   .tile.empty {
     opacity: 0.4;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

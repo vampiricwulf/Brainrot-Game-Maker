@@ -77,6 +77,63 @@ try {
   assert((await sheet.getByRole('button', { name: 'Close' }).count()) === 1 && (await sheet.getByRole('button', { name: 'Done' }).count()) === 1, '⌨ Keyboard shortcuts: a ✕ named Close and a Done');
   await sheet.getByRole('button', { name: 'Done' }).click();
 
+  // ---------- Windows' buttons: Cancel (the safe answer) first, the main one last ----------
+  /** A window's footer buttons, in the order they show (left to right), with their DOM order alongside. */
+  const footer = (dlg) =>
+    dlg.locator('.modal-foot button').evaluateAll((bs) => {
+      const visual = [...bs].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map((b) => b.textContent.trim());
+      return { dom: bs.map((b) => b.textContent.trim()), visual, mainClass: bs.at(-1)?.className ?? '' };
+    });
+  await page.getByRole('button', { name: /Save/ }).first().click();
+  const naming = page.getByRole('dialog', { name: 'Name your game' });
+  await naming.waitFor();
+  let foot = await footer(naming);
+  assert(
+    foot.dom.join('|') === 'Cancel|Save' && foot.visual.join('|') === 'Cancel|Save' && foot.mainClass.includes('primary'),
+    `💾 Name your game: Cancel on the left, Save (the main one) rightmost (${foot.visual.join(' · ')})`,
+  );
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /New/ }).first().click();
+  const replacing = page.getByRole('dialog', { name: /Start a new game/ });
+  await replacing.waitFor();
+  foot = await footer(replacing);
+  assert(
+    foot.dom.join('|') === 'Cancel|Discard|Save first' && foot.visual.join('|') === 'Cancel|Discard|Save first',
+    `Start a new game?: Cancel first, Discard, then Save first rightmost (${foot.visual.join(' · ')})`,
+  );
+  await replacing.getByRole('button', { name: 'Cancel' }).click();
+
+  // ---------- One focus ring, for the keyboard ----------
+  const ring = () => page.evaluate(() => {
+    const cs = getComputedStyle(document.activeElement);
+    return { style: cs.outlineStyle, color: cs.outlineColor, width: parseFloat(cs.outlineWidth) };
+  });
+  await page.getByRole('button', { name: '🔊 Sounds' }).click();
+  assert((await ring()).style === 'none', 'a button clicked with the mouse shows no focus ring');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  const kb = await ring();
+  assert(kb.style === 'solid' && kb.width >= 2 && kb.color === 'rgb(79, 124, 255)', `the same button reached with Tab shows the accent ring (${JSON.stringify(kb)})`);
+
+  // ---------- A toast over a window stays clear of its buttons ----------
+  await page.locator('nav > button.round-tab').first().click();
+  await page.locator('.grid .tile').first().click();
+  const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
+  await clueDlg.waitFor();
+  await clueDlg.getByRole('button', { name: /Copy slide/ }).click();
+  const toastBox = await page.locator('.toast').boundingBox();
+  const hit = await clueDlg.locator('button:visible').evaluateAll(
+    (bs, t) =>
+      bs
+        .map((b) => [b.textContent.trim() || b.getAttribute('aria-label'), b.getBoundingClientRect()])
+        .filter(([, r]) => r.width && r.left < t.x + t.width && r.right > t.x && r.top < t.y + t.height && r.bottom > t.y)
+        .map(([n]) => n),
+    toastBox,
+  );
+  assert(toastBox && hit.length === 0, `a toast while the clue editor is open covers none of its buttons (${hit.join(', ') || 'none'})`);
+  await page.keyboard.press('Escape');
+  await clueDlg.waitFor({ state: 'detached' });
+
   // ---------- Board editor: names and focus ----------
   const firstTile = page.locator('.tile').first();
   assert(/^Category 1, \$200: no question yet, no answer$/.test(await firstTile.getAttribute('aria-label')), `a tile is named by category, value and question (${await firstTile.getAttribute('aria-label')})`);
@@ -169,6 +226,9 @@ try {
   await ask.waitFor();
   assert((await ask.getAttribute('aria-modal')) === 'true', 'an in-app question is aria-modal');
   assert((await ask.innerText()).includes('can still be resumed') && (await focused()) === 'Keep it', 'Play over a saved game asks in the app, the focus on “Keep it”');
+  const askFoot = await footer(ask);
+  assert(askFoot.visual.join('|') === 'Keep it|Start a new game' && askFoot.dom[0] === 'Keep it', `its safe answer is on the left, the answer rightmost (${askFoot.visual.join(' · ')})`);
+  assert((await ask.getByRole('heading', { name: 'Start a new game anyway?' }).count()) === 1, 'and its question is its title');
   await page.keyboard.press('Escape');
   assert((await ask.count()) === 0 && (await page.getByRole('button', { name: 'Resume game' }).isVisible()), 'Esc keeps the saved game');
   assert(dialogs.length === 0, `no browser dialog anywhere (${dialogs.join(' | ')})`);

@@ -108,7 +108,7 @@ try {
     'the right clue, on its question side',
   );
   assert((await clue.locator('.layers .row').count()) === 1, 'with the text box gone (only the question is left)');
-  assert((await notice.innerText()).includes('Added text box'), 'and the note names it');
+  assert((await page.locator('.toast').innerText()).includes('↶ Undid Added text box'), 'and a toast over the window names it (the note would be under it)');
   await key('Control+z');
   assert((await page.getByPlaceholder('Type the question…').inputValue()) === '', 'the next Ctrl+Z takes the question back');
   await page.keyboard.press('Control+z');
@@ -186,7 +186,7 @@ try {
   await page.waitForTimeout(900);
   const moved = await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert(moved.startsWith('Undo: Moved screen “Screen C1” to C2'), `moving a screen names where it went (${moved})`);
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.getByRole('button', { name: '🗑 Delete', exact: true }).click();
   await page.waitForTimeout(200);
   assert((await notice.innerText()).startsWith('Deleted screen “Screen C1”') && !(await page.locator('.cell.screen.sel').count()), 'deleting a screen is done at once, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
@@ -220,7 +220,7 @@ try {
   const mapTabs = page.getByRole('tablist', { name: 'Maps' }).getByRole('tab');
   const mapNames = async () => (await mapTabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim()).join('|');
   const screens = await page.locator('.cell.screen').count();
-  await page.getByRole('button', { name: '＋ Map' }).click();
+  await page.getByRole('button', { name: '＋ Add map' }).click();
   await mapTabs.first().click();
   await page.getByRole('button', { name: 'Screen Screen C1' }).click();
   await mapTabs.first().focus();
@@ -237,16 +237,16 @@ try {
 
   // ---------- Removed and replaced files ----------
   await page.getByRole('button', { name: /🖼 Media/ }).click();
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Add files…' }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([{ name: 'tiny.png', mimeType: 'image/png', buffer: png(255, 0, 0) }]);
   await page.locator('.card img').waitFor();
   await page.locator('nav button.round-tab').first().click();
   await page.locator('.cat').first().getByTitle(/Use an image/).click();
   await page.getByRole('button', { name: /tiny\.png/ }).first().click();
   await page.getByRole('button', { name: /🖼 Media/ }).click();
-  await page.locator('.card').getByRole('button', { name: 'Remove' }).click();
+  await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
   await page.waitForTimeout(200);
-  assert((await page.locator('.card').count()) === 0 && (await notice.innerText()).startsWith('Removed file “tiny.png” (used 1×)'), 'removing a used file is done at once, with a note');
+  assert((await page.locator('.card').count()) === 0 && (await notice.innerText()).startsWith('Deleted file “tiny.png” (used 1×)'), 'removing a used file is done at once, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(300);
   assert((await imageWidth()) === 40, 'its ↶ Undo brings the file back, showing');
@@ -261,12 +261,12 @@ try {
   assert((await imageWidth()) === 80, 'Ctrl+Y the new one again');
 
   // ---------- The history survives a reload (and so do the files it can bring back) ----------
-  await page.locator('.card').getByRole('button', { name: 'Remove' }).click();
+  await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
   const steps = await historyTab.innerText();
   await reload();
   assert((await historyTab.innerText()) === steps, `the steps are still there after a reload (${steps})`);
   await historyTab.click();
-  assert((await rows.first().innerText()).includes('Removed file “wide.png”'), 'the History tab lists them');
+  assert((await rows.first().innerText()).includes('Deleted file “wide.png”'), 'the History tab lists them');
   await reload();
   await key('Control+z');
   await page.getByRole('button', { name: /🖼 Media/ }).click();

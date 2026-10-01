@@ -232,7 +232,7 @@
       </label>
       <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
       <div class="row">
-        {#if oneditimage}<button onclick={oneditimage}>🎨 Edit image…</button>{/if}
+        {#if oneditimage}<button onclick={oneditimage}>✎ Edit image…</button>{/if}
         <button onclick={(e) => onreplace(e.currentTarget)}>Replace…</button>
       </div>
       {@render liveNote()}
@@ -371,11 +371,11 @@
         <input type="checkbox" checked={!!el.locked} onchange={(e) => lock(e.currentTarget.checked)} /> Lock
       </label>
       <span class="spacer"></span>
-      <button class="small" onclick={onduplicate} title="Ctrl+D">Duplicate</button>
+      <button class="small" onclick={onduplicate} title="Ctrl+D">⧉ Duplicate</button>
       {#if el.locked}
         <span class="hint">🔒 Locked — unlock to delete</span>
       {:else}
-        <button class="small bad" onclick={ondelete} title="Delete (Del)">Delete</button>
+        <button class="ghost small danger" onclick={ondelete} title="Delete (Del)">🗑 Delete</button>
       {/if}
     </div>
   </section>
@@ -452,8 +452,5 @@
     margin: 0;
     font-size: 12px;
     color: var(--warn);
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

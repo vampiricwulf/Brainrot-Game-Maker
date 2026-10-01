@@ -211,13 +211,13 @@ try {
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
-  await page.getByRole('button', { name: '＋ Item', exact: true }).click();
+  await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
   // Using it takes 1 HP (the first stat). A new item has its More open.
   await page.getByRole('button', { name: '＋ Add button' }).click();
   await page.getByRole('menuitem', { name: '📊 Change a stat' }).click();
   // A hat, drawn right on an avatar: it goes where it was drawn, and the preview shows it.
-  await page.getByRole('button', { name: '＋ Item', exact: true }).click();
+  await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').nth(1).fill('Hat');
   await page.getByLabel('Hat worn on').selectOption('head');
   await page.getByRole('button', { name: '🖌 Draw it…' }).click();
@@ -233,14 +233,14 @@ try {
   const hatY = +(await page.getByLabel('Up or down').inputValue());
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-hat-editor.png` });
   assert(hatY < -0.3, `the drawn hat sits on top of the avatar (${hatY})`);
-  await page.getByRole('button', { name: '＋ Shop' }).click();
+  await page.getByRole('button', { name: '＋ Add shop' }).click();
   // It lists the items it doesn't sell yet.
-  await page.getByRole('button', { name: '＋ Something to sell ▾' }).click();
-  assert((await page.getByRole('menu').getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Potion|Hat|＋ Everything', 'Something to sell lists the items and Everything');
+  await page.getByRole('button', { name: '＋ Add item to sell ▾' }).click();
+  assert((await page.getByRole('menu').getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Potion|Hat|＋ Add everything', 'Something to sell lists the items and Everything');
   await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
   await page.locator('label', { hasText: 'Buys back at' }).locator('input').fill('50');
   // A second shop, deleted below.
-  await page.getByRole('button', { name: '＋ Shop' }).click();
+  await page.getByRole('button', { name: '＋ Add shop' }).click();
 
   // An RPG round: its world starts with one screen; add one to the east.
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -465,10 +465,10 @@ try {
   await pad.getByRole('button', { name: '✏ Pen' }).click();
   await stroke([[0.32, 0.55], [0.5, 0.6]]);
   await stroke([[0.1, 0.1], [0.12, 0.12]]);
-  await pad.getByRole('button', { name: '↶ Undo' }).click();
+  await pad.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   // Esc asks right in the pad before throwing the drawing away (a browser dialog would show on stream); Esc again keeps it.
   await page.keyboard.press('Escape');
-  const discard = pad.getByRole('group', { name: 'Throw away this drawing?' });
+  const discard = pad.getByRole('group', { name: 'Discard this drawing?' });
   await discard.waitFor();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawpad-discard.png` });
   await page.keyboard.press('Escape');

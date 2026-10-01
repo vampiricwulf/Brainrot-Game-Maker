@@ -1,5 +1,6 @@
 <!-- Every file in the game, with usage counts and cleanup (spec §5.5), and everything that plays from the internet. -->
 <script lang="ts">
+  import PageHeader from './PageHeader.svelte';
   import { tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
@@ -80,7 +81,7 @@
     if (!refs.length) return;
     const n = usage.get(refs[0].id) ?? 0;
     const used = refs.filter((m) => usage.get(m.id)).length;
-    const label = refs.length === 1 ? `Removed file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Removed ${refs.length} files${used ? ` (${used} in use)` : ''}`;
+    const label = refs.length === 1 ? `Deleted file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Deleted ${refs.length} files${used ? ` (${used} in use)` : ''}`;
     remove(refs.map((m) => m.id), label);
   }
   let library = $state<HTMLDivElement>();
@@ -149,9 +150,9 @@
         : edited.plain
           ? ` (${n} edited picture${n === 1 ? '' : 's'}: ${edited.plain} show${edited.plain === 1 ? 's' : ''} it without the edits)`
           : ` (with the edits of ${n} edited picture${n === 1 ? '' : 's'} done again)`;
-      toast(`"${f.name}" is in place: everything that used this file shows it now${note}`, n ? 6000 : undefined);
+      toast(`"${f.name}" is in place: everything that used this file shows it now${note}`);
     } catch (e) {
-      toast((e as Error).message, 6000);
+      toast((e as Error).message);
     }
   }
 
@@ -165,17 +166,17 @@
       return r;
     });
     const rest = r.stillMissing.length ? ` Still missing: ${r.stillMissing.join(', ')} (use 🔗 Replace file… on each).` : '';
-    toast(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}.${rest}${r.errors.length ? ' ' + r.errors.join(' ') : ''}`, r.stillMissing.length || r.errors.length ? 9000 : 4000);
+    toast(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}.${rest}${r.errors.length ? ' ' + r.errors.join(' ') : ''}`);
   }
 
-  /** Add files to the game (⬆ Add files…, or dropped on this page). */
+  /** Add files to the game (＋ Add files…, or dropped on this page). */
   async function addFiles(files: File[]): Promise<void> {
     for (const f of files) {
       try {
         const ref = await addMediaFile(game, f);
         warnIfUnplayable(ref);
       } catch (e) {
-        toast((e as Error).message, 5000);
+        toast((e as Error).message);
       }
     }
   }
@@ -231,22 +232,23 @@
   role="region"
   aria-label="Media. Drop files here to add them."
 >
-  <h2>Media</h2>
-  <p class="muted">
-    Files stored with this game: {stored.length} · {formatBytes(total)}{#if missing.length}{' '}({missing.length} more missing){/if}.
-    {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
-    {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .brainrot packs but make big standalone HTML exports.</span>{/if}
-  </p>
+  <PageHeader title="Media">
+    {#snippet sub()}
+      Files stored with this game: {stored.length} · {formatBytes(total)}{#if missing.length}{' '}({missing.length} more missing){/if}.
+      {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
+      {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .brainrot packs but make big standalone HTML exports.</span>{/if}
+    {/snippet}
+  </PageHeader>
   {#if missing.length}
     <div class="missing-box" role="alert">
       ⚠ {missing.length} file{missing.length === 1 ? ' is' : 's are'} missing from this browser (e.g. after opening a .json export, which
       has no media). Pick the files again to put them back:
       <button class="small" onclick={findMissing}>🔗 Find missing files…</button>
-      <span class="muted small">(matched by file name; or use 🔗 Replace file… on each one below)</span>
+      <span class="hint">(matched by file name; or use 🔗 Replace file… on each one below)</span>
     </div>
   {/if}
   <div class="row top">
-    <button onclick={upload}>⬆ Add files…</button>
+    <button onclick={upload}>＋ Add files…</button>
     <div class="link">
       <LinkField
         autofocus={false}
@@ -254,32 +256,35 @@
         hint="Add from a link: the game saves a copy when the site allows it, e.g. https://files.catbox.moe/abc123.mp3"
       />
     </div>
-    <button disabled={!unused.length} onclick={() => remove(unused.map((m) => m.id), `Removed ${unused.length} unused file${unused.length === 1 ? '' : 's'}`)}>
-      🧹 Remove unused ({unused.length})
-    </button>
+    <button
+      class="ghost danger"
+      disabled={!unused.length}
+      onclick={() => remove(unused.map((m) => m.id), `Deleted ${unused.length} unused file${unused.length === 1 ? '' : 's'}`)}
+      title="Delete the files nothing in the game uses (Undo brings them back)">🗑 Delete unused ({unused.length})</button
+    >
   </div>
   {#if game.media.length}
     <div class="row picking">
       {#if picked.length}
         <span>{picked.length} selected</span>
-        <button class="small bad" onclick={removePicked} title="Remove the selected files (Delete)">Remove selected ({picked.length})</button>
-        <button class="small ghost" onclick={() => (picked = [])} title="Esc">Clear</button>
+        <button class="small ghost danger" onclick={removePicked} title="Delete the selected files (Delete key; Undo brings them back)">🗑 Delete selected ({picked.length})</button>
+        <button class="small ghost" onclick={() => (picked = [])} title="Esc">Clear selection</button>
       {:else}
-        <span class="muted small">
+        <span class="hint">
           Click a card to select it, Ctrl+click or Shift+click for more. Double-click a name (or F2) to rename it. Drop a file on a card to
           replace it everywhere it's used.
         </span>
       {/if}
       <span class="spacer"></span>
       <input class="filter" type="search" bind:value={filter} placeholder="🔍 Filter by name or kind" aria-label="Filter files" />
-      {#if filter.trim()}<span class="muted small">{shown.length} of {game.media.length}</span>{/if}
+      {#if filter.trim()}<span class="hint">{shown.length} of {game.media.length}</span>{/if}
     </div>
   {/if}
 
   {#if !game.media.length}
     <div class="empty muted">
       <span class="ic" aria-hidden="true">🖼</span>
-      No files yet. Drop pictures, videos, sounds or fonts here, or use ⬆ Add files…
+      No files yet. Drop pictures, videos, sounds or fonts here, or use ＋ Add files…
     </div>
   {/if}
 
@@ -369,7 +374,12 @@
           {:else}
             <button class="ghost small" onclick={() => replace(m)} title="Swap in another file; every place it's used follows">Replace…</button>
           {/if}
-          <button class="ghost small" onclick={() => remove([m.id], `Removed file “${m.name}”${n ? ` (used ${n}×)` : ''}`)}>Remove</button>
+          <button
+            class="ghost small danger"
+            onclick={() => remove([m.id], `Deleted file “${m.name}”${n ? ` (used ${n}×)` : ''}`)}
+            aria-label="Delete {m.name}"
+            title="Delete this file (Undo brings it back)">🗑 Delete</button
+          >
         </div>
       </div>
     {/each}
@@ -400,6 +410,7 @@
 <style>
   .library {
     min-height: 100%;
+    max-width: 1200px;
     border-radius: 8px;
   }
   .library.dropping {
@@ -417,17 +428,12 @@
     gap: 6px;
     text-align: center;
   }
-  h2 {
-    margin: 0 0 4px;
-  }
   h3 {
     margin: 24px 0 4px;
+    font-size: 16px;
   }
   p {
     margin: 0 0 12px;
-  }
-  .warn {
-    color: var(--warn);
   }
   .good {
     color: var(--good);

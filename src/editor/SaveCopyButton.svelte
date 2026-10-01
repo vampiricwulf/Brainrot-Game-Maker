@@ -1,4 +1,4 @@
-<!-- "Save a copy": download a live-link file into the game (same id, so every use of it keeps working). -->
+<!-- "Store in game": download a live-link file into the game (same id, so every use of it keeps working). -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
@@ -6,7 +6,7 @@
   import { attachBlobSwap, stepAsync } from '../lib/history.svelte';
   import { isAbort } from '../lib/download';
 
-  let { id, label = '💾 Save a copy', onsaved }: { id: string; label?: string; onsaved?: () => void } = $props();
+  let { id, label = '💾 Store in game', onsaved }: { id: string; label?: string; onsaved?: () => void } = $props();
 
   let busy = $state<number | null>(null);
   let controller: AbortController | null = null;
@@ -23,17 +23,17 @@
       const name = game.media.find((m) => m.id === id)?.name ?? 'the file';
       const kept =
         !!copy &&
-        (await stepAsync(`Saved a copy of “${name}”`, async () => {
+        (await stepAsync(`Stored “${name}” in the game`, async () => {
           const before = await stashMedia(id);
           if (!(await keepLinkCopy(game, id, copy))) return false;
           attachBlobSwap({ id, before, after: await stashMedia(id) });
           return true;
         }));
       if (!kept) return;
-      toast('✓ Saved a copy in your game. It works offline now.', 4000);
+      toast('✓ Stored in your game: it works offline now.');
       onsaved?.();
     } catch (e) {
-      if (!isAbort(e)) toast(`⚠ ${(e as Error).message}`, 8000);
+      if (!isAbort(e)) toast(`⚠ ${(e as Error).message}`);
     } finally {
       if (controller === ctl) controller = null;
       busy = null;
@@ -51,9 +51,6 @@
 {/if}
 
 <style>
-  .small {
-    font-size: 12px;
-  }
   .busy {
     display: inline-flex;
     align-items: center;

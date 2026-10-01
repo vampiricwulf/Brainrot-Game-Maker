@@ -31,7 +31,7 @@ export type PlayPart = 'players' | 'rules' | 'buzzers' | 'stream';
 /** Each part of the pre-game screen: its name and icon. */
 const PLAY_PARTS: Record<PlayPart, [string, string]> = {
   players: ['Players', '👤'],
-  rules: ['Game rules', '📋'],
+  rules: ['Game rules', '⚖'],
   buzzers: ['Phone buzzers', '📱'],
   stream: ['On stream', '📺'],
 };
@@ -188,7 +188,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         slide(z.slide, 5, (element) => ({ tab: 'round', round: id, part: { kind: 'zone', zone: z.id, inSlide: true, element } }));
       } else if (path[2] === 'slide') {
         at.crumbs.push('Backdrop');
-        at.icon = '🎨';
+        at.icon = '🖼';
         part({ kind: 'backdrop' });
         slide(r.slide, 3, (element) => ({ tab: 'round', round: id, part: { kind: 'backdrop', element } }));
       }

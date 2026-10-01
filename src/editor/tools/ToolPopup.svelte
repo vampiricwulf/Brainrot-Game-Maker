@@ -47,12 +47,10 @@
   }
 </script>
 
-<div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label={kind === 'wheel' ? 'Wheel' : 'Dice'} bind:this={box} tabindex="-1" use:modal {onkeydown}>
-    <header>
-      <b class="modal-title">{kind === 'wheel' ? '🎡 Wheel' : '🎲 Dice'}</b>
-      <span class="muted small">Also in the 🎡 Wheels & Dice tab, for every tile and board that uses it.</span>
-      <span class="spacer"></span>
+<div class="modal-backdrop tool-backdrop" role="presentation">
+  <div class="modal lg" role="dialog" aria-modal="true" aria-label={kind === 'wheel' ? 'Wheel' : 'Dice'} bind:this={box} tabindex="-1" use:modal {onkeydown}>
+    <header class="modal-head">
+      <h2 class="modal-title">{kind === 'wheel' ? '🎡 Wheel' : '🎲 Dice'} <span class="hint">Also in the 🎡 Wheels & Dice tab, for every tile and board that uses it.</span></h2>
       <button class="primary" onclick={done}>Done</button>
       <button class="ghost modal-x" onclick={done} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
@@ -65,33 +63,12 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    z-index: 110;
-    padding: 16px;
+  /* Over the clue editor it was opened from. */
+  .tool-backdrop {
+    z-index: calc(var(--z-modal) + 10);
   }
-  .modal {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    width: min(1100px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  header {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-  .small {
-    font-size: 12px;
+  .hint {
+    font-weight: 400;
+    margin-left: 8px;
   }
 </style>

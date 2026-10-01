@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Tips from './Tips.svelte';
   import { tick, untrack } from 'svelte';
   import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
@@ -89,7 +90,7 @@
         if (ref.kind === 'image') ids.push(ref.id);
         else toast(`"${ref.name}" isn't an image`);
       } catch (err) {
-        toast((err as Error).message, 5000);
+        toast((err as Error).message);
       }
     }
     return ids;
@@ -120,7 +121,7 @@
   let tileDrop = $state<{ files: File[]; cat: number; row: number } | null>(null);
   let dropAskEl = $state<HTMLElement>();
   $effect(() => {
-    if (tileDrop) void tick().then(() => dropAskEl?.querySelector<HTMLButtonElement>('button')?.focus());
+    if (tileDrop) void tick().then(() => dropAskEl?.querySelector<HTMLButtonElement>('button.primary')?.focus());
   });
 
   // …and the next tiles down the column (then on to the next column), skipping empty tiles.
@@ -297,7 +298,7 @@
     const r = step(null, () => pasteColumn(round, ci, text), { notify: true, place });
     if (!r) return;
     e.preventDefault();
-    toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`, 4000);
+    toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
   }
 
   /**
@@ -427,13 +428,13 @@
     (button ? dropMenu : showMenu)(e, [
       { heading: categoryLabel(cat) },
       { label: '◀ Move left', onclick: () => moveCat(ci, ci - 1), disabled: ci === 0 },
-      { label: 'Move right ▶', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1 },
+      { label: '▶ Move right', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1 },
       { sep: true },
       { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
       { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
       { label: '⧉ Duplicate', onclick: () => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci)), disabled: n >= 10 },
       { label: '🖼 Image…', onclick: () => (catPicker = ci) },
-      { label: '⬚ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueHasContent) },
+      { label: '⌫ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueHasContent) },
       { sep: true },
       { label: '🗑 Delete category', danger: true, onclick: () => deleteCat(ci), disabled: n <= 1 },
     ]);
@@ -555,14 +556,17 @@
     />
   </label>
   <span class="spacer"></span>
-  <button onclick={() => (importing = true)} title="Paste clues from Google Sheets or Excel, or open a CSV / TSV file">Import clues…</button>
+  <button onclick={() => (importing = true)} title="Paste clues from Google Sheets or Excel, or open a CSV / TSV file">📥 Import clues…</button>
   <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
     🖼 Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
   </button>
 </div>
 
 <div class="values" data-place="values:{round.id}">
-  <span class="muted">Row values</span>
+  <!-- Labels above, as in the fields over them. -->
+  <div class="group" role="group" aria-labelledby="row-values-{round.id}">
+    <span class="lbl" id="row-values-{round.id}">Row values</span>
+    <div class="inputs">
   {#each round.values as _, i}
     <!-- Left blank, a row keeps its value (a blank isn't $0). -->
     <input
@@ -581,11 +585,15 @@
   {/each}
   <!-- (×2 and ÷2 wrap to the next line together.) -->
   <span class="scale">
-    <button class="small" onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
-    <button class="small" onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
+    <button onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
+    <button onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
   </span>
+    </div>
+  </div>
   <span class="spacer"></span>
-  <span class="muted">⭐ Daily Doubles</span>
+  <div class="group" role="group" aria-labelledby="dd-{round.id}">
+    <span class="lbl" id="dd-{round.id}">⭐ Daily Doubles</span>
+    <div class="inputs">
   <input
     type="number"
     min="0"
@@ -597,7 +605,6 @@
     class="ddn"
   />
   <button
-    class="small"
     onclick={() => {
       const n = step('Placed Daily Doubles at random', () => {
         const placed = randomizeDailyDoubles(round, Math.min(ddMax, round.dailyDoubleCount ?? 1));
@@ -607,8 +614,10 @@
       });
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
-    title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🎲 Randomize</button>
-  <span class="muted small">{dailyDoublesPlaced(round)} placed</span>
+    title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🔀 Randomize</button>
+  <span class="hint">{dailyDoublesPlaced(round)} placed</span>
+    </div>
+  </div>
 </div>
 
 {#if tileDrop}
@@ -623,9 +632,9 @@
     onkeydown={(e) => e.key === 'Escape' && (tileDrop = null)}
   >
     <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(tileDrop)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
-    <button class="primary small" onclick={() => dropChosen('question')}>Put {n === 1 ? 'it' : 'them'} in the question</button>
-    <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
     <button class="ghost small" onclick={() => (tileDrop = null)}>Cancel</button>
+    <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
+    <button class="primary small" onclick={() => dropChosen('question')}>Put {n === 1 ? 'it' : 'them'} in the question</button>
   </div>
 {/if}
 
@@ -771,10 +780,15 @@
 {#if importing}
   <ClueImport {round} onclose={() => (importing = false)} />
 {/if}
-<p class="muted small tip">
-  Tips: drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it. Right-click a tile, a category or a row value for
-  more. Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face). Paste a column of clues from a spreadsheet on a category's name to fill it.
-</p>
+<div class="tip">
+  <Tips id="board" hint="Click a tile to write its clue. Right-click a tile, a category or a row value for more.">
+    <ul>
+      <li>Drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it.</li>
+      <li>Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face).</li>
+      <li>Paste a column of clues from a spreadsheet on a category's name to fill it.</li>
+    </ul>
+  </Tips>
+</div>
 
 <style>
   .head {
@@ -792,10 +806,25 @@
   }
   .values {
     display: flex;
-    gap: 6px;
-    align-items: center;
+    gap: 12px;
+    align-items: flex-end;
     flex-wrap: wrap;
     margin-bottom: 16px;
+  }
+  .values .group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .values .lbl {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .values .inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
   }
   .values input {
     width: 80px;
@@ -1018,8 +1047,5 @@
   }
   .missing {
     color: var(--warn);
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

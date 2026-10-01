@@ -655,7 +655,7 @@
 <AskDialog />
 {#if app.toast && !app.onAir}
   <!-- (Screen readers hear it from the live region: announce.ts.) -->
-  <div class="toast" data-over-modal aria-hidden="true">{app.toast}</div>
+  <div class="toast note-pill" data-over-modal aria-hidden="true">{app.toast}</div>
 {/if}
 
 <style>

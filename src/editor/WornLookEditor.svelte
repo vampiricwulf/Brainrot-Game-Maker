@@ -181,7 +181,4 @@
     border: 4px dashed #ffcc00;
     border-radius: 50%;
   }
-  .small {
-    font-size: 12px;
-  }
 </style>

@@ -68,6 +68,9 @@ export async function openGameFile(page, files) {
  * middle of another, or to a point ({ x, y }).
  */
 export async function dragBy(page, from, to) {
+  // (Both ends on screen: the mouse can't go past the window's edge.)
+  if (to.x === undefined) await to.evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
+  await from.evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
   const a = await from.boundingBox();
   const b = to.x !== undefined ? to : await to.boundingBox().then((r) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 }));
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);

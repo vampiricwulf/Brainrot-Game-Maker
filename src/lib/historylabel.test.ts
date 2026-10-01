@@ -175,7 +175,7 @@ describe('step labels', () => {
     expect(step((g) => (g.settings.allowNegativeScores = false))).toMatchObject({
       label: 'Rule: Negative scores off',
       where: 'Play › Game rules',
-      icon: '📋',
+      icon: '⚖',
       place: { tab: 'play', part: 'rules' },
     });
     // The ▶ Play screen's other parts: Go there opens it there.

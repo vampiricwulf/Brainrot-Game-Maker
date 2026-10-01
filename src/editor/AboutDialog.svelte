@@ -49,9 +49,12 @@
   }}
 />
 
-<div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
+<div class="modal-backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
   <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" use:modal data-undo="off">
-    <div class="row"><h2 class="modal-title">ℹ Brainrot Games Maker</h2><span class="spacer"></span><button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button></div>
+    <div class="modal-head">
+      <h2 class="modal-title">ℹ Brainrot Games Maker</h2>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
+    </div>
     <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>
       <dt>Version</dt>
@@ -90,9 +93,9 @@
           <div>
             <div class="what">Your saves (Save, Export JSON, Export HTML)</div>
             <code>{folders.saves?.path ?? 'unknown'}</code>
-            {#if !folders.saves?.exists}<div class="muted small">Made the first time you save.</div>{/if}
+            {#if !folders.saves?.exists}<div class="hint">Made the first time you save.</div>{/if}
             {#if folders.savesDocuments?.exists}
-              <div class="muted small">
+              <div class="hint">
                 Also in <code>{folders.savesDocuments.path}</code> (saves made when the app’s folder couldn’t be written).
                 <button class="small ghost" onclick={() => show('saves-documents')}>📂 Open</button>
               </div>
@@ -111,14 +114,14 @@
           <div>
             <div class="what">Settings (Discord audio fix)</div>
             <code>{folders.settings.path ?? 'unknown'}</code>
-            {#if !folders.settings.exists}<div class="muted small">Not created: it's only made if you change the Discord audio fix.</div>{/if}
+            {#if !folders.settings.exists}<div class="hint">Not created: it's only made if you change the Discord audio fix.</div>{/if}
           </div>
           {#if folders.settings.exists}<button class="small" onclick={() => show('settings')}>📂 Open folder</button>{/if}
         </div>
         {#if leftovers.length}
           <div class="leftover" role="note">
             <div class="what">Left over from Jeopardy Builder (the old name)</div>
-            <p class="muted small">
+            <p class="hint">
               This app couldn't move {leftovers.length === 1 ? 'this folder' : 'these folders'} (the old app may have been
               open, or this app already had data of its own). Look inside, then delete {leftovers.length === 1 ? 'it' : 'them'}
               when you no longer need {leftovers.length === 1 ? 'it' : 'them'}.
@@ -131,12 +134,12 @@
             {/each}
           </div>
         {/if}
-        <p class="muted small">
+        <p class="hint">
           Removing Brainrot Games Maker? Delete these folders too. Deleting them while the app is closed starts it fresh:
           anything not saved as a .brainrot (or exported) is lost.
         </p>
       {:else}
-        <p class="muted small">Looking up the folders…</p>
+        <p class="hint">Looking up the folders…</p>
       {/if}
     {:else}
       <p class="muted">
@@ -145,7 +148,7 @@
         <b>Save</b> (.brainrot) to keep a copy.
       </p>
       {#if kept !== null}
-        <p class="muted small">
+        <p class="hint">
           {kept
             ? 'Storage: kept. This browser has agreed not to clear it when the disk runs low.'
             : 'Storage: may be cleared. This browser can clear it when the disk runs low, so Save often.'}
@@ -157,39 +160,9 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr);
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
-    width: min(620px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 22px;
-    font-size: 14px;
-    outline: none;
-  }
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
   h3 {
-    margin-top: 6px;
-    font-size: 15px;
+    margin: 8px 0 0;
+    font-size: 16px;
   }
   dl {
     display: grid;
@@ -238,8 +211,5 @@
     word-break: break-all;
     font-size: 12px;
     user-select: text;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

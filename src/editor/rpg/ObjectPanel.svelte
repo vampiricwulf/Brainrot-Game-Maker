@@ -126,15 +126,15 @@
           <div class="row">
             <input bind:value={s.name} placeholder="Power" aria-label="Stat name" />
             <input type="number" bind:value={s.value} class="n" aria-label="{s.name || 'Stat'} value" />
-            <button class="ghost tiny" onclick={() => removeStat(i)} aria-label="Delete stat" title="Delete stat">🗑</button>
+            <button class="ghost tiny danger" onclick={() => removeStat(i)} aria-label="Delete stat" title="Delete stat">🗑</button>
           </div>
         {/each}
-        <div class="row"><button class="small" onclick={addStat}>＋ Stat (power, HP…)</button></div>
+        <div class="row"><button class="small" onclick={addStat}>＋ Add stat (power, HP…)</button></div>
         {#if r.stats?.length}<label class="check small"><input type="checkbox" bind:checked={r.statsShown} /> Viewers see its stats</label>{/if}
       </div>
       <div class="row">
-        <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? 'Edit dialogue slide…' : '＋ Dialogue slide'}</button>
-        {#if r.dialogue}<button class="ghost tiny" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue">🗑</button>{/if}
+        <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? '✎ Edit dialogue slide…' : '＋ Add dialogue slide'}</button>
+        {#if r.dialogue}<button class="ghost small danger" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue">🗑</button>{/if}
       </div>
     {/if}
     {#if r.class === 'npc' || r.class === 'shop'}
@@ -156,7 +156,7 @@
     <input type="checkbox" checked={!!el.secret} onchange={(e) => (el.secret = e.currentTarget.checked || undefined)} /> Secret (hidden until revealed)
   </label>
   <label class="field">
-    Host notes
+    Host notes (never shown on stream)
     <textarea rows="2" value={el.hostNotes ?? ''} oninput={(e) => (el.hostNotes = e.currentTarget.value || undefined)} placeholder="What it really does…"></textarea>
   </label>
 </section>
@@ -186,13 +186,6 @@
   }
   .n {
     width: 70px;
-  }
-  .small {
-    font-size: 12px;
-  }
-  .tiny {
-    font-size: 12px;
-    padding: 1px 5px;
   }
   .stats {
     display: flex;

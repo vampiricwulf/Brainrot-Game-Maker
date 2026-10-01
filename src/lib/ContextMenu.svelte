@@ -83,7 +83,8 @@
 <style>
   .cm {
     position: fixed;
-    z-index: 1000;
+    /* Over any window (a right-click in the clue editor). */
+    z-index: var(--z-menu);
     min-width: 190px;
     max-width: 320px;
     padding: 4px;

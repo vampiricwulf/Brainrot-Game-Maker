@@ -168,7 +168,4 @@
   .sub {
     padding-left: 24px;
   }
-  .small {
-    font-size: 12px;
-  }
 </style>

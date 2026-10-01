@@ -19,11 +19,10 @@
 
 <svelte:window onkeydown={key} />
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label={title} use:modal bind:this={box}>
-    <div class="row">
-      <b class="modal-title">✎ {title}</b>
-      <span class="spacer"></span>
+<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+  <div class="modal slide-modal" role="dialog" aria-modal="true" aria-label={title} use:modal bind:this={box}>
+    <div class="modal-head">
+      <h2 class="modal-title">✎ {title}</h2>
       <button class="primary" onclick={onclose}>Done</button>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
@@ -32,25 +31,10 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
+  .slide-modal {
     width: min(1400px, 100%);
     height: min(860px, 100%);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    overflow: hidden;
   }
   .body {
     flex: 1;

@@ -157,9 +157,6 @@
     text-align: right;
     color: var(--muted);
   }
-  .small {
-    font-size: 12px;
-  }
   .file {
     max-width: 220px;
     overflow: hidden;

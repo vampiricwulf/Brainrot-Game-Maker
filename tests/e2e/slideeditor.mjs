@@ -103,7 +103,9 @@ try {
   await page.locator('.grid .tile').first().click();
   const clue = page.getByRole('dialog', { name: 'Edit clue' });
   await clue.waitFor();
-  assert((await page.getByLabel('Slide background color').inputValue()) === '#ffd6e7', "the BG swatch shows the Pastel theme's tile colour, not the Classic blue");
+  await clue.getByRole('button', { name: /Background ▾/ }).click();
+  assert((await page.getByLabel('Slide background color').inputValue()) === '#ffd6e7', "the background color shows the Pastel theme's tile color, not the Classic blue");
+  await page.getByLabel('Slide background color').press('Escape');
 
   // ---------- The main text box ----------
   await click(960, 540);
@@ -220,7 +222,7 @@ try {
   // ---------- 🎨 Edit image › Apply after a turn keeps the picture in its box ----------
   const editPic = (await drawn()).find((e) => e.img);
   await click(editPic.x + editPic.w / 2, editPic.y + editPic.h / 2);
-  await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
+  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
   // The chosen tool's options are in sight (they were below Rotate and eight Adjust sliders).
   const ie = page.getByRole('dialog', { name: 'Edit image' });
   await ie.getByRole('button', { name: '🖌 Draw' }).click();
@@ -244,13 +246,13 @@ try {
     `the turned picture swaps its width and height, centred where it was (${editPic.w}×${editPic.h} → ${turned.w}×${turned.h})`,
   );
   // Apply again (nothing changed): it doesn't shrink.
-  await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
+  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   await page.waitForTimeout(500);
   const again = (await drawn()).find((e) => e.id === editPic.id);
   assert(Math.abs(again.w - turned.w) <= 1 && Math.abs(again.h - turned.h) <= 1, `applying again keeps its size (${again.w}×${again.h})`);
   // Use original goes back to the box it had before it was edited.
-  await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
+  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
   await page.getByRole('button', { name: 'Use original' }).click();
   await page.waitForTimeout(300);
   const orig = (await drawn()).find((e) => e.id === editPic.id);
@@ -259,11 +261,13 @@ try {
   await page.waitForTimeout(300);
 
   // ---------- The History names these ----------
+  await clue.getByRole('button', { name: /Background ▾/ }).click();
   await page.getByLabel('Slide background color').evaluate((i) => {
     i.value = '#333333';
     i.dispatchEvent(new Event('input', { bubbles: true }));
     i.dispatchEvent(new Event('change', { bubbles: true }));
   });
+  await page.getByLabel('Slide background color').press('Escape');
   await page.waitForTimeout(900);
   await clue.getByRole('button', { name: 'Close' }).click();
 
@@ -358,7 +362,7 @@ try {
     'Shift+F10 opens the menu for the selection, its first item focused',
   );
   await page.keyboard.press('End');
-  assert((await focused()).startsWith('Delete'), 'End goes to its last item');
+  assert((await focused()).startsWith('🗑 Delete'), 'End goes to its last item');
   await page.keyboard.press('Escape');
   assert((await menu.count()) === 0 && (await page.evaluate(() => document.activeElement?.classList.contains('canvas'))), 'Esc closes it, back on the canvas');
 

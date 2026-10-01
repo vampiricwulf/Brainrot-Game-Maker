@@ -21,6 +21,7 @@
 </script>
 
 <script lang="ts">
+  import Tips from '../Tips.svelte';
   import { pathShape } from '../../lib/draw';
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
@@ -91,6 +92,8 @@
   /** The Inspector button (Replace…, font ＋) its picker drops from. */
   let pickerFrom = $state<HTMLElement>();
   let shapeMenu = $state(false);
+  /** The Background ▾ box: the slide's color, picture and reset. */
+  let bgMenu = $state(false);
   /** ✏ Draw is on: the next drag on the canvas draws a line. */
   let drawing = $state(false);
   /** The drawpad is open: a whole drawing, inserted as one picture. */
@@ -107,7 +110,7 @@
         add(el);
       });
     } catch (e) {
-      toast(e instanceof Error ? e.message : String(e), 4000);
+      toast(e instanceof Error ? e.message : String(e));
     }
   }
   /** The 🌐 Link box: the link it started with (pasted or dropped) and where the item goes. */
@@ -393,7 +396,7 @@
           warnIfUnplayable(ref);
           await addMedia(ref.kind, ref.id, at);
         } catch (e) {
-          toast((e as Error).message, 5000);
+          toast((e as Error).message);
         }
       }
     });
@@ -759,7 +762,7 @@
     } else if (pastingGone(data ?? null)) {
       // Copied in another tab or before a reload: the items themselves aren't here (only "2 slide items").
       e.preventDefault();
-      toast('Those items were copied in another tab or before the page reloaded: copy them again here', 5000);
+      toast('Those items were copied in another tab or before the page reloaded: copy them again here');
     } else if (text.trim()) {
       e.preventDefault();
       addTextContent(text.trim());
@@ -873,17 +876,42 @@
       </div>
       {#if tools}{@render tools((el: SlideElement) => add(el))}{/if}
       <span class="sep"></span>
-      <label class="bg" title="Slide background color">
-        BG
-        <input
-          type="color"
-          aria-label="Slide background color"
-          value={slide.background.color ?? game.theme.tile}
-          oninput={(e) => (slide.background.color = e.currentTarget.value)}
-        />
-      </label>
       <div class="pop">
-        <button onclick={() => (picker = 'image', (replacing = 'bg'))} title="Background image">🖼 BG</button>
+        <button onclick={() => (bgMenu = !bgMenu)} aria-expanded={bgMenu} title="The slide's background: a color or a picture">
+          <span class="swatch" aria-hidden="true" style:background={slide.background.color ?? game.theme.tile}></span> Background ▾
+        </button>
+        {#if bgMenu}
+          <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
+          <!-- (Not a menu that takes Tab: the color box in it is a field.) -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="menu bg-menu"
+            role="group"
+            aria-label="Background"
+            onkeydown={(e) => {
+              if (e.key !== 'Escape') return;
+              e.stopPropagation();
+              bgMenu = false;
+            }}
+          >
+            <label class="check">
+              <input
+                type="color"
+                aria-label="Slide background color"
+                value={slide.background.color ?? game.theme.tile}
+                oninput={(e) => (slide.background.color = e.currentTarget.value)}
+              />
+              Color
+            </label>
+            <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Picture…</button>
+            <!-- Always there (disabled when there's nothing to reset), so the box keeps its size while the color changes. -->
+            <button
+              onclick={() => ((bgMenu = false), edit(() => (slide.background = {})))}
+              disabled={!slide.background.image && !slide.background.color}
+              title="Back to the theme's background">↺ Reset background</button
+            >
+          </div>
+        {/if}
         {#if picker === 'image' && replacing === 'bg'}
           <MediaPicker
             kind="image"
@@ -896,20 +924,13 @@
           />
         {/if}
       </div>
-      <!-- Always there (disabled when there's nothing to reset): a button appearing on the first colour
-           change shifted the toolbar, which closed the browser's colour picker mid-typing. -->
-      <button
-        class="ghost small"
-        onclick={() => edit(() => (slide.background = {}))}
-        disabled={!slide.background.image && !slide.background.color}
-        title="Reset background">↺ BG</button>
     </fieldset>
     <!-- One group that keeps to the right and wraps as a whole, so 🔈 ↶ ↷ never end up alone on a line.
          Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
          is always there, hidden until then, and the Preview button has room for both of its labels. -->
     <div class="right">
-      <button class="ghost small" onclick={copySlide}>Copy slide</button>
-      <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide}>Paste slide</button>
+      <button class="ghost small" onclick={copySlide}>📋 Copy slide</button>
+      <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide}>📋 Paste slide</button>
       <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
       <button class="small swap" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
         <span class:hide={previewing}>▶ Preview</span>
@@ -997,7 +1018,7 @@
                   const fn = notice?.undo;
                   notice = null;
                   fn?.();
-                }}>Undo</button>
+                }}>↶ Undo</button>
             {/if}
           </div>
         {/if}
@@ -1047,22 +1068,22 @@
       {:else if selected.length > 1}
         <p class="muted">{selected.length} items selected.</p>
         <div class="row">
-          <button class="small" onclick={duplicate}>Duplicate</button>
-          <button class="small bad" onclick={() => remove()}>Delete</button>
+          <button class="small" onclick={duplicate} title="Ctrl+D">⧉ Duplicate</button>
+          <button class="ghost small danger" onclick={() => remove()} title="Delete them (Del)">🗑 Delete</button>
         </div>
       {:else}
-        <p class="muted">
-          Click an item to edit it, or double-click it (text goes straight to its text field). Drag to move (press Shift while
-          dragging to keep to one axis), pull the handles to resize, and use the round handle to rotate. Drop or paste images,
-          video, audio and links. Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws
-          one) to select several. Ctrl+C / Ctrl+X / Ctrl+V copy
-          items between slides.
-        </p>
-        <p class="muted small">
-          Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b>
-          again and again to walk down the stack, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a
-          background so clicks go through it.
-        </p>
+        <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
+          <ul>
+            <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize, and use the round handle to rotate.</li>
+            <li>Drop or paste images, video, audio and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
+            <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
+            <li>
+              Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again
+              and again to walk down the stack, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a background so
+              clicks go through it.
+            </li>
+          </ul>
+        </Tips>
       {/if}
       {#if selected.length && !previewing}
         <!-- One item goes to the slide's edges; several line up with each other (and can be spaced evenly). -->
@@ -1115,12 +1136,20 @@
     flex-direction: column;
     gap: 8px;
     min-height: 0;
+    /* What stacks inside (items, their frames, the drawing layer, its notes and menus) stays inside: none of it goes
+       over the app's notes, toasts or windows. */
+    isolation: isolate;
   }
   .toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
+  }
+  /* One size all along the toolbar (a round's own tools too): small, so the slide keeps the room. */
+  .toolbar :global(button:not(:is(.menu, .linkbox) button)) {
+    padding: 2px 8px;
+    font-size: 12px;
   }
   .pop {
     position: relative;
@@ -1183,15 +1212,21 @@
   .sep {
     width: 8px;
   }
-  .bg {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--muted);
-    font-size: 12px;
+  .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+    vertical-align: -1px;
+    border-radius: 3px;
+    border: 1px solid var(--control-border);
   }
-  .small {
-    font-size: 12px;
+  .bg-menu {
+    min-width: 200px;
+    gap: 4px;
+  }
+  .bg-menu .check {
+    padding: 2px 4px;
   }
   .body {
     display: grid;
@@ -1291,14 +1326,16 @@
     left: 50%;
     bottom: calc(var(--pb) + 10px);
     translate: -50% 0;
+    /* The same pill as the editor's "Deleted … · Undo" note (app.css .note-pill). */
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    padding: 6px 8px 6px 14px;
-    border-radius: 8px;
+    padding: 4px 6px 4px 16px;
+    border-radius: 20px;
     background: var(--panel-2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--control-border);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    font-size: 13px;
     white-space: nowrap;
     z-index: 2000;
   }

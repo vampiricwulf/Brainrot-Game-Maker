@@ -208,10 +208,10 @@ try {
 
   // Nothing new is "unused".
   await page.getByRole('button', { name: '🖼 Media' }).click();
-  assert(/\(0\)/.test(await page.getByRole('button', { name: /Remove unused/ }).innerText()), 'category, tile, board and banner images all count as used');
+  assert(/\(0\)/.test(await page.getByRole('button', { name: /Delete unused/ }).innerText()), 'category, tile, board and banner images all count as used');
 
   // Two different files with the same name (like pasted screenshots, all "image.png") get distinct names.
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Add files…' }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([
     { name: 'pasted.png', mimeType: 'image/png', buffer: Buffer.from(png(1, 2, 3), 'base64') },
     { name: 'pasted.png', mimeType: 'image/png', buffer: Buffer.from(png(4, 5, 6), 'base64') },

@@ -55,7 +55,15 @@ export function editedGame(): Game {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-export function toast(msg: string, ms = 2500): void {
+
+/** How long a toast stays: long enough to read it (2.5 s, plus 50 ms a word, at most 8 s). */
+export function toastMs(msg: string): number {
+  const words = msg.trim().split(/\s+/).filter(Boolean).length;
+  return Math.min(8000, Math.max(2500, 2500 + 50 * words));
+}
+
+/** A short message at the bottom (at the top while a window is open). `ms`: only where it must stay a set time. */
+export function toast(msg: string, ms = toastMs(msg)): void {
   app.toast = msg;
   // Screen readers hear it from the page's live region (the toast itself comes and goes too fast to be read reliably).
   announce(msg);

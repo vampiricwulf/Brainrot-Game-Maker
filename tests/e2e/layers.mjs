@@ -48,10 +48,13 @@ try {
   const inspectorKind = async () =>
     (await page.locator('.insp textarea').count()) ? 'text' : (await page.locator('.insp h4', { hasText: 'Image' }).count()) ? 'image' : 'none';
 
-  // The Reset background button is always in the toolbar (disabled until there's a background): it used to
-  // appear on the first colour change, and that shift closed the browser's colour picker mid-typing.
-  const resetBg = page.getByRole('button', { name: '↺ BG' });
-  assert((await resetBg.count()) === 1 && (await resetBg.isDisabled()), 'the ↺ BG button is already there (disabled) before any background is set');
+  // ↺ Reset background is always in the Background ▾ box (disabled until there's a background): a button appearing
+  // on the first color change shifted things, and that closed the browser's color picker mid-typing.
+  await page.getByRole('button', { name: /Background ▾/ }).click();
+  const resetBg = page.getByRole('button', { name: '↺ Reset background' });
+  assert((await resetBg.count()) === 1 && (await resetBg.isDisabled()), 'the ↺ Reset background button is already there (disabled) before any background is set');
+  await page.getByLabel('Slide background color').press('Escape');
+  assert((await resetBg.count()) === 0 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 1, 'Esc closes just the Background box');
 
   // Write the question, then cover the whole slide with a picture.
   await page.locator('.canvas .hit').first().click();

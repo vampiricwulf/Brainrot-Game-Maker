@@ -15,11 +15,10 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" use:modal data-undo="off">
-    <div class="row">
+    <div class="modal-head">
       <h2 class="modal-title">⚙ Settings</h2>
-      <span class="spacer"></span>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
 
@@ -29,13 +28,13 @@
         <input type="checkbox" bind:checked={prefs.overwriteSave} onchange={savePrefs} />
         Save replaces the game’s last save
       </label>
-      <p class="muted small">
+      <p class="hint">
         On: Save writes Game.brainrot again and keeps the two before it as Game.brainrot.bak and .bak2 (Open… › Browse… opens
         them). Another game with the same name never gets replaced: it saves as Game (2).brainrot. Off: every Save makes a new
         file (Game (2).brainrot, Game (3).brainrot…).
       </p>
     {:else}
-      <p class="muted small">
+      <p class="hint">
         In a browser, Save downloads the game as a .brainrot file, and the browser names it. How Save names files is a desktop
         app setting.
       </p>
@@ -53,13 +52,13 @@
         <input type="number" min="1" max="50" class="n" bind:value={prefs.autosaveKeep} onchange={savePrefs} aria-label="Autosaves to keep" />
         autosaves per game (the oldest is replaced)
       </label>
-      <p class="muted small">
+      <p class="hint">
         Autosaves go in BrainrotSaves next to the app as “Game (autosave 1, 3f9a1c).brainrot”, “(autosave 2, …)”… (the letters
         tell games with the same name apart). Only when the game changed since the last one; after you lower the number, the
         next autosave deletes the extra ones. Open… lists them with your saves.
       </p>
     {:else}
-      <p class="muted small">
+      <p class="hint">
         In a browser the game is autosaved inside the browser after every change (Resume game). Autosave files in a folder are
         a desktop app feature.
       </p>
@@ -79,14 +78,14 @@
       />
       changes ({UNDO_STEPS.min}–{UNDO_STEPS.max})
     </label>
-    <p class="muted small">How far Ctrl+Z and the 🕘 History tab can go back. The oldest changes are forgotten first.</p>
+    <p class="hint">How far Ctrl+Z and the 🕘 History tab can go back. The oldest changes are forgotten first.</p>
 
     <h3>Motion</h3>
     <label class="check">
       <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
       Reduce motion on stream
     </label>
-    <p class="muted small">
+    <p class="hint">
       Viewers get no pop-ins, fly-ins, board fill-in or falling confetti: things just appear. The wheel and the dice still
       spin. The editor and the host’s controls follow your computer’s “reduce motion” setting.
     </p>
@@ -96,7 +95,7 @@
       <input type="checkbox" bind:checked={prefs.checkUpdates} onchange={savePrefs} />
       Check for a newer version when the app starts
     </label>
-    <p class="muted small">
+    <p class="hint">
       Asks GitHub, where new versions are published (at most every few hours), and says so in the editor when one is out.
       ℹ About can check any time.
     </p>
@@ -113,7 +112,6 @@
         aria-label="Buzzer server"
       />
       <button
-        class="small"
         disabled={testing || !(prefs.buzzerServer || DEFAULT_BUZZER_URL)}
         onclick={async () => {
           testing = true;
@@ -123,14 +121,14 @@
       >
     </label>
     {#if tested}<p class="small" role="status">{tested}</p>{/if}
-    <p class="muted small">
+    <p class="hint">
       Advanced: where phone buzzer rooms are made (▶ Play › 📱 Phone buzzers › Buzzer mode).
       {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : "This copy comes without one: phone buzzers need an address here."}
     </p>
 
-    <div class="row">
+    <div class="modal-foot">
       <button
-        class="ghost small"
+        class="ghost"
         onclick={() => {
           Object.assign(prefs, DEFAULT_PREFS);
           savePrefs();
@@ -144,46 +142,15 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
-    width: min(560px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
   h3 {
-    margin-top: 8px;
+    margin: 8px 0 0;
     font-size: 14px;
-  }
-  .row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
   }
   .inline {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   .n {
     width: 70px;
@@ -191,8 +158,5 @@
   .url {
     flex: 1;
     min-width: 0;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

@@ -19,7 +19,7 @@ const WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a video', 
 /** After a video or sound file is added: warn when this browser (or the desktop app) may not play it. */
 export function warnIfUnplayable(ref: MediaRef): void {
   if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
-    toast(`⚠ This browser may not play "${ref.name}" (${ref.mime}). Try converting it to MP4 (H.264) or MP3.`, 7000);
+    toast(`⚠ This browser may not play "${ref.name}" (${ref.mime}). Try converting it to MP4 (H.264) or MP3.`);
 }
 
 /** "a picture", "a picture or a video", "a picture, a video or a sound". */
@@ -52,7 +52,7 @@ export const hasFiles = (e: DragEvent): boolean => !!e.dataTransfer?.types.inclu
 export async function useFile(file: File, opts: MediaDrop): Promise<boolean> {
   const why = refusal(file, opts.kind);
   if (why) {
-    toast(why, 4000);
+    toast(why);
     return false;
   }
   try {
@@ -63,7 +63,7 @@ export async function useFile(file: File, opts: MediaDrop): Promise<boolean> {
     });
     return true;
   } catch (e) {
-    toast((e as Error).message, 5000);
+    toast((e as Error).message);
     return false;
   }
 }

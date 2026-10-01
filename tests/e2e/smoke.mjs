@@ -68,7 +68,7 @@ async function answerDialog(action, accept) {
   for (let i = 0; i < 20 && message === null; i++) {
     if (await ask.count()) {
       message = await ask.locator('#ask-text').innerText();
-      await ask.locator('.end button')[accept ? 'last' : 'first']().click();
+      await ask.locator('.modal-foot button')[accept ? 'last' : 'first']().click();
       await ask.waitFor({ state: 'detached' });
       break;
     }
@@ -248,7 +248,7 @@ await page.locator('.canvas img').waitFor();
 assert(true, 'image added to the slide');
 
 // Image editor: rotate 90°, flip, brighten, crop 1:1, meme text, sticker, brush → Apply.
-await page.getByRole('button', { name: '🎨 Edit image…' }).click();
+await page.getByRole('button', { name: '✎ Edit image…' }).click();
 const ie = page.locator('[aria-label="Edit image"]');
 await ie.locator('.canvas-host canvas').waitFor();
 await ie.getByRole('button', { name: '⟳ 90°' }).click();
@@ -288,7 +288,7 @@ await page.mouse.down();
 await page.mouse.up();
 assert(await ie.getByRole('button', { name: 'Undo stroke' }).isEnabled(), 'brush stroke drawn');
 await shot('1a-image-editor');
-assert((await ie.locator('.muted.small').first().innerText()).includes('100×100'), 'image editor output is 100×100 after rotate + 1:1 crop');
+assert((await ie.locator('header .hint').first().innerText()).includes('100×100'), 'image editor output is 100×100 after rotate + 1:1 crop');
 await ie.getByRole('button', { name: 'Apply' }).click();
 await ie.waitFor({ state: 'detached' });
 const dims = await page.locator('.canvas img').first().evaluate((i) => new Promise((res) => (i.complete ? res([i.naturalWidth, i.naturalHeight]) : (i.onload = () => res([i.naturalWidth, i.naturalHeight])))));
@@ -678,7 +678,7 @@ assert(await zeroCanPlay.isChecked(), 'a new Final lets players with 0 or less p
 await zeroCanPlay.uncheck();
 
 // The Final is a round of its own, with its own mode bar and slide editor.
-assert((await page.locator('.ra .mode').innerText()).includes('Final Jeopardy'), 'the Final round shows its mode');
+assert((await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopardy'), 'the Final round shows its mode');
 const finSe = page.locator('.se');
 const finHits = () => finSe.locator('.canvas .hit').count();
 await finSe.locator('.canvas .hit').first().click();
@@ -723,7 +723,7 @@ await shot('2a-theme');
 
 // A weighted "Punishment Wheel" (Bankrupt is ~certain) with a score effect, used by the 5th tile.
 await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
-await page.getByRole('button', { name: '＋ New wheel' }).click();
+await page.getByRole('button', { name: '＋ Add wheel' }).click();
 await page.getByLabel('Wheel name').fill('Punishment Wheel');
 await page.getByLabel('Spin (s)').fill('1');
 const segs = page.locator('.seg');
@@ -1294,7 +1294,7 @@ await page.waitForTimeout(450);
 await page.getByRole('button', { name: '🔁 Rematch' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rematchNames = await page.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));
-const rematchStarts = await page.locator('.pregame .player .score input').evaluateAll((els) => els.map((e) => e.value));
+const rematchStarts = await page.locator('.pregame .player input.score').evaluateAll((els) => els.map((e) => e.value));
 assert(rematchNames.join() === 'Player 1,Player 2,Player 3' && rematchStarts.every((v) => v === '0'), 'Rematch goes to pre-game with the same players at 0');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();

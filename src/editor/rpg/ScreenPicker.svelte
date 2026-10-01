@@ -51,9 +51,6 @@
     align-items: center;
     flex-wrap: wrap;
   }
-  .small {
-    font-size: 12px;
-  }
   select {
     max-width: 150px;
   }

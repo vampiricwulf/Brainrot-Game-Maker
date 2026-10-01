@@ -3,6 +3,7 @@
   (dimmed) above "● Now". Click a step to go back (or forward) to just after it; Go there shows where it changed.
 -->
 <script lang="ts">
+  import PageHeader from './PageHeader.svelte';
   import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { clear, heldMedia, history, jumpTo, maxSteps, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
@@ -121,7 +122,7 @@
     const place = applied ? e.place : e.undoPlace;
     if (!place) return;
     const to = goTo(place);
-    if (to !== place) toast(to ? 'Part of it was deleted since: showing what’s left' : 'It was deleted since', 4000);
+    if (to !== place) toast(to ? 'Part of it was deleted since: showing what’s left' : 'It was deleted since');
     // The focus goes there too, not to the page (this list is gone once its tab is).
     if (to) focusPlace(placeKey(to), list);
   }
@@ -143,29 +144,23 @@
 </script>
 
 <div class="hist">
-  <div class="top">
-    <h2>History</h2>
-    <span class="spacer"></span>
-    <button onclick={() => undo('list')} disabled={!history.canUndo} title={history.undoTitle}>↶ Undo</button>
-    <button onclick={() => redo('list')} disabled={!history.canRedo} title={history.redoTitle}>↷ Redo</button>
-    <button class="ghost small" onclick={() => (clearing = true)} disabled={!history.entries.length}>Clear history…</button>
-  </div>
-  {#if history.entries.length}
-    <p class="lead muted">
-      Every change to this game, newest first. Click a step to go back to just after it (↷ steps were undone: click one to redo up
-      to it). <b>Go there</b> shows where it changed. Ctrl+Z / Ctrl+Y step one at a time.
-    </p>
-  {:else}
-    <p class="lead muted">
-      No changes yet. Everything you change in this game shows up here, and you can go back to any point. Ctrl+Z undoes, Ctrl+Y
-      redoes.
-    </p>
-  {/if}
+  <PageHeader
+    title="History"
+    sub={history.entries.length
+      ? 'Every change to this game, newest first. Click a step to go back to just after it (↷ steps were undone: click one to redo up to it). Go there › shows where it changed. Ctrl+Z / Ctrl+Y step one at a time.'
+      : 'No changes yet. Everything you change in this game shows up here, and you can go back to any point. Ctrl+Z undoes, Ctrl+Y redoes.'}
+  >
+    {#snippet actions()}
+      <button onclick={() => undo('list')} disabled={!history.canUndo} title={history.undoTitle}>↶ Undo</button>
+      <button onclick={() => redo('list')} disabled={!history.canRedo} title={history.redoTitle}>↷ Redo</button>
+      <button class="ghost danger" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)">🗑 Clear history…</button>
+    {/snippet}
+  </PageHeader>
   {#if clearing}
     <div class="ask">
       <InlineAsk
-        text={`Forget all ${history.entries.length} step${history.entries.length === 1 ? '' : 's'}? You can't undo them afterwards.`}
-        ok="Forget them"
+        text={`Clear all ${history.entries.length} step${history.entries.length === 1 ? '' : 's'}? You can't undo them afterwards.`}
+        ok="Clear history"
         danger
         onok={() => ((clearing = false), clear())}
         oncancel={() => (clearing = false)}
@@ -240,20 +235,7 @@
 
 <style>
   .hist {
-    max-width: 980px;
-  }
-  h2 {
-    margin: 0;
-  }
-  .top {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 4px;
-  }
-  .lead {
-    margin: 0 0 12px;
-    font-size: 13px;
+    max-width: 1200px;
   }
   .ask {
     margin: 0 0 10px;
@@ -373,9 +355,6 @@
   }
   .foot {
     margin-top: 12px;
-    font-size: 12px;
-  }
-  .small {
     font-size: 12px;
   }
 </style>

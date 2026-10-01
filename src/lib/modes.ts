@@ -1,4 +1,5 @@
-// The round modes a game can mix (spec: docs/GAMES-MAKER-SPEC.md §5.2).
+// The round modes a game can mix (spec: docs/GAMES-MAKER-SPEC.md §5.2). Their icons mean the mode and nothing else
+// (⭐ is a Daily Double, 🎲 dice, 🎨 the theme).
 import type { RoundMode } from './model';
 
 export interface ModeInfo {
@@ -10,7 +11,7 @@ export interface ModeInfo {
 
 export const ROUND_MODES: Record<RoundMode, ModeInfo> = {
   board: { label: 'Jeopardy board', icon: '🟦', hint: 'Categories of clues with values, Daily Doubles, wheel and dice tiles' },
-  final: { label: 'Final Jeopardy', icon: '⭐', hint: 'One category, private wagers, one question, reveals player by player' },
+  final: { label: 'Final Jeopardy', icon: '🏆', hint: 'One category, private wagers, one question, reveals player by player' },
   rpg: { label: 'RPG', icon: '🗺', hint: 'A world of screens on a map: move the players’ avatars, doorways, items, shops' },
-  boardgame: { label: 'Board game', icon: '🎲', hint: 'Spaces in a loop or a path: take turns to spin or roll, step along, pass Start, get sent away' },
+  boardgame: { label: 'Board game', icon: '♟', hint: 'Spaces in a loop or a path: take turns to spin or roll, step along, pass Start, get sent away' },
 };
