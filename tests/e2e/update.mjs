@@ -59,8 +59,9 @@ try {
   const before = asked;
   await page.reload();
   await page.getByRole('button', { name: 'Open…' }).waitFor();
-  await page.waitForTimeout(800);
-  assert((await notice.count()) === 0 && asked === before, 'Not now puts it away for that version (a reload asks GitHub no sooner than a few hours later)');
+  await page.waitForTimeout(1500);
+  assert((await notice.count()) === 0, `Not now puts it away for that version (stored: ${await page.evaluate(() => localStorage.getItem('jb.updateSkip'))})`);
+  assert(asked === before, `a reload asks GitHub no sooner than a few hours later (asked ${asked - before} more; kept: ${await page.evaluate(() => (localStorage.getItem('jb.update') ?? 'nothing').slice(0, 60))})`);
 
   // ℹ About checks on demand: a still newer one shows again; this one is the newest; offline says so.
   const about = async () => {

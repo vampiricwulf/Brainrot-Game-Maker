@@ -46,8 +46,9 @@ const FILES = {
     set: (t, v) => t.replace(/^(\[package\][^[]*?^version\s*=\s*")[^"]*(")/ms, `$1${v}$2`),
   },
   'src-tauri/Cargo.lock': {
-    get: (t) => new RegExp(`name = "${CARGO_NAME}"\\nversion = "([^"]*)"`).exec(t)?.[1],
-    set: (t, v) => t.replace(new RegExp(`(name = "${CARGO_NAME}"\\nversion = ")[^"]*(")`), `$1${v}$2`),
+    // (\r?: a Windows checkout has Windows line ends.)
+    get: (t) => new RegExp(`name = "${CARGO_NAME}"\\r?\\nversion = "([^"]*)"`).exec(t)?.[1],
+    set: (t, v) => t.replace(new RegExp(`(name = "${CARGO_NAME}"\\r?\\nversion = ")[^"]*(")`), `$1${v}$2`),
   },
 };
 
