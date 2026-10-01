@@ -122,15 +122,11 @@
         />
       </label>
     </div>
-    {#if s.buzzer && s.buzzFrom === 'phones' && !buzzerBase()}
-      <p class="warn small">
-        Phone buzzers aren't set up in this copy: they need a buzzer server (⚙ Settings › Buzzer server, in the editor).
-        Until then players buzz from this computer's keys.
-      </p>
-    {:else if s.buzzer && s.buzzFrom === 'phones'}
+    <!-- (Without a buzzer server, the 📱 Phone buzzers card above says so.) -->
+    {#if s.buzzer && s.buzzFrom === 'phones' && buzzerBase()}
       <p class="muted small">
-        Phone buzzers: start the room in 📱 Phone buzzers; players open the link (or scan the code) on their phone and tap
-        their name. Phones need this computer online.
+        Phone buzzers: start the room in 📱 Phone buzzers above; players open the link (or scan the code) on their phone
+        and tap their name. Phones need this computer online.
       </p>
     {/if}
     {#if s.maxPlayers > 9}
@@ -194,9 +190,6 @@
   }
   .small {
     font-size: 12px;
-  }
-  .warn {
-    color: var(--warn);
   }
   .grid {
     display: grid;
