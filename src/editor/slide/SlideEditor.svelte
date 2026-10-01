@@ -1005,7 +1005,8 @@
         <p class="muted">
           Click an item to edit it, or double-click it (text goes straight to its text field). Drag to move (press Shift while
           dragging to keep to one axis), pull the handles to resize, and use the round handle to rotate. Drop or paste images,
-          video, audio and links. Shift-click or drag a box on an empty spot to select several. Ctrl+C / Ctrl+X / Ctrl+V copy
+          video, audio and links. Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws
+          one) to select several. Ctrl+C / Ctrl+X / Ctrl+V copy
           items between slides.
         </p>
         <p class="muted small">
