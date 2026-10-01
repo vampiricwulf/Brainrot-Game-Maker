@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { parseGame } from './fileio';
-import { countdownSeconds, FINAL_V1_ROUND_ID, gameProblem, isBoard, isFinal, MAX_PLAYERS, migrateGame, mostPlayers, newGame, textSlide, type Game } from './model';
+import { clueCountdown, clueValueTyped, countdownSeconds, FINAL_V1_ROUND_ID, gameProblem, isBoard, isFinal, MAX_PLAYERS, migrateGame, mostPlayers, newGame, textSlide, type Game } from './model';
 import { validate } from './validate';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
 
@@ -155,6 +155,23 @@ describe('📋 Game rules: what can be typed', () => {
     expect(countdownSeconds('0.6')).toBe(1);
     expect(countdownSeconds('12.6')).toBe(13);
     expect(countdownSeconds('30')).toBe(30);
+  });
+
+  it("a clue's own countdown: blank is the game's default, 0 is none, else whole seconds of at least 1", () => {
+    expect(clueCountdown('')).toBeNull();
+    expect(clueCountdown(' ')).toBeNull();
+    expect(clueCountdown('0')).toBe(0);
+    expect(clueCountdown('0.4')).toBe(0);
+    expect(clueCountdown('-5')).toBe(1);
+    expect(clueCountdown('7.6')).toBe(8);
+    expect(clueCountdown('abc')).toBeNull();
+  });
+
+  it("a clue's own value: blank is the row's, else whole points, never below 0", () => {
+    expect(clueValueTyped('')).toBeNull();
+    expect(clueValueTyped('-300')).toBe(0);
+    expect(clueValueTyped('750')).toBe(750);
+    expect(clueValueTyped('99.6')).toBe(100);
   });
 
   it('Most players: 1 to 20, never below the players listed', () => {

@@ -27,9 +27,9 @@ export function copyActions(list: readonly Action[]): Action[] {
   });
 }
 
-/** 'Potion (copy)', or 'Potion (copy 2)' when that's taken. */
+/** 'Potion (copy)', or 'Potion (copy 2)' when that's taken (a copy of 'Potion (copy)' too, never '(copy) (copy)'). */
 export function copyName(name: string, taken: readonly string[]): string {
-  const base = `${name} (copy`;
+  const base = `${name.replace(/ \(copy(?: \d+)?\)$/, '')} (copy`;
   if (!taken.includes(`${base})`)) return `${base})`;
   let n = 2;
   while (taken.includes(`${base} ${n})`)) n++;

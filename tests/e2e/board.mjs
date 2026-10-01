@@ -84,6 +84,14 @@ try {
   assert((await page.getByPlaceholder('Type the question…').inputValue()) === 'What is skibidi?', 'Alt+→ and Alt+↑ go across and up');
   await key('Escape');
   assert((await focused()) === '1,0', 'Done goes back to the tile it ended on');
+  // Opened on one tile and moved on with Ctrl+Enter: closing it goes to the tile it ended on, not the one it opened from.
+  await key('Enter');
+  await key('Control+Enter');
+  await key('Control+Enter');
+  await key('Escape');
+  assert((await focused()) === '1,2', `closing the clue editor goes to the tile it ended on (${await focused()})`);
+  await key('ArrowUp');
+  await key('ArrowUp');
 
   // Copy, paste, clear.
   await key('ArrowLeft');
@@ -135,11 +143,11 @@ try {
   assert(['Move left', 'Insert category left', 'Insert category right', 'Duplicate', 'Image', 'Clear its clues', 'Delete category'].every((x) => catItems.some((i) => i.includes(x))), 'right-clicking a category offers its menu');
   await menu.getByRole('menuitem', { name: /Insert category left/ }).click();
   await page.waitForTimeout(200);
-  assert((await catNames()).length === 7 && (await catNames())[1] === 'Category 7', `Insert puts a new category there (${(await catNames()).join(', ')})`);
+  assert((await catNames()).length === 7 && (await catNames())[1] === 'New category', `Insert puts a new category there, named "New category" (${(await catNames()).join(', ')})`);
   assert((await focused()) === 'Category 2 name', 'with its name ready to type');
   await page.locator('.cat').nth(1).locator('.grip').click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Delete category/ }).click();
-  assert((await catNames()).length === 6 && (await notice.innerText()).startsWith('Deleted category “Category 7”'), 'Delete is done at once, with a note');
+  assert((await catNames()).length === 6 && (await notice.innerText()).startsWith('Deleted category “New category”'), 'Delete is done at once, with a note');
   await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Clear its clues/ }).click();
   assert((await tileText(0, 0)).includes('No question yet') && (await notice.innerText()).startsWith('Cleared the clues of “Category 1”'), 'Clear its clues, with a note');
@@ -269,6 +277,32 @@ try {
   const clueOpen = await page.getByRole('dialog', { name: 'Edit clue' }).count();
   await key('Escape');
   assert(clueOpen === 1 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, 'Esc steps out of a text field, the selection, then the clue');
+
+  // Daily Doubles placed from the menu: a step that names the tile, and the ⭐ count goes up with them.
+  const ddBox = page.getByLabel('How many Daily Doubles');
+  for (const [c, r] of [[4, 3], [5, 3]]) {
+    await tile(c, r).click({ button: 'right' });
+    await menu.waitFor();
+    await menu.getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
+  }
+  assert((await undoTitle()).startsWith('Undo: Made Category 6 $800 a Daily Double'), `making a Daily Double names the tile (${await undoTitle()})`);
+  assert((await ddBox.inputValue()) === '2' && (await page.getByText('2 placed').count()) === 1, 'placing more Daily Doubles than ⭐ says raises the count');
+  await page.locator('main').click({ position: { x: 4, y: 4 } });
+  await key('Control+z');
+  await key('Control+z');
+  assert((await ddBox.inputValue()) === '1' && (await page.getByText('0 placed').count()) === 1, 'Ctrl+Z takes both back, count and all');
+  // A clue's own countdown is whole seconds (0: none), its own value never below 0.
+  await tile(2, 2).click();
+  const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
+  const secs = clueDlg.locator('input.secs');
+  const typed = async (field, text) => {
+    await field.fill(text);
+    await field.press('Tab');
+    return field.inputValue();
+  };
+  assert((await typed(secs, '-5')) === '1' && (await typed(secs, '2.4')) === '2' && (await typed(secs, '0')) === '0', "a clue's countdown can't be negative or a fraction (0 stays: no countdown)");
+  assert((await typed(clueDlg.getByLabel('Value'), '-300')) === '0' && (await clueDlg.locator('header .value').innerText()) === '$0', "a clue's value can't be negative");
+  await key('Escape');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');

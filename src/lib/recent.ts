@@ -3,7 +3,7 @@
 // slot, so without this the game it held was gone for good.
 import { del, get, set } from 'idb-keyval';
 import type { SavedHistory, StoredStep } from './history.svelte';
-import { newId, type Game } from './model';
+import { newGame, newId, type Game } from './model';
 import { write } from './persist';
 
 const LIST_KEY = 'recentGames';
@@ -43,12 +43,32 @@ export interface RecentGame {
 }
 
 /**
- * Something in the game worth keeping: a round, a player, a file, a wheel, the Stats & Items catalog… A game with only a
- * title is a scratch game: New and Open… replace it without asking, and it isn't kept in Recent games.
+ * Something in the game worth keeping: a round, a player, a file, a wheel, the Stats & Items catalog, a title, a theme,
+ * a rule or a sound changed from a new game's… A game just as New makes it is a scratch game: New and Open… replace it
+ * without asking, and it isn't kept in Recent games.
  */
 export function hasWork(game: Game): boolean {
   const kit = game.statFields?.length || game.items?.length || game.shops?.length || game.worlds?.length;
-  return !!(game.rounds.length || game.players.length || game.media.length || game.wheels.length || game.dice.length || kit || game.tiebreaker);
+  if (game.rounds.length || game.players.length || game.media.length || game.wheels.length || game.dice.length || kit || game.tiebreaker) return true;
+  const fresh = newGame();
+  const title = game.title.trim();
+  if (title && title !== fresh.title) return true;
+  return (
+    differs(game.theme, fresh.theme) ||
+    differs(game.settings, fresh.settings) ||
+    differs(game.audio, fresh.audio) ||
+    differs(game.soundsOff, undefined) ||
+    differs(game.soundVolume, undefined)
+  );
+}
+
+/** Two settings differ (a part left out is the same as one that's off: a checkbox shown fills it in as false). */
+function differs(a: unknown, b: unknown): boolean {
+  const off = (x: unknown) => x === undefined || x === null || x === false;
+  if (off(a) && off(b)) return false;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return a !== b;
+  const [x, y] = [a as Record<string, unknown>, b as Record<string, unknown>];
+  return [...new Set([...Object.keys(x), ...Object.keys(y)])].some((k) => differs(x[k], y[k]));
 }
 
 /** A short fingerprint of a game (FNV-1a of its JSON, two ways): the same for the very same game. */

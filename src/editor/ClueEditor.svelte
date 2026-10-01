@@ -4,8 +4,8 @@
   import { app, toast } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { neighbourClue, stepClue, textStyleTargets } from '../lib/ops';
-  import { formatPoints, PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
+  import { neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, type ClueType, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -26,6 +26,13 @@
   const cat = $derived(round.categories[pos.cat]);
   const clue = $derived(cat?.clues[pos.row]);
   const sym = $derived(app.game.settings.currencySymbol);
+
+  const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile' };
+  /** The tile's type (one step, with the ⭐ Daily Doubles count it raises). */
+  function setType(type: ClueType): void {
+    const tile = `${categoryLabel(cat)} ${formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}`;
+    record(`Made ${tile} ${TYPE_WORDS[type]}`, () => setClueType(round, clue, type));
+  }
   let side = $state<'q' | 'a'>('q');
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
@@ -132,7 +139,8 @@
       <div class="opts row">
         <label class="check">
           Type
-          <select bind:value={clue.type} disabled={clue.empty}>
+          <!-- (Making it a Daily Double raises the board's ⭐ Daily Doubles count when it's more than that.) -->
+          <select value={clue.type} disabled={clue.empty} onchange={(e) => setType(e.currentTarget.value as ClueType)}>
             <option value="standard">Standard</option>
             <option value="dailyDouble">⭐ Daily Double</option>
             <option value="wheel">🎡 Wheel</option>
@@ -173,24 +181,31 @@
         <label class="check"><input type="checkbox" bind:this={emptyBox} bind:checked={clue.empty} /> Empty tile (not playable)</label>
         <label class="check">
           Value
+          <!-- Whole points, never below 0 (blank: the row's value). -->
           <input
             type="number"
+            min="0"
+            step="1"
             disabled={clue.empty}
             placeholder={String(round.values[pos.row])}
             value={clue.value ?? ''}
-            oninput={(e) => (clue.value = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
+            oninput={(e) => (clue.value = clueValueTyped(e.currentTarget.value))}
+            onchange={(e) => (e.currentTarget.value = clue.value === null ? '' : String(clue.value))}
           />
         </label>
         <label class="check" title="Countdown when this clue opens. Blank = game default, 0 = no timer.">
           ⏱
+          <!-- Whole seconds, at least 1 (blank: the game's default, 0: none). -->
           <input
             type="number"
             min="0"
+            step="1"
             class="secs"
             disabled={clue.empty}
             placeholder={app.game.settings.defaultTimerSeconds ? String(app.game.settings.defaultTimerSeconds) : 'none'}
             value={clue.timerSeconds ?? ''}
-            oninput={(e) => (clue.timerSeconds = e.currentTarget.value === '' ? null : +e.currentTarget.value)}
+            oninput={(e) => (clue.timerSeconds = clueCountdown(e.currentTarget.value))}
+            onchange={(e) => (e.currentTarget.value = clue.timerSeconds === null || clue.timerSeconds === undefined ? '' : String(clue.timerSeconds))}
           />
           s
         </label>

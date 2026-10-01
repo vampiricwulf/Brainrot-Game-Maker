@@ -7,7 +7,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { clear, heldMedia, history, jumpTo, maxSteps, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
   import { formatBytes, getBlob } from '../lib/media.svelte';
-  import { goTo } from '../lib/nav.svelte';
+  import { focusPlace, goTo, placeKey } from '../lib/nav.svelte';
   import InlineAsk from '../play/host/InlineAsk.svelte';
 
   const ICON: Record<Origin['kind'], string> = {
@@ -122,6 +122,8 @@
     if (!place) return;
     const to = goTo(place);
     if (to !== place) toast(to ? 'Part of it was deleted since: showing what’s left' : 'It was deleted since', 4000);
+    // The focus goes there too, not to the page (this list is gone once its tab is).
+    if (to) focusPlace(placeKey(to), list);
   }
 
   let list = $state<HTMLDivElement>();
@@ -192,8 +194,10 @@
         {@const applied = r.i < history.index}
         {@const current = r.i === history.index - 1}
         <div class="hr" class:undone={!applied} class:current>
+          <!-- (One Tab stop for the list, on the step the game is at: ↑/↓ move between them.) -->
           <button
             class="pick"
+            tabindex={current ? 0 : -1}
             onclick={() => pick(r.i + 1)}
             aria-current={current ? 'step' : undefined}
             title="{e.label}{e.where ? `\n${e.where}` : ''}\n{second(e.ts)} · {applied ? 'Go back to just after this step' : 'Redo up to this step'}"
@@ -213,7 +217,7 @@
       {/if}
     {/each}
     <div class="hr origin" class:current={history.index === 0}>
-      <button class="pick" onclick={() => pick(0)} aria-current={history.index === 0 ? 'step' : undefined} title="Undo everything back to here">
+      <button class="pick" tabindex={history.index === 0 ? 0 : -1} onclick={() => pick(0)} aria-current={history.index === 0 ? 'step' : undefined} title="Undo everything back to here">
         <span class="ic" aria-hidden="true">◌</span>
         <span class="lb">{ICON[history.origin.kind]} {history.origin.label}</span>
         <span class="wh muted">{history.entries.length ? 'Undo everything back to here' : ''}</span>

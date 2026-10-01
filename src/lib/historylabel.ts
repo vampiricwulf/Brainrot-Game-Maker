@@ -394,11 +394,11 @@ const TOGGLES: Record<string, (on: boolean, who: string) => string> = {
 };
 /** Fields that are words people type: a change says what they say now. */
 const TEXTS = new Set(['text', 'category', 'hostNotes', 'details', 'description', 'label', 'winNotes', 'notes']);
-const TILE_TYPES: Record<string, string> = {
-  dailyDouble: 'Made it a Daily Double',
-  wheel: 'Made it a wheel tile',
-  dice: 'Made it a dice tile',
-  standard: 'Made it a standard tile',
+const TILE_TYPES: Record<string, (tile: string) => string> = {
+  dailyDouble: (tile) => `Made ${tile} a Daily Double`,
+  wheel: (tile) => `Made ${tile} a wheel tile`,
+  dice: (tile) => `Made ${tile} a dice tile`,
+  standard: (tile) => `Made ${tile} a standard tile`,
 };
 
 /** A theme setting's new value, as the label says it (" chroma green", " off"), or '' when it says nothing readable. */
@@ -689,8 +689,22 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (k === 'dailyDoubleCount' && typeof v === 'number') return `Set ${what(at)} to ${v} Daily Double${v === 1 ? '' : 's'}`;
   if (at.noun === 'row values') return 'Changed the row values';
   const own = op.p.length === at.depth;
-  if (own && at.noun === 'clue' && k === 'type') return TILE_TYPES[v as string] ?? 'Changed the tile type';
-  if (own && at.noun === 'clue' && k === 'empty') return v ? 'Emptied the tile' : 'Tile playable again';
+  // A tile is named as the board shows it ("Memes $400"); a value changed, by the one it had.
+  const tile = `${at.crumbs[at.crumbs.length - 2] ?? ''} ${at.name}`.trim();
+  if (own && at.noun === 'clue' && k === 'type') return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
+  if (own && at.noun === 'clue' && k === 'empty') return v ? `Left ${tile} empty` : `Made ${tile} playable again`;
+  if (own && at.noun === 'clue' && k === 'value') {
+    const sym = after.settings.currencySymbol;
+    const r = byId<Round>(after.rounds, op.p[1]);
+    const cat = r?.mode === 'board' ? byId<(typeof r.categories)[number]>(r.categories, op.p[3]) : undefined;
+    const row = cat?.clues.findIndex((c) => c.id === op.p[5]) ?? -1;
+    const rowValue = r?.mode === 'board' ? r.values[row] : undefined;
+    const was = typeof op.b === 'number' ? op.b : (rowValue ?? 0);
+    const now = typeof v === 'number' ? formatPoints(v, sym) : `the row's ${formatPoints(rowValue ?? 0, sym)}`;
+    return `Changed ${`${cat ? categoryLabel(cat) : ''} ${formatPoints(was, sym)}`.trim()} to ${now}`;
+  }
+  // (A picture taken off: not a change to it.)
+  if (own && k === 'image' && v === undefined && (op as Op & { t: 'set' }).b !== undefined) return `Removed the image of ${what(at)}`;
   if (own && (k === 'name' || k === 'title' || (k === 'label' && at.noun === 'slice')))
     return `Renamed ${nounOf(at)}${quoted(typeof v === 'string' ? v : '')}`;
   if (typeof k === 'string' && TEXTS.has(k)) {

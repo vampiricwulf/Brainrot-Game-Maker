@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, answerReplace } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -139,6 +139,16 @@ try {
   await page.keyboard.press('Delete');
   assert((await cards.count()) === 2, 'Delete removes the selected file');
   await page.keyboard.press('Control+z');
+  // With the focus on a card's Select checkbox, Delete still removes (and Esc unselects).
+  const tick = cards.nth(2).getByRole('checkbox');
+  await tick.check();
+  await tick.focus();
+  await page.keyboard.press('Escape');
+  assert((await page.locator('.card.picked').count()) === 0, 'Esc on a Select checkbox unselects');
+  await tick.check();
+  await page.keyboard.press('Delete');
+  assert((await cards.count()) === 2, 'Delete on a Select checkbox removes the selected file');
+  await page.keyboard.press('Control+z');
 
   // ---------- Slide right-click menus ----------
   await page.locator('nav > button.round-tab').first().click();
@@ -269,6 +279,49 @@ try {
   assert((await sheet.count()) === 1, '? opens it');
   await page.keyboard.press('Shift+Slash');
   assert((await sheet.count()) === 0, 'and ? closes it again');
+
+  // ---------- Files only the undo history holds survive New, ↶ Reopen previous game and Forget ----------
+  const media = page.getByRole('button', { name: /^🖼 Media/ });
+  const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  const card = (name) => page.locator('.library .card', { hasText: name });
+  /** Add a picture on the Media page, then Remove it: only the step can bring it back. */
+  async function addAndRemove(name) {
+    await media.click();
+    await drop(page.locator('.library'), [[name, 'image/png']]);
+    await card(name).locator('img').waitFor();
+    await card(name).getByRole('button', { name: 'Remove' }).click();
+    await page.waitForFunction((n) => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes(`Removed file “${n}”`), name);
+  }
+  const blurAll = () => page.evaluate(() => document.activeElement?.blur?.());
+  await addAndRemove('keep.png');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await page.getByRole('button', { name: '↶ Reopen previous game' }).click();
+  await page.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes('Removed file “keep.png”'));
+  // (Any cleanup of files runs a little after a game is replaced.)
+  await page.waitForTimeout(800);
+  await blurAll();
+  await page.keyboard.press('Control+z');
+  await media.click();
+  await card('keep.png').locator('img').waitFor();
+  assert((await page.locator('.missing-box').count()) === 0, 'a reopened game’s undo history still has its files (Undo of a removed file shows it)');
+  // Forget another kept game: this game's own history keeps its files.
+  await card('keep.png').getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await addAndRemove('other.png');
+  await page.getByRole('button', { name: 'Open…' }).click();
+  const openDlg = page.getByRole('dialog', { name: 'Open a game' });
+  await openDlg.waitFor();
+  await openDlg.getByRole('button', { name: 'Forget' }).first().click();
+  await page.getByRole('button', { name: 'Forget', exact: true }).last().click();
+  await page.waitForTimeout(800);
+  if (await openDlg.count()) await page.keyboard.press('Escape');
+  await blurAll();
+  await page.keyboard.press('Control+z');
+  await media.click();
+  await card('other.png').locator('img').waitFor();
+  assert((await page.locator('.missing-box').count()) === 0 && !!(await undoTitle()), 'Forget in Open… keeps the files this game’s undo history can bring back');
 
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
   console.log('\nEditor media E2E passed.');

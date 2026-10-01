@@ -2,7 +2,7 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type BoardRound, type Game } from './model';
+import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type BoardRound, type Game } from './model';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
@@ -32,8 +32,15 @@ function plural(n: number, word: string): string {
 export function dailyDoublesShort(round: BoardRound): { want: number; placed: number } | null {
   // (No more than the board has tiles for.)
   const want = Math.min(round.dailyDoubleCount ?? 1, playableClues(round).length);
-  const placed = round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
+  const placed = dailyDoublesPlaced(round);
   return placed < want ? { want, placed } : null;
+}
+
+/** A board with more Daily Doubles placed than its ⭐ Daily Doubles box says (lowered after placing them): both. */
+export function dailyDoublesOver(round: BoardRound): { want: number; placed: number } | null {
+  const want = round.dailyDoubleCount ?? 1;
+  const placed = dailyDoublesPlaced(round);
+  return placed > want ? { want, placed } : null;
 }
 
 export function validate(game: Game): Problem[] {
@@ -82,6 +89,13 @@ export function validate(game: Game): Problem[] {
     if (broken) out.push({ text: `${r.name}: ${plural(broken, 'wheel/dice tile')} with nothing chosen`, tab: i, level: 'warn' });
     const dds = dailyDoublesShort(round);
     if (dds) out.push({ text: `${r.name}: ${dds.want} Daily Double${dds.want === 1 ? '' : 's'} wanted, ${dds.placed} placed`, tab: i, level: 'warn' });
+    const over = dailyDoublesOver(round);
+    if (over)
+      out.push({
+        text: `${r.name}: ${over.placed} Daily Doubles placed, but ⭐ Daily Doubles says ${over.want} (all ${over.placed} play)`,
+        tab: i,
+        level: 'info',
+      });
   });
 
   out.push(...statsProblems(game));

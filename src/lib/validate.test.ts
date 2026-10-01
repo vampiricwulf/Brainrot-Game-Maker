@@ -18,6 +18,20 @@ describe('the checklist', () => {
     expect(texts().some((t) => t.includes('(s)'))).toBe(false);
   });
 
+  it('says when more Daily Doubles are placed than the ⭐ box says (not a warning: they all play)', () => {
+    const game = jeopardyGame();
+    const round = game.rounds[0] as BoardRound;
+    round.dailyDoubleCount = 1;
+    for (const c of round.categories.slice(0, 3)) c.clues[2].type = 'dailyDouble';
+    expect(validate(game).find((p) => p.text.includes('Daily Doubles placed'))).toEqual({
+      text: 'Jeopardy!: 3 Daily Doubles placed, but ⭐ Daily Doubles says 1 (all 3 play)',
+      tab: 0,
+      level: 'info',
+    });
+    round.dailyDoubleCount = 3;
+    expect(validate(game).some((p) => p.text.includes('Daily Double'))).toBe(false);
+  });
+
   it('sends a sound whose file is missing to 🔊 Sounds, other missing files to Media', () => {
     const game = jeopardyGame();
     game.audio.right = 'gone';

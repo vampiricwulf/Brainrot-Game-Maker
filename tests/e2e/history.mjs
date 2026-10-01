@@ -161,10 +161,20 @@ try {
   await rows.nth(1).locator('.pick').click();
   await page.waitForTimeout(250);
   assert((await page.locator('nav button.round-tab').count()) === 2 && (await page.locator('.hist .hr.undone').count()) === 1, 'a row redoes everything up to it');
-  await rows.nth(1).hover();
-  await rows.nth(1).getByRole('button', { name: 'Go there ›' }).click();
-  await page.waitForTimeout(250);
+  // The list is one Tab stop (the step the game is at), however many steps it has: ↑/↓ move between them.
+  assert(
+    (await page.locator('.hist .pick[tabindex="0"]').count()) === 1 && (await rows.nth(1).locator('.pick').getAttribute('tabindex')) === '0',
+    'the list is one Tab stop, on the step the game is at',
+  );
+  await rows.nth(1).locator('.pick').focus();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowDown');
+  assert(await rows.nth(1).locator('.pick').evaluate((el) => el === document.activeElement), '↑/↓ move between the steps');
+  // G (Go there) shows the place, and the focus goes there too, not to the page.
+  await page.keyboard.press('g');
+  await page.waitForTimeout(400);
   assert(!(await page.locator('.hist').count()) && (await page.locator('nav button.round-tab.active').count()) === 1, 'Go there shows the round it changed');
+  assert(await page.evaluate(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav')), 'and the focus is there, not on the page');
 
   // ---------- RPG screens ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();

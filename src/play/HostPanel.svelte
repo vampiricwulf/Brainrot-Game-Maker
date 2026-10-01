@@ -199,7 +199,9 @@
         ? 'Reveal categories ▶'
         : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${isBoard(round) ? round.categories.length : 0} ▶`,
   );
-  const timerDefault = $derived(info?.clue.timerSeconds || game.settings.defaultTimerSeconds || 30);
+  // (A clue's own time from an older game can be anything typed: only whole seconds of at least 1 count.)
+  const clueSecs = $derived(Math.round(info?.clue.timerSeconds ?? 0));
+  const timerDefault = $derived((clueSecs >= 1 ? clueSecs : 0) || game.settings.defaultTimerSeconds || 30);
   const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
   // Only in the round it's from: reopening a tile of another round would change a board nobody is looking at.
   const lastClosedRef = $derived.by(() => {

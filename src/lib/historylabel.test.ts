@@ -97,9 +97,20 @@ describe('step labels', () => {
   });
 
   it('names tile changes', () => {
-    expect(step((g) => (board(g).categories[0].clues[0].type = 'dailyDouble')).label).toBe('Made it a Daily Double');
-    expect(step((g) => (board(g).categories[0].clues[0].type = 'wheel')).label).toBe('Made it a wheel tile');
-    expect(step((g) => (board(g).categories[0].clues[0].empty = true)).label).toBe('Emptied the tile');
+    const cat = board(sample()).categories[0].title;
+    expect(step((g) => (board(g).categories[0].clues[0].type = 'dailyDouble')).label).toBe(`Made ${cat} $200 a Daily Double`);
+    expect(step((g) => (board(g).categories[0].clues[0].type = 'wheel')).label).toBe(`Made ${cat} $200 a wheel tile`);
+    expect(step((g) => (board(g).categories[0].clues[0].empty = true)).label).toBe(`Left ${cat} $200 empty`);
+    // A value changed: the tile as it was, and what it is now.
+    const valued = step((g) => (board(g).categories[0].clues[1].value = 750));
+    expect(valued.label).toBe(`Changed ${cat} $400 to $750`);
+    expect(describeStep(diff(valued.after, valued.before), valued.after, valued.before).label).toBe(`Changed ${cat} $750 to the row's $400`);
+    // A category's picture taken off.
+    const pic = sample();
+    board(pic).categories[1].image = 'm1';
+    const off = structuredClone(pic);
+    delete board(off).categories[1].image;
+    expect(describeStep(diff(pic, off), pic, off).label).toBe(`Removed the image of category “${board(pic).categories[1].title}”`);
     expect(step((g) => (board(g).values[2] = 700)).label).toBe('Changed the row values');
   });
 

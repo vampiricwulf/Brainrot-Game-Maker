@@ -183,6 +183,18 @@ try {
   await pickMany.setFiles([{ name: 'song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(1000, 2) }, { name: 'other.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(10, 3) }]);
   await c.getByText(/Reconnected 1 file\. Still missing: pic\.png/).waitFor();
   assert((await c.getByText('1 file is missing from this browser').count()) === 1, 'Find missing files reconnects files by name and says what is still missing');
+  assert(
+    (await c.getByText('Files stored with this game: 1 · 1000 B (1 more missing).').count()) === 1,
+    'the stored-files count leaves out the missing one, and says it',
+  );
+  // One step, named for what it did: Undo takes the file out again, Redo puts it back.
+  await c.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.startsWith('Undo: Reconnected 1 file '));
+  await c.evaluate(() => document.activeElement?.blur?.());
+  await c.keyboard.press('Control+z');
+  await c.getByText('2 files are missing from this browser').waitFor();
+  await c.keyboard.press('Control+y');
+  await c.getByText('1 file is missing from this browser').waitFor();
+  assert((await c.locator('.card', { hasText: 'song.mp3' }).count()) === 1, 'reconnecting is one step "Reconnected 1 file" that Undo takes back (the file keeps its name)');
   // Replace file… checks the kind, then fixes the picture everywhere it's used.
   const pic = c.locator('.card', { hasText: 'pic.png' });
   const [wrong] = await Promise.all([c.waitForEvent('filechooser'), pic.getByRole('button', { name: '🔗 Replace file…' }).click()]);

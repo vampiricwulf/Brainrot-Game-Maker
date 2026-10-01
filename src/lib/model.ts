@@ -1057,6 +1057,11 @@ export function playableClues(round: Round): Clue[] {
   return isBoard(round) ? round.categories.flatMap((c) => c.clues.filter((cl) => !cl.empty)) : [];
 }
 
+/** How many Daily Doubles a board has placed (on tiles that play). */
+export function dailyDoublesPlaced(round: BoardRound): number {
+  return round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
+}
+
 /** Every board round of the game. */
 export function boardRounds(game: Game): BoardRound[] {
   return game.rounds.filter(isBoard);
@@ -1151,6 +1156,23 @@ export function countdownSeconds(text: string): number | null {
   const n = Math.round(Number(text));
   if (text.trim() === '' || !Number.isFinite(n) || n === 0) return null;
   return Math.max(1, n);
+}
+
+/**
+ * A clue's own countdown typed in (seconds): null when blank (the game's default plays), 0 for none, else a whole
+ * number of at least 1.
+ */
+export function clueCountdown(text: string): number | null {
+  if (text.trim() === '') return null;
+  const n = Number(text);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n) === 0 ? 0 : Math.max(1, Math.round(n));
+}
+
+/** A clue's own value typed in: null when blank (the row's value), else a whole number of at least 0. */
+export function clueValueTyped(text: string): number | null {
+  const n = Number(text);
+  return text.trim() === '' || !Number.isFinite(n) ? null : Math.max(0, Math.round(n));
 }
 
 // ---------- Hand-edited games ----------
