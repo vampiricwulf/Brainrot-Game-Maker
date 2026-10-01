@@ -3,6 +3,7 @@
 import { describeAction, runAction } from '../../lib/actions';
 import { currentPlayer, moveInOrder, movePlayer, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
 import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
+import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
@@ -17,6 +18,9 @@ export function boardNow(game: Game, session: Session) {
 }
 
 export const playerName = (session: Session, id: string | undefined) => session.players.find((p) => p.id === id)?.name ?? '?';
+
+/** The turn order for the log: "Cy → Ann → Bob". */
+export const turnOrder = (session: Session, order: string[]) => order.map((id) => playerName(session, id)).join(' → ');
 
 /** The zones on screen or with players in them. */
 export function busyZones(round: BoardGameRound, bs: BoardGameState): BoardZone[] {
@@ -40,7 +44,7 @@ export function sendNow(game: Game, session: Session, who: string[], to: { space
   const where = to.zone ? round?.zones.find((z) => z.id === to.zone)?.name : round && spaceById(round, to.space)?.name;
   const moving = who.filter((id) => (to.zone ? bs?.positions[id]?.zone !== to.zone : bs?.positions[id]?.space !== to.space));
   if (!bs || !where || !moving.length) return null;
-  const text = `${moving.map((w) => playerName(session, w)).join(', ')} → ${where}`;
+  const text = `${nameList(moving.map((w) => playerName(session, w)))} → ${where}`;
   logged(session, text, () => sendTo(bs, moving, to));
   return text;
 }
@@ -60,7 +64,9 @@ export function setTurn(game: Game, session: Session, playerId: string): void {
 export function reorderTurns(game: Game, session: Session, from: number, to: number): void {
   const { bs } = boardNow(game, session);
   if (!bs || from === to || to < 0 || to >= bs.order.length) return;
-  logged(session, 'Turn order', () => moveInOrder(bs, from, to));
+  const order = [...bs.order];
+  order.splice(to, 0, ...order.splice(from, 1));
+  logged(session, `Turn order: ${turnOrder(session, order)}`, () => moveInOrder(bs, from, to));
 }
 
 /**
@@ -82,7 +88,10 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
 export function turnNow(game: Game, session: Session, delta = 1): void {
   const { bs } = boardNow(game, session);
   if (!bs) return;
-  logged(session, delta > 0 ? 'Next turn' : 'Previous turn', () => {
+  // The log says whose turn it is now ("Ann's turn"), as Make it their turn does.
+  const after = { ...bs };
+  nextTurn(after, delta);
+  logged(session, `${playerName(session, currentPlayer(after))}'s turn`, () => {
     nextTurn(bs, delta);
     bs.last = undefined;
   });

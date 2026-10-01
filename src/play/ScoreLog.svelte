@@ -5,7 +5,7 @@
 <script lang="ts">
   import { roundName, type Game, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
-  import { stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
+  import { nameList, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
   import InlineAsk from './host/InlineAsk.svelte';
 
@@ -176,7 +176,7 @@
           <div><span>{icon[r.source]}</span> <b>{r.name}</b> <span class="muted small">{time(r.ts)}</span></div>
           <div>{r.result}</div>
           {#if r.playerIds?.length}
-            <div class="small">For: {r.playerIds.map((id) => byId[id]?.name ?? '?').join(', ')}</div>
+            <div class="small">For: {nameList(r.playerIds.map((id) => byId[id]?.name ?? '?'))}</div>
           {/if}
         </div>
       {:else}
@@ -208,7 +208,7 @@
               {expanded[step.key] ? '▾' : '▸'} {step.events.length} players
             </button>
             <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
-            <span class="why muted">{step.events.map((e) => name(e.playerId)).join(', ')} · {first.reason} · {time(first.ts)}</span>
+            <span class="why muted">{nameList(step.events.map((e) => name(e.playerId)))} · {first.reason} · {time(first.ts)}</span>
             <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? 'Restore all' : 'Undo all'}</button>
           </div>
           {#if expanded[step.key]}

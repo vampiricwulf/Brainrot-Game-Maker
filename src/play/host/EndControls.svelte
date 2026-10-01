@@ -2,7 +2,7 @@
 <script lang="ts">
   import { toast } from '../../lib/app.svelte';
   import { formatPoints, isFinal, roundName, type Game, type Session } from '../../lib/model';
-  import { places, tiedLeaders } from '../../lib/session';
+  import { nameList, places, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
 
   let {
@@ -55,7 +55,7 @@
 
 {#if ties.length && !session.coWinners}
   <div class="tie">
-    <b>Tie for first:</b> {ties.map((p) => p.name).join(', ')}
+    <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
     <div class="row">
       {#if onrolloff}<button onclick={() => onrolloff(ties.map((p) => p.id))}>🎲 Tiebreaker roll-off</button>{/if}
       <button onclick={ontiebreaker} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : "Write one on the editor's Tiebreaker tab"}>

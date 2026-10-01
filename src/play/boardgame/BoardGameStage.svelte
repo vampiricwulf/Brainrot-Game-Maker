@@ -14,6 +14,7 @@
   import type { Game, Session } from '../../lib/model';
   import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
+  import { nameList } from '../../lib/session';
   import { wornItems } from '../../lib/toolset';
   import StatsStrip from '../rpg/StatsStrip.svelte';
   import { dropHover, dropTarget } from '../dragdrop.svelte';
@@ -204,7 +205,7 @@
           {#each round.zones as z (z.id)}
             {#if inZone(z.id).length || (mirror && drag?.moved)}
               <div class="zone" class:target={!!ontoken} class:drop-on={dropHover.at === `zone:${z.id}`} data-zone={z.id}>
-                🌀 {z.name}{inZone(z.id).length ? `: ${inZone(z.id).map((p) => p.name).join(', ')}` : ''}
+                🌀 {z.name}{inZone(z.id).length ? `: ${nameList(inZone(z.id).map((p) => p.name))}` : ''}
               </div>
             {/if}
           {/each}

@@ -5,7 +5,7 @@ import { newBoardGameRound } from '../../lib/boardgame';
 import { goToRound, newSession } from '../../lib/session';
 import { newWheel } from '../../lib/tools';
 import { undoAction } from '../../lib/toolset';
-import { reorderTurns, rollMover, runSpace, sendNow, setTurn } from './bgops';
+import { reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 
 describe('board game: the round’s mover', () => {
   it('opens a movement wheel with D, and spins it with D again', () => {
@@ -72,7 +72,7 @@ describe('board game: the host’s moves on the stage', () => {
   it('sends players dropped on a space or a zone there, as one step', () => {
     const { game, session, round, bs } = playing();
     const s5 = round.spaces[4];
-    expect(sendNow(game, session, ['a', 'b'], { space: s5.id })).toBe('Ann, Bob → Space 5');
+    expect(sendNow(game, session, ['a', 'b'], { space: s5.id })).toBe('Ann & Bob → Space 5');
     expect([bs().positions.a, bs().positions.b]).toEqual([{ space: s5.id }, { space: s5.id }]);
     expect(sendNow(game, session, ['c'], { zone: 'shadow' })).toBe('Cat → Shadow Realm');
     expect(bs().positions.c).toEqual({ zone: 'shadow' });
@@ -93,8 +93,19 @@ describe('board game: the host’s moves on the stage', () => {
     reorderTurns(game, session, 2, 0);
     expect(bs().order).toEqual(['c', 'a', 'b']);
     expect(bs().order[bs().turn]).toBe('c');
+    expect(session.actionLog?.at(-1)?.text).toBe('Turn order: Cat → Ann → Bob');
     undoAction(session, game);
     expect(bs().order).toEqual(['a', 'b', 'c']);
+  });
+
+  it('says whose turn it is in the history, going on or back', () => {
+    const { game, session, bs } = playing();
+    turnNow(game, session);
+    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['b', "Bob's turn"]);
+    turnNow(game, session, -1);
+    turnNow(game, session, -1);
+    // Back from the first player: the last one's turn.
+    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', "Cat's turn"]);
   });
 
   it('runs a space’s landing actions for some players as one step', () => {

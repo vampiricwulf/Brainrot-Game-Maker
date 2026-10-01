@@ -8,6 +8,7 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
   import { activeParty, audienceSees, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
+  import { nameList } from '../../lib/session';
   import { formatStat, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
   import { objectName, pickUp as pickUpNow, removeObject } from './hostops';
@@ -44,7 +45,7 @@
   /** Picked by the host (on this card, or selected): null means nobody was, so it's for everyone here. */
   const picked = $derived(chosen ?? (ctx.selected.length ? ctx.selected : null));
   const who = $derived(picked ?? here);
-  const whoNames = $derived(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(', ') || 'nobody');
+  const whoNames = $derived(nameList(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?')) || 'nobody');
   const title = $derived(objectName(el));
   const locked = $derived(o?.locked ?? role?.locked ?? false);
   const npcStats = $derived(o?.stats ?? role?.stats ?? []);

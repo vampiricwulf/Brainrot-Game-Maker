@@ -7,6 +7,7 @@ import {
   activeParty, allElements, audienceSees, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyScreen, regroup, splitParty,
   step, worldById,
 } from '../../lib/rpg';
+import { nameList } from '../../lib/session';
 import { addStat, currencyFields, entryName, giveItem, inventory, itemDef, logged, statFields, transferEntry } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
 import type { MenuEntry } from '../../lib/menustate.svelte';
@@ -47,7 +48,7 @@ export function stepParty(game: Game, session: Session, dir: Dir8): string | nul
 export function regroupAll(game: Game, session: Session, partyId?: string): void {
   const { world, st } = rpgNow(game, session);
   if (!world || !st) return;
-  const with_ = st.parties.find((p) => p.id === partyId);
+  const with_ = st.parties.find((p) => p.id === partyId) ?? activeParty(st);
   logged(session, with_ ? `Regroup with ${with_.name}` : 'Regroup', () => {
     if (with_) st.active = with_.id;
     regroup(game, st, world, session.players.map((p) => p.id));
@@ -59,7 +60,7 @@ export function splitOff(game: Game, session: Session, ids: string[]): string | 
   if (!st) return 'No world';
   if (!ids.length) return 'Select the players who split off first (1–9)';
   if (ids.length === session.players.length && st.parties.length === 1) return 'That’s everyone: select only the ones who split off';
-  logged(session, `Split off ${ids.map((id) => session.players.find((p) => p.id === id)?.name).join(', ')}`, () => splitParty(st, ids));
+  logged(session, `Split off ${names(session, ids)}`, () => splitParty(st, ids));
   return null;
 }
 
@@ -68,8 +69,8 @@ export function toggleMap(game: Game, session: Session): void {
   if (st) st.mapShown = !st.mapShown;
 }
 
-/** Players' names for the log and the host ("Ann, Bob"). */
-export const names = (session: Session, ids: string[]) => ids.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(', ');
+/** Players' names for the log and the host ("Ann, Bob & Cy"). */
+export const names = (session: Session, ids: string[]) => nameList(ids.map((id) => session.players.find((p) => p.id === id)?.name ?? '?'));
 
 /**
  * Send players to a screen as one step (not their whole party, unless they're all of it): they join a party already

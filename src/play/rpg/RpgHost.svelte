@@ -21,6 +21,7 @@
   import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { addMediaFile } from '../../lib/media.svelte';
+  import { nameList } from '../../lib/session';
   import { lastAction, logged, wornItems } from '../../lib/toolset';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
@@ -253,7 +254,7 @@
     if (!st) return;
     const s = st;
     showMenu(e, [
-      { heading: `${pt.name} (${pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name).join(', ')})` },
+      { heading: `${pt.name} (${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))})` },
       { label: '🎥 Follow', disabled: pt.id === party?.id, onclick: () => focusParty(game, session, pt.id), hint: 'Viewers see its screen; the pad moves it' },
       { label: '▦ Show in split view', disabled: s.parties.length < 2 || !!s.split, onclick: () => (s.split = true) },
       { label: '🤝 Regroup everyone with this party', disabled: s.parties.length < 2, onclick: () => regroupAll(game, session, pt.id) },
@@ -306,7 +307,7 @@
           }}
           ondragleave={() => dropHover.at === `party:${pt.id}` && (dropHover.at = null)}
           ondrop={(e) => dropOnParty(e, pt)}
-          title="Follow this party (the pad moves it): {pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name).join(', ')}. Right-click for more; drop a player here to add them"
+          title="Follow this party (the pad moves it): {nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))}. Right-click for more; drop a player here to add them"
         >
           {pt.name} ({pt.members.length})
         </button>

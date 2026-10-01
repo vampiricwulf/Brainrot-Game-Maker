@@ -154,6 +154,11 @@ export function playerName(session: Session, playerId: string): string {
   return (session.players.find((p) => p.id === playerId) ?? session.removedPlayers?.find((p) => p.id === playerId))?.name ?? '?';
 }
 
+/** Players' names as one says them: "Ann", "Ann & Bob", "Ann, Bob & Cy". */
+export function nameList(names: string[]): string {
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}` : (names[0] ?? '');
+}
+
 /** "+$200 × 3" for one undo step, or "score changes" when its players got different amounts (e.g. a swap). */
 export function stepAmount(events: ScoreEvent[], sym: string): string {
   const d = events[0]?.delta ?? 0;
@@ -161,10 +166,10 @@ export function stepAmount(events: ScoreEvent[], sym: string): string {
   return `${d > 0 ? '+' : ''}${formatPoints(d, sym)}${events.length > 1 ? ` × ${events.length}` : ''}`;
 }
 
-/** "+$200 × 3 (Alex, Sam, Jo) · Jeopardy! · Memes $200": what one undo step changed. */
+/** "+$200 × 3 (Alex, Sam & Jo) · Jeopardy! · Memes $200": what one undo step changed. */
 export function describeStep(session: Session, events: ScoreEvent[], sym: string): string {
   if (!events.length) return '';
-  const names = events.map((e) => playerName(session, e.playerId)).join(', ');
+  const names = nameList(events.map((e) => playerName(session, e.playerId)));
   return `${stepAmount(events, sym)} (${names})${events[0].reason ? ` · ${events[0].reason}` : ''}`;
 }
 
@@ -586,6 +591,9 @@ export function finalNext(session: Session, game: Game): void {
   switch (session.finalStep) {
     case 'category':
       session.finalStep = 'wagers';
+      // A player with nothing to wager (a score of 0 or less, playing as the round allows) can only wager 0: it's
+      // filled in for them (Ignore the limits still lets the host type more).
+      if (f) for (const id of f.players) if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, id) === 0) f.wagers[id] = 0;
       break;
     case 'wagers':
       session.finalStep = 'question';

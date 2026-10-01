@@ -8,7 +8,7 @@ import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems,
-  blankSlide, toolOnlyClue, finalBack, rosterChange,
+  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList,
 } from './session';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
@@ -285,7 +285,7 @@ describe('undo as one step', () => {
   it('describes an undone step with points, names and reason', () => {
     const { game, session, a, b } = setup();
     applyScore(session, game, [a, b], 200, 'Memes $200');
-    expect(describeStep(session, undo(session), '$')).toBe('+$200 × 2 (P1, P2) · Memes $200');
+    expect(describeStep(session, undo(session), '$')).toBe('+$200 × 2 (P1 & P2) · Memes $200');
     applyScore(session, game, [a], -400, 'Wrong');
     removePlayer(session, a);
     expect(describeStep(session, session.scoreLog.slice(-1), '$')).toBe('−$400 (P1) · Wrong');
@@ -592,6 +592,32 @@ describe('final wagers', () => {
     expect([...session.final!.players].sort()).toEqual([a, b, c].sort());
   });
 
+  it('fills in a wager of 0 for players who have nothing to wager', () => {
+    const { game, session, a, b, c } = setup();
+    for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
+    applyScore(session, game, [a], 1000, 'x');
+    applyScore(session, game, [b], -200, 'x');
+    goToRound(session, game, 1);
+    finalNext(session, game); // wagers
+    expect(session.final!.wagers).toEqual({ [b]: 0, [c]: 0 });
+    expect(finalWagerProblems(session)).toEqual({ missing: [a], over: [] });
+    session.final!.wagers[a] = 1000;
+    expect(finalWagersOk(session)).toBe(true);
+    // Ignoring the limits, the host can still type more for them.
+    session.final!.wagers[c] = 300;
+    expect([finalWagersOk(session), finalWagersOk(session, true)]).toEqual([false, true]);
+  });
+
+  it('leaves a wager that is already in (typed before going back to the round before)', () => {
+    const { game, session, a, b } = setup();
+    for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
+    applyScore(session, game, [a], 1000, 'x');
+    goToRound(session, game, 1);
+    session.final!.wagers[b] = 50;
+    finalNext(session, game);
+    expect(session.final!.wagers[b]).toBe(50);
+  });
+
   it('carries the old game setting over to each Final round', () => {
     const old = jeopardyGame();
     for (const r of old.rounds) if (r.mode === 'final') delete r.allowNonPositive;
@@ -806,5 +832,17 @@ describe('tiebreaker roll-off', () => {
     // Scores changed so the winner isn't tied for first any more: the roll-off no longer counts.
     setScore(session, 'b', 400);
     expect(standings(session)[0].player.id).toBe('a');
+  });
+});
+
+describe('names', () => {
+  it('lists players as one says them ("Ann, Bob & Cy")', () => {
+    expect([[], ['Ann'], ['Ann', 'Bob'], ['Ann', 'Bob', 'Cy'], ['Ann', 'Bob', 'Cy', 'Dee']].map(nameList)).toEqual(['', 'Ann', 'Ann & Bob', 'Ann, Bob & Cy', 'Ann, Bob, Cy & Dee']);
+  });
+
+  it('names a group award that way in the history', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 200, 'Memes $200');
+    expect(describeStep(session, session.scoreLog, '$')).toBe('+$200 × 3 (P1, P2 & P3) · Memes $200');
   });
 });

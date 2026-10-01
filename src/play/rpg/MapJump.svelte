@@ -11,6 +11,7 @@
   import type { Game, Screen, ScreenRef, Session, World, WorldState } from '../../lib/model';
   import { activeParty, findIn, focusRef, moveTo, screenElements, screenSlide } from '../../lib/rpg';
   import SlideView from '../../lib/slide/SlideView.svelte';
+  import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { moveChoices, partyOn, sendPlayers } from './hostops';
   import MapView from './MapView.svelte';
@@ -126,7 +127,7 @@
           <b>{found.map.name} · {found.screen.name}</b>
           <span class="muted small">
             {st.knowledge[found.screen.id] === 'visited' ? 'Visited' : st.knowledge[found.screen.id] === 'discovered' ? 'Discovered, not visited' : 'Not discovered yet'}
-            {#if there.length}· here: {there.map((p) => p.name).join(', ')}{/if}
+            {#if there.length}· here: {nameList(there.map((p) => p.name))}{/if}
           </span>
           {#if found.screen.hostNotes}<span class="notes">📝 {found.screen.hostNotes}</span>{/if}
           {#if send}

@@ -7,7 +7,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { textOn } from '../lib/colors';
   import { finalName, formatPoints, isBoard, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, places, score, standings, tiedLeaders } from '../lib/session';
+  import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import type { MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
@@ -249,9 +249,9 @@
     {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} />{/if}
     <h1>
       {#if tieOpen}
-        Tie for first: {winners.map((w) => w.name).join(' & ')}!
+        Tie for first: {nameList(winners.map((w) => w.name))}!
       {:else if winners.length > 1}
-        It's a tie: {winners.map((w) => w.name).join(' & ')}!
+        It's a tie: {nameList(winners.map((w) => w.name))}!
       {:else if winners.length}
         {winners[0].name} wins!
       {:else}
