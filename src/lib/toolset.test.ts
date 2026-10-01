@@ -9,7 +9,6 @@ import {
   clampStat,
   lastAction,
   startStep,
-  countItem,
   giveItem,
   inventory,
   logged,
@@ -31,6 +30,12 @@ import {
   transferEntry,
   undoAction,
 } from './toolset';
+
+/** How many of catalog item `item` a player holds (all stacks). */
+const countItem = (session: Session, playerId: string, item: string) =>
+  inventory(session, playerId)
+    .filter((e) => e.item === item)
+    .reduce((n, e) => n + e.qty, 0);
 
 function setup(): { game: Game; session: Session } {
   const game = newGame();

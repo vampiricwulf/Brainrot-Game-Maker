@@ -11,6 +11,8 @@
     onclose,
   }: { saves: SaveEntry[]; onpick: (s: SaveEntry) => void; onbrowse: () => void; onclose: () => void } = $props();
   const when = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
+  /** An exported .html: Open… edits the game inside it. */
+  const exported = (s: SaveEntry) => /\.html?$/i.test(s.name);
   // Saves go to Documents when the app's folder can't be written: 📂 shows the folder the newest save is in.
   const newest = $derived(saves.reduce<SaveEntry | undefined>((a, b) => (!a || b.modified > a.modified ? b : a), undefined));
   const inDocuments = $derived(saves.filter((s) => s.place === 'documents').length);
@@ -35,12 +37,17 @@
       <button onclick={onbrowse}>Browse…</button>
       <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
     </div>
-    <p class="muted small">Your saves in BrainrotSaves ({where}). Browse… opens a game from anywhere else.</p>
+    <p class="muted small">
+      Your saves and exported games in BrainrotSaves ({where}). Browse… opens a game from anywhere else, or an older version
+      Save kept (Game.brainrot.bak).
+    </p>
     <div class="list">
       {#each saves as s (s.place + s.name)}
         <button class="save" onclick={() => onpick(s)}>
           <b>{s.name}</b>
-          <span class="muted small">{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents' ? ' · in Documents' : ''}</span>
+          <span class="muted small"
+            >{exported(s) ? 'Exported game · ' : ''}{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents' ? ' · in Documents' : ''}</span
+          >
         </button>
       {/each}
     </div>

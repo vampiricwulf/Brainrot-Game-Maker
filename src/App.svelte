@@ -16,6 +16,7 @@
   import ContextMenu from './lib/ContextMenu.svelte';
   import { autosave } from './lib/autosave';
   import { inTauri } from './lib/platform';
+  import { flushOnClose } from './lib/desktop.svelte';
   import { prefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
   import { arriving, commit, heldMedia, history, listen, mark, startHistory, toSave } from './lib/history.svelte';
@@ -182,6 +183,8 @@
       savePlaySoon.flush();
     };
     const onvis = () => document.visibilityState === 'hidden' && flush();
+    // Desktop app: closing the window waits for these writes.
+    flushOnClose(flush);
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onvis);
     return () => {

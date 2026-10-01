@@ -193,9 +193,17 @@ export function mimeFor(name: string, mime?: string): string {
 /** HEIC photos (the iPhone's format): no browser, nor the desktop app, can show them. */
 const isHeic = (name: string, mime: string) => /^image\/hei[cf]/.test(mime) || /^hei[cf]$/.test(extOf(name));
 
-/** Refuse a picture that could never show, rather than add one that stays blank. */
-function refuseHeic(name: string, mime: string): void {
+/**
+ * The checks every file added to the game goes through: a HEIC photo is refused (it would stay blank rather than show),
+ * so is a file that isn't a picture, video, sound or font; an SVG is sanitized. Returns what to store.
+ */
+async function checkedFile(file: Blob, name: string): Promise<{ mime: string; kind: MediaKind; blob: Blob }> {
+  const mime = mimeFor(name, file.type);
   if (isHeic(name, mime)) throw new Error(`"${name}" is a HEIC photo (the iPhone's format), which the game can't show. Convert it to JPG or PNG first.`);
+  const kind = mediaKind(name, mime);
+  if (!kind) throw new Error(`"${name}" isn't a supported image, video, audio or font file.`);
+  const blob = mime === 'image/svg+xml' ? new Blob([sanitizeSvg(await file.text())], { type: mime }) : file;
+  return { mime, kind, blob };
 }
 
 export const ACCEPT = {
@@ -216,12 +224,7 @@ export async function addMediaFile(
   name = (file as File).name ?? 'file',
   extra: Pick<MediaRef, 'source' | 'expiresAt'> = {},
 ): Promise<MediaRef> {
-  const mime = mimeFor(name, file.type);
-  refuseHeic(name, mime);
-  const kind = mediaKind(name, mime);
-  if (!kind) throw new Error(`"${name}" isn't a supported image, video, audio or font file.`);
-  let blob: Blob = file;
-  if (mime === 'image/svg+xml') blob = new Blob([sanitizeSvg(await file.text())], { type: mime });
+  const { mime, kind, blob } = await checkedFile(file, name);
   // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.
   const ref: MediaRef = { id: newId(), name: uniqueMediaName(game.media.map((m) => m.name), name), mime, size: blob.size, kind, ...extra };
   await putMedia(ref.id, blob.type ? blob : new Blob([blob], { type: mime }));
@@ -392,13 +395,8 @@ const KIND_WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a vid
 export async function replaceMediaFile(game: Game, id: string, file: File): Promise<MediaRef> {
   const ref = game.media.find((m) => m.id === id);
   if (!ref) throw new Error('That file is no longer in the game.');
-  const mime = mimeFor(file.name, file.type);
-  refuseHeic(file.name, mime);
-  const kind = mediaKind(file.name, mime);
-  if (!kind) throw new Error(`"${file.name}" isn't a supported image, video, audio or font file.`);
+  const { mime, kind, blob } = await checkedFile(file, file.name);
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
-  let blob: Blob = file;
-  if (mime === 'image/svg+xml') blob = new Blob([sanitizeSvg(await file.text())], { type: mime });
   await putMedia(id, blob.type ? blob : new Blob([blob], { type: mime }));
   ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
   ref.mime = mime;
@@ -437,7 +435,10 @@ export async function relinkMissing(game: Game, files: File[]): Promise<{ fixed:
   return { fixed, stillMissing: missingMedia(game).map((m) => m.name), errors };
 }
 
-/** Strip scripts, event handlers and external references from an SVG (spec §10 security). */
+/**
+ * Strip scripts, embedded HTML (foreignObject), event handlers and javascript: links from an SVG (spec §10 security).
+ * Links to other files stay: a picture shown in an <img> never loads them.
+ */
 export function sanitizeSvg(svg: string): string {
   const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
   doc.querySelectorAll('script, foreignObject').forEach((n) => n.remove());

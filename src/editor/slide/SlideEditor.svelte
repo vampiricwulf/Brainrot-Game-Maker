@@ -27,7 +27,8 @@
   import type { FitResult } from '../../lib/autofit';
   import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingOurs } from '../../lib/clipboard.svelte';
   import { dropdown } from '../../lib/menustate.svelte';
-  import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
+  import { addMediaFile, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
+  import { warnIfUnplayable } from '../../lib/mediadrop';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
@@ -380,8 +381,7 @@
       for (const file of Array.from(files)) {
         try {
           const ref = await addMediaFile(game, file);
-          if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
-            toast(`⚠ This browser may not play "${ref.name}". MP4 (H.264) / MP3 are safest.`, 7000);
+          warnIfUnplayable(ref);
           await addMedia(ref.kind, ref.id, at);
         } catch (e) {
           toast((e as Error).message, 5000);

@@ -1,32 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { autosaveName, nextSlot } from './autosave';
+import { autosaveName, autosaveTag, planAutosave } from './autosave';
 import type { SaveEntry } from './desktop.svelte';
 
 const save = (name: string, modified: number, place: SaveEntry['place'] = 'app'): SaveEntry => ({ name, size: 1, modified, place });
+const game = { title: 'My Game!', id: '3F9A1C2B-0000-4000-8000-000000000000' };
+const slot = (n: number, g: { title: string; id: string } = game) => autosaveName(g, n);
 
 describe('autosave slots', () => {
   it('fill the free slots first, then replace the oldest', () => {
-    expect(autosaveName('My Game!', 2)).toBe('My-Game (autosave 2).brainrot');
-    expect(nextSlot('My Game!', [], 3)).toBe(1);
-    const saves = [save('My-Game (autosave 1).brainrot', 100), save('My-Game (autosave 2).brainrot', 50)];
-    expect(nextSlot('My Game!', saves, 3)).toBe(3);
-    saves.push(save('My-Game (autosave 3).brainrot', 200));
-    expect(nextSlot('My Game!', saves, 3)).toBe(2);
-    // Other games and slots past the number kept don't count.
-    expect(nextSlot('Other', saves, 3)).toBe(1);
-    expect(nextSlot('My Game!', saves, 2)).toBe(2);
+    expect(autosaveName(game, 2)).toBe('My-Game (autosave 2, 3f9a1c).brainrot');
+    expect(planAutosave(game, [], 3).name).toBe(slot(1));
+    const saves = [save(slot(1), 100), save(slot(2), 50)];
+    expect(planAutosave(game, saves, 3).name).toBe(slot(3));
+    saves.push(save(slot(3), 200));
+    expect(planAutosave(game, saves, 3)).toEqual({ name: slot(2), drop: [] });
+  });
+
+  it('are per game: another game with the same title has its own', () => {
+    const other = { title: game.title, id: 'aa11bb22-0000-4000-8000-000000000000' };
+    const saves = [save(slot(1), 100), save(slot(2), 50), save(slot(3), 200)];
+    expect(planAutosave(other, saves, 3)).toEqual({ name: slot(1, other), drop: [] });
+    // Autosaves from before the tag (title only) belong to no game in particular: they're left alone.
+    expect(planAutosave(game, [save('My-Game (autosave 1).brainrot', 1)], 3)).toEqual({ name: slot(1), drop: [] });
+  });
+
+  it('keep their slots when the title changes, replacing the slot’s copy under the old title', () => {
+    const renamed = { ...game, title: 'Better Name' };
+    const saves = [save(slot(1), 100), save(slot(2), 300)];
+    const plan = planAutosave(renamed, saves, 2);
+    expect(plan.name).toBe('Better-Name (autosave 1, 3f9a1c).brainrot');
+    expect(plan.drop.map((s) => s.name)).toEqual([slot(1)]);
+  });
+
+  it('past the number kept are deleted (when it was lowered)', () => {
+    const saves = [1, 2, 3, 4].map((n) => save(slot(n), n * 100));
+    const plan = planAutosave(game, saves, 2);
+    expect(plan.name).toBe(slot(1));
+    expect(plan.drop.map((s) => s.name)).toEqual([slot(3), slot(4)]);
   });
 
   it('rotate in Documents too (where saves go when the app’s folder can’t be written)', () => {
-    const docs = [1, 2, 3].map((n) => save(`My-Game (autosave ${n}).brainrot`, [300, 100, 200][n - 1], 'documents'));
-    expect(nextSlot('My Game!', docs, 3)).toBe(2);
+    const docs = [1, 2, 3].map((n) => save(slot(n), [300, 100, 200][n - 1], 'documents'));
+    expect(planAutosave(game, docs, 3).name).toBe(slot(2));
     // A slot in both folders counts as written when its newest copy was.
-    expect(nextSlot('My Game!', [...docs, save('My-Game (autosave 2).brainrot', 400)], 3)).toBe(3);
+    expect(planAutosave(game, [...docs, save(slot(2), 400)], 3).name).toBe(slot(3));
   });
 
   it('keep the title’s letters in any language', () => {
-    expect(autosaveName('Café Quiz', 1)).toBe('Café-Quiz (autosave 1).brainrot');
-    expect(nextSlot('ブレインロット', [save('ブレインロット (autosave 1).brainrot', 1)], 3)).toBe(2);
-    expect(nextSlot('Привет', [save('ブレインロット (autosave 1).brainrot', 1)], 3)).toBe(1);
+    expect(autosaveName({ title: 'Café Quiz', id: 'abc' }, 1)).toBe('Café-Quiz (autosave 1, abc).brainrot');
+    const jp = { title: 'ブレインロット', id: 'x1' };
+    expect(planAutosave(jp, [save(autosaveName(jp, 1), 1)], 3).name).toBe(autosaveName(jp, 2));
+    expect(autosaveTag('---')).toBe('game');
   });
 });

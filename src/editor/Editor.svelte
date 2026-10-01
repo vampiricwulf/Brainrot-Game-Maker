@@ -2,14 +2,14 @@
   import { dropMenu, showMenu } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
-  import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
+  import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
   import { clone, reidRound } from '../lib/ops';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
-  import { pickFile, safeFilename, saveGameJson } from '../lib/fileio';
+  import { GAME_FILES, isGameFile, pickFile, safeFilename, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
   import { formatBytes } from '../lib/media.svelte';
@@ -246,7 +246,7 @@
 
   async function browse(): Promise<void> {
     saveList = null;
-    const file = await pickFile('.brainrot,.jbr,.zip,.json,application/json,application/zip');
+    const file = await pickFile(GAME_FILES);
     if (file) await openFile(file);
   }
 
@@ -283,11 +283,14 @@
     }
   }
 
+  // Desktop app: a game file the app was opened with ("Open with…") opens like Open….
+  onMount(() => onOpenedFile(openFile));
+
   /** A game file dropped anywhere no other part of the editor takes the drop opens, like Open…. */
   function ondrop(e: DragEvent): void {
     if (e.defaultPrevented || !e.dataTransfer?.files.length) return;
     e.preventDefault();
-    const file = Array.from(e.dataTransfer.files).find((f) => /\.(brainrot|jbr|json)$/i.test(f.name));
+    const file = Array.from(e.dataTransfer.files).find((f) => isGameFile(f.name));
     if (file) openFile(file);
     else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A .brainrot game dropped here opens.', 5000);
   }

@@ -7,7 +7,8 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast, editedGame } from '../lib/app.svelte';
-  import { ACCEPT, addMediaFile, addMediaLink, canPlay, formatBytes, type LinkAdded } from '../lib/media.svelte';
+  import { ACCEPT, addMediaFile, addMediaLink, formatBytes, type LinkAdded } from '../lib/media.svelte';
+  import { warnIfUnplayable } from '../lib/mediadrop';
   import { isAbort, LinkError } from '../lib/download';
   import { DRIVE_SHARE_HINT, driveUrls, isLinkProblem, linkMessages, parseMediaLink, type LinkKind, type MediaLink } from '../lib/links';
   import { inTauri } from '../lib/platform';
@@ -91,8 +92,7 @@
       drive = null;
       toast(`${added.warn ? '⚠' : added.saved ? '✓' : '🌐'} ${added.message}`, added.saved ? 4000 : 9000);
       const r = added.ref;
-      if (added.saved && (r.kind === 'video' || r.kind === 'audio') && !canPlay(r.mime))
-        toast(`⚠ This browser may not play "${r.name}" (${r.mime}). Try converting it to MP4 (H.264) or MP3.`, 7000);
+      if (added.saved) warnIfUnplayable(r);
       onmedia(r, added);
     } catch (e) {
       if (isAbort(e)) return;
@@ -141,6 +141,7 @@
     if (!file) return;
     try {
       const ref = await addMediaFile(editedGame(), file, file.name, { source: drive?.link.source });
+      warnIfUnplayable(ref);
       drive = null;
       text = '';
       onmedia(ref, null);

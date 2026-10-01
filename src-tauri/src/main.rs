@@ -32,7 +32,7 @@ use std::ffi::OsStr;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 mod migrate;
@@ -383,7 +383,9 @@ fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
 /// Save a file (a .brainrot pack, a .json game or an exported .html) into BrainrotSaves next to the exe,
 /// or Documents\BrainrotSaves when the exe's folder can't be written. The bytes come as the raw request
 /// body (big packs), the file name in the `x-name` header (URI-encoded). `x-mode: new` never replaces a save
-/// (it becomes "Game (2).brainrot"…); anything else replaces a save of that name. Returns where it went.
+/// (it becomes "Game (2).brainrot"…); `backup` replaces a save of that name and keeps the one it replaces as
+/// "Game.brainrot.bak" (and the one before as .bak2); anything else (autosaves) just replaces it. Returns where
+/// it went.
 #[tauri::command]
 fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_json::Value, String> {
     let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
@@ -396,10 +398,11 @@ fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<serde_j
         .and_then(|v| urlencoding_decode(v))
         .and_then(|v| saves::clean_name(&v))
         .ok_or("That isn't a file name the app can save.")?;
-    let fresh = request.headers().get("x-mode").and_then(|v| v.to_str().ok()) == Some("new");
-    let write = |dir: &Path| {
-        let name = if fresh { saves::unused_name(dir, &name) } else { name.clone() };
-        saves::write_save(dir, &name, data)
+    let mode = request.headers().get("x-mode").and_then(|v| v.to_str().ok());
+    let write = |dir: &Path| match mode {
+        Some("new") => saves::write_save(dir, &saves::unused_name(dir, &name), data, 0),
+        Some("backup") => saves::write_save(dir, &name, data, saves::BACKUPS),
+        _ => saves::write_save(dir, &name, data, 0),
     };
     let beside = data_folder(&app, "saves");
     let first_err = match beside.as_deref().map(write) {
@@ -454,11 +457,97 @@ fn list_saves(app: AppHandle) -> serde_json::Value {
 #[tauri::command]
 fn read_save(app: AppHandle, name: String, place: String) -> Result<tauri::ipc::Response, String> {
     let name = saves::clean_name(&name).ok_or("That isn't a save.")?;
-    let which = if place == "documents" { "saves-documents" } else { "saves" };
-    let dir = data_folder(&app, which).ok_or("No saves folder.")?;
+    let dir = saves_folder(&app, &place)?;
     std::fs::read(dir.join(&name))
         .map(tauri::ipc::Response::new)
         .map_err(|err| format!("Couldn't open {name}: {err}"))
+}
+
+/// BrainrotSaves beside the exe ("app") or in Documents ("documents").
+fn saves_folder(app: &AppHandle, place: &str) -> Result<PathBuf, String> {
+    let which = if place == "documents" { "saves-documents" } else { "saves" };
+    data_folder(app, which).ok_or_else(|| "No saves folder.".into())
+}
+
+/// Delete an autosave past the number kept (see src/lib/autosave.ts). Nothing else can be deleted.
+#[tauri::command]
+fn delete_save(app: AppHandle, name: String, place: String) -> Result<(), String> {
+    let name = saves::clean_name(&name)
+        .filter(|name| saves::is_autosave(name))
+        .ok_or("Only old autosaves can be deleted.")?;
+    remove_if_there(&saves_folder(&app, &place)?.join(&name)).map_err(|err| format!("Couldn't delete {name}: {err}"))
+}
+
+/// The game file the app was opened with ("Open with", or dropped on the exe), or that a second launch was
+/// given, until the host page takes it. The page can only read this one file, not any path it likes.
+static OPENED: Mutex<Option<PathBuf>> = Mutex::new(None);
+
+/// Event for the host page: a second launch was given a game file to open (take_opened_file).
+const OPEN_EVENT: &str = "open-file";
+
+/// A launch argument that's a game file (relative to `cwd`).
+fn game_file_arg(arg: &OsStr, cwd: &Path) -> Option<PathBuf> {
+    let path = Path::new(arg);
+    let name = path.file_name()?.to_str()?;
+    saves::is_game(name).then(|| cwd.join(path)).filter(|p| p.is_file())
+}
+
+/// The first game file among the launch arguments (after the exe's own path).
+fn opened_file_arg<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I, cwd: &Path) -> Option<PathBuf> {
+    args.into_iter().skip(1).find_map(|arg| game_file_arg(arg.as_ref(), cwd))
+}
+
+/// Keep a file to open for the host page. Returns whether there was one.
+fn note_opened_file<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I, cwd: &Path) -> bool {
+    let Some(path) = opened_file_arg(args, cwd) else {
+        return false;
+    };
+    *OPENED.lock().unwrap_or_else(|e| e.into_inner()) = Some(path);
+    true
+}
+
+/// The name of the game file waiting to be opened, if any (take_opened_file reads it).
+#[tauri::command]
+fn opened_file() -> Option<String> {
+    let opened = OPENED.lock().unwrap_or_else(|e| e.into_inner());
+    opened.as_ref()?.file_name()?.to_str().map(str::to_string)
+}
+
+/// The waiting game file's bytes; it's no longer waiting afterwards.
+#[tauri::command]
+fn take_opened_file() -> Result<tauri::ipc::Response, String> {
+    let path = OPENED.lock().unwrap_or_else(|e| e.into_inner()).take().ok_or("No file to open.")?;
+    std::fs::read(&path)
+        .map(tauri::ipc::Response::new)
+        .map_err(|err| format!("Couldn't open {}: {err}", path.display()))
+}
+
+/// The host page writes what's still pending (the last edits, the game in play) when the window is closed:
+/// it says so at startup, and closes the window itself once that's done (close_app).
+static PAGE_FLUSHES: AtomicBool = AtomicBool::new(false);
+/// The host window's ✕ was clicked once: the page is writing; a second click closes at once.
+static CLOSING: AtomicBool = AtomicBool::new(false);
+/// Event for the host page: write what's pending, then call close_app.
+const CLOSE_EVENT: &str = "close-requested";
+/// How long the page gets for that before the window closes anyway.
+const CLOSE_WAIT: Duration = Duration::from_secs(3);
+
+#[tauri::command]
+fn flush_on_close() {
+    PAGE_FLUSHES.store(true, Ordering::SeqCst);
+}
+
+/// The host page has written what was pending: close the host window (which ends the app).
+#[tauri::command]
+fn close_app(app: AppHandle) {
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.destroy();
+    }
+}
+
+/// Whether a click on the host window's ✕ waits for the page first (and tells it to write), or closes now.
+fn wait_for_page_on_close() -> bool {
+    PAGE_FLUSHES.load(Ordering::SeqCst) && !CLOSING.swap(true, Ordering::SeqCst)
 }
 
 /// The project's own pages (ℹ About's links); `open_link` opens nothing else.
@@ -614,41 +703,29 @@ fn open_popup(
     }
 }
 
+/// A native message box with the app's name as its title; returns the button clicked. Blocks until it's closed.
+#[cfg(windows)]
+fn native_box(text: &str, style: windows_sys::Win32::UI::WindowsAndMessaging::MESSAGEBOX_STYLE) -> i32 {
+    use windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW;
+    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let (text, title) = (wide(text), wide("Brainrot Games Maker"));
+    // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
+    unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), title.as_ptr(), style) }
+}
+
 /// A native message box, for what a windowed app can't otherwise say (its console output goes
 /// nowhere). Blocks until it's closed.
 #[cfg(windows)]
 fn message_box(text: &str) {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
-    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
-    let (text, title) = (wide(text), wide("Brainrot Games Maker"));
-    // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
-    unsafe {
-        MessageBoxW(
-            std::ptr::null_mut(),
-            text.as_ptr(),
-            title.as_ptr(),
-            MB_OK | MB_ICONERROR,
-        );
-    }
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK};
+    native_box(text, MB_OK | MB_ICONERROR);
 }
 
 /// A Retry/Cancel message box; true = Retry.
 #[cfg(windows)]
 fn ask_retry(text: &str) -> bool {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{
-        MessageBoxW, IDRETRY, MB_ICONWARNING, MB_RETRYCANCEL,
-    };
-    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
-    let (text, title) = (wide(text), wide("Brainrot Games Maker"));
-    // SAFETY: both strings are NUL-terminated UTF-16 that outlive the call; no owner window.
-    unsafe {
-        MessageBoxW(
-            std::ptr::null_mut(),
-            text.as_ptr(),
-            title.as_ptr(),
-            MB_RETRYCANCEL | MB_ICONWARNING,
-        ) == IDRETRY
-    }
+    use windows_sys::Win32::UI::WindowsAndMessaging::{IDRETRY, MB_ICONWARNING, MB_RETRYCANCEL};
+    native_box(text, MB_RETRYCANCEL | MB_ICONWARNING) == IDRETRY
 }
 
 /// A message box on its own thread, for callers on the UI thread: its modal loop must not run
@@ -863,13 +940,21 @@ fn main() {
     // A restart relaunches the app with the command line in this Env (Tauri keeps the first one it's
     // given): without --no-audio-fix, so that ticking the fix again in a copy started with that
     // switch isn't undone by the restart.
+    // A game file it was opened with is opened once, not again after a restart.
+    let cwd = std::env::current_dir().unwrap_or_default();
+    note_opened_file(std::env::args_os(), &cwd);
     let mut env = tauri::Env::default();
-    env.args_os.retain(|arg| !is_no_fix_switch(arg));
+    env.args_os.retain(|arg| !is_no_fix_switch(arg) && game_file_arg(arg, &cwd).is_none());
     tauri::Builder::default()
         // First, so a second launch hands over to the running app before anything else starts.
-        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             if has_no_fix_switch(&args) {
                 fix_off_from_second_launch(app);
+            }
+            if note_opened_file(&args, Path::new(&cwd)) {
+                if let Err(err) = app.emit_to("main", OPEN_EVENT, ()) {
+                    eprintln!("couldn't tell the page to open a file: {err}");
+                }
             }
             if let Some(main) = app.get_webview_window("main") {
                 let _ = main.unminimize();
@@ -889,7 +974,12 @@ fn main() {
             open_link,
             save_file,
             list_saves,
-            read_save
+            read_save,
+            delete_save,
+            opened_file,
+            take_opened_file,
+            flush_on_close,
+            close_app
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -902,11 +992,25 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Closing the host window ends the app, even if the audience window is still open.
-            if window.label() == "main" {
-                if let WindowEvent::Destroyed = event {
-                    window.app_handle().exit(0);
+            if window.label() != "main" {
+                return;
+            }
+            match event {
+                // The page writes its last edits first (it closes the window itself), within CLOSE_WAIT.
+                WindowEvent::CloseRequested { api, .. } if wait_for_page_on_close() => {
+                    api.prevent_close();
+                    if let Err(err) = window.emit_to("main", CLOSE_EVENT, ()) {
+                        eprintln!("couldn't tell the page the window is closing: {err}");
+                    }
+                    let window = window.clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(CLOSE_WAIT);
+                        let _ = window.destroy();
+                    });
                 }
+                // Closing the host window ends the app, even if the audience window is still open.
+                WindowEvent::Destroyed => window.app_handle().exit(0),
+                _ => {}
             }
         })
         .run(tauri::generate_context!())
@@ -942,6 +1046,25 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn a_game_file_given_at_launch_is_found() {
+        let dir = TempDir::new("opened");
+        dir.touch("Quiz.brainrot");
+        dir.touch("Show.HTML");
+        dir.touch("notes.txt");
+        let exe = "C:\\Apps\\brainrot.exe";
+        // "Open with" passes the full path; a shortcut or a terminal may pass one relative to its folder.
+        let full = dir.0.join("Quiz.brainrot");
+        assert_eq!(opened_file_arg([exe.as_ref(), full.as_os_str()], Path::new("/elsewhere")), Some(full.clone()));
+        assert_eq!(opened_file_arg([exe, "--no-audio-fix", "Quiz.brainrot"], &dir.0), Some(full));
+        assert_eq!(opened_file_arg([exe, "Show.HTML"], &dir.0), Some(dir.0.join("Show.HTML")));
+        // Not a game, missing, or only the exe itself.
+        assert_eq!(opened_file_arg([exe, "notes.txt"], &dir.0), None);
+        assert_eq!(opened_file_arg([exe, "Gone.brainrot"], &dir.0), None);
+        assert_eq!(opened_file_arg([dir.0.join("Quiz.brainrot")], &dir.0), None);
+        assert!(game_file_arg(OsStr::new("--no-audio-fix"), &dir.0).is_none());
     }
 
     #[test]

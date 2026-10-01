@@ -2,11 +2,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
-  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls } from '../../lib/media.svelte';
+  import { ACCEPT, addMediaFile, formatBytes, imgFallback, mediaUrls } from '../../lib/media.svelte';
   import { pickFile } from '../../lib/fileio';
   import { stepAsync } from '../../lib/history.svelte';
   import { linkHost } from '../../lib/links';
-  import { fittingFile, hasFiles, useFile } from '../../lib/mediadrop';
+  import { fittingFile, hasFiles, useFile, warnIfUnplayable } from '../../lib/mediadrop';
   import type { MediaKind } from '../../lib/model';
   import LinkField from '../LinkField.svelte';
 
@@ -52,8 +52,7 @@
       await stepAsync(null, async () => {
         const ref = await addMediaFile(editedGame(), file);
         if (ref.kind !== kind) toast(`That's ${ref.kind === 'image' ? 'an' : 'a'} ${ref.kind} file; added it anyway.`);
-        if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
-          toast(`⚠ This browser may not play "${ref.name}" (${ref.mime}). Try converting it to MP4 (H.264) or MP3.`, 7000);
+        warnIfUnplayable(ref);
         await onpick(ref.id);
       });
     } catch (e) {

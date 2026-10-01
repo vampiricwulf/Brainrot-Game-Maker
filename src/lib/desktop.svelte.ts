@@ -159,8 +159,12 @@ export interface SavedFile {
   fallback: boolean;
 }
 
-/** Save a file into BrainrotSaves (desktop app). Throws the app's message when it can't. */
-export async function saveToSaves(name: string, blob: Blob, mode: 'new' | 'overwrite' = 'overwrite'): Promise<SavedFile> {
+/**
+ * Save a file into BrainrotSaves (desktop app). `new`: never replace a save ("Game (2).brainrot"…); `backup`: replace
+ * it, keeping the one replaced as "Game.brainrot.bak" (and the one before as .bak2); `overwrite`: just replace it.
+ * Throws the app's message when it can't.
+ */
+export async function saveToSaves(name: string, blob: Blob, mode: 'new' | 'backup' | 'overwrite' = 'overwrite'): Promise<SavedFile> {
   const { core } = await import('@tauri-apps/api');
   const bytes = new Uint8Array(await blob.arrayBuffer());
   try {
@@ -193,4 +197,72 @@ export async function listSaves(): Promise<SaveEntry[]> {
 export async function readSave(entry: SaveEntry): Promise<File> {
   const buf = await invoke<ArrayBuffer>('read_save', { name: entry.name, place: entry.place });
   return new File([buf], entry.name);
+}
+
+/** Delete an autosave past the number kept (the app deletes nothing else). */
+export async function deleteSave(entry: SaveEntry): Promise<void> {
+  await invoke('delete_save', { name: entry.name, place: entry.place });
+}
+
+/** The host window: the one the native side hands its flags to (not the audience window). */
+const isHost = () => inTauri() && w?.__JB_AUDIO_FIX !== undefined;
+
+/** The game file the app was opened with ("Open with", or a second launch given one), taken once. */
+async function takeOpenedFile(): Promise<File | null> {
+  const name = await invoke<string | null>('opened_file');
+  if (!name) return null;
+  return new File([await invoke<ArrayBuffer>('take_opened_file')], name);
+}
+
+/**
+ * Open the game file the app was started with now, and any a later launch is given (the running app gets it then).
+ * Returns the stop function. A file that arrives while nothing listens (a game is being played) waits for the next call.
+ */
+export function onOpenedFile(open: (file: File) => void): () => void {
+  if (!isHost()) return () => {};
+  opener = open;
+  openWaiting();
+  if (!listeningForFiles) {
+    listeningForFiles = true;
+    import('@tauri-apps/api/event')
+      .then(({ listen }) => listen('open-file', openWaiting))
+      .catch((err) => console.warn('Not listening for files to open', err));
+  }
+  return () => {
+    if (opener === open) opener = null;
+  };
+}
+
+let opener: ((file: File) => void) | null = null;
+let listeningForFiles = false;
+
+function openWaiting(): void {
+  const open = opener;
+  if (!open) return;
+  takeOpenedFile()
+    .then((file) => file && open(file))
+    .catch((err) => alert(err instanceof Error ? err.message : String(err)));
+}
+
+/**
+ * When the app's window is closed: run `flush` (it writes the last edits), then close once those writes are done (the
+ * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits.
+ */
+export function flushOnClose(flush: () => void): void {
+  if (!isHost()) return;
+  import('@tauri-apps/api/event')
+    .then(({ listen }) =>
+      listen('close-requested', async () => {
+        try {
+          flush();
+          // A read waits for every write started before it (IndexedDB runs them in order).
+          await new Promise((r) => setTimeout(r));
+          await (await import('idb-keyval')).get('__probe');
+        } finally {
+          await invoke('close_app');
+        }
+      }),
+    )
+    .then(() => invoke('flush_on_close'))
+    .catch((err) => console.warn('Not saving on close', err));
 }

@@ -25,8 +25,9 @@
         Save replaces the game’s last save
       </label>
       <p class="muted small">
-        Off: every Save keeps the older saves and makes a new file (Game.brainrot, then Game (2).brainrot, Game (3).brainrot…).
-        On: Save always writes Game.brainrot.
+        On: Save writes Game.brainrot again and keeps the two before it as Game.brainrot.bak and .bak2 (Open… › Browse… opens
+        them). Another game with the same name never gets replaced: it saves as Game (2).brainrot. Off: every Save makes a new
+        file (Game (2).brainrot, Game (3).brainrot…).
       </p>
     {:else}
       <p class="muted small">
@@ -48,8 +49,9 @@
         autosaves per game (the oldest is replaced)
       </label>
       <p class="muted small">
-        Autosaves go in BrainrotSaves next to the app as “Game (autosave 1).brainrot”, “(autosave 2)”… Only when the game
-        changed since the last one. Open… lists them with your saves.
+        Autosaves go in BrainrotSaves next to the app as “Game (autosave 1, 3f9a1c).brainrot”, “(autosave 2, …)”… (the letters
+        tell games with the same name apart). Only when the game changed since the last one; after you lower the number, the
+        next autosave deletes the extra ones. Open… lists them with your saves.
       </p>
     {:else}
       <p class="muted small">
