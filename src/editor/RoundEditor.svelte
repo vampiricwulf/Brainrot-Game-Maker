@@ -4,6 +4,7 @@
   import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
+  import { copyIsTheBrowsers } from '../lib/undokeys';
   import { categoryLabel, clueValue, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
@@ -234,7 +235,7 @@
     } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey) {
       e.preventDefault();
       clearTile(p);
-    } else if (mod && !e.altKey && k === 'c' && !window.getSelection()?.toString()) {
+    } else if (mod && !e.altKey && k === 'c' && !copyIsTheBrowsers(e.currentTarget, window.getSelection())) {
       e.preventDefault();
       copyTile(p);
     } else if (mod && !e.altKey && k === 'v') {
@@ -255,9 +256,16 @@
     toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`, 4000);
   }
 
-  /** ↓ at the end of a category's name goes down to its top tile. */
+  /**
+   * ↓ at the end of a category's name, or Enter, goes down to its top tile (Shift+Enter starts a second line of the
+   * name).
+   */
   function catNameKey(e: KeyboardEvent, ci: number): void {
     const t = e.currentTarget as HTMLTextAreaElement;
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
+      e.preventDefault();
+      return focusTile(ci, 0, true);
+    }
     if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || t.selectionEnd < t.value.length) return;
     e.preventDefault();
     focusTile(ci, 0, true);
@@ -585,6 +593,7 @@
           data-cat-name={ci}
           use:autosize={cat.title}
           onkeydown={(e) => catNameKey(e, ci)}
+          onblur={() => /\s+$/.test(cat.title) && (cat.title = cat.title.trimEnd())}
           onpaste={(e) => catNamePaste(e, ci)}></textarea>
         {#if cat.image}
           <div class="cat-img-opts">

@@ -71,8 +71,15 @@ it's already in 🖼 Media). Replacing a file in 🖼 Media redoes the 🎨 edit
 
 **RPG map editor:** drag a screen to move it or swap it with another (dropping past the edge grows the map, dropping
 on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /
-`Ctrl+C` `Ctrl+V` / `F2` work on the grid, `Shift`-click or a box selects several, and pictures dropped on the map
-become screens. Click ⛔ between two screens to block the way.
+`Ctrl+C` `Ctrl+V` / `F2` work on the grid, `Shift`-click or a box selects several (`Alt`+drag draws a box from
+anywhere, on a full map too), and pictures dropped on the map become screens. Click ⛔ between two screens to block
+the way.
+
+**Board game editor:** the board keys the same way. It's one `Tab` stop: the arrows go to the nearest space that way
+(`Shift` adds it to the selection), `Enter` opens its settings and `Tab` goes on to them. `Alt`+arrows move the selected
+spaces (`Shift`+`Alt` further), `F2` renames, `Ctrl+D` duplicates, `Ctrl+C` / `Ctrl+V` copy and paste spaces with their
+buttons (onto any board, in any game), `Delete` deletes. `Ctrl`+click adds a space, `Alt`+drag links two. The
+movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels & Dice keeps them.
 
 Other editor tabs:
 

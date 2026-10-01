@@ -38,6 +38,19 @@ export function newSegment(label: string, i: number): WheelSegment {
   return { id: newId(), label, color: WHEEL_COLORS[i % WHEEL_COLORS.length], weight: 1 };
 }
 
+/** The smallest weight a saved wheel's slice can have (at 0 or below it would drop off the wheel without a word). */
+export const MIN_WEIGHT = 0.1;
+
+/**
+ * A slice weight as typed in the wheel editor: a number of at least MIN_WEIGHT (rounded to 2 places). Blank or not a
+ * number is 1 (an ordinary slice); 0 or less is MIN_WEIGHT: deleting the slice is how it leaves the wheel.
+ */
+export function sliceWeight(text: string): number {
+  const n = Number(text);
+  if (text.trim() === '' || !Number.isFinite(n)) return 1;
+  return Math.max(MIN_WEIGHT, Math.round(n * 100) / 100);
+}
+
 /** A wheel slice in the host's edit box: `off` leaves it out of this run of the wheel. */
 export type PoolSlice = WheelSegment & { off?: boolean };
 

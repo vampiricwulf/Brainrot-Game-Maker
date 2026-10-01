@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
+import { linkMoverDice, newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
 import { newSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, rimSpots, spaceNumber,
+  boardGameProblems, moverPreset, rimSpots, spaceNumber, spaceToward,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -136,8 +136,41 @@ describe('board game: moving', () => {
   it('flags a board that is too small, and paths that end', () => {
     const { game, round } = setup();
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    // One end is the finish (a race to it): fine.
     round.spaces.at(-1)!.next = [];
-    expect(boardGameProblems(game, round, 'Board', 1)[0].text).toContain('Shortcut lead nowhere');
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    // Two, and players get stuck at one: the line names them and goes to the first.
+    round.spaces[8].next = [];
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([
+      { text: 'Board: the path ends at “Space 9” and “Shortcut” (players stop there)', tab: 1, level: 'info', place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[8].id } } },
+    ]);
+  });
+
+  it('links the movement dice by id: a rename keeps them, a delete is on the checklist', () => {
+    const { game, round } = setup();
+    game.dice.push({ id: 'big', name: 'Big dice', showTotal: true, dice: [{ id: 'd', sides: 6, count: 2 }] });
+    // A game saved before: the dice by name. Opening it links them, once.
+    round.mover = { kind: 'dice', dice: 'Big dice' };
+    linkMoverDice(game);
+    expect(round.mover).toEqual({ kind: 'dice', dice: 'Big dice', diceId: 'big' });
+    game.dice[0].name = 'Huge dice';
+    expect(moverPreset(game, round)?.name).toBe('Huge dice');
+    linkMoverDice(game);
+    expect(round.mover).toEqual({ kind: 'dice', dice: 'Big dice', diceId: 'big' });
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    game.dice = [];
+    expect(moverPreset(game, round)).toBeUndefined();
+    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toEqual(['Board: the movement dice no longer exist (pick others in Move by)']);
+    // Standard dice typed in aren't linked to anything.
+    round.mover = { kind: 'dice', dice: '2d6' };
+    linkMoverDice(game);
+    expect(round.mover).toEqual({ kind: 'dice', dice: '2d6' });
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    // Old games that named the dice by id link them too.
+    game.dice.push({ id: 'old', name: 'Old', showTotal: false, dice: [{ id: 'd', sides: 4, count: 1 }] });
+    round.mover = { kind: 'dice', dice: 'old' };
+    linkMoverDice(game);
+    expect(round.mover).toEqual({ kind: 'dice', dice: 'Old', diceId: 'old' });
   });
 
   it('flags Send to buttons whose space or zone was deleted', () => {
@@ -149,7 +182,14 @@ describe('board game: moving', () => {
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
     round.zones = [];
     round.spaces = round.spaces.filter((s) => s.id !== ids[7]);
-    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toContain('Board: 2 button(s) on spaces point nowhere');
+    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toContain('Board: 2 buttons on spaces point nowhere (on “Space 5”)');
+    round.spaces[4].onLand!.pop();
+    expect(boardGameProblems(game, round, 'Board', 1).find((p) => p.text.includes('button'))).toEqual({
+      text: 'Board: a button on “Space 5” points nowhere',
+      tab: 1,
+      level: 'warn',
+      place: { tab: 'round', round: round.id, part: { kind: 'space', space: ids[4] } },
+    });
   });
 
   it('names new spaces with a number no space has yet', () => {
@@ -320,8 +360,36 @@ describe('board game: what spaces show', () => {
     expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
     round.spaces[3].y = 910;
     round.spaces[3].name = 'Finish';
-    expect(boardGameProblems(game, round, 'Board', 1)).toContainEqual({ text: 'Board: Finish is under the stats strip (move it up)', tab: 1, level: 'warn' });
+    expect(boardGameProblems(game, round, 'Board', 1)).toContainEqual({
+      text: 'Board: Finish is under the stats strip (move it up)',
+      tab: 1,
+      level: 'warn',
+      place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[3].id } },
+    });
     game.theme = { ...game.theme, scoreBar: 'hidden' };
     expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
+  });
+});
+
+describe('board game editor: the arrow keys', () => {
+  it('go to the nearest space that way', () => {
+    const round = newBoardGameRound('Board');
+    const sp = (name: string, x: number, y: number) => ({ ...newBoardSpace(x, y, name) });
+    const mid = sp('Mid', 500, 500);
+    const right = sp('Right', 700, 520);
+    const farRight = sp('Far right', 1200, 500);
+    const upRight = sp('Up right', 560, 200);
+    const down = sp('Down', 480, 800);
+    round.spaces = [mid, right, farRight, upRight, down];
+    const go = (from: typeof mid, dx: number, dy: number) => spaceToward(round, from, dx, dy)?.name;
+    expect(go(mid, 1, 0)).toBe('Right');
+    expect(go(right, 1, 0)).toBe('Far right');
+    expect(go(farRight, 1, 0)).toBeUndefined();
+    expect(go(mid, 0, -1)).toBe('Up right');
+    expect(go(mid, 0, 1)).toBe('Down');
+    expect(go(right, -1, 0)).toBe('Mid');
+    // Something straight ahead comes before something nearer but well off to the side.
+    round.spaces.push(sp('Off to the side', 560, 700));
+    expect(go(mid, 1, 0)).toBe('Right');
   });
 });

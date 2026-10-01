@@ -28,7 +28,7 @@
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
-  import { validate } from '../lib/validate';
+  import { dailyDoublesShort, validate } from '../lib/validate';
   import { nextFreeColor } from '../lib/colors';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
@@ -1405,17 +1405,14 @@
 
   /** Things worth fixing before going live (warnings only: Start still works). */
   const checks = $derived.by(() => {
-    const out: { text: string; ddRound?: number }[] = validate(game)
+    // (A board short of Daily Doubles gets a button to place them.)
+    return validate(game)
       .filter((p) => p.level === 'warn')
-      .map((p) => ({ text: p.text }));
-    game.rounds.forEach((r, i) => {
-      if (!isBoard(r)) return;
-      const want = r.dailyDoubleCount ?? 1;
-      const placed = r.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
-      const listed = out.some((p) => p.text.startsWith(`${r.name}:`) && p.text.includes('Daily Double'));
-      if (placed < want && !listed) out.push({ text: `${r.name}: ${want} Daily Double${want === 1 ? '' : 's'} wanted, ${placed} placed`, ddRound: i });
-    });
-    return out;
+      .map((p) => {
+        const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
+        const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.endsWith(' placed');
+        return { text: p.text, ddRound: dd ? (p.tab as number) : undefined };
+      });
   });
 
   /**

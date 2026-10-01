@@ -1,7 +1,7 @@
 <script lang="ts">
   import { modal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
-  import { app } from '../lib/app.svelte';
+  import { app, toast } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { neighbourClue, stepClue, textStyleTargets } from '../lib/ops';
@@ -75,7 +75,12 @@
     side = 'q';
     focusQuestion();
   }
-  const step = (d: 1 | -1) => go(d > 0 ? next : prev);
+  /** Ctrl+Enter / Ctrl+Shift+Enter: the next or previous clue; at the end of the board, a note says so. */
+  function step(d: 1 | -1): void {
+    const to = d > 0 ? next : prev;
+    if (!to) return void toast(d > 0 ? 'That’s the last clue: Esc when you’re done' : 'That’s the first clue', 3000);
+    go(to);
+  }
 
   /** Alt+arrows go like the board: up and down the category, or across to the same row of the next one. */
   const ALT_ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };

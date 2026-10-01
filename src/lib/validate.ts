@@ -2,22 +2,36 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type Game } from './model';
+import { isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type BoardRound, type Game } from './model';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
 import { tileDice } from './tools';
+import type { Place } from './historylabel';
 
 export interface Problem {
   text: string;
   /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'tools' | round index), or 'play' (the pre-game screen). */
   tab: 'play' | 'tiebreaker' | 'media' | 'tools' | number;
   level: 'warn' | 'info';
+  /** Where in the round it is (the screen, the space…), for the checklist to go to. */
+  place?: Place;
 }
 
 /** "1 clue", "3 clues" ("category" → "categories"). */
 function plural(n: number, word: string): string {
   return `${n} ${n === 1 ? word : word.endsWith('y') ? `${word.slice(0, -1)}ies` : `${word}s`}`;
+}
+
+/**
+ * A board with fewer Daily Doubles on it than its ⭐ Daily Doubles box asks for (🎲 Randomize, or the pre-game
+ * screen, places the rest): how many it wants and has. Null when it has them all.
+ */
+export function dailyDoublesShort(round: BoardRound): { want: number; placed: number } | null {
+  // (No more than the board has tiles for.)
+  const want = Math.min(round.dailyDoubleCount ?? 1, playableClues(round).length);
+  const placed = round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
+  return placed < want ? { want, placed } : null;
 }
 
 export function validate(game: Game): Problem[] {
@@ -56,6 +70,8 @@ export function validate(game: Game): Problem[] {
       c.type === 'wheel' ? c.wheelId !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === c.wheelId) : !tileDice(game, c.diceId),
     ).length;
     if (broken) out.push({ text: `${r.name}: ${plural(broken, 'wheel/dice tile')} with nothing chosen`, tab: i, level: 'warn' });
+    const dds = dailyDoublesShort(round);
+    if (dds) out.push({ text: `${r.name}: ${dds.want} Daily Double${dds.want === 1 ? '' : 's'} wanted, ${dds.placed} placed`, tab: i, level: 'warn' });
   });
 
 

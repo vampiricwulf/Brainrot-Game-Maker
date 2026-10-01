@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { copyActions, copyItem, copyName, copySegment, copyShop, copyStat, copyZone, faceLines, moveTo } from './listedit';
+import { clearOffset, copyActions, copyItem, copyName, copySegment, copyShop, copySpaces, copyStat, copyZone, faceLines, moveTo } from './listedit';
+import { newBoardGameRound } from './boardgame';
 import { textSlide, type Action, type ItemDef, type WheelSegment } from './model';
 
 describe('list editing', () => {
@@ -75,5 +76,61 @@ describe('list editing', () => {
   it('reads a pasted list of faces one a line, without blank lines, at most 100', () => {
     expect(faceLines(' Sip \r\n\nDare\n  \nSing\n')).toEqual(['Sip', 'Dare', 'Sing']);
     expect(faceLines(Array.from({ length: 120 }, (_, i) => `F${i}`).join('\n'))).toHaveLength(100);
+  });
+});
+
+describe('copying board spaces', () => {
+  it('keeps the links between the copies, gives them names of their own and their own buttons', () => {
+    const round = newBoardGameRound('Board');
+    round.zones.push({ id: 'z', name: 'Shadow Realm', slide: textSlide('') });
+    const [a, b, c] = round.spaces;
+    a.name = 'Start';
+    b.onLand = [
+      { id: 'g1', do: 'goto', space: a.id, who: 'ask' },
+      { id: 'g2', do: 'goto', space: c.id, who: 'ask' },
+      { id: 'g3', do: 'goto', zone: 'z', who: 'ask' },
+    ];
+    const copies = copySpaces(round, [a, b], 40, 40);
+    expect(copies.map((x) => x.name)).toEqual(['Space 13', 'Space 14']);
+    expect(copies.map((x) => [x.x - [a, b][copies.indexOf(x)].x, x.y - [a, b][copies.indexOf(x)].y])).toEqual([[40, 40], [40, 40]]);
+    // a → b is kept (between the copies); b → c (left behind) isn't.
+    expect(copies[0].next).toEqual([copies[1].id]);
+    expect(copies[1].next).toEqual([]);
+    expect(copies.every((x) => !round.spaces.some((y) => y.id === x.id))).toBe(true);
+    const [g1, g2, g3] = copies[1].onLand!;
+    expect(g1.id).not.toBe('g1');
+    // A Send to a copied space goes to its copy; to one left behind on this board it stays; a zone here stays.
+    expect([g1.do === 'goto' && g1.space, g2.do === 'goto' && g2.space, g3.do === 'goto' && g3.zone]).toEqual([copies[0].id, c.id, 'z']);
+  });
+
+  it('leaves Send to buttons for spaces and zones another board hasn’t got with nothing chosen, and keeps unique names', () => {
+    const from = newBoardGameRound('A');
+    from.spaces[0].name = 'Lava';
+    from.spaces[0].onPass = [
+      { id: 'g', do: 'goto', space: from.spaces[5].id, who: 'ask' },
+      { id: 'h', do: 'goto', zone: 'elsewhere', who: 'ask' },
+    ];
+    const to = newBoardGameRound('B');
+    const [copy] = copySpaces(to, [from.spaces[0]], 0, 0);
+    expect(copy.name).toBe('Lava');
+    const [g, h] = copy.onPass!;
+    expect([g.do === 'goto' && g.space, h.do === 'goto' && h.zone]).toEqual([undefined, undefined]);
+  });
+
+  it('keeps the copies on the board, in shape', () => {
+    const round = newBoardGameRound('Board');
+    const right = round.spaces.reduce((m, s) => (s.x > m.x ? s : m));
+    const left = round.spaces.reduce((m, s) => (s.x < m.x ? s : m));
+    const copies = copySpaces(round, [left, right], 5000, 0);
+    expect(copies[1].x).toBe(1880);
+    expect(copies[1].x - copies[0].x).toBe(right.x - left.x);
+  });
+
+  it('moves copies clear of the spaces already there', () => {
+    const round = newBoardGameRound('Board');
+    const s = round.spaces[0];
+    expect(clearOffset(round, [s])).toBe(40);
+    round.spaces.push({ ...s, id: 'c1', x: s.x + 40, y: s.y + 40 });
+    expect(clearOffset(round, [s])).toBe(80);
   });
 });

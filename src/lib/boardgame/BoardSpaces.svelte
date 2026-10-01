@@ -17,6 +17,7 @@
     marked = [],
     lit = null,
     ondown,
+    tabStop = null,
   }: {
     round: BoardGameRound;
     /** Viewers: secret spaces show as "?" and host notes never show. */
@@ -30,6 +31,8 @@
     lit?: string | null;
     /** Editor: a space was pressed (to select or drag it). */
     ondown?: (e: PointerEvent, space: BoardSpace) => void;
+    /** Editor: the space Tab goes to (the others take the focus by the arrow keys: the board is one tab stop). */
+    tabStop?: string | null;
   } = $props();
 
   const R = 58;
@@ -75,6 +78,8 @@
 {#each round.spaces as s (s.id)}
   {@const h = hidden(s)}
   {@const bg = h ? '#555' : s.color}
+  <!-- (In the editor it's a button: role and tabindex are only set there.) -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     class="space"
     class:sel={selected.includes(s.id)}
@@ -89,7 +94,10 @@
     style:color={textOn(bg)}
     onpointerdown={ondown ? (e) => ondown(e, s) : undefined}
     role={ondown ? 'button' : undefined}
-    aria-label={ondown ? `Space ${s.name}` : undefined}
+    aria-roledescription={ondown ? 'space' : undefined}
+    aria-label={ondown ? s.name : undefined}
+    aria-pressed={ondown ? selected.includes(s.id) : undefined}
+    tabindex={ondown ? (s.id === tabStop ? 0 : -1) : undefined}
     data-space={s.id}
     data-place="space:{s.id}"
   >
@@ -140,6 +148,13 @@
   .space.grab {
     cursor: grab;
     touch-action: none;
+  }
+  /* (Board px: the board is scaled down in the editor.) */
+  .space.grab:focus {
+    outline: none;
+  }
+  .space.grab:focus-visible {
+    box-shadow: 0 0 0 10px #fff, 0 0 0 18px #000, 0 6px 12px rgba(0, 0, 0, 0.5);
   }
   .space.start {
     border-color: #fff;

@@ -335,7 +335,17 @@ describe('RPG: things pointing at deleted screens, items and shops', () => {
     world.maps[1].screens = [];
     expect(step(game, st, world, 'n')).toContain('leads nowhere');
     expect(nameOf(world, focusRef(st))).toBe('A1');
-    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toContain('Quest: 1 way(s) out lead nowhere');
+    expect(rpgProblems(game, round, 'Quest', 0)).toContainEqual({
+      text: 'Quest: a way out of “A1” leads nowhere',
+      tab: 0,
+      level: 'warn',
+      place: { tab: 'world', world: world.id, map: world.maps[0].id, screen: a1.id },
+    });
+    world.maps[0].screens[1].exits = { e: { kind: 'warp', to: at(world, 'A1') }, w: { kind: 'warp', to: { map: world.maps[1].id, screen: 'gone' } } };
+    world.maps[0].screens[2].exits = { s: { kind: 'warp', to: { map: world.maps[1].id, screen: 'gone' } } };
+    const [b1, c1] = [world.maps[0].screens[1].name, world.maps[0].screens[2].name];
+    expect(rpgProblems(game, round, "Quest", 0).map((p) => p.text)).toContain(`Quest: 3 ways out lead nowhere (from “A1”, “${b1}” and 1 more)`);
+    expect(c1).toBe("C1");
   });
 
   it('lists objects whose item or buttons point nowhere', () => {
@@ -349,7 +359,40 @@ describe('RPG: things pointing at deleted screens, items and shops', () => {
     expect(rpgProblems(game, round, 'Quest', 0)).toEqual([]);
     game.items = [];
     world.maps[0].screens = world.maps[0].screens.filter((s) => s.name !== 'B2');
-    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toEqual(['Quest: 2 object(s) with a button or setting that points nowhere']);
+    const a1 = world.maps[0].screens[0];
+    expect(rpgProblems(game, round, 'Quest', 0)).toEqual([
+      {
+        text: `Quest: 2 objects have a button or setting that points nowhere (on “${a1.name}”)`,
+        tab: 0,
+        level: 'warn',
+        place: { tab: 'world', world: world.id, map: world.maps[0].id, screen: a1.id, look: undefined, inSlide: true, element: pile.id },
+      },
+    ]);
+    a1.slide.elements = a1.slide.elements.filter((e) => e !== pile);
+    sign.name = 'Sign';
+    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toEqual([`Quest: “Sign” on “${a1.name}” has a button or setting that points nowhere`]);
+  });
+
+  it('names the screen a doorway that leads nowhere is on, in any look, and goes to it', () => {
+    const { game, world, round } = setup();
+    const b1 = world.maps[0].screens.find((s) => s.name === 'B1')!;
+    const night = newVariant(undefined, b1, 'Night');
+    b1.variants = [night];
+    const door = newTextEl('🚪');
+    door.role = { class: 'doorway' };
+    night.slide.elements.push(door);
+    expect(rpgProblems(game, round, 'Quest', 0)).toEqual([
+      {
+        text: 'Quest: the doorway on “B1” leads nowhere',
+        tab: 0,
+        level: 'warn',
+        place: { tab: 'world', world: world.id, map: world.maps[0].id, screen: b1.id, look: night.id, inSlide: true, element: door.id },
+      },
+    ]);
+    const other = newTextEl('🚪');
+    other.role = { class: 'doorway', to: { map: 'gone', screen: 'gone' } };
+    world.maps[0].screens[0].slide.elements.push(other);
+    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toEqual([`Quest: 2 doorways lead nowhere (on “${world.maps[0].screens[0].name}” and “B1”)`]);
   });
 });
 

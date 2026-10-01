@@ -78,7 +78,7 @@ try {
 
   // A board game.
   await addRound(/Board game/);
-  await page.getByRole('button', { name: 'Space Start' }).click();
+  await page.locator('.canvas').getByRole('button', { name: 'Start', exact: true }).click();
   await shot('boardgame-editor');
 
   // Every change so far, in the History tab.

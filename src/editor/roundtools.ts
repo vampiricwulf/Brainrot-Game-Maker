@@ -4,7 +4,7 @@ import { toast } from '../lib/app.svelte';
 import { tell } from '../lib/ask.svelte';
 import { clipboard } from '../lib/clipboard.svelte';
 import { pickFile } from '../lib/fileio';
-import { step } from '../lib/history.svelte';
+import { nameStep, step } from '../lib/history.svelte';
 import { ROUND_MODES } from '../lib/modes';
 import { roundName, type Game } from '../lib/model';
 import { readGameFile, storeFiles } from '../lib/pack';
@@ -13,13 +13,15 @@ import { addSampleGame, TEMPLATES, type Template } from '../lib/samples';
 import { validate } from '../lib/validate';
 import type { MenuEntry } from '../lib/menustate.svelte';
 
+/** A round from a template: its step is named after the round it makes ("Added round “Jeopardy!”"), not the template. */
 export function addTemplate(game: Game, t: Template): number {
-  return step(`Added round “${t.label}”`, () => {
+  return step(null, () => {
     const round = t.make(game);
     // A second "Jeopardy!" is "Jeopardy! (2)".
     if (round.name) round.name = uniqueName(game.rounds.map((r, i) => roundName(r, i)), round.name, false);
     const at = placeFor(game, round);
     game.rounds.splice(at, 0, round);
+    nameStep(`Added round “${roundName(round, at)}” (${t.label})`);
     return at;
   });
 }

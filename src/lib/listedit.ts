@@ -1,6 +1,7 @@
 // Reordering and copying rows of the editor's lists: stats, items, shops and what they sell, wheel slices, buttons
 // (action lists), dice faces, a board game's zones. Pure: the editors wrap each change in a history step.
-import { newId, type Action, type BoardZone, type ItemDef, type Shop, type Slide, type StatField, type WheelSegment } from './model';
+import { clampToBoard, nextSpaceName } from './boardgame';
+import { newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type ItemDef, type Shop, type Slide, type StatField, type WheelSegment } from './model';
 import { clone } from './ops';
 
 /** Move the entry at `from` to `to` (the others close up). False when that's no move. */
@@ -59,6 +60,55 @@ export function copyZone(z: BoardZone, taken: readonly string[]): BoardZone {
   const copy = { ...clone(z), id: newId(), name: copyName(z.name, taken) };
   reSlide(copy.slide);
   return copy;
+}
+
+/**
+ * Copies of board spaces for `round` (pasted, or several duplicated at once), moved by (dx, dy) as far as keeps them
+ * all on the board, in shape. They get fresh ids and copies of their buttons; the links between them are kept and
+ * links to spaces left behind dropped. One named like a space of the round gets the next free "Space N". A Send to
+ * button that sent players to one of them sends them to its copy; one sending them to a space or zone this board
+ * hasn't got has nothing chosen (the checklist says so).
+ */
+export function copySpaces(round: BoardGameRound, src: readonly BoardSpace[], dx: number, dy: number): BoardSpace[] {
+  if (!src.length) return [];
+  const lo = clampToBoard(-Infinity, -Infinity);
+  const hi = clampToBoard(Infinity, Infinity);
+  const xs = src.map((s) => s.x);
+  const ys = src.map((s) => s.y);
+  dx = Math.round(Math.max(lo.x - Math.min(...xs), Math.min(hi.x - Math.max(...xs), dx)));
+  dy = Math.round(Math.max(lo.y - Math.min(...ys), Math.min(hi.y - Math.max(...ys), dy)));
+  const ids = new Map(src.map((s) => [s.id, newId()]));
+  const out: BoardSpace[] = [];
+  for (const s of src) {
+    const c: BoardSpace = { ...clone(s), id: ids.get(s.id)!, x: s.x + dx, y: s.y + dy, next: s.next.filter((n) => ids.has(n)).map((n) => ids.get(n)!) };
+    const all = [...round.spaces, ...out];
+    if (all.some((x) => x.name === c.name)) c.name = nextSpaceName({ ...round, spaces: all });
+    for (const k of ['onPass', 'onLand'] as const) {
+      const list = s[k];
+      if (!list) continue;
+      c[k] = copyActions(list).map((a) => {
+        if (a.do !== 'goto') return a;
+        if (a.space && ids.has(a.space)) a.space = ids.get(a.space);
+        else if (a.space && !round.spaces.some((x) => x.id === a.space)) a.space = undefined;
+        if (a.zone && !round.zones.some((z) => z.id === a.zone)) a.zone = undefined;
+        return a;
+      });
+    }
+    out.push(c);
+  }
+  return out;
+}
+
+/**
+ * How far to move copies of spaces so they don't sit exactly on a space (the originals, or earlier copies): the
+ * first of `step`, 2×`step`… that's clear, diagonally down and right.
+ */
+export function clearOffset(round: BoardGameRound, src: readonly BoardSpace[], step = 40): number {
+  for (let k = 1; k < 20; k++) {
+    const d = k * step;
+    if (!src.some((s) => round.spaces.some((x) => Math.abs(x.x - (s.x + d)) < 12 && Math.abs(x.y - (s.y + d)) < 12))) return d;
+  }
+  return step;
 }
 
 /** A copy of a wheel slice, its details and buttons too. */

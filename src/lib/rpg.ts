@@ -23,7 +23,9 @@ import {
   type WorldMap,
   type WorldState,
 } from './model';
-import { objectPointsNowhere, worldObjects } from './refs';
+import { nameList, objectPointsNowhere, objectsWhere } from './refs';
+import type { Problem } from './validate';
+import type { Place } from './historylabel';
 
 // ---------- Building worlds ----------
 
@@ -672,19 +674,39 @@ export function mapCrop(st: WorldState | undefined, map: WorldMap): { col: numbe
 
 // ---------- Checklist ----------
 
-export function rpgProblems(game: Game, round: RpgRound, name: string, tab: number): { text: string; tab: number; level: 'warn' | 'info' }[] {
-  const out: { text: string; tab: number; level: 'warn' | 'info' }[] = [];
+export function rpgProblems(game: Game, round: RpgRound, name: string, tab: number): Problem[] {
+  const out: Problem[] = [];
   const world = worldById(game, round.world);
-  if (!world) return [{ text: `${name}: no world chosen`, tab, level: 'warn' }];
-  if (!world.maps.some((m) => m.screens.length)) out.push({ text: `${name}: ${world.name} has no screens`, tab, level: 'warn' });
-  const objects = worldObjects(world);
-  const loose = objects.filter((el) => el.role?.class === 'doorway' && !(el.role.to && findIn(world, el.role.to))).length;
-  if (loose) out.push({ text: `${name}: ${loose} doorway(s) lead nowhere`, tab, level: 'warn' });
+  if (!world) return [{ text: `${name}: no world chosen`, tab, level: 'warn', place: { tab: 'round', round: round.id } }];
+  const place = (at: { map: WorldMap; screen: Screen; look?: string; el?: SlideElement }): Place =>
+    at.el
+      ? { tab: 'world', world: world.id, map: at.map.id, screen: at.screen.id, look: at.look, inSlide: true, element: at.el.id }
+      : { tab: 'world', world: world.id, map: at.map.id, screen: at.screen.id };
+  if (!world.maps.some((m) => m.screens.length)) out.push({ text: `${name}: ${world.name} has no screens`, tab, level: 'warn', place: { tab: 'world', world: world.id } });
+  const objects = objectsWhere(world);
+  const loose = objects.filter(({ el }) => el.role?.class === 'doorway' && !(el.role.to && findIn(world, el.role.to)));
+  if (loose.length) {
+    const on = nameList(loose.map((o) => o.screen.name));
+    const text = loose.length === 1 ? `the doorway on ${on} leads nowhere` : `${loose.length} doorways lead nowhere (on ${on})`;
+    out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: place(loose[0]) });
+  }
   // Sides sent to a screen that was deleted since.
-  const ways = world.maps.flatMap((m) => m.screens.flatMap((s) => DIRS.map((d) => s.exits?.[d]))).filter((r) => r?.kind === 'warp' && !findIn(world, r.to)).length;
-  if (ways) out.push({ text: `${name}: ${ways} way(s) out lead nowhere`, tab, level: 'warn' });
-  const nowhere = objects.filter((el) => objectPointsNowhere(game, el, world)).length;
-  if (nowhere) out.push({ text: `${name}: ${nowhere} object(s) with a button or setting that points nowhere`, tab, level: 'warn' });
+  const ways = world.maps.flatMap((map) => map.screens.flatMap((screen) => DIRS.filter((d) => screen.exits?.[d]?.kind === 'warp' && !findIn(world, (screen.exits[d] as { to: ScreenRef }).to)).map(() => ({ map, screen }))));
+  if (ways.length) {
+    const from = nameList(ways.map((w) => w.screen.name));
+    const text = ways.length === 1 ? `a way out of ${from} leads nowhere` : `${ways.length} ways out lead nowhere (from ${from})`;
+    out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: place(ways[0]) });
+  }
+  const nowhere = objects.filter(({ el }) => objectPointsNowhere(game, el, world));
+  if (nowhere.length) {
+    const first = nowhere[0];
+    const what = first.el.name?.trim() ? `“${first.el.name.trim()}”` : 'an object';
+    const text =
+      nowhere.length === 1
+        ? `${what} on “${first.screen.name}” has a button or setting that points nowhere`
+        : `${nowhere.length} objects have a button or setting that points nowhere (on ${nameList(nowhere.map((o) => o.screen.name))})`;
+    out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: place(first) });
+  }
   return out;
 }
 

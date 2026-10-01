@@ -8,11 +8,14 @@ import {
   type BoardGameRound,
   type BoardGameState,
   type BoardSpace,
+  type DicePreset,
   type Game,
   type Id,
   type Session,
 } from './model';
-import { actionProblem } from './refs';
+import { actionProblem, nameList } from './refs';
+import type { Problem } from './validate';
+import type { Place } from './historylabel';
 
 export const SPACE_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#ffe119', '#42d4f4', '#f032e6'];
 
@@ -275,23 +278,69 @@ export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
   });
 }
 
+/**
+ * The saved dice a board's move rolls, if it rolls some: by their id (renaming them keeps the link). Undefined for
+ * standard dice ("2d6", typed in) and for dice deleted since (see moverDiceGone).
+ */
+export function moverPreset(game: Pick<Game, 'dice'>, round: BoardGameRound): DicePreset | undefined {
+  const m = round.mover;
+  return m.kind === 'dice' && m.diceId ? game.dice.find((d) => d.id === m.diceId) : undefined;
+}
+
+/** The board rolls saved dice that were deleted since (its move then rolls what it says, or a d6). */
+export function moverDiceGone(game: Pick<Game, 'dice'>, round: BoardGameRound): boolean {
+  const m = round.mover;
+  return m.kind === 'dice' && !!m.diceId && !game.dice.some((d) => d.id === m.diceId);
+}
+
 /** Checklist items for a board-game round. */
-export function boardGameProblems(game: Game, round: BoardGameRound, name: string, tab: number): { text: string; tab: number; level: 'warn' | 'info' }[] {
-  const out: { text: string; tab: number; level: 'warn' | 'info' }[] = [];
-  if (round.spaces.length < 2) out.push({ text: `${name}: the board needs at least 2 spaces`, tab, level: 'warn' });
+export function boardGameProblems(game: Game, round: BoardGameRound, name: string, tab: number): Problem[] {
+  const out: Problem[] = [];
+  const at = (s?: BoardSpace): Place => (s ? { tab: 'round', round: round.id, part: { kind: 'space', space: s.id } } : { tab: 'round', round: round.id });
+  if (round.spaces.length < 2) out.push({ text: `${name}: the board needs at least 2 spaces`, tab, level: 'warn', place: at() });
+  // One end is the finish (a race); more than one, and players get stuck at the others.
   const ends = round.spaces.filter((s) => !s.next.some((id) => spaceById(round, id)));
-  if (ends.length && round.spaces.length > 1) out.push({ text: `${name}: ${ends.map((s) => s.name).join(', ')} lead nowhere (the path ends there)`, tab, level: 'info' });
+  if (ends.length > 1)
+    out.push({ text: `${name}: the path ends at ${nameList(ends.map((s) => s.name), 3)} (players stop there)`, tab, level: 'info', place: at(ends[0]) });
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
-    out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn' });
+    out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn', place: at() });
+  if (moverDiceGone(game, round)) out.push({ text: `${name}: the movement dice no longer exist (pick others in Move by)`, tab, level: 'warn', place: at() });
   // Spaces the stats strip covers in play (it runs along the bottom, or the top), with the players' tokens on them.
   const bar = game.theme?.scoreBar ?? 'bottom';
   const under = bar === 'hidden' ? [] : round.spaces.filter((s) => (bar === 'bottom' ? s.y > STRIP_EDGE : s.y < SLIDE_H - STRIP_EDGE));
   if (under.length)
-    out.push({ text: `${name}: ${under.map((s) => s.name).join(', ')} ${under.length === 1 ? 'is' : 'are'} under the stats strip (move ${under.length === 1 ? 'it' : 'them'} ${bar === 'bottom' ? 'up' : 'down'})`, tab, level: 'warn' });
+    out.push({
+      text: `${name}: ${under.map((s) => s.name).join(', ')} ${under.length === 1 ? 'is' : 'are'} under the stats strip (move ${under.length === 1 ? 'it' : 'them'} ${bar === 'bottom' ? 'up' : 'down'})`,
+      tab,
+      level: 'warn',
+      place: at(under[0]),
+    });
   // A deleted space, zone, item… (or nothing chosen).
-  const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])]).filter((a) => actionProblem(game, a, { board: round })).length;
-  if (nowhere) out.push({ text: `${name}: ${nowhere} button(s) on spaces point nowhere`, tab, level: 'warn' });
+  const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])].filter((a) => actionProblem(game, a, { board: round })).map(() => s));
+  if (nowhere.length) {
+    const on = nameList(nowhere.map((s) => s.name));
+    const text = nowhere.length === 1 ? `a button on ${on} points nowhere` : `${nowhere.length} buttons on spaces point nowhere (on ${on})`;
+    out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: at(nowhere[0]) });
+  }
   return out;
+}
+
+/**
+ * The nearest space from `from` in a direction (dx, dy: one of the four arrows), for the editor's arrow keys: the
+ * spaces ahead within about 60° of it come first, the closest (sideways distance counting double) wins.
+ */
+export function spaceToward(round: BoardGameRound, from: BoardSpace, dx: number, dy: number): BoardSpace | undefined {
+  let best: { s: BoardSpace; score: number; inCone: boolean } | undefined;
+  for (const s of round.spaces) {
+    if (s.id === from.id) continue;
+    const ahead = (s.x - from.x) * dx + (s.y - from.y) * dy;
+    if (ahead <= 0) continue;
+    const side = Math.abs((s.x - from.x) * dy - (s.y - from.y) * dx);
+    const inCone = side <= ahead * 1.8;
+    const score = ahead + 2 * side;
+    if (!best || (inCone && !best.inCone) || (inCone === best.inCone && score < best.score)) best = { s, score, inCone };
+  }
+  return best?.s;
 }
 
 /** Keep a space's center on the board. */
