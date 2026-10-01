@@ -29,7 +29,7 @@
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
   import { soundUrl } from './cues';
-  import { PILL_BAND, TIMER_BAND } from './stagefit';
+  import { JOIN_ROOM, PILL_BAND, TIMER_BAND, TIMER_ROOM } from './stagefit';
 
   let {
     game,
@@ -123,7 +123,7 @@
   function popX(playerId: string | undefined): number | null {
     const i = playerId ? session.players.findIndex((p) => p.id === playerId) : -1;
     if (i < 0) return null;
-    return Math.min(1920 - POP_HALF, Math.max(POP_HALF, plateCenter(session.players.length, i, codeSpot === 'bar' ? 230 : 0)));
+    return Math.min(1920 - POP_HALF, Math.max(POP_HALF, plateCenter(session.players.length, i, barReserve)));
   }
   /** An anchored pop is at most this wide (its name gives way to "…"), so it stays on the stage. */
   const POP_HALF = 300;
@@ -151,6 +151,13 @@
     if (live.timer) return TIMER_BAND;
     return answering || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) ? PILL_BAND : 0;
   });
+  /**
+   * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
+   * never covers a category or a plate; with no score bar the board moves down under it.
+   */
+  const timerOnBoard = $derived(!!live.timer && session.phase === 'board' && session.intro?.stage !== 'title');
+  const timerBar = $derived(timerOnBoard && layout.score ? layout.score : null);
+  const boardDown = $derived(timerOnBoard && !layout.score ? Math.max(0, TIMER_BAND - layout.board.top) : 0);
   const bandScale = $derived(band ? (1080 - band) / 1080 : undefined);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
@@ -210,6 +217,8 @@
     if (session.phase === 'tiebreaker') return 'corner';
     return null;
   });
+  /** Room kept free at the score bar's right end on the board: the join code's, the countdown's. */
+  const barReserve = $derived((codeSpot === 'bar' ? JOIN_ROOM : 0) + (timerBar ? TIMER_ROOM : 0));
   const ties = $derived(tiedLeaders(session));
   /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
   const tieOpen = $derived(!!ties.length && !session.coWinners);
@@ -277,8 +286,8 @@
       <div
         class="board-area bar-{bar}"
         class:clickable={!!onact && !!session.intro}
-        style:top="{layout.board.top}px"
-        style:height="{layout.board.height}px"
+        style:top="{layout.board.top + boardDown}px"
+        style:height="{layout.board.height - boardDown}px"
         onclick={() => session.intro && act('intro')}
         role="presentation"
       >
@@ -286,7 +295,7 @@
       </div>
       {#if layout.score}
         <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">
-          <ScoreBar {game} {session} {onpicker} host={!!onact} reserve={codeSpot === 'bar' ? 230 : 0} />
+          <ScoreBar {game} {session} {onpicker} host={!!onact} reserve={barReserve} />
         </div>
       {/if}
       {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
@@ -423,7 +432,7 @@
 {/if}
 
 {#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame')}
-  <TimerDisplay timer={live.timer} />
+  <TimerDisplay timer={live.timer} middle={timerBar ? timerBar.top + timerBar.height / 2 : undefined} />
 {/if}
 
 {#if answering}
@@ -466,6 +475,7 @@
     class="join-badge"
     class:on-bar={codeSpot === 'bar'}
     style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : undefined}
+    style:right={codeSpot === 'bar' && timerBar ? `${24 + TIMER_ROOM}px` : undefined}
   >
     <span class="jb-how">📱 Buzz in</span>
     <span class="jb-code">{live.room.code}</span>

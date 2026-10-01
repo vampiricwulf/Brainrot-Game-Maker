@@ -117,8 +117,19 @@ async function crowd() {
   await sc.waitForTimeout(500);
   assert((await clipped(sc.locator('.plate .score .nm'))) === 0, 'the ▭ scores window cuts no score off');
 
-  // A long clue with the countdown up: the slide moves down under it, so the countdown never covers its first line.
+  // A countdown on the board sits at the end of the score bar: over no category, tile or score plate.
   await host.bringToFront();
+  await host.keyboard.press('t');
+  await aud.locator('.timer').waitFor();
+  await aud.waitForTimeout(400);
+  const covered = await aud.evaluate(() => {
+    const t = document.querySelector('.timer').getBoundingClientRect();
+    const over = (b) => b.right > t.left && b.left < t.right && b.bottom > t.top && b.top < t.bottom;
+    return [...document.querySelectorAll('.board .header, .board .tile, .plate')].filter((e) => over(e.getBoundingClientRect())).map((e) => e.textContent.trim().slice(0, 30));
+  });
+  assert(!covered.length, `a countdown on the board covers no category, tile or plate (${covered.join(' | ')})`);
+
+  // A long clue with the countdown up: the slide moves down under it, so the countdown never covers its first line.
   await host.locator('.stage-box .board .tile').first().click();
   await aud.locator('.slide-area').waitFor();
   await host.keyboard.press('t');
@@ -220,7 +231,10 @@ try {
   await page.keyboard.press('b');
   await page.keyboard.press('Escape');
 
-  // The key list stays over the host panel in single-window mode: the stage is not covered.
+  // The key list stays over the host panel in single-window mode: the stage is not covered. (With the controls hidden
+  // by H, they come back for it, and go again after.)
+  await page.keyboard.press('h');
+  await page.locator('.play > .panel').waitFor({ state: 'detached' });
   await page.keyboard.press('?');
   // (It moves there once the host panel's box is measured, a frame after it opens.)
   await page.locator('.backdrop.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
@@ -229,6 +243,9 @@ try {
   assert(keys.y >= stage.y + stage.height - 1, 'the keyboard shortcuts show under the stage, not over it');
   assert((await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).innerText()).includes('RPG'), 'the shortcuts are grouped by round');
   await page.keyboard.press('Escape');
+  await page.locator('.play > .panel').waitFor({ state: 'detached' });
+  assert(true, 'H had hidden the controls: closing the list hides them again');
+  await page.keyboard.press('h');
 
   // 📊 Scores: copy the standings.
   await page.getByRole('button', { name: '📊 Scores' }).click();

@@ -206,5 +206,5 @@ export const POPUP_FAILED = "Couldn't open the link. If the browser blocked the 
 /** Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. */
 export function openMediaPopup(url: string): boolean {
   if (!isWebUrl(url)) return false;
-  return !!window.open(url, 'jb-media', 'popup=yes,width=1280,height=760');
+  return !!window.open(url, 'jb-media', 'popup=yes,width=1280,height=720');
 }

@@ -55,6 +55,18 @@
     if (todo) wagerBoxes[f.players.indexOf(todo)]?.focus();
   }
 
+  // The wagers come up with the first one still to type focused, as a Daily Double's does (else typed digits select
+  // players, or go into the ⏱ seconds box, where Enter starts a countdown). All in (Ctrl+Z back to them): N goes on.
+  $effect(() => {
+    if (session.finalStep !== 'wagers') return;
+    void tick().then(() => {
+      const fs = f;
+      if (!fs || session.finalStep !== 'wagers') return;
+      const todo = fs.players.findIndex((id) => problems.missing.includes(id) || problems.over.includes(id));
+      if (todo >= 0) wagerBoxes[todo]?.focus();
+    });
+  });
+
   // Who plays, the reveal order and each wager are undoable steps (Ctrl+Z, the 📜 Log's history).
   function toggleIn(id: string): void {
     const fs = f;
@@ -203,6 +215,7 @@
               onblur={wagerDone}
               onkeydown={(e) => e.key === 'Enter' && wagerEnter(i)}
               bind:this={wagerBoxes[i]}
+              data-wager={id}
             />
             <span class="muted small">{cap || override ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}</span>
           </label>

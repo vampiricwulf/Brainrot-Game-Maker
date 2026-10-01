@@ -230,7 +230,7 @@ async function openNativeAudience(title: string): Promise<boolean> {
       // This window keeps its title (it doesn't follow the page's), so give it the page's from the start.
       title,
       width: 1280,
-      height: 760,
+      height: 720,
       resizable: true,
       // With the Discord audio fix on, the app runs with its own WebView2 switches, and WebView2 only creates
       // windows with exactly the same ones (the option is real but missing from the TypeScript types).
@@ -264,7 +264,7 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
   // Connected over the channel only (e.g. an audience page opened separately): it's open, just not ours to focus.
   if (audience.open && viaChannel) return true;
   const url = location.href.split('#')[0] + AUDIENCE_HASH;
-  win = window.open(url, 'jb-audience', 'popup=yes,width=1280,height=760');
+  win = window.open(url, 'jb-audience', 'popup=yes,width=1280,height=720');
   sentMedia.clear();
   if (!win) return inTauri() ? openNativeAudience(title) : false;
   audience.open = true;

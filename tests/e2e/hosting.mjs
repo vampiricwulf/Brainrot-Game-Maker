@@ -210,8 +210,50 @@ try {
   await shot('host-2-log');
   await page.keyboard.press('Escape');
   await log.waitFor({ state: 'detached' });
+  await page.locator('.panel').waitFor({ state: 'detached' });
+  assert(true, 'closing the log hides the controls again (H had hidden them)');
+  // A Daily Double with the controls hidden: they come back for its wager (typed digits would pick players), and go again.
+  await tile(3).click({ button: 'right', force: true });
+  await page.getByRole('menuitem', { name: /Put it back on the board/ }).click();
+  await tile(3).click();
+  await page.locator('.dd input[type=number]').waitFor();
+  await page.waitForTimeout(100);
+  assert(await page.locator('.dd input[type=number]').evaluate((e) => e === document.activeElement), 'controls hidden: a Daily Double brings them back, the wager box focused');
+  await page.keyboard.type('100');
+  await page.keyboard.press('Enter');
+  await page.locator('.panel').waitFor({ state: 'detached' });
+  assert(true, 'and they hide again once the wager is in');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('h');
+
+  // ---------- Next round from the keyboard: the "go on?" stays while the focus is in it ----------
+  await page.waitForTimeout(450);
+  const nextBtn = page.locator('.rn > button').last();
+  await nextBtn.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  const goOn = page.locator('.rn .ask');
+  await goOn.waitFor();
+  await page.waitForTimeout(4400);
+  assert(await goOn.isVisible(), '“N clues left · go on?” stays up while the keyboard focus is in it');
+  await page.waitForTimeout(450);
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Enter');
 
   // ---------- The Final: wagers, Ctrl+Z back to them, ✔/✘ with their sounds ----------
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
+  if ((await status()).includes('Title card')) await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen'));
+  assert((await page.locator('.panel .award').count()) === 0, 'no award row during the Final (it has its own scoring)');
+  // ◀ Back to the round before, from the keyboard: the keys go on from its board (the button is gone).
+  const backBtn = page.locator('.fj button', { hasText: '◀ Back to' });
+  await backBtn.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.matches('.stage-box .board .tile'));
+  assert(true, '◀ Back to the round before puts the focus on its board');
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);
@@ -219,10 +261,18 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await status()).includes('Title card')) await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen'));
-  assert((await page.locator('.panel .award').count()) === 0, 'no award row during the Final (it has its own scoring)');
   await page.keyboard.press('n');
   const boxes = page.locator('.fj .wagers input');
   await boxes.first().waitFor();
+  await page.waitForFunction(() => document.activeElement?.matches('.fj .wagers input'));
+  assert(await page.evaluate(() => document.activeElement.value === ''), 'taking wagers puts the focus in the first wager box still to fill');
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('n');
+  await page.locator('.toast', { hasText: 'Waiting on:' }).waitFor();
+  assert(
+    await page.evaluate(() => document.activeElement?.matches('.fj .wagers input') && document.activeElement.value === ''),
+    'N with a wager missing says whose (a toast) and goes to that box',
+  );
   const n = await boxes.count();
   for (let i = 0; i < n; i++) await boxes.nth(i).fill(String(100 + i));
   await page.locator('.panel .status').click();

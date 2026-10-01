@@ -74,8 +74,15 @@ try {
   assert(dropIgnored, 'a file dropped on the audience window is ignored');
 
   await host.close({ runBeforeUnload: true });
-  await aud.getByText('Host window closed').waitFor({ timeout: 8000 });
-  assert(true, 'audience notices when the host window closes');
+  // The notice shows only while the mouse is over the window (it would cover the stream otherwise).
+  const notice = aud.getByText('Host window closed');
+  for (let i = 0; i < 40 && !(await notice.count()); i++) {
+    await aud.mouse.move(100 + (i % 2) * 20, 100);
+    await aud.waitForTimeout(200);
+  }
+  assert((await notice.count()) === 1, 'audience notices when the host window closes (the mouse over it)');
+  await notice.waitFor({ state: 'detached', timeout: 3000 });
+  assert(true, 'and the notice goes once the mouse is still, off the stream');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Channel sync test passed');
 } finally {

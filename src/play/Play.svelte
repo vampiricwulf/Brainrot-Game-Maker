@@ -9,7 +9,7 @@
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
-    blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
+    blankSlide, toolOnlyClue, finalWagerProblems, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -236,10 +236,28 @@
     void finalUnjudged(session).length;
     finishArmed = false;
   });
+  // H hid the controls, but a list (?, L, 👥 Players, 📋 Rules) or a wager to type (a Daily Double's, the Final's) needs
+  // them: they come back for it, and hide again once it's done (unless the host pressed H meanwhile).
+  const needControls = $derived(
+    (!dual && (showKeys || showPlayers || showRules || showLog)) ||
+      (session.phase === 'clue' && session.dd?.stage === 'splash') ||
+      (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
+  );
+  let hideAgain = false;
+  $effect(() => {
+    const need = needControls;
+    untrack(() => {
+      if (need && hideControls) {
+        hideControls = false;
+        hideAgain = true;
+      } else if (!need && hideAgain) {
+        hideAgain = false;
+        hideControls = true;
+      }
+    });
+  });
   $effect(() => {
     if (dual || !(showKeys || showPlayers || showRules || showLog)) return void (panelBox = null);
-    // The list needs the controls (H hid them).
-    hideControls = false;
     let ro: ResizeObserver | undefined;
     const read = () => {
       const el = document.querySelector<HTMLElement>('.play > .panel');
@@ -1052,6 +1070,28 @@
     amount = null;
     if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
     winnerCue();
+    boardFocus();
+  }
+
+  /**
+   * Another round is up: the button pressed for it is gone (the round buttons are new for each round), so the keys go on
+   * from the new board's tile, not from the top of the page.
+   */
+  function boardFocus(): void {
+    void tick().then(() => {
+      const at = document.activeElement;
+      if (at && at !== document.body && at.isConnected && !(at as HTMLButtonElement).disabled) return;
+      document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]')?.focus({ preventScroll: true });
+    });
+  }
+
+  /** N in the Final's wagers with some still to type (or over the max): say whose, and go to the first of them. */
+  function wagersWaiting(): void {
+    const { missing, over } = finalWagerProblems(session, wagerLimitsOff);
+    const names = (ids: string[]) => nameList(ids.map((id) => playerName(session, id)));
+    toast(missing.length ? `Waiting on: ${names(missing)}` : `Over the max: ${names(over)}`, 3000);
+    const first = session.final?.players.find((id) => missing.includes(id) || over.includes(id));
+    if (first) document.querySelector<HTMLElement>(`.play [data-wager="${first}"]`)?.focus();
   }
 
   /** Final round started by mistake (or a tile was skipped): back to the round before it, wagers kept. */
@@ -1059,6 +1099,7 @@
     goToRound(session, game, Math.max(0, session.currentRound - 1));
     app.live.timer = null;
     app.live.sound = null;
+    boardFocus();
   }
 
   /** From the end screen: back to the final reveals to fix a judgment, or to the board if there was no Final. */
@@ -1811,6 +1852,8 @@
   let tabbedTo: EventTarget | null = null;
 
   function onkey(e: KeyboardEvent): void {
+    // The ? list hears this window's keys itself; Esc or ? from the audience window (no target here) closes it too.
+    if (showKeys && !e.target && (e.key === 'Escape' || e.key === '?')) return void (showKeys = false);
     if (showPlayers && e.key === 'Escape' && e.target) return playersEsc(e);
     if (app.pregame) return pregameKey(e);
     // The live screen editor (RPG) has its own keys.
@@ -1965,7 +2008,8 @@
           if (e.shiftKey) finalBack(session);
           else finalRevealNext();
         } else if (e.shiftKey) break;
-        else if (session.phase === 'final' && (session.finalStep !== 'wagers' || finalWagersOk(session, wagerLimitsOff))) {
+        else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
+        else if (session.phase === 'final') {
           finalNextStep(session, game);
           finalStep();
         }
@@ -1992,6 +2036,7 @@
         showLog = !showLog;
         break;
       case 'h':
+        hideAgain = false;
         hideControls = !hideControls;
         break;
       case 'f':
@@ -2279,7 +2324,7 @@
       </div>
     {/if}
     {#if hideControls}
-      <button class="show-controls" class:shown={pointerMoved} onclick={() => (hideControls = false)} title="H">Show controls</button>
+      <button class="show-controls" class:shown={pointerMoved} onclick={() => ((hideAgain = false), (hideControls = false))} title="H">Show controls</button>
     {:else}
       <HostPanel
         {game}
@@ -2337,7 +2382,7 @@
         onopenbuzzers={openBuzzers}
         {phonesDown}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
-        onhide={() => (hideControls = true)}
+        onhide={() => ((hideAgain = false), (hideControls = true))}
         onexit={exitGame}
       >
         {#snippet buzzExtra()}

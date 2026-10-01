@@ -1,5 +1,5 @@
 // Hosting extras: who's answering on stream, the built-in sound cues (and switching one off in 🔊 Sounds), the chroma-key
-// stage background and the scores-only window for OBS. (Buzzer mode is phone buzzers: remotebuzz.mjs, buzzerlive.mjs.)
+// stage background, the scores-only window for OBS and the ? list closed from the audience window. (Buzzer mode is phone buzzers: remotebuzz.mjs, buzzerlive.mjs.)
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -145,6 +145,19 @@ try {
   assert((await scores.evaluate(() => window.__plays.length)) === 0, 'the scores window never plays a sound');
   await Promise.all([scores.waitForEvent('close'), page.locator('.panel button[aria-label="Close the scores window"]').click()]);
   assert(true, 'and the ▭ button closes it');
+
+  // ---------- The ? list closes on Esc or ? pressed in the audience window too ----------
+  await page.keyboard.press('?');
+  const keyList = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await keyList.waitFor();
+  await aud.keyboard.press('Escape');
+  await keyList.waitFor({ state: 'detached', timeout: 2000 });
+  assert(true, 'Esc in the audience window closes the ? list');
+  await aud.keyboard.press('?');
+  await keyList.waitFor();
+  await aud.keyboard.press('?');
+  await keyList.waitFor({ state: 'detached', timeout: 2000 });
+  assert(true, '? there opens it and closes it again');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('playfeatures e2e passed');

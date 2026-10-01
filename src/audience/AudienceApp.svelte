@@ -223,7 +223,8 @@
   {#if !activated && !scores && status === 'connected' && !idle}
     <div class="activate">Click anywhere in this window once so it can play sound</div>
   {/if}
-  {#if status === 'host-left'}
+  <!-- The same: viewers keep the last picture, not a red bar (nothing's on stream before the game came, though). -->
+  {#if status === 'host-left' && (!idle || !game)}
     <div class="banner">Host window closed. Reopen the audience window from the host to reconnect.</div>
   {/if}
 </div>

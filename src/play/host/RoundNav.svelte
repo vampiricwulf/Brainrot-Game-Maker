@@ -29,6 +29,9 @@
   let asking = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let cancelBtn = $state<HTMLButtonElement>();
+  let rowEl = $state<HTMLDivElement>();
+  // The 4 s ran out with the focus in the row (a keyboard user reading it): it goes once the focus leaves.
+  let lapsed = false;
   onDestroy(() => clearTimeout(timer));
 
   async function next(): Promise<void> {
@@ -37,7 +40,11 @@
     asking = true;
     askedAt = Date.now();
     clearTimeout(timer);
-    timer = setTimeout(() => (asking = false), 4000);
+    lapsed = false;
+    timer = setTimeout(() => {
+      if (rowEl?.contains(document.activeElement)) lapsed = true;
+      else asking = false;
+    }, 4000);
     // The clicked button is gone: keep keyboard focus in the row, on the harmless choice.
     await tick();
     cancelBtn?.focus();
@@ -51,7 +58,7 @@
   }
 </script>
 
-<div class="rn">
+<div class="rn" bind:this={rowEl} onfocusout={(e) => lapsed && !rowEl?.contains(e.relatedTarget as Node | null) && (asking = false)}>
   {#if asking}
     <!-- Short, so it fits where the two round buttons were (the row doesn't re-wrap under the host's cursor). -->
     <span class="ask" title="Go to {target} with {left} clue{left === 1 ? '' : 's'} not played?">{left} clue{left === 1 ? '' : 's'} left · go on?</span>

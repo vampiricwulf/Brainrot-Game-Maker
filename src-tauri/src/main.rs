@@ -710,7 +710,7 @@ fn open_popup(
         WebviewUrl::External("about:blank".parse().expect("valid URL")),
     )
     .title(title)
-    .inner_size(1280.0, 760.0)
+    .inner_size(1280.0, 720.0)
     .min_inner_size(320.0, 180.0)
     .resizable(true)
     // Applies the requested size/position and, crucially, shares the opener's webview environment.

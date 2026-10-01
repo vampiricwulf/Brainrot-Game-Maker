@@ -80,6 +80,15 @@ in plain words for the people who make and host games. Anything committed but no
   Items, instead of a dead end. (ad6b92d)
 
 ### Changed
+- **A countdown on the board sits at the end of the score bar** (the score plates and the phone buzzers' join code
+  make room for it), so it no longer covers the right-most category or the last score plate. With the score bar
+  hidden, the board moves down under it while it shows.
+- **The audience window opens at 1280×720** (it was 1280×760), so a window capture in OBS or Discord has no black
+  bars above and below the stage. So does the window "Open on YouTube" opens.
+- **"Host window closed" in the audience window only shows while the mouse is over it**, like the "click once" hint,
+  so viewers don't see a red bar across the stream.
+- **The ? key list** says Shift+T starts a countdown when none is up, that R reveals (and hides) the Final's answer,
+  and that Esc on a Daily Double splash keeps the tile playable.
 - **Smaller game files, quicker to open**: Save and Export HTML pack the game's text compressed (pictures and sounds as
   before). A big text-only game's exported HTML went from 7.4 MB to 1.9 MB and opens in about a quarter of the time.
   Older `.brainrot` packs and exported files open as before.
@@ -218,6 +227,17 @@ in plain words for the people who make and host games. Anything committed but no
   two lines, instead of "Scr…". (ad6b92d)
 
 ### Fixed
+- **Controls hidden with H hide again after a list**: ?, L, 👥 Players or 📋 Rules brings them back and
+  closing it hides them again, instead of leaving the host panel on stream. A Daily Double's wager and the Final's
+  wagers bring them back too (typed digits used to select players behind the hidden wager box), and they hide again
+  once the wagers are in.
+- **The Final's wagers start in the first wager box** still to fill, as a Daily Double's does, so a wager typed at
+  once can't land in the ⏱ seconds box (where Enter started a long countdown). N with wagers missing or over the max
+  now says whose ("Waiting on: …") and goes to that box, instead of doing nothing.
+- **Esc or ? pressed in the audience window closes the ? key list** on the host's screen.
+- **Changing round from the keyboard keeps your place**: after Next / Prev round (or ◀ Back from the Final) the
+  keys go on from the new board's tile, not the top of the page, and "N clues left · go on?" stays up while the
+  focus is in it instead of vanishing after 4 seconds.
 - **Steal points shares fairly**: the points go to the players it's for, never back to the one robbed (their chip
   under "For:" is greyed out once they're picked to steal from), in whole points that add up to exactly what was
   taken. Stealing all of a $5 score for two players gives $3 and $2, no longer $3 each from a player who had $5.

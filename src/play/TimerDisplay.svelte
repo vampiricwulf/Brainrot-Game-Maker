@@ -3,7 +3,14 @@
   import { onMount } from 'svelte';
   import { timerRemaining, type TimerState } from '../lib/live';
 
-  let { timer }: { timer: TimerState } = $props();
+  let {
+    timer,
+    middle,
+  }: {
+    timer: TimerState;
+    /** On the board: the clock is centred on this line (the score bar's), at its right end, not in the top corner. */
+    middle?: number;
+  } = $props();
   let now = $state(Date.now());
 
   onMount(() => {
@@ -17,7 +24,14 @@
   const urgent = $derived(!done && left <= 5);
 </script>
 
-<div class="timer" class:urgent class:done class:paused={timer.startedAt === null && !done}>
+<div
+  class="timer"
+  class:urgent
+  class:done
+  class:paused={timer.startedAt === null && !done}
+  class:on-bar={middle !== undefined}
+  style:top={middle !== undefined ? `${middle}px` : undefined}
+>
   <div class="num">{Math.ceil(left)}</div>
   <div class="bar"><div class="fill" style:width="{frac * 100}%"></div></div>
 </div>
@@ -39,6 +53,9 @@
     text-align: center;
     z-index: 20;
     font-family: var(--value-font);
+  }
+  .timer.on-bar {
+    translate: 0 -50%;
   }
   .num {
     font-size: 90px;
