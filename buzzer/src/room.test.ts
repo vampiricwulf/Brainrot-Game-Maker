@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { cleanState, MAX_PHONES, Room, type PhoneSaved, type RoomSaved } from './room';
+import { cleanState, GRACE_MS, MAX_PHONES, median, MIN_REACT_MS, rankKey, Room, type PhoneSaved, type RoomSaved } from './room';
 
 const seats = [
   { id: 'a', name: 'Ann', color: '#ff0000' },
@@ -12,10 +12,24 @@ function state(over: Partial<HostState> = {}): HostState {
   return { title: 'Quiz night', seats, allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 1000, scores: { a: 100 }, ...over };
 }
 
-/** A room with a clock, counting tokens and inboxes for the host and each phone. */
+/** A room with a clock and timers the test runs (tick), counting tokens and inboxes for the host and each phone. */
 function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   const t = { now: 10_000 };
   let n = 0;
+  let timers: { at: number; fn: () => void; id: number }[] = [];
+  let timerId = 0;
+  /** Moves the clock on, running timers as they come due. */
+  const tick = (ms: number) => {
+    const until = t.now + ms;
+    for (;;) {
+      const due = timers.filter((x) => x.at <= until).sort((a, b) => a.at - b.at)[0];
+      if (!due) break;
+      timers = timers.filter((x) => x !== due);
+      t.now = Math.max(t.now, due.at);
+      due.fn();
+    }
+    t.now = until;
+  };
   const host: RoomToHost[] = [];
   const inbox = new Map<string, RoomToPhone[]>();
   const phoneSaves = new Map<string, PhoneSaved>();
@@ -29,6 +43,11 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
       toPhone: (c, m) => (inbox.get(c) ?? inbox.set(c, []).get(c)!).push(m),
       saveRoom: () => saves++,
       savePhone: (p) => phoneSaves.set(p.conn, p),
+      schedule: (ms, fn) => {
+        timers.push({ at: t.now + ms, fn, id: ++timerId });
+        return timerId;
+      },
+      cancel: (id) => (timers = timers.filter((x) => x.id !== id)),
     },
     saved,
     phonesSaved,
@@ -46,7 +65,8 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
     clear: () => inbox.set(conn, []),
   });
   const hostLast = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type).at(-1) as Extract<RoomToHost, { t: T }> | undefined;
-  return { t, room, host, hostLast, send, phone, phoneOf, phoneSaves, saves: () => saves };
+  const hostAll = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type) as Extract<RoomToHost, { t: T }>[];
+  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, saves: () => saves };
 }
 
 /** Host connected and sent a state; phones a, b, c seated on seats a, b, c. */
@@ -212,43 +232,277 @@ describe('seats', () => {
   });
 });
 
+/** The phone pings, then echoes the pong rttMs later: the room times a round trip. */
+function timeRtt(g: ReturnType<typeof setup>, p: ReturnType<ReturnType<typeof setup>['phoneOf']>, rttMs: number) {
+  p.send({ t: 'ping', at: 1 });
+  const serverNow = p.last('pong')!.serverNow;
+  g.t.now += rttMs;
+  p.send({ t: 'sync', serverNow });
+}
+
 describe('the race', () => {
-  it('the first buzz wins: the room moves to answering and tells everyone', () => {
+  it('the first buzz wins once the grace window ends: the room moves to answering and tells everyone', () => {
     const g = game();
     g.arm(1);
     g.t.now += 300;
     g.pb.send({ t: 'buzz', armId: 1 });
+    expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'pending' });
+    expect(g.hostLast('buzz')).toBeUndefined();
+    expect(g.room.saved.state?.phase).toBe('armed');
+    g.tick(GRACE_MS);
     expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0 });
     expect(g.hostLast('buzz')).toEqual({ t: 'buzz', armId: 1, seatId: 'b', rank: 1, afterMs: 0 });
+    expect(g.hostLast('queue')).toEqual({ t: 'queue', armId: 1, queue: [{ seatId: 'b', afterMs: 0 }] });
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'b' });
     expect(g.pa.last('view')?.view.answering).toEqual({ name: 'Bob', color: '#00ff00', you: false });
     expect(g.pb.last('view')?.view.answering?.you).toBe(true);
   });
 
-  it('later buzzes in the same arm are ranked for the host and late for the phone', () => {
+  it('a phone on a slower network that reacted faster wins', () => {
+    const g = game();
+    timeRtt(g, g.pa, 40);
+    timeRtt(g, g.pb, 400);
+    expect(g.room.rtt('pa')).toBe(40);
+    expect(g.room.rtt('pb')).toBe(400);
+    g.arm(1);
+    // Ann's light came on at once and she pressed after 260 ms: here at 300. Bob's came on 200 ms late (slow network),
+    // he pressed after 200 ms, and his buzz took another 200 ms: here at 450, after Ann's.
+    g.t.now += 300;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 260 });
+    g.t.now += 150;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.tick(GRACE_MS);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'b' });
+    expect(g.hostAll('buzz')).toEqual([
+      { t: 'buzz', armId: 1, seatId: 'b', rank: 1, afterMs: 0 },
+      { t: 'buzz', armId: 1, seatId: 'a', rank: 2, afterMs: 60 },
+    ]);
+    expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 60 });
+    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 60, behind: 'Bob' });
+  });
+
+  it('rankKey: plausible reactMs counts; impossible or missing falls back to arrival minus the round trip', () => {
+    expect(rankKey(300, 250, 100)).toBe(250);
+    expect(rankKey(300, 250, null)).toBe(250); // unknown round trip: 300 ms + tolerance assumed
+    expect(rankKey(300, 10, 40)).toBe(260); // 290 ms "on the network" with a 40 ms round trip: no
+    expect(rankKey(300, 400, 40)).toBe(260); // reacted before the buzzers opened
+    expect(rankKey(300, -5, 40)).toBe(260);
+    expect(rankKey(300, Number.NaN, 40)).toBe(260);
+    expect(rankKey(300, undefined, 40)).toBe(260);
+    expect(rankKey(300, undefined, null)).toBe(300);
+    expect(rankKey(20, undefined, null)).toBe(MIN_REACT_MS);
+    expect(rankKey(500, 3, 300)).toBe(200); // 497 ms on a 300 ms round trip? no: fallback
+    expect(rankKey(200, 3, 300)).toBe(MIN_REACT_MS); // plausible, but nobody reacts in 3 ms
+  });
+
+  it('a forged reactMs gains at most about a round trip', () => {
+    const g = game();
+    timeRtt(g, g.pa, 40);
+    timeRtt(g, g.pb, 40);
+    g.arm(1);
+    g.t.now += 250;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 200 }); // honest
+    g.t.now += 50;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 0 }); // "I pressed the moment the light came on"
+    g.tick(GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('b');
+    expect(g.hostLast('queue')?.queue).toEqual([
+      { seatId: 'b', afterMs: 0 },
+      { seatId: 'a', afterMs: 60 },
+    ]);
+  });
+
+  it('phones without reactMs (old pages) are ranked by arrival', () => {
     const g = game();
     g.arm(1);
-    g.pb.send({ t: 'buzz', armId: 1 });
+    g.t.now += 100;
+    g.pc.send({ t: 'buzz', armId: 1 });
     g.t.now += 40;
     g.pa.send({ t: 'buzz', armId: 1 });
     g.t.now += 25;
+    g.pb.send({ t: 'buzz', armId: 1 });
+    g.tick(GRACE_MS);
+    expect(g.hostAll('buzz').map((m) => [m.seatId, m.rank, m.afterMs])).toEqual([
+      ['c', 1, 0],
+      ['a', 2, 40],
+      ['b', 3, 65],
+    ]);
+    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 40, behind: 'Cat' });
+    expect(g.pc.last('result')?.byMs).toBe(40);
+  });
+
+  it('every buzz counts: later ones join the queue by reaction, never ahead of the one answering', () => {
+    const dee = { id: 'd', name: 'Dee', color: '#123456' };
+    const g = game({ seats: [...seats, dee] });
+    const pd = g.phone('pd');
+    pd.send({ t: 'join', seatId: 'd' });
+    timeRtt(g, pd, 1000); // a very slow network
+    g.arm(1);
+    g.t.now += 200;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 150 });
+    g.tick(GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('a');
+    g.t.now += 300;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 600 });
+    expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 450, behind: 'Ann' });
+    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 450 });
+    // Cat's buzz came very late with no reaction time (fallback: 950 − 0): behind Bob.
+    g.t.now += 200;
     g.pc.send({ t: 'buzz', armId: 1 });
-    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 40 });
-    expect(g.pc.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 3, afterMs: 65 });
-    expect(g.host.filter((m) => m.t === 'buzz').map((m) => (m as { seatId: string }).seatId)).toEqual(['b', 'a', 'c']);
-    expect(g.room.saved.state?.answering).toBe('b');
+    expect(g.hostLast('queue')?.queue.map((q) => q.seatId)).toEqual(['a', 'b', 'c']);
+    // Dee reacted faster than Ann, but the window is long over: second, never first.
+    g.t.now += 100;
+    pd.send({ t: 'buzz', armId: 1, reactMs: 100 });
+    expect(g.hostLast('queue')?.queue.map((q) => q.seatId)).toEqual(['a', 'd', 'b', 'c']);
+    expect(g.hostLast('queue')?.queue[1].afterMs).toBe(0);
+    expect(pd.last('result')).toMatchObject({ outcome: 'late', rank: 2 });
+    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 3 });
+    expect(g.pc.last('result')).toMatchObject({ outcome: 'late', rank: 4 });
+    expect(g.hostLast('buzz')).toMatchObject({ seatId: 'd', rank: 2 });
+    expect(g.room.saved.state?.answering).toBe('a');
+  });
+
+  it('buzzes within TIE_MS tie: nobody answers until the host picks (by hand: the rest of the tie keep arrival order)', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 300;
+    g.pc.send({ t: 'buzz', armId: 1, reactMs: 205 });
+    g.t.now += 10;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.t.now += 10;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 280 });
+    g.tick(GRACE_MS);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: null });
+    expect(g.hostLast('queue')).toEqual({
+      t: 'queue',
+      armId: 1,
+      queue: [
+        { seatId: 'b', afterMs: 0 },
+        { seatId: 'c', afterMs: 5 },
+        { seatId: 'a', afterMs: 80 },
+      ],
+      tie: ['b', 'c'],
+    });
+    expect(g.hostLast('buzz')).toBeUndefined();
+    expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'tie', rank: 1 });
+    expect(g.pc.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'tie', rank: 2 });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'late', rank: 3 });
+    expect(g.pa.last('view')?.view).toMatchObject({ phase: 'answering', answering: null });
+    // The host (not having seen it yet) sends armed again: the tie stands.
+    g.arm(1);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: null });
+    // The host picks Bob... no, Cat, by hand: Cat answers; Bob (who came first of the tie) is next.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', clue: { text: 'Q?' } }) });
+    expect(g.hostLast('queue')).toEqual({
+      t: 'queue',
+      armId: 1,
+      queue: [
+        { seatId: 'c', afterMs: 0 },
+        { seatId: 'b', afterMs: 0 },
+        { seatId: 'a', afterMs: 75 },
+      ],
+    });
+    expect(g.pc.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
+    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 2, behind: 'Cat' });
+  });
+
+  it('a tie the host rolled for: the tied seats go first in roll order', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 300;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 204 });
+    g.pc.send({ t: 'buzz', armId: 1, reactMs: 207 });
+    g.tick(GRACE_MS);
+    expect(g.hostLast('queue')?.tie).toEqual(['a', 'b', 'c']);
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', rollOrder: ['c', 'a', 'b'], clue: { text: 'Q?' } }) });
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'c' });
+    expect(g.room.saved.state).not.toHaveProperty('rollOrder');
+    expect(g.hostLast('queue')?.queue).toEqual([
+      { seatId: 'c', afterMs: 0, rolled: 1 },
+      { seatId: 'a', afterMs: 0, rolled: 2 },
+      { seatId: 'b', afterMs: 0, rolled: 3 },
+    ]);
+    expect(g.pc.last('result')).toMatchObject({ outcome: 'first', rolled: 1 });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'late', rank: 2, rolled: 2 });
+    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 3, rolled: 3 });
+    // Cat was wrong and the host gives the next in line (Ann) the answer, in the same arm.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'a', lockedOut: ['c'], clue: { text: 'Q?' } }) });
+    expect(g.room.saved.state?.answering).toBe('a');
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
   });
 
   it('counts one buzz per seat per arm', () => {
     const g = game();
     g.arm(1);
+    g.t.now += 100;
     g.pa.send({ t: 'buzz', armId: 1 });
     g.pa.clear();
     g.pa.send({ t: 'buzz', armId: 1 });
+    g.t.now += 30;
     g.pb.send({ t: 'buzz', armId: 1 });
     g.pb.send({ t: 'buzz', armId: 1 });
-    expect(g.pa.msgs()).toEqual([]);
-    expect(g.host.filter((m) => m.t === 'buzz')).toHaveLength(2);
+    g.tick(GRACE_MS);
+    g.pa.send({ t: 'buzz', armId: 1 });
+    expect(g.pa.msgs().filter((m) => m.t === 'result')).toEqual([{ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 30 }]);
+    expect(g.hostAll('buzz')).toHaveLength(2);
+  });
+
+  it('the host wins mid-window: picking a player, closing the clue or re-arming', () => {
+    // Picks Cat (a number key) while Ann's buzz waits: Cat answers, Ann is queued behind her.
+    const g = game();
+    g.arm(1);
+    g.t.now += 100;
+    g.pa.send({ t: 'buzz', armId: 1 });
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', clue: { text: 'Q?' } }) });
+    expect(g.timers()).toBe(0);
+    g.tick(GRACE_MS);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'c' });
+    expect(g.hostLast('buzz')).toBeUndefined();
+    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, behind: 'Cat' });
+    // Closes the clue.
+    const h = game();
+    h.arm(1);
+    h.t.now += 100;
+    h.pa.send({ t: 'buzz', armId: 1 });
+    h.send({ t: 'state', state: state({ phase: 'closed', armId: 1, clue: { text: 'Q?' } }) });
+    h.tick(GRACE_MS);
+    expect(h.room.saved.state?.phase).toBe('closed');
+    expect(h.hostLast('buzz')).toBeUndefined();
+    // Re-arms: the waiting buzz is dropped, Bob wins the new arm.
+    const k = game();
+    k.arm(1);
+    k.t.now += 100;
+    k.pa.send({ t: 'buzz', armId: 1 });
+    k.arm(2);
+    expect(k.timers()).toBe(0);
+    k.t.now += 100;
+    k.pb.send({ t: 'buzz', armId: 2 });
+    k.tick(GRACE_MS);
+    expect(k.hostAll('buzz')).toEqual([{ t: 'buzz', armId: 2, seatId: 'b', rank: 1, afterMs: 0 }]);
+  });
+
+  it('a room that slept or restarted mid-window decides it on time, or on the next message', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 100;
+    g.pa.send({ t: 'buzz', armId: 1 });
+    const saved = structuredClone(g.room.saved);
+    const phones = [...g.phoneSaves.values()];
+    // Restarted with the timer gone: a new room sets its own.
+    const h = setup(structuredClone(saved), phones);
+    h.room.hostOpen();
+    expect(h.timers()).toBe(1);
+    h.tick(saved.race!.graceUntil! - h.t.now);
+    expect(h.room.saved.state).toMatchObject({ phase: 'answering', answering: 'a' });
+    expect(h.hostLast('buzz')).toMatchObject({ seatId: 'a', rank: 1 });
+    // Its timer never ran (still asleep at the time): the next message settles it first.
+    const k = setup(structuredClone(saved), phones);
+    k.room.hostOpen();
+    k.t.now += GRACE_MS + 1000;
+    k.phoneOf('pb').send({ t: 'buzz', armId: 1 });
+    expect(k.room.saved.state?.answering).toBe('a');
+    expect(k.hostAll('queue').at(-1)?.queue.map((q) => q.seatId)).toEqual(['a', 'b']);
   });
 
   it('a buzz for an old arm is late and never counts', () => {
@@ -256,6 +510,7 @@ describe('the race', () => {
     g.arm(2);
     g.pa.send({ t: 'buzz', armId: 1 });
     expect(g.pa.last('result')?.outcome).toBe('late');
+    g.tick(GRACE_MS);
     expect(g.hostLast('buzz')).toBeUndefined();
     expect(g.room.saved.state?.phase).toBe('armed');
   });
@@ -274,17 +529,18 @@ describe('the race', () => {
     const p = g.phone('x');
     p.send({ t: 'buzz', armId: 1 });
     expect(p.last('result')).toBeUndefined();
-    expect(g.room.saved.state?.phase).toBe('armed');
+    expect(g.timers()).toBe(0);
   });
 
   it('the winner stands when the host re-sends armed with the same armId; bumping armId reopens', () => {
     const g = game();
     g.arm(1);
     g.pa.send({ t: 'buzz', armId: 1 });
+    g.tick(GRACE_MS);
     g.arm(1, { scores: { a: 5 } }); // the host hadn't seen the buzz yet
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'a', scores: { a: 5 } });
     g.pb.send({ t: 'buzz', armId: 1 });
-    expect(g.pb.last('result')?.outcome).toBe('late');
+    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 2 });
     // Ann was wrong: the host re-arms with a new armId and locks her out.
     g.arm(2, { lockedOut: ['a'] });
     expect(g.room.saved.state?.phase).toBe('armed');
@@ -292,6 +548,7 @@ describe('the race', () => {
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 2, outcome: 'locked' });
     expect(g.pa.last('view')?.view.you?.lockedOut).toBe(true);
     g.pb.send({ t: 'buzz', armId: 2 });
+    g.tick(GRACE_MS);
     expect(g.pb.last('result')?.outcome).toBe('first');
     expect(g.hostLast('buzz')).toMatchObject({ armId: 2, seatId: 'b', rank: 1 });
   });
@@ -300,9 +557,33 @@ describe('the race', () => {
     const g = game();
     g.arm(1);
     g.pa.send({ t: 'buzz', armId: 1 });
+    g.tick(GRACE_MS);
     g.send({ t: 'state', state: state({ phase: 'closed', armId: 1, clue: { text: 'Q?' } }) });
     g.pb.send({ t: 'buzz', armId: 1 });
     expect(g.pb.last('result')?.outcome).toBe('early');
+  });
+
+  it('times each phone round trip itself: pong → sync, median of the last five, only for pongs it sent', () => {
+    const g = game();
+    expect(g.room.rtt('pa')).toBeNull();
+    for (const ms of [100, 30, 500, 60, 80, 90]) timeRtt(g, g.pa, ms);
+    expect(median([30, 500, 60, 80, 90])).toBe(80);
+    expect(g.room.rtt('pa')).toBe(80);
+    expect(g.phoneSaves.get('pa')?.rtts).toEqual([30, 500, 60, 80, 90]);
+    // A made-up or repeated serverNow is ignored (a phone can't pick its own round trip).
+    g.pa.send({ t: 'sync', serverNow: 1 });
+    g.pa.send({ t: 'ping', at: 2 });
+    const pong = g.pa.last('pong')!.serverNow;
+    g.t.now += 5;
+    g.pa.send({ t: 'sync', serverNow: pong });
+    g.pa.send({ t: 'sync', serverNow: pong });
+    expect(g.phoneSaves.get('pa')?.rtts).toEqual([500, 60, 80, 90, 5]);
+    // A stalled echo counts as MAX_RTT_MS at most.
+    for (let i = 0; i < 5; i++) timeRtt(g, g.pb, 5000);
+    expect(g.room.rtt('pb')).toBe(1000);
+    // The samples live on the socket, so a room woken from hibernation still has them.
+    const h = setup(structuredClone(g.room.saved), [...g.phoneSaves.values()]);
+    expect(h.room.rtt('pa')).toBe(80);
   });
 });
 
@@ -320,6 +601,7 @@ describe('early buzzes', () => {
     expect(g.room.saved.state?.phase).toBe('armed');
     g.t.now += 800;
     g.pa.send({ t: 'buzz', armId: 1 });
+    g.tick(GRACE_MS);
     expect(g.pa.last('result')?.outcome).toBe('first');
   });
 
@@ -342,6 +624,7 @@ describe('early buzzes', () => {
     expect(g.pa.last('result')?.outcome).toBe('early');
     g.arm(1);
     g.pa.send({ t: 'buzz', armId: 1 });
+    g.tick(GRACE_MS);
     expect(g.pa.last('result')?.outcome).toBe('first');
   });
 });
@@ -383,6 +666,7 @@ describe('sending', () => {
     const h = setup(saved, phones);
     h.room.hostOpen();
     h.phoneOf('pc').send({ t: 'buzz', armId: 1 });
+    h.tick(GRACE_MS);
     expect(h.hostLast('buzz')).toMatchObject({ seatId: 'c', rank: 1 });
     expect(h.phoneOf('pa').last('view')?.view.answering?.name).toBe('Cat');
   });
