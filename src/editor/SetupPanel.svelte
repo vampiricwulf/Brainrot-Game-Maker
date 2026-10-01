@@ -31,15 +31,16 @@
 <section>
   <h2>Players</h2>
   <p class="muted">The default roster. You can still change players before and during a game.</p>
-  <!-- Removing is done at once: the note at the bottom offers Undo. -->
+  <!-- Deleting is done at once: the note at the bottom offers Undo. -->
   <PlayerList
     bind:players={app.game.players}
     max={s.maxPlayers}
     avatars
+    rowMenu
     record={(label, fn) => step(label, fn)}
     onremove={(id) => {
       const p = app.game.players.find((x) => x.id === id);
-      if (p) step(`Removed ${p.name}`, () => (app.game.players = app.game.players.filter((x) => x.id !== id)), { notify: true });
+      if (p) step(`Deleted player “${p.name}”`, () => (app.game.players = app.game.players.filter((x) => x.id !== id)), { notify: true });
     }}
   />
 </section>

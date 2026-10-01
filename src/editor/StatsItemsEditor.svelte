@@ -162,10 +162,28 @@
     return id;
   }
 
+  const wareName = (s: Shop, i: number) => game.items?.find((it) => it.id === s.stock[i]?.item)?.name ?? 'item';
+
   function moveWare(s: Shop, from: number, to: number): void {
-    const name = game.items?.find((it) => it.id === s.stock[from]?.item)?.name ?? 'item';
     if (to < 0 || to >= s.stock.length || to === from) return;
-    step(`Moved “${name}” ${to < from ? 'up' : 'down'} in shop “${s.name}”`, () => moveTo(s.stock, from, to));
+    step(`Moved “${wareName(s, from)}” ${to < from ? 'up' : 'down'} in shop “${s.name}”`, () => moveTo(s.stock, from, to));
+  }
+
+  /** Done at once (the item stays in the game): the note at the bottom offers Undo. */
+  function unstock(s: Shop, i: number): void {
+    step(`Stopped selling “${wareName(s, i)}” in shop “${s.name}”`, () => s.stock.splice(i, 1), { notify: true });
+  }
+
+  /** Right-click a row a shop sells (not in its boxes): move it, or stop selling it. Each item is sold once, so no copy. */
+  function wareMenu(e: MouseEvent, s: Shop, i: number): void {
+    if (isTextField(e.target)) return;
+    showMenu(e, [
+      { heading: wareName(s, i) },
+      { label: '▲ Move up', onclick: () => moveWare(s, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => moveWare(s, i, i + 1), disabled: i === s.stock.length - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: '✕ Remove from shop', danger: true, onclick: () => unstock(s, i) },
+    ]);
   }
 
   // CSV: name, price, stackable, slot, description (the columns a spreadsheet of items usually has).
@@ -571,6 +589,7 @@
                   const m = wares.drop(e, s.stock.map(wareId));
                   if (m) moveWare(s, m.from, m.to);
                 }}
+                oncontextmenu={(e) => wareMenu(e, s, i)}
                 use:rowKeys={{ move: (d) => moveWare(s, i, i + d) }}
               >
                 <td>
@@ -596,7 +615,7 @@
                   </label>
                 </td>
                 <td>
-                  <button class="ghost small" onclick={() => step(`Stopped selling “${wname}” in shop “${s.name}”`, () => s.stock.splice(i, 1), { notify: true })} aria-label="Remove {wname} from shop">✕</button>
+                  <button class="ghost small" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">✕</button>
                 </td>
               </tr>
             {/each}

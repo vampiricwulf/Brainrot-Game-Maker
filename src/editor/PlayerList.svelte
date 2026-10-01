@@ -1,6 +1,7 @@
 <!--
   Editable player roster with enforced unique colors. Used in Setup, the pre-game screen and the in-game Players
-  dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; Enter in a name adds the next player.
+  dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; ＋ Add player and Enter in a name add the next
+  player, typing in their name. In the editor a row has a right-click menu (in play, the host's own player menu is the one).
 -->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
@@ -8,6 +9,8 @@
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { newId } from '../lib/model';
   import { toast } from '../lib/app.svelte';
+  import { showMenu } from '../lib/menustate.svelte';
+  import { isTextField } from '../lib/undokeys';
   import Avatar from '../lib/rpg/Avatar.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -27,6 +30,7 @@
     onremove,
     avatars = false,
     record = (_label, fn) => fn(),
+    rowMenu = false,
   }: {
     players: P[];
     max?: number;
@@ -39,6 +43,8 @@
     avatars?: boolean;
     /** Makes a change one named step (the editor's undo history). */
     record?: (label: string, fn: () => void) => void;
+    /** Right-click a row for its menu (⚙ Setup). */
+    rowMenu?: boolean;
   } = $props();
   let list = $state<HTMLElement>();
   /** The player whose avatar picker is open. */
@@ -53,13 +59,41 @@
     return p;
   }
 
+  /** Typing in a player's name (all of it selected). */
+  const editName = (p: P) => void tick().then(() => list?.querySelector<HTMLInputElement>(`[data-place="player:${p.id}"] input.name`)?.select());
+
+  /** ＋ Add player: the next player, typing in their name. */
+  function addAndName(): void {
+    const p = add();
+    if (p) editName(p);
+  }
+
   /** Enter in a name: the next player, typing in their name (keyboard-first roster entry). */
   function nameKey(e: KeyboardEvent): void {
     if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     if (players.length >= max) return void toast(`${max} players at most`);
-    const p = add();
-    if (p) void tick().then(() => list?.querySelector<HTMLInputElement>(`[data-place="player:${p.id}"] input.name`)?.select());
+    addAndName();
+  }
+
+  // In a running game a player is removed (their points can be restored); otherwise the roster's entry is deleted.
+  const removeWord = $derived(inGame ? 'Remove' : 'Delete');
+  function remove(p: P): void {
+    if (onremove) onremove(p.id);
+    else players.splice(players.indexOf(p), 1);
+  }
+
+  /** A row's right-click menu (not in its name box, which keeps the browser's own). */
+  function menu(e: MouseEvent, p: P, i: number): void {
+    if (!rowMenu || isTextField(e.target)) return;
+    showMenu(e, [
+      { heading: p.name || `Player ${i + 1}` },
+      { label: '✎ Rename', onclick: () => editName(p) },
+      { label: '▲ Move up', onclick: () => move(i, -1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(i, 1), disabled: i === players.length - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: `🗑 ${removeWord} player`, danger: true, onclick: () => remove(p) },
+    ]);
   }
 
   function setColor(p: P, color: string, input: HTMLInputElement): void {
@@ -101,6 +135,7 @@
         const m = rows.drop(e, players.map((x) => x.id));
         if (m) move(m.from, m.to - m.from);
       }}
+      oncontextmenu={(e) => menu(e, p, i)}
       use:rowKeys={{ move: (d) => move(i, d) }}
     >
       <!-- Only the grip drags (dragging over a name box selects its text). -->
@@ -143,11 +178,11 @@
       {/if}
       <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
       <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move down">▼</button>
-      <button class="ghost small" onclick={() => (onremove ? onremove(p.id) : players.splice(i, 1))} aria-label="Remove {p.name}">✕</button>
+      <button class="ghost small" onclick={() => remove(p)} aria-label="{removeWord} {p.name}">✕</button>
     </div>
   {/each}
   <div class="row">
-    <button onclick={add} disabled={players.length >= max}>＋ Add player</button>
+    <button onclick={addAndName} disabled={players.length >= max}>＋ Add player</button>
     <span class="muted">
       {players.length}/{max} players · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>

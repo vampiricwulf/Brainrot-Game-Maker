@@ -63,16 +63,16 @@ try {
   const items = page.locator('.item');
   // Its Use buttons: a note and a score change.
   const use = items.first().locator('.actions');
-  await use.getByRole('button', { name: '＋ Add action' }).click();
+  await use.getByRole('button', { name: '＋ Add button' }).click();
   await page.getByRole('menuitem', { name: '📝 Host note' }).click();
-  await use.getByRole('button', { name: '＋ Add action' }).click();
+  await use.getByRole('button', { name: '＋ Add button' }).click();
   await page.getByRole('menuitem', { name: /Change the score/ }).click();
   const heads = () => texts(use.locator('.act .head b'));
   assert((await heads()).join() === '📝 Host note,💯 Change the score', 'two buttons');
   await use.locator('.act').nth(1).locator('input').first().focus();
   await page.keyboard.press('Alt+ArrowUp');
   assert((await heads()).join() === '💯 Change the score,📝 Host note', 'Alt+↑ moves a button up');
-  await use.getByRole('button', { name: 'Duplicate action' }).first().click();
+  await use.getByRole('button', { name: 'Duplicate button' }).first().click();
   assert((await heads()).join() === '💯 Change the score,💯 Change the score,📝 Host note', '⧉ duplicates a button');
   await dragBy(page, use.locator('.act .drag-grip').nth(2), use.locator('.act').first().locator('.head b'));
   assert((await heads())[0] === '📝 Host note', 'dragging a button’s ⋮⋮ reorders it');
@@ -102,6 +102,18 @@ try {
   await shop.scrollIntoViewIfNeeded();
   await dragBy(page, shop.locator('tr .drag-grip').nth(2), shop.locator('tr').first().locator('input').first());
   assert((await sold()) === 'Potion (copy),Potion,Hat', 'and so does a drag');
+  // What a shop sells has a right-click menu: move it, or take it out of the shop.
+  await shop.locator('tr .drag-grip').nth(1).click({ button: 'right' });
+  const wareMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
+  assert(wareMenu.join('|').startsWith('▲ Move up') && wareMenu.some((t) => t.startsWith('✕ Remove from shop')), `right-click a row a shop sells: move it, remove it (${wareMenu.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
+  assert((await sold()) === 'Potion (copy),Hat,Potion', 'its ▼ Move down moves it');
+  await shop.locator('tr .drag-grip').nth(2).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '✕ Remove from shop' }).click();
+  assert((await sold()) === 'Potion (copy),Hat' && (await notice.innerText()).startsWith('Stopped selling “Potion”'), 'its ✕ Remove from shop stops selling it, with a note');
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  await page.keyboard.press('Control+z');
+  assert((await sold()) === 'Potion (copy),Potion,Hat', 'both undo');
   await shop.getByRole('button', { name: 'Remove Hat from shop' }).click();
   assert((await sold()) === 'Potion (copy),Potion' && (await notice.innerText()).startsWith('Stopped selling “Hat”'), '✕ stops selling it, with a note');
   // An item's 📦 dropped on a shop sells it there.
@@ -182,15 +194,36 @@ try {
   // ---------- Players ----------
   await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
+  const typing = () => page.evaluate(() => {
+    const e = document.activeElement;
+    return e instanceof HTMLInputElement && e.selectionStart === 0 && e.selectionEnd === e.value.length ? e.getAttribute('aria-label') : null;
+  });
+  assert((await typing()) === 'Player 1 name', '＋ Add player types in the new player’s name (all of it selected)');
   await page.getByLabel('Player 1 name').press('Enter');
   assert(await page.getByLabel('Player 2 name').evaluate((e) => e === document.activeElement), 'Enter in a name adds the next player and types in it');
   await page.keyboard.type('Zed');
   await page.keyboard.press('Alt+ArrowUp');
   assert((await page.getByLabel('Player 1 name').inputValue()) === 'Zed', 'Alt+↑ moves a player up');
-  await page.getByRole('button', { name: 'Remove Zed' }).click();
-  assert((await notice.innerText()).startsWith('Removed Zed'), '✕ removes a player, with a note');
+  await page.getByRole('button', { name: 'Delete Zed' }).click();
+  assert((await notice.innerText()).startsWith('Deleted player “Zed”'), '✕ deletes a player, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await page.getByLabel('Player 1 name').inputValue()) === 'Zed', 'and Undo brings them back');
+  // A player's right-click menu (in ⚙ Setup).
+  const playerNames = () => values(page.getByLabel(/^Player \d name$/));
+  await page.locator('[data-place^="player:"] .num').first().click({ button: 'right' });
+  const playerMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
+  assert(['✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'].every((x) => playerMenu.some((t) => t.startsWith(x))), `right-click a player: rename, move, delete (${playerMenu.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
+  assert((await playerNames()).join() === 'Player 1,Zed', 'its ▼ Move down moves them');
+  await page.locator('[data-place^="player:"] .num').nth(1).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '✎ Rename' }).click();
+  assert((await typing()) === 'Player 2 name', '✎ Rename types in their name');
+  await page.locator('[data-place^="player:"] .num').nth(1).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete player' }).click();
+  assert((await playerNames()).join() === 'Player 1' && (await notice.innerText()).startsWith('Deleted player “Zed”'), 'and 🗑 Delete player deletes them, with a note');
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  await page.getByLabel('Player 2 name').click({ button: 'right' });
+  assert(!(await page.getByRole('menu').count()), 'a name box keeps the browser’s own menu');
 
   // ---------- Board game ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -253,8 +286,8 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '⇄ Both ways' }).click();
   assert((await page.locator('.canvas line[marker-start]').count()) === 1, 'right-click a link → Both ways');
   await page.mouse.click(mid.x, mid.y, { button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '✕ Remove link' }).click();
-  assert((await notice.innerText()).startsWith('Removed the link'), 'and → Remove link, with a note');
+  await page.getByRole('menu').getByRole('menuitem', { name: '✕ Unlink' }).click();
+  assert((await notice.innerText()).startsWith('Unlinked'), 'and → Unlink, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   // Zones reorder, with ↶ ↷ in their view.
   await page.getByRole('tab', { name: /Off-board zones/ }).click();
@@ -270,6 +303,21 @@ try {
   assert((await values(zones)).join() === 'Zone 2,Shadow Realm', '↶ in the zones view undoes');
   await page.getByRole('button', { name: 'Delete zone Zone 2' }).click();
   assert((await zones.count()) === 1 && (await notice.innerText()).startsWith('Deleted zone “Zone 2”') && !dialogs.length, 'deleting a zone asks nothing and offers Undo');
+  // A zone's right-click menu: duplicate, move, delete (and Ctrl+D in it).
+  await page.locator('.zone .drag-grip').first().click({ button: 'right' });
+  const zoneMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
+  assert(['✎ Edit its screen…', '⧉ Duplicate', '▲ Move up', '▼ Move down', '🗑 Delete zone'].every((x) => zoneMenu.some((t) => t.startsWith(x))), `right-click a zone: its menu (${zoneMenu.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: /⧉ Duplicate/ }).click();
+  assert((await values(zones)).join() === 'Shadow Realm,Shadow Realm (copy)', 'its ⧉ Duplicate puts a copy right after it');
+  await zones.first().focus();
+  await page.keyboard.press('Control+d');
+  assert((await values(zones)).join() === 'Shadow Realm,Shadow Realm (copy 2),Shadow Realm (copy)', 'Ctrl+D in a zone duplicates it');
+  await page.locator('.zone .drag-grip').nth(2).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: /▲ Move up/ }).click();
+  assert((await values(zones)).join() === 'Shadow Realm,Shadow Realm (copy),Shadow Realm (copy 2)', 'its ▲ Move up moves it');
+  await page.locator('.zone .drag-grip').nth(2).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete zone' }).click();
+  assert((await zones.count()) === 2 && (await notice.innerText()).startsWith('Deleted zone “Shadow Realm (copy 2)”'), 'and 🗑 Delete zone deletes it, with a note');
 
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/lists-zones.png` });
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

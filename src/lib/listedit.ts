@@ -1,6 +1,6 @@
 // Reordering and copying rows of the editor's lists: stats, items, shops and what they sell, wheel slices, buttons
-// (action lists), dice faces. Pure: the editors wrap each change in a history step.
-import { newId, type Action, type ItemDef, type Shop, type Slide, type StatField, type WheelSegment } from './model';
+// (action lists), dice faces, a board game's zones. Pure: the editors wrap each change in a history step.
+import { newId, type Action, type BoardZone, type ItemDef, type Shop, type Slide, type StatField, type WheelSegment } from './model';
 import { clone } from './ops';
 
 /** Move the entry at `from` to `to` (the others close up). False when that's no move. */
@@ -52,6 +52,13 @@ export function copyShop(s: Shop, taken: readonly string[]): Shop {
 /** A copy of a stat's settings (players' own starting values are for the original). */
 export function copyStat(f: StatField, taken: readonly string[]): StatField {
   return { ...clone(f), id: newId(), name: copyName(f.name, taken) };
+}
+
+/** A copy of a board game's zone, its screen too (players sent to the original stay there). */
+export function copyZone(z: BoardZone, taken: readonly string[]): BoardZone {
+  const copy = { ...clone(z), id: newId(), name: copyName(z.name, taken) };
+  reSlide(copy.slide);
+  return copy;
 }
 
 /** A copy of a wheel slice, its details and buttons too. */

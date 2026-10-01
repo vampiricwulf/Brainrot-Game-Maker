@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { copyActions, copyItem, copyName, copySegment, copyShop, copyStat, faceLines, moveTo } from './listedit';
+import { copyActions, copyItem, copyName, copySegment, copyShop, copyStat, copyZone, faceLines, moveTo } from './listedit';
 import { textSlide, type Action, type ItemDef, type WheelSegment } from './model';
 
 describe('list editing', () => {
@@ -60,6 +60,16 @@ describe('list editing', () => {
     expect(sc).toMatchObject({ label: 'Dare', color: '#f00' });
     expect(sc.id).not.toBe('g1');
     expect(sc.actions?.[0].id).not.toBe('x');
+  });
+
+  it('copies a zone with its own screen', () => {
+    const z = { id: 'z1', name: 'Shadow Realm', slide: textSlide('Stuck'), hostNotes: 'Roll a 6' };
+    const c = copyZone(z, ['Shadow Realm']);
+    expect(c).toMatchObject({ name: 'Shadow Realm (copy)', hostNotes: 'Roll a 6' });
+    expect(c.id).not.toBe('z1');
+    expect(c.slide.elements[0].id).not.toBe(z.slide.elements[0].id);
+    c.slide.elements.length = 0;
+    expect(z.slide.elements).toHaveLength(1);
   });
 
   it('reads a pasted list of faces one a line, without blank lines, at most 100', () => {
