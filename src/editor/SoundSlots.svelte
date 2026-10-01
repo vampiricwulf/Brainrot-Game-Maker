@@ -50,7 +50,7 @@
         <button class="small ghost" onclick={() => (audio[key] = undefined)} title={builtin ? 'Back to the built-in sound' : 'Remove'}
           aria-label={builtin ? `Built-in ${label} sound` : `Remove the ${label} sound`}
         >
-          {builtin ? '↺' : '✕'}
+          {builtin ? '↺' : '−'}
         </button>
       {/if}
       <div class="pop">

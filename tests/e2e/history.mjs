@@ -277,7 +277,7 @@ try {
   assert(!(await page.locator('.tile .dd').count()), 'Ctrl+Z takes the Daily Double back off the board');
 
   // ---------- A game opened starts afresh ----------
-  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON' }).click()]);
+  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
   const saved = resolve('test-results/history-save.json');
   await json.saveAs(saved);
   await openGameFile(page, saved);

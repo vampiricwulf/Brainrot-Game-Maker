@@ -2,6 +2,7 @@
 // as base64. When opened it detects the pack and starts in player mode.
 import { buildPack, CUT_OFF, type PackProgress } from './pack';
 import { safeFilename, saveFile, savedWhere } from './fileio';
+import { ask } from './ask.svelte';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
 import { onlineCount } from './usage';
@@ -99,8 +100,9 @@ export async function exportStandaloneHtml(
   const { blob: pack, missing } = await buildPack(game, onProgress);
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
-  if (estimate > STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`)) return null;
-  if (estimate > WARN && estimate <= STRONG && !confirm(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`)) return null;
+  const anyway = { ok: 'Export anyway', cancel: 'Cancel' };
+  if (estimate > STRONG && !(await ask(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`, anyway))) return null;
+  if (estimate > WARN && estimate <= STRONG && !(await ask(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`, anyway))) return null;
   const html = selfHtml();
   const cut = html.lastIndexOf('</body>');
   const [head, tail] = cut < 0 ? [html, ''] : [html.slice(0, cut), html.slice(cut)];

@@ -1,5 +1,6 @@
 <!-- ⌨ Shortcuts: the editor's keys and mouse moves, by where they work (the host's keys are in the game: press ? there). -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   let { onclose }: { onclose: () => void } = $props();
   const mac = /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -179,11 +180,11 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Editor keyboard shortcuts" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Editor keyboard shortcuts" use:modal data-undo="off">
     <div class="row">
-      <h2>⌨ Shortcuts</h2>
+      <h2 class="modal-title">⌨ Keyboard shortcuts</h2>
       <span class="spacer"></span>
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="row">
       <p class="muted small">Keys and mouse moves in the editor. The host’s keys during a game are listed there (press ? while playing).</p>
@@ -212,6 +213,7 @@
         </section>
       {/each}
     </div>
+    <div class="modal-foot"><button class="primary" onclick={onclose}>Done</button></div>
   </div>
 </div>
 

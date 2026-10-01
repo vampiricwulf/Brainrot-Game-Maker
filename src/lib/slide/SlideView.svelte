@@ -41,6 +41,8 @@
   const mainText = $derived(slide.elements.find((e) => e.kind === 'text')?.id);
   const bgImage = $derived(slide.background.image ? mediaUrls[slide.background.image] : undefined);
   const hostView = $derived(hostSees);
+  /** Nothing of the slide's own behind its text: white text there takes the theme's stage text color. */
+  const onTile = $derived(fallbackBg === 'var(--tile)' && !slide.background.color && !slide.background.gradient && !slide.background.image);
 
   function label(el: SlideElement): string {
     if (el.kind === 'embed') return embedName(el.embedKind, el.url);
@@ -84,6 +86,7 @@
       {#if el.kind === 'text'}
         <TextBox
           {el}
+          {onTile}
           edit={mode === 'edit'}
           placeholder={el.id === mainText ? placeholder : undefined}
           onfit={mode === 'edit' && onfit ? (r) => onfit(el.id, r) : undefined}

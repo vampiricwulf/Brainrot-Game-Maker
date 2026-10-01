@@ -25,6 +25,7 @@
   import ReplaceDialog from './ReplaceDialog.svelte';
   import NameDialog from './NameDialog.svelte';
   import OpenGame from './OpenGame.svelte';
+  import { ask, tell } from '../lib/ask.svelte';
   import { clone, reidRound } from '../lib/ops';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
@@ -193,6 +194,7 @@
     copy.name = `${roundName(game.rounds[i], i)} (copy)`;
     step(`Duplicated round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i + 1, 0, copy));
     if (typeof tab === 'number' && tab >= i) tab++;
+    focusRoundTab(copy.id);
   }
 
   // ---------- Round tabs: drag to reorder, keys, rename in place ----------
@@ -301,9 +303,9 @@
     if (!hasWork(game) || savedSinceChange()) return true;
     // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
     asking?.answer('cancel');
-    const ask = ++asked;
+    const mine = ++asked;
     const choice = await new Promise<ReplaceChoice>((answer) => (asking = { heading, title: game.title.trim() || 'Untitled Game', answer }));
-    if (ask === asked) asking = null;
+    if (mine === asked) asking = null;
     if (choice === 'save') return save();
     return choice === 'discard';
   }
@@ -318,7 +320,14 @@
     if (hasWork(old)) {
       kept = await keepRecent($state.snapshot(old) as Game, wholeHistory(), spare);
       const title = old.title.trim() || 'Untitled Game';
-      if (!kept && !confirm(`“${title}” couldn't be kept in Recent games (this browser's storage is full or blocked), so it would be lost. Replace it anyway?`))
+      if (
+        !kept &&
+        !(await ask(`“${title}” couldn't be kept in Recent games (this browser's storage is full or blocked), so it would be lost. Replace it anyway?`, {
+          ok: 'Replace it',
+          cancel: 'Keep it',
+          danger: true,
+        }))
+      )
         return false;
     }
     arriving(origin, history, !!history);
@@ -341,7 +350,7 @@
     if (!kept) {
       previous = null;
       await forgetRecent(entry.key);
-      return void alert(`“${entry.title}” is no longer kept in this browser.`);
+      return void tell(`“${entry.title}” is no longer kept in this browser.`);
     }
     if (!(await mayReplace(`Reopen “${entry.title}”?`))) return;
     // Brought up to date if an older version kept it; its history goes on only if that changed nothing.
@@ -391,7 +400,7 @@
     try {
       await openFile(await readSave(s));
     } catch (e) {
-      alert((e as Error).message);
+      void tell((e as Error).message);
     }
   }
 
@@ -412,7 +421,7 @@
         throw new Error(`“${file.name}” is missing parts a game needs (was it edited by hand?), so it wasn't opened.\n\n${(e as Error).message}`);
       }
     } catch (e) {
-      return void alert((e as Error).message);
+      return void tell((e as Error).message);
     }
     if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` })) toast(`Opened "${opened.title}"`);
   }
@@ -501,11 +510,11 @@
       const { missing, where, file } = await savePack($state.snapshot(game), packProgress);
       // The file it was written as: the desktop app may have picked another name ("Game (2).brainrot").
       mark('saved', `Saved “${file}”`);
-      if (missing.length) alert(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
+      if (missing.length) void tell(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast(where, 5000);
       return true;
     } catch (e) {
-      alert('Save failed: ' + (e as Error).message);
+      void tell('Save failed: ' + (e as Error).message);
       return false;
     } finally {
       saving = false;
@@ -526,9 +535,9 @@
           r.online ? 8000 : 5000,
         );
       }
-      if (r?.missing.length) alert(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
+      if (r?.missing.length) void tell(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
     } catch (e) {
-      alert('Export failed: ' + (e as Error).message);
+      void tell('Export failed: ' + (e as Error).message);
     } finally {
       exporting = false;
     }
@@ -538,6 +547,26 @@
   let shortcuts = $state(false);
   let finding = $state(false);
   let settings = $state(false);
+
+  /** The header's ⋯ menu: what isn't needed every few minutes, so the header fits at 125% and 150% zoom. */
+  function moreMenu(e: MouseEvent): void {
+    dropMenu(e, [
+      { label: '{ } Export JSON', hint: 'Text only, no media. Handy for hand-editing.', onclick: exportJson },
+      { sep: true },
+      { label: '⚙ Settings', hint: 'Autosaves, how Save names files, how much undo to remember, motion on stream', onclick: () => (settings = true) },
+      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves", keys: '?', onclick: () => (shortcuts = true) },
+      { label: 'ℹ About', hint: 'Version, links, and where your data is saved', onclick: () => (about = true) },
+    ]);
+  }
+
+  async function exportJson(): Promise<void> {
+    try {
+      toast(await saveGameJson($state.snapshot(game)), 5000);
+      mark('exported', 'Exported JSON');
+    } catch (e) {
+      void tell('Export failed: ' + (e as Error).message);
+    }
+  }
   // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
   const NOTICE_KEY = 'jb.dataNoticeSeen';
   let dataNotice = $state(inTauri() && !seen());
@@ -570,33 +599,19 @@
 <div class="editor">
   <header>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
-    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
-    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
-    <button onclick={newFile}>New</button>
-    <button onclick={open}>Open…</button>
+    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
+    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
+    <button onclick={newFile}><span aria-hidden="true">📄</span> New</button>
+    <button onclick={open}><span aria-hidden="true">📂</span> Open…</button>
     <button
       onclick={save}
       disabled={saving}
       title={`${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'} · Ctrl+S`}
     >
-      {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}
+      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}
     </button>
     <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
-      {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Export HTML'}
-    </button>
-    <button
-      class="ghost"
-      onclick={async () => {
-        try {
-          toast(await saveGameJson($state.snapshot(game)), 5000);
-          mark('exported', 'Exported JSON');
-        } catch (e) {
-          alert('Export failed: ' + (e as Error).message);
-        }
-      }}
-      title="Text only, no media. Handy for hand-editing."
-    >
-      Export JSON
+      <span aria-hidden="true">⬇</span> {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : 'Export HTML'}
     </button>
     <span class="spacer"></span>
     {#if app.storageOk}
@@ -611,11 +626,9 @@
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
-    <button class="ghost" onclick={() => (settings = true)} title="Autosaves, how Save names files, and how much undo to remember">⚙ Settings</button>
-    <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)">🔍</button>
-    <button class="ghost" onclick={() => (shortcuts = true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts: the editor's keys and mouse moves (?)">⌨</button>
-    <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
-    <button class="primary" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
+    <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
+    <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export JSON, Settings, Keyboard shortcuts, About" title="Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, ℹ About">⋯</button>
+    <button class="primary play" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
     <div class="data-notice" role="status">
@@ -686,6 +699,7 @@
           <button
             class="round-tab"
             class:active={tab === i}
+            aria-current={tab === i ? 'page' : undefined}
             class:drop-before={roundDrop?.id === round.id && !roundDrop.after}
             class:drop-after={roundDrop?.id === round.id && roundDrop.after}
             class:lifted={roundDrag === round.id}
@@ -728,17 +742,17 @@
         {/if}
       {/each}
       <!-- Played after the rounds, when the game ends in a tie. -->
-      <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')} title="Played after the last round when players tie for the win">
+      <button class:active={tab === 'tiebreaker'} aria-current={tab === 'tiebreaker' ? 'page' : undefined} onclick={() => (tab = 'tiebreaker')} title="Played after the last round when players tie for the win">
         <span aria-hidden="true">🤝</span> Tiebreaker{game.tiebreaker ? '' : ' (off)'}
       </button>
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <div class="navlabel muted">Game</div>
-      <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
-      <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
-      <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
-      <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
-      <button class:active={tab === 'media'} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
-      <button class:active={tab === 'history'} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
+      <button class:active={tab === 'setup'} aria-current={tab === 'setup' ? 'page' : undefined} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
+      <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
+      <button class:active={tab === 'tools'} aria-current={tab === 'tools' ? 'page' : undefined} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
+      <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
+      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
+      <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
       </button>
 
@@ -869,13 +883,36 @@
     background: var(--panel);
     border-bottom: 1px solid var(--border);
   }
+  /* Narrow windows and 125–150% zoom: the title and the autosave note give way, ▶ Play always shows. */
+  header > * {
+    flex-shrink: 0;
+  }
   .title {
     font-size: 18px;
     font-weight: 600;
     width: min(340px, 28vw);
+    min-width: 120px;
+    flex-shrink: 1;
   }
   .autosave {
     font-size: 12px;
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .more {
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .word {
+    margin-left: 0.3em;
+  }
+  /* Narrow (or zoomed) windows: ↶ and ↷ alone (their names stay for screen readers). */
+  @media (max-width: 1100px) {
+    .word {
+      display: none;
+    }
   }
   /* Short, so it stays on one line (the details are in its tooltip). */
   .saved {
@@ -922,8 +959,8 @@
     text-overflow: ellipsis;
   }
   nav > button.active {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .round-tab.lifted {
@@ -938,7 +975,7 @@
   }
   .navlabel {
     margin-top: 12px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }

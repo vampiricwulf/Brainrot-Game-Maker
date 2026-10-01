@@ -373,7 +373,7 @@
   }
   h4 {
     margin: 0;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
@@ -412,8 +412,8 @@
     min-width: 30px;
   }
   .toggles button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .sep {

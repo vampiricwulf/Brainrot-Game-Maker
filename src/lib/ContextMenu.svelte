@@ -22,7 +22,10 @@
   });
 
   function run(fn: () => void): void {
+    // A dropped menu gives its button the focus back first, so a window the item opens returns it there on close.
+    const from = contextMenu.open?.from;
     closeMenu();
+    from?.focus();
     fn();
   }
 
@@ -61,7 +64,7 @@
 />
 
 {#if contextMenu.open}
-  <div class="cm" role="menu" tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" oncontextmenu={(e) => e.preventDefault()}>
+  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" oncontextmenu={(e) => e.preventDefault()}>
     {#each contextMenu.open.items as item, i (i)}
       {#if 'sep' in item}
         <div class="sep" role="separator"></div>
@@ -109,13 +112,17 @@
     margin-left: auto;
     padding-left: 16px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
   }
-  button:hover:not(:disabled),
+  button:hover:not(:disabled) {
+    background: rgba(79, 124, 255, 0.25);
+  }
+  /* The item in focus: a clear ring, not only a tint (keyboard users follow it). */
   button:focus-visible {
     background: rgba(79, 124, 255, 0.25);
-    outline: none;
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
   .danger {
     color: var(--bad);
@@ -127,7 +134,7 @@
   }
   .heading {
     padding: 4px 10px 2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     opacity: 0.7;
   }

@@ -1,6 +1,7 @@
 <!-- Host keyboard shortcuts (spec §6.8). -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
+  import { modal } from '../lib/modal';
 
   let {
     onclose,
@@ -122,11 +123,11 @@
   onclick={(e) => e.target === e.currentTarget && onclose()}
   role="presentation"
 >
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" use:modal>
     <div class="row">
-      <h2>Keyboard shortcuts</h2>
+      <h2 class="modal-title">⌨ Keyboard shortcuts</h2>
       <span class="spacer"></span>
-      <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="groups">
       {#each GROUPS as g (g.title)}
@@ -143,6 +144,7 @@
       {/each}
     </div>
     <p class="muted">The keys work in the audience window too (F there makes it full-screen).</p>
+    <div class="modal-foot"><button class="primary" onclick={onclose}>Done</button></div>
   </div>
 </div>
 

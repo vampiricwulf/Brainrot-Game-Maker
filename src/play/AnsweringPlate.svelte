@@ -1,6 +1,6 @@
 <!-- "🔔 Ann is answering": who the host picked to answer the clue on screen, in stage coordinates. -->
 <script lang="ts">
-  import { fly } from 'svelte/transition';
+  import { fly } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import type { Player } from '../lib/model';
 

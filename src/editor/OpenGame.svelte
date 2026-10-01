@@ -3,6 +3,7 @@
      saves and exported games (OpenSaves). -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { modal } from '../lib/modal';
   import type { RecentEntry } from '../lib/recent';
   import { inTauri } from '../lib/platform';
 
@@ -38,13 +39,13 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" use:modal data-undo="off">
     <div class="row">
-      <b id="open-heading">Open a game</b>
+      <b class="modal-title" id="open-heading">📂 Open a game</b>
       <span class="spacer"></span>
       {#if saves}<button onclick={onsaves}>BrainrotSaves…</button>{/if}
       <button onclick={onbrowse}>Browse…</button>
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <p class="muted small">
       Recent games: the last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo
@@ -66,6 +67,7 @@
         </div>
       {/each}
     </div>
+    <div class="modal-foot"><button onclick={onclose}>Cancel</button></div>
   </div>
 </div>
 

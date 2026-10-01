@@ -145,7 +145,7 @@
           <button class="ghost small" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
           <button class="ghost small" onclick={() => move(i, i + 1)} disabled={i === wheel.segments.length - 1} aria-label="Move down">▼</button>
           <button class="ghost small" onclick={() => duplicate(i)} aria-label="Duplicate slice" title="Duplicate slice (Ctrl+D)">⧉</button>
-          <button class="ghost small" onclick={() => remove(i)} disabled={wheel.segments.length <= 2} aria-label="Delete slice" title={wheel.segments.length <= 2 ? 'A wheel needs two slices' : 'Delete slice'}>✕</button>
+          <button class="ghost small" onclick={() => remove(i)} disabled={wheel.segments.length <= 2} aria-label="Delete slice" title={wheel.segments.length <= 2 ? 'A wheel needs two slices' : 'Delete slice'}>🗑</button>
         </div>
       {/each}
     </div>

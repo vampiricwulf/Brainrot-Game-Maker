@@ -19,12 +19,12 @@
   <span class="muted">⏱</span>
   {#if t}
     <b class="left" class:done={t.expired}>{t.expired ? "Time's up" : `${left}s`}</b>
-    <button class="small" onclick={() => toggleTimer(app.live)} disabled={t.expired} title="T">{t.startedAt === null ? '▶' : '⏸'}</button>
+    <button class="small" onclick={() => toggleTimer(app.live)} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}>{t.startedAt === null ? '▶' : '⏸'}</button>
     <!-- Change the time left without starting over. -->
     <button class="small ghost" onclick={() => addTime(app.live, -10)} disabled={t.expired} title="10 seconds less">−10</button>
     <button class="small ghost" onclick={() => addTime(app.live, 10)} title="10 seconds more (Shift+T)">+10</button>
-    <button class="small ghost" onclick={() => startTimer(app.live, t.total)} title="Restart">↺</button>
-    <button class="small ghost" onclick={() => (app.live.timer = null)} title="Hide timer">✕</button>
+    <button class="small ghost" onclick={() => startTimer(app.live, t.total)} title="Restart" aria-label="Restart timer">↺</button>
+    <button class="small ghost" onclick={() => (app.live.timer = null)} title="Hide timer" aria-label="Hide timer">✕</button>
   {:else}
     <button class="small" onclick={() => startTimer(app.live, custom || defaultSeconds)} title="T">Start {custom || defaultSeconds}s</button>
   {/if}

@@ -4,7 +4,7 @@
   stage and the host's mirror in dual mode.
 -->
 <script lang="ts">
-  import { fade, fly, scale } from 'svelte/transition';
+  import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';
@@ -518,7 +518,7 @@
     font-family: var(--board-font);
     font-size: 70px;
     font-weight: 800;
-    color: #fff;
+    color: var(--stage-text, #fff);
     text-align: center;
     padding: 0 60px;
     text-shadow: 5px 5px 0 #000;
@@ -601,9 +601,8 @@
     width: 100%;
     text-align: center;
     font-size: 60px;
-    color: #fff;
+    color: var(--stage-text, #fff);
     font-family: var(--board-font);
-    opacity: 0.85;
   }
   .reveal {
     position: absolute;

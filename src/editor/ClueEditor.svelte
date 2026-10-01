@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
@@ -102,7 +103,7 @@
 
 {#if clue}
   <div class="backdrop" role="presentation">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit clue">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal>
       <header>
         <div>
           <div class="muted small">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>
@@ -113,6 +114,7 @@
         <button onclick={() => step(-1)} disabled={!prev} title="Shift+Ctrl+Enter">◀ Prev</button>
         <button onclick={() => step(1)} disabled={!next} title="Ctrl+Enter">Next ▶</button>
         <button class="primary" onclick={onclose}>Done</button>
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
       </header>
 
       <div class="opts row">
@@ -193,7 +195,7 @@
         <div class="pop">
           {#if clue.tileFace?.image}
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
-            <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image">✕</button>
+            <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image" aria-label="Remove tile image">−</button>
           {:else}
             <button
               class="small"
@@ -365,8 +367,8 @@
     border-radius: 6px 6px 0 0;
   }
   .tabs button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   @media (max-width: 900px) {

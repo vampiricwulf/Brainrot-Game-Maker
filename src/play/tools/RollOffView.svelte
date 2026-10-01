@@ -1,7 +1,7 @@
 <!-- "Who goes first" (or a tiebreaker roll-off for the win): everyone rolls in their color; tied leaders re-roll until one winner remains. -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fly } from 'svelte/transition';
+  import { fly } from '../../lib/motion.svelte';
   import { ROLLOFF_REVEAL_MS, ROLLOFF_ROLL_MS, type Overlay } from '../../lib/live';
   import type { Session } from '../../lib/model';
   import { textOn } from '../../lib/colors';

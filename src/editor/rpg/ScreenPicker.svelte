@@ -22,9 +22,9 @@
 </script>
 
 <div class="sp">
-  <span class="muted small">{label}</span>
+  {#if label}<span class="muted small">{label}</span>{/if}
   <select
-    aria-label="{label}: map"
+    aria-label={label ? `${label}: map` : 'Map'}
     value={map?.id ?? ''}
     onchange={(e) => {
       const m = world.maps.find((x) => x.id === e.currentTarget.value);
@@ -34,7 +34,7 @@
     {#each world.maps as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
   </select>
   <select
-    aria-label="{label}: screen"
+    aria-label={label ? `${label}: screen` : 'Screen'}
     value={screen?.id ?? value?.screen ?? ''}
     onchange={(e) => map && onchange(e.currentTarget.value ? { map: map.id, screen: e.currentTarget.value } : undefined)}
   >

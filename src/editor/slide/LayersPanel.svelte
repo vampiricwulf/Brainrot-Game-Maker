@@ -260,7 +260,7 @@
   .grip {
     cursor: grab;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: -2px;
     padding: 0 3px 0 0;
     user-select: none;
@@ -320,7 +320,7 @@
     flex-direction: column;
   }
   .updown .ico {
-    font-size: 8px;
+    font-size: 8px; /* glyph: the tiny ▲▼ pair, not text */
     padding: 1px 3px;
   }
   .empty {

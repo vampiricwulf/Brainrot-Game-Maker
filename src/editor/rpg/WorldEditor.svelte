@@ -1179,7 +1179,7 @@
                       </select>
                       {#if rule?.kind === 'warp'}
                         <ScreenPicker {world} value={rule.to} label="to" onchange={(ref) => ref && (rule.to = ref)} />
-                        <button class="ghost small" class:on={picking?.screen === sel.id && picking.dir === d} onclick={() => (picking = { map: map.id, screen: sel.id, dir: d })}>
+                        <button class="ghost small" class:on={picking?.screen === sel.id && picking.dir === d} aria-pressed={picking?.screen === sel.id && picking.dir === d} onclick={() => (picking = { map: map.id, screen: sel.id, dir: d })}>
                           🎯 Pick on the map
                         </button>
                       {:else if rule?.kind === 'blocked'}
@@ -1313,8 +1313,8 @@
     border-radius: 6px 6px 0 0;
   }
   .tabs button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .tabs button.drop-on {
@@ -1466,7 +1466,7 @@
     height: 20px;
     padding: 0;
     border-radius: 50%;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1;
     pointer-events: auto;
     opacity: 0;
@@ -1544,7 +1544,7 @@
     white-space: nowrap;
     padding: 1px 6px;
     border-radius: 4px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
     font-size: 12px;
   }

@@ -644,7 +644,8 @@ try {
     await page.locator('.toast', { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
     assert(true, 'and says where it went');
     // ⚙ Settings: Save makes a new file each time instead (Game (2).brainrot…).
-    await page.getByRole('button', { name: '⚙ Settings' }).click();
+    await page.getByRole('button', { name: /^More:/ }).click();
+    await page.getByRole('menuitem', { name: '⚙ Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
     await settings.getByText('Save replaces the game’s last save').click();
     assert((await settings.getByLabel('Autosaves to keep').inputValue()) === '3', 'three autosaves are kept by default');
@@ -653,7 +654,7 @@ try {
     await page.waitForFunction(() => window.__calls.filter((c) => c[0] === 'save_file').length === 2);
     assert((await calls(page, 'save_file'))[1].mode === 'new', 'with the setting off, Save makes a new file');
     await page.reload();
-    await page.getByRole('button', { name: 'ℹ About' }).waitFor();
+    await page.getByRole('button', { name: '▶ Play' }).waitFor();
     assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');
     await context.close();
   }

@@ -156,7 +156,7 @@
   }
   .head {
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--muted);
@@ -186,7 +186,7 @@
     margin-left: auto;
     padding-left: 16px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
   }
   .aligns {

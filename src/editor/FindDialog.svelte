@@ -9,6 +9,7 @@
 
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
+  import { modal } from '../lib/modal';
   import { findAll, type Hit } from '../lib/find';
   import { goTo } from '../lib/nav.svelte';
 
@@ -58,7 +59,12 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Find" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Find" use:modal data-undo="off">
+    <div class="row">
+      <h2 class="modal-title">🔍 Find</h2>
+      <span class="spacer"></span>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
+    </div>
     <div class="row">
       <input
         class="q"
@@ -71,7 +77,6 @@
         aria-controls="find-hits"
         use:focus
       />
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
     </div>
     <p class="muted small" role="status">
       {#if !query.trim()}
@@ -158,7 +163,7 @@
     min-width: 0;
   }
   .w {
-    font-size: 11px;
+    font-size: 12px;
   }
   .small {
     font-size: 12px;

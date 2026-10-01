@@ -18,6 +18,7 @@
 <div class="frame" bind:clientWidth={w} bind:clientHeight={h}>
   <div
     class="stage"
+    data-stage
     style:width="{SLIDE_W}px"
     style:height="{SLIDE_H}px"
     style:background

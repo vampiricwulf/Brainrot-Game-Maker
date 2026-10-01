@@ -181,14 +181,15 @@
 </p>
 
 <div class="layout">
-  <nav aria-label="Wheels and dice">
+  <!-- Not a second nav and main: the editor's own are around it. -->
+  <section class="list" aria-label="Wheels and dice">
     <div class="head muted">🎡 Wheels</div>
     {@render group('wheel', game.wheels)}
     <button class="ghost" onclick={() => add('wheel')}>＋ New wheel</button>
     <div class="head muted">🎲 Dice</div>
     {@render group('dice', game.dice)}
     <button class="ghost" onclick={() => add('dice')}>＋ New dice</button>
-  </nav>
+  </section>
 
   <section aria-label="Wheel or dice">
     {#if wheel}
@@ -223,7 +224,7 @@
     grid-template-columns: 200px minmax(0, 1fr);
     gap: 16px;
   }
-  nav,
+  .list,
   .group {
     display: flex;
     flex-direction: column;
@@ -233,14 +234,14 @@
     display: flex;
     flex-direction: column;
   }
-  nav button {
+  .list button {
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  nav button.active {
-    background: var(--accent);
-    border-color: var(--accent);
+  .list button.active {
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .rename {

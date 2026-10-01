@@ -105,17 +105,17 @@ try {
   // What a shop sells has a right-click menu: move it, or take it out of the shop.
   await shop.locator('tr .drag-grip').nth(1).click({ button: 'right' });
   const wareMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
-  assert(wareMenu.join('|').startsWith('▲ Move up') && wareMenu.some((t) => t.startsWith('✕ Remove from shop')), `right-click a row a shop sells: move it, remove it (${wareMenu.join(', ')})`);
+  assert(wareMenu.join('|').startsWith('▲ Move up') && wareMenu.some((t) => t.startsWith('− Remove from shop')), `right-click a row a shop sells: move it, remove it (${wareMenu.join(', ')})`);
   await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
   assert((await sold()) === 'Potion (copy),Hat,Potion', 'its ▼ Move down moves it');
   await shop.locator('tr .drag-grip').nth(2).click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '✕ Remove from shop' }).click();
-  assert((await sold()) === 'Potion (copy),Hat' && (await notice.innerText()).startsWith('Stopped selling “Potion”'), 'its ✕ Remove from shop stops selling it, with a note');
+  await page.getByRole('menu').getByRole('menuitem', { name: '− Remove from shop' }).click();
+  assert((await sold()) === 'Potion (copy),Hat' && (await notice.innerText()).startsWith('Stopped selling “Potion”'), 'its − Remove from shop stops selling it, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.keyboard.press('Control+z');
   assert((await sold()) === 'Potion (copy),Potion,Hat', 'both undo');
   await shop.getByRole('button', { name: 'Remove Hat from shop' }).click();
-  assert((await sold()) === 'Potion (copy),Potion' && (await notice.innerText()).startsWith('Stopped selling “Hat”'), '✕ stops selling it, with a note');
+  assert((await sold()) === 'Potion (copy),Potion' && (await notice.innerText()).startsWith('Stopped selling “Hat”'), '− stops selling it, with a note');
   // An item's 📦 dropped on a shop sells it there.
   // (Both on screen at once.)
   await page.setViewportSize({ width: 1500, height: 2400 });
@@ -146,7 +146,7 @@ try {
   await page.getByRole('button', { name: 'Duplicate slice' }).first().click();
   assert((await values(labels)).slice(0, 2).join() === 'Dance,Dance', '⧉ duplicates a slice');
   await page.getByRole('button', { name: 'Delete slice' }).first().click();
-  assert((await labels.count()) === 5 && (await notice.innerText()).startsWith('Deleted slice “Dance”'), '✕ deletes a slice, with a note');
+  assert((await labels.count()) === 5 && (await notice.innerText()).startsWith('Deleted slice “Dance”'), '🗑 deletes a slice, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await labels.count()) === 6, 'and Undo brings it back');
   await page.locator('.seg .pct').nth(2).click({ button: 'right' });
@@ -205,7 +205,7 @@ try {
   await page.keyboard.press('Alt+ArrowUp');
   assert((await page.getByLabel('Player 1 name').inputValue()) === 'Zed', 'Alt+↑ moves a player up');
   await page.getByRole('button', { name: 'Delete Zed' }).click();
-  assert((await notice.innerText()).startsWith('Deleted player “Zed”'), '✕ deletes a player, with a note');
+  assert((await notice.innerText()).startsWith('Deleted player “Zed”'), '🗑 deletes a player, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await page.getByLabel('Player 1 name').inputValue()) === 'Zed', 'and Undo brings them back');
   // A player's right-click menu (in ⚙ Setup).
@@ -286,7 +286,7 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '⇄ Both ways' }).click();
   assert((await page.locator('.canvas line[marker-start]').count()) === 1, 'right-click a link → Both ways');
   await page.mouse.click(mid.x, mid.y, { button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '✕ Unlink' }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: '− Unlink' }).click();
   assert((await notice.innerText()).startsWith('Unlinked'), 'and → Unlink, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   // Zones reorder (the header's ↶ ↷ undo it).

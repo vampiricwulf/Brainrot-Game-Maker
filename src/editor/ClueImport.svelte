@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import { toast } from '../lib/app.svelte';
+  import { modal } from '../lib/modal';
   import { applyPlan, cluesFromTable, parseTable, planImport, previewText } from '../lib/clueimport';
   import { pickFile } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
@@ -46,11 +47,11 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Import clues" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Import clues" use:modal data-undo="off">
     <div class="row">
-      <h2>Import clues</h2>
+      <h2 class="modal-title">📋 Import clues</h2>
       <span class="spacer"></span>
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <p class="muted small">
       Copy the cells in Google Sheets or Excel and paste them here, or choose a CSV or TSV file. Columns: <b>category, value, question, answer</b>
@@ -154,7 +155,7 @@
   .preview {
     display: grid;
     gap: 3px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .cat,
   .tile {

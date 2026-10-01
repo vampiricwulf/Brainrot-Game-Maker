@@ -1,4 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
+import { textOn } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -15,6 +16,8 @@ export interface Theme {
   value: string;
   /** Category names. */
   boardText: string;
+  /** Text on the tile color: clue and answer slides' white text, scores, Final's lines (older games: black or white by the tile). */
+  stageText?: string;
   boardFont: string;
   valueFont: string;
   /** Glow around tiles (CSS color or 'none'). */
@@ -47,6 +50,7 @@ export const PRESETS: Record<ThemePreset, { label: string; theme: Omit<Theme, 'p
       boardGap: '#000000',
       value: '#ffcc00',
       boardText: '#ffffff',
+      stageText: '#ffffff',
       boardFont: "'Oswald', 'Arial Narrow', sans-serif",
       valueFont: "'Anton', Impact, sans-serif",
       glow: 'none',
@@ -62,6 +66,7 @@ export const PRESETS: Record<ThemePreset, { label: string; theme: Omit<Theme, 'p
       boardGap: '#07080c',
       value: '#e6e9ff',
       boardText: '#ffffff',
+      stageText: '#ffffff',
       boardFont: "'Inter', system-ui, sans-serif",
       valueFont: "'Bebas Neue', Impact, sans-serif",
       glow: 'none',
@@ -77,6 +82,7 @@ export const PRESETS: Record<ThemePreset, { label: string; theme: Omit<Theme, 'p
       boardGap: '#000000',
       value: '#39ff14',
       boardText: '#00f0ff',
+      stageText: '#ffffff',
       boardFont: "'Bangers', 'Comic Sans MS', cursive",
       valueFont: "'Bangers', 'Comic Sans MS', cursive",
       glow: '#ff00e6',
@@ -92,6 +98,7 @@ export const PRESETS: Record<ThemePreset, { label: string; theme: Omit<Theme, 'p
       boardGap: '#fff7fb',
       value: '#7a4cff',
       boardText: '#4a3b5c',
+      stageText: '#4a3b5c',
       boardFont: "'Comic Neue', 'Comic Sans MS', cursive",
       valueFont: "'Comic Neue', 'Comic Sans MS', cursive",
       glow: 'none',
@@ -106,12 +113,21 @@ export function presetTheme(p: ThemePreset): Theme {
 }
 
 /** What a preset sets: its colors and fonts (applying one keeps the images and where the score bar goes). */
-const PRESET_LOOK = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'boardFont', 'valueFont', 'glow', 'scoreBarBg'] as const;
+const PRESET_LOOK = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'stageText', 'boardFont', 'valueFont', 'glow', 'scoreBarBg'] as const;
 
 /** Some of the theme's colors or fonts no longer match its preset. */
 export function presetEdited(t: Theme): boolean {
   const p = PRESETS[t.preset]?.theme;
-  return !!p && PRESET_LOOK.some((k) => t[k].toLowerCase() !== p[k].toLowerCase());
+  return !!p && PRESET_LOOK.some((k) => (k === 'stageText' ? stageText(t) : t[k]).toLowerCase() !== (p[k] ?? '').toLowerCase());
+}
+
+/** The color of text on the tile color. A game from before it was a theme color gets its preset's while it keeps the
+ * preset's tiles, else black or white, whichever reads better on them. */
+export function stageText(t: Pick<Theme, 'preset' | 'tile' | 'stageText'>): string {
+  if (t.stageText) return t.stageText;
+  const p = PRESETS[t.preset]?.theme;
+  if (p?.stageText && p.tile.toLowerCase() === t.tile.toLowerCase()) return p.stageText;
+  return textOn(t.tile) === '#000' ? '#000000' : '#ffffff';
 }
 
 /** CSS custom properties for a theme (inherit into Board, ScoreBar, slides…). */
@@ -123,6 +139,9 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     '--board-gap': th.boardGap,
     '--value': th.value,
     '--board-text': th.boardText,
+    '--stage-text': stageText(th),
+    // Negative scores: a light red on dark tiles, a dark one on light tiles.
+    '--stage-bad': textOn(th.tile) === '#000' ? '#b3261e' : '#ff6b6b',
     '--board-font': th.boardFont,
     '--value-font': th.valueFont,
     '--glow': th.glow === 'none' ? 'transparent' : th.glow,

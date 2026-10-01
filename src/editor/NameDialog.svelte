@@ -1,8 +1,8 @@
 <!-- The first Save of an untitled game asks for its name (it names the file too). -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   let { onname }: { onname: (name: string | null) => void } = $props();
   let name = $state('');
-  const pick = (el: HTMLInputElement) => el.focus();
 </script>
 
 <svelte:window
@@ -14,17 +14,21 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onname(null)}>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="name-heading" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="name-heading" use:modal data-undo="off">
     <form
       onsubmit={(e) => {
         e.preventDefault();
         onname(name.trim() || 'Untitled Game');
       }}
     >
-      <h2 id="name-heading">Name your game</h2>
+      <div class="row">
+        <h2 class="modal-title" id="name-heading">💾 Name your game</h2>
+        <span class="spacer"></span>
+        <button type="button" class="ghost modal-x" onclick={() => onname(null)} aria-label="Close" title="Close (Esc)">✕</button>
+      </div>
       <label class="field">
         Game title (the file is named after it)
-        <input bind:value={name} placeholder="Untitled Game" maxlength="120" use:pick />
+        <input bind:value={name} placeholder="Untitled Game" maxlength="120" data-autofocus />
       </label>
       <div class="row end">
         <button class="primary" type="submit">Save</button>
@@ -55,10 +59,6 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 18px;
   }
   .end {
     justify-content: flex-end;

@@ -123,10 +123,10 @@
     font-family: var(--value-font);
     font-size: 64px;
     font-weight: 800;
-    color: #fff;
+    color: var(--stage-text, #fff);
     text-shadow: 4px 4px 0 #000;
   }
   .score.neg {
-    color: #ff6b6b;
+    color: var(--stage-bad, #ff6b6b);
   }
 </style>

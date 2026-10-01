@@ -278,7 +278,7 @@
       },
       { sep: true },
       {
-        label: '✕ Unlink',
+        label: '− Unlink',
         danger: true,
         onclick: () =>
           step(
@@ -671,12 +671,12 @@
                   aria-label="Both ways with {other?.name}"
                   title={both ? 'Both ways: click for one way only' : 'Make it both ways (back and forth)'}>⇄</button
                 >
-                <button class="ghost tiny" onclick={() => other && toggleLink(sel, other)} aria-label="Unlink">✕</button>
+                <button class="ghost tiny" onclick={() => other && toggleLink(sel, other)} aria-label="Unlink" title="Unlink">−</button>
               </span>
             {:else}
               <span class="muted small">nothing (the path ends)</span>
             {/each}
-            <button class="small" class:on={linking} onclick={() => (linking = !linking)} title="Then click the space it leads to; two or more ways make a fork">🔗 Link to…</button>
+            <button class="small" class:on={linking} aria-pressed={!!linking} onclick={() => (linking = !linking)} title="Then click the space it leads to; two or more ways make a fork">🔗 Link to…</button>
           </div>
           {#if sel.next.length > 1}<div class="muted small">A fork: the host picks the way in play.</div>{/if}
           <h5>When passed <span class="muted small">(e.g. Start: +2 gold)</span></h5>
@@ -739,7 +739,7 @@
             <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
             <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>
             <button class="ghost small" onclick={() => duplicateZone(z)} aria-label="Duplicate zone {z.name}" title="Duplicate, with its screen (Ctrl+D)">⧉</button>
-            <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}">✕</button>
+            <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}" title="Delete zone">🗑</button>
           </div>
         {/each}
       </div>
@@ -784,8 +784,8 @@
     border-radius: 6px 6px 0 0;
   }
   .tabs button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .on {
@@ -919,7 +919,7 @@
     font-size: 12px;
   }
   .tiny {
-    font-size: 10px;
+    font-size: 12px;
     padding: 0 4px;
   }
   .warn {

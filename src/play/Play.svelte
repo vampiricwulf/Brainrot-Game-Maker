@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal, takeFocus } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
   import { step } from '../lib/history.svelte';
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
@@ -1369,7 +1370,8 @@
 
 {#if app.pregame}
   <div class="pregame">
-    <h1>{game.title}</h1>
+    <!-- ▶ Play lands here (keyboard and screen reader users start at the top of the page, not on <body>). -->
+    <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
     {#if app.resumable && app.resumable.session.phase !== 'end'}
       <p class="warn">
         ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the
@@ -1387,11 +1389,11 @@
 
     <h2>Display</h2>
     <div class="modes">
-      <button class="mode" class:on={!dual} onclick={() => dual && closeAudienceWindow()}>
+      <button class="mode" class:on={!dual} aria-pressed={!dual} onclick={() => dual && closeAudienceWindow()}>
         <b>Single window</b>
         <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
       </button>
-      <button class="mode" class:on={dual} onclick={() => !dual && openAudience()}>
+      <button class="mode" class:on={dual} aria-pressed={!!dual} onclick={() => !dual && openAudience()}>
         <b>📺 Separate audience window <span class="tag">Recommended</span></b>
         <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
       </button>
@@ -1591,7 +1593,7 @@
       >
         {#snippet tools()}
           <ToolLauncher {game} {session} onrolloff={rolloff} />
-          <button class="ghost" onclick={() => (showKeys = true)} title="Keyboard shortcuts (?)">⌨</button>
+          <button class="ghost" onclick={() => (showKeys = true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>
         {/snippet}
       </HostPanel>
     {/if}
@@ -1616,8 +1618,8 @@
       onchange={commitRoster}
       ondrop={commitRoster}
     >
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Players">
-        <h2>Players</h2>
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Players" use:modal>
+        <div class="row"><h2 class="modal-title">👥 Players</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
         <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
         <PlayerList bind:players={session.players} max={game.settings.maxPlayers} inGame onremove={(id) => (removing = id)} />
         {#if removingPlayer}
@@ -1628,7 +1630,7 @@
               here.
             </span>
             <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
-            <button class="small" onclick={() => (removing = null)}>Keep</button>
+            <button class="small" onclick={() => (removing = null)} use:takeFocus>Keep</button>
           </div>
         {/if}
         {#if session.removedPlayers?.length}
@@ -1645,7 +1647,7 @@
             {/each}
           </div>
         {/if}
-        <div class="row"><span class="spacer"></span><button class="primary" onclick={closePlayers}>Done</button></div>
+        <div class="modal-foot"><button class="primary" onclick={closePlayers}>Done</button></div>
       </div>
     </div>
   {/if}
@@ -1666,6 +1668,9 @@
   }
   .pregame h1 {
     margin: 0;
+  }
+  .pregame h1:focus {
+    outline: none;
   }
   .pregame h2 {
     margin: 8px 0 0;
@@ -1797,7 +1802,7 @@
     padding: 1px 6px;
     border-radius: 6px;
     background: var(--panel-2);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
   @media (max-width: 640px) {
@@ -1820,7 +1825,7 @@
     right: 8px;
     bottom: 8px;
     opacity: 0;
-    font-size: 11px;
+    font-size: 12px;
     transition: opacity 0.3s;
   }
   .show-controls.shown {

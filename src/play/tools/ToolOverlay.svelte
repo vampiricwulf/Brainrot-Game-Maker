@@ -1,6 +1,6 @@
 <!-- Full-screen overlay for wheel / dice / roll-off / scoreboard on the audience view (spec §14 placement). -->
 <script lang="ts">
-  import { fade } from 'svelte/transition';
+  import { fade } from '../../lib/motion.svelte';
   import type { Overlay } from '../../lib/live';
   import { formatPoints, type Game, type Session } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';

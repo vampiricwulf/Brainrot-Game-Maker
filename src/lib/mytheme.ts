@@ -31,8 +31,9 @@ export function saveMyTheme(theme: Theme): boolean {
 }
 
 /**
- * A saved theme on a game's theme: its colors, fonts and layout; the game's own pictures stay. The clue text look and
- * the stage background are the saved theme's too, even when it has none (they'd otherwise linger from the game's).
+ * A saved theme on a game's theme: its colors, fonts and layout; the game's own pictures stay. The clue text look, the
+ * text on slides & scores and the stage background are the saved theme's too, even when it has none (they'd otherwise
+ * linger from the game's).
  */
 export function withMyTheme(current: Theme, mine: SavedTheme): Theme {
   return {
@@ -40,6 +41,7 @@ export function withMyTheme(current: Theme, mine: SavedTheme): Theme {
     ...mine,
     clueFont: mine.clueFont,
     clueColor: mine.clueColor,
+    stageText: mine.stageText,
     stageBg: mine.stageBg,
     boardImage: current.boardImage,
     banner: current.banner,

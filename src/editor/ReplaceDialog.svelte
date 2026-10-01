@@ -1,11 +1,9 @@
 <!-- Asked before New, Open… or a recent game replaces a game with changes that aren't saved to a file. -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { modal } from '../lib/modal';
   import type { ReplaceChoice } from '../lib/recent';
 
   let { heading, title, onchoice }: { heading: string; title: string; onchoice: (c: ReplaceChoice) => void } = $props();
-  let first = $state<HTMLButtonElement>();
-  onMount(() => first?.focus());
 </script>
 
 <svelte:window
@@ -17,12 +15,16 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onchoice('cancel')}>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="replace-heading" data-undo="off">
-    <h2 id="replace-heading">{heading}</h2>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="replace-heading" use:modal data-undo="off">
+    <div class="row">
+      <h2 class="modal-title" id="replace-heading">{heading}</h2>
+      <span class="spacer"></span>
+      <button class="ghost modal-x" onclick={() => onchoice('cancel')} aria-label="Close" title="Close (Esc)">✕</button>
+    </div>
     <p>“{title}” has changes that aren't saved to a file.</p>
     <p class="muted small">Discard keeps it in this browser for a while: Open… → Recent games brings it back.</p>
     <div class="row end">
-      <button class="primary" bind:this={first} onclick={() => onchoice('save')}>Save first</button>
+      <button class="primary" data-autofocus onclick={() => onchoice('save')}>Save first</button>
       <button onclick={() => onchoice('discard')}>Discard</button>
       <button class="ghost" onclick={() => onchoice('cancel')}>Cancel</button>
     </div>
@@ -48,10 +50,6 @@
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 18px;
   }
   p {
     margin: 0;

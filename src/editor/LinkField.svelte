@@ -7,6 +7,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast, editedGame } from '../lib/app.svelte';
+  import { ask } from '../lib/ask.svelte';
   import { ACCEPT, addMediaFile, addMediaLink, formatBytes, type LinkAdded } from '../lib/media.svelte';
   import { warnIfUnplayable } from '../lib/mediadrop';
   import { isAbort, LinkError } from '../lib/download';
@@ -20,7 +21,8 @@
     onmedia,
     onembed,
     initial = '',
-    hint = 'Direct file link, e.g. https://files.catbox.moe/abc123.mp3',
+    // The example matches what the spot takes (a picture spot shows a .png).
+    hint = `Direct file link, e.g. https://files.catbox.moe/abc123.${({ image: 'png', video: 'mp4', audio: 'mp3' } as const)[want ?? 'image']}`,
     autofocus = true,
   }: {
     /** What the spot needs; leave out on a slide (anything goes there). */
@@ -83,9 +85,10 @@
         signal: ctl.signal,
         onprogress: (loaded, total) => (busy = { loaded, total }),
         confirmBig: (bytes, known) =>
-          confirm(
+          ask(
             `This file is ${known ? '' : 'over '}${formatBytes(bytes)}. Save a copy in the game?\n\n` +
-              'Big files make big game packs. Cancel plays it from the link instead (needs internet during the show).',
+              'Big files make big game packs. Playing it from the link needs internet during the show.',
+            { ok: 'Save a copy', cancel: 'Play from the link' },
           ),
       });
       text = '';

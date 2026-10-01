@@ -5,6 +5,7 @@
   menu), it moves those instead.
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { untrack } from 'svelte';
   import { toast } from '../../lib/app.svelte';
   import { showMenu } from '../../lib/menustate.svelte';
@@ -97,9 +98,9 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-label="Full map">
+  <div class="modal" role="dialog" aria-label="Full map" use:modal>
     <div class="row head">
-      <b>🗺 Jump to a screen</b>
+      <b class="modal-title">🗺 Jump to a screen</b>
       <div class="tabs" role="tablist" aria-label="Maps">
         {#each world.maps as m (m.id)}
           <button role="tab" aria-selected={m.id === mapId} class:on={m.id === mapId} onclick={() => (mapId = m.id)}>
@@ -111,7 +112,7 @@
       <span class="muted small">
         {send ? `Sending ${send.label}: click a screen, then Move.` : 'Click a screen, then choose who goes.'} Double-click to move {who} there.
       </span>
-      <button onclick={onclose} title="Esc / J">✕ Close</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc / J)">✕</button>
     </div>
     <div class="body">
       <div class="grid">

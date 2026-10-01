@@ -232,16 +232,20 @@
         class="tiny"
         class:on={pos.down}
         title="Knocked out (shown grey and tipped over)"
+        aria-label="{name} knocked out"
+        aria-pressed={!!pos.down}
         onclick={() => logged(session, `${name} ${pos.down ? 'gets up' : 'is knocked out'}`, () => (w.positions[p.id].down = !pos.down))}>💫</button
       >
       <button
         class="tiny"
         class:on={pos.hidden}
         title="Hide their avatar from the screen"
+        aria-label="Hide {name}'s avatar"
+        aria-pressed={!!pos.hidden}
         onclick={() => logged(session, `${name} ${pos.hidden ? 'shown' : 'hidden'}`, () => (w.positions[p.id].hidden = !pos.hidden))}>🫥</button
       >
     {/if}
-    <button class="tiny" title="Show {p.name}'s sheet on screen (I)" onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: p.id })}>📺</button>
+    <button class="tiny" title="Show {p.name}'s sheet on screen (I)" aria-label="Show {p.name}'s sheet on screen" onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: p.id })}>📺</button>
   </div>
   {#if fields.length}
     <!-- Two stats a line (name, value, name, value), so a card stays short. -->
@@ -305,7 +309,7 @@
             ...session.players.filter((x) => x.id !== p.id).map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
             ...(pos ? [{ label: '⬇ Drop it here', onclick: () => drop(e.id) }] : []),
             { sep: true as const },
-            { label: '✕ Remove', danger: true, onclick: () => remove(e.id) },
+            { label: '− Remove', danger: true, onclick: () => remove(e.id) },
           ])}
       >
         <!-- Only the name drags: a press on the buttons, the amount box or Give → that moves a little is still a press. -->
@@ -326,11 +330,11 @@
         <!-- The buttons stay together: on the name's line, or all on the next one. -->
         <span class="acts">
           {#if def?.wearable}
-            <button class="tiny" class:on={e.equipped} onclick={() => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped))}>
+            <button class="tiny" class:on={e.equipped} aria-pressed={!!e.equipped} onclick={() => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped))}>
               {e.equipped ? 'Unequip' : 'Equip'}
             </button>
           {/if}
-          {#if def?.onUse?.length}<button class="tiny" class:on={using === e.id} onclick={() => (using = e.id)}>Use</button>{/if}
+          {#if def?.onUse?.length}<button class="tiny" class:on={using === e.id} aria-pressed={using === e.id} onclick={() => (using = e.id)}>Use</button>{/if}
           {#if e.qty > 1}
             <input
               class="qty"
@@ -357,8 +361,8 @@
             <option value="">Give →</option>
             {#each session.players.filter((x) => x.id !== p.id) as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
           </select>
-          {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" onclick={() => drop(e.id)}>⬇</button>{/if}
-          <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" onclick={() => remove(e.id)}>✕</button>
+          {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" aria-label="Drop {entryName(game, e)} on this screen" onclick={() => drop(e.id)}>⬇</button>{/if}
+          <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" aria-label="Remove {entryName(game, e)}" onclick={() => remove(e.id)}>−</button>
         </span>
       </div>
       {#if using === e.id && def?.onUse?.length}
@@ -507,7 +511,7 @@
     padding: 1px 4px;
   }
   .tiny {
-    font-size: 11px;
+    font-size: 12px;
     padding: 1px 6px;
   }
   .tiny.on {

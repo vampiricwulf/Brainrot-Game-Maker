@@ -102,7 +102,7 @@
           <button class="small" disabled={left !== null && left <= 0} onclick={() => purchase(s.item)} title="Buy one for the buyer">
             {def.name} · {formatPrice(game, shop, shopPrice(game, shop, s.item))}{left !== null ? ` (${left})` : ''}
           </button>
-          <button class="tiny ghost" onclick={() => restock(s.item)} title="Change the stock">📦</button>
+          <button class="tiny ghost" onclick={() => restock(s.item)} title="Change the stock" aria-label="Change the stock of {def.name}">📦</button>
         </span>
       {/if}
     {/each}
@@ -175,7 +175,7 @@
     font-size: 12px;
   }
   .tiny {
-    font-size: 11px;
+    font-size: 12px;
     padding: 1px 5px;
   }
   .n {

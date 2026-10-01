@@ -41,6 +41,15 @@ describe('my theme', () => {
     expect([plain.clueFont, plain.clueColor, plain.stageBg]).toEqual([undefined, undefined, undefined]);
   });
 
+  it('keeps the text on slides & scores, and takes off a game’s own when it has none', () => {
+    saveMyTheme({ ...presetTheme('neon'), stageText: '#ffee00' });
+    const other = { ...presetTheme('classic'), stageText: '#123456' };
+    expect(withMyTheme(other, loadMyTheme()!).stageText).toBe('#ffee00');
+    const { stageText: _s, ...older } = presetTheme('dark');
+    saveMyTheme(older);
+    expect(withMyTheme(other, loadMyTheme()!).stageText).toBeUndefined();
+  });
+
   it('says so when the browser won’t store it', () => {
     delete (globalThis as { localStorage?: unknown }).localStorage;
     expect(saveMyTheme(presetTheme('dark'))).toBe(false);

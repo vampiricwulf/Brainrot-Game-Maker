@@ -1,6 +1,7 @@
 // The editor's ways to add whole rounds besides a blank one: a template, the sample game, a copied round, or the
 // rounds of another .brainrot game. Each is one undoable step; they return where the new round is, to show it.
 import { toast } from '../lib/app.svelte';
+import { tell } from '../lib/ask.svelte';
 import { clipboard } from '../lib/clipboard.svelte';
 import { pickFile } from '../lib/fileio';
 import { step } from '../lib/history.svelte';
@@ -53,7 +54,7 @@ export async function pickOtherGame(): Promise<Game | null> {
     validate(g);
     return g;
   } catch (e) {
-    alert(`“${file.name}” couldn’t be read: ${(e as Error).message}`);
+    void tell(`“${file.name}” couldn’t be read: ${(e as Error).message}`);
     return null;
   }
 }

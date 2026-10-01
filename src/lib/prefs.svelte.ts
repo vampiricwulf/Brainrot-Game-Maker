@@ -13,11 +13,13 @@ export interface Prefs {
   overwriteSave: boolean;
   /** How many undo steps the editor remembers (the oldest are forgotten). */
   undoSteps: number;
+  /** Viewers see no pop-ins, fly-ins or confetti (motion.svelte.ts). */
+  reduceMotion: boolean;
   /** Which defaults the stored settings were made with (2: Save replaces by default). */
   v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, v: 2 };
+export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, v: 2 };
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 

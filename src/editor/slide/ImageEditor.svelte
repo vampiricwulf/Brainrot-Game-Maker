@@ -3,6 +3,7 @@
   stickers and brush. The original file is kept; the result is saved as a new file on the element.
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { onMount, untrack } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
@@ -328,7 +329,7 @@
 
 <div class="backdrop" role="presentation">
   <!-- (data-undo: Ctrl+Z in its boxes and sliders never reaches the game's undo underneath.) -->
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit image" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit image" use:modal data-undo="off">
     {#if linked}
       <div class="gate">
         <p>🌐 This picture plays from {linkHost(source?.url)}. The image editor works on a copy saved in your game.</p>
@@ -339,7 +340,7 @@
       </div>
     {/if}
     <header class="row">
-      <b>🎨 Edit image</b>
+      <b class="modal-title">🎨 Edit image</b>
       {#if discarding}
         <InlineAsk text="Discard your image edits?" ok="Discard" cancel="Keep editing" danger onok={onclose} oncancel={() => (discarding = false)} />
       {:else}
@@ -356,11 +357,12 @@
       {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
       <button onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? 'Saving…' : 'Apply'}</button>
+      <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 
     <div class="tools row">
       {#each [['move', '✋ Move'], ['crop', '✂ Crop'], ['draw', '🖌 Draw'], ['text', '🅣 Text'], ['sticker', '😂 Sticker']] as [k, l]}
-        <button class:on={tool === k} onclick={() => (k === 'crop' ? startCrop() : (tool = k as typeof tool))}>{l}</button>
+        <button class:on={tool === k} aria-pressed={tool === k} onclick={() => (k === 'crop' ? startCrop() : (tool = k as typeof tool))}>{l}</button>
       {/each}
     </div>
 
@@ -409,7 +411,7 @@
           <h4>Crop</h4>
           <div class="row">
             {#each [['free', 'Free'], [16 / 9, '16:9'], [4 / 3, '4:3'], [1, '1:1'], [9 / 16, '9:16']] as [a, l]}
-              <button class="small" class:on={cropAspect === a} onclick={() => setAspect(a as 'free' | number)}>{l}</button>
+              <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a as 'free' | number)}>{l}</button>
             {/each}
           </div>
           <button class="small" onclick={() => ((edits.crop = undefined), (tool = 'move'))}>Remove crop</button>
@@ -420,8 +422,8 @@
         <div class="row">
           <button class="small" onclick={() => rotateBy(-90)}>⟲ 90°</button>
           <button class="small" onclick={() => rotateBy(90)}>⟳ 90°</button>
-          <button class="small" class:on={edits.flipH} onclick={() => (commit(), (edits.flipH = !edits.flipH))}>⇋ Flip H</button>
-          <button class="small" class:on={edits.flipV} onclick={() => (commit(), (edits.flipV = !edits.flipV))}>⇵ Flip V</button>
+          <button class="small" class:on={edits.flipH} aria-pressed={!!edits.flipH} onclick={() => (commit(), (edits.flipH = !edits.flipH))}>⇋ Flip H</button>
+          <button class="small" class:on={edits.flipV} aria-pressed={!!edits.flipV} onclick={() => (commit(), (edits.flipV = !edits.flipV))}>⇵ Flip V</button>
         </div>
         <label class="field">Angle {edits.rotate}°<input type="range" min="-180" max="180" step="1" bind:value={edits.rotate} onpointerdown={commit} /></label>
         <label class="field">
@@ -432,7 +434,7 @@
         <h4>Adjust</h4>
         {#each SLIDERS as [k, label, min, max, def]}
           <label class="field slider">
-            <span>{label} <span class="muted">{edits[k]}</span>{#if edits[k] !== def}<button class="tiny ghost" onclick={() => (commit(), ((edits as unknown as Record<string, number>)[k] = def))}>↺</button>{/if}</span>
+            <span>{label} <span class="muted">{edits[k]}</span>{#if edits[k] !== def}<button class="tiny ghost" onclick={() => (commit(), ((edits as unknown as Record<string, number>)[k] = def))} aria-label="Reset {label}" title="Reset">↺</button>{/if}</span>
             <input type="range" {min} {max} value={edits[k] as number} onpointerdown={commit}
               oninput={(e) => ((edits as unknown as Record<string, number>)[k] = +e.currentTarget.value)} />
           </label>
@@ -452,7 +454,7 @@
         {#if tool === 'sticker'}
           <h4>Stickers <span class="muted small">(click the image to place)</span></h4>
           <div class="stickers">
-            {#each STICKERS as s}<button class:on={sticker === s} onclick={() => (sticker = s)}>{s}</button>{/each}
+            {#each STICKERS as s}<button class:on={sticker === s} aria-pressed={sticker === s} onclick={() => (sticker = s)}>{s}</button>{/each}
           </div>
         {/if}
 
@@ -536,8 +538,8 @@
   }
   .tools button.on,
   button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .body {
@@ -617,7 +619,7 @@
   }
   h4 {
     margin: 8px 0 2px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
@@ -629,7 +631,7 @@
   }
   .tiny {
     padding: 0 4px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .stickers {
     display: grid;

@@ -3,6 +3,7 @@
   picker, the desktop app's Discord audio fix, and step-by-step help per platform.
 -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { onMount } from 'svelte';
   import { inTauri } from '../lib/platform';
   import { chooseAudioOut, sound, testSound } from '../lib/sync.svelte';
@@ -25,7 +26,6 @@
   let outputs = $state<AudioOutput[] | null>(null);
   let listing = $state(false);
   let fixError = $state('');
-  let modal: HTMLDivElement;
 
   const where = $derived(dual ? 'the audience window' : 'this window');
   const missing = $derived(dual ? sound.outputMissing : audioOut.missing);
@@ -66,14 +66,8 @@
   }
 
   onMount(() => {
-    // Keyboard and screen reader users start inside the dialog, and go back to the button that opened it.
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    modal.focus();
     // Once the speakers were listed before (the browser remembers the permission), list them right away.
     if (canRoute && !ownPicker) void showOutputs(false);
-    return () => {
-      if (opener?.isConnected) opener.focus();
-    };
   });
 
   function choose(id: string): void {
@@ -123,11 +117,11 @@
 {/snippet}
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" tabindex="-1" bind:this={modal}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" use:modal>
     <div class="row">
-      <h2>🔊 Streaming the sound</h2>
+      <h2 class="modal-title">🔊 Streaming the sound</h2>
       <span class="spacer"></span>
-      <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
 
     {#if capture}
@@ -314,6 +308,7 @@
         </ol>
       </details>
     {/if}
+    <div class="modal-foot"><button class="primary" onclick={onclose}>Done</button></div>
   </div>
 </div>
 

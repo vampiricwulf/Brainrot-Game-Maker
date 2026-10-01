@@ -4,6 +4,7 @@
 -->
 <script lang="ts" module>
   import { app } from '../../lib/app.svelte';
+  import { modal } from '../../lib/modal';
   import type { DicePreset, WheelPreset } from '../../lib/model';
   import { newDice, newWheel } from '../../lib/tools';
 
@@ -47,12 +48,13 @@
 </script>
 
 <div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label={kind === 'wheel' ? 'Wheel' : 'Dice'} bind:this={box} tabindex="-1" {onkeydown}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label={kind === 'wheel' ? 'Wheel' : 'Dice'} bind:this={box} tabindex="-1" use:modal {onkeydown}>
     <header>
-      <b>{kind === 'wheel' ? '🎡 Wheel' : '🎲 Dice'}</b>
+      <b class="modal-title">{kind === 'wheel' ? '🎡 Wheel' : '🎲 Dice'}</b>
       <span class="muted small">Also in the 🎡 Wheels & Dice tab, for every tile and board that uses it.</span>
       <span class="spacer"></span>
       <button class="primary" onclick={done}>Done</button>
+      <button class="ghost modal-x" onclick={done} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
     {#if wheel}
       <WheelEditor {wheel} />

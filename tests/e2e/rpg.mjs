@@ -440,7 +440,8 @@ try {
   await page.locator('.rpg .strip .card').first().click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🫥 Show their avatar' }).click();
   assert((await avatars.count()) === 2, '…and show it again');
-  // An item dragged onto another player's card goes to them.
+  // An item dragged onto another player's card goes to them (scrolled into view: the host column scrolls).
+  await secondCard.scrollIntoViewIfNeeded();
   await dragBy(page, firstCard.locator('.it .nm', { hasText: 'Rubber duck' }), secondCard);
   assert((await secondCard.locator('.it .nm').allInnerTexts()).join().includes('Rubber duck'), 'an item dragged onto another player’s card goes to them');
   // Delete takes off the object whose card is open (Ctrl+Z brings it back); the host panel's list has their menu too.

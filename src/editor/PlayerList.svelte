@@ -78,9 +78,27 @@
 
   // In a running game a player is removed (their points can be restored); otherwise the roster's entry is deleted.
   const removeWord = $derived(inGame ? 'Remove' : 'Delete');
+  /** Before the game (no undo history there): the player just deleted, for the note's Undo. */
+  let undone = $state<{ p: P; at: number } | null>(null);
   function remove(p: P): void {
+    const at = players.indexOf(p);
     if (onremove) onremove(p.id);
-    else players.splice(players.indexOf(p), 1);
+    else {
+      players.splice(at, 1);
+      undone = { p: $state.snapshot(p), at };
+    }
+    // The focus goes on to the next row's delete button (or ＋ Add player), not to the page. (A removal that asks
+    // first has put it on the question.)
+    void tick().then(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const dels = list?.querySelectorAll<HTMLButtonElement>('button.del');
+      (dels?.[Math.min(at, dels.length - 1)] ?? list?.querySelector<HTMLButtonElement>('button.add'))?.focus();
+    });
+  }
+  function undoRemove(): void {
+    if (!undone || players.length >= max) return;
+    players.splice(Math.min(undone.at, players.length), 0, undone.p);
+    undone = null;
   }
 
   /** A row's right-click menu (not in its name box, which keeps the browser's own). */
@@ -169,7 +187,7 @@
             <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
           {/if}
         </div>
-        {#if p.avatar}<button class="ghost small" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Use the colored token">✕🖼</button>{/if}
+        {#if p.avatar}<button class="ghost small" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">−🖼</button>{/if}
       {/if}
       <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
       <span class="chip" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
@@ -178,18 +196,35 @@
       {/if}
       <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
       <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move down">▼</button>
-      <button class="ghost small" onclick={() => remove(p)} aria-label="{removeWord} {p.name}">✕</button>
+      <button class="ghost small del" onclick={() => remove(p)} aria-label="{removeWord} {p.name}" title="{removeWord} {p.name}">{inGame ? '−' : '🗑'}</button>
     </div>
   {/each}
   <div class="row">
-    <button onclick={addAndName} disabled={players.length >= max}>＋ Add player</button>
+    <button class="add" onclick={addAndName} disabled={players.length >= max}>＋ Add player</button>
     <span class="muted">
       {players.length}/{max} players · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>
   </div>
+  {#if undone}
+    <div class="undo-note" role="status">
+      <span>Deleted <b>{undone.p.name}</b></span>
+      <button class="small" onclick={undoRemove} disabled={players.length >= max}>↶ Undo</button>
+      <button class="small ghost" onclick={() => (undone = null)} aria-label="Dismiss">✕</button>
+    </div>
+  {/if}
 </div>
 
 <style>
+  .undo-note {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    align-self: flex-start;
+    padding: 4px 6px 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+  }
   .players {
     display: flex;
     flex-direction: column;

@@ -263,7 +263,7 @@
   }
   .head {
     margin: 10px 0 2px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
@@ -307,7 +307,7 @@
   }
   .play {
     margin-left: 6px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
   }
   .go {
@@ -339,9 +339,9 @@
   .pill {
     padding: 0 8px;
     border-radius: 10px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
-    font-size: 11px;
+    font-size: 12px;
   }
   .now {
     display: flex;

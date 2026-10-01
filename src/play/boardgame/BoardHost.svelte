@@ -390,7 +390,7 @@
   .grip {
     cursor: grab;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: -2px;
     padding: 0 2px 0 3px;
     user-select: none;
@@ -404,7 +404,7 @@
     font-weight: 700;
   }
   .mark {
-    font-size: 11px;
+    font-size: 12px;
     padding-right: 2px;
   }
   .n {
@@ -452,7 +452,7 @@
     font-size: 12px;
   }
   .tiny {
-    font-size: 10px;
+    font-size: 12px;
     padding: 0 4px;
   }
 </style>

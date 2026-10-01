@@ -88,7 +88,7 @@ try {
   assert(again.suggestedFilename() === 'Two-tabs.brainrot', 'Ctrl+S saves the game pack');
 
   // Export HTML: a playable file that includes the pack.
-  const [html] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: '⬇ Export HTML' }).click()]);
+  const [html] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export HTML' }).click()]);
   assert(statSync(await html.path()).size > 3 * 1024 * 1024, 'the exported HTML includes the media');
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
@@ -111,7 +111,7 @@ try {
   assert((await a.locator('input.title').inputValue()) === 'Two tabs', 'the saved pack opens again with its files');
 
   // A .json export has no media: opened in another browser, the Media tab offers to put the files back.
-  const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export JSON' }).click()]);
+  const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);
   const jsonPath = resolve('test-results/save-export.json');
   await json.saveAs(jsonPath);
   const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });

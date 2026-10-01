@@ -159,7 +159,7 @@
   }
   .label {
     margin-top: 8px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);

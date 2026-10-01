@@ -343,6 +343,11 @@
   // Done at once: the note at the bottom offers Undo.
   function deleteCat(ci: number): void {
     step(`Deleted category “${categoryLabel(round.categories[ci])}”`, () => removeCategory(round, ci), { notify: true });
+    // The focus goes on to the ⋯ of the category now in its place (or the last one), not to the page.
+    void tick().then(() => {
+      const mores = document.querySelectorAll<HTMLButtonElement>('.cat-tools button[aria-label^="More for"]');
+      mores[Math.min(ci, mores.length - 1)]?.focus();
+    });
   }
 
   function clearCat(ci: number): void {
@@ -595,15 +600,15 @@
             <label class="check" title="Show the category name on top of the image">
               <input type="checkbox" bind:checked={cat.showTitleOverImage} /> Name
             </label>
-            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)">✕</button>
+            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)" aria-label="Remove {categoryLabel(cat)}'s image">−</button>
           </div>
         {/if}
         <!-- Moving, duplicating and deleting are in its menu (⋯, or a right-click), so the row fits a narrow column. -->
         <div class="cat-tools">
           <span class="grip" aria-hidden="true" title="Drag to move the category · right-click it for more">⋮⋮</span>
-          <button class="ghost small" aria-haspopup="menu" onclick={(e) => catMenu(e, ci, true)} title="Move, duplicate, delete…" aria-label="More for category {ci + 1}">⋯</button>
+          <button class="ghost small" aria-haspopup="menu" onclick={(e) => catMenu(e, ci, true)} title="Move, duplicate, delete…" aria-label="More for category {ci + 1}{cat.title.trim() ? `: ${cat.title.trim()}` : ''}">⋯</button>
           <span class="pop">
-            <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)">🖼</button>
+            <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)" aria-label="Image for {categoryLabel(cat)}">🖼</button>
             {#if catPicker === ci}
               <MediaPicker kind="image" onpick={(id) => ((cat.image = id), (catPicker = null))} onclose={() => (catPicker = null)} />
             {/if}
@@ -620,8 +625,11 @@
         {@const face = clue.tileFace?.image && !clue.empty ? mediaUrls[clue.tileFace.image] : undefined}
         {@const p = { cat: ci, row }}
         {@const target = dropTarget === `t${ci}-${row}`}
+        {@const value = clue.empty ? `row ${row + 1}` : `${sym}${clueValue(round, row, clue)}`}
+        {@const what = clue.empty ? 'empty space' : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}`}
         <button
           class="tile"
+          aria-label="{categoryLabel(cat) || `Category ${ci + 1}`}, {value}: {what}"
           class:empty={clue.empty}
           class:drop={target}
           class:lifted={tileDrag?.cat === ci && tileDrag.row === row}
@@ -783,7 +791,7 @@
     inset: auto 6px 6px auto;
     padding: 1px 6px;
     border-radius: 4px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
     font-size: 12px;
     font-weight: 700;
@@ -810,7 +818,7 @@
     right: 4px;
     bottom: 2px;
     text-align: center;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
     color: #fff;
@@ -823,11 +831,11 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .cat-img-opts select {
     padding: 2px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .cat-img-opts .check {
     gap: 3px;
@@ -876,7 +884,7 @@
     width: 60px !important;
   }
   .dd {
-    font-size: 11px;
+    font-size: 12px;
     background: #7a00ff;
     color: #fff;
     border-radius: 4px;
@@ -884,7 +892,7 @@
     margin-left: 4px;
   }
   .badge {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--muted);
   }
   .q {
@@ -903,6 +911,6 @@
     color: var(--warn);
   }
   .small {
-    font-size: 11px;
+    font-size: 12px;
   }
 </style>

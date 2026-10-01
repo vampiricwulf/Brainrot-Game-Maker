@@ -4,6 +4,7 @@
   here is one undoable step (Ctrl+Z once it's closed).
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { onDestroy, untrack } from 'svelte';
   import { adoptAdded, focusRef, occupiedScreens } from '../../lib/rpg';
   import { app } from '../../lib/app.svelte';
@@ -49,15 +50,16 @@
 <svelte:window onkeydown={key} />
 
 <div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit {title} live" bind:this={box}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit {title} live" bind:this={box} use:modal>
     <div class="row">
-      <b>✎ {title}</b>
+      <b class="modal-title">✎ {title}</b>
       <span class="muted small">
         {onAir ? 'Live: viewers see changes as you make them.' : 'Off air: viewers see it when the party gets here.'} They stay in this game unless you press
         💾 Keep in game.
       </span>
       <span class="spacer"></span>
       <button class="primary" onclick={onclose} title="Esc">Done</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="body"><ScreenEditor {world} {screen} {slide} /></div>
   </div>

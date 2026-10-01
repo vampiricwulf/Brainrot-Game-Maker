@@ -4,6 +4,7 @@
   pass through them to the tiles. Ctrl+C / Ctrl+X / Ctrl+V share the slide editor's clipboard.
 -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { onDestroy, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
@@ -364,11 +365,11 @@
 {/if}
 
 <div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Board images">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Board images" use:modal>
     <header>
       <div>
         <div class="muted small">{round.name}</div>
-        <h3>🖼 Board images</h3>
+        <h3 class="modal-title">🖼 Board images</h3>
       </div>
       <div class="pop">
         <button class="primary" onclick={() => (picking = 'add')}>＋ Add image</button>
@@ -381,6 +382,7 @@
       <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} aria-label="Undo (Ctrl+Z)" title={history.undoTitle}>↶</button>
       <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} aria-label="Redo (Ctrl+Y)" title={history.redoTitle}>↷</button>
       <button class="primary" onclick={onclose}>Done</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 
     <div class="body">
@@ -517,7 +519,7 @@
   }
   h4 {
     margin: 0 0 6px;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);

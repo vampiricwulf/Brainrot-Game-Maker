@@ -1,6 +1,7 @@
 // Desktop app (.exe) only: facts the native side hands the host page at startup, and the
 // "Discord audio fix" setting (see src-tauri/src/main.rs).
 import { inTauri } from './platform';
+import { tell } from './ask.svelte';
 
 declare global {
   interface Window {
@@ -241,7 +242,7 @@ function openWaiting(): void {
   if (!open) return;
   takeOpenedFile()
     .then((file) => file && open(file))
-    .catch((err) => alert(err instanceof Error ? err.message : String(err)));
+    .catch((err) => void tell(err instanceof Error ? err.message : String(err)));
 }
 
 /**

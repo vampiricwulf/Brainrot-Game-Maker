@@ -41,8 +41,8 @@
           {/if}
           <button class="small ghost" onclick={() => open(m.openUrl)} title="Open the player in its own window (Y)">Open player window ↗</button>
         {:else}
-          <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title="Space">{m.paused ? '▶' : '⏸'}</button>
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Restart">⏮</button>
+          <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title="Space" aria-label={m.paused ? 'Play' : 'Pause'}>{m.paused ? '▶' : '⏸'}</button>
+          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Restart" aria-label="Restart">⏮</button>
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: -5 })} title="Back 5s (←)">−5</button>
           <input
             class="seek"
@@ -57,7 +57,7 @@
           />
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: 5 })} title="Forward 5s (→)">+5</button>
           <span class="time">{fmtTime(m.time)} / {fmtTime(m.duration)}</span>
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'muted', value: !m.muted })} title="Mute (M)">
+          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'muted', value: !m.muted })} title="Mute (M)" aria-label="Mute" aria-pressed={m.muted}>
             {m.muted ? '🔇' : '🔈'}
           </button>
           <input
@@ -70,9 +70,9 @@
             oninput={(e) => mediaCommand({ el: id, op: 'volume', value: +e.currentTarget.value })}
             aria-label="Volume"
           />
-          <button class="small ghost" class:on={m.loop} onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop">🔁</button>
+          <button class="small ghost" class:on={m.loop} onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop" aria-label="Loop" aria-pressed={m.loop}>🔁</button>
           {#if m.openUrl}
-            <button class="small ghost" onclick={() => open(m.openUrl)} title="Open in its own window (Y)">↗</button>
+            <button class="small ghost" onclick={() => open(m.openUrl)} title="Open in its own window (Y)" aria-label="Open in its own window">↗</button>
           {/if}
           {#if m.blocked}<span class="blocked" title="The browser blocked autoplay with sound, so it's playing muted. Click the unmute button.">autoplay muted</span>{/if}
         {/if}
@@ -116,7 +116,8 @@
     color: var(--muted);
   }
   .on {
-    background: var(--accent) !important;
+    background: var(--accent-fill) !important;
+    color: #fff;
   }
   .msg,
   .blocked {

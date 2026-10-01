@@ -5,6 +5,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { modal } from '../lib/modal';
   import { step } from '../lib/history.svelte';
   import { ROUND_MODES } from '../lib/modes';
   import { roundName, type Game } from '../lib/model';
@@ -43,11 +44,11 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Import rounds" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Import rounds" use:modal data-undo="off">
     <div class="row">
-      <h2>Import rounds from “{source.title}”</h2>
+      <h2 class="modal-title">📂 Import rounds from “{source.title}”</h2>
       <span class="spacer"></span>
-      <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     {#if !source.rounds.length}
       <p class="muted">That game has no rounds.</p>
@@ -102,9 +103,6 @@
   h2,
   p {
     margin: 0;
-  }
-  h2 {
-    font-size: 18px;
   }
   .row {
     display: flex;
