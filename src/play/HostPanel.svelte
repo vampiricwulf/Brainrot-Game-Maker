@@ -18,6 +18,7 @@
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
   import { app } from '../lib/app.svelte';
+  import { buzzerOn } from '../lib/remote.svelte';
   import { scoresWindow } from '../lib/sync.svelte';
   import type { Snippet } from 'svelte';
 
@@ -66,6 +67,7 @@
     onrolloff,
     onlog,
     onplayers,
+    onrules,
     onhide,
     onexit,
     onaudience,
@@ -141,6 +143,8 @@
     /** Open or close the 📜 Log (with a tab: open it on that tab). */
     onlog: (tab?: LogTab) => void;
     onplayers: () => void;
+    /** 📋 Game rules, mid-game (a window). */
+    onrules: () => void;
     onhide: () => void;
     onexit: () => void;
     /** Open the audience window, or close it (the panel has asked first). */
@@ -165,7 +169,8 @@
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
-  const buzzing = $derived(!!game.settings.buzzer && session.phase === 'clue' && !session.dd);
+  // (Off in a copy with no buzzer server, see buzzerOn.)
+  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd);
   const buzz = $derived(app.live.buzz);
   const lockedNames = $derived(
     (buzz?.lockedOut ?? [])
@@ -554,7 +559,11 @@
       >
     </span>
     <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
-    <button onclick={onplayers}>👥 Players</button>
+    <!-- The game's rules go with its players (Most players): a small button, so the row doesn't grow. -->
+    <span class="pair">
+      <button onclick={onplayers}>👥 Players</button>
+      <button onclick={onrules} aria-label="📋 Game rules" title="📋 Game rules: scoring, most players, timers, the round intro">📋</button>
+    </span>
     <button class="cover-toggle" class:on={app.live.cover} aria-pressed={!!app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
       ⏸ Cover
     </button>

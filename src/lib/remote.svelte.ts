@@ -130,3 +130,11 @@ export async function testServer(base: string): Promise<string> {
     return '✘ No answer from there';
   }
 }
+
+/**
+ * Buzzer mode as the game plays it: on only when this copy has a buzzer server to run the room on. (A game saved with
+ * it on keeps its setting, for a copy that has one.)
+ */
+export function buzzerOn(settings: { buzzer?: boolean }): boolean {
+  return !!settings.buzzer && !!buzzerBase();
+}

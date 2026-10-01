@@ -7,6 +7,7 @@
   import BuzzerOptions, { type SetBuzzSetting } from './BuzzerOptions.svelte';
   import QrCode from '../lib/QrCode.svelte';
   import { buzzerBase, remote, roomLink } from '../lib/remote.svelte';
+  import { app } from '../lib/app.svelte';
   import { copyText } from './standings';
   import PhoneList from './PhoneList.svelte';
 
@@ -38,9 +39,10 @@
 <section class="card" aria-label="Phone buzzers">
   <h2>📱 Phone buzzers</h2>
   {#if !base}
+    <!-- (A game saved with Buzzer mode on plays without it here: you pick who answers.) -->
     <p class="muted small">
-      Phone buzzers aren't set up in this copy. A buzzer server's address can go in ⚙ Settings › Buzzer server (in the
-      editor).
+      Phone buzzers aren't set up in this copy{settings.buzzer ? ', so Buzzer mode is off here: you pick who answers (1–9 or a click)' : ''}.
+      {#if !app.playerOnly}A buzzer server's address can go in ⚙ Settings › Buzzer server (in the editor).{/if}
     </p>
   {:else}
     <label class="check">

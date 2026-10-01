@@ -31,15 +31,33 @@ done, the Unreleased lines move under that day's heading.
 - **↺ Reset buzzers** in the host panel (or `0`): nobody is locked out of the clue any more and the buzzers open for
   everyone. (9920218)
 - If the buzzer server turns down a new room, the pre-game card shows its reason in plain words. (9920218)
+- **📋 Game rules mid-game**: a small **📋** next to 👥 Players in the host panel opens the same rules as before the
+  game. Changes count at once and are kept with the game in the editor (undoable there). When the game is full,
+  👥 Players offers **Raise Most players to …** next to the greyed-out ＋ Add player. (1d355db)
+- **`Ctrl+Z` / `Ctrl+Y` on the pre-game screen** undo and redo the changes made there (players, rules, buzzers, on
+  stream, Daily Doubles placed), the same steps as the editor's 🕘 History, and the list and rules show it at once.
+  In a name you've just typed in, `Ctrl+Z` first undoes the typing there, as in the editor. The browser's own undo no
+  longer changes a field behind your back. (1d355db)
+- **History's Go there for players and rules**: a step in Play › Players, Game rules, Phone buzzers or On stream now
+  has **Go there**, which opens the ▶ Play screen at that part. (An undo in the editor never starts a game.) (1d355db)
 - **The buzzer server limits new rooms**: 6 a minute from one address ("Too many new rooms — wait a minute") and 1000
   a day in all ("The buzzer server is busy today — try again tomorrow"), so nobody can use up its free daily quota.
   (bde9ae8)
 
 ### Changed
+- **The pre-game screen's Start game ▶ and ◀ Back to editor stay at the foot of the window** however long the page
+  gets (an open 📋 Game rules fold put Start game far below the fold). On wide screens (1400 px and up) the page is two
+  columns: players and 📱 buzzers on the left; rules, display and on stream on the right. (1d355db, 0ab9a9f)
+- **⚙ Game rules is now 📋 Game rules**, so it isn't mixed up with the app's ⚙ Settings next to it. Its fold is a
+  heading of its own (screen readers no longer file the rules under 📱 Phone buzzers). (1d355db)
+- **🔊 Sounds says at the top where the players and rules went**, with a button to the ▶ Play screen (it was a small
+  line at the bottom). (1d355db, 0ab9a9f)
+- Adding players by typing a name and pressing `Enter`: each player added and named is one step in 🕘 History,
+  called by the name typed ("Added player “Bo”"), and undoing it no longer takes back the name typed before it. (1d355db)
 - **The editor's ⚙ Setup tab is now 🔊 Sounds**, and holds only the sounds. **Players are added on the ▶ Play
   screen** (before the game): add, rename, recolor, pick a picture, reorder and delete them there, and they're kept
   with the game for next time (undoable in the editor's 🕘 History). The rules, timers and round intro moved there
-  too, in a **⚙ Game rules** fold that remembers whether you left it open (the buzzer options are on the 📱 Phone
+  too, in a **📋 Game rules** fold that remembers whether you left it open (the buzzer options are on the 📱 Phone
   buzzers card above it); they're still saved with the game. A game with no players can still go to ▶ Play ("Add
   players to start"); the checklist's "No players yet" line takes you there. Find no longer lists players.
   (e2032fc, 64b7501, c63c83e)
@@ -166,6 +184,16 @@ done, the Unreleased lines move under that day's heading.
   duplicating or deleting rounds and categories; icon buttons, board tiles, sidebar tabs and toggles have names. (4729d75)
 
 ### Fixed
+- **A rematch keeps the players' pictures**, and changing the players before it no longer deletes their pictures from
+  the saved game (a picture now only goes when you take it off with −🖼). (1d355db)
+- **A game saved with Buzzer mode on plays without it in a copy that has no buzzer server**: no more "📱 Phones off",
+  "🔔 Buzzers open" or ↺ Reset buzzers that can't do anything. The 📱 card says Buzzer mode is off here and you pick
+  who answers; the setting stays with the game. (1d355db)
+- An exported player-only file no longer tells players to look in the editor's ⚙ Settings for a buzzer server. (1d355db)
+- 📋 Game rules: the default clue countdown is whole seconds, at least 1 (−5 used to show "Start −5s"); blank or 0 is
+  none. A game whose Most players was below its player count (an older or hand-edited file: "6/4 players") opens with
+  Most players raised to fit. The Round intro row lines up. (1d355db)
+- The players' ▲/▼ buttons say whose they are ("Move Bo up"), and 🔊 Sounds' ↺ says "Back to the built-in … sound". (1d355db)
 - Later boards no longer keep doubling their values; long category names aren't cut off; the Daily Double count is
   capped at the playable tiles; a blank row value keeps its old value and negatives read −$100; a stat preset can't be
   added twice; focus goes to the new round after ＋ Add round; the rules' checkboxes don't shrink. (46f2a13)

@@ -465,6 +465,18 @@ export function nameStep(label: string, opts: StepOptions = {}): void {
   named = { label, opts };
 }
 
+/**
+ * The change being made goes on in this text field, focused now: typing in it joins that
+ * step instead of making one of its own. A player added with Enter or ＋ Add player and then named in its new box is one
+ * step, "Added player “Bo”", named as the player is called once the typing is done.
+ */
+export function joinTyping(el: Element): void {
+  // (Not seen yet: it takes the field focused when it is.)
+  if (!h.pending) return;
+  pendingTarget = el;
+  pendingSession = session;
+}
+
 /** Saved, played, exported…: shown in the timeline between the steps, and the step before it stays as it is. */
 export function mark(kind: Mark['kind'], label: string): void {
   if (!watch) return;

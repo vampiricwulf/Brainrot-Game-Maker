@@ -101,6 +101,11 @@
       const r = playing.find((x) => x === on) ?? playing[0];
       if (r) tab = game.rounds.indexOf(r);
       else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`, 5000);
+    } else if (place.tab === 'play') {
+      // The players, the rules… are on the ▶ Play screen: Go there opens it, at that part.
+      if (!game.rounds.length) return void toast('That’s on the ▶ Play screen: add a round first (＋ Add round)', 4000);
+      app.pregameAt = place.part;
+      onplay();
     } else if (place.tab !== 'title') tab = place.tab;
   }
 
@@ -127,7 +132,8 @@
       if (before.focusedAt >= 0) focusRoundTab(game.rounds[where(before.focused, before.focusedAt)]?.id);
       // Then on to where it changed (the History tab shows it in its list).
       const place = dir < 0 ? e.undoPlace : e.place;
-      if (via !== 'list' && tab !== 'history' && place) goTo(place, itemIdsIn(e.ops));
+      // (Not to the ▶ Play screen: an undo never starts a game. The notice says where it was.)
+      if (via !== 'list' && tab !== 'history' && place && place.tab !== 'play') goTo(place, itemIdsIn(e.ops));
     });
     return () => (offApplying(), offApplied());
   });
@@ -784,7 +790,7 @@
            (another save of the same game has the same round ids). -->
       {#key game}
         {#if tab === 'sounds'}
-          <SoundsPanel />
+          <SoundsPanel {onplay} canPlay={game.rounds.length > 0} />
         {:else if tab === 'stats'}
           <StatsItemsEditor />
         {:else if tab === 'tiebreaker'}

@@ -83,15 +83,20 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 ## Hosting
 
 Press **▶ Play** to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
-`Alt`+arrows to reorder; they're kept with the game for next time), open **⚙ Game rules** for scoring, the most
-players, timers and the round intro, and turn on phone buzzers on the **📱 Phone buzzers** card (all saved with the game
-too). Then pick one of two modes. Viewers see a "Starting soon…" card until you press **Start game**.
+`Alt`+arrows to reorder; type a name and press `Enter` for the next one; they're kept with the game for next time),
+open **📋 Game rules** for scoring, the most players, timers and the round intro, and turn on phone buzzers on the
+**📱 Phone buzzers** card (all saved with the game too). `Ctrl+Z` / `Ctrl+Y` undo and redo the changes made there (the
+same steps as the editor's 🕘 History, where **Go there** brings you back to this screen). Then pick one of two modes.
+Viewers see a "Starting soon…" card until you press **Start game**, which stays at the foot of the window however long
+the page gets (on a wide screen the page is two columns). A **🔁 Rematch** keeps the players, their colors and pictures.
 
 - **Single window**: viewers see this window. Press `H` to hide the host controls.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **Award** or **Deduct**.
+The rules can change mid-game too: **📋** next to 👥 Players in the host panel opens 📋 Game rules (they count at once
+and are kept with the game), and at the most players 👥 Players offers **Raise Most players**.
 Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.
 Nothing pops up over the stage: questions for the host (a locked door, naming a new screen…) appear in the host panel.
 
@@ -114,10 +119,12 @@ answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone
 tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. The rooms run on a small buzzer server
 (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings › Buzzer server can point at your
-own. Copies built without one say "Phone buzzers aren't set up in this copy".
+own. Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode
+on without it (you pick who answers); the setting stays with the game for a copy that has a server.
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
-off in the editor's 🔊 Sounds tab.
+off in the editor's 🔊 Sounds tab (↺ goes back to the built-in sound). The players and rules aren't there: the tab
+says so at the top, with a button to the ▶ Play screen.
 
 **For OBS:** Theme › Stage background can be chroma green or magenta for keying, and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown.

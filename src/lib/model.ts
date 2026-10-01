@@ -1076,6 +1076,25 @@ export function migrateGame(input: Game): Game {
   return g;
 }
 
+/** Most players a game can have (the stats strip and the player list stay readable). */
+export const MAX_PLAYERS = 20;
+
+/**
+ * "Most players" as it can be: a whole number from 1 to MAX_PLAYERS, never below the `players` already listed (up to
+ * MAX_PLAYERS). Anything that isn't a number is the default 8.
+ */
+export function mostPlayers(n: unknown, players = 0): number {
+  const want = typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : 8;
+  return Math.min(MAX_PLAYERS, Math.max(1, players, want));
+}
+
+/** A clue countdown typed in (seconds): a whole number of at least 1, or null for none (blank, 0, not a number). */
+export function countdownSeconds(text: string): number | null {
+  const n = Math.round(Number(text));
+  if (text.trim() === '' || !Number.isFinite(n) || n === 0) return null;
+  return Math.max(1, n);
+}
+
 // ---------- Hand-edited games ----------
 // A game edited by hand can miss parts the app needs (a player's color, a board's values, a slide's elements…). The
 // ones that have an obvious fill are filled in place; a game that's whole is left exactly as it is.
@@ -1111,6 +1130,9 @@ function repairGame(g: Game): void {
     if (typeof p.name !== 'string') p.name = `Player ${i + 1}`;
     if (typeof p.color !== 'string' || !p.color) p.color = nextFreeColor(players.filter((o) => o !== p && typeof o.color === 'string').map((o) => o.color));
   });
+  // "Most players" never below the players listed ("6/4 players"), and within what the app can show.
+  const most = mostPlayers(g.settings.maxPlayers, players.length);
+  if (most !== g.settings.maxPlayers) g.settings.maxPlayers = most;
   const rounds = objects<Round>(g.rounds);
   if (rounds !== g.rounds) g.rounds = rounds;
   for (const r of rounds) {

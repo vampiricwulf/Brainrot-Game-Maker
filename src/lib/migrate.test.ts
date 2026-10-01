@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { parseGame } from './fileio';
-import { FINAL_V1_ROUND_ID, gameProblem, isBoard, isFinal, migrateGame, newGame, textSlide, type Game } from './model';
+import { countdownSeconds, FINAL_V1_ROUND_ID, gameProblem, isBoard, isFinal, MAX_PLAYERS, migrateGame, mostPlayers, newGame, textSlide, type Game } from './model';
 import { validate } from './validate';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
 
@@ -103,6 +103,19 @@ describe('hand-edited games', () => {
     expect(gameProblem(m)).toBeNull();
   });
 
+  it('never has Most players below the players listed (or past what the app shows)', () => {
+    const g = plain(jeopardyGame());
+    g.players = [1, 2, 3, 4, 5, 6].map((n) => ({ id: `p${n}`, name: `P${n}`, color: `#00000${n}` }));
+    g.settings.maxPlayers = 4;
+    expect(migrateGame(plain(g)).settings.maxPlayers).toBe(6);
+    g.settings.maxPlayers = 99;
+    expect(migrateGame(plain(g)).settings.maxPlayers).toBe(MAX_PLAYERS);
+    g.settings.maxPlayers = 'lots';
+    expect(migrateGame(plain(g)).settings.maxPlayers).toBe(8);
+    g.settings.maxPlayers = 10;
+    expect(migrateGame(plain(g)).settings.maxPlayers).toBe(10);
+  });
+
   it("names the first part it can't use", () => {
     const g = plain(jeopardyGame());
     g.rounds[1].mode = 'quiz';
@@ -120,5 +133,27 @@ describe('buzzer settings', () => {
     expect(m.settings.buzzArm).toBe('host');
     expect(m.settings).not.toHaveProperty('buzzKeys');
     expect(m.settings).not.toHaveProperty('buzzFrom');
+  });
+});
+
+describe('📋 Game rules: what can be typed', () => {
+  it('a clue countdown is whole seconds, at least 1; blank or 0 is none', () => {
+    expect(countdownSeconds('')).toBeNull();
+    expect(countdownSeconds('0')).toBeNull();
+    expect(countdownSeconds('abc')).toBeNull();
+    expect(countdownSeconds('-5')).toBe(1);
+    expect(countdownSeconds('0.4')).toBeNull();
+    expect(countdownSeconds('0.6')).toBe(1);
+    expect(countdownSeconds('12.6')).toBe(13);
+    expect(countdownSeconds('30')).toBe(30);
+  });
+
+  it('Most players: 1 to 20, never below the players listed', () => {
+    expect(mostPlayers(0)).toBe(1);
+    expect(mostPlayers(3, 5)).toBe(5);
+    expect(mostPlayers(50)).toBe(MAX_PLAYERS);
+    expect(mostPlayers(7.4)).toBe(7);
+    expect(mostPlayers(undefined)).toBe(8);
+    expect(mostPlayers(4, 30)).toBe(MAX_PLAYERS);
   });
 });

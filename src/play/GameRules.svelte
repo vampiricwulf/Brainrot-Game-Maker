@@ -1,15 +1,24 @@
 <!--
-  Pre-game: ⚙ Game rules (scoring, most players, timers, the round intro; the buzzers are on the 📱 Phone buzzers
-  card). Saved with the game: the play screen keeps the editor's copy of it in step (an undoable change in its
-  history). Folded away until opened; this computer remembers whether it was open.
+  📋 Game rules (scoring, most players, timers, the round intro; the buzzers are on the 📱 Phone buzzers card). On the
+  pre-game screen, folded away until opened (this computer remembers whether it was open); mid-game, the same rules
+  open in a window from the host panel (`folded={false}`). Saved with the game: the play screen keeps the editor's copy
+  of it in step (an undoable change in its history).
 -->
 <script lang="ts">
-  import type { GameSettings } from '../lib/model';
+  import { countdownSeconds, MAX_PLAYERS, mostPlayers, type GameSettings } from '../lib/model';
 
-  let { s, players }: { s: GameSettings; /** Players in the game now ("Most players" never goes below it). */ players: number } = $props();
+  let {
+    s,
+    players,
+    folded = true,
+  }: {
+    s: GameSettings;
+    /** Players in the game now ("Most players" never goes below it). */
+    players: number;
+    /** On the pre-game screen: a fold with its heading (mid-game, the window around it has the heading). */
+    folded?: boolean;
+  } = $props();
 
-  /** Most players a game can have (the stats strip and the player list stay readable). */
-  const MAX_PLAYERS = 20;
   const OPEN_KEY = 'jb.rulesOpen';
 
   let open = $state(readOpen());
@@ -39,8 +48,7 @@
   );
 </script>
 
-<details class="rules" {open} ontoggle={toggled}>
-  <summary><b>⚙ Game rules</b> <span class="muted small">{gist}</span></summary>
+{#snippet body()}
   <div class="body">
     <h3>Scoring and players</h3>
     <div class="grid">
@@ -64,7 +72,7 @@
           value={s.maxPlayers}
           onchange={(e) => {
             // Never fewer than the players already listed.
-            const n = Math.max(1, players, Math.min(MAX_PLAYERS, Math.round(+e.currentTarget.value) || 0));
+            const n = mostPlayers(Math.round(+e.currentTarget.value) || 0, players);
             if (n !== s.maxPlayers) s.maxPlayers = n;
             e.currentTarget.value = String(s.maxPlayers);
           }}
@@ -84,8 +92,14 @@
         <input
           type="number"
           min="0"
+          step="1"
           value={s.defaultTimerSeconds ?? ''}
-          oninput={(e) => (s.defaultTimerSeconds = e.currentTarget.value === '' || +e.currentTarget.value === 0 ? null : +e.currentTarget.value)}
+          onchange={(e) => {
+            // Whole seconds, at least 1 (blank or 0: no countdown).
+            const n = countdownSeconds(e.currentTarget.value);
+            if (n !== s.defaultTimerSeconds) s.defaultTimerSeconds = n;
+            e.currentTarget.value = n === null ? '' : String(n);
+          }}
         />
       </label>
       <label class="check"><input type="checkbox" bind:checked={s.timerAutoStart} /> Start the countdown automatically when a clue opens</label>
@@ -106,7 +120,17 @@
       </label>
     </div>
   </div>
-</details>
+{/snippet}
+
+{#if folded}
+  <details class="rules" {open} ontoggle={toggled} data-place="play:rules">
+    <!-- A heading of its own, so the rules' sections aren't read as part of the card above. -->
+    <summary><h2>📋 Game rules</h2> <span class="muted small">{gist}</span></summary>
+    {@render body()}
+  </details>
+{:else}
+  {@render body()}
+{/if}
 
 <style>
   .rules {
@@ -116,6 +140,11 @@
   }
   summary {
     cursor: pointer;
+  }
+  summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 15px;
   }
   .body {
     display: flex;
@@ -137,7 +166,8 @@
     display: grid;
     gap: 10px 12px;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    align-items: end;
+    /* A field (its label above its box) lines up with the checkboxes beside it, middle to middle. */
+    align-items: center;
   }
   /* A label that wraps keeps its checkbox full size. */
   .check input[type='checkbox'] {
