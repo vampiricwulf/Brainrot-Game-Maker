@@ -42,7 +42,11 @@ export interface HostState {
   /** Phones may ask to join as a player not in the game; the host accepts or rejects them. */
   allowNew: boolean;
   phase: BuzzPhase;
-  /** Goes up by one every time the buzzers are armed; a buzz names the arm it was for, so a stale one never counts. */
+  /**
+   * Goes up by one every time the buzzers are armed; a buzz names the arm it was for, so a stale one never counts.
+   * To reopen the buzzers (after a wrong answer too) the host always sends a new armId: 'armed' with the armId of a
+   * race the room already decided keeps that winner ('answering'), since the host just hadn't seen the buzz yet.
+   */
   armId: number;
   /** While closed/armed/answering: what phones show of the clue. Question text only, never the answer. */
   clue?: { text: string; caption?: string } | null;
@@ -105,7 +109,10 @@ export type HostMsg =
 /** The room → host. */
 export type RoomToHost =
   | { t: 'welcome'; code: string; protocol: number; serverNow: number }
-  /** A buzz the room counted while armed. rank 1 is the winner (the room has moved to 'answering'); later ranks came after. */
+  /**
+   * A buzz the room counted while armed. rank 1 is the winner (the room has moved to 'answering'); later ranks came
+   * after. afterMs: 0 for the winner, ms after the winner for later ranks.
+   */
   | { t: 'buzz'; armId: number; seatId: string; rank: number; afterMs: number }
   | { t: 'phones'; phones: PhoneInfo[] }
   | { t: 'pong'; at: number; serverNow: number }

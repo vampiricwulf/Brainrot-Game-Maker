@@ -25,6 +25,8 @@ export default defineConfig({
         resolve: { conditions: ['browser'] },
         test: { name: 'runes', include: ['src/**/*.svelte.test.ts'], environment: './src/test/client-env.ts' },
       },
+      // The remote buzzer room (buzzer/, a Cloudflare Worker): its rules are plain TS.
+      { extends: true, test: { name: 'buzzer', include: ['buzzer/**/*.test.ts'], exclude: ['buzzer/node_modules/**'] } },
     ],
   },
 });
