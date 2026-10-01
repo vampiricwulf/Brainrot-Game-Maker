@@ -90,6 +90,24 @@ in plain words for the people who make and host games. Anything committed but no
 - **The Layers list flags an item that's off the slide** ("⚠ off the slide"), where players can't see it.
 
 ### Changed
+- **Daily Doubles placed by hand raise the ⭐ Daily Doubles count**: making a fourth tile a Daily Double (from the
+  tile's menu or the clue's Type) sets the box to 4, so it never says fewer than the board has. When it's lowered
+  below what's placed, the checklist says so (they all still play).
+- **A game with only a title, a theme, rules or sounds changed counts as work**: New and Open… ask first, as for any
+  game with unsaved changes, and keep it in Open… → Recent games. Before, it was replaced without a word.
+- **A new row gets the board's usual step**: Insert row and the Rows box now add the same value (the step most rows
+  go up by), where they used to add different ones on a board with uneven values.
+- **Insert category left or right names it "New category"** instead of a number that doesn't match where it went
+  ("Category 8" in first place). Added at the end, it's still the next number.
+- **🕘 History is one Tab stop**: Tab goes to the step the game is at, and ↑/↓ move between steps, instead of Tab
+  stopping on each of up to 300 steps. **Go there** (or **G**) also puts the focus where it went.
+- **Clearer step names in 🕘 History**: "Made Memes $400 a Daily Double" and "Left Memes $400 empty" name the tile,
+  "Changed Memes $400 to $750" names the clue by the value it had, a category's picture taken off is "Removed the
+  image of category …", and duplicating a round that's already a copy gives "(copy 2)", not "(copy) (copy)".
+- **Media's file count** counts only the files this browser has, and says how many more are missing ("3 · 1 MB (2
+  more missing)").
+- **Category names on a crowded board** (8 to 10 categories) are a little smaller and break between words, not in
+  the middle of one; **×2** and **÷2** stay together when the row values wrap.
 - **The sound preview in 🔊 Sounds can be stopped**: ▶ turns into ■ while it plays.
 - **A sound whose file is missing plays its built-in sound** instead of nothing, and 🔊 Sounds says so on its row
   ("… is missing: plays the built-in sound"). The checklist lists it on its own ("1 sound file missing: see 🔊
@@ -271,6 +289,20 @@ in plain words for the people who make and host games. Anything committed but no
   Question and Answer boxes.
 
 ### Fixed
+- **Reopening a recent game keeps the files its undo history needs**: ↶ Reopen previous game (or Open… → Recent
+  games) could delete a file that had been removed, so undoing that Remove brought it back as "missing". Forgetting a
+  game in Open… no longer deletes files the open game's own undo history can bring back either.
+- **🔗 Find missing files… is one undo step**, "Reconnected 2 files": Undo makes them missing again. Each file keeps
+  its own name (it was renamed after the file picked, as a "Renamed file" step), and a file found under exactly its own
+  name is a step too.
+- **💾 Save a copy is one undo step**, "Saved a copy of “…”": Undo makes it the online link again and shows the
+  picture from the link (it used to keep showing the saved copy, and called the step "Changed size of file").
+- **Closing the clue editor goes back to the tile it ended on** (after Ctrl+Enter or ◀ Prev / Next ▶), not the tile
+  it was opened from.
+- **A clue's ⏱ countdown is whole seconds**: a negative number or a fraction no longer gives the host "Start -5s";
+  blank still uses the game's default and 0 means no countdown. **A clue's Value can't be negative** any more.
+- **Delete and Esc on the Media page work with the focus on a card's Select checkbox.**
+- **The note after replacing a game** has a space between "…Recent games." and "Removed the oldest kept game…".
 - **A reload (or a closed tab) right after a change no longer loses it**: the autosave started as the page goes away
   didn't always finish, so a round added a moment before a reload could be gone even though the header said
   "✓ Autosaved". A copy is now written instantly as the page closes and comes back on the next start ("Your last

@@ -126,6 +126,31 @@ export function flash(key: string): void {
   });
 }
 
+const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Once what a request opened is on screen, the focus goes there: to what flashes (`key`, or the first field in it), else
+ * to the first thing in the editor's page. Only while the focus is lost (on the page itself, or still in `from`, what
+ * asked to go): something that opened there and took it (a clue editor) keeps it.
+ */
+export function focusPlace(key: string | null, from?: Element | null): void {
+  const lost = () => {
+    const at = document.activeElement;
+    return !at || at === document.body || !at.isConnected || !!from?.contains(at);
+  };
+  let frames = 0;
+  const tryNow = () => {
+    if (!lost()) return;
+    const flashed = key ? document.querySelector<HTMLElement>(`[data-place="${CSS.escape(key)}"]`) : null;
+    let target = flashed?.matches(FOCUSABLE) ? flashed : flashed?.querySelector<HTMLElement>(FOCUSABLE);
+    // (What opens there can take a few frames: a clue editor, a space's card.)
+    if (!target && ++frames < 30) return void requestAnimationFrame(tryNow);
+    target ??= document.querySelector<HTMLElement>('main')?.querySelector<HTMLElement>(FOCUSABLE);
+    if (target && !target.closest('[inert]')) target.focus();
+  };
+  requestAnimationFrame(tryNow);
+}
+
 async function settled(): Promise<void> {
   await tick();
   await tick();

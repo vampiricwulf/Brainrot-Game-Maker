@@ -416,13 +416,19 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
   throw failure;
 }
 
+/** A live-link file's bytes, downloaded for "Save a copy" (see keepLinkCopy). */
+export interface LinkCopy {
+  blob: Blob;
+  mime: string;
+}
+
 /**
- * "Save a copy": download a live-link file into the game after all. It keeps its id, so every place
- * that uses it keeps working, now offline.
+ * "Save a copy", first half: download a live-link file's bytes (null: it's no longer a link). Nothing in the game
+ * changes yet: keepLinkCopy puts them in, as one step however long the download took.
  */
-export async function saveLinkCopy(game: Game, id: string, job: DownloadJob = {}): Promise<void> {
+export async function fetchLinkCopy(game: Game, id: string, job: DownloadJob = {}): Promise<LinkCopy | null> {
   const ref = game.media.find((m) => m.id === id);
-  if (!ref?.url) return;
+  if (!ref?.url) return null;
   const url = ref.url;
   const parsed = ref.source ? parseMediaLink(ref.source, ref.kind === 'font' ? undefined : ref.kind) : null;
   const link = parsed && !isLinkProblem(parsed) && !parsed.embed ? parsed : null;
@@ -445,11 +451,22 @@ export async function saveLinkCopy(game: Game, id: string, job: DownloadJob = {}
   if (kind !== ref.kind) throw kind ? wrongKind(kind, ref.kind) : new LinkError({ problem: 'not-media', message: linkMessages.notMedia });
   const cant = unplayable(mime);
   if (cant) throw cant;
-  await putMedia(id, mime === file.mime ? file.blob : file.blob.slice(0, file.blob.size, mime));
-  ref.mime = mime;
-  ref.size = file.blob.size;
+  return { blob: mime === file.mime ? file.blob : file.blob.slice(0, file.blob.size, mime), mime };
+}
+
+/**
+ * "Save a copy", second half: the downloaded bytes become the file's. It keeps its id, so every place that uses it
+ * keeps working, now offline. False when it's no longer a link (Undo took it back meanwhile…).
+ */
+export async function keepLinkCopy(game: Game, id: string, copy: LinkCopy): Promise<boolean> {
+  const ref = game.media.find((m) => m.id === id);
+  if (!ref?.url) return false;
+  await putMedia(id, copy.blob);
+  ref.mime = copy.mime;
+  ref.size = copy.blob.size;
   delete ref.url;
   delete ref.expiresAt;
+  return true;
 }
 
 /** <img onerror>: a Drive picture that won't load tries its thumbnail instead (once). */
@@ -466,15 +483,16 @@ const KIND_WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a vid
 
 /**
  * Put a new file in place of a game file (one that went missing, or one to swap), keeping its id so
- * every tile, slide and sound that uses it is fixed at once. The new file must be the same kind.
+ * every tile, slide and sound that uses it is fixed at once. The new file must be the same kind. It takes the new
+ * file's name, unless `keepName` (a missing file found again under its own name).
  */
-export async function replaceMediaFile(game: Game, id: string, file: File): Promise<MediaRef> {
+export async function replaceMediaFile(game: Game, id: string, file: File, keepName = false): Promise<MediaRef> {
   const ref = game.media.find((m) => m.id === id);
   if (!ref) throw new Error('That file is no longer in the game.');
   const { mime, kind, blob } = await checkedFile(file, file.name);
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
   await putMedia(id, blob.type ? blob : new Blob([blob], { type: mime }));
-  ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
+  if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
   ref.mime = mime;
   ref.size = blob.size;
   // It's a stored file now, not a link.
@@ -490,10 +508,15 @@ export function missingMedia(game: Game): MediaRef[] {
 }
 
 /**
- * Reconnect missing files from a batch the user picked, matched by file name (ignoring case).
+ * Reconnect missing files from a batch the user picked, matched by file name (ignoring case): each keeps its name.
+ * `swapped` is told of each file's bytes put back (stashed copies, for Undo to take them out again).
  * Returns how many were reconnected and the names still missing.
  */
-export async function relinkMissing(game: Game, files: File[]): Promise<{ fixed: number; stillMissing: string[]; errors: string[] }> {
+export async function relinkMissing(
+  game: Game,
+  files: File[],
+  swapped: (s: { id: string; before: string | null; after: string | null }) => void = () => {},
+): Promise<{ fixed: number; stillMissing: string[]; errors: string[] }> {
   const byName = new Map(files.map((f) => [f.name.toLowerCase(), f]));
   let fixed = 0;
   const errors: string[] = [];
@@ -501,7 +524,9 @@ export async function relinkMissing(game: Game, files: File[]): Promise<{ fixed:
     const f = byName.get(ref.name.toLowerCase());
     if (!f) continue;
     try {
-      await replaceMediaFile(game, ref.id, f);
+      const before = await stashMedia(ref.id);
+      await replaceMediaFile(game, ref.id, f, true);
+      swapped({ id: ref.id, before, after: await stashMedia(ref.id) });
       byName.delete(ref.name.toLowerCase());
       fixed++;
     } catch (e) {

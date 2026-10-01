@@ -273,6 +273,20 @@ await card('pic3.png').getByRole('button', { name: '💾 Save a copy' }).click()
 await card('pic3.png').getByText('Saved from files.catbox.moe').waitFor();
 assert(/\d+(\.\d+)? KB/.test(await card('pic3.png').locator('.meta').first().innerText()) && (await card('pic3.png').locator('.badge').count()) === 0, 'Save a copy downloads a live link into the game (same file, now stored)');
 assert((await page.getByText(/Files stored with this game: 2 ·/).count()) === 1, 'and it counts as stored');
+// One step of its own: Undo makes it the link again (its picture plays from the link, not the copy), Redo the copy.
+const undoButton = page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' });
+await page.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes('Saved a copy of “pic3.png”'));
+assert(true, 'Save a copy is a step named "Saved a copy of “pic3.png”"');
+await page.evaluate(() => document.activeElement?.blur?.());
+await page.keyboard.press('Control+z');
+await card('pic3.png').getByText('🌐 files.catbox.moe').waitFor();
+assert(
+  (await card('pic3.png').locator('img').getAttribute('src')) === 'https://files.catbox.moe/pic3.png' && (await page.getByText(/Files stored with this game: 1 ·/).count()) === 1,
+  'Undo of Save a copy makes it a live link again, its picture from the link (no stale copy)',
+);
+await page.keyboard.press('Control+y');
+await card('pic3.png').getByText('Saved from files.catbox.moe').waitFor();
+assert((await card('pic3.png').locator('img').getAttribute('src'))?.startsWith('blob:') && !!(await undoButton.getAttribute('title')), 'and Redo brings the saved copy back');
 
 // ---------- Sounds in MP4 and WebM files (a container that can also hold video) ----------
 await page.getByRole('button', { name: '🔊 Sounds' }).click();

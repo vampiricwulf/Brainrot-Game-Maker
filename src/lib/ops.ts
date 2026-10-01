@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, newTextEl, type Category, type Clue, type Game, type BoardRound, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, newTextEl, type Category, type Clue, type Game, type BoardRound, type ClueType, type Round, type Slide, type TextEl } from './model';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it). */
@@ -84,10 +84,19 @@ export function clearClue(clue: Clue): void {
 export function insertRow(round: BoardRound, at: number): boolean {
   if (round.values.length >= 10) return false;
   const n = round.values.length;
-  const step = n > 1 ? round.values[n - 1] - round.values[n - 2] : round.values[0] || 100;
-  round.values.push((round.values[n - 1] ?? 0) + step);
+  round.values.push((round.values[n - 1] ?? 0) + rowStep(round.values));
   for (const cat of round.categories) cat.clues.splice(at, 0, newClue());
   return true;
+}
+
+/**
+ * Make a tile a Daily Double (or a standard, wheel or dice tile). The board's ⭐ Daily Doubles box goes up with the
+ * ones placed by hand, so it never says fewer than the board has.
+ */
+export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void {
+  clue.type = type;
+  const placed = dailyDoublesPlaced(round);
+  if (placed > (round.dailyDoubleCount ?? 1)) round.dailyDoubleCount = placed;
 }
 
 /** Delete a row of clues: the ones below move up, and the bottom row value goes. At least 1 row stays. */
@@ -109,11 +118,24 @@ export function moveRow(round: BoardRound, from: number, to: number): boolean {
   return true;
 }
 
+/**
+ * How much each new row adds to the one above: the board's most common step between rows (on a tie, the bottom row's),
+ * or the one row's value (100 for none). The same whether a row is inserted or the Rows box goes up.
+ */
+export function rowStep(values: readonly number[]): number {
+  if (values.length < 2) return values[0] || 100;
+  const seen = new Map<number, number>();
+  for (let i = 1; i < values.length; i++) seen.set(values[i] - values[i - 1], (seen.get(values[i] - values[i - 1]) ?? 0) + 1);
+  let best = values[values.length - 1] - values[values.length - 2];
+  for (const [d, n] of seen) if (n > seen.get(best)!) best = d;
+  return best;
+}
+
 export function setRowCount(round: BoardRound, rows: number): void {
   rows = Math.max(1, Math.min(10, Math.floor(rows)));
   const cur = round.values.length;
   if (rows > cur) {
-    const step = round.values[1] !== undefined ? round.values[1] - round.values[0] : round.values[0] || 100;
+    const step = rowStep(round.values);
     for (let i = cur; i < rows; i++) round.values.push((round.values[i - 1] ?? 0) + step);
   } else {
     round.values.length = rows;
@@ -124,9 +146,20 @@ export function setRowCount(round: BoardRound, rows: number): void {
   }
 }
 
+/**
+ * A new category at `at`. At the end it's "Category 7" (its position, else the next number not taken); one put
+ * between others is a "New category" (numbered, "New category 2", when that's taken), not a number out of place.
+ */
 export function addCategory(round: BoardRound, at = round.categories.length): void {
   if (round.categories.length >= 10) return;
-  round.categories.splice(at, 0, newCategory(round.values.length, `Category ${round.categories.length + 1}`));
+  const taken = new Set(round.categories.map((c) => c.title.trim()));
+  const free = (name: (n: number) => string, from: number) => {
+    let n = from;
+    while (taken.has(name(n))) n++;
+    return name(n);
+  };
+  const title = at >= round.categories.length ? free((n) => `Category ${n}`, round.categories.length + 1) : free((n) => (n > 1 ? `New category ${n}` : 'New category'), 1);
+  round.categories.splice(at, 0, newCategory(round.values.length, title));
 }
 
 export function removeCategory(round: BoardRound, index: number): void {

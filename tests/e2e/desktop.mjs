@@ -112,7 +112,8 @@ try {
   await w.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse…' }).click();
   assert((await (await chooser).element().getAttribute('accept')).includes('.html'), 'Open… offers .html files');
   await (await chooser).setFiles(htmlPath);
-  // (A game with nothing but a title is a scratch game: replaced without a question, and not kept in Recent games.)
+  // (A game with a title of its own counts as work: Open… asks before replacing it.)
+  await answerReplace(w, 'Discard');
   await w.locator('nav > button.round-tab').first().waitFor();
   assert((await w.locator('input.title').inputValue()) === 'Exported Quiz', 'an exported .html opens in the editor');
   await web.close();

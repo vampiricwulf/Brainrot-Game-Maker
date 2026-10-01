@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openRules } from './helpers.mjs';
+import { answerReplace, openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -291,6 +291,33 @@ try {
   const editorFont = await page.locator('.modal .se .canvas').evaluate((c) => [...c.querySelectorAll('*')].map((e) => getComputedStyle(e).fontFamily).find((f) => f.includes('Bangers')) ?? '');
   assert(editorFont.includes('Bangers'), `the clue text font changes the clues' text (${editorFont})`);
   await page.getByRole('button', { name: 'Done' }).click();
+
+  // ---------- A copy of a copy is "(copy 2)", not "(copy) (copy)" ----------
+  await tabs.nth(0).focus();
+  await page.keyboard.press('Control+d');
+  await page.waitForFunction(() => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.includes('(copy)'));
+  await page.keyboard.press('Control+d');
+  const roundNames = (await tabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
+  assert(roundNames.some((n) => n.endsWith('(copy 2)')) && !roundNames.some((n) => n.includes('(copy) (copy)')), `duplicating a copy numbers it on (${roundNames.join(', ')})`);
+
+  // ---------- A game with only a title and a theme counts: New asks, and keeps it in Recent games ----------
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await page.locator('.data-notice').waitFor();
+  const title = header.getByLabel('Game title');
+  await title.fill('Only a title and a theme');
+  await title.press('Enter');
+  await page.getByRole('button', { name: '🎨 Theme' }).click();
+  await page.locator('input[type=color]').first().evaluate((el) => {
+    el.value = '#123456';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await page.locator('.data-notice', { hasText: '“Only a title and a theme” was replaced.' }).waitFor();
+  assert(true, 'New asks before replacing a game with only a title and theme changes, and keeps it in Recent games');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('editorfixes: all passed');

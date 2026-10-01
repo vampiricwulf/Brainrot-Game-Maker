@@ -20,6 +20,9 @@ describe('list editing', () => {
     expect(copyName('Potion', ['Potion'])).toBe('Potion (copy)');
     expect(copyName('Potion', ['Potion', 'Potion (copy)'])).toBe('Potion (copy 2)');
     expect(copyName('Potion', ['Potion', 'Potion (copy)', 'Potion (copy 2)'])).toBe('Potion (copy 3)');
+    // A copy of a copy is numbered on.
+    expect(copyName('Potion (copy)', ['Potion', 'Potion (copy)'])).toBe('Potion (copy 2)');
+    expect(copyName('Potion (copy 2)', ['Potion', 'Potion (copy)', 'Potion (copy 2)'])).toBe('Potion (copy 3)');
   });
 
   it('copies buttons with fresh ids, their slides too', () => {

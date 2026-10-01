@@ -5,7 +5,7 @@
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
+  import { categoryLabel, clueValue, dailyDoublesPlaced, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import {
@@ -22,6 +22,7 @@
     moveRow,
     removeCategory,
     scaleValues,
+    setClueType,
     setRowCount,
     swapClues,
     type TilePos,
@@ -51,10 +52,14 @@
     open = c?.clues[row] ? { category: c.id, clue: c.clues[row].id } : null;
     if (open) cursor = { cat, row };
   }
-  /** Done in the clue editor: back to the tile it ended on. */
+  /**
+   * Done in the clue editor: back to the tile it ended on (taken now: as the editor closes, the focus goes back to the
+   * tile it was opened from for a moment, which moves the cursor there).
+   */
   function closeClue(): void {
+    const at = editing ?? cur;
     open = null;
-    void tick().then(() => focusTile(cur.cat, cur.row, true));
+    void tick().then(() => focusTile(at.cat, at.row, true));
   }
   let decorOpen = $state(false);
   let importing = $state(false);
@@ -306,9 +311,17 @@
       {
         label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
         disabled: clue.empty,
-        onclick: () => (clue.type = clue.type === 'dailyDouble' ? 'standard' : 'dailyDouble'),
+        // (Undone, it shows on the board, where it was made: the clue doesn't open.)
+        onclick: () =>
+          clue.type === 'dailyDouble'
+            ? step(`Made ${tileName(p)} not a Daily Double`, () => setClueType(round, clue, 'standard'), { place: tilePlace(p.cat, clue.id) })
+            : step(`Made ${tileName(p)} a Daily Double`, () => setClueType(round, clue, 'dailyDouble'), { place: tilePlace(p.cat, clue.id) }),
       },
-      { label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty', onclick: () => (clue.empty = !clue.empty) },
+      {
+        label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty',
+        onclick: () =>
+          step(clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`, () => (clue.empty = !clue.empty), { place: tilePlace(p.cat, clue.id) }),
+      },
       { sep: true },
       { label: '📋 Copy clue', onclick: () => copyTile(p), keys: 'Ctrl+C' },
       { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, keys: 'Ctrl+V' },
@@ -520,8 +533,11 @@
       title="Right-click to insert, move or delete this row"
     />
   {/each}
-  <button class="small" onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
-  <button class="small" onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
+  <!-- (×2 and ÷2 wrap to the next line together.) -->
+  <span class="scale">
+    <button class="small" onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
+    <button class="small" onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
+  </span>
   <span class="spacer"></span>
   <span class="muted">⭐ Daily Doubles</span>
   <input
@@ -546,11 +562,11 @@
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
     title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🎲 Randomize</button>
-  <span class="muted small">{round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0)} placed</span>
+  <span class="muted small">{dailyDoublesPlaced(round)} placed</span>
 </div>
 
 <div class="grid-wrap">
-  <div class="grid" bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
+  <div class="grid" class:many={round.categories.length >= 8} bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
     {#each round.categories as cat, ci (cat.id)}
       <div
         class="cat"
@@ -742,6 +758,20 @@
     text-align: center;
     text-transform: uppercase;
     border-color: transparent;
+    /* Names break between words (a long word is hyphenated, and cut anywhere only when even that doesn't fit). */
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  /* Ten narrow columns: smaller names, so a word like GEOGRAPHY still fits on a line. */
+  .grid.many .cat textarea:not(.sub) {
+    font-size: 12px;
+    padding-inline: 2px;
+  }
+  .scale {
+    display: inline-flex;
+    gap: inherit;
+    white-space: nowrap;
   }
   .cat-tools {
     display: flex;

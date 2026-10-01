@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { addMediaFile, getBlob, mediaUrls, pruneMedia, registerBlob, restoreStash, stashMedia } from './media.svelte';
+import { addMediaFile, getBlob, keepLinkCopy, mediaUrls, pruneMedia, registerBlob, relinkMissing, restoreStash, stashMedia } from './media.svelte';
 import { newGame } from './model';
 import { app } from './app.svelte';
 import { saveEditor, watchWrites } from './persist';
@@ -73,5 +73,31 @@ describe('files the undo history can bring back', () => {
     expect(getBlob('pic')).toBeUndefined();
     expect(mediaUrls.pic).toBeUndefined();
     expect(await stashMedia('nothing')).toBeNull();
+  });
+});
+
+describe('missing files found again, and copies of links saved', () => {
+  it('reconnects a missing file under its own name, telling of its bytes put back (none before)', async () => {
+    const game = newGame();
+    game.media.push({ id: 'lost', name: 'Intro.MP3', mime: 'audio/mpeg', size: 3, kind: 'audio' });
+    const swaps: { id: string; before: string | null; after: string | null }[] = [];
+    const r = await relinkMissing(game, [new File(['abc'], 'intro.mp3', { type: 'audio/mpeg' })], (s) => swaps.push(s));
+    expect(r).toEqual({ fixed: 1, stillMissing: [], errors: [] });
+    expect(game.media[0].name).toBe('Intro.MP3');
+    expect(getBlob('lost')).toBeDefined();
+    expect(swaps).toEqual([{ id: 'lost', before: null, after: expect.stringMatching(/^stash-/) }]);
+    // Undo: the file is missing again.
+    await restoreStash('lost', swaps[0].before);
+    expect(getBlob('lost')).toBeUndefined();
+  });
+
+  it('a copy of a link becomes the file (same id); nothing happens once it is no longer a link', async () => {
+    const game = newGame();
+    game.media.push({ id: 'web', name: 'cat.png', mime: '', size: 0, kind: 'image', url: 'https://example.com/cat.png', expiresAt: 1 });
+    const blob = new Blob(['cat'], { type: 'image/png' });
+    expect(await keepLinkCopy(game, 'web', { blob, mime: 'image/png' })).toBe(true);
+    expect(game.media[0]).toEqual({ id: 'web', name: 'cat.png', mime: 'image/png', size: 3, kind: 'image' });
+    expect(getBlob('web')).toBe(blob);
+    expect(await keepLinkCopy(game, 'web', { blob, mime: 'image/png' })).toBe(false);
   });
 });

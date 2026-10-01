@@ -3,7 +3,7 @@
   import { tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
-  import { attachBlobSwap, step, stepAsync } from '../lib/history.svelte';
+  import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
   import { uniqueMediaName } from '../lib/medianame';
   import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
   import { allEmbeds, mediaUsage } from '../lib/usage';
@@ -18,9 +18,10 @@
   const game = $derived(app.game);
   const usage = $derived(mediaUsage(game));
   // Live links aren't stored, so they take no space.
-  const stored = $derived(game.media.filter((m) => !m.url));
+  // (A missing file isn't stored here: it's counted apart.)
+  const stored = $derived(game.media.filter((m) => !m.url && mediaUrls[m.id]));
   const total = $derived(stored.reduce((a, m) => a + m.size, 0));
-  const links = $derived(game.media.length - stored.length);
+  const links = $derived(game.media.filter((m) => m.url).length);
   const unused = $derived(game.media.filter((m) => !usage.get(m.id)));
   const embeds = $derived(allEmbeds(game));
   const missing = $derived(missingMedia(game));
@@ -84,7 +85,8 @@
   }
   let library = $state<HTMLDivElement>();
   function onkey(e: KeyboardEvent): void {
-    if (!picked.length || e.defaultPrevented || (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) return;
+    // (A card's "Select" checkbox isn't typing: Delete and Esc act on the selection there too.)
+    if (!picked.length || e.defaultPrevented || (e.target as HTMLElement).closest?.('input:not([type="checkbox"]), textarea, select, [contenteditable]')) return;
     // (Not with a window or a menu open, nor for something else in focus: a round's tab, the header's buttons…)
     const at = document.activeElement;
     if (document.querySelector('[role="dialog"], [role="menu"]') || (at && at !== document.body && !library?.contains(at))) return;
@@ -153,11 +155,15 @@
     }
   }
 
-  /** Pick several files at once; each missing file with the same name gets reconnected. */
+  /** Pick several files at once; each missing file with the same name gets reconnected (one step: Undo takes them out again). */
   async function findMissing(): Promise<void> {
     const files = await pickFiles(`${ACCEPT.any},${ACCEPT.font}`, true);
     if (!files.length) return;
-    const r = await relinkMissing(game, files);
+    const r = await stepAsync(null, async () => {
+      const r = await relinkMissing(game, files, attachBlobSwap);
+      if (r.fixed) nameStep(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}`, { place: { tab: 'media' } });
+      return r;
+    });
     const rest = r.stillMissing.length ? ` Still missing: ${r.stillMissing.join(', ')} (use 🔗 Replace file… on each).` : '';
     toast(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}.${rest}${r.errors.length ? ' ' + r.errors.join(' ') : ''}`, r.stillMissing.length || r.errors.length ? 9000 : 4000);
   }
@@ -227,7 +233,7 @@
 >
   <h2>Media</h2>
   <p class="muted">
-    Files stored with this game: {stored.length} · {formatBytes(total)}.
+    Files stored with this game: {stored.length} · {formatBytes(total)}{#if missing.length}{' '}({missing.length} more missing){/if}.
     {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
     {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .brainrot packs but make big standalone HTML exports.</span>{/if}
   </p>

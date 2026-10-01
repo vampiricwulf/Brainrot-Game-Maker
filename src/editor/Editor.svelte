@@ -27,6 +27,7 @@
   import OpenGame from './OpenGame.svelte';
   import { ask, tell } from '../lib/ask.svelte';
   import { clone, reidRound } from '../lib/ops';
+  import { copyName } from '../lib/listedit';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
   import { GAME_FILES, isGameFile, pickFile, safeFilename, saveGameJson } from '../lib/fileio';
@@ -55,7 +56,7 @@
   import { validate } from '../lib/validate';
   import { boardPlace, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
-  import { arriving, commit, history, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import { arriving, commit, heldMedia, history, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
@@ -207,7 +208,7 @@
   /** A copy right after the original, with fresh ids everywhere (so used tiles and saved sessions never mix them up). */
   function duplicateRound(i: number): void {
     const copy = reidRound(clone($state.snapshot(game.rounds[i]) as Round));
-    copy.name = `${roundName(game.rounds[i], i)} (copy)`;
+    copy.name = copyName(roundName(game.rounds[i], i), game.rounds.map(roundName));
     step(`Duplicated round “${roundName(game.rounds[i], i)}”`, () => game.rounds.splice(i + 1, 0, copy));
     if (typeof tab === 'number' && tab >= i) tab++;
     focusRoundTab(copy.id);
@@ -377,12 +378,15 @@
         return false;
     }
     if (read) await storeFiles(read);
+    // Files the incoming history can bring back (a reopened game's: its Recent games entry, which held them, is forgotten
+    // once it's open) and the ones this history holds (its steps leave a little later, see history.svelte.ts).
+    const held = new Set([...heldMedia(history?.steps ?? []), ...heldMedia()]);
     arriving(origin, history, !!history);
     app.game = next;
     // A new game has no rounds: tab 0 is the screen that adds the first one.
     tab = 0;
     previous = kept ? { key: kept.key, title: old.title.trim() || 'Untitled Game', dropped: kept.dropped } : null;
-    pruneMedia([app.game, app.playGame, app.resumable?.game]);
+    await pruneMedia([app.game, app.playGame, app.resumable?.game], held);
     return true;
   }
 
@@ -438,7 +442,8 @@
     if (previous?.key === e.key) previous = null;
     const left = (recentKept = await listRecent());
     recentList = left.length ? left : null;
-    pruneMedia([app.game, app.playGame, app.resumable?.game]);
+    // (Not the files this game's own undo history can bring back.)
+    pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia());
   }
 
   async function browse(): Promise<void> {
@@ -742,8 +747,7 @@
     {@const prev = previous}
     <div class="data-notice" role="status">
       <span
-        >“{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}
-          {prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
+        >“{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
       >
       <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
       <button class="small ghost" onclick={() => (previous = null)} aria-label="Dismiss">✕</button>

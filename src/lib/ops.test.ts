@@ -3,7 +3,24 @@ import { jeopardyGame } from './testgame';
 import { newRound, setSlideText, slideText, type TextEl, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { categoryHasContent, clearClue, clueHasContent, copyClue, deleteRow, insertRow, moveRow, neighbourClue, restyle, stepClue, swapClues, textStyleTargets } from './ops';
+import {
+  addCategory,
+  categoryHasContent,
+  clearClue,
+  clueHasContent,
+  copyClue,
+  deleteRow,
+  insertRow,
+  moveRow,
+  neighbourClue,
+  restyle,
+  rowStep,
+  setClueType,
+  setRowCount,
+  stepClue,
+  swapClues,
+  textStyleTargets,
+} from './ops';
 
 const mainText = (s: { elements: { kind: string }[] }) => s.elements.find((e) => e.kind === 'text') as TextEl;
 
@@ -182,5 +199,46 @@ describe('what shrinking a board would lose', () => {
     b.title = '';
     b.image = 'img2';
     expect(categoryHasContent(b)).toBe(true);
+  });
+});
+
+describe('new rows and categories', () => {
+  it("a new row adds the board's most common step, whether inserted or from the Rows box", () => {
+    expect(rowStep([200, 400, 600, 800, 1000])).toBe(200);
+    // One odd gap doesn't decide it, at either end.
+    expect(rowStep([100, 300, 400, 500])).toBe(100);
+    expect(rowStep([100, 200, 300, 500])).toBe(100);
+    expect(rowStep([300])).toBe(300);
+    expect(rowStep([])).toBe(100);
+    const a = newRound('R', 2, [100, 300, 400, 500]);
+    const b = newRound('R', 2, [100, 300, 400, 500]);
+    insertRow(a, 0);
+    setRowCount(b, 5);
+    expect(a.values).toEqual([100, 300, 400, 500, 600]);
+    expect(b.values).toEqual(a.values);
+  });
+
+  it('names a new category by where it goes: the next number at the end, "New category" between others', () => {
+    const round = newRound('R', 6);
+    addCategory(round);
+    expect(round.categories[6].title).toBe('Category 7');
+    addCategory(round, 0);
+    expect(round.categories[0].title).toBe('New category');
+    addCategory(round, 3);
+    expect(round.categories[3].title).toBe('New category 2');
+    round.categories[8].title = 'Category 10';
+    addCategory(round);
+    expect(round.categories.map((c) => c.title).slice(-2)).toEqual(['Category 10', 'Category 11']);
+  });
+
+  it('a Daily Double placed by hand raises the ⭐ count when the board has more than it says', () => {
+    const round = newRound('R', 3);
+    setClueType(round, round.categories[0].clues[0], 'dailyDouble');
+    expect(round.dailyDoubleCount ?? 1).toBe(1);
+    setClueType(round, round.categories[1].clues[0], 'dailyDouble');
+    expect(round.dailyDoubleCount).toBe(2);
+    // Taking one off leaves the count as it is.
+    setClueType(round, round.categories[1].clues[0], 'standard');
+    expect(round.dailyDoubleCount).toBe(2);
   });
 });

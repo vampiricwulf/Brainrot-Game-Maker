@@ -57,11 +57,26 @@ describe('Recent games', () => {
     expect(signature(copy)).not.toBe(signature(g));
   });
 
-  it('a game with only a title is a scratch game', () => {
+  it('a game just as New makes it is a scratch game; a title, a theme or a rule is work', () => {
     const g = newGame();
-    g.title = 'My quiz';
+    g.title = '  ';
     expect(hasWork(g)).toBe(false);
-    g.rounds.push(newRound('R', 1));
+    // A checkbox shown fills in an option as false: still nothing changed.
+    (g.settings as unknown as Record<string, unknown>).someOption = false;
+    expect(hasWork(g)).toBe(false);
+    g.title = 'My quiz';
     expect(hasWork(g)).toBe(true);
+    const themed = newGame();
+    themed.theme.tile = '#ff0000';
+    expect(hasWork(themed)).toBe(true);
+    const ruled = newGame();
+    ruled.settings.currencySymbol = '€';
+    expect(hasWork(ruled)).toBe(true);
+    const sounds = newGame();
+    sounds.soundsOff = { dailyDouble: true };
+    expect(hasWork(sounds)).toBe(true);
+    const round = newGame();
+    round.rounds.push(newRound('R', 1));
+    expect(hasWork(round)).toBe(true);
   });
 });
