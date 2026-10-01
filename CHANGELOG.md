@@ -18,9 +18,15 @@ done, the Unreleased lines move under that day's heading.
   (1c5bfc0, 5f8bc06, b525be7)
 
 ### Changed
+- **⚙ Setup & Players is now 🔊 Sounds**, and holds only the sounds. **Players are added on the ▶ Play screen** (before
+  the game): add, rename, recolor, pick a picture, reorder and delete them there, and they're kept with the game for
+  next time (undoable in the editor's 🕘 History). The rules, timers and round intro moved there too, in a
+  **⚙ Game rules** fold that remembers whether you left it open; they're still saved with the game. A game with no
+  players can still go to ▶ Play ("Add players to start"); the checklist's "No players yet" line takes you there.
+  Find no longer lists players.
 - **Buzzer mode: a wrong answer locks that player out of the clue** and opens the buzzers again for the others (a
   rebound); `0` still opens them for everyone, a right answer closes them, and a new tile starts afresh. New rule in
-  Setup › Rules: **Open the buzzers when the clue opens, or when I press `U`** (after reading it; the host panel's
+  ⚙ Game rules: **Open the buzzers when the clue opens, or when I press `U`** (after reading it; the host panel's
   🔔 Open the buzzers does the same). Number keys still pick a player while the buzzers are closed. (8daeb88)
 - The editor sidebar groups the rounds (Tiebreaker right after them) and the game-wide tabs; the checklist is one line
   per round and a click jumps to the first unfinished tile. Categories show ⋯ for their menu and many-category boards
@@ -69,7 +75,7 @@ done, the Unreleased lines move under that day's heading.
   dark, and filled buttons are darker. (4729d75)
 
 ### Added
-- **Phone buzzers** (Setup › Rules › Players buzz from: their phones too): before the game, ▶ Start the room shows a
+- **Phone buzzers** (⚙ Game rules › Players buzz from: their phones too): before the game, ▶ Start the room shows a
   room code, a join link (📋 Copy link for the Discord chat) and a QR code, also on the viewers' Starting soon card.
   Players open it on their phone, tap their name and get a big BUZZ button; the first one in answers, and the host
   panel shows who came next ("Bo +0.12 s"). The 📱 3/4 chip in the host panel lists the phones (✕ takes a seat back)
@@ -108,14 +114,14 @@ done, the Unreleased lines move under that day's heading.
   insert or delete rows and columns; rename, reorder and duplicate maps from their tabs; switch looks and neighbouring
   screens from the screen editor; click ⛔ between screens to block a way; drop pictures on the map to make screens;
   a menu for each look (duplicate, make main, reorder). (4eef0fe)
-- Right-click menus on what a shop sells, on zones (also ⧉ / `Ctrl+D` to duplicate a zone) and on players in ⚙ Setup.
+- Right-click menus on what a shop sells, on zones (also ⧉ / `Ctrl+D` to duplicate a zone) and on players (now on the pre-game screen).
   (5b23a55)
 - Map tabs take `Alt`+`←`/`→`, `Ctrl+D`, `Delete` and `F2`, like round tabs. Wheel slices and action buttons have a
   right-click menu. Right-click menus show their keyboard shortcuts, and the shortcuts sheet lists the board, round
   tab and map tab keys. (84ad8f2, 7180280, 86f9f05, f3405d5)
 - ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
   never a redo.
-- **Buzzer mode** (Setup › Rules): during a clue the first player number pressed answers and the others are locked out
+- **Buzzer mode** (⚙ Game rules): during a clue the first player number pressed answers and the others are locked out
   with a buzz; `0` opens the buzzers again. Players can buzz from the audience window with their own keys. Viewers see
   "🔔 Ann is answering" while one player is picked. (3a6c269)
 - RPG, board game and Final rounds open on a **title card**, like boards. **Built-in sounds**, on by default (round

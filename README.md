@@ -22,8 +22,7 @@ Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
 1. **＋ Add round** and pick a mode.
 2. Fill it in. For example, click a tile to type the clue, then **Tab** to the answer and **Ctrl+Enter** for the next
    clue.
-3. Add players under **⚙ Setup & Players**.
-4. Press **▶ Play**.
+3. Press **▶ Play**, then add the players (and set the game rules) on the pre-game screen.
 
 New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **Import clues…**
 on a board takes a sheet pasted from Google Sheets or Excel, and **Find** (`Ctrl+F`) searches the whole game.
@@ -65,6 +64,7 @@ become screens. Click ⛔ between two screens to block the way.
 
 Other editor tabs:
 
+- 🔊 **Sounds**: the sounds played on stream (right, wrong, dice, wheel, buzz…): preview, replace or switch each off.
 - 🎨 **Theme**: presets, colors, fonts and background images.
 - 🎡 **Wheels & Dice**: weighted wheels and custom dice. Each outcome can carry a score effect or action buttons.
 - 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
@@ -82,8 +82,10 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 
 ## Hosting
 
-Press **▶ Play**, confirm the players, then pick one of two modes. Viewers see a "Starting soon…" card until you press
-**Start game**.
+Press **▶ Play** to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
+`Alt`+arrows to reorder; they're kept with the game for next time), and open **⚙ Game rules** for scoring, buzzers, the
+most players, timers and the round intro (saved with the game too). Then pick one of two modes. Viewers see a
+"Starting soon…" card until you press **Start game**.
 
 - **Single window**: viewers see this window. Press `H` to hide the host controls.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
@@ -102,7 +104,7 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 - 🏁 Who goes first
 - 📊 Scores (with 📋 Copy standings for chat)
 
-**Buzzer mode** (Setup › Rules): the first player number pressed answers and the others are locked out with a buzz;
+**Buzzer mode** (⚙ Game rules, on the pre-game screen): the first player number pressed answers and the others are locked out with a buzz;
 a wrong answer locks that player out of the clue and opens the buzzers for the rest, and `0` opens them for everyone.
 The buzzers can open when the clue does, or when you press `U` after reading it. Players can also buzz from the
 audience window with their own keys. Viewers see "🔔 Ann is answering" whenever one player is picked during a clue.
@@ -114,7 +116,7 @@ rooms run on a small buzzer server (`buzzer/`, a Cloudflare Worker); the release
 Buzzer server can point at your own. Copies built without one say "Phone buzzers aren't set up in this copy".
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
-off in Setup › Sounds.
+off in the editor's 🔊 Sounds tab.
 
 **For OBS:** Theme › Stage background can be chroma green or magenta for keying, and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown.

@@ -22,7 +22,7 @@ function plural(n: number, word: string): string {
 
 export function validate(game: Game): Problem[] {
   const out: Problem[] = [];
-  if (!game.players.length) out.push({ text: 'No players yet: add them on the ▶ Play screen', tab: 'play', level: 'info' });
+  if (!game.players.length) out.push({ text: 'No players yet: add them when you press Play', tab: 'play', level: 'info' });
   const colors = game.players.map((p) => normalizeColor(p.color));
   if (new Set(colors).size !== colors.length) out.push({ text: 'Two players share a color', tab: 'play', level: 'warn' });
 

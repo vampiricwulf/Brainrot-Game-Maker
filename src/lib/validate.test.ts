@@ -17,4 +17,15 @@ describe('the checklist', () => {
     expect(texts()).toContain('Jeopardy!: 2 categories with no name');
     expect(texts().some((t) => t.includes('(s)'))).toBe(false);
   });
+
+  it('sends player problems to the Play screen, where players are set', () => {
+    const game = jeopardyGame();
+    game.players = [];
+    expect(validate(game).find((p) => p.text.startsWith('No players yet'))).toMatchObject({ tab: 'play', level: 'info' });
+    game.players = [
+      { id: 'a', name: 'A', color: '#ff0000' },
+      { id: 'b', name: 'B', color: '#FF0000' },
+    ];
+    expect(validate(game).find((p) => p.text === 'Two players share a color')).toMatchObject({ tab: 'play', level: 'warn' });
+  });
 });

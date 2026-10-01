@@ -511,7 +511,7 @@ interface Avatar {                         // how the token is drawn in play
 }
 ```
 
-- Avatars are set in **Setup & Players**: an image or GIF per player, with the player color as the nameplate and
+- Avatars are set with the players on the **▶ Play** pre-game screen (formerly Setup & Players): an image or GIF per player, with the player color as the nameplate and
   ring.
 - **Fallback token:** a colored circle with the player's initials in a readable text color.
 - **Equipment:** a wearable item has a slot (head, hand, body, back, or "badge") and an optional image. It shows on
