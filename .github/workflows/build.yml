@@ -30,6 +30,9 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+        env:
+          # The phone buzzers' server (a repository variable; blank: phone buzzers are off in this build).
+          VITE_BUZZER_URL: ${{ vars.BUZZER_URL }}
       - name: Install Chromium (headless shell) for the end-to-end test
         run: npx playwright-core install --with-deps --only-shell chromium
       - name: End-to-end test (drives the built file from file://)
@@ -67,6 +70,8 @@ jobs:
           workspaces: src-tauri
       - run: npm ci
       - run: npx tauri build
+        env:
+          VITE_BUZZER_URL: ${{ vars.BUZZER_URL }}
       - name: Collect the Windows files
         shell: pwsh
         run: |

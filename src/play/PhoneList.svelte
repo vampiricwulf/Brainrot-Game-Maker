@@ -21,7 +21,7 @@
   } = $props();
 
   const phoneOf = (id: string) => remote.phones.find((p) => p.seatId === id);
-  const waiting = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected));
+  const waiting = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)));
   const full = $derived(session.players.length >= max);
 </script>
 

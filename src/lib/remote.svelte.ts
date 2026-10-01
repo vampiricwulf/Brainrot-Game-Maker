@@ -23,7 +23,9 @@ export const remote = $state<{
   error: string;
   /** Reconnect attempts since the room was last reached. */
   attempts: number;
-}>({ status: 'off', code: null, base: '', phones: [], error: '', attempts: 0 });
+  /** Phones asking to join that the host already answered (until the room's next list leaves them out). */
+  answered: string[];
+}>({ status: 'off', code: null, base: '', phones: [], error: '', attempts: 0, answered: [] });
 
 let link: RoomLink | null = null;
 const buzzWatchers = new Set<(b: RoomBuzz) => void>();
@@ -37,6 +39,7 @@ function sync(): void {
   if (!link) return;
   remote.status = link.status;
   remote.code = link.code;
+  if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId));
   remote.phones = link.phones;
   remote.error = link.error;
   remote.attempts = link.attempts;
@@ -83,15 +86,21 @@ export function resendHostState(): void {
   link?.resend();
 }
 
-export const acceptPhone = (conn: string, seatId: string) => !!link?.send({ t: 'accept', conn, seatId });
-export const rejectPhone = (conn: string) => !!link?.send({ t: 'reject', conn });
+export function acceptPhone(conn: string, seatId: string): boolean {
+  remote.answered = [...remote.answered, conn];
+  return !!link?.send({ t: 'accept', conn, seatId });
+}
+export function rejectPhone(conn: string): boolean {
+  remote.answered = [...remote.answered, conn];
+  return !!link?.send({ t: 'reject', conn });
+}
 export const kickSeat = (seatId: string) => !!link?.send({ t: 'kick', seatId });
 
 /** Close the room: the phones are told the game is over. */
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [] });
 }
 
 /** The link players open on their phone. */

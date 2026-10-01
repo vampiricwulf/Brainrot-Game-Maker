@@ -23,7 +23,7 @@
 
   let open = $state(false);
   const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
-  const asking = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected).length);
+  const asking = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)).length);
   const trouble = $derived(remote.status === 'reconnecting' || remote.status === 'error');
   const label = $derived(
     remote.status === 'off'
