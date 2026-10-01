@@ -6,8 +6,8 @@
  * finishes it from storage (see room.ts).
  *
  * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT) and DAILY_ROOMS a day in all
- * (RoomCounter, one Durable Object for the whole server). Looking rooms up and phones connecting are limited per
- * address too (LOOKUP_LIMIT, PHONE_LIMIT), so a script can't try every code to find live rooms.
+ * (RoomCounter, one Durable Object for the whole server). Looking rooms up and connecting are limited per
+ * address too (LOOKUP_LIMIT, SOCKET_LIMIT), so a script can't try every code to find live rooms.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { BUZZ_PROTOCOL, ROOM_ALPHABET, ROOM_CODE_LENGTH, isRoomCode, type NewRoom, type RoomToHost, type RoomToPhone } from '../../src/lib/buzzproto';
@@ -21,8 +21,8 @@ export interface Env {
   NEW_ROOM_LIMIT: RateLimit;
   /** Room lookups (GET /api/rooms/:code) per address per minute. */
   LOOKUP_LIMIT: RateLimit;
-  /** Phone connections (/ws/:code without a host token) per address per minute. */
-  PHONE_LIMIT: RateLimit;
+  /** Connections (/ws/:code, phones and hosts) per address per minute. */
+  SOCKET_LIMIT: RateLimit;
   ASSETS: Fetcher;
 }
 
@@ -95,8 +95,9 @@ export default {
       const code = ws[1].toUpperCase();
       if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket', { status: 426, headers: CORS });
       if (!isRoomCode(code)) return new Response('No such room', { status: 404, headers: CORS });
-      // Phones only: the host has its token (and a wrong one is turned away by the room).
-      if (!url.searchParams.has('host') && !(await env.PHONE_LIMIT.limit({ key: ip })).success)
+      // Every socket, the host's too: a wrong host token is turned away differently from a missing room, so it could
+      // be used to look rooms up.
+      if (!(await env.SOCKET_LIMIT.limit({ key: ip })).success)
         return new Response(TOO_MANY_LOOKUPS, { status: 429, headers: CORS });
       return env.BUZZ_ROOM.getByName(code).fetch(request);
     }

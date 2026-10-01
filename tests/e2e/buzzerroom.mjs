@@ -467,6 +467,12 @@ try {
   assert(statuses.join() === '200,200,200,200,200,200,429', `the 7th new room in a minute from one address is refused (${statuses.join()})`);
   assert(refused.body.error === 'Too many new rooms — wait a minute' && refused.cors === '*', 'with a 429 the app can read: "Too many new rooms — wait a minute"');
   assert((await fetch(`${base}/api/rooms`, { method: 'POST' })).status === 200, 'another address can still make one');
+  // Looking codes up is limited too (60 a minute), so a script can't try them all to find live rooms.
+  const s2 = new Date().getSeconds();
+  if (s2 > 50) await sleep((61 - s2) * 1000);
+  const looks = [];
+  for (let i = 0; i < 61; i++) looks.push((await fetch(`${base}/api/rooms/BCDF`, { headers: { 'CF-Connecting-IP': '203.0.113.9' } })).status);
+  assert(looks.slice(0, 60).every((s) => s !== 429) && looks[60] === 429, `the 61st room lookup in a minute from one address is refused (${looks.at(-1)})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Buzzer room E2E passed.');

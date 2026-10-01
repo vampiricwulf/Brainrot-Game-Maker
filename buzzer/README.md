@@ -92,8 +92,8 @@ So nobody can use up the Free plan's daily quotas for everyone:
   Object (`RoomCounter`): then 503 `{"error":"The buzzer server is busy today — try again tomorrow"}`.
 
 The app shows these words where Start the room failed. Inside a room, phones are limited too (messages a second, join
-attempts a minute: see `room.ts`). Looking a room up (`GET /api/rooms/:code`) and phones connecting are limited per
-address too (`LOOKUP_LIMIT` 60 a minute, `PHONE_LIMIT` 120 a minute; 429 "Too many tries — wait a minute"), so a script
+attempts a minute: see `room.ts`). Looking a room up (`GET /api/rooms/:code`) and connecting (`/ws/`) are limited per
+address too (`LOOKUP_LIMIT` 60 a minute, `SOCKET_LIMIT` 120 a minute; 429 "Too many tries — wait a minute"), so a script
 can't try every code to find live games.
 
 ## Local development

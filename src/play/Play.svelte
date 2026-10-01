@@ -583,7 +583,7 @@
   }
 
   function kickPhone(seatId: string): void {
-    if (kickSeat(seatId)) toast(`${playerName(session, seatId)}'s phone let go of the seat`);
+    if (kickSeat(seatId)) toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
   }
 
   // Whatever the phones need to know (the players, scores, the buzzers, the clue's words) goes to the room as it changes.
