@@ -3,6 +3,7 @@
   RPG rounds, and shown on the stats strip in any mode.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { tell } from '../lib/ask.svelte';
   import { flash, take } from '../lib/nav.svelte';
@@ -31,8 +32,18 @@
     if (place?.tab === 'stats' && place.item) openItem = place.item;
   });
 
+  /** A stat, item or shop just added: the typing goes to its name (selected, to type over). */
+  function focusName(kind: Kind, id: string): void {
+    void tick().then(() => {
+      const el = document.querySelector<HTMLInputElement>(`[data-place="${kind}:${id}"] input.name`);
+      el?.focus();
+      el?.select();
+    });
+  }
+
   function addField(f: StatField): void {
     game.statFields = [...(game.statFields ?? []), f];
+    focusName('stat', f.id);
   }
 
   // Deleting is done at once: the note at the bottom offers Undo.
@@ -44,6 +55,7 @@
     const it: ItemDef = { id: newId(), name: `Item ${(game.items?.length ?? 0) + 1}`, stackable: true, price: 1 };
     game.items = [...(game.items ?? []), it];
     openItem = it.id;
+    focusName('item', it.id);
     return it;
   }
 
@@ -74,6 +86,7 @@
   function addShop(): void {
     const s: Shop = { id: newId(), name: `Shop ${(game.shops?.length ?? 0) + 1}`, currency: currencyFields(game)[0]?.id, stock: [] };
     game.shops = [...(game.shops ?? []), s];
+    focusName('shop', s.id);
   }
 
   function removeShop(s: Shop): void {

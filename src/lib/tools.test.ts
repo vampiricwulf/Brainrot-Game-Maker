@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newId } from './model';
 import { applyScore, newSession, score } from './session';
-import {
-  actionDeltas, activeSegments, applyAction, newWheel, parseDice, planRollOff, rollPreset, segmentAngles, sliceAt,
-  spinTarget, weightedIndex,
-} from './tools';
+import { actionDeltas, activeSegments, applyAction, newWheel, parseDice, planRollOff, rollPreset, segmentAngles, sliceAt, spinTarget, weightedIndex, MIN_WEIGHT, sliceWeight } from './tools';
 
 function seeded(seed = 42) {
   return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -121,5 +118,17 @@ describe('score actions', () => {
     const w = newWheel('w', ['a', 'b', 'c']);
     session.removedSegments = { [w.id]: [w.segments[0].id] };
     expect(activeSegments(session, w).map((s) => s.label)).toEqual(['b', 'c']);
+  });
+});
+
+describe('a slice weight typed in the wheel editor', () => {
+  it('is at least 0.1: blank is 1, 0 or less the least (a slice never drops off without a word)', () => {
+    expect(sliceWeight('3')).toBe(3);
+    expect(sliceWeight('0.5')).toBe(0.5);
+    expect(sliceWeight('')).toBe(1);
+    expect(sliceWeight('abc')).toBe(1);
+    expect(sliceWeight('0')).toBe(MIN_WEIGHT);
+    expect(sliceWeight('-3')).toBe(MIN_WEIGHT);
+    expect(sliceWeight('0.123')).toBe(0.12);
   });
 });

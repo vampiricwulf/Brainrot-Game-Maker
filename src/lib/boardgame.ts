@@ -325,6 +325,24 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   return out;
 }
 
+/**
+ * The nearest space from `from` in a direction (dx, dy: one of the four arrows), for the editor's arrow keys: the
+ * spaces ahead within about 60° of it come first, the closest (sideways distance counting double) wins.
+ */
+export function spaceToward(round: BoardGameRound, from: BoardSpace, dx: number, dy: number): BoardSpace | undefined {
+  let best: { s: BoardSpace; score: number; inCone: boolean } | undefined;
+  for (const s of round.spaces) {
+    if (s.id === from.id) continue;
+    const ahead = (s.x - from.x) * dx + (s.y - from.y) * dy;
+    if (ahead <= 0) continue;
+    const side = Math.abs((s.x - from.x) * dy - (s.y - from.y) * dx);
+    const inCone = side <= ahead * 1.8;
+    const score = ahead + 2 * side;
+    if (!best || (inCone && !best.inCone) || (inCone === best.inCone && score < best.score)) best = { s, score, inCone };
+  }
+  return best?.s;
+}
+
 /** Keep a space's center on the board. */
 export function clampToBoard(x: number, y: number): { x: number; y: number } {
   return { x: Math.round(Math.max(40, Math.min(SLIDE_W - 40, x))), y: Math.round(Math.max(40, Math.min(SLIDE_H - 40, y))) };

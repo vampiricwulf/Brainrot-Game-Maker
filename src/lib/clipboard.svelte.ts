@@ -1,10 +1,11 @@
-// In-app clipboard for slide elements, whole slides, board clues, RPG screens, sets of buttons and whole rounds (works
-// across slides, clues, maps and games).
+// In-app clipboard for slide elements, whole slides, board clues, RPG screens, board-game spaces, sets of buttons and
+// whole rounds (works across slides, clues, maps, boards and games).
 // The board images editor shares the slide items, so pictures copy between boards and slides both ways.
 import { uniqueMediaName } from './medianame';
 import {
   newId,
   type Action,
+  type BoardSpace,
   type Clue,
   type DicePreset,
   type Game,
@@ -47,6 +48,8 @@ export const clipboard = $state<{
   screen: Screen | null;
   /** A board clue: both slides and its settings. */
   clue: Clue | null;
+  /** Board-game spaces, with their buttons and the links between them. */
+  spaces: BoardSpace[];
   /** Buttons (actions) of an object, item, space or wheel slice. */
   actions: Action[];
   /** A whole round, with what it uses (its files are in `media` too, so they're kept while it's copied). */
@@ -60,7 +63,7 @@ export const clipboard = $state<{
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, screen: null, clue: null, actions: [], round: null, media: [], wheels: [], dice: [], token: '', text: '' });
+}>({ elements: [], slide: null, screen: null, clue: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
@@ -88,7 +91,7 @@ export function holdMedia(game: Game): void {
   const ids = new Set([...elementMediaIds(clipboard.elements), ...(s ? elementMediaIds(s.elements, s.background) : [])]);
   const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
   // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
-  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.actions, clipboard.wheels, clipboard.dice, clipboard.round], clipboard.media)];
+  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, clipboard.wheels, clipboard.dice, clipboard.round], clipboard.media)];
   clipboard.media = clone(once(all));
 }
 

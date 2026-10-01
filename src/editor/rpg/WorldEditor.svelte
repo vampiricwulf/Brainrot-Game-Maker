@@ -1464,14 +1464,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* A narrow cell: a smaller name over two lines, and a default name is just its cell ("B3"). */
+  /* A narrow cell: the name over two lines, and a default name is just its cell ("B3"). */
   @container (max-width: 110px) {
     .cell .nm {
       left: 2px;
       bottom: 2px;
       padding: 0 3px;
       max-width: calc(100% - 4px);
-      font-size: 10px;
       line-height: 1.15;
       white-space: normal;
       overflow-wrap: anywhere;

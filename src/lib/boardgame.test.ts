@@ -3,7 +3,7 @@ import { linkMoverDice, newGame, type BoardGameRound, type BoardGameState, type 
 import { newSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, moverPreset, rimSpots, spaceNumber,
+  boardGameProblems, moverPreset, rimSpots, spaceNumber, spaceToward,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -368,5 +368,28 @@ describe('board game: what spaces show', () => {
     });
     game.theme = { ...game.theme, scoreBar: 'hidden' };
     expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
+  });
+});
+
+describe('board game editor: the arrow keys', () => {
+  it('go to the nearest space that way', () => {
+    const round = newBoardGameRound('Board');
+    const sp = (name: string, x: number, y: number) => ({ ...newBoardSpace(x, y, name) });
+    const mid = sp('Mid', 500, 500);
+    const right = sp('Right', 700, 520);
+    const farRight = sp('Far right', 1200, 500);
+    const upRight = sp('Up right', 560, 200);
+    const down = sp('Down', 480, 800);
+    round.spaces = [mid, right, farRight, upRight, down];
+    const go = (from: typeof mid, dx: number, dy: number) => spaceToward(round, from, dx, dy)?.name;
+    expect(go(mid, 1, 0)).toBe('Right');
+    expect(go(right, 1, 0)).toBe('Far right');
+    expect(go(farRight, 1, 0)).toBeUndefined();
+    expect(go(mid, 0, -1)).toBe('Up right');
+    expect(go(mid, 0, 1)).toBe('Down');
+    expect(go(right, -1, 0)).toBe('Mid');
+    // Something straight ahead comes before something nearer but well off to the side.
+    round.spaces.push(sp('Off to the side', 560, 700));
+    expect(go(mid, 1, 0)).toBe('Right');
   });
 });

@@ -256,9 +256,16 @@
     toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`, 4000);
   }
 
-  /** ↓ at the end of a category's name goes down to its top tile. */
+  /**
+   * ↓ at the end of a category's name, or Enter, goes down to its top tile (Shift+Enter starts a second line of the
+   * name).
+   */
   function catNameKey(e: KeyboardEvent, ci: number): void {
     const t = e.currentTarget as HTMLTextAreaElement;
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
+      e.preventDefault();
+      return focusTile(ci, 0, true);
+    }
     if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || t.selectionEnd < t.value.length) return;
     e.preventDefault();
     focusTile(ci, 0, true);
@@ -586,6 +593,7 @@
           data-cat-name={ci}
           use:autosize={cat.title}
           onkeydown={(e) => catNameKey(e, ci)}
+          onblur={() => /\s+$/.test(cat.title) && (cat.title = cat.title.trimEnd())}
           onpaste={(e) => catNamePaste(e, ci)}></textarea>
         {#if cat.image}
           <div class="cat-img-opts">

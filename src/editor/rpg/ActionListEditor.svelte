@@ -3,6 +3,7 @@
   reorder by their ⋮⋮ grip (or ▲▼, Alt+↑/↓), and a whole set copies to another object, item, space or slice.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { editedGame, toast } from '../../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy, toolHere } from '../../lib/clipboard.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
@@ -108,10 +109,14 @@
     }
   }
 
+  let listEl = $state<HTMLElement>();
+
+  /** A new button: the focus goes to its first setting (the stat, the points, the note…). */
   function add(kind: ActionKind): void {
     const a = make(kind);
     if (!a) return;
     actions = [...(actions ?? []), a];
+    void tick().then(() => listEl?.querySelector<HTMLElement>(`[data-action="${a.id}"] .fields :is(input, select, textarea, button)`)?.focus());
   }
 
   // Deleting is done at once: the note at the bottom offers Undo.
@@ -228,11 +233,12 @@
   </select>
 {/snippet}
 
-<div class="actions" role="list" aria-label="Buttons">
+<div class="actions" role="list" aria-label="Buttons" bind:this={listEl}>
   {#each actions ?? [] as a, i (a.id)}
     {@const line = rows.lineAt(a.id)}
     <div
       class="act drag-row"
+      data-action={a.id}
       class:drop-before={line === 'before'}
       class:drop-after={line === 'after'}
       class:dragging={rows.dragging === a.id}
