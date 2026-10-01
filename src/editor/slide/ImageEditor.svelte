@@ -3,6 +3,7 @@
   stickers and brush. The original file is kept; the result is saved as a new file on the element.
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { onMount, untrack } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
@@ -328,7 +329,7 @@
 
 <div class="backdrop" role="presentation">
   <!-- (data-undo: Ctrl+Z in its boxes and sliders never reaches the game's undo underneath.) -->
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit image" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit image" use:modal data-undo="off">
     {#if linked}
       <div class="gate">
         <p>🌐 This picture plays from {linkHost(source?.url)}. The image editor works on a copy saved in your game.</p>

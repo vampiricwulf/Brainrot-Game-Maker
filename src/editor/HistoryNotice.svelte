@@ -51,7 +51,7 @@
 
 {#if notice && !quiet}
   {@const { kind, entry } = notice}
-  <div class="history-notice" role="status" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
+  <div class="history-notice" data-over-modal role="status" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
     <span class="text">
       {#if kind === 'made'}
         {entry.label}

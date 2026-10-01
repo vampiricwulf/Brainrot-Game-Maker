@@ -1,5 +1,6 @@
 <!-- Host keyboard shortcuts (spec §6.8). -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   let { onclose }: { onclose: () => void } = $props();
   const KEYS: [string, string][] = [
     ['1 – 9', 'Select / deselect player N for scoring (in the Final reveals: spotlight the Nth player)'],
@@ -62,7 +63,7 @@
 />
 
 <div class="backdrop" onclick={onclose} role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" use:modal>
     <div class="row">
       <h2>Keyboard shortcuts</h2>
       <span class="spacer"></span>

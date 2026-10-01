@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
   import { step } from '../lib/history.svelte';
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
@@ -1428,7 +1429,7 @@
       onchange={commitRoster}
       ondrop={commitRoster}
     >
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Players">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Players" use:modal>
         <h2>Players</h2>
         <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
         <PlayerList bind:players={session.players} max={game.settings.maxPlayers} inGame onremove={(id) => (removing = id)} />

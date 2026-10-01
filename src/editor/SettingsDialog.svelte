@@ -1,5 +1,6 @@
 <!-- ⚙ Settings: this computer’s preferences (autosaves, how Save names files, how much undo to remember). Kept in this browser / app, not the game. -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { inTauri } from '../lib/platform';
   import { keepLimits } from '../lib/history.svelte';
   import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
@@ -11,7 +12,7 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" use:modal data-undo="off">
     <div class="row">
       <h2>⚙ Settings</h2>
       <span class="spacer"></span>

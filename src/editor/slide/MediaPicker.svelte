@@ -1,5 +1,6 @@
 <!-- Popover: pick a file already in the game, upload a new one, or paste a link to one online. -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { onMount } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls } from '../../lib/media.svelte';
@@ -88,7 +89,7 @@
   onpastecapture={(e) => take(Array.from(e.clipboardData?.files ?? []), e)}
 />
 
-<div class="backdrop" onclick={onclose} ondragover={over} ondragleave={() => (dropping = false)} {ondrop} role="presentation"></div>
+<div class="backdrop" data-over-modal onclick={onclose} ondragover={over} ondragleave={() => (dropping = false)} {ondrop} role="presentation"></div>
 <div
   class="picker"
   class:media-drop={dropping}
@@ -101,6 +102,7 @@
   style:max-height={px(place?.maxHeight)}
   role="dialog"
   aria-label="Choose {kind}"
+  use:modal
   tabindex="-1"
 >
   <button class="primary" onclick={upload}>⬆ Upload {kind} file…</button>

@@ -4,6 +4,7 @@
   here is one undoable step (Ctrl+Z once it's closed).
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { onDestroy, untrack } from 'svelte';
   import { adoptAdded, focusRef, occupiedScreens } from '../../lib/rpg';
   import { app } from '../../lib/app.svelte';
@@ -34,7 +35,7 @@
 </script>
 
 <div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-label="Edit {title} live">
+  <div class="modal" role="dialog" aria-label="Edit {title} live" use:modal>
     <div class="row">
       <b>✎ {title}</b>
       <span class="muted small">

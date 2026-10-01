@@ -1,5 +1,6 @@
 <!-- Desktop app: Open… lists the games in BrainrotSaves (newest first), with Browse… for a file anywhere else. -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { toast } from '../lib/app.svelte';
   import { formatBytes } from '../lib/media.svelte';
   import { openDataFolder, type SaveEntry } from '../lib/desktop.svelte';
@@ -27,7 +28,7 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Open a game" data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Open a game" use:modal data-undo="off">
     <div class="row">
       <b>Open a game</b>
       <span class="spacer"></span>

@@ -1,6 +1,7 @@
 <!-- ℹ About: version and build, links, and where this copy keeps its data (the desktop app's folders, with buttons to
      open them, so nobody is surprised by folders the app made). -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
   import { dataFolders, openDataFolder, openLink, type DataFolders, type FolderName } from '../lib/desktop.svelte';
@@ -14,10 +15,8 @@
   const leftovers = $derived(
     folders ? ([['old-data', folders.oldData], ['old-settings', folders.oldSettings]] as const).filter(([, f]) => f?.exists && f.path) : [],
   );
-  let modal = $state<HTMLElement>();
 
   onMount(() => {
-    modal?.focus();
     if (desktopApp) dataFolders().then((f) => (folders = f));
   });
 
@@ -45,7 +44,7 @@
 />
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" data-undo="off" tabindex="-1" bind:this={modal}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" use:modal data-undo="off">
     <h2>Brainrot Games Maker</h2>
     <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>

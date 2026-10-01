@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
@@ -77,7 +78,7 @@
 
 {#if clue}
   <div class="backdrop" role="presentation">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit clue">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal>
       <header>
         <div>
           <div class="muted small">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>

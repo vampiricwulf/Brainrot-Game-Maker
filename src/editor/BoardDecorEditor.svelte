@@ -4,6 +4,7 @@
   pass through them to the tiles. Ctrl+C / Ctrl+X / Ctrl+V share the slide editor's clipboard.
 -->
 <script lang="ts">
+  import { modal } from '../lib/modal';
   import { onDestroy, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
@@ -364,7 +365,7 @@
 {/if}
 
 <div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Board images">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Board images" use:modal>
     <header>
       <div>
         <div class="muted small">{round.name}</div>

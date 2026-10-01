@@ -5,6 +5,7 @@
   menu), it moves those instead.
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { untrack } from 'svelte';
   import { toast } from '../../lib/app.svelte';
   import { showMenu } from '../../lib/menustate.svelte';
@@ -97,7 +98,7 @@
 />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-label="Full map">
+  <div class="modal" role="dialog" aria-label="Full map" use:modal>
     <div class="row head">
       <b>🗺 Jump to a screen</b>
       <div class="tabs" role="tablist" aria-label="Maps">

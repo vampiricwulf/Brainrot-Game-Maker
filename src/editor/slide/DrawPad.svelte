@@ -3,6 +3,7 @@
   undo/redo, clear), over the screen it goes on, then insert it as one picture where it was drawn.
 -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import { onMount, type Snippet } from 'svelte';
   import { SLIDE_H, SLIDE_W } from '../../lib/model';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
@@ -187,7 +188,7 @@
 <svelte:window onkeydowncapture={key} />
 
 <div class="backdrop-modal" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label={title}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label={title} use:modal>
     <div class="row head">
       <b>🖌 {title}</b>
       {#if discarding}

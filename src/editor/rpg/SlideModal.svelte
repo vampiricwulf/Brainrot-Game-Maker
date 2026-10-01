@@ -1,5 +1,6 @@
 <!-- Edit a slide in a dialog (pop-up slides, dialogue, question and answer slides of actions). -->
 <script lang="ts">
+  import { modal } from '../../lib/modal';
   import type { Slide } from '../../lib/model';
   import SlideEditor from '../slide/SlideEditor.svelte';
 
@@ -19,7 +20,7 @@
 <svelte:window onkeydown={key} />
 
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label={title} bind:this={box}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label={title} use:modal bind:this={box}>
     <div class="row">
       <b>{title}</b>
       <span class="spacer"></span>
