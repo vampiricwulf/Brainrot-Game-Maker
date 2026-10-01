@@ -63,6 +63,10 @@ done, the Unreleased lines move under that day's heading.
   of a seat tapped by mistake. (885fe51)
 - Someone asking to join from their phone pops up a note for the host (and a soft chime when the stream is in the
   separate audience window), not only a number on the 📱 chip. (5272947)
+- **RPG sound cues**: the party stepping to the next screen, a blocked way, going through a doorway, picking
+  something up, coins (buying or selling in a shop) and damage (a button taking HP or another stat down) each have a
+  quiet, short built-in sound. Each has its own line in 🔊 Sounds: on by default, previewable, replaceable with your
+  own file, or switched off. (0ff069a)
 
 ### Changed
 - **The pre-game screen's Start game ▶ and ◀ Back to editor stay at the foot of the window** however long the page
@@ -137,6 +141,19 @@ done, the Unreleased lines move under that day's heading.
   dark, and filled buttons are darker. (4729d75)
 - **Reduce motion on stream** is also on the pre-game screen's On stream section (the same setting as ⚙ Settings), so
   an exported game file can use it too.
+- **The movement wheel spins on the first press** of 🎡 Spin to move (or `D`) in a board game, instead of opening it
+  first. (0ff069a)
+- **Big RPG worlds**: the viewers' map (`V`) shows only the screens they know about, with one cell around them, so
+  the cells stay big enough to read; on a map hidden from viewers it says "This map is hidden from viewers" instead of
+  showing another map. The host's minimap shows the 7 × 5 screens around the party on a big map (⤢ Full map has the
+  rest), and is one Tab stop: the arrow keys go from screen to screen. (0ff069a, 607c435)
+- **Hearts on the stats strip** show as "♥ 7/10" once there are more than 5 of them (10 with up to three players),
+  so a long row of hearts no longer pushes the gold under the next card. (0ff069a)
+- **✂ Split off selected** won't put everyone, or players standing in different places, into one party: it says to
+  🤝 Regroup, or to split off players standing together. (79dbf8e)
+- **Enter in a board game**: at a fork it says to pick the way first; with a player selected and no amount typed, it
+  moves (as it does with nobody selected). (0ff069a)
+- The turn order's ◀ ▶ buttons say whose they are ("Ann later in the turn order") to screen readers. (0ff069a)
 
 ### Added
 - **Phone buzzers** (the pre-game screen's 📱 Phone buzzers card): before the game, ▶ Start the room shows a
@@ -296,6 +313,28 @@ done, the Unreleased lines move under that day's heading.
   they had switched off simply stays off.)
 - Small wording: ＋ Add round's "📂 Import rounds…" is no longer cut off; the space card's Delete space has its 🗑;
   the "Opened “…”" toast uses curly quotes; the sample game's Final answer is "Just chatting", like its board answers.
+- **Board game: a space's buttons act on the player they're for.** "Landing on it (Bob)" on a space's card, the
+  landed and passed buttons and the stage's "Run its landing actions" now move, skip or charge that player, not
+  whoever's turn it is. (79dbf8e)
+- **RPG: an object's "the party" buttons act on the party standing there**, not the one viewers follow (a trap on the
+  Village hurts the players at the Village, even in split view). (79dbf8e)
+- **Board game: moving back where two ways meet goes back the way the player came**, not down the other way; and
+  after moving back onto a fork, the next move asks which way again instead of taking the other way. (79dbf8e)
+- **The minimap and the full map (`J`) of a big world (20 × 20)** fit their boxes: the minimap's rows no longer
+  shrink to slivers, and the full map stays inside the window with its ✕ and Move buttons in reach. (0ff069a)
+- **The viewers' map stays quick on a big world**: moving with a full 20 × 20 map on screen no longer slows the
+  audience window down. (0ff069a)
+- **Only the board game's own dice or movement wheel fill in the Steps box**: a Pick-a-player wheel landing on
+  "Player 3", the 🎲 tool or a space's "Roll d20" no longer do. (0ff069a)
+- **Selling sells the very item picked**: with two Swords, selling the one not worn no longer takes the worn one. Sell
+  buttons mark the worn one, and a shop no longer offers to buy secret items or ones with no price. (79dbf8e)
+- **Arriving players stand clear of the stats strip** (walking in from the south their names were behind it) and of
+  the split-view caption, and side by side when they come in at a corner (two used to land on top of each other).
+  (79dbf8e)
+- **Picking something up with several players picked** gives it to the first one, and the button names just them
+  ("✋ Bob & Cy picks up" gave it to Bob only). (79dbf8e)
+- **Board spaces only draw a number when they're named "Space N"**: "Move +3" no longer shows a big 3. Tokens stay
+  above the stats strip, and the editor's checklist warns about spaces under it. (79dbf8e)
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz
