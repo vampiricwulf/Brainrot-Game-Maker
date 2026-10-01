@@ -148,13 +148,16 @@
   async function restoreRoom(): Promise<void> {
     const r = await loadRoom();
     if (!r?.remote?.code || !Array.isArray(r.players)) return;
-    if (r.gameId !== app.game.id || !app.game.settings.buzzer) {
+    // The room itself says Buzzer mode was on: a reload right after turning it on can come back before the editor's
+    // copy of that setting was written, and the room must not close for it.
+    if (r.gameId !== app.game.id) {
       endRoom(r.remote);
       await clearRoom();
       return;
     }
     if (r.screen === 'pregame' && app.screen === 'editor') {
       app.playGame = clone(app.game);
+      app.playGame.settings.buzzer = true;
       const s = newSession(app.playGame);
       s.players = r.players;
       s.remote = r.remote;

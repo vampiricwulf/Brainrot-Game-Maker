@@ -143,8 +143,11 @@ export function tieThem(taps) {
     t.rewrite = (j, send) => {
       held.push({ t, j, send });
       if (held.length < taps.length) return;
-      // As long as both really took (a little less than the time since each saw BUZZ!), so the room believes it.
-      const reactMs = Math.min(...held.map((h) => Date.now() - h.t.armedAt[h.j.armId])) - 20;
+      // The phone that lit first's time (less a little): every phone lit after the room armed, so it never claims more
+      // than the time since arming, and the network time it implies is that phone's, small for both. (The later phone's
+      // time would make the earlier one look like it took a long network trip on a busy machine, and the room would rank
+      // it by arrival instead: no tie.)
+      const reactMs = Math.max(...held.map((h) => Date.now() - h.t.armedAt[h.j.armId])) - 20;
       for (const h of held) {
         h.t.rewrite = null;
         h.send({ ...h.j, reactMs });
