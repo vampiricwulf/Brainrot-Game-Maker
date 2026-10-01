@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -79,10 +80,7 @@ try {
   await page.keyboard.press('Escape');
 
   // Play: board → Final in the middle → board → Final → end.
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  await playWithPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   // Give Player 1 some points so they can wager.

@@ -197,11 +197,6 @@ assert(
 );
 await page.keyboard.press('Escape');
 await about.waitFor({ state: 'detached' });
-await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
-assert((await page.locator('.player').count()) === 3, 'added 3 players');
-const colors = await page.locator('.player input[type=color]').evaluateAll((els) => els.map((e) => e.value));
-assert(new Set(colors).size === 3, 'players got unique colors');
 
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
 await page.locator('.cat textarea').first().fill('Memes');
@@ -756,7 +751,12 @@ await page.getByRole('button', { name: 'Done' }).click();
 assert((await page.locator('.tile').nth(3).innerText()).includes('DD'), 'tile marked as Daily Double in the editor');
 await shot('2-round-editor');
 
+// The players are added on the pre-game screen (▶ Play), and kept with the game.
 await page.getByRole('button', { name: '▶ Play' }).click();
+for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
+assert((await page.locator('.player').count()) === 3, 'added 3 players');
+const colors = await page.locator('.player input[type=color]').evaluateAll((els) => els.map((e) => e.value));
+assert(new Set(colors).size === 3, 'players got unique colors');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 // Round intro: title card → tiles fill in → categories revealed on N.
 await page.locator('.round-name').waitFor();

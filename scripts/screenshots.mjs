@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { playWithPlayers } from '../tests/e2e/helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -85,9 +86,7 @@ try {
   await shot('history');
 
   // Play with three players.
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  await playWithPlayers(page, 3);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   // Some points, and a used tile.

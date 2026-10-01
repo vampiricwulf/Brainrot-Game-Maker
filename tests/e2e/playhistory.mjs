@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -48,9 +48,7 @@ try {
     // A second screen, east of the first.
     if (String(mode).includes('RPG')) await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   }
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  await playWithPlayers(page, 3);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
 

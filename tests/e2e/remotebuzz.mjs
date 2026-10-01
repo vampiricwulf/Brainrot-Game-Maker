@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -102,9 +102,10 @@ try {
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');
   await settings.getByRole('button', { name: 'Done' }).click();
 
-  // ---------- Setup: buzzer mode, opened by the host, phones, new players from phones ----------
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
+  // ---------- Pre-game: players; ⚙ Game rules: buzzer mode, opened by the host, phones, new players from phones ----------
+  await playWithPlayers(page, 3);
+  await openRules(page);
+  assert((await page.getByRole('region', { name: 'Phone buzzers' }).count()) === 0, 'no 📱 Phone buzzers card until the rules say phones');
   await page.getByLabel(/Buzzer mode/).check();
   await page.getByLabel('Open the buzzers').selectOption('host');
   assert((await page.getByLabel(/Let new players join/).count()) === 0, 'the phone options show only once phones are chosen');
@@ -113,7 +114,6 @@ try {
   await shot('rb-0-setup');
 
   // ---------- Pre-game: start the room ----------
-  await page.getByRole('button', { name: '▶ Play' }).click();
   const card = page.getByRole('region', { name: 'Phone buzzers' });
   await card.waitFor();
   await card.getByRole('button', { name: '▶ Start the room' }).click();

@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -83,12 +83,11 @@ try {
   const host = watch(await hostCtx.newPage(), 'host');
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
-  await host.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  for (let i = 0; i < 2; i++) await host.getByRole('button', { name: '＋ Add player' }).click();
+  await playWithPlayers(host, 2);
+  await openRules(host);
   await host.getByLabel(/Buzzer mode/).check();
   await host.getByLabel('Open the buzzers').selectOption('host');
   await host.getByLabel('Players buzz from').selectOption('phones');
-  await host.getByRole('button', { name: '▶ Play' }).click();
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = card.locator('[aria-label^="Room code "]');

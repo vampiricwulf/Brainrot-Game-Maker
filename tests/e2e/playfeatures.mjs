@@ -1,10 +1,10 @@
 // Hosting extras: who's answering on stream, buzzer mode (with buzz-in keys in the audience window), the built-in sound
-// cues (and switching one off in Setup), the chroma-key stage background and the scores-only window for OBS.
+// cues (and switching one off in 🔊 Sounds), the chroma-key stage background and the scores-only window for OBS.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -43,14 +43,10 @@ try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
 
-  // ---------- Setup: players, buzzer mode with keys, the sound list ----------
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByLabel(/Buzzer mode/).check();
-  await page.getByLabel(/Buzz-in keys/).fill('qp!');
-  assert((await page.getByLabel(/Buzz-in keys/).inputValue()) === 'QP', 'buzz-in keys are letters and digits, shown in capitals');
+  // ---------- 🔊 Sounds: the sound list ----------
+  await page.getByRole('button', { name: '🔊 Sounds' }).click();
   const rows = page.locator('.sound');
-  assert((await rows.count()) === 14, 'Setup lists every sound cue');
+  assert((await rows.count()) === 14, '🔊 Sounds lists every sound cue');
   assert((await rows.filter({ hasText: 'Built-in' }).count()) === 13, 'all but the think music play a built-in sound to begin with');
   const tileRow = rows.filter({ hasText: 'Tile opens' });
   await tileRow.getByRole('checkbox').uncheck();
@@ -71,8 +67,12 @@ try {
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);
 
-  // ---------- Play ----------
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  // ---------- Play: players and buzzer mode with keys, on the pre-game screen ----------
+  await playWithPlayers(page, 3);
+  await openRules(page);
+  await page.getByLabel(/Buzzer mode/).check();
+  await page.getByLabel(/Buzz-in keys/).fill('qp!');
+  assert((await page.getByLabel(/Buzz-in keys/).inputValue()) === 'QP', 'buzz-in keys are letters and digits, shown in capitals');
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.locator('.stage-box .title-card').waitFor();
   assert((await played(page, 'roundIntro')) === 1, 'the round intro plays its built-in sound with the title card');

@@ -92,7 +92,7 @@ try {
   await clue.getByRole('button', { name: '🅣 Text' }).click();
   await clue.getByRole('button', { name: 'Done' }).click();
   await page.getByLabel('Round name').fill('Round of memes');
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
+  await page.getByRole('button', { name: '🔊 Sounds' }).click();
   await page.waitForTimeout(300);
   assert((await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) === 'Undo: Renamed round “Round of memes” (Ctrl+Z)', '↶ names the step it undoes');
 

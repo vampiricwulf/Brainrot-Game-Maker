@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -31,12 +31,9 @@ try {
   host.on('dialog', (d) => d.accept());
   await host.goto(base);
   await addClassicRounds(host);
-  await host.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  await host.getByRole('button', { name: '＋ Add player' }).click();
-  await host.getByRole('button', { name: '＋ Add player' }).click();
   await host.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
   await host.locator('.cat textarea').first().fill('Channel Test');
-  await host.getByRole('button', { name: '▶ Play' }).click();
+  await playWithPlayers(host, 2);
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
   await host.locator('.board .tile').first().waitFor();

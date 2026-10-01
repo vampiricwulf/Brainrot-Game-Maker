@@ -191,8 +191,8 @@ try {
   assert((await values(faces)).join() === 'Sip,Dare,Sing,Dance', 'the pasted lines fill the faces, and the die gets as many sides');
   assert(!dialogs.length, 'nothing asked with a browser dialog');
 
-  // ---------- Players ----------
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
+  // ---------- Players (on the pre-game screen) ----------
+  await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   const typing = () => page.evaluate(() => {
     const e = document.activeElement;
@@ -204,11 +204,12 @@ try {
   await page.keyboard.type('Zed');
   await page.keyboard.press('Alt+ArrowUp');
   assert((await page.getByLabel('Player 1 name').inputValue()) === 'Zed', 'Alt+↑ moves a player up');
+  const undoNote = page.locator('.undo-note');
   await page.getByRole('button', { name: 'Delete Zed' }).click();
-  assert((await notice.innerText()).startsWith('Deleted player “Zed”'), '🗑 deletes a player, with a note');
-  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  assert((await undoNote.innerText()).startsWith('Deleted Zed'), '🗑 deletes a player, with a note');
+  await undoNote.getByRole('button', { name: '↶ Undo' }).click();
   assert((await page.getByLabel('Player 1 name').inputValue()) === 'Zed', 'and Undo brings them back');
-  // A player's right-click menu (in ⚙ Setup).
+  // A player's right-click menu (before the game).
   const playerNames = () => values(page.getByLabel(/^Player \d name$/));
   await page.locator('[data-place^="player:"] .num').first().click({ button: 'right' });
   const playerMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
@@ -220,10 +221,16 @@ try {
   assert((await typing()) === 'Player 2 name', '✎ Rename types in their name');
   await page.locator('[data-place^="player:"] .num').nth(1).click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete player' }).click();
-  assert((await playerNames()).join() === 'Player 1' && (await notice.innerText()).startsWith('Deleted player “Zed”'), 'and 🗑 Delete player deletes them, with a note');
-  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  assert((await playerNames()).join() === 'Player 1' && (await undoNote.innerText()).startsWith('Deleted Zed'), 'and 🗑 Delete player deletes them, with a note');
+  await undoNote.getByRole('button', { name: '↶ Undo' }).click();
   await page.getByLabel('Player 2 name').click({ button: 'right' });
   assert(!(await page.getByRole('menu').count()), 'a name box keeps the browser’s own menu');
+  // They're kept with the game: back in the editor and on to ▶ Play again, they're there.
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByLabel('Player 2 name').waitFor();
+  assert((await playerNames()).join() === 'Player 1,Zed', 'the players set before the game are kept with it');
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
 
   // ---------- Board game ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();

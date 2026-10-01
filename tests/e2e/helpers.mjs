@@ -52,3 +52,24 @@ export async function dragBy(page, from, to) {
   await page.mouse.up();
   await page.waitForTimeout(250);
 }
+
+/** On the pre-game screen (▶ Play): add `n` players with ＋ Add player. */
+export async function addPlayers(page, n) {
+  const add = page.getByRole('button', { name: '＋ Add player' });
+  for (let i = 0; i < n; i++) await add.click();
+}
+
+/** ▶ Play from the editor, then add `n` players on the pre-game screen (where the game's players are set). */
+export async function playWithPlayers(page, n) {
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  await addPlayers(page, n);
+}
+
+/** The pre-game screen's ⚙ Game rules, opened (rules, timers, the round intro). */
+export async function openRules(page) {
+  const rules = page.locator('details.rules');
+  await rules.waitFor();
+  if (!(await rules.evaluate((d) => d.open))) await rules.locator('summary').click();
+  return rules;
+}

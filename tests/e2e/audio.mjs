@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, nameGame } from './helpers.mjs';
+import { addClassicRounds, nameGame, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -52,17 +52,14 @@ function wav(seconds) {
 async function toPregame(page, url, { introSound = false } = {}) {
   await page.goto(url);
   await addClassicRounds(page);
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
   if (introSound) {
+    await page.getByRole('button', { name: '🔊 Sounds' }).click();
     await page.getByRole('button', { name: 'Choose file…' }).first().click();
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
     await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(2) });
     await page.getByText('🔊 intro.wav').waitFor();
   }
-  await page.getByRole('button', { name: '▶ Play' }).click();
-  await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  await playWithPlayers(page, 2);
 }
 
 const dialog = (page) => page.getByRole('dialog', { name: 'Streaming the sound' });

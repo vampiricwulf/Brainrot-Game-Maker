@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy } from './helpers.mjs';
+import { addClassicRounds, dragBy, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -108,10 +108,7 @@ try {
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
   // Play it: two players, straight to the adventure.
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  await playWithPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   playing = true;
   await page.getByRole('button', { name: 'Skip intro' }).click();

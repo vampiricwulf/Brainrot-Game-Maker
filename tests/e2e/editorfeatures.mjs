@@ -6,6 +6,7 @@ import { copyFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -101,16 +102,6 @@ try {
   assert((await page.getByRole('menuitem', { name: '🔁 Roll again' }).count()) === 1, 'and 🔁 Roll again');
   await page.keyboard.press('Escape');
 
-  // ---------- Setup: Most players ----------
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  await page.getByLabel('Most players').fill('12');
-  await page.getByLabel('Most players').press('Tab');
-  assert((await page.locator('section').first().innerText()).includes('3/12 players'), 'Most players raises the cap');
-  assert((await page.getByText('only the first 9 players').count()) === 1, 'with a note on the 1–9 keys');
-  await page.getByLabel('Most players').fill('1');
-  await page.getByLabel('Most players').press('Tab');
-  assert((await page.getByLabel('Most players').inputValue()) === '3', 'never fewer than the players listed');
-
   // ---------- Theme: my theme ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   await page.getByRole('button', { name: /Brainrot Neon/ }).click();
@@ -153,8 +144,18 @@ try {
   await page.waitForTimeout(300);
   assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use a theme from another game takes its theme');
 
-  // ---------- Playing the sample's board game ----------
+  // ---------- Pre-game: ⚙ Game rules › Most players ----------
   await page.getByRole('button', { name: '▶ Play' }).click();
+  await openRules(page);
+  await page.getByLabel('Most players').fill('12');
+  await page.getByLabel('Most players').press('Tab');
+  assert((await page.locator('.pregame .players').innerText()).includes('3/12 players'), 'Most players raises the cap');
+  assert((await page.getByText('only the first 9 players').count()) === 1, 'with a note on the 1–9 keys');
+  await page.getByLabel('Most players').fill('1');
+  await page.getByLabel('Most players').press('Tab');
+  assert((await page.getByLabel('Most players').inputValue()) === '3', 'never fewer than the players listed');
+
+  // ---------- Playing the sample's board game ----------
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
   for (let i = 0; i < 3 && !(await page.locator('.bh').count()); i++) {

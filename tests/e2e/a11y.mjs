@@ -105,12 +105,11 @@ try {
 
   // ---------- In-app questions ----------
   // A game in progress, then ▶ Play again: the app asks in its own window, with the focus on the safe answer.
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  await page.getByRole('button', { name: '＋ Add player' }).click();
   await play.click();
   assert(await page.locator('.pregame h1').evaluate((h) => h === document.activeElement), '▶ Play puts the focus at the top of the pre-game page');
 
-  // Pre-game: deleting a player offers Undo.
+  // Pre-game (where players are added): deleting a player offers Undo.
+  await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   const names = page.locator('.pregame input.name');
   const before = await names.count();

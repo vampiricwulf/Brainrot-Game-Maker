@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -38,9 +38,7 @@ const nextRound = async () => {
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add player' }).click();
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  await playWithPlayers(page, 3);
 
   // Pre-game: single window says what viewers see, and the audience window is recommended.
   const warn = await page.locator('.pregame .exposed').innerText();

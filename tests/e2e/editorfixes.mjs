@@ -5,6 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -60,7 +61,7 @@ try {
   const order = await page.locator('nav > button, nav > .navlabel').allInnerTexts();
   const at = (re) => order.findIndex((t) => re.test(t));
   assert(at(/Tiebreaker/) === at(/Round 3/) + 1 && at(/Add round/) === at(/Tiebreaker/) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
-  assert(at(/^Game$/i) > at(/Add round/) && at(/Setup/) > at(/^Game$/i) && at(/Theme/) > at(/^Game$/i), 'the game-wide tabs have a Game group of their own');
+  assert(at(/^Game$/i) > at(/Add round/) && at(/Sounds/) > at(/^Game$/i) && at(/Theme/) > at(/^Game$/i), 'the game-wide tabs have a Game group of their own');
   await page.locator('nav .problem', { hasText: 'Round 3:' }).waitFor();
   const lines = await page.locator('nav .problem').allInnerTexts();
   assert(lines.filter((l) => /^⚠ Jeopardy!:/.test(l)).length === 1 && lines.some((l) => /^⚠ Jeopardy!: 30 clues to finish/.test(l)), `the checklist has one line a round (${lines.join(' | ')})`);
@@ -172,10 +173,12 @@ try {
   assert((await page.getByLabel('Object class').inputValue()) === 'npc', 'the 🧙 Character button places a character');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
-  // ---------- Setup ----------
-  await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
-  const boxes = await page.locator('section .check input[type=checkbox]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
-  assert(new Set(boxes).size === 1, `every checkbox in Setup is the same size (${boxes})`);
+  // ---------- Pre-game: ⚙ Game rules ----------
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  const rules = await openRules(page);
+  const boxes = await rules.locator('.check input[type=checkbox]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
+  assert(boxes.length > 3 && new Set(boxes).size === 1, `every checkbox in ⚙ Game rules is the same size (${boxes})`);
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
 
   // ---------- Theme: clue text and preview ----------
   await tabs.nth(0).click();

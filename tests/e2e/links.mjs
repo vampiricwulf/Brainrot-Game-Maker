@@ -231,7 +231,7 @@ assert(
 );
 
 // ---------- Drive video for a game sound (not a slide): a clear message and "Download from Drive" ----------
-await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
+await page.getByRole('button', { name: '🔊 Sounds' }).click();
 await page.getByRole('button', { name: 'Choose file…' }).first().click();
 await page.locator('.picker').getByLabel('Paste a link').fill(`https://drive.google.com/open?id=${DRIVE_VID}`);
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
@@ -275,7 +275,7 @@ assert(/\d+(\.\d+)? KB/.test(await card('pic3.png').locator('.meta').first().inn
 assert((await page.getByText(/Files stored with this game: 2 ·/).count()) === 1, 'and it counts as stored');
 
 // ---------- Sounds in MP4 and WebM files (a container that can also hold video) ----------
-await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
+await page.getByRole('button', { name: '🔊 Sounds' }).click();
 for (const [row, name] of [['Winner', 'isom-voice.m4a'], ['Final round think music', 'voice.weba']]) {
   await page.locator('.sound', { hasText: row }).getByRole('button', { name: 'Choose file…' }).click();
   await page.locator('.picker').getByLabel('Paste a link').fill(`https://litter.catbox.moe/${name}`);
