@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contrast, luminance, parseHex, PLAYER_PALETTE, textOn } from './colors';
+import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, nearKey, parseHex, PLAYER_PALETTE, textOn, type Vision } from './colors';
 
 describe('contrast', () => {
   it('follows WCAG: black on white is 21, a color on itself is 1', () => {
@@ -36,5 +36,47 @@ describe('textOn', () => {
 
   it('gives at least 4.5:1 on every player color', () => {
     for (const c of PLAYER_PALETTE) expect(contrast(c, textOn(c))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('player colors for colour-blind viewers', () => {
+  const smallest = (colors: string[], vision: Vision) => {
+    let min = Infinity;
+    for (let i = 0; i < colors.length; i++) for (let j = i + 1; j < colors.length; j++) min = Math.min(min, colorDistance(colors[i], colors[j], vision));
+    return min;
+  };
+
+  it('keeps the first 6 clearly apart (ΔE 15 or more) with normal sight, deuteranopia and protanopia', () => {
+    for (const v of ['normal', 'deutan', 'protan'] as const) expect(smallest(PLAYER_PALETTE.slice(0, 6), v)).toBeGreaterThanOrEqual(15);
+  });
+
+  it('keeps the first 8 apart too', () => {
+    expect(CVD_SAFE_UPTO).toBe(8);
+    for (const v of ['normal', 'deutan', 'protan'] as const) expect(smallest(PLAYER_PALETTE.slice(0, CVD_SAFE_UPTO), v)).toBeGreaterThanOrEqual(15);
+  });
+
+  it('shows why: the old red and green looked alike to deuteranopes', () => {
+    expect(colorDistance('#e6194b', '#3cb44b', 'deutan')).toBeLessThan(10);
+    expect(colorDistance('#e6194b', '#3cb44b')).toBeGreaterThan(50);
+  });
+
+  it('has 12 different colors', () => {
+    expect(new Set(PLAYER_PALETTE).size).toBe(12);
+  });
+});
+
+describe('player colors near the chroma key', () => {
+  it('flags greens for a green key and pinks and purples for a magenta key', () => {
+    for (const c of ['#3cb44b', '#bfef45', '#2e7d32', '#00ff00']) expect(nearKey(c, '#00ff00')).toBe(true);
+    for (const c of ['#f032e6', '#cc79a7', '#ff00ff']) expect(nearKey(c, '#ff00ff')).toBe(true);
+  });
+
+  it('leaves the rest, and greys and whites, alone', () => {
+    for (const c of ['#e6194b', '#56b4e9', '#1f3a93', '#f0e442', '#f2f2f2', '#808080', '#000000']) {
+      expect(nearKey(c, '#00ff00')).toBe(false);
+      expect(nearKey(c, '#ff00ff')).toBe(false);
+    }
+    expect(nearKey('#3cb44b', '#ff00ff')).toBe(false);
+    expect(nearKey('not a color', '#00ff00')).toBe(false);
   });
 });
