@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newId } from './model';
 import { applyScore, newSession, score } from './session';
-import { actionDeltas, activeSegments, applyAction, newWheel, parseDice, planRollOff, rollPreset, segmentAngles, sliceAt, spinTarget, weightedIndex, MIN_WEIGHT, sliceWeight } from './tools';
+import {
+  actionDeltas, activeSegments, applyAction, diceCount, initials, newWheel, parseDice, planRollOff, rollPreset, rollResult, segmentAngles, sliceAt,
+  sliceLabel, spinSeconds, spinTarget, uniqueLabels, weightedIndex, wheelUsedUp, MIN_WEIGHT, sliceWeight,
+} from './tools';
 
 function seeded(seed = 42) {
   return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -113,6 +116,36 @@ describe('score actions', () => {
     expect(session.scoreLog.at(-1)?.reason).toBe('Wheel');
   });
 
+  it('shares a steal among the players it is for, never the victim, in whole points that add up to what was taken', () => {
+    const { session } = setup();
+    // The victim tagged as one it's for too: the others share all of it.
+    expect(actionDeltas(session, { kind: 'steal', amount: 'all' }, ['p0', 'p1', 'p2'], 'p1')).toEqual({ p0: 150, p2: 150, p1: -300 });
+    // 5 between two: 3 and 2, not 3 and 3 (more than the victim had).
+    expect(actionDeltas(session, { kind: 'steal', amount: 5 }, ['p1', 'p2'], 'p0')).toEqual({ p1: 3, p2: 2, p0: -5 });
+    const d = actionDeltas(session, { kind: 'steal', amount: 1000 }, ['p0', 'p1'], 'p2');
+    expect(Object.values(d).reduce((a, b) => a + b, 0)).toBe(0);
+    // Only the victim: nothing happens.
+    expect(actionDeltas(session, { kind: 'steal', amount: 200 }, ['p0'], 'p0')).toEqual({});
+  });
+
+  it('swaps with one player', () => {
+    const { session } = setup();
+    expect(actionDeltas(session, { kind: 'swapScores' }, ['p0', 'p1'], 'p0')).toEqual({ p1: 700, p0: -700 });
+  });
+
+  it("says when a land-once wheel's every slice has landed", () => {
+    const { session } = setup();
+    const w = newWheel('w', ['a', 'b']);
+    session.removedSegments = { [w.id]: w.segments.map((s) => s.id) };
+    expect(wheelUsedUp(session, w)).toBe(false); // (not a land-once wheel)
+    w.removeAfterLanding = true;
+    expect(wheelUsedUp(session, w)).toBe(true);
+    session.removedSegments[w.id].pop();
+    expect(wheelUsedUp(session, w)).toBe(false);
+    // Only the slices this run spins with count.
+    expect(wheelUsedUp(session, w, [w.segments[0].id])).toBe(true);
+  });
+
   it('respects removed wheel slices', () => {
     const { session } = setup();
     const w = newWheel('w', ['a', 'b', 'c']);
@@ -130,5 +163,45 @@ describe('a slice weight typed in the wheel editor', () => {
     expect(sliceWeight('0')).toBe(MIN_WEIGHT);
     expect(sliceWeight('-3')).toBe(MIN_WEIGHT);
     expect(sliceWeight('0.123')).toBe(0.12);
+  });
+});
+
+describe('numbers typed in the wheel and dice editors', () => {
+  it('keeps a spin to 1–30 s; a blank box keeps the last', () => {
+    expect(spinSeconds('999', 5)).toBe(30);
+    expect(spinSeconds('0', 5)).toBe(1);
+    expect(spinSeconds('0.2', 5)).toBe(1);
+    expect(spinSeconds('7.5', 5)).toBe(7.5);
+    expect(spinSeconds('', 8)).toBe(8);
+  });
+
+  it('keeps a dice count to a whole 1–20; a blank box keeps the last', () => {
+    expect(diceCount('500', 2)).toBe(20);
+    expect(diceCount('0', 2)).toBe(1);
+    expect(diceCount('-3', 2)).toBe(1);
+    expect(diceCount('2.6', 2)).toBe(3);
+    expect(diceCount('', 4)).toBe(4);
+  });
+});
+
+describe('what a result is called', () => {
+  it('names a blank slice by its number', () => {
+    expect(sliceLabel({ id: 'x', label: '  ', color: '#fff', weight: 1 }, 2)).toBe('Slice 3');
+    expect(sliceLabel({ id: 'x', label: 'Sing', color: '#fff', weight: 1 }, 2)).toBe('Sing');
+  });
+
+  it("shortens players' names to initials that keep their number, and never alike", () => {
+    expect(initials('Bartholomew The Magnificent 1/3')).toBe('BTM1/3');
+    expect(initials('Bartholomew The Magnificent 2/3')).toBe('BTM2/3');
+    expect(initials('TheRealMcCoy Bartholomew')).toBe('TB');
+    expect(initials('Supercalifragilistic')).toBe('Super…');
+    expect(uniqueLabels(['TB', 'Ann', 'TB', 'TB'])).toEqual(['TB', 'Ann', 'TB 2', 'TB 3']);
+  });
+
+  it('puts the total of many dice first', () => {
+    const roll = { dice: [3, 5, 6].map((value) => ({ sides: 6, value })), total: 14 };
+    expect(rollResult(roll)).toBe('14 (3 + 5 + 6)');
+    expect(rollResult({ ...roll, totalOutcome: { label: 'Sip' } })).toBe('14 → Sip (3 + 5 + 6)');
+    expect(rollResult({ dice: [{ sides: 20, value: 7 }], total: 7 })).toBe('7');
   });
 });

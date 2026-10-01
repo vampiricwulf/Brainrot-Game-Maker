@@ -5,7 +5,7 @@ import { currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, 
 import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
-import { openWheel, quickDice, rollDice, spinWheel } from '../../lib/overlay';
+import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
 import { overlayDoneAt, type Live } from '../../lib/live';
 
@@ -133,6 +133,8 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
     if (!w) return 'The movement wheel no longer exists: pick one in the editor';
     // One press spins it (opened afresh, unless it's on screen waiting for a spin).
     if (!(o?.kind === 'wheel' && o.wheelId === w.id && !o.spin)) openWheel(live, session, w);
+    const on = live.overlay;
+    if (on?.kind === 'wheel' && wheelSpentUp(on, session, game)) return 'Every slice of the movement wheel has landed: Restore them to spin again';
     spinWheel(live, session, game);
     return null;
   }

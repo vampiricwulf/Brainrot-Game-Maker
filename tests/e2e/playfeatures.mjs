@@ -116,9 +116,14 @@ try {
   // A wheel ticks as its slices pass the pointer, then lands.
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   await page.getByRole('button', { name: '🎯 Pick a player' }).click();
+  await page.waitForTimeout(100);
+  assert((await page.evaluate(() => document.activeElement?.textContent?.trim())) === 'Spin!', 'a wheel picked from the 🎡 menu puts the focus on its Spin!');
   await page.keyboard.press('w');
   await aud.waitForFunction(() => window.__plays.filter((s) => s.endsWith('#wheelTick')).length >= 3);
   assert((await played(aud, 'wheelLand')) === 0, 'a spinning wheel ticks in the audience window');
+  await page.keyboard.press('d');
+  await page.getByText('Still spinning: wait for it to land').waitFor({ timeout: 2000 });
+  assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a player')), 'D while the wheel spins waits for it (and says why)');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#wheelLand')), null, { timeout: 10000 });
   assert((await played(page, 'wheelTick')) === 0, '…and lands with a ding (none of it in the host’s window)');
   await page.keyboard.press('Escape');

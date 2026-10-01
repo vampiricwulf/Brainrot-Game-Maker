@@ -1,10 +1,11 @@
 <script lang="ts">
   import { newId, type DicePreset, type Die } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
-  import { rollPreset } from '../../lib/tools';
+  import { diceCount, rollPreset } from '../../lib/tools';
   import { step } from '../../lib/history.svelte';
   import { faceLines } from '../../lib/listedit';
   import { app } from '../../lib/app.svelte';
+  import { liveNumber } from '../../lib/numfield';
   import Stage from '../../lib/Stage.svelte';
   import DiceView from '../../play/tools/DiceView.svelte';
   import OutcomeEditor from './OutcomeEditor.svelte';
@@ -49,8 +50,37 @@
     {#each preset.dice as d, i (d.id)}
       <div class="die">
         <div class="row">
-          <label class="check">Count<input type="number" min="1" max="20" bind:value={d.count} class="n" /></label>
-          <label class="check">Sides d<input type="number" min="2" max="1000" value={d.sides} onchange={(e) => setSides(d, +e.currentTarget.value)} class="n" /></label>
+          <!-- Kept to what a die can be (1–20 of them, d2–d1000), and the box shows what was kept. -->
+          <label class="check"
+            >Count<input
+              type="number"
+              min="1"
+              max="20"
+              value={d.count}
+              oninput={(e) => {
+                const n = liveNumber(e.currentTarget.value, 1, 20);
+                if (n !== null && Number.isInteger(n)) d.count = n;
+              }}
+              onchange={(e) => {
+                d.count = diceCount(e.currentTarget.value, d.count);
+                e.currentTarget.value = String(d.count);
+              }}
+              class="n"
+            /></label
+          >
+          <label class="check"
+            >Sides d<input
+              type="number"
+              min="2"
+              max="1000"
+              value={d.sides}
+              onchange={(e) => {
+                setSides(d, +e.currentTarget.value);
+                e.currentTarget.value = String(d.sides);
+              }}
+              class="n"
+            /></label
+          >
           <label class="check" title="Give each side its own label, details or effect (up to 100 sides)">
             <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
           </label>
@@ -90,7 +120,14 @@
     <p class="muted small">e.g. 2–4 → "Take a sip", 12 → "Pick a victim". Anything, not just points.</p>
     {#each preset.totalOutcomes ?? [] as t, i (t.id)}
       <div class="face">
-        <input type="number" bind:value={t.min} class="n" aria-label="From" />–<input type="number" bind:value={t.max} class="n" aria-label="To" />
+        <!-- From above To: they swap round (a range 9–4 is 4–9). -->
+        <input type="number" bind:value={t.min} class="n" aria-label="From" onchange={() => t.min > t.max && ([t.min, t.max] = [t.max, t.min])} />–<input
+          type="number"
+          bind:value={t.max}
+          class="n"
+          aria-label="To"
+          onchange={() => t.min > t.max && ([t.min, t.max] = [t.max, t.min])}
+        />
         <OutcomeEditor outcome={t.outcome} placeholder="What happens" />
         <button class="ghost small" onclick={() => preset.totalOutcomes?.splice(i, 1)} aria-label="Delete this total" title="Delete">🗑</button>
       </div>

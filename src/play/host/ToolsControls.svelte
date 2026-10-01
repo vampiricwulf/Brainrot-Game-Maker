@@ -5,8 +5,8 @@
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
-  import { addWheel, removeWheel, rollDice, spinWheel } from '../../lib/overlay';
-  import { describeRoll } from '../../lib/tools';
+  import { addWheel, removeWheel, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
+  import { rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
@@ -37,12 +37,14 @@
     if (o?.kind === 'dice' && o.roll) return o.roll.totalOutcome ?? o.roll.dice.find((d) => d.face?.scoreAction || d.face?.timerSeconds || d.face?.actions?.length)?.face;
     return undefined;
   });
+  /** What the outcome is called: a slice left blank is "Slice 3". */
+  const outcomeName = $derived(o?.kind === 'wheel' && o.result !== null ? sliceLabel(o.segments[o.result], o.result) : (outcome?.label ?? ''));
   const resultText = $derived.by(() => {
     if (o?.kind === 'wheel' && o.spin && (o.result !== null || o.extra?.length))
-      return [o.result !== null ? o.segments[o.result]?.label : '', ...(o.extra ?? []).map((w) => (w.result !== null ? w.segments[w.result]?.label : ''))]
+      return [o.result !== null ? sliceLabel(o.segments[o.result], o.result) : '', ...(o.extra ?? []).map((w) => (w.result !== null ? sliceLabel(w.segments[w.result], w.result) : ''))]
         .filter(Boolean)
         .join(' · ');
-    if (o?.kind === 'dice' && o.roll) return describeRoll(o.roll);
+    if (o?.kind === 'dice' && o.roll) return rollResult(o.roll);
     return '';
   });
   const actionKey = $derived(o && 'nonce' in o ? `${o.nonce}-${o.kind === 'wheel' ? o.spin?.startedAt : o.kind === 'dice' ? o.startedAt : ''}` : '');
@@ -54,6 +56,8 @@
     o?.kind === 'wheel' ? (o.extra ?? []).flatMap((w) => (w.spin && w.result !== null && w.segments[w.result] ? [{ w, seg: w.segments[w.result] }] : [])) : [],
   );
   const removed = $derived(o?.kind === 'wheel' && o.wheelId ? (session.removedSegments?.[o.wheelId]?.length ?? 0) : 0);
+  /** A "land once" wheel with every slice landed: no spin until they're restored (it would start over unannounced). */
+  const spent = $derived(o?.kind === 'wheel' && wheelSpentUp(o, session, game));
 
   /** The player the "Pick a player" wheel landed on. */
   const picked = $derived(
@@ -87,11 +91,13 @@
 </script>
 
 {#if o}
-  <div class="tc">
+  <div class="tc" data-tool-controls>
     <div class="row">
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
-        <button class="primary" disabled={busy} onclick={() => spinWheel(app.live, session, game)} title="W">{o.spin ? 'Spin again' : 'Spin!'}</button>
+        <button class="primary" disabled={busy || spent} onclick={() => spinWheel(app.live, session, game)} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>
+          {o.spin ? 'Spin again' : 'Spin!'}
+        </button>
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => (o.editing = !o.editing)} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{o.pool ? ' (edited)' : ''}
         </button>
@@ -124,6 +130,7 @@
           {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
           <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
         </select>
+        {#if spent && !busy}<span class="warn small" role="status">Every slice has landed: Restore to spin again</span>{/if}
         {#if removed}
           <button class="ghost small" onclick={() => o.wheelId && session.removedSegments && (session.removedSegments[o.wheelId] = [])}>
             Restore {removed} used slice{removed === 1 ? '' : 's'}
@@ -159,22 +166,23 @@
         </button>
       {/if}
       <span class="spacer"></span>
-      {#if resultText && !busy}<span class="result">Result: <b>{resultText}</b></span>{/if}
+      {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
       <!-- A shop has its own 🚪 Leave shop. -->
       {#if o.kind !== 'shop'}<button onclick={onclose} title="Esc">Close</button>{/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">
-        <span class="muted small">{outcome.label}:</span>
-        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcome.label}`)}>{describeAction(game, a)}</button>{/each}
+        <span class="muted small">{outcomeName}:</span>
+        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}>{describeAction(game, a)}</button>{/each}
       </div>
     {/if}
     {#if !busy}
       {#each extraResults as r (r.w.key)}
+        {@const label = sliceLabel(r.seg, r.w.result ?? 0)}
         {#if r.seg.actions?.length || r.seg.scoreAction || r.seg.timerSeconds}
           <div class="row">
-            <span class="muted small">{r.w.name} → {r.seg.label}:</span>
-            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${r.seg.label}`)}>{describeAction(game, a)}</button>{/each}
+            <span class="muted small">{r.w.name} → {label}:</span>
+            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
           {#if r.seg.scoreAction && !doneKeys.includes(`${actionKey}-${r.w.key}`)}
@@ -183,7 +191,7 @@
                 action={r.seg.scoreAction}
                 {game}
                 {session}
-                reason={`Wheel: ${r.w.name} → ${r.seg.label}`}
+                reason={`Wheel: ${r.w.name} → ${label}`}
                 rollTotal={0}
                 defaultTargets={chosen}
                 ondone={() => (doneKeys = [...doneKeys, `${actionKey}-${r.w.key}`])}
@@ -223,6 +231,7 @@
             style:border-color={p.color}
             style:background={on ? p.color : undefined}
             style:color={on ? textOn(p.color) : undefined}
+            aria-pressed={!!on}
             onclick={() => tag(p.id)}>{p.name}</button>
         {/each}
         {#if outcome?.timerSeconds}
@@ -235,7 +244,7 @@
             action={outcome.scoreAction}
             {game}
             {session}
-            reason={`${o.kind === 'wheel' ? 'Wheel' : 'Dice'}: ${o.name} → ${outcome.label}`}
+            reason={`${o.kind === 'wheel' ? 'Wheel' : 'Dice'}: ${o.name} → ${outcomeName}`}
             rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
             defaultTargets={chosen}
             ondone={() => (actionDone = actionKey)}
@@ -263,6 +272,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
   }
   .xw.on {
     outline: 1px solid var(--accent);

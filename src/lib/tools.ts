@@ -4,6 +4,7 @@ import {
   type WheelPreset, type WheelSegment,
 } from './model';
 import { applyScore, score } from './session';
+import { numberFieldValue } from './numfield';
 
 /** Uniform float in [0, 1) from the browser's crypto RNG. */
 export function random(): number {
@@ -49,6 +50,16 @@ export function sliceWeight(text: string): number {
   const n = Number(text);
   if (text.trim() === '' || !Number.isFinite(n)) return 1;
   return Math.max(MIN_WEIGHT, Math.round(n * 100) / 100);
+}
+
+/** A saved wheel's spin time as typed (seconds): 1–30, a blank or not-a-number box keeps `last`. */
+export function spinSeconds(text: string, last: number): number {
+  return Math.round(numberFieldValue(text, last, 1, 30) * 10) / 10;
+}
+
+/** How many of a die a saved dice set rolls, as typed: a whole 1–20, a blank or not-a-number box keeps `last`. */
+export function diceCount(text: string, last: number): number {
+  return Math.round(numberFieldValue(text, last, 1, 20));
 }
 
 /** A wheel slice in the host's edit box: `off` leaves it out of this run of the wheel. */
@@ -187,6 +198,15 @@ export function describeRoll(r: DiceRoll): string {
   return r.totalOutcome ? `${main} → ${r.totalOutcome.label}` : main;
 }
 
+/**
+ * The host's result line for a roll: the total first (with its outcome), then the dice, so a long list of dice is what
+ * gets cut off, never the total. "17 → Take a sip (5 + 6 + 6)".
+ */
+export function rollResult(r: DiceRoll): string {
+  if (r.dice.length < 2 || r.dice.some((d) => d.face)) return describeRoll(r);
+  return `${r.total}${r.totalOutcome ? ` → ${r.totalOutcome.label}` : ''} (${r.dice.map((d) => d.value).join(' + ')})`;
+}
+
 // ---------- Roll-off ("who goes first") ----------
 
 export interface RollOffRound {
@@ -296,15 +316,18 @@ export function actionDeltas(
       break;
     case 'steal': {
       if (!source) break;
-      const pool = a.amount === 'all' ? Math.max(0, score(session, source)) : a.amount;
-      const each = targets.length ? Math.round(pool / targets.length) : 0;
-      targets.filter((t) => t !== source).forEach((t) => {
-        add(t, each);
-        add(source, -each);
-      });
+      // Shared by the players it's for (never the victim): whole shares that add up to exactly what's taken.
+      const takers = targets.filter((t) => t !== source);
+      if (!takers.length) break;
+      const pool = Math.round(a.amount === 'all' ? Math.max(0, score(session, source)) : a.amount);
+      const each = Math.floor(pool / takers.length);
+      const extra = pool - each * takers.length;
+      takers.forEach((t, i) => add(t, each + (i < extra ? 1 : 0)));
+      add(source, -pool);
       break;
     }
     case 'swapScores': {
+      // With one player: the "For:" row picks one (a second one would be left out without a word).
       const t = targets.find((x) => x !== source);
       if (!source || !t) break;
       const st = score(session, t);
@@ -347,4 +370,37 @@ export function activeSegments(session: Session, wheel: WheelPreset): WheelSegme
   const removed = new Set(session.removedSegments?.[wheel.id] ?? []);
   const left = wheel.segments.filter((s) => !removed.has(s.id));
   return left.length ? left : wheel.segments;
+}
+
+/** A "land once" wheel whose every slice has landed: it can't spin until the host restores them. */
+export function wheelUsedUp(session: Session, wheel: WheelPreset, ids: Id[] = wheel.segments.map((s) => s.id)): boolean {
+  const removed = new Set(session.removedSegments?.[wheel.id] ?? []);
+  return !!wheel.removeAfterLanding && ids.length > 0 && ids.every((id) => removed.has(id));
+}
+
+/** A slice's name on screen and in the log: "Slice 3" for one left blank. */
+export function sliceLabel(seg: WheelSegment | undefined, i: number): string {
+  return seg?.label.trim() || `Slice ${i + 1}`;
+}
+
+/**
+ * A player's name made short for a narrow slice: initials of up to three words, plus a number it ends with
+ * ("Bartholomew The Magnificent 3" → "BTM3"); one long word → its first letters.
+ */
+export function initials(name: string): string {
+  const words = name.split(/[\s_.-]+/).filter(Boolean);
+  if (words.length < 2) return Array.from(name).slice(0, 5).join('') + '…';
+  const last = words.at(-1)!;
+  const num = /\d/.test(last) ? last : '';
+  return words.slice(0, num ? -1 : undefined).slice(0, 3).map((w) => Array.from(w)[0].toUpperCase()).join('') + num;
+}
+
+/** Labels made unique where they'd read the same ("BT", "BT" → "BT", "BT 2"); different ones are left alone. */
+export function uniqueLabels(labels: string[]): string[] {
+  const seen = new Map<string, number>();
+  return labels.map((l) => {
+    const n = (seen.get(l) ?? 0) + 1;
+    seen.set(l, n);
+    return n === 1 ? l : `${l} ${n}`;
+  });
 }

@@ -14,7 +14,9 @@
     return () => clearInterval(id);
   });
   // Before the roll, show one blank die per die in the preset.
-  const pending = $derived(o.preset.dice.flatMap((d) => Array.from({ length: Math.max(1, d.count) }, () => ({ sides: d.sides }))));
+  const pending = $derived(o.preset.dice.flatMap((d) => Array.from({ length: Math.max(1, d.count) }, () => ({ sides: d.sides, custom: !!d.customFaces }))));
+  /** The dice on screen: a die with its own faces is drawn square (a word doesn't fit a triangle). */
+  const shown = $derived(o.roll ? o.roll.dice.map((d) => ({ sides: d.sides, custom: !!d.face })) : pending);
   const rolling = $derived(!!o.roll && now < o.startedAt + o.duration);
   const count = $derived(o.roll?.dice.length ?? pending.length);
   const size = $derived(count > 6 ? 150 : count > 3 ? 190 : 240);
@@ -35,12 +37,13 @@
 <div class="wrap">
   <div class="title">{o.name}</div>
   <div class="dice">
-    {#each o.roll?.dice ?? pending as d, i}
-      <Die value={face(i)} sides={d.sides} {rolling} {size} />
+    {#each shown as d, i}
+      <Die value={face(i)} sides={d.sides} custom={d.custom} {rolling} {size} />
     {/each}
   </div>
   {#if !o.roll}<div class="total small">Get ready to roll…</div>{/if}
-  {#if o.roll && !rolling && o.roll.dice.length > 1 && o.roll.dice.every((d) => !d.face)}
+  <!-- (Unless the dice set says not to show the total.) -->
+  {#if o.roll && !rolling && o.preset.showTotal !== false && o.roll.dice.length > 1 && o.roll.dice.every((d) => !d.face)}
     <div class="total">Total: {o.roll.total}</div>
   {/if}
   {#if !rolling && outcome}

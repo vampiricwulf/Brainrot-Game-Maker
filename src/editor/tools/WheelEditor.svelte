@@ -6,8 +6,9 @@
   import { tick } from 'svelte';
   import type { WheelPreset, WheelSegment } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
-  import { MIN_WEIGHT, newSegment, parseQuickWheel, segmentAngles, sliceWeight, spinTarget, weightedIndex } from '../../lib/tools';
+  import { MIN_WEIGHT, newSegment, parseQuickWheel, segmentAngles, sliceWeight, spinSeconds, spinTarget, weightedIndex } from '../../lib/tools';
   import { app } from '../../lib/app.svelte';
+  import { liveNumber } from '../../lib/numfield';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
   import { copySegment, moveTo } from '../../lib/listedit';
@@ -32,6 +33,8 @@
   }
 
   const name = (s: WheelSegment) => s.label.trim() || 'untitled';
+  /** Slices left without a label (by number): they land as "Slice 3". */
+  const blank = $derived(wheel.segments.flatMap((s, i) => (s.label.trim() ? [] : [i + 1])));
 
   /** Move the slice at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
   function move(i: number, j: number): void {
@@ -104,7 +107,25 @@
   <div class="left">
     <div class="row">
       <label class="field grow">Wheel name<input bind:value={wheel.name} /></label>
-      <label class="field">Spin (s)<input type="number" min="1" max="30" value={wheel.spinDurationMs / 1000} oninput={(e) => (wheel.spinDurationMs = Math.max(1, +e.currentTarget.value || 5) * 1000)} class="n" /></label>
+      <!-- 1–30 s (a long spin locks the wheel for all that time), and the box shows what was kept. -->
+      <label class="field"
+        >Spin (s)<input
+          type="number"
+          min="1"
+          max="30"
+          value={wheel.spinDurationMs / 1000}
+          oninput={(e) => {
+            // While typing: only a time it can keep ("1" on the way to "12" is fine; "0" or "999" wait for Enter or leaving).
+            const n = liveNumber(e.currentTarget.value, 1, 30);
+            if (n !== null) wheel.spinDurationMs = n * 1000;
+          }}
+          onchange={(e) => {
+            wheel.spinDurationMs = spinSeconds(e.currentTarget.value, wheel.spinDurationMs / 1000) * 1000;
+            e.currentTarget.value = String(wheel.spinDurationMs / 1000);
+          }}
+          class="n"
+        /></label
+      >
     </div>
     <label class="check"><input type="checkbox" bind:checked={wheel.removeAfterLanding} /> Each slice can only land once (removed after it lands)</label>
     <p class="muted small">Slice size = landing chance. Outcomes can be anything: punishments, dares, prompts, numbers. Score effects are optional.</p>
@@ -164,6 +185,11 @@
         </div>
       {/each}
     </div>
+    {#if blank.length}
+      <p class="warn small" role="status">
+        ⚠ No label on slice{blank.length > 1 ? 's' : ''} {blank.join(', ')}: {blank.length > 1 ? 'they land' : 'it lands'} as {blank.map((n) => `“Slice ${n}”`).join(', ')}.
+      </p>
+    {/if}
     <p class="muted small">Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · click a slice on the wheel to find it</p>
     <div class="row">
       <button onclick={() => wheel.segments.push(newSegment(`Option ${wheel.segments.length + 1}`, wheel.segments.length))}>＋ Add slice</button>
@@ -195,9 +221,10 @@
 </div>
 
 <style>
+  /* The preview gives way on a narrow window, so a slice's row fits on one line. */
   .we {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-columns: minmax(0, 1fr) min(380px, 32%);
     gap: 16px;
   }
   .left {
@@ -246,6 +273,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
   }
   p {
     margin: 0;

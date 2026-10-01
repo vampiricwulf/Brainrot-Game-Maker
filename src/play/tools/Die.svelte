@@ -8,6 +8,7 @@
     rolling = false,
     size = 200,
     label = true,
+    custom = false,
   }: {
     value: string;
     sides: number;
@@ -16,8 +17,10 @@
     size?: number;
     /** The small "d6" in a corner (left off where every die is the same, like a roll-off: it's unreadable on a stream). */
     label?: boolean;
+    /** A die with its own faces: square (a word doesn't fit a d4's triangle), and no "d4" under the word. */
+    custom?: boolean;
   } = $props();
-  const shape = $derived(sides === 4 ? 'tri' : sides === 6 ? 'sq' : sides === 8 || sides === 10 ? 'dia' : sides === 12 ? 'pent' : sides === 20 ? 'hex' : 'sq');
+  const shape = $derived(custom ? 'sq' : sides === 4 ? 'tri' : sides === 6 ? 'sq' : sides === 8 || sides === 10 ? 'dia' : sides === 12 ? 'pent' : sides === 20 ? 'hex' : 'sq');
 </script>
 
 <div
@@ -30,7 +33,7 @@
   style:font-size="{Math.max(24, Math.min(size * 0.45, (size * 1.7) / Math.max(1, value.length)))}px"
 >
   <span>{value}</span>
-  {#if label}<small>d{sides}</small>{/if}
+  {#if label && !custom}<small>d{sides}</small>{/if}
 </div>
 
 <style>

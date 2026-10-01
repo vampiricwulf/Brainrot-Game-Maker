@@ -8,6 +8,7 @@
   import type { Game } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { textOn } from '../../lib/colors';
+  import { sliceLabel } from '../../lib/tools';
   import OutcomeCard from './OutcomeCard.svelte';
   import WheelDisc from './WheelDisc.svelte';
 
@@ -43,7 +44,7 @@
     <div class="disc single"><WheelDisc segments={o.segments} rotation={o.rotation} spin={o.spin} {now} players={!!o.players} /></div>
     {#if !o.spin}<div class="hint">Get ready to spin…</div>{/if}
     {#if landed && seg}
-      <div class="reveal"><OutcomeCard outcome={seg} {game} {role} color={seg.color} /></div>
+      <div class="reveal"><OutcomeCard outcome={seg} {game} {role} color={seg.color} fallback={sliceLabel(seg, o.result ?? 0)} /></div>
     {/if}
   </div>
 {:else}
@@ -55,7 +56,7 @@
         <div class="disc"><WheelDisc segments={w.segments} rotation={w.rotation} spin={w.spin} {now} players={!!w.players} /></div>
         <div class="res">
           {#if s && landedAt(w)}
-            <span class="chip" style:background={s.color} style:color={textOn(s.color)}>{s.label}</span>
+            <span class="chip" style:background={s.color} style:color={textOn(s.color)}>{sliceLabel(s, w.result ?? 0)}</span>
           {/if}
         </div>
       </div>

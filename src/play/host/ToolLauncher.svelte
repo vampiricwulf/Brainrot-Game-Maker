@@ -34,9 +34,18 @@
     room = audience.open || !panel ? undefined : Math.max(0, b.getBoundingClientRect().top - panel.top - 8);
   }
 
+  /**
+   * Close the menu after picking from it: the focus goes back to its button (else it would drop to the page, and the
+   * keyboard would have to start over), or to the tool's own Roll again / Spin! when it's on screen.
+   */
+  function done(): void {
+    menu = null;
+    void tick().then(() => (document.querySelector<HTMLElement>('[data-tool-controls] button.primary:not(:disabled)') ?? opener)?.focus());
+  }
+
   function dice(sides: number, count: number, name?: string): void {
     rollDice(app.live, session, quickDice(sides, count, name));
-    menu = null;
+    done();
   }
 
   /** Open a wheel, with its edit box open when `edit` (to change this spin's slices or chances first). */
@@ -44,7 +53,7 @@
     open();
     const o = app.live.overlay;
     if (o?.kind === 'wheel') o.editing = edit;
-    menu = null;
+    done();
   }
 
   function quickWheel(edit: boolean): void {
@@ -56,7 +65,7 @@
   function rollCustom(): void {
     const d = parseDice(custom);
     if (d) dice(d.sides, d.count, custom.trim());
-    else toast('Use dice notation like d20 or 2d6 (up to 1000 sides)');
+    else toast('Use dice notation like d20 or 2d6: 1–20 dice of 2–1000 sides');
   }
 </script>
 
@@ -86,7 +95,7 @@
         {#if game.dice.length}
           <div class="muted small">Saved dice</div>
           {#each game.dice as p (p.id)}
-            <button class="small item" onclick={() => ((menu = null), rollDice(app.live, session, p))}>{p.name}</button>
+            <button class="small item" onclick={() => (rollDice(app.live, session, p), done())}>{p.name}</button>
           {/each}
         {/if}
       </div>
@@ -153,7 +162,7 @@
           title={sidesOk ? '' : 'Pick a die from d2 to d1000'}
           onclick={() => {
             onrolloff(who, Math.round(sides!));
-            menu = null;
+            done();
           }}>Roll for {who.length}</button>
       </div>
     {/if}

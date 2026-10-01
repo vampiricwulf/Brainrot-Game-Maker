@@ -25,7 +25,7 @@
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
+  import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, validate } from '../lib/validate';
@@ -903,6 +903,17 @@
     }
   }
 
+  /**
+   * Dice, a wheel or a roll-off still going on screen: D, W and O wait for it (its result is already in the log, and
+   * a used slice already gone), with a word why.
+   */
+  function toolBusy(): boolean {
+    const o = app.live.overlay;
+    if ((o?.kind !== 'dice' && o?.kind !== 'wheel' && o?.kind !== 'rolloff') || Date.now() >= overlayDoneAt(o)) return false;
+    toast(`Still ${o.kind === 'wheel' ? 'spinning' : 'rolling'}: wait for it to land`);
+    return true;
+  }
+
   /** Clicking a tool overlay: spin/roll if it hasn't happened yet, otherwise close it once it's finished. */
   function overlayPrimary(): void {
     const o = app.live.overlay;
@@ -915,8 +926,10 @@
       o.revealed = true;
       playCue(app.live, game, 'reveal');
     }
-    else if (o.kind === 'wheel' && !o.spin) spinWheel(app.live, session, game);
-    else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
+    else if (o.kind === 'wheel' && !o.spin) {
+      if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
+      else spinWheel(app.live, session, game);
+    } else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
     else closeOverlay();
   }
 
@@ -1881,17 +1894,20 @@
           if (why) toast(why);
           break;
         }
-        if (app.live.overlay?.kind !== 'dice' || Date.now() >= overlayDoneAt(app.live.overlay)) rollDice(app.live, session, lastDice);
+        if (!toolBusy()) rollDice(app.live, session, lastDice);
         break;
       case 'w': {
         const o = app.live.overlay;
+        if (toolBusy()) break;
         if (o?.kind === 'wheel') {
-          if (Date.now() >= overlayDoneAt(o)) spinWheel(app.live, session, game);
+          if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
+          else spinWheel(app.live, session, game);
         } else if (game.wheels[0]) openWheel(app.live, session, game.wheels[0]);
         else toast('No saved wheels: use the 🎡 Wheel button for a quick one');
         break;
       }
       case 'o': {
+        if (toolBusy()) break;
         // On a tie for first at the end: the tied leaders roll for the win (not "Who goes first?").
         const ties = session.phase === 'end' && !session.coWinners ? tiedLeaders(session) : [];
         if (ties.length) rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak');

@@ -24,14 +24,24 @@
   } = $props();
 
   const sym = $derived(game.settings.currencySymbol);
-  let targets = $state<string[]>(untrack(() => defaultTargets.length ? [...defaultTargets] : session.currentPickerId ? [session.currentPickerId] : []));
+  /** A swap is with one player: the "For:" row picks one (a second would be left out without a word). */
+  const one = untrack(() => action.kind === 'swapScores');
+  let targets = $state<string[]>(
+    untrack(() => (defaultTargets.length ? [...defaultTargets] : session.currentPickerId ? [session.currentPickerId] : []).slice(0, one ? 1 : undefined)),
+  );
   let source = $state<string | undefined>(undefined);
   const deltas = $derived(actionDeltas(session, action, targets, source, rollTotal));
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const ready = $derived(targets.length > 0 && (!needsSource(action) || !!source) && Object.keys(deltas).length > 0);
 
   function toggle(id: string): void {
-    targets = targets.includes(id) ? targets.filter((x) => x !== id) : [...targets, id];
+    targets = targets.includes(id) ? targets.filter((x) => x !== id) : one ? [id] : [...targets, id];
+  }
+
+  /** The player stolen from (or swapped with) isn't one it's for. */
+  function pickSource(id: string): void {
+    source = id;
+    targets = targets.filter((x) => x !== id);
   }
 </script>
 
@@ -45,6 +55,9 @@
         style:border-color={p.color}
         style:background={targets.includes(p.id) ? p.color : undefined}
         style:color={targets.includes(p.id) ? textOn(p.color) : undefined}
+        aria-pressed={targets.includes(p.id)}
+        disabled={source === p.id}
+        title={source === p.id ? `${action.kind === 'steal' ? 'Stolen from' : 'Swapped with'}: pick someone else` : undefined}
         onclick={() => toggle(p.id)}>{p.name}</button>
     {/each}
   </div>
@@ -52,7 +65,7 @@
     <div class="row">
       <span class="muted small">{action.kind === 'steal' ? 'Steal from:' : 'Swap with:'}</span>
       {#each session.players as p (p.id)}
-        <button class="chip" class:src={source === p.id} style:border-color={p.color} onclick={() => (source = p.id)}>{p.name}</button>
+        <button class="chip" class:src={source === p.id} style:border-color={p.color} aria-pressed={source === p.id} onclick={() => pickSource(p.id)}>{p.name}</button>
       {/each}
     </div>
   {/if}

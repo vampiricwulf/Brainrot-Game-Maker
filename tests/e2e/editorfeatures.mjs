@@ -1,6 +1,7 @@
 // Editor features: the sample game and round templates, Import clues (and a column pasted on a category), Find
-// (Ctrl+F), Copy / Paste round, Most players, my theme, the Media and shortcuts filters, and the board-game spaces
-// that move players back, skip a turn or roll again (played, with undo).
+// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), what the Wheels & Dice number boxes
+// keep, the Media and shortcuts filters, and the board-game spaces that move players back, skip a turn or roll again
+// (played, with undo).
 import { chromium } from 'playwright-core';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -152,6 +153,38 @@ try {
   await page.getByRole('button', { name: '⭐ Use my theme' }).click();
   await page.getByText('This game already looks like my theme').waitFor({ timeout: 3000 });
   assert(true, 'Use my theme again says nothing changed');
+  // Values the colour of the tiles can't be read: a warning says so (and goes once they're apart again).
+  const values = page.getByLabel('Values', { exact: true });
+  const ownValue = await values.inputValue();
+  await values.fill(await page.getByLabel('Tiles & slide background').inputValue());
+  assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 1, 'values the colour of the tiles warn that they are hard to read');
+  await values.fill(ownValue);
+  assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 0, '…and the warning goes once they’re apart');
+  assert((await page.getByLabel('Tile glow colour').count()) === 1, 'the tile glow colour box has a name');
+
+  // ---------- Wheels & Dice: what the number boxes keep ----------
+  await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
+  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  const spin = page.getByLabel('Spin (s)');
+  for (const [typed, kept] of [['999', '30'], ['0.2', '1'], ['7', '7']]) {
+    await spin.fill(typed);
+    await spin.press('Tab');
+    assert((await spin.inputValue()) === kept, `a spin of ${typed} s is kept as ${kept} s, and the box says so`);
+  }
+  await page.locator('.seg input.label').first().fill('');
+  assert((await page.getByText('No label on slice 1: it lands as “Slice 1”.').count()) === 1, 'a slice left without a label is pointed out');
+  await page.keyboard.press('Control+z');
+  await page.getByRole('button', { name: '＋ New dice' }).click();
+  const count = page.getByLabel('Count');
+  await count.fill('500');
+  await count.press('Tab');
+  assert((await count.inputValue()) === '20', 'a dice count of 500 is kept as 20');
+  const sides = page.getByLabel('Sides d');
+  await sides.fill('0');
+  await sides.press('Tab');
+  await sides.fill('1');
+  await sides.press('Tab');
+  assert((await sides.inputValue()) === '2', 'sides typed 0 then 1 show the d2 it is');
 
   // ---------- Shortcuts filter ----------
   await page.getByRole('button', { name: /^More:/ }).click();

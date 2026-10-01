@@ -6,13 +6,20 @@
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { autoPlay } from '../../lib/audioout.svelte';
 
-  let { outcome, game, role, color = 'var(--value)' }: { outcome: Outcome; game: Game; role: MediaRole; color?: string } = $props();
+  /** `fallback`: the name shown for an outcome left blank ("Slice 3"). */
+  let {
+    outcome,
+    game,
+    role,
+    color = 'var(--value)',
+    fallback = '',
+  }: { outcome: Outcome; game: Game; role: MediaRole; color?: string; fallback?: string } = $props();
   const ref = $derived(outcome.media ? game.media.find((m) => m.id === outcome.media) : undefined);
   const url = $derived(outcome.media ? mediaUrls[outcome.media] : undefined);
 </script>
 
 <div class="card" style:--c={color} in:scale={{ start: 0.4, duration: 450 }}>
-  <div class="label">{outcome.label}</div>
+  <div class="label">{outcome.label.trim() || fallback}</div>
   {#if url && ref}
     {#if ref.kind === 'image'}
       <img src={url} alt="" />

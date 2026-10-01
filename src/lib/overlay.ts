@@ -2,7 +2,7 @@
 import { newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
 import type { ExtraWheel, Live } from './live';
 import {
-  activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, spinTarget, weightedIndex,
+  activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
   type PoolSlice,
 } from './tools';
 
@@ -116,6 +116,16 @@ function spinSegments(o: WheelLike, session: Session, game: Game): WheelSegment[
   return o.segments;
 }
 
+/**
+ * A "land once" wheel on screen whose every slice (of this run's edits, else of the saved wheel) has landed: it
+ * doesn't spin (it would start over without a word) until the host restores them.
+ */
+export function wheelSpentUp(o: WheelLike, session: Session, game: Game): boolean {
+  const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
+  if (!preset) return false;
+  return wheelUsedUp(session, preset, o.pool ? onSlices(o.pool).map((s) => s.id) : undefined);
+}
+
 /** Add another wheel to spin together with the one on screen (a saved wheel, or the player wheel). */
 export function addWheel(live: Live, session: Session, game: Game, wheelId: string): void {
   const o = live.overlay;
@@ -156,7 +166,7 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   w.rotation = to;
   w.result = index;
   const seg = w.segments[index];
-  logRoll(session, 'wheel', w.name, seg.label, w.players ? [seg.id] : undefined);
+  logRoll(session, 'wheel', w.name, sliceLabel(seg, index), w.players ? [seg.id] : undefined);
   if (preset?.removeAfterLanding) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];
@@ -169,6 +179,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   const o = live.overlay;
   if (!o || o.kind !== 'wheel') return;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
+  if (wheelSpentUp(o, session, game)) return;
   o.segments = spinSegments(o, session, game);
   if (!o.segments.length) return spinExtras(o, session, game);
   const index = weightedIndex(o.segments.map((s) => s.weight));
@@ -181,7 +192,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   const seg = o.segments[index];
   // The player wheel's result is a player: the roll log says who it was for.
   o.tagged = o.players ? [seg.id] : undefined;
-  logRoll(session, 'wheel', o.name, seg.label, o.players ? [seg.id] : undefined);
+  logRoll(session, 'wheel', o.name, sliceLabel(seg, index), o.players ? [seg.id] : undefined);
   if (preset?.removeAfterLanding) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];

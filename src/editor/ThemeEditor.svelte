@@ -1,6 +1,7 @@
 <!-- Theme presets + full override (spec §5.7), with a live board preview. -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
+  import { contrast, parseHex } from '../lib/colors';
   import { step } from '../lib/history.svelte';
   import { untrack } from 'svelte';
   import { fontChoices } from '../lib/fonts';
@@ -70,6 +71,9 @@
     });
   }
 
+  /** Values on tiles too close in colour to read (under 3:1), or null. */
+  const valueContrast = $derived(parseHex(t.value) && parseHex(t.tile) ? contrast(t.value, t.tile) : null);
+
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],
     ['tileUsed', 'Used tiles'],
@@ -105,9 +109,12 @@
       <label class="check">
         <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => (t.glow = e.currentTarget.checked ? '#ff00e6' : 'none')} />
         Tile glow
-        {#if t.glow !== 'none'}<input type="color" bind:value={t.glow} />{/if}
+        {#if t.glow !== 'none'}<input type="color" bind:value={t.glow} aria-label="Tile glow colour" />{/if}
       </label>
     </div>
+    {#if valueContrast !== null && valueContrast < 3}
+      <p class="warn small" role="status">⚠ The values are hard to read on the tiles ({valueContrast.toFixed(1)}:1): pick colours further apart.</p>
+    {/if}
 
     <h3>Fonts</h3>
     <div class="grid">
@@ -270,10 +277,18 @@
     font-size: 26px;
     text-shadow: 2px 2px 0 #000;
   }
+  /* Two columns that never grow past the controls' width (a long option in a select would push them out). */
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+  .grid select {
+    max-width: 100%;
+  }
+  .warn {
+    color: var(--warn);
+    margin: 6px 0 0;
   }
   .pop {
     position: relative;

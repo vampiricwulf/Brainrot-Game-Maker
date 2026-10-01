@@ -4,7 +4,7 @@ import { newLive, overlayDoneAt } from './live';
 import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, startRollOff, wheelPool } from './overlay';
+import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, startRollOff, wheelPool, wheelSpentUp } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
 import { validate } from './validate';
@@ -121,6 +121,28 @@ describe('editing a wheel for one spin', () => {
       expect(['A', 'B!']).toContain(o.segments[o.result!].label);
     }
     expect(w.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
+  });
+});
+
+describe('a wheel whose slices land once', () => {
+  it("won't spin once every slice has landed (until they're restored), and names a blank slice in the log", () => {
+    const { game, session, live } = withPlayers();
+    const w = newWheel('Once', ['', 'B']);
+    w.removeAfterLanding = true;
+    game.wheels.push(w);
+    openWheel(live, session, w);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    spinWheel(live, session, game);
+    spinWheel(live, session, game);
+    expect(session.rollLog?.map((r) => r.result).sort()).toEqual(['B', 'Slice 1']);
+    expect(wheelSpentUp(o, session, game)).toBe(true);
+    spinWheel(live, session, game);
+    expect(session.rollLog).toHaveLength(2);
+    session.removedSegments![w.id] = [];
+    expect(wheelSpentUp(o, session, game)).toBe(false);
+    spinWheel(live, session, game);
+    expect(session.rollLog).toHaveLength(3);
   });
 });
 

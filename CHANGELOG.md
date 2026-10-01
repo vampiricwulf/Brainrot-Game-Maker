@@ -359,6 +359,35 @@ done, the Unreleased lines move under that day's heading.
   duplicating or deleting rounds and categories; icon buttons, board tiles, sidebar tabs and toggles have names. (4729d75)
 
 ### Fixed
+- **Steal points shares fairly**: the points go to the players it's for, never back to the one robbed (their chip
+  under "For:" is greyed out once they're picked to steal from), in whole points that add up to exactly what was
+  taken. Stealing all of a $5 score for two players gives $3 and $2, no longer $3 each from a player who had $5.
+- **Swap scores is with one player**: picking a second player under "For:" replaces the first, instead of the second
+  being quietly left out.
+- **"Show the total" off** in a saved dice set now hides the total on screen.
+- **Number boxes in Wheels & Dice keep what they show**: a dice count is 1–20 (500 becomes 20, 0 becomes 1), a spin
+  is 1–30 seconds (999 no longer locks the wheel for minutes; 0.2 shows 1), and a die's sides box always shows the
+  die it is (typing 0 then 1 shows d2).
+- **A "land once" wheel with every slice used** doesn't start over by itself any more: Spin is greyed out with
+  "Every slice has landed: Restore to spin again" (W and a click on the wheel say so too). A board game's movement
+  wheel says the same.
+- **A slice with no label** shows as "Slice 3" when it lands (on screen, in the Result line and in the roll log)
+  instead of nothing, and the wheel editor points out slices left blank.
+- **Picking from the 🎲 Dice, 🎡 Wheel or 🏁 Who goes first menu** puts the keyboard back on the menu's button (or on
+  the wheel's Spin!), instead of losing it.
+- **D, W and O wait while dice, a wheel or a roll-off are still going**, with a note why, instead of replacing them
+  (their result was already logged and a land-once slice used).
+- **Players' initials on the Pick a player wheel stay different**: "Bartholomew The Magnificent 1/3" and "… 2/3" are
+  "BTM1/3" and "BTM2/3", and names that would still read the same get a number.
+- **A d4 with its own faces** is drawn square, so the face's word isn't cut off by the triangle (and no "d4" under it).
+- **The Result line for many dice** puts the total first ("47 (5 + 6 + …)"), so a long roll cuts off the dice, not
+  the total; the whole line shows on hover.
+- **Outcomes by total**: a range typed the wrong way round (From 9, To 4) is turned round to 4–9.
+- **Theme**: a warning when the Values colour is too close to the Tiles colour to read; the tile glow colour box has a
+  name for screen readers; the Board settings no longer spill out of their column.
+- **Wheel editor on a 1280-wide window**: the preview gives way so each slice's row fits on one line.
+- **Screen readers** hear which player chips are picked ("This was for", a score effect's "For:" and "Steal from:").
+- The quick dice box's hint says what it takes: "1–20 dice of 2–1000 sides".
 - **A wrong answer with negative scores off counts even from a player on $0**: nothing is taken, but it's logged as
   wrong (✘), the wrong sound plays, and with phone buzzers that player is locked out of the clue and the buzzers open
   for the rest. Before, it did nothing at all, so the player could keep buzzing.
