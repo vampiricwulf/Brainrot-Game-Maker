@@ -82,22 +82,22 @@ done, the Unreleased lines move under that day's heading.
 - **Recent games keeps the last 8 games** New and Open… replaced (was 3), as long as their files fit in about 1 GB
   together. When one has to go to make room, the note says so ("Removed the oldest kept game: Quiz"). A game with only
   a title isn't kept (and New doesn't ask about it). Two versions of the same game are both kept, each marked with when
-  it was kept ("earlier version · kept …").
-- **Forget** in Open… → Recent games asks first: it deletes the game, its files and its undo history for good.
+  it was kept ("earlier version · kept …"). (08a9602, 6119c64)
+- **Forget** in Open… → Recent games asks first: it deletes the game, its files and its undo history for good. (08a9602, 6119c64)
 - **Open… checks the file first**: a file that isn't a game says so without asking "Save first / Discard" about the
-  game you have open.
+  game you have open. (08a9602, 6119c64)
 - **Export HTML of an untitled game asks for its name**, like Save does. File names keep words and numbers apart
-  ("Part 1/2" saves as `Part-1-2`, not `Part-12`).
+  ("Part 1/2" saves as `Part-1-2`, not `Part-12`). (08a9602, 6119c64)
 - **Big downloads in a browser**: Save and Export HTML of a file over 100 MB ask where to put it and write it straight
   there (Chrome, Edge), so a download that fails can't go unnoticed. Elsewhere the message says "Download started"
-  rather than claiming it's done.
-- **Desktop app: the window title shows the game's name**, as the browser tab does.
+  rather than claiming it's done. (08a9602, 6119c64)
+- **Desktop app: the window title shows the game's name**, as the browser tab does. (08a9602, 6119c64)
 - **Desktop app: closing the window while a save, export or autosave is being written asks** "Wait" (the app closes by
-  itself once it's done) or "Close anyway", instead of cutting the file off after 3 seconds.
+  itself once it's done) or "Close anyway", instead of cutting the file off after 3 seconds. (08a9602, 6119c64)
 - **Desktop app: saving and opening big files no longer freezes the window** ("Not responding") while the file is
-  written or read.
+  written or read. (08a9602, 6119c64)
 - Dropping a `.zip` game pack on the editor opens it, as Browse… already did; Open… says it takes `.json` and `.bak`
-  files too.
+  files too. (08a9602, 6119c64)
 - **Slide editor: dragging beside a text box's words draws a selection box** instead of moving the text box (a
   full-slide question used to slide off when you meant to select). Pressing its words, or dragging it once it's
   selected, still moves it; a click beside them still selects it. `Alt`+drag always draws a box (`Alt`+click still
@@ -292,20 +292,20 @@ done, the Unreleased lines move under that day's heading.
   game kept in Recent games). Its files were stored over the newer ones with the same name inside before the game was
   even opened, and stayed changed when you then said Keep it or the file turned out to be broken. Now a file is stored
   only once the game is really opened, and a file that differs from the one you have gets a name of its own. The same
-  goes for Import rounds….
+  goes for Import rounds…. (08a9602, 6119c64)
 - **Discarded work no longer disappears from Recent games** when the same game is opened again and then replaced: an
-  edited version and the saved one are both kept.
+  edited version and the saved one are both kept. (08a9602, 6119c64)
 - **An exported HTML file too big for the browser no longer opens as the editor** (showing another game, answers and
   all). It says "Too big for one HTML file — Save a .brainrot instead", and Export HTML refuses to make one that big
   (over about 375 MB of game) with the same message. Open… of such a file says so too instead of "Invalid string
-  length".
+  length". (08a9602, 6119c64)
 - **A change made while Save (or an autosave) is still writing counts as unsaved**: New and Open… ask about it, and the
-  🕘 History shows the save where the game was when it started.
+  🕘 History shows the save where the game was when it started. (08a9602, 6119c64)
 - **Desktop app: a full disk or a file in use no longer sends saves to Documents** with a wrong reason ("the app's
   folder can't be written"): the real problem is shown. Only a folder the app may not write in sends saves to
-  Documents, and Save then replaces only that game's own save there.
-- **Desktop app: a save that fails leaves its backups as they were** (it used to lose the oldest `.bak2`).
-- The Open… list of BrainrotSaves closes with Esc only when nothing is open over it.
+  Documents, and Save then replaces only that game's own save there. (08a9602, 6119c64)
+- **Desktop app: a save that fails leaves its backups as they were** (it used to lose the oldest `.bak2`). (08a9602, 6119c64)
+- The Open… list of BrainrotSaves closes with Esc only when nothing is open over it. (08a9602, 6119c64)
 - **An emptied number field in the slide Inspector** (Size, X/Y/W/H, line height, outline width, shadow, entrance
   times…) no longer saves "nothing" into the slide (which drew the text at 14 px after a reload): leaving the field
   keeps the last value, and a number out of range is pulled into it. Games saved that way open with the usual values.
