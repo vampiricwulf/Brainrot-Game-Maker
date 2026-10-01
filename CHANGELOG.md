@@ -77,6 +77,17 @@ done, the Unreleased lines move under that day's heading.
   something up, coins (buying or selling in a shop) and damage (a button taking HP or another stat down) each have a
   quiet, short built-in sound. Each has its own line in 🔊 Sounds: on by default, previewable, replaceable with your
   own file, or switched off. (0ff069a)
+- **Board game editor: copy and paste spaces.** `Ctrl+C` / `Ctrl+V` (and the right-click menus) copy spaces with their
+  buttons and the links between them, onto the same board, another board or another game (with the wheels, dice and
+  pictures their buttons use). Right-click the board to paste them where you clicked. (d61f2e5)
+- **Board game editor: several spaces at once.** `Ctrl+D` and the right-click menu duplicate several spaces (the links
+  between them too), and the menu also copies them, makes them secret or deletes them. `F2` (or ✎ Rename) renames a
+  space. (d61f2e5)
+- **The checklist goes to the screen or space.** An RPG line names the screen ("the doorway on “Cave” leads nowhere")
+  and a click goes there; a board game's line goes to the space. The checklist also says when a board has fewer Daily
+  Doubles than it asks for (as the ▶ Play screen did), and when a board game's movement dice were deleted. (8e0766c)
+- **📦 Item ▾ with no items yet** offers ＋ New item here (made in the catalog and put on the screen) and 📊 Go to Stats &
+  Items, instead of a dead end. (ad6b92d)
 
 ### Changed
 - **Slide editor: dragging beside a text box's words draws a selection box** instead of moving the text box (a
@@ -200,6 +211,30 @@ done, the Unreleased lines move under that day's heading.
 - **Enter in a board game**: at a fork it says to pick the way first; with a player selected and no amount typed, it
   moves (as it does with nobody selected). (0ff069a)
 - The turn order's ◀ ▶ buttons say whose they are ("Ann later in the turn order") to screen readers. (0ff069a)
+- **Board game editor keys work like the RPG map's.** The arrow keys go to the nearest space that way (they used to move
+  the spaces); `Alt`+arrows move the selected spaces (`Shift`+`Alt` further). `Tab` no longer walks the spaces: the board
+  is one `Tab` stop, and `Enter` opens the space's settings. While linking, the arrows and `Enter` pick the space to
+  link to. (d61f2e5)
+- **The board game's movement dice are linked to the dice themselves**, not their name: renaming them in 🎡 Wheels &
+  Dice keeps them. Games saved before link up by name when opened. (8e0766c, d61f2e5)
+- **Enter in a category's name** goes to its top tile (`Shift+Enter` starts a second line), and a new line left at the
+  end of a name is dropped. (d61f2e5)
+- **＋ buttons put the typing in what they add**: ＋ Item, ＋ Shop, the stat presets and ＋ Custom stat, ＋ Zone, a
+  character's ＋ Stat and 🧙 Character (its name), and ＋ Add button (its first setting). (d61f2e5, ad6b92d)
+- **`Alt`+drag on the RPG map draws a selection box from anywhere**, on a map full of screens too (as in the slide
+  editor). A plain drag still moves or swaps screens. (ad6b92d)
+- **Import clues… keeps what you pasted** when it's closed (Esc, ✕ or Cancel) until the next time it's opened on that
+  board, and a click outside no longer closes it. Importing says so once, with Undo, at the board. (d61f2e5)
+- **Clearer step names in 🕘 History**: switches say what they did ("Locked “Doorway”", "Made “Space 3” secret",
+  "Showed how to win on the board of “Race”", "Set round “Jeopardy!” to 2 Daily Doubles") instead of field names, and a
+  round from a template is named after the round ("Added round “Jeopardy!” (Classic board, 6 × 5)"). (8e0766c,
+  d61f2e5)
+- **Checklist wording**: "1 doorway(s) lead nowhere" is "the doorway on “Cave” leads nowhere", and so on. A board
+  game's single end (a race's Finish) is no longer listed as a path that ends; two or more ends are. (8e0766c)
+- **A wheel slice's weight** is named after its slice for screen readers ("Option 1 weight") and is never 0 or less
+  (blank is 1): a slice no longer silently drops off the wheel. (8e0766c)
+- **Big RPG maps show screen names**: a narrow cell shows a default name as its cell ("B3") and wraps other names onto
+  two lines, instead of "Scr…". (ad6b92d)
 
 ### Added
 - **Phone buzzers** (the pre-game screen's 📱 Phone buzzers card): before the game, ▶ Start the room shows a
@@ -418,6 +453,18 @@ done, the Unreleased lines move under that day's heading.
   ("✋ Bob & Cy picks up" gave it to Bob only). (79dbf8e)
 - **Board spaces only draw a number when they're named "Space N"**: "Move +3" no longer shows a big 3. Tokens stay
   above the stats strip, and the editor's checklist warns about spaces under it. (79dbf8e)
+- **Ctrl+C on a board tile, an RPG screen or board spaces** copies it right after adding a round: the round's name,
+  still selected from when it was added, no longer takes the copy. (ad6b92d)
+- **The board game editor no longer traps the keyboard**: `Tab` from the round's settings reaches the board and goes on
+  to the space's settings (it used to keep cycling the spaces with the focus lost), so every space setting can be
+  reached from the keyboard. Spaces read as their names ("Space 3", not "Space Space 3"). (d61f2e5)
+- **Adding an RPG screen with `Enter` or a click** keeps the focus on the map, on the new screen. (ad6b92d)
+- **Move by › ＋ New dice…** no longer leaves the box saying "＋ New dice…". (d61f2e5)
+- **Deleting board spaces** shows the app's usual "Deleted … · Undo" note (and History link) instead of a note of its
+  own; so does deleting a character's stat or dialogue slide (which had none). (d61f2e5, ad6b92d)
+- **`Ctrl+Enter` on the last clue** says it's the last one (Esc when done) instead of doing nothing. (d61f2e5)
+- **Moving several RPG screens** names the step after the screens moved ("Moved 11 screens", not 22 counting the ones
+  swapped out of the way). (ad6b92d)
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz
