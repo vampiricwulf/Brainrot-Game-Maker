@@ -104,11 +104,15 @@ try {
     } catch {}
   }, base);
   const host = watch(await hostCtx.newPage(), 'host');
+  // (CI-only failure: the editor's draft never saved Play-screen changes there. Its console says why, if anything.)
+  host.on('console', (m) => ['error', 'warning'].includes(m.type()) && console.log(`DEBUG host console ${m.type()}: ${m.text().slice(0, 300)}`));
   // The host's line to the room, passed through Playwright so the test can cut it.
   const hostTap = await tap(host);
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
   await playWithPlayers(host, 2);
+  await host.waitForTimeout(1500);
+  console.log('DEBUG draft after players (1.5 s):', await draftInfo(host), '| storage line:', JSON.stringify(await host.evaluate(() => document.querySelector('.autosave, [data-autosave], header .save-state')?.textContent ?? '(none)')));
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel('Open the buzzers').selectOption('host');
