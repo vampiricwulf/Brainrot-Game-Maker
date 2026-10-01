@@ -496,7 +496,7 @@
       {#if buzzing}
         <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. -->
         {#if buzz?.phase === 'armed' && !selected.length}
-          <span class="muted hint">🔔 Buzzers open: the first one in (1–{Math.min(9, session.players.length) || 9}) answers</span>
+          <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
         {:else if !(buzz?.phase === 'answering' || selected.length)}
           <button class="primary" onclick={() => onopenbuzzers?.()} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           <span class="muted hint">Buzzers closed (number keys still pick)</span>

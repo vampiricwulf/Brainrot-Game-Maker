@@ -17,6 +17,7 @@
   } from '../lib/remote.svelte';
   import type { RoomBuzz, RoomQueue } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
+  import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
@@ -405,7 +406,7 @@
     });
   });
   // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
-  // picked (or let go) by a click in the host panel answers (or the buzzers open again for the others).
+  // picked (or let go) by hand, a number key or a click in the host panel, answers (or the buzzers open again for the rest).
   $effect(() => {
     const one = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
     const on = buzzing;
@@ -422,22 +423,16 @@
   });
 
   /**
-   * A player buzzed in (their number key, their key in the audience window, or their phone): the first one answers, the
-   * others are locked out until a wrong answer or 0 opens the buzzers again. Never an undo step: a stray buzz must not
-   * cost the host their redo.
+   * A phone's buzz won (the room decided): that player answers, the others are locked out until a wrong answer or 0
+   * opens the buzzers again. Never an undo step: a stray buzz must not cost the host their redo.
    */
-  function buzzPlayer(id: string, from: 'key' | 'phone' = 'key'): boolean {
+  function buzzPlayer(id: string): boolean {
     const b = app.live.buzz;
     const p = session.players.find((x) => x.id === id);
-    // Someone picked already (by a key or a click): the host's choice stands.
-    if (!buzzing || !b || !p || selected.length) return false;
-    // A phone only counts while the buzzers are open (the room never lets one through otherwise, but a late one could).
-    if (from === 'phone' && b.phase !== 'armed') return false;
+    // Someone picked already (a number key or a click): the host's choice stands. And only while the buzzers are open.
+    if (!buzzing || !b || !p || selected.length || b.phase !== 'armed') return false;
     const next = buzzTake(b, id);
-    if (!next) {
-      if (from === 'key' && b.lockedOut.includes(id) && b.phase !== 'answering') toast(`${p.name} already missed this one (0 lets everyone buzz again)`);
-      return false;
-    }
+    if (!next) return false;
     setBuzz(next);
     selected = [id];
     playCue(app.live, game, 'buzz');
@@ -462,8 +457,16 @@
 
   // ---------- Phone buzzers ----------
 
-  /** Setup › Rules: players buzz from their phones too. */
-  const phonesOn = $derived(!!game.settings.buzzer && game.settings.buzzFrom === 'phones');
+  /** Buzzer mode (the pre-game screen's 📱 Phone buzzers card): players buzz from their phones. */
+  const phonesOn = $derived(!!game.settings.buzzer);
+
+  /** A buzzer setting, here and in the editor's copy of this game (kept, undoable there). Turning it off ends the room. */
+  const setBuzzSetting: SetBuzzSetting = (key, value, label) => {
+    const apply = (g: Game) => (g.settings[key] = value);
+    apply(game);
+    if (app.game.id === game.id) step(label, () => apply(app.game), { during: 'play' });
+    if (key === 'buzzer' && !value) closeRoom();
+  };
   const earlyMs = $derived(Math.round((game.settings.earlyBuzzLock ?? 1) * 1000));
   /**
    * The room's queue for this clue: every phone buzz of the latest opening, fastest reaction first (the host panel
@@ -541,7 +544,7 @@
   function roomBuzz(b: RoomBuzz): void {
     if (!phonesOn) return;
     // The room moved on to "answering" by itself: if that's not what happened here, it hears the host's state again.
-    if (b.rank === 1 && (b.armId !== buzz.armId || !buzzPlayer(b.seatId, 'phone'))) resendHostState();
+    if (b.rank === 1 && (b.armId !== buzz.armId || !buzzPlayer(b.seatId))) resendHostState();
   }
 
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
@@ -1434,10 +1437,9 @@
         // The final reveals: spotlight the Nth player in the reveal order (N shows their wager).
         if (!reveal.order[n - 1]) return;
         reveal.current = reveal.order[n - 1];
-      } else if (buzzing) {
-        // 0: the buzzers open for everyone again; 1–9: that player buzzes in.
-        if (!n) openBuzzers(true);
-        else if (session.players[n - 1]) buzzPlayer(session.players[n - 1].id);
+      } else if (buzzing && !n) {
+        // 0: reset the buzzers (nobody locked out, open for everyone). 1–9 pick a player by hand, over any phone's buzz.
+        openBuzzers(true);
       } else if (!n) {
         // 0: everyone, or no one (a group award is 0, then Enter).
         selected = selected.length === session.players.length ? [] : session.players.map((p) => p.id);
@@ -1609,9 +1611,16 @@
         <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
       </div>
     {/if}
-    {#if phonesOn}
-      <PhoneRoom {session} max={game.settings.maxPlayers} onstart={startPhoneRoom} onadd={addPhonePlayer} onreject={rejectPhone} onkick={kickPhone} />
-    {/if}
+    <PhoneRoom
+      {session}
+      settings={game.settings}
+      onset={setBuzzSetting}
+      max={game.settings.maxPlayers}
+      onstart={startPhoneRoom}
+      onadd={addPhonePlayer}
+      onreject={rejectPhone}
+      onkick={kickPhone}
+    />
 
     <h2>Display</h2>
     <div class="modes">
@@ -1839,7 +1848,16 @@
         {/snippet}
         {#snippet phoneChip()}
           {#if phonesOn}
-            <PhoneChip {session} max={game.settings.maxPlayers} onstart={startPhoneRoom} onadd={addPhonePlayer} onreject={rejectPhone} onkick={kickPhone} />
+            <PhoneChip
+              {session}
+              settings={game.settings}
+              onset={setBuzzSetting}
+              max={game.settings.maxPlayers}
+              onstart={startPhoneRoom}
+              onadd={addPhonePlayer}
+              onreject={rejectPhone}
+              onkick={kickPhone}
+            />
           {/if}
         {/snippet}
         {#snippet tools()}
