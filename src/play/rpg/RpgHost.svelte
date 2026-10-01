@@ -599,8 +599,10 @@
   .improv select {
     padding: 2px 6px;
   }
+  /* In a narrow host panel (beside the stage), the objects go under the pad and the map. */
   .main {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: flex-start;
   }
@@ -625,7 +627,7 @@
   /* The whole map shows (it's fitted into the box), the party's screen included. Shorter on a short window, so the
      players' row below stays in sight. */
   .mapbox {
-    flex: 1 1 260px;
+    flex: 1 1 200px;
     max-width: 420px;
     height: clamp(110px, 20vh, 200px);
     display: flex;

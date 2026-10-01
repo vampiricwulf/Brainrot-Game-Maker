@@ -36,6 +36,7 @@
     undoText = null,
     redoText = null,
     dual,
+    side = false,
     pickerPending = false,
     finishArmed = false,
     tools,
@@ -95,6 +96,8 @@
     undoText?: string | null;
     redoText?: string | null;
     dual: boolean;
+    /** RPG and board-game rounds on a wide window: the panel is a column beside the stage (see Play's `side`). */
+    side?: boolean;
     /** P was pressed and the next number key picks the picker. */
     pickerPending?: boolean;
     /** Everyone in the final reveal is judged; the next N finishes the game. */
@@ -200,7 +203,7 @@
     game.settings.deductOnWrong && session.phase === 'clue' && !!info && (session.dd?.stage !== 'question' || session.dd.playerId === id);
 </script>
 
-<div class="panel" class:dual>
+<div class="panel" class:dual class:side>
   <div class="status row">
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
@@ -534,6 +537,39 @@
   .mode-host {
     min-height: 0;
     overflow: auto;
+  }
+  /*
+    Beside the stage (RPG and board-game rounds on a wide window): a column the window's height, the round's controls
+    scrolling in the middle and smaller nav buttons at its foot. An open 🎲 / 🎡 / 🏁 menu pops up over the column, never
+    the stage.
+  */
+  .panel.side {
+    width: clamp(420px, 28vw, 540px);
+    flex-shrink: 0;
+    border-top: none;
+    border-left: 1px solid var(--border);
+  }
+  .side > .nav,
+  .side > .nav :global(.tl) {
+    gap: 4px;
+  }
+  .side > .nav {
+    margin-top: auto;
+  }
+  .side > .nav :global(:is(button, select)) {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .side .award .hint,
+  .side .divider {
+    display: none;
+  }
+  /* The player cards (RPG and board games) take the column's width and height: the round's box scrolls instead. */
+  .side > .mode-host :global(.cards) {
+    max-height: none;
+  }
+  .side > .mode-host :global(.cards > *) {
+    flex-grow: 1;
   }
   /* Above a round's own box (RPG, board game, Final), the tools keep their height (a shop's "Short by…" answers) and
      that box scrolls instead. A tall wheel editor still scrolls in here. */
