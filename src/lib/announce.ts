@@ -37,21 +37,27 @@ export class Announcer {
   }
 }
 
+let host: HTMLElement | null = null;
 let region: HTMLElement | null = null;
 
-/** The page's live region (made the first time it's needed, and at start-up from main.ts). */
+/**
+ * The page's live region (made the first time it's needed, and at start-up from main.ts). It sits in a closed shadow
+ * root: screen readers read it, but page searches (and the browser tests' text lookups) don't find a second copy of
+ * every toast in it. Its host carries the last words said in `data-said` (for the tests).
+ */
 export function liveRegion(): HTMLElement | null {
   if (typeof document === 'undefined') return null;
-  if (region?.isConnected) return region;
-  region = document.getElementById('live-region');
-  if (!region) {
-    region = document.createElement('div');
-    region.id = 'live-region';
-    region.className = 'sr-only';
-    region.setAttribute('aria-live', 'polite');
-    region.setAttribute('aria-atomic', 'true');
-    document.body.appendChild(region);
-  }
+  if (host?.isConnected && region) return region;
+  host = document.createElement('div');
+  host.id = 'live-region';
+  host.className = 'sr-only';
+  host.dataset.live = 'polite';
+  const root = host.attachShadow({ mode: 'closed' });
+  region = document.createElement('div');
+  region.setAttribute('aria-live', 'polite');
+  region.setAttribute('aria-atomic', 'true');
+  root.appendChild(region);
+  document.body.appendChild(host);
   return region;
 }
 
@@ -60,7 +66,10 @@ const announcer = new Announcer((text) => {
   if (!r) return;
   // Emptied first, so the same words said twice in a row are read twice.
   r.textContent = '';
-  setTimeout(() => (r.textContent = text), 30);
+  setTimeout(() => {
+    r.textContent = text;
+    if (host) host.dataset.said = text;
+  }, 30);
 });
 
 /** Say this to screen-reader users (politely: after what they're hearing now). */

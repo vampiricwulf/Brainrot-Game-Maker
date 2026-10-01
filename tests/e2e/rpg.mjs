@@ -84,6 +84,10 @@ async function bigWorld() {
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.locator('.rh').waitFor();
   await host.waitForTimeout(500);
+  // The stats strip never covers the screen: the screen is scaled into the room above it.
+  const strip = await aud.locator('.rpg > .strip').boundingBox();
+  const area = await aud.locator('.rpg .play-area').boundingBox();
+  assert(strip && area && area.y + area.height <= strip.y + 1 && area.height > 500, `the stats strip doesn’t cover the screen (screen ends at ${Math.round(area.y + area.height)}, strip starts at ${Math.round(strip.y)})`);
   const cues = (p) => p.evaluate(() => window.__plays.filter((s) => s.includes('#')).map((s) => s.split('#').pop()));
   const said = () => host.locator('.toast').innerText();
   const there = () => host.locator('.rh .where').innerText();
@@ -110,6 +114,11 @@ async function bigWorld() {
   // The map on stream: just the part viewers know (and a cell around it), with big cells.
   await host.getByRole('button', { name: '🗺 Map' }).click();
   await aud.locator('.map-ov .cell').first().waitFor();
+  const ov = await aud.locator('.map-ov').evaluate((e) => getComputedStyle(e).backgroundColor);
+  assert(/^rgb\(/.test(ov), `the map on stream is solid, the screen behind doesn’t show through (${ov})`);
+  const mapStrip = await aud.locator('.rpg > .strip').boundingBox();
+  const mapBox = await aud.locator('.map-ov').boundingBox();
+  assert(mapBox.y + mapBox.height <= mapStrip.y, 'and it stays clear of the stats strip');
   const shown = await aud.locator('.map-ov .cell').count();
   const ac = await aud.locator('.map-ov .cell').first().boundingBox();
   assert(shown === 9 && ac.width > 100, `viewers’ map shows the known screens and one cell around them (${shown} cells, ${Math.round(ac.width)}px wide)`);

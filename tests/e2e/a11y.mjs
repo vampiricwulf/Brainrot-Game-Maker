@@ -125,11 +125,11 @@ try {
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
   // Screen readers hear an award from the page's polite live region (on the page all along, not mounted with its words).
   const region = page.locator('#live-region');
-  assert((await region.getAttribute('aria-live')) === 'polite', 'the page has a polite live region');
+  assert((await region.getAttribute('data-live')) === 'polite', 'the page has a polite live region');
   await page.keyboard.press('1');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => /Player 1 \+\$200, now \$200/.test(document.getElementById('live-region')?.textContent ?? ''), null, { timeout: 3000 });
-  assert(true, `the live region announces the award (“${await region.textContent()}”)`);
+  await page.waitForFunction(() => /Player 1 \+\$200, now \$200/.test(document.getElementById('live-region')?.dataset.said ?? ''), null, { timeout: 3000 });
+  assert(true, `the live region announces the award (“${await region.getAttribute('data-said')}”)`);
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '👥 Players' }).click();
   const playersDlg = page.getByRole('dialog', { name: 'Players' });
