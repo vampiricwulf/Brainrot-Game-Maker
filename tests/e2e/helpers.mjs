@@ -1,4 +1,5 @@
 // Shared e2e steps.
+import { deflateSync } from 'node:zlib';
 
 /**
  * A new game has no rounds: add a Jeopardy board and a Final Jeopardy (the classic game most tests play), then go
@@ -20,6 +21,19 @@ export async function nameGame(page, name = '') {
   await dialog.waitFor();
   if (name) await dialog.getByRole('textbox').fill(name);
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+}
+
+/**
+ * Export HTML, answering the name it asks for on an untitled game's first export (with `name`: '' keeps "Untitled Game").
+ * Returns the download.
+ */
+export async function exportHtml(page, name = '') {
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export HTML' }).click();
+  const naming = page.getByRole('dialog', { name: 'Name your game' });
+  const first = await Promise.race([download.then(() => 'download'), naming.waitFor().then(() => 'name', () => 'none')]);
+  if (first === 'name') await nameGame(page, name);
+  return download;
 }
 
 /** New, Open… or a recent game asks before replacing a game with unsaved changes: answer it (Save first, Discard, Cancel). */
@@ -136,4 +150,33 @@ export function tieThem(taps) {
         h.send({ ...h.j, reactMs });
       }
     };
+}
+
+/** A plain-colored PNG. */
+export function png(r, g, b, w = 40, h = 24) {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf) => {
+    let c = 0xffffffff;
+    for (const x of buf) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type), data]);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(td));
+    return Buffer.concat([len, td, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8);
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: w }, () => [r, g, b]).flat())]);
+  const raw = Buffer.concat(Array.from({ length: h }, () => row));
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }

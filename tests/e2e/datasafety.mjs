@@ -4,8 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { deflateSync } from 'node:zlib';
-import { answerReplace, nameGame, openGameFile } from './helpers.mjs';
+import { answerReplace, exportHtml, nameGame, openGameFile, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -33,35 +32,6 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 const shot = async (name) => process.env.SHOTS && (await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` }));
-
-/** A plain-colored PNG. */
-function png(r, g, b, w = 40, h = 24) {
-  const crcTable = Array.from({ length: 256 }, (_, n) => {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    return c >>> 0;
-  });
-  const crc = (buf) => {
-    let c = 0xffffffff;
-    for (const x of buf) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8);
-    return (c ^ 0xffffffff) >>> 0;
-  };
-  const chunk = (type, data) => {
-    const len = Buffer.alloc(4);
-    len.writeUInt32BE(data.length);
-    const td = Buffer.concat([Buffer.from(type), data]);
-    const c = Buffer.alloc(4);
-    c.writeUInt32BE(crc(td));
-    return Buffer.concat([len, td, c]);
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
-  ihdr.set([8, 2, 0, 0, 0], 8);
-  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: w }, () => [r, g, b]).flat())]);
-  const raw = Buffer.concat(Array.from({ length: h }, () => row));
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
-}
 
 const header = page.locator('header');
 const autosaved = header.getByText('✓ Autosaved');
@@ -182,9 +152,37 @@ try {
   await page.getByRole('button', { name: 'Open…' }).click();
   await openDialog.waitFor();
   assert((await openDialog.getByRole('button', { name: /Untitled Game/ }).count()) === 1, 'and the game it replaced (Discard) is kept there in turn');
+  // Forget deletes the game and its files for good: it asks first.
   await openDialog.getByRole('button', { name: 'Forget' }).click();
+  const forgetAsk = page.getByRole('alertdialog').filter({ hasText: 'Forget “Untitled Game”?' });
+  await forgetAsk.waitFor();
+  await forgetAsk.getByRole('button', { name: 'Keep it' }).click();
+  assert((await openDialog.getByRole('button', { name: /Untitled Game/ }).count()) === 1, 'Forget asks first: Keep it keeps the game listed');
+  await openDialog.getByRole('button', { name: 'Forget' }).click();
+  await forgetAsk.getByRole('button', { name: 'Forget' }).click();
   await openDialog.waitFor({ state: 'detached' });
   assert(true, 'Forget takes a game off the list');
+
+  // ---------- Open… checks the file before asking about this game ----------
+  await page.locator('.cat textarea').first().fill('Not saved yet');
+  await page.waitForTimeout(700);
+  await openGameFile(page, { name: 'Holiday photos.brainrot', mimeType: 'application/octet-stream', buffer: Buffer.from('not a game at all') });
+  const notGame = page.getByRole('alertdialog').filter({ hasText: 'not a Brainrot Games Maker game pack' });
+  await notGame.waitFor();
+  assert((await page.getByRole('dialog', { name: /^Open “/ }).count()) === 0, 'a file that isn’t a game says so, without asking Save first / Discard about the game open');
+  await notGame.getByRole('button', { name: 'OK' }).click();
+  assert((await page.locator('.cat textarea').first().inputValue()) === 'Not saved yet', 'and the game open stays as it was');
+
+  // ---------- A game pack dropped as .zip opens ----------
+  const zipped = await page.evaluateHandle((b64) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'Safe Game.zip', { type: 'application/zip' }));
+    return dt;
+  }, readFileSync(packPath).toString('base64'));
+  await page.locator('.body').dispatchEvent('drop', { dataTransfer: zipped });
+  await answerReplace(page, 'Discard');
+  await page.getByText('Opened “Safe Game”').waitFor();
+  assert((await page.locator('input.title').inputValue()) === 'Safe Game', 'a game pack dropped on the editor as .zip opens, as Browse… takes it');
 
   // ---------- Hand-edited games ----------
   const game = JSON.parse(await (await import('jszip')).default.loadAsync(readFileSync(packPath)).then((z) => z.file('game.json').async('text')));
@@ -211,7 +209,7 @@ try {
 
   // ---------- Exported player files never touch the builder's files ----------
   await page.getByRole('button', { name: /🖼 Media/ }).click();
-  const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
+  const html = await exportHtml(page);
   const exported = resolve('test-results/datasafety-export.html');
   await html.saveAs(exported);
   const [replace] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace…' }).click()]);
@@ -239,6 +237,17 @@ try {
   await cut.getByText('This file is incomplete').waitFor();
   assert(true, 'a cut-off exported file says it is incomplete');
   await cut.close();
+  // A pack too big for the browser to read out of the page (it reads as empty): never the editor.
+  writeFileSync(
+    resolve('test-results/datasafety-toobig.html'),
+    html1.slice(0, html1.indexOf('>', packAt) + 1).replace(/data-size="\d+"/, 'data-size="600000000"') + html1.slice(packEnd),
+  );
+  const big = await context.newPage();
+  big.on('pageerror', (e) => errors.push(`[too big] ${e.message}`));
+  await big.goto(pathToFileURL(resolve('test-results/datasafety-toobig.html')).href);
+  await big.getByText('Too big for one HTML file — Save a .brainrot instead').waitFor();
+  assert((await big.getByRole('button', { name: 'Open…' }).count()) === 0, 'an exported file whose game is too big to read says so, instead of opening the editor');
+  await big.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('Data safety E2E passed.');
