@@ -84,7 +84,7 @@
       [
         ['Ctrl+Enter', 'Apply the image edits'],
         ['Ctrl+Z / Ctrl+Y', 'Undo / redo inside the image editor or the drawing'],
-        ['Delete', 'Remove the selected sticker or text from the image'],
+        ['Delete', 'Delete the selected sticker or text from the image'],
         ['B or P / F / E', 'Drawing: pen / fill / eraser'],
         ['Esc', 'Cancel (it asks first when there are changes)'],
       ],
@@ -134,14 +134,15 @@
     [
       'Lists',
       [
-        ['Alt+↑ / ↓ or drag ⋮⋮', 'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, slices, players'],
-        ['Ctrl+D', 'Duplicate the row: a stat, item, shop, button, wheel, dice or slice'],
-        ['Right-click a row', 'Stats, items, shops, wheels and dice, slices, buttons: duplicate, move up or down, delete…'],
+        ['Alt+↑ / ↓ or drag ⋮⋮', 'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, slices, players, zones'],
+        ['Ctrl+D', 'Duplicate the row: a stat, item, shop, button, wheel, dice, slice or zone'],
+        ['Right-click a row', 'Stats, items, shops, wheels and dice, slices, buttons, zones: duplicate, move up or down, delete…'],
+        ['Right-click what a shop sells, or a player', 'Move it up or down, remove it from the shop / rename or delete the player (⚙ Setup)'],
         ['Drag an item’s 📦 icon onto a shop', 'Sell it there (a picture file dropped on the icon is its icon instead)'],
         ['F2 or double-click', 'Wheels & Dice: rename the wheel or dice in focus'],
         ['Delete', 'Wheels & Dice: delete the wheel or dice in focus'],
         ['Enter / Backspace', 'Wheel slices: add the next slice / delete an empty one'],
-        ['Enter', 'Players: add the next player'],
+        ['Enter', 'Players: add the next player (as ＋ Add player does), typing in their name'],
         ['↑ / ↓, G', '🕘 History: move through the steps, show where one changed things'],
         ['Click / Ctrl+click / Shift+click', '🖼 Media: select files (Delete removes them, Esc deselects)'],
         ['Double-click or F2 a name', '🖼 Media: rename the file'],

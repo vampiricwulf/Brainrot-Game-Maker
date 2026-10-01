@@ -9,8 +9,9 @@
   import { take } from '../../lib/nav.svelte';
   import { begin, history, redo, step, undo } from '../../lib/history.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
-  import { copyActions, moveTo } from '../../lib/listedit';
+  import { copyActions, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
+  import { isTextField } from '../../lib/undokeys';
   import { clampToBoard, newBoardSpace, nextSpaceName, previousOf, SPACE_COLORS, spaceById } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -251,11 +252,11 @@
       },
       { sep: true },
       {
-        label: '✕ Remove link',
+        label: '✕ Unlink',
         danger: true,
         onclick: () =>
           step(
-            `Removed the link ${title}`,
+            `Unlinked ${title}`,
             () => {
               a.next = a.next.filter((n) => n !== b.id);
               b.next = b.next.filter((n) => n !== a.id);
@@ -434,6 +435,26 @@
     const z = round.zones[from];
     if (!z || to < 0 || to >= round.zones.length || to === from) return;
     step(`Moved zone “${z.name}” ${to < from ? 'up' : 'down'}`, () => moveTo(round.zones, from, to));
+  }
+
+  /** A copy right after it, with its own screen. */
+  function duplicateZone(z: BoardZone): void {
+    const copy = copyZone(z, round.zones.map((x) => x.name));
+    step(`Duplicated zone “${z.name}”`, () => round.zones.splice(round.zones.indexOf(z) + 1, 0, copy));
+  }
+
+  /** Right-click a zone (not in its text boxes, which keep the browser's own menu). */
+  function zoneMenu(e: MouseEvent, z: BoardZone, i: number): void {
+    if (isTextField(e.target)) return;
+    showMenu(e, [
+      { heading: z.name },
+      { label: '✎ Edit its screen…', onclick: () => (zoneSlide = z.id) },
+      { label: '⧉ Duplicate', onclick: () => duplicateZone(z), keys: 'Ctrl+D' },
+      { label: '▲ Move up', onclick: () => moveZone(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => moveZone(i, i + 1), disabled: i === round.zones.length - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: '🗑 Delete zone', danger: true, onclick: () => removeZone(z) },
+    ]);
   }
 </script>
 
@@ -654,8 +675,8 @@
     <div class="zones">
       <div class="row">
         <p class="muted small grow">
-          Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's actions or the host
-          panel. Drag ⋮⋮ (or Alt+↑/↓) to reorder: the host's Send to list follows.
+          Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's buttons or the host
+          panel. Drag ⋮⋮ (or Alt+↑/↓) to reorder: the host's Send to list follows. Right-click a zone for more.
         </p>
         {@render undoRedo()}
       </div>
@@ -674,7 +695,8 @@
               const m = zoneRows.drop(e, round.zones.map((x) => x.id));
               if (m) moveZone(m.from, m.to);
             }}
-            use:rowKeys={{ move: (d) => moveZone(i, i + d) }}
+            oncontextmenu={(e) => zoneMenu(e, z, i)}
+            use:rowKeys={{ move: (d) => moveZone(i, i + d), duplicate: () => duplicateZone(z) }}
           >
             <span
               class="drag-grip"
@@ -687,6 +709,7 @@
             <input bind:value={z.name} aria-label="Zone name" />
             <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
             <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>
+            <button class="ghost small" onclick={() => duplicateZone(z)} aria-label="Duplicate zone {z.name}" title="Duplicate, with its screen (Ctrl+D)">⧉</button>
             <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}">✕</button>
           </div>
         {/each}

@@ -170,7 +170,7 @@ try {
   await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   await page.getByRole('button', { name: 'Add a screen at column 3, row 1' }).click();
-  await page.getByRole('button', { name: 'Move down' }).click();
+  await page.getByRole('button', { name: 'Move down', exact: true }).click();
   // (A click's changes are a step after a pause.)
   await page.waitForTimeout(900);
   const moved = await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');

@@ -38,7 +38,7 @@ try {
   await page.getByRole('button', { name: '＋ Item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
   // Using it takes 1 HP (the first stat). A new item has its More open.
-  await page.getByRole('button', { name: '＋ Add action' }).click();
+  await page.getByRole('button', { name: '＋ Add button' }).click();
   await page.getByRole('menuitem', { name: '📊 Change a stat' }).click();
   // A hat, drawn right on an avatar: it goes where it was drawn, and the preview shows it.
   await page.getByRole('button', { name: '＋ Item', exact: true }).click();

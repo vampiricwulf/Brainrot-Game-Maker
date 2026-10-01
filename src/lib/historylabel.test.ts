@@ -150,6 +150,10 @@ describe('step labels', () => {
     const slice = step((g) => g.wheels[0].segments.push({ ...g.wheels[0].segments[0], id: 's-new', label: 'Sing a song' }));
     expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels & Dice › Punishments', icon: '🎡' });
     expect(step((g) => (g.wheels[0].segments[0].label = 'Dance')).label).toBe('Renamed slice “Dance”');
+    // A slice's (an object's, an item's, a space's) buttons are called buttons, as the editor calls them.
+    expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button');
+    const two = (g: Game) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }, { id: 'b2', do: 'score', amount: 5 }]);
+    expect(step((g) => two(g)).label).toBe('Added 2 buttons');
     const tb = { questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } };
     expect(step((g) => (g.tiebreaker = tb))).toMatchObject({ label: 'Tiebreaker on', place: { tab: 'tiebreaker' } });
   });

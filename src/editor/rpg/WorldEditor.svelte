@@ -1352,15 +1352,15 @@
     border: 1px dashed var(--accent);
     border-radius: 6px;
   }
+  /* The help and the screen's settings sit beside the map, which stops growing at 1100px (not at the window's edge). */
   .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 330px;
+    grid-template-columns: minmax(0, 1100px) 330px;
     gap: 14px;
     align-items: start;
   }
   .grid-wrap {
     position: relative;
-    max-width: 1100px;
     user-select: none;
   }
   .grid-map {

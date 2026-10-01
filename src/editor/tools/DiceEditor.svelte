@@ -55,7 +55,7 @@
             <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
           </label>
           <span class="spacer"></span>
-          <button class="ghost small" onclick={() => preset.dice.splice(i, 1)} disabled={preset.dice.length <= 1}>✕ Remove die</button>
+          <button class="ghost small" onclick={() => preset.dice.splice(i, 1)} disabled={preset.dice.length <= 1}>✕ Delete die</button>
         </div>
         {#if d.customFaces}
           <div class="faces">

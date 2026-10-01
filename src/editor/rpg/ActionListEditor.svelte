@@ -151,7 +151,7 @@
 
   /** The copied set, after these ones (the ones that can't work here are left out). */
   function paste(): void {
-    // (The same kinds ＋ Add action offers here.)
+    // (The same kinds ＋ Add button offers here.)
     const fits = (a: Action) =>
       a.do === 'goto' ? !!board : a.do === 'move' ? !board && !!world?.maps[0]?.screens[0] : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
     const copies = copyActions(clipboard.actions.filter(fits));
@@ -180,7 +180,7 @@
     if (left) toast(`${left} of them can’t work here, so ${left === 1 ? 'it was' : 'they were'} left out`);
   }
 
-  /** The kinds of action, under the button (a second click, Esc or a click elsewhere closes it). */
+  /** The kinds of button, under ＋ Add button (a second click, Esc or a click elsewhere closes it). */
   function openMenu(e: MouseEvent): void {
     dropMenu(
       e,
@@ -249,8 +249,8 @@
         <span class="spacer"></span>
         <button class="ghost tiny" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
         <button class="ghost tiny" onclick={() => move(i, i + 1)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
-        <button class="ghost tiny" onclick={() => duplicate(a)} aria-label="Duplicate action" title="Duplicate (Ctrl+D)">⧉</button>
-        <button class="ghost tiny" onclick={() => remove(a)} aria-label="Remove action">✕</button>
+        <button class="ghost tiny" onclick={() => duplicate(a)} aria-label="Duplicate button" title="Duplicate (Ctrl+D)">⧉</button>
+        <button class="ghost tiny" onclick={() => remove(a)} aria-label="Delete button" title="Delete button">✕</button>
       </div>
       <div class="fields">
         {#if a.do === 'stat'}
@@ -358,7 +358,7 @@
     </div>
   {/each}
   <div class="row">
-    <button class="small" onclick={openMenu} aria-haspopup="menu">＋ Add action</button>
+    <button class="small" onclick={openMenu} aria-haspopup="menu">＋ Add button</button>
     <span class="spacer"></span>
     {#if actions?.length}
       <button class="ghost tiny" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>
