@@ -9,7 +9,8 @@
   import { step } from '../../lib/history.svelte';
   import { copyActions, moveTo } from '../../lib/listedit';
   import { clone } from '../../lib/ops';
-  import { dropMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, showMenu } from '../../lib/menustate.svelte';
+  import { isTextField } from '../../lib/undokeys';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
@@ -121,6 +122,24 @@
     step(`Duplicated button “${LABEL[a.do]}”`, () => (actions = list));
   }
 
+  /** A button's right-click menu (not in its text fields, which keep the browser's own). */
+  function rowMenu(e: MouseEvent, a: Action, i: number): void {
+    if (isTextField(e.target)) return;
+    const n = actions?.length ?? 0;
+    const k = clipboard.actions.length;
+    showMenu(e, [
+      { heading: LABEL[a.do] },
+      { label: '⧉ Duplicate', onclick: () => duplicate(a), keys: 'Ctrl+D' },
+      { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: '📋 Copy buttons', onclick: copyAll },
+      { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
+      { sep: true },
+      { label: '🗑 Delete button', danger: true, onclick: () => remove(a) },
+    ]);
+  }
+
   /** The whole set to the in-app clipboard, with the files it plays or shows (so it pastes into another game too). */
   function copyAll(): void {
     const list = actions ?? [];
@@ -211,6 +230,7 @@
         const m = rows.drop(e, (actions ?? []).map((x) => x.id));
         if (m) move(m.from, m.to);
       }}
+      oncontextmenu={(e) => rowMenu(e, a, i)}
       use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(a) }}
     >
       <div class="head">

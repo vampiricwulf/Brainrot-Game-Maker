@@ -11,7 +11,9 @@
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
   import { copySegment, moveTo } from '../../lib/listedit';
+  import { showMenu } from '../../lib/menustate.svelte';
   import { flash } from '../../lib/nav.svelte';
+  import { isTextField } from '../../lib/undokeys';
   import Stage from '../../lib/Stage.svelte';
   import WheelView from '../../play/tools/WheelView.svelte';
   import OutcomeEditor from './OutcomeEditor.svelte';
@@ -74,6 +76,20 @@
 
   const rows = new DragOrder();
 
+  /** A slice's right-click menu (not in its text fields, which keep the browser's own). */
+  function rowMenu(e: MouseEvent, i: number): void {
+    if (isTextField(e.target)) return;
+    const n = wheel.segments.length;
+    showMenu(e, [
+      { heading: name(wheel.segments[i]) },
+      { label: '⧉ Duplicate', onclick: () => duplicate(i), keys: 'Ctrl+D' },
+      { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: '🗑 Delete slice', danger: true, onclick: () => remove(i), disabled: n <= 2 },
+    ]);
+  }
+
   /** A click on a slice of the preview goes to its row. */
   function previewClick(e: MouseEvent): void {
     const at = (e.target as Element).closest('[data-slice]')?.getAttribute('data-slice');
@@ -109,6 +125,7 @@
             const m = rows.drop(e, wheel.segments.map((x) => x.id));
             if (m) move(m.from, m.to);
           }}
+          oncontextmenu={(e) => rowMenu(e, i)}
           use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(i) }}
         >
           <span
