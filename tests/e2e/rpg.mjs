@@ -120,6 +120,8 @@ try {
   await page.waitForTimeout(450);
   const yes = page.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible()) await yes.click();
+  // The round opens on its title card: clicking it goes on.
+  await page.locator('.stage-box .title-card').click();
   await page.locator('.rh').waitFor();
   assert((await where()).includes('Start'), `the party starts on the start screen (${await where()})`);
   assert((await page.locator('.rpg .avatar').count()) === 2, 'both avatars are on the stage');

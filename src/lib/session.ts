@@ -358,6 +358,8 @@ export function introNext(session: Session, game: Game): void {
   if (!intro) return;
   const ri = game.settings.roundIntro;
   const r = game.rounds[session.currentRound];
+  // An RPG, board-game or Final round only has its title card.
+  if (!isBoard(r)) return void (session.intro = null);
   const cats = isBoard(r) ? r.categories.length : 0;
   if (intro.stage === 'title') {
     if (ri.tileFill) intro.stage = 'fill';
@@ -407,19 +409,23 @@ export function goToRound(session: Session, game: Game, index: number): void {
   const changed = target !== session.currentRound || session.phase !== 'board';
   const backwards = target < session.currentRound;
   session.currentRound = target;
+  if (isFinal(round) || isRpg(round) || isBoardGame(round)) {
+    // The first visit shows the round's title card (going back to it doesn't).
+    const seen = session.introducedRounds ?? [];
+    const first = !backwards && !seen.includes(target);
+    if (first) session.introducedRounds = [...seen, target];
+    session.intro = first && game.settings.roundIntro.titleCard ? { stage: 'title', revealed: 0 } : null;
+  }
   if (isFinal(round)) {
-    session.intro = null;
     startFinal(session, game, round);
     return;
   }
   if (isRpg(round)) {
-    session.intro = null;
     session.phase = 'rpg';
     ensureWorld(session, game, round);
     return;
   }
   if (isBoardGame(round)) {
-    session.intro = null;
     session.phase = 'boardgame';
     ensureBoard(session, game, round);
     return;

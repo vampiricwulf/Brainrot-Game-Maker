@@ -8,7 +8,7 @@
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
     blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
-  import { addTime, newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { validate } from '../lib/validate';
@@ -23,6 +23,7 @@
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
+  import { playCue } from './cues';
   import { watchSinks } from '../lib/audioout.svelte';
   import { logged, redoAction, redoFrom, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
@@ -45,6 +46,9 @@
     audience,
     audienceTitle,
     closeAudienceWindow,
+    closeScoresWindow,
+    openScoresWindow,
+    scoresWindow,
     mediaCommand,
     onAudienceKey,
     openAudienceWindow,
@@ -131,16 +135,16 @@
   // session: the board would give away the categories the round intro reveals.
   $effect(() => {
     const g = $state.snapshot(game);
-    if (audience.open) pushGame(g);
+    if (audience.open || scoresWindow.open) pushGame(g);
   });
   $effect(() => {
     // The action log (the host's undo history) stays here: viewers never need it.
     const { actionLog, actionRedo, ...s } = session;
-    if (audience.open && !app.pregame) pushSession($state.snapshot(s));
+    if ((audience.open || scoresWindow.open) && !app.pregame) pushSession($state.snapshot(s));
   });
   $effect(() => {
     const l = $state.snapshot(app.live);
-    if (audience.open) pushLive(app.pregame ? { ...l, pregame: true } : l);
+    if (audience.open || scoresWindow.open) pushLive(app.pregame ? { ...l, pregame: true } : l);
   });
   // "Press N again to finish" only applies right where it was armed, and not once a judgment is taken back (Ctrl+Z).
   $effect(() => {
@@ -206,13 +210,15 @@
         t.elapsed = t.total;
         t.startedAt = null;
         t.expired = true;
-        playSound(app.live, game.audio.timesUp);
+        playCue(app.live, game, 'timesUp');
       }
     }, 150);
     return () => {
       clearInterval(id);
       offSinks();
       offKeys();
+      // The scores window belongs to this game (the audience window is closed by leaving it).
+      closeScoresWindow();
       for (const t of pending) clearTimeout(t);
       pending.clear();
     };
@@ -247,6 +253,16 @@
       );
   }
 
+  /** The host panel's scores-window button (a lower-third capture for OBS): opens or closes it. */
+  function toggleScores(): void {
+    if (scoresWindow.open) closeScoresWindow();
+    else openScores();
+  }
+
+  function openScores(): void {
+    if (!openScoresWindow()) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+  }
+
   /** The host panel's audience button: closing mid-game asks first, since it's usually the stream capture. */
   function toggleAudience(): void {
     if (!audience.open) openAudience();
@@ -275,6 +291,7 @@
     if (!ids.length) return toast(`Select a player first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
     if (!amt) return toast('Enter an amount first');
     const events = applyScore(session, game, ids, sign * Math.abs(amt), reasonNow(), info?.clue.id);
+    if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
     for (const e of events) {
       const p = session.players.find((x) => x.id === e.playerId);
       if (p) pop(`${p.name} ${e.delta > 0 ? '+' : '−'}${sym}${Math.abs(e.delta).toLocaleString()}`, p.color);
@@ -286,6 +303,30 @@
 
   const info = $derived(currentClueInfo(session, game));
 
+  /** Buzzer mode, while a clue is open (a Daily Double has its one player): number keys buzz players in. */
+  const buzzing = $derived(!!game.settings.buzzer && session.phase === 'clue' && !session.dd);
+
+  /** Player n buzzed in: the first one answers, the rest are locked out until 0 (or an award) opens the buzzers again. */
+  function buzzIn(n: number): void {
+    if (!n) {
+      if (selected.length) toast('Buzzers open');
+      selected = [];
+      return;
+    }
+    const p = session.players[n - 1];
+    if (!p || selected.length) return;
+    selected = [p.id];
+    playCue(app.live, game, 'buzz');
+  }
+
+  // Viewers see who's answering: the one player selected during a clue.
+  $effect(() => {
+    const id = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
+    untrack(() => {
+      if ((app.live.answering ?? null) !== id) app.live.answering = id;
+    });
+  });
+
   function pick(ref: ClueRef): void {
     openClue(session, ref, game);
     selected = [];
@@ -293,8 +334,9 @@
     amount = c?.value ?? null;
     app.live.timer = null;
     app.live.overlay = null;
-    if (session.dd) playSound(app.live, game.audio.dailyDouble);
-    else if (c?.clue.type === 'wheel') {
+    playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen');
+    if (session.dd) return;
+    if (c?.clue.type === 'wheel') {
       const w = game.wheels.find((x) => x.id === c.clue.wheelId);
       if (c.clue.wheelId === PLAYER_WHEEL) openPlayerWheel(app.live, session);
       else if (w) openWheel(app.live, session, w);
@@ -344,6 +386,7 @@
     const o = app.live.overlay;
     if (o?.kind === 'popup' && o.answer) {
       o.revealed = !o.revealed;
+      if (o.revealed) playCue(app.live, game, 'reveal');
       return;
     }
     const wasFinalQuestion = session.phase === 'final' && session.finalStep === 'question';
@@ -355,6 +398,7 @@
         app.live.timer = null;
         app.live.sound = null;
       }
+      playCue(app.live, game, 'reveal');
     }
   }
 
@@ -392,7 +436,10 @@
     if (busy) return;
     // A shop stays open until 🚪 Leave shop (its wares are clicked to buy).
     if (o.kind === 'shop') return;
-    if (o.kind === 'popup' && o.answer && !o.revealed) o.revealed = true;
+    if (o.kind === 'popup' && o.answer && !o.revealed) {
+      o.revealed = true;
+      playCue(app.live, game, 'reveal');
+    }
     else if (o.kind === 'wheel' && !o.spin) spinWheel(app.live, session, game);
     else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
     else closeOverlay();
@@ -474,8 +521,8 @@
     app.live.timer = null;
     selected = [];
     amount = null;
-    if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
-    if (session.phase === 'end') playSound(app.live, game.audio.winner);
+    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
+    if (session.phase === 'end') playCue(app.live, game, 'winner');
   }
 
   /** Final round started by mistake (or a tile was skipped): back to the round before it, wagers kept. */
@@ -532,12 +579,12 @@
     app.live.timer = null;
     if (session.phase === 'final' && session.finalStep === 'question') {
       startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
-      playSound(app.live, game.audio.finalThink);
+      playCue(app.live, game, 'finalThink');
     }
     if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
-    if (session.phase === 'end') playSound(app.live, game.audio.winner);
+    if (session.phase === 'end') playCue(app.live, game, 'winner');
     // A Final in the middle of the game went on to the next round.
-    if (session.phase === 'board' && session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
+    if (session.phase !== 'final' && session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
   }
 
   /** N in the final reveal: show the wager, then the next player; finishing takes a second N once all are judged. */
@@ -557,6 +604,7 @@
   function judge(id: string, right: boolean): void {
     finalShow(session, id);
     finalJudge(session, game, id, right);
+    playCue(app.live, game, right ? 'right' : 'wrong');
   }
 
   /** C / X in the final reveal: judge the spotlit player. */
@@ -883,10 +931,10 @@
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;
     app.pregame = false;
-    // A game can open with a Final or an RPG round: those start through goToRound (no board intro).
-    if (!isBoard(game.rounds[0])) return goToRound(session, game, 0);
-    startIntro(session, game);
-    if (session.intro?.stage === 'title') playSound(app.live, game.audio.roundIntro);
+    // A game can open with a Final or an RPG round: those start through goToRound (only a title card).
+    if (!isBoard(game.rounds[0])) goToRound(session, game, 0);
+    else startIntro(session, game);
+    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
   }
 
   // ---------- Pre-game ----------
@@ -1100,6 +1148,8 @@
         // The final reveals: spotlight the Nth player in the reveal order (N shows their wager).
         if (!reveal.order[n - 1]) return;
         reveal.current = reveal.order[n - 1];
+      } else if (buzzing) {
+        buzzIn(n);
       } else if (!n) {
         // 0: everyone, or no one (a group award is 0, then Enter).
         selected = selected.length === session.players.length ? [] : session.players.map((p) => p.id);
@@ -1159,12 +1209,14 @@
         break;
       case 'n':
         // Shift+N goes the other way: the turn before, or the player before in the reveals.
-        if (session.phase === 'boardgame') turnNow(game, session, e.shiftKey ? -1 : 1);
+        if (session.intro) {
+          // The round's intro first (its title card, then a board's tiles and categories).
+          if (!e.shiftKey) intro();
+        } else if (session.phase === 'boardgame') turnNow(game, session, e.shiftKey ? -1 : 1);
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
           if (e.shiftKey) finalBack(session);
           else finalRevealNext();
         } else if (e.shiftKey) break;
-        else if (session.phase === 'board' && session.intro) intro();
         else if (session.phase === 'final' && (session.finalStep !== 'wagers' || finalWagersOk(session, wagerLimitsOff))) {
           finalNext(session, game);
           finalStep();
@@ -1196,7 +1248,9 @@
         toggleFullscreen();
         break;
       case 'a':
-        openAudience();
+        // Shift+A: the scores-only window (opens or focuses it).
+        if (e.shiftKey) openScores();
+        else openAudience();
         break;
       case ' ': {
         const m = firstMedia();
@@ -1400,6 +1454,7 @@
         {dual}
         {side}
         onaudience={toggleAudience}
+        onscores={toggleScores}
         onsound={() => (showSound = true)}
         oncloseoverlay={closeOverlay}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}

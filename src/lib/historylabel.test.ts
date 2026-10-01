@@ -142,6 +142,13 @@ describe('step labels', () => {
     expect(step((g) => (g.settings.currencySymbol = 'pts')).label).toBe('Rule: Points symbol = pts');
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
     expect(step((g) => (g.audio.dailyDouble = 'm1')).label).toBe('Changed the Daily Double sound');
+    expect(step((g) => (g.audio.wheelTick = '')).label).toBe('Turned off the wheel tick sound');
+    const own = sample();
+    own.audio.dailyDouble = 'm1';
+    const back = structuredClone(own);
+    delete back.audio.dailyDouble;
+    expect(describeStep(diff(own, back), own, back).label).toBe('Built-in Daily Double sound');
+    expect(step((g) => (g.settings.buzzer = true)).label).toBe('Rule: Buzzer mode on');
     expect(step((g) => (g.theme = { ...g.theme, preset: 'neon', tile: '#000' })).label).toBe('Theme preset: Brainrot Neon');
     expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile');
     const file = step((g) => g.media.push({ id: 'm2', name: 'clip.mp4', mime: 'video/mp4', size: 1, kind: 'video' }));

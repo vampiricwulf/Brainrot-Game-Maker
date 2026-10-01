@@ -56,7 +56,7 @@ async function toPregame(page, url, { introSound = false } = {}) {
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   if (introSound) {
-    await page.getByRole('button', { name: 'Choose…' }).first().click();
+    await page.getByRole('button', { name: 'Choose file…' }).first().click();
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
     await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(2) });
     await page.getByText('🔊 intro.wav').waitFor();
@@ -114,6 +114,7 @@ try {
     assert((await dialog(page).count()) === 0, 'Esc closes the help');
 
     await page.getByRole('button', { name: 'Start game ▶' }).click();
+    const startedAt = Date.now();
     await page.getByRole('button', { name: 'Skip intro' }).click();
     await page.locator('.board .tile').first().waitFor();
     await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
@@ -132,7 +133,9 @@ try {
     assert((await firstPlayer.getAttribute('aria-pressed')) === 'true', 'and back on once it is closed');
     await page.keyboard.press('1');
 
-    // Dual mode: the audience window plays the chime, the host stays silent.
+    // Dual mode: the audience window plays the chime, the host stays silent. The round intro's sound (built in) is old by
+    // the time the window opens, so the window doesn't play it again.
+    await page.waitForTimeout(Math.max(0, startedAt + 4100 - Date.now()));
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
     watch(aud, 'audience');
     await aud.locator('.board').waitFor();

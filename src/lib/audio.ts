@@ -17,13 +17,9 @@ const CHIME_NOTES = [
   { freq: 1046.5, at: 0.16, len: 0.64 }, // C6
 ];
 
-/**
- * A short two-note chime as a WAV file (16-bit mono PCM), built here so no sound file ships with the app.
- * Each note fades in over 5 ms and out over 30 ms, so there are no clicks.
- */
-export function chimeWav(rate = 22050): Uint8Array<ArrayBuffer> {
-  const seconds = Math.max(...CHIME_NOTES.map((n) => n.at + n.len));
-  const count = Math.round(rate * seconds);
+/** Mono samples (-1…1) as a WAV file (16-bit PCM). The app's sounds are made in code, so no sound file ships with it. */
+export function wavFile(samples: ArrayLike<number>, rate: number): Uint8Array<ArrayBuffer> {
+  const count = samples.length;
   const buf = new ArrayBuffer(44 + count * 2);
   const v = new DataView(buf);
   const text = (at: number, s: string) => [...s].forEach((c, i) => v.setUint8(at + i, c.charCodeAt(0)));
@@ -40,7 +36,18 @@ export function chimeWav(rate = 22050): Uint8Array<ArrayBuffer> {
   v.setUint16(34, 16, true); // bits per sample
   text(36, 'data');
   v.setUint32(40, count * 2, true);
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < count; i++) v.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, samples[i])) * 32767), true);
+  return new Uint8Array(buf);
+}
+
+/**
+ * A short two-note chime as a WAV file (16-bit mono PCM).
+ * Each note fades in over 5 ms and out over 30 ms, so there are no clicks.
+ */
+export function chimeWav(rate = 22050): Uint8Array<ArrayBuffer> {
+  const seconds = Math.max(...CHIME_NOTES.map((n) => n.at + n.len));
+  const out = new Float32Array(Math.round(rate * seconds));
+  for (let i = 0; i < out.length; i++) {
     const t = i / rate;
     let s = 0;
     for (const n of CHIME_NOTES) {
@@ -50,9 +57,9 @@ export function chimeWav(rate = 22050): Uint8Array<ArrayBuffer> {
       // A bell-ish tone: the note plus a quieter octave.
       s += env * (Math.sin(2 * Math.PI * n.freq * dt) + 0.3 * Math.sin(4 * Math.PI * n.freq * dt));
     }
-    v.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, s * 0.35)) * 32767), true);
+    out[i] = s * 0.35;
   }
-  return new Uint8Array(buf);
+  return wavFile(out, rate);
 }
 
 /** The saved output choice (JSON in localStorage). Anything unreadable means the default device. */

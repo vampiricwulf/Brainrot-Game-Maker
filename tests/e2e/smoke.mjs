@@ -992,7 +992,12 @@ await page.getByRole('button', { name: 'Cancel', exact: true }).click();
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Yes', exact: true }).click();
+// Like a board round, the Final opens on its title card; N (or a click) goes on.
+await page.locator('.title-card .round-name').waitFor();
+assert(/final brainrot/i.test(await page.locator('.title-card .round-name').innerText()), 'the Final opens on its title card');
+await page.keyboard.press('n');
 await page.locator('.final-label').waitFor();
+await page.locator('.round-name').waitFor({ state: 'detached' });
 // …and it can be undone: back to the board without a second round intro.
 await page.getByRole('button', { name: '◀ Back to Jeopardy!' }).click();
 await page.locator('.board').waitFor();
@@ -1004,6 +1009,7 @@ await page.getByRole('button', { name: 'Yes', exact: true }).click();
 
 // Final Jeopardy: eligible players, private wagers, one-by-one reveal.
 await page.locator('.final-label').waitFor();
+assert((await page.locator('.round-name').count()) === 0, 'coming back to the Final skips its title card');
 assert((await page.locator('.final-label').innerText()) === 'FINAL BRAINROT', 'renamed final round shows on screen');
 const eligible = await page.locator('.fj input[type=checkbox]:checked').count();
 assert(eligible === 2, 'players with $0 sit out of a Final that says so');

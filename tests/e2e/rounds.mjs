@@ -93,6 +93,9 @@ try {
   await page.getByRole('button', { name: 'Midgame Wager ▶' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  // Its title card first, as for a board round.
+  await page.locator('.title-card .round-name').filter({ hasText: 'Midgame Wager' }).waitFor();
+  await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.final-label').waitFor();
   assert((await page.locator('.final-label').innerText()) === 'MIDGAME WAGER', 'the next round is the Final in the middle of the game');
   await page.getByRole('button', { name: /◀ Back to Jeopardy!/ }).waitFor();
@@ -115,6 +118,7 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
   const picker = page.getByRole('combobox', { name: 'Go to round' });
   await picker.selectOption({ label: '⭐ Final Jeopardy!' });
+  await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.final-label').waitFor();
   assert((await page.locator('.final-label').innerText()) === 'FINAL JEOPARDY!', 'the round picker jumps straight to any round');
   // This Final lets players with $0 play: they can only wager $0, so it's filled in and Show question waits on no one else.

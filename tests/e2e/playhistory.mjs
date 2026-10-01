@@ -34,6 +34,9 @@ const nextRound = async () => {
   await page.waitForTimeout(450);
   const yes = page.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible()) await yes.click();
+  // The round's title card (these are RPG and board-game rounds): N goes on.
+  await page.locator('.stage-box .title-card').waitFor();
+  await page.keyboard.press('n');
 };
 
 try {
@@ -188,6 +191,7 @@ try {
   await page.locator('.rn button').last().click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Yes', exact: true }).click().catch(() => {});
+  await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.final-label').waitFor();
   await page.locator('.fj input[type=checkbox]').nth(2).uncheck();
   await page.keyboard.press('Control+z');
