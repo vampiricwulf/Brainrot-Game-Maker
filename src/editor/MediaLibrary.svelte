@@ -5,7 +5,7 @@
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { attachBlobSwap, step, stepAsync } from '../lib/history.svelte';
   import { uniqueMediaName } from '../lib/medianame';
-  import { hasFiles } from '../lib/mediadrop';
+  import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
   import { allEmbeds, mediaUsage } from '../lib/usage';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
@@ -157,7 +157,7 @@
     for (const f of files) {
       try {
         const ref = await addMediaFile(game, f);
-        if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime)) toast(`⚠ This browser may not play "${ref.name}"`, 6000);
+        warnIfUnplayable(ref);
       } catch (e) {
         toast((e as Error).message, 5000);
       }

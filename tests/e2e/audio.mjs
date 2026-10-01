@@ -636,10 +636,10 @@ try {
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await called(page, 'save_file');
     const saveCall = (await calls(page, 'save_file'))[0];
-    assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'new', `Save sends the pack to the app, as a new save (${JSON.stringify(saveCall)})`);
+    assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'backup', `Save sends the pack to the app, replacing the game's last save with a backup kept (${JSON.stringify(saveCall)})`);
     await page.locator('.toast', { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
     assert(true, 'and says where it went');
-    // ⚙ Settings: Save replaces the last save instead.
+    // ⚙ Settings: Save makes a new file each time instead (Game (2).brainrot…).
     await page.getByRole('button', { name: '⚙ Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
     await settings.getByText('Save replaces the game’s last save').click();
@@ -647,7 +647,7 @@ try {
     await settings.getByRole('button', { name: 'Done' }).click();
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await page.waitForFunction(() => window.__calls.filter((c) => c[0] === 'save_file').length === 2);
-    assert((await calls(page, 'save_file'))[1].mode === 'overwrite', 'with the setting on, Save replaces the last save');
+    assert((await calls(page, 'save_file'))[1].mode === 'new', 'with the setting off, Save makes a new file');
     await page.reload();
     await page.getByRole('button', { name: 'ℹ About' }).waitFor();
     assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');

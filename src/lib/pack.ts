@@ -4,6 +4,7 @@ import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from 
 import { migrateGame, type Game } from './model';
 import { parseGame, safeFilename, saveFile, savedWhere } from './fileio';
 import { buildZip, type ZipEntry } from './zipwrite';
+import { packInHtml, unpackEmbedded } from './export';
 
 function mediaPath(ref: { id: string; name: string }): string {
   const ext = extOf(ref.name);
@@ -43,7 +44,7 @@ export async function buildPack(game: Game, onProgress?: PackProgress): Promise<
 export async function savePack(game: Game, onProgress?: PackProgress): Promise<{ missing: string[]; where: string }> {
   const { blob, missing } = await buildPack(game, onProgress);
   const name = `${safeFilename(game.title)}.brainrot`;
-  return { missing, where: savedWhere(await saveFile(name, blob), name) };
+  return { missing, where: savedWhere(await saveFile(name, blob, game.id), name) };
 }
 
 export async function openPack(file: Blob): Promise<Game> {
@@ -67,11 +68,20 @@ export async function openPack(file: Blob): Promise<Game> {
   return game;
 }
 
-/** Open a .brainrot pack (or a .jbr from before the rename: same format) or a plain .json game. */
+/**
+ * Open a .brainrot pack (or a .jbr from before the rename: same format), a plain .json game, the game in an exported
+ * .html, or a backup the desktop app kept of one of those ("Game.brainrot.bak").
+ */
 export async function openGameFile(file: File): Promise<Game> {
   // A pack is a zip, which starts with "PK": one saved or renamed as .json still opens.
   const zip = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
-  if (!zip && (/\.json$/i.test(file.name) || file.type === 'application/json')) {
+  const name = file.name.replace(/\.bak\d*$/i, '');
+  if (!zip && (/\.html?$/i.test(name) || file.type === 'text/html')) {
+    const pack = packInHtml(await file.text());
+    if (!pack) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
+    return openPack(await unpackEmbedded(pack));
+  }
+  if (!zip && (/\.json$/i.test(name) || file.type === 'application/json')) {
     const game = migrateGame(parseGame(await file.text()));
     registerLinks(game);
     return game;

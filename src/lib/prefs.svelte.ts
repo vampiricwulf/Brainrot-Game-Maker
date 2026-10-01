@@ -6,13 +6,18 @@ export interface Prefs {
   autosaveMinutes: number;
   /** How many autosaves to keep per game (the oldest is replaced). */
   autosaveKeep: number;
-  /** Save replaces the game's last save, instead of making "Game (2).brainrot"… */
+  /**
+   * Save replaces the game's last save, keeping the one it replaces as "Game.brainrot.bak" (and the one before as
+   * .bak2). Off: every Save makes a new file, "Game (2).brainrot"…
+   */
   overwriteSave: boolean;
   /** How many undo steps the editor remembers (the oldest are forgotten). */
   undoSteps: number;
+  /** Which defaults the stored settings were made with (2: Save replaces by default). */
+  v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: false, undoSteps: 300 };
+export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, v: 2 };
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 
@@ -20,6 +25,8 @@ function load(): Prefs {
   try {
     const raw = localStorage.getItem(KEY);
     const p = raw ? (JSON.parse(raw) as Partial<Prefs>) : {};
+    // Settings stored before Save replaced by default had it off only because that was the default then.
+    if (p.v !== 2) Object.assign(p, { v: 2, overwriteSave: true });
     return { ...DEFAULT_PREFS, ...p };
   } catch {
     return { ...DEFAULT_PREFS };

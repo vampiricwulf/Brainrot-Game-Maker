@@ -4,7 +4,7 @@
 import { editedGame, toast } from './app.svelte';
 import { stepAsync } from './history.svelte';
 import { addMediaFile, canPlay, mediaKind, mimeFor } from './media.svelte';
-import type { MediaKind } from './model';
+import type { MediaKind, MediaRef } from './model';
 
 export interface MediaDrop {
   /** What the slot takes. */
@@ -15,6 +15,12 @@ export interface MediaDrop {
 }
 
 const WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a video', audio: 'a sound', font: 'a font' };
+
+/** After a video or sound file is added: warn when this browser (or the desktop app) may not play it. */
+export function warnIfUnplayable(ref: MediaRef): void {
+  if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime))
+    toast(`⚠ This browser may not play "${ref.name}" (${ref.mime}). Try converting it to MP4 (H.264) or MP3.`, 7000);
+}
 
 /** "a picture", "a picture or a video", "a picture, a video or a sound". */
 export function kindWords(kinds: readonly MediaKind[]): string {
@@ -52,7 +58,7 @@ export async function useFile(file: File, opts: MediaDrop): Promise<boolean> {
   try {
     await stepAsync(null, async () => {
       const ref = await addMediaFile(editedGame(), file);
-      if ((ref.kind === 'video' || ref.kind === 'audio') && !canPlay(ref.mime)) toast(`⚠ This browser may not play "${ref.name}". MP4 (H.264) / MP3 are safest.`, 7000);
+      warnIfUnplayable(ref);
       await opts.onpick(ref.id, ref.kind);
     });
     return true;

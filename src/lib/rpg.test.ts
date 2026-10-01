@@ -22,6 +22,7 @@ import {
   rpgProblems,
   screenAt,
   screenElements,
+  screenGrid,
   splitParty,
   step,
 } from './rpg';
@@ -64,6 +65,14 @@ describe('RPG: exits', () => {
     expect(se.kind === 'open' && nameOf(world, se.to)).toBe('B2');
     expect(exitOf(m, a1, 'n').kind).toBe('none');
     expect(exitOf(m, screenAt(m, 2, 0)!, 's').kind).toBe('none'); // C2 is empty
+  });
+
+  it('looks cells up through a grid index the same way', () => {
+    const { world } = setup();
+    const m = world.maps[0];
+    const grid = screenGrid(m);
+    for (let c = -1; c <= m.cols; c++) for (let r = -1; r <= m.rows; r++) expect(screenAt(m, c, r, grid)).toBe(screenAt(m, c, r));
+    expect(screenAt(m, 1, 1, grid)?.name).toBe('B2');
   });
 
   it('respects blocked sides, warps, no diagonals and wrapping', () => {

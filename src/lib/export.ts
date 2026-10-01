@@ -13,6 +13,15 @@ export function embeddedPack(): string | null {
   return document.getElementById(PACK_ELEMENT_ID)?.textContent?.trim() || null;
 }
 
+/** The game pack (base64) inside an exported game's HTML file, for Open… (null: it has none). */
+export function packInHtml(html: string): string | null {
+  // The pack comes last, after the app's own code.
+  const marker = `id="${PACK_ELEMENT_ID}">`;
+  const at = html.lastIndexOf(marker);
+  const end = at < 0 ? -1 : html.indexOf('</script>', at);
+  return end < 0 ? null : html.slice(at + marker.length, end).trim() || null;
+}
+
 export async function unpackEmbedded(b64: string): Promise<Blob> {
   // fetch() on a data: URL decodes large base64 far more efficiently than atob().
   const res = await fetch(`data:application/zip;base64,${b64}`);
@@ -72,6 +81,6 @@ export async function exportStandaloneHtml(
     { type: 'text/html' },
   );
   const name = `${safeFilename(game.title)}.html`;
-  const where = savedWhere(await saveFile(name, out), name);
+  const where = savedWhere(await saveFile(name, out, game.id), name);
   return { size: out.size, missing, online: onlineCount(game), where };
 }

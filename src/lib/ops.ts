@@ -205,13 +205,6 @@ export function restyle(from: TextEl, targets: TextEl[]): () => void {
   return () => targets.forEach((t, i) => copyTextStyle(before[i], t));
 }
 
-/** Copy a text element's style to the main text of other slides. Returns how many slides changed. */
-export function applyTextStyle(game: Game, round: BoardRound | null, from: TextEl, scope: string): number {
-  const targets = textStyleTargets(game, round, from, scope);
-  for (const t of targets) copyTextStyle(from, t);
-  return targets.length;
-}
-
 /** Fresh ids for a copied round and everything in it (categories, clues, slide elements, decor). */
 export function reidRound<R extends Round>(round: R): R {
   const reSlide = (s: Slide) => s.elements.forEach((e) => (e.id = newId()));

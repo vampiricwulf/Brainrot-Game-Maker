@@ -133,12 +133,6 @@ export function takeItem(session: Session, playerId: string, item: string | null
   return qty - left;
 }
 
-export function countItem(session: Session, playerId: string, item: string): number {
-  return inventory(session, playerId)
-    .filter((e) => e.item === item)
-    .reduce((n, e) => n + e.qty, 0);
-}
-
 /** Move one inventory entry (or part of a stack) to another player. */
 export function transferEntry(session: Session, from: string, to: string, entryId: string, qty?: number): void {
   const src = inv(session, from);
