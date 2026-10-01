@@ -167,6 +167,39 @@ export function canvasToBlob(c: HTMLCanvasElement, type: string, quality = 0.92)
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Export failed'))), type, quality));
 }
 
+/**
+ * The caption or sticker under a point (fractions of the W×H output image), top-most first: the box each one draws,
+ * turned with it (a caption: its widest line by its lines, with a little room around). `measure` gives a line's
+ * width in pixels at a font size (the editor measures with the canvas).
+ */
+export function itemAt(
+  p: { x: number; y: number },
+  W: number,
+  H: number,
+  e: Pick<ImageEdits, 'texts' | 'stickers'>,
+  measure: (line: string, size: number, font: string) => number = (line, size) => line.length * size * 0.6,
+): string | null {
+  const boxes = [
+    ...e.texts.map((t) => {
+      const size = t.size * W;
+      const lines = t.text.split('\n');
+      const w = Math.max(size * 0.5, ...lines.map((l) => measure(l, size, t.font)));
+      return { id: t.id, x: t.x, y: t.y, w: w + size * 0.4, h: lines.length * size * 1.1 + size * 0.2, rotation: t.rotation };
+    }),
+    ...e.stickers.map((s) => ({ id: s.id, x: s.x, y: s.y, w: s.size * W * 1.1, h: s.size * W * 1.1, rotation: s.rotation })),
+  ];
+  // Stickers are drawn over captions, and later ones over earlier ones.
+  for (const b of boxes.reverse()) {
+    const a = (-b.rotation * Math.PI) / 180;
+    const dx = (p.x - b.x) * W;
+    const dy = (p.y - b.y) * H;
+    const lx = dx * Math.cos(a) - dy * Math.sin(a);
+    const ly = dx * Math.sin(a) + dy * Math.cos(a);
+    if (Math.abs(lx) <= b.w / 2 && Math.abs(ly) <= b.h / 2) return b.id;
+  }
+  return null;
+}
+
 /** Fit a crop rectangle of the given pixel aspect (w/h) inside an image of size W×H, centered. */
 export function fitCrop(aspect: number, W: number, H: number): { x: number; y: number; w: number; h: number } {
   let w = W;

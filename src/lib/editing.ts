@@ -139,3 +139,26 @@ export function aspectCrop(mode: string, o: Box, dx: number, dy: number, ratio: 
   const y = clamp(sy > 0 ? ay : sy < 0 ? ay - h : ay - h / 2, h);
   return { x, y, w, h };
 }
+
+/**
+ * The box for a picture whose shape changed (🎨 Edit image › Apply after a crop or a turn): the new shape (`aspect`,
+ * width ÷ height) as big as fits inside the old box, centred where it was, and kept on the slide (W × H).
+ */
+export function fitAspect(o: Box, aspect: number, W = 1920, H = 1080): Box {
+  if (!(aspect > 0) || !Number.isFinite(aspect)) return { ...o };
+  let w = o.w;
+  let h = o.w / aspect;
+  if (h > o.h) {
+    h = o.h;
+    w = o.h * aspect;
+  }
+  // Never bigger than the slide either.
+  const k = Math.min(1, W / w, H / h);
+  w *= k;
+  h *= k;
+  const cx = o.x + o.w / 2;
+  const cy = o.y + o.h / 2;
+  const x = Math.min(W - w, Math.max(0, cx - w / 2));
+  const y = Math.min(H - h, Math.max(0, cy - h / 2));
+  return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+}
