@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  import type { Dir8, Player, Screen, ScreenRef, World, WorldMap, WorldState } from '../../lib/model';
+  import { initials, type Dir8, type Player, type Screen, type ScreenRef, type World, type WorldMap, type WorldState } from '../../lib/model';
   import { DIR_ARROW, DIR_VEC, DIRS, exitOf, mapCrop, mapState, mapVisible, sameRef } from '../../lib/rpg';
   import { dropHover, dropTarget } from '../dragdrop.svelte';
 
@@ -67,8 +67,8 @@
     const row = Math.max(0, Math.min(m.rows - rows, at.row - Math.floor(rows / 2)));
     return { col, row, cols, rows };
   }
-  /** A player's dot carries their initial: colour isn't all that tells two players apart. */
-  const initial = (name: string) => (Array.from(name.trim())[0] ?? '?').toUpperCase();
+  /** A player's dot carries their initials: colour isn't all that tells two players apart. */
+  const initial = initials;
   const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
   /** Players by screen. */
   const byScreen = $derived.by(() => {
@@ -364,9 +364,9 @@
     min-height: 44px;
   }
   .big .dot {
-    width: 18px;
-    height: 18px;
-    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
   }
   .big .cell.none {
     border: 1px dashed rgba(255, 255, 255, 0.12);
@@ -397,11 +397,12 @@
   .dot {
     display: grid;
     place-items: center;
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     border: 1px solid #000;
-    font: 700 10px/1 'Inter', system-ui, sans-serif;
+    font: 700 7px/1 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.5px;
     overflow: hidden;
   }
   /* The dragged players' dots, beside the pointer (the screen under it stays in sight). */
@@ -420,10 +421,10 @@
     font-size: 12px;
   }
   .audience .dot {
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
     border-width: 2px;
-    font-size: 22px;
+    font-size: 18px;
   }
   .arrow {
     position: absolute;
