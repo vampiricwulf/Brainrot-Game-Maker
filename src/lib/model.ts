@@ -1129,8 +1129,30 @@ function repairSlide(s: unknown): Slide {
   for (const el of els) {
     fixId(el);
     if (el.kind === 'text' && typeof el.text !== 'string') el.text = el.text == null ? '' : String(el.text);
+    repairNumbers(el);
   }
   return slide;
+}
+
+/** Number settings an older version saved as null (an Inspector field left empty) go back to their defaults. */
+const NUMBER_DEFAULTS: [path: string, fallback: number][] = [
+  ['x', 0], ['y', 0], ['w', 100], ['h', 100], ['rotation', 0], ['opacity', 1], ['zIndex', 0],
+  ['size', 110], ['lineHeight', 1.2], ['letterSpacing', 0], ['strokeWidth', 0], ['radius', 0],
+  ['stroke.width', 6], ['shadow.x', 0], ['shadow.y', 0], ['shadow.blur', 0], ['glow.blur', 20],
+  ['background.padding', 24], ['background.radius', 16], ['entrance.delay', 0], ['entrance.duration', 0.6],
+];
+function repairNumbers(el: SlideElement): void {
+  for (const [path, fallback] of NUMBER_DEFAULTS) {
+    const keys = path.split('.');
+    let o = el as unknown as Record<string, unknown>;
+    for (const k of keys.slice(0, -1)) o = isObj(o[k]) ? (o[k] as Record<string, unknown>) : {};
+    const last = keys[keys.length - 1];
+    // Only a setting that's there: a missing optional one (an image's corners) stays missing.
+    if (last in o && (typeof o[last] !== 'number' || !Number.isFinite(o[last]))) {
+      if (o[last] === undefined) continue;
+      o[last] = fallback;
+    }
+  }
 }
 
 function repairGame(g: Game): void {
