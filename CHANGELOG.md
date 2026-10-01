@@ -10,6 +10,13 @@ done, the Unreleased lines move under that day's heading.
 
 ## Unreleased
 
+### Added
+- **Remote buzzers, the server half**: a small buzzer room (`buzzer/`, a free Cloudflare Worker) and its phone page.
+  Players open the link on their phone, tap their name and get one big BUZZ button in their colour; the room decides
+  who buzzed first, says "Too early" (with a short lock-out) or "Too late — Ann is answering", and gives a player
+  their seat back after a reload. Deploys from `main` once the Cloudflare secrets are set (see `buzzer/README.md`).
+  (1c5bfc0, 5f8bc06, b525be7)
+
 ### Changed
 - The editor sidebar groups the rounds (Tiebreaker right after them) and the game-wide tabs; the checklist is one line
   per round and a click jumps to the first unfinished tile. Categories show ⋯ for their menu and many-category boards
