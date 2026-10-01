@@ -536,7 +536,7 @@
     {/if}
     {#if askExit}
       <InlineAsk
-        text={session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : 'Leave this game? You can resume it from the editor.'}
+        text={session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : `Leave this game? You can resume it from the ${app.playerOnly ? 'start screen' : 'editor'}.`}
         ok="Leave"
         cancel="Stay"
         danger

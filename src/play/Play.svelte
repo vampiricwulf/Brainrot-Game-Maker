@@ -65,7 +65,7 @@
   }: {
     /** Leave the game (it stays saved and resumable). */
     onexit: () => void;
-    /** Pre-game "Back to editor": nothing was played, so nothing is saved or cleared. */
+    /** Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is saved or cleared. */
     oncancel: () => void;
   } = $props();
 
@@ -1318,8 +1318,8 @@
     <h1>{game.title}</h1>
     {#if app.resumable && app.resumable.session.phase !== 'end'}
       <p class="warn">
-        ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the editor and
-        press Resume game.
+        ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the
+        {app.playerOnly ? 'start screen' : 'editor'} and press Resume game.
       </p>
     {/if}
     <p class="muted">Confirm who's playing. Names, colors, and starting scores can be changed here or during the game.</p>
@@ -1420,14 +1420,14 @@
           {/each}
         </ul>
         <div class="row">
-          <button class="small" onclick={oncancel}>◀ Fix in editor</button>
+          {#if !app.playerOnly}<button class="small" onclick={oncancel}>◀ Fix in editor</button>{/if}
           <span class="muted small">These are only warnings: you can still start.</span>
         </div>
       </details>
     {/if}
 
     <div class="row actions">
-      <button class="ghost" onclick={oncancel}>◀ Back to editor</button>
+      <button class="ghost" onclick={oncancel}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
       <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add at least one player first'}>
         Start game ▶
       </button>
