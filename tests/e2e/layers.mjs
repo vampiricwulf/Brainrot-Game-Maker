@@ -157,11 +157,11 @@ try {
   const coverRow = layers.filter({ hasText: 'cover.png' });
   await page.keyboard.press('Control+z');
   assert(
-    (await coverRow.getByRole('button', { name: 'Lock', exact: true }).count()) === 1 && (await page.locator('.canvas .slide img').count()) === 0,
+    (await coverRow.getByRole('button', { name: 'Lock: cover.png', exact: true }).count()) === 1 && (await page.locator('.canvas .slide img').count()) === 0,
     'Ctrl+Z undoes the lock and leaves the picture hidden',
   );
   await page.keyboard.press('Control+y');
-  assert((await coverRow.getByRole('button', { name: 'Unlock', exact: true }).count()) === 1, 'Ctrl+Y locks it again');
+  assert((await coverRow.getByRole('button', { name: 'Unlock: cover.png', exact: true }).count()) === 1, 'Ctrl+Y locks it again');
   await layers.filter({ hasText: 'cover.png' }).getByRole('button', { name: 'Show while editing' }).click();
   assert((await page.locator('.canvas .slide img').count()) === 1, 'and shows it again');
 
@@ -267,7 +267,7 @@ try {
   assert((await page.locator('.layers-box').count()) === 0, 'a slide with one item has no Layers list');
   await page.locator('.insp').getByLabel('Lock', { exact: true }).check();
   assert((await layers.count()) === 1, 'but it shows once that item is locked');
-  await layers.first().getByRole('button', { name: 'Unlock', exact: true }).click();
+  await layers.first().getByRole('button', { name: /^Unlock: / }).click();
   assert(!(await page.locator('.insp').getByLabel('Lock', { exact: true }).isChecked()), 'and unlocks it from there');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

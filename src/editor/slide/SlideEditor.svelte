@@ -956,8 +956,8 @@
     </div>
 
     <aside class="side">
-      <!-- Also for a lone locked item: clicks go through it, so the list is the easy way to reach it. -->
-      {#if !previewing && (slide.elements.length > 1 || hidden.length || slide.elements.some((e) => e.locked))}
+      <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
+      {#if !previewing && slide.elements.length}
         <details class="layers-box" open>
           <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
           <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
