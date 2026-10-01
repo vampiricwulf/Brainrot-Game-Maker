@@ -10,6 +10,7 @@
     blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
+  import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, newBuzz, type BuzzState } from '../lib/buzz';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
@@ -145,8 +146,8 @@
     if (audience.open || scoresWindow.open) pushGame(g);
   });
   $effect(() => {
-    // The action log (the host's undo history) stays here: viewers never need it.
-    const { actionLog, actionRedo, ...s } = session;
+    // The action log (the host's undo history) and the buzzer room's key stay here: viewers never need them.
+    const { actionLog, actionRedo, remote, ...s } = session;
     if ((audience.open || scoresWindow.open) && !app.pregame) pushSession($state.snapshot(s));
   });
   $effect(() => {
@@ -346,6 +347,10 @@
     if (!amt) return toast('Enter an amount first');
     const events = applyScore(session, game, ids, sign * Math.abs(amt), reasonNow(), info?.clue.id);
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
+    // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out and opens them for the rest.
+    const b = app.live.buzz;
+    if (buzzing && b?.answering && events.length && ids.includes(b.answering))
+      setBuzz(sign > 0 ? buzzDone(b) : buzzMissed(b, b.answering, session.players.map((p) => p.id)));
     for (const e of events) {
       const p = session.players.find((x) => x.id === e.playerId);
       if (p) pop(`${p.name} ${e.delta > 0 ? '+' : '−'}${sym}${Math.abs(e.delta).toLocaleString()}`, p.color);
@@ -357,29 +362,82 @@
 
   const info = $derived(currentClueInfo(session, game));
 
-  /** Buzzer mode, while a clue is open (a Daily Double has its one player): number keys buzz players in. */
+  /** Buzzer mode, while a clue is open (a Daily Double has its one player): players buzz in. */
   const buzzing = $derived(!!game.settings.buzzer && session.phase === 'clue' && !session.dd);
+  /** The buzzers' state (see buzz.ts). */
+  const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
+  const playerIds = () => session.players.map((p) => p.id);
 
-  /** Player n buzzed in: the first one answers, the rest are locked out until 0 (or an award) opens the buzzers again. */
-  function buzzIn(n: number): void {
-    if (!n) {
-      if (selected.length) toast('Buzzers open');
-      selected = [];
-      return;
-    }
-    const p = session.players[n - 1];
-    if (!p || selected.length) return;
-    selected = [p.id];
-    playCue(app.live, game, 'buzz');
+  function setBuzz(b: BuzzState): void {
+    app.live.buzz = b;
+    // The room's openings only go up, also after a reload (see Session.remote).
+    if (session.remote && (session.remote.armId ?? 0) < b.armId) session.remote.armId = b.armId;
   }
 
-  // Viewers see who's answering: the one player selected during a clue.
+  // The buzzers follow the clue: a tile opening (or a resumed game opening on one) starts them afresh, open at once or
+  // closed until the host opens them (Setup); leaving it (back to the board, a Daily Double) puts them away.
+  let buzzClue: string | null = null;
   $effect(() => {
-    const id = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
+    const c = session.currentClue;
+    const key = buzzing && c ? `${c.round}.${c.cat}.${c.row}` : null;
     untrack(() => {
-      if ((app.live.answering ?? null) !== id) app.live.answering = id;
+      if (key === buzzClue && app.live.buzz) return;
+      buzzClue = key;
+      setBuzz(key ? buzzClueOpened(buzz, game.settings.buzzArm !== 'host') : buzzIdle(buzz));
     });
   });
+  // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
+  // picked (or let go) by a click in the host panel answers (or the buzzers open again for the others).
+  $effect(() => {
+    const one = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
+    const on = buzzing;
+    untrack(() => {
+      const b = app.live.buzz;
+      if (!on) {
+        if (!game.settings.buzzer && (b?.answering ?? null) !== one) app.live.buzz = { ...buzzIdle(buzz), answering: one };
+        return;
+      }
+      if (!b) return;
+      if (one && one !== b.answering) setBuzz(buzzTake(b, one, true)!);
+      else if (!one && b.answering) setBuzz(buzzArm({ ...b, answering: null }, playerIds()));
+    });
+  });
+
+  /**
+   * A player buzzed in (their number key, their key in the audience window, or their phone): the first one answers, the
+   * others are locked out until a wrong answer or 0 opens the buzzers again. Never an undo step: a stray buzz must not
+   * cost the host their redo.
+   */
+  function buzzPlayer(id: string, from: 'key' | 'phone' = 'key'): boolean {
+    const b = app.live.buzz;
+    const p = session.players.find((x) => x.id === id);
+    // Someone picked already (by a key or a click): the host's choice stands.
+    if (!buzzing || !b || !p || selected.length) return false;
+    const next = buzzTake(b, id);
+    if (!next) {
+      if (from === 'key' && b.lockedOut.includes(id) && b.phase !== 'answering') toast(`${p.name} already missed this one (0 lets everyone buzz again)`);
+      return false;
+    }
+    setBuzz(next);
+    selected = [id];
+    playCue(app.live, game, 'buzz');
+    return true;
+  }
+
+  /** U or 🔔 Open the buzzers: everyone who hasn't missed this clue may buzz. While someone is answering: everyone (0). */
+  function openBuzzers(all = false): void {
+    if (!buzzing) return;
+    if (all || buzz.phase === 'answering') {
+      if (selected.length || buzz.lockedOut.length) toast('Buzzers open for everyone');
+      selected = [];
+      setBuzz(buzzReset(buzz));
+      return;
+    }
+    if (buzz.phase === 'armed') return;
+    const next = buzzArm(buzz, playerIds());
+    if (next.phase !== 'armed') return toast('Everyone missed this one: 0 lets everyone buzz again');
+    setBuzz(next);
+  }
 
   function pick(ref: ClueRef): void {
     openClue(session, ref, game);
@@ -1219,7 +1277,9 @@
         if (!reveal.order[n - 1]) return;
         reveal.current = reveal.order[n - 1];
       } else if (buzzing) {
-        buzzIn(n);
+        // 0: the buzzers open for everyone again; 1–9: that player buzzes in.
+        if (!n) openBuzzers(true);
+        else if (session.players[n - 1]) buzzPlayer(session.players[n - 1].id);
       } else if (!n) {
         // 0: everyone, or no one (a group award is 0, then Enter).
         selected = selected.length === session.players.length ? [] : session.players.map((p) => p.id);
@@ -1339,6 +1399,11 @@
         if (m) mediaCommand({ el: m[0], op: 'muted', value: !m[1].muted });
         break;
       }
+      case 'u':
+        // Buzzer mode: open the buzzers (after reading the clue, when Setup says the host opens them).
+        if (!buzzing) return;
+        openBuzzers();
+        break;
       case 'y': {
         const m = firstMedia();
         if (m?.[1].openUrl && !openMediaPopup(m[1].openUrl)) toast(POPUP_FAILED, 5000);
@@ -1587,6 +1652,7 @@
         onscores={toggleScores}
         onsound={() => (showSound = true)}
         oncloseoverlay={closeOverlay}
+        onopenbuzzers={openBuzzers}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={() => (hideControls = true)}
         {onexit}

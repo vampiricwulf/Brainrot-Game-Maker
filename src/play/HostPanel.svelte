@@ -72,6 +72,8 @@
     onscores,
     onsound,
     oncloseoverlay,
+    onopenbuzzers,
+    buzzExtra,
   }: {
     game: Game;
     session: Session;
@@ -147,6 +149,10 @@
     /** Open the streaming-sound help (Test sound, output device). */
     onsound: () => void;
     oncloseoverlay: () => void;
+    /** Buzzer mode: open the buzzers (U), or for everyone (`all`, 0). */
+    onopenbuzzers?: (all?: boolean) => void;
+    /** Buzzer mode: what phones add to the buzzer row (later buzzes, the phones' status). */
+    buzzExtra?: Snippet;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -157,6 +163,13 @@
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
   const buzzing = $derived(!!game.settings.buzzer && session.phase === 'clue' && !session.dd);
+  const buzz = $derived(app.live.buzz);
+  const lockedNames = $derived(
+    (buzz?.lockedOut ?? [])
+      .map((id) => session.players.find((p) => p.id === id)?.name)
+      .filter(Boolean)
+      .join(', '),
+  );
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
   const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg' && session.phase !== 'boardgame');
   const introLabel = $derived(
@@ -477,12 +490,17 @@
         − Deduct
       </button>
       {#if buzzing}
-        <!-- Buzzer mode: the first number pressed answers, the others are locked out until the buzzers open again. -->
-        {#if selected.length}
-          <button class="ghost" onclick={() => (selected = [])} title="0: let everyone buzz in again">🔔 Open the buzzers</button>
+        <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. -->
+        {#if buzz?.phase === 'armed' && !selected.length}
+          <span class="muted hint">🔔 Buzzers open: the first one in (1–{Math.min(9, session.players.length) || 9}) answers</span>
+        {:else if buzz?.phase === 'answering' || selected.length}
+          <button class="ghost" onclick={() => onopenbuzzers?.(true)} title="0: let everyone buzz in again">🔔 Open the buzzers</button>
         {:else}
-          <span class="muted hint">🔔 Buzzers open: the first number pressed (1–{Math.min(9, session.players.length) || 9}) answers</span>
+          <button class="primary" onclick={() => onopenbuzzers?.()} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
+          <span class="muted hint">Buzzers closed (number keys still pick)</span>
         {/if}
+        {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
+        {@render buzzExtra?.()}
       {:else if selected.length}
         <button class="ghost" onclick={() => (selected = [])} title="Esc">Clear selection</button>
       {:else}

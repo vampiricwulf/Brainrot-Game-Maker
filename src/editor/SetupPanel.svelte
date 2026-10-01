@@ -49,6 +49,41 @@
           maxlength="9"
         />
       </label>
+      <label class="field">
+        Open the buzzers
+        <select value={s.buzzArm ?? 'open'} onchange={(e) => (s.buzzArm = e.currentTarget.value === 'host' ? 'host' : undefined)}>
+          <option value="open">When the clue opens</option>
+          <option value="host">When I press U (after reading it)</option>
+        </select>
+      </label>
+      <label class="field">
+        Players buzz from
+        <select value={s.buzzFrom ?? 'keys'} onchange={(e) => (s.buzzFrom = e.currentTarget.value === 'phones' ? 'phones' : undefined)}>
+          <option value="keys">This computer's keys</option>
+          <option value="phones">Their phones too</option>
+        </select>
+      </label>
+      {#if s.buzzFrom === 'phones'}
+        <label class="check">
+          <input type="checkbox" checked={!!s.phoneJoin} onchange={(e) => (s.phoneJoin = e.currentTarget.checked || undefined)} />
+          Let new players join from their phone (you add them)
+        </label>
+        <label class="field">
+          A phone that buzzes too early waits (seconds)
+          <input
+            type="number"
+            min="0"
+            max="5"
+            step="0.25"
+            value={s.earlyBuzzLock ?? 1}
+            onchange={(e) => {
+              const n = Math.max(0, Math.min(5, Number(e.currentTarget.value)));
+              s.earlyBuzzLock = Number.isFinite(n) && n !== 1 ? n : undefined;
+              e.currentTarget.value = String(s.earlyBuzzLock ?? 1);
+            }}
+          />
+        </label>
+      {/if}
     {/if}
     <label class="field">
       Points symbol
@@ -70,6 +105,12 @@
       />
     </label>
   </div>
+  {#if s.buzzer && s.buzzFrom === 'phones'}
+    <p class="muted small">
+      Phone buzzers: on the pre-game screen, start a room; players open the link (or scan the code) on their phone and tap
+      their name. Phones need this computer online.
+    </p>
+  {/if}
   {#if s.maxPlayers > 9}
     <p class="muted small">While hosting, the number keys 1–9 pick only the first 9 players: click the others.</p>
   {:else}

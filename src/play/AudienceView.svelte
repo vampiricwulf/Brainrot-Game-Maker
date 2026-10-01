@@ -122,7 +122,7 @@
     if (session.intro?.stage !== 'title' || session.phase === 'board' || !r) return null;
     return isFinal(r) ? finalName(r) : roundName(r, session.currentRound);
   });
-  const answering = $derived(session.phase === 'clue' && !session.dd && live.answering ? byId[live.answering] : undefined);
+  const answering = $derived(session.phase === 'clue' && !session.dd && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
   // started) stays quiet: an audience window opened mid-game doesn't replay the round intro.

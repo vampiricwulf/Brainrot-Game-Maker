@@ -341,6 +341,10 @@ const RULES: Record<string, string> = {
   categoryReveal: 'Category reveal',
   buzzer: 'Buzzer mode',
   buzzKeys: 'Buzz-in keys',
+  buzzArm: 'When the buzzers open',
+  buzzFrom: 'Phone buzzers',
+  phoneJoin: 'New players from their phone',
+  earlyBuzzLock: 'Early buzz wait',
 };
 const FIELDS: Record<string, string> = {
   hostNotes: 'host notes',

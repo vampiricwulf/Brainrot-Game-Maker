@@ -264,6 +264,14 @@ export interface GameSettings {
   buzzer?: boolean;
   /** Buzzer mode: keys that buzz players 1, 2, 3… in from the audience window (e.g. "QPZM"). */
   buzzKeys?: string;
+  /** Buzzer mode: the buzzers open when the clue opens ('open', the default), or when the host opens them (U) after reading it. */
+  buzzArm?: 'open' | 'host';
+  /** Buzzer mode: players buzz from this computer's keys only, or from their phones too (a buzzer room, see remote.svelte.ts). */
+  buzzFrom?: 'keys' | 'phones';
+  /** Phone buzzers: someone not in the game can ask to join from their phone (the host adds them). */
+  phoneJoin?: boolean;
+  /** Phone buzzers: seconds a phone that buzzes before the buzzers open has to wait once they do (default 1; 0: none). */
+  earlyBuzzLock?: number;
 }
 
 /**
@@ -573,6 +581,11 @@ export interface Session {
   /** Everything the host did besides scoring (moves, stats, items, reveals…), newest last, for undo. */
   actionLog?: ActionEvent[];
   actionRedo?: ActionEvent[];
+  /**
+   * Phone buzzers: the buzzer room this game uses, so a reload (or a crash) gets back into the same room. Never sent to the
+   * audience window. `armId`: the last time the buzzers opened there (it only goes up).
+   */
+  remote?: { code: string; hostToken: string; base: string; armId?: number } | null;
 }
 
 // ---------- Toolset: stats, items, shops, actions (games-maker spec §5.1, §7.7–7.10) ----------
