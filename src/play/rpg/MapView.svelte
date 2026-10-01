@@ -380,6 +380,10 @@
   .cell:disabled {
     cursor: default;
   }
+  /* Viewers' cells are disabled buttons: not faded like a disabled button (only unknown screens are). */
+  .cell:disabled:not(.unknown) {
+    opacity: 1;
+  }
   .nm {
     padding: 1px 4px;
     font-weight: 700;
