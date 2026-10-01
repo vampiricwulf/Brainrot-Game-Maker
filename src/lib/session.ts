@@ -113,6 +113,8 @@ export function redo(session: Session): ScoreEvent[] {
     e.undone = false;
     events.push(e);
   }
+  // In the order they happened (the stack gives them back last first), so "Redid …" names them as "Undid …" did.
+  events.reverse();
   followFinals(session, events);
   return events;
 }

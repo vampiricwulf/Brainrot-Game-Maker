@@ -5,7 +5,7 @@ import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
   addLive, avatarSpot, centredOn, droppedObject, dropEntry, giveEntry, joinPartyNow, liveText, moveChoices, objectMenu, partyOn, pickUp, regroupAll, removeObject,
-  sendPlayers, wayOffEdge,
+  sendPlayers, splitOff, stepParty, wayOffEdge,
 } from './hostops';
 
 /** An RPG round with three players standing on its start screen. */
@@ -122,6 +122,15 @@ describe('dragging avatars on the RPG stage', () => {
     regroupAll(game, session, ann.id);
     expect(Object.values(st.positions).every((p) => p.screen === beach.screen)).toBe(true);
     expect(session.actionLog?.at(-1)?.text).toBe('Regroup with Party 2');
+  });
+
+  it('says which party moved once there are several', () => {
+    const { game, session } = withBeach();
+    expect(stepParty(game, session, 'e')).toBeNull();
+    expect(session.actionLog?.at(-1)?.text).toBe('Party east');
+    splitOff(game, session, ['p2']);
+    expect(stepParty(game, session, 'w')).toBeNull();
+    expect(session.actionLog?.at(-1)?.text).toBe('Party 2 west');
   });
 
   it('offers a map screen to the followed party, the selected, each other party and everyone', () => {

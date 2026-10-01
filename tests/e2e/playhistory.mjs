@@ -164,10 +164,14 @@ try {
   await page.locator('.rh .last').click();
   assert((await history())[0] === 'Party east', "the RPG's Last: line opens the history, where the move is");
   await page.keyboard.press('Escape');
+  // A player's sheet on the stage is for this round.
+  await page.keyboard.press('i');
+  await page.locator('.stage-box .sheet').waitFor();
 
   // Board game: D, then Enter moves; Shift+N goes back a turn.
   await nextRound();
   await page.locator('.bh').waitFor();
+  assert((await page.locator('.stage-box .sheet').count()) === 0, "a player's sheet doesn't follow into the next round");
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   await page.keyboard.press('Enter');

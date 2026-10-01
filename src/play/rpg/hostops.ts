@@ -37,7 +37,9 @@ export function stepParty(game: Game, session: Session, dir: Dir8): string | nul
   const { world, st } = rpgNow(game, session);
   if (!world || !st) return 'No world to move in';
   let why: string | null = null;
-  logged(session, `Party ${DIR_NAME[dir].toLowerCase()}`, () => (why = step(game, st, world, dir)));
+  // Which party, once there are several.
+  const who = st.parties.length > 1 ? (activeParty(st)?.name ?? 'Party') : 'Party';
+  logged(session, `${who} ${DIR_NAME[dir].toLowerCase()}`, () => (why = step(game, st, world, dir)));
   return why;
 }
 

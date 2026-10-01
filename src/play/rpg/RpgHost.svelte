@@ -175,15 +175,15 @@
 
   /**
    * Typed text goes on the screen hidden: where the stage was right-clicked (kept on the stage, on that pane's screen in
-   * split view; its card opens), else clear of the avatars.
+   * split view), else clear of the avatars. Its card opens, as for a drawing or a dropped picture.
    */
   function addText(text: string, at?: StagePoint): void {
     ask = null;
     const el = liveText(game, session, text);
     if (at) Object.assign(el, centredOn(at, el.w, el.h));
     if (!addLive(game, session, el, `Text: ${text}`, at?.screen)) return;
-    if (at) object = el.id;
-    else toast('Added, hidden: reveal it from its card');
+    object = el.id;
+    if (!at) toast('Added, hidden: reveal it from its card');
   }
 
   /**

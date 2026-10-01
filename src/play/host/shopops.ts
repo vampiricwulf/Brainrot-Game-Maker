@@ -2,6 +2,7 @@
 import { toast } from '../../lib/app.svelte';
 import type { Game, Session } from '../../lib/model';
 import type { Live } from '../../lib/live';
+import { playerName } from '../../lib/session';
 import { buy, itemDef, logged } from '../../lib/toolset';
 
 type ShopOverlay = Extract<NonNullable<Live['overlay']>, { kind: 'shop' }>;
@@ -25,7 +26,7 @@ export function shopBuy(
   const buyer = shopBuyer(o, session, selected);
   if (!shop || !buyer) return;
   let result: ReturnType<typeof buy> | undefined;
-  logged(session, `Shop: ${itemDef(game, item)?.name}`, () => (result = buy(game, session, shop, buyer, item, opts)));
+  logged(session, `${playerName(session, buyer)} buys ${itemDef(game, item)?.name}`, () => (result = buy(game, session, shop, buyer, item, opts)));
   if (!result) return;
   if (result.ok) {
     o.short = undefined;

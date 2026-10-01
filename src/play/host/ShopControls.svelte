@@ -9,6 +9,7 @@
   import { textOn } from '../../lib/colors';
   import type { Game, Session } from '../../lib/model';
   import { balance, entryName, formatPrice, inventory, itemDef, logged, sell, sellPrice, setStock, shopPrice, stockLeft } from '../../lib/toolset';
+  import { playerName } from '../../lib/session';
   import { shopBuy, shopBuyer } from './shopops';
 
   let { game, session, selected }: { game: Game; session: Session; selected: string[] } = $props();
@@ -24,8 +25,9 @@
     if (!shop || !buyer) return;
     const s = shop;
     const who = buyer;
+    const entry = inventory(session, who).find((e) => e.id === entryId);
     let result: ReturnType<typeof sell> | undefined;
-    logged(session, 'Shop: sell', () => (result = sell(game, session, s, who, entryId)));
+    logged(session, `${playerName(session, who)} sells ${entry ? entryName(game, entry) : 'an item'}`, () => (result = sell(game, session, s, who, entryId)));
     if (result) toast(result.ok ? result.text : result.error, 3000);
   }
 
