@@ -51,6 +51,28 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 
+/** What the editor's saved draft says about buzzers and players (CI-only failures: what a reload came back to). */
+const draftInfo = (page) =>
+  page.evaluate(
+    () =>
+      new Promise((ok) => {
+        const req = indexedDB.open('keyval-store');
+        req.onerror = () => ok('no db');
+        req.onsuccess = () => {
+          try {
+            const get = req.result.transaction('keyval').objectStore('keyval').get('editorDraft');
+            get.onsuccess = () => {
+              const g = get.result;
+              ok(g ? JSON.stringify({ buzzer: g.settings?.buzzer, arm: g.settings?.buzzArm, players: (g.players ?? []).map((p) => p.name) }) : 'no draft');
+            };
+            get.onerror = () => ok('read failed');
+          } catch (e) {
+            ok('error ' + e.message);
+          }
+        };
+      }),
+  );
+
 let browser;
 const errors = [];
 const watch = (p, name) => {
@@ -121,6 +143,7 @@ try {
 
   // ---------- The pre-game screen's room survives a reload, and going back to the editor ----------
   await small(p1).getByText('The game starts soon').waitFor();
+  console.log('DEBUG draft before reload:', await draftInfo(host));
   await host.reload();
   await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await card.locator(`[aria-label="Room code ${code}"]`).waitFor();
@@ -164,7 +187,12 @@ try {
   await host.keyboard.press('k');
   assert(true, 'and on the cover card (K)');
   await host.locator('.stage-box .board .tile').first().click();
-  await big(p1).getByText('Get ready…').waitFor();
+  await big(p1).getByText('Get ready…').waitFor({ timeout: 15_000 }).catch(async (e) => {
+    console.log('DEBUG draft now:', await draftInfo(host));
+    console.log('DEBUG phone:', await big(p1).innerText(), '|', await small(p1).innerText());
+    console.log('DEBUG host:', JSON.stringify((await host.locator('.panel').innerText()).slice(0, 500)));
+    throw e;
+  });
   assert(true, 'opening a clue tells the phones to get ready (buzzers still closed)');
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
