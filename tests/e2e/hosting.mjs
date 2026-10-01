@@ -163,6 +163,24 @@ try {
   assert((await status()).includes('Answer hidden') && (await page.getByRole('button', { name: '👁 Reveal answer' }).count()) === 1, 'Enter in the Daily Double wager box shows the question, the answer stays hidden');
   await page.keyboard.press('Escape');
 
+  // ---------- ✔ / ✘ on a player's chip: shown there, and the same one isn't taken twice; the nav buttons stay put ----------
+  const exitAt = () => page.getByRole('button', { name: '🚪 Exit' }).boundingBox();
+  const onBoard = await exitAt();
+  await tile(7).click();
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+  const inClue = await exitAt();
+  assert(Math.abs(onBoard.x - inClue.x) < 1 && Math.abs(onBoard.y - inClue.y) < 1, `🚪 Exit stays in the same place on the board and in a clue (${onBoard.x},${onBoard.y} → ${inClue.x},${inClue.y})`);
+  const chip = page.locator('.panel .p').first();
+  await chip.getByRole('button', { name: /^Wrong:/ }).click();
+  await chip.locator('.mark').waitFor();
+  assert(
+    (await chip.locator('.mark').innerText()).startsWith('✘ −$400') &&
+      (await chip.getByRole('button', { name: /^Wrong:/ }).isDisabled()) &&
+      (await chip.getByRole('button', { name: /^Right:/ }).isEnabled()),
+    'a player marked ✘ shows it on their chip (✘ −$400), and ✘ is off for them on this clue (✔ still on)',
+  );
+  await page.keyboard.press('Escape');
+
   // ---------- ⏸ Cover pauses the clue's video and the countdown, and they go on after ----------
   await tile(0).click();
   await stage('.full video').waitFor();
@@ -174,6 +192,7 @@ try {
   await stage('.timer').waitFor();
   await page.keyboard.press('k');
   await stage('.cover').waitFor();
+  assert((await status()).includes('⏸ Viewers see the cover'), 'the host’s status line says viewers see the cover');
   await page.waitForTimeout(300);
   const held = await video();
   const n1 = await timerNum();
@@ -321,6 +340,14 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
   const revealScores = (await page.locator('.fj .pl > .muted.small').allInnerTexts()).map((t) => Number(t.split(' · ')[0].replace('−', '-').replace(/[^\d-]/g, '')));
   assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
+  // The main button is N's next step until everyone is judged (finishing early is the smaller one), and the how-to is
+  // open the first time.
+  const revealMain = () => page.locator('.fj button.primary').innerText();
+  assert(
+    /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await page.locator('.fj button.ghost', { hasText: 'Finish game ▶' }).count()) === 1,
+    `in the reveals the main button is the next step (${await revealMain()}), Finish game a smaller one`,
+  );
+  assert(await page.locator('.fj details.how').evaluate((d) => d.open), 'the reveals’ how-to is open the first time');
   // Not chosen yet: outlined at full strength (dimmed, they read too faintly).
   const unchosen = await page.locator('.fj .pl').first().getByRole('button', { name: '✘ Wrong' }).evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);
   assert(unchosen[0] === '1' && unchosen[1] === 'rgba(0, 0, 0, 0)', `an unchosen ✘ Wrong is outlined, not dimmed (${unchosen.join(', ')})`);
@@ -333,6 +360,7 @@ try {
 
   // ---------- A tie for first: no fanfare until it's settled; O rolls off the tied leaders ----------
   await page.locator('.fj .pl').nth(2).getByRole('button', { name: '✔ Right' }).click();
+  assert((await revealMain()).includes('Finish game'), 'with everyone judged, Finish game is the main button');
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Game over'));
   for (let i = 0; i < 3; i++) {
@@ -344,6 +372,7 @@ try {
   const winner = await cues(page, 'winner');
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
+  assert(!(await page.locator('.fj details.how').evaluate((d) => d.open)), 'the how-to is folded after the first time');
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.locator('.tie').waitFor();
   await page.waitForTimeout(300);

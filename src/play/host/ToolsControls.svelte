@@ -80,6 +80,9 @@
     toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a, `${from}: ${describeAction(game, a)}`), 3000);
   }
 
+  /** The wheel landed or the dice came up: Close is the main button now, and spinning or rolling again is secondary. */
+  const landed = $derived(!busy && ((o?.kind === 'wheel' && !!o.spin) || (o?.kind === 'dice' && !!o.roll)));
+
   function tag(id: string): void {
     if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !lastRoll) return;
     const cur = lastRoll.playerIds ?? [];
@@ -95,7 +98,7 @@
     <div class="row">
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
-        <button class="primary" disabled={busy || spent} onclick={() => spinWheel(app.live, session, game)} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>
+        <button class:primary={!landed} disabled={busy || spent} onclick={() => spinWheel(app.live, session, game)} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>
           {o.spin ? 'Spin again' : 'Spin!'}
         </button>
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => (o.editing = !o.editing)} title="Turn slices off or change their chances for this spin">
@@ -138,7 +141,7 @@
         {/if}
       {:else if o.kind === 'dice'}
         <b>🎲 {o.name}</b>
-        <button class="primary" disabled={busy} onclick={() => rollDice(app.live, session, o.preset)} title="D">{o.roll ? 'Roll again' : 'Roll!'}</button>
+        <button class:primary={!landed} disabled={busy} onclick={() => rollDice(app.live, session, o.preset)} title="D">{o.roll ? 'Roll again' : 'Roll!'}</button>
       {:else if o.kind === 'rolloff'}
         <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
         {#if !busy && o.purpose === 'buzz'}
@@ -168,7 +171,7 @@
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
       <!-- A shop has its own 🚪 Leave shop. -->
-      {#if o.kind !== 'shop'}<button onclick={onclose} title="Esc">Close</button>{/if}
+      {#if o.kind !== 'shop'}<button class:primary={landed} onclick={onclose} title="Esc">Close</button>{/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">

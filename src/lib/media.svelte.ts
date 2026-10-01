@@ -479,6 +479,19 @@ export function imgFallback(e: Event): void {
   }
 }
 
+/** A game picture's size as a new slide picture: up to 1100 × 700 (and 1.5× its own size), 960 × 540 if it won't load. */
+export function slideImageSize(id: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1100 / img.naturalWidth, 700 / img.naturalHeight, 1.5);
+      resolve({ w: Math.round(img.naturalWidth * s) || 960, h: Math.round(img.naturalHeight * s) || 540 });
+    };
+    img.onerror = () => resolve({ w: 960, h: 540 });
+    img.src = mediaUrls[id];
+  });
+}
+
 const KIND_WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a video', audio: 'a sound', font: 'a font' };
 
 /**

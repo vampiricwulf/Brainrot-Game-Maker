@@ -4,6 +4,8 @@ import { deflateSync } from 'node:zlib';
 /**
  * A new game has no rounds: add a Jeopardy board and a Final Jeopardy (the classic game most tests play), then go
  * back to the board's tab. Does nothing if the game already has rounds (e.g. after a reload).
+ * The board wants no Daily Doubles (a test makes a tile one by hand, which counts it): Start game would otherwise
+ * put one on a random tile, and a test clicking that tile would get its wager screen.
  */
 export async function addClassicRounds(page) {
   await page.getByRole('button', { name: 'Open…' }).waitFor();
@@ -13,6 +15,14 @@ export async function addClassicRounds(page) {
     await page.getByRole('menuitem', { name: mode }).click();
   }
   await page.locator('nav > button.round-tab').first().click();
+  await noDailyDoubles(page);
+}
+
+/** The open board wants no Daily Doubles (none go on at random when the game starts). */
+export async function noDailyDoubles(page) {
+  const box = page.getByLabel('How many Daily Doubles');
+  await box.fill('0');
+  await box.press('Tab');
 }
 
 /** The first Save of an untitled game asks for its name: answer with `name` ('' keeps "Untitled Game"). */
@@ -80,7 +90,7 @@ export async function playWithPlayers(page, n) {
   await addPlayers(page, n);
 }
 
-/** The pre-game screen's 📋 Game rules, opened (rules, timers, the round intro). */
+/** The pre-game screen's ⚖ Game rules, opened (rules, timers, the round intro). */
 export async function openRules(page) {
   const rules = page.locator('details.rules');
   await rules.waitFor();

@@ -86,14 +86,35 @@ try {
   assert(true, 'the name can be shown on top of the image');
   await page.locator('.cat').nth(1).getByRole('combobox').selectOption('cover');
 
-  // ---------- Tile images: three files dropped on a tile fill it and the next tiles down the column ----------
+  // ---------- A picture dropped on a tile asks where it goes: the question (the default), or the tile's face ----------
   const cols = await page.locator('.cat').count();
   const editorTile = (ci, row) => page.locator('.grid .tile').nth(row * cols + ci);
+  const dropAsk = page.getByRole('group', { name: 'Where the dropped picture goes' });
+  await drop(editorTile(1, 1), [['q.png', png(10, 20, 200)]]);
+  await dropAsk.waitFor();
+  assert(
+    await dropAsk.getByRole('button', { name: 'Put it in the question' }).evaluate((b) => b === document.activeElement),
+    'a picture dropped on a tile asks where it goes, the question first',
+  );
+  await page.keyboard.press('Enter');
+  await editorTile(1, 1).locator('.kinds', { hasText: '🖼' }).waitFor();
+  assert((await editorTile(1, 1).locator('img.face').count()) === 0 && (await dropAsk.count()) === 0, 'Enter puts it in the question, not on the tile’s face');
+  // In the question it sits above the text, which moved into a band under it (not on top of each other).
+  await editorTile(1, 1).click();
+  const qSlide = page.locator('.canvas .slide').first();
+  await qSlide.locator('.el:has(img)').waitFor();
+  const picBox = await qSlide.locator('.el:has(img)').boundingBox();
+  const textBox = await qSlide.locator('.el:has(.text)').first().boundingBox();
+  assert(picBox.y + picBox.height <= textBox.y + 2, 'the picture goes above the question’s text, which moves into a band under it');
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // ---------- Tile images: three files dropped on a tile fill it and the next tiles down the column ----------
   await drop(editorTile(2, 3), [
     ['t1.png', png(255, 255, 0)],
     ['t2.png', png(0, 255, 255)],
     ['t3.png', png(255, 0, 255)],
   ]);
+  await dropAsk.getByRole('button', { name: /Use as the tile's face/ }).click();
   await editorTile(3, 0).locator('img.face').waitFor();
   assert(
     (await editorTile(2, 3).locator('img.face').count()) === 1 && (await editorTile(2, 4).locator('img.face').count()) === 1,

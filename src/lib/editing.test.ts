@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, isMediaLink, knobPlacement, officeTextPaste, playRange, SnapshotHistory } from './editing';
+import { aspectCrop, freeOffset, isMediaLink, knobPlacement, officeTextPaste, placePicture, playRange, SnapshotHistory } from './editing';
 
 describe('slide undo history', () => {
   it('undoes a change made a moment ago (before its debounce committed it)', () => {
@@ -142,5 +142,37 @@ describe('a clip’s Start at and Stop at', () => {
     expect(playRange(-3, 4)).toEqual({ start: 0, end: 4 });
     expect(playRange(undefined, undefined)).toEqual({ start: 0, end: undefined });
     expect(playRange(NaN, -1)).toEqual({ start: 0, end: undefined });
+  });
+});
+
+describe('placing a new picture', () => {
+  const question = { id: 'q', kind: 'text', x: 120, y: 90, w: 1680, h: 900 };
+  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+  it('puts it above the question alone, and the question in a band below it', () => {
+    const { box, text } = placePicture([question, { id: 'a', kind: 'audio', x: 1700, y: 860, w: 140, h: 140 }], 1100, 700);
+    expect(text?.id).toBe('q');
+    expect(box.y).toBe(50);
+    expect(box.h).toBeLessThan(700);
+    expect(box.w / box.h).toBeCloseTo(1100 / 700, 1);
+    expect(overlaps(box, text!.box)).toBe(false);
+    expect(text!.box.y + text!.box.h).toBeLessThanOrEqual(1080);
+    expect(text!.box.h).toBeGreaterThanOrEqual(300);
+  });
+
+  it('goes where it misses the text when there is more on the slide', () => {
+    const title = { id: 't', kind: 'text', x: 120, y: 60, w: 1680, h: 200 };
+    const shape = { id: 's', kind: 'shape', x: 0, y: 0, w: 100, h: 100 };
+    const { box, text } = placePicture([title, shape], 960, 540);
+    expect(text).toBeUndefined();
+    expect(overlaps(box, title)).toBe(false);
+    expect(box.y).toBeGreaterThanOrEqual(260);
+  });
+
+  it('stays in the middle with no text, or no room around it', () => {
+    expect(placePicture([], 960, 540).box).toEqual({ x: 480, y: 270, w: 960, h: 540 });
+    const full = { id: 't', kind: 'text', x: 0, y: 0, w: 1920, h: 1080 };
+    expect(placePicture([full, { id: 's', kind: 'shape', x: 0, y: 0, w: 10, h: 10 }], 960, 540).box).toEqual({ x: 480, y: 270, w: 960, h: 540 });
   });
 });

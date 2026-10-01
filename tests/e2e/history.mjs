@@ -274,6 +274,10 @@ try {
   assert((await imageWidth()) === 80, 'Ctrl+Z after two reloads brings the removed file back, showing');
 
   // ---------- Changes made while hosting are steps too ----------
+  // (The board wants a Daily Double again: addClassicRounds asked for none.)
+  await page.locator('nav button.round-tab').first().click();
+  await page.getByLabel('How many Daily Doubles').fill('1');
+  await page.getByLabel('How many Daily Doubles').press('Tab');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.locator('.checks summary').click();
   await page.getByRole('button', { name: '🎲 Place now' }).first().click();

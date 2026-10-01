@@ -5,7 +5,8 @@
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
+  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, type BoardRound, type Clue } from '../lib/model';
+  import { placeNewPicture } from '../lib/editing';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import {
@@ -30,7 +31,7 @@
   import { randomizeDailyDoubles } from '../lib/session';
   import { followClueText } from '../lib/cluetext';
   import { toast } from '../lib/app.svelte';
-  import { addMediaFile, imgFallback, mediaUrls } from '../lib/media.svelte';
+  import { addMediaFile, imgFallback, mediaUrls, slideImageSize } from '../lib/media.svelte';
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -72,12 +73,17 @@
 
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
-  /** Store dropped image files, skipping anything that isn't an image. */
-  async function images(e: DragEvent): Promise<string[]> {
+  /** The files a drop brought (it's ours: the browser doesn't open them). */
+  function dropped(e: DragEvent): File[] {
     e.preventDefault();
     dropTarget = null;
+    return Array.from(e.dataTransfer?.files ?? []);
+  }
+
+  /** Store dropped image files, skipping anything that isn't an image. */
+  async function images(files: File[]): Promise<string[]> {
     const ids: string[] = [];
-    for (const file of Array.from(e.dataTransfer?.files ?? [])) {
+    for (const file of files) {
       try {
         const ref = await addMediaFile(app.game, file);
         if (ref.kind === 'image') ids.push(ref.id);
@@ -92,8 +98,9 @@
   // Several images dropped at once fill the next categories to the right…
   // (The files and where they go: one step.)
   function dropOnCategory(e: DragEvent, ci: number): Promise<void> {
+    const files = dropped(e);
     return stepAsync(null, async () => {
-      const ids = await images(e);
+      const ids = await images(files);
       ids.forEach((id, i) => {
         const cat = round.categories[ci + i];
         if (cat) cat.image = id;
@@ -106,22 +113,54 @@
     });
   }
 
+  /**
+   * Image files dropped on a tile: asked first whether they go in the question (the usual meaning, and the default) or
+   * on the tile's face, which the board shows instead of the value until it's picked.
+   */
+  let tileDrop = $state<{ files: File[]; cat: number; row: number } | null>(null);
+  let dropAskEl = $state<HTMLElement>();
+  $effect(() => {
+    if (tileDrop) void tick().then(() => dropAskEl?.querySelector<HTMLButtonElement>('button')?.focus());
+  });
+
   // …and the next tiles down the column (then on to the next column), skipping empty tiles.
-  function dropOnTile(e: DragEvent, ci: number, row: number): Promise<void> {
+  function dropOnTile(files: File[], ci: number, row: number, where: 'question' | 'face'): Promise<void> {
     return stepAsync(null, async () => {
-      const ids = await images(e);
+      const ids = await images(files);
       const rows = round.values.length;
-      let n = 0;
-      for (let idx = ci * rows + row; idx < round.categories.length * rows && n < ids.length; idx++) {
+      const clues: Clue[] = [];
+      for (let idx = ci * rows + row; idx < round.categories.length * rows && clues.length < ids.length; idx++) {
         const clue = round.categories[Math.floor(idx / rows)].clues[idx % rows];
-        if (clue.empty) continue;
-        clue.tileFace = { ...clue.tileFace, image: ids[n++] };
+        if (!clue.empty) clues.push(clue);
       }
-      if (ids.length > 1) {
+      for (const [i, clue] of clues.entries()) {
+        if (where === 'face') clue.tileFace = { ...clue.tileFace, image: ids[i] };
+        else {
+          // On the question slide, clear of its text (as ＋ Image in the clue editor puts it).
+          const { w, h } = await slideImageSize(ids[i]);
+          const el = newImageEl(ids[i], w, h);
+          const els = clue.questionSlide.elements;
+          el.zIndex = Math.max(0, ...els.map((e) => e.zIndex)) + 1;
+          placeNewPicture(els, el);
+          els.push(el);
+        }
+      }
+      const n = clues.length;
+      if (where === 'question' && n) {
+        const what = n === 1 ? `Put a picture in ${tileName({ cat: ci, row })}` : `Put pictures in ${n} questions`;
+        nameStep(what);
+        toast(what);
+      } else if (n > 1) {
         nameStep(`Set ${n} tile images`);
         toast(`Set ${n} tile images`);
       }
     });
+  }
+
+  function dropChosen(where: 'question' | 'face'): void {
+    const d = tileDrop;
+    tileDrop = null;
+    if (d) void dropOnTile(d.files, d.cat, d.row, where);
   }
 
   // An undo or redo here: open the clue or the board images it changed, or close them to show the board.
@@ -294,7 +333,10 @@
       e.preventDefault();
       dropClue(tileDrag, p, e.ctrlKey || e.altKey);
       tileDragEnd();
-    } else if (!empty && hasFiles(e)) dropOnTile(e, p.cat, p.row);
+    } else if (!empty && hasFiles(e)) {
+      const files = dropped(e);
+      if (files.length) tileDrop = { files, ...p };
+    }
   }
 
   function tileDragEnd(): void {
@@ -569,6 +611,24 @@
   <span class="muted small">{dailyDoublesPlaced(round)} placed</span>
 </div>
 
+{#if tileDrop}
+  {@const n = tileDrop.files.length}
+  <!-- Where a picture dropped on a tile goes. The focus starts on the question (Enter); Esc cancels. -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div
+    class="drop-ask row"
+    role="group"
+    aria-label="Where the dropped picture goes"
+    bind:this={dropAskEl}
+    onkeydown={(e) => e.key === 'Escape' && (tileDrop = null)}
+  >
+    <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(tileDrop)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
+    <button class="primary small" onclick={() => dropChosen('question')}>Put {n === 1 ? 'it' : 'them'} in the question</button>
+    <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
+    <button class="ghost small" onclick={() => (tileDrop = null)}>Cancel</button>
+  </div>
+{/if}
+
 <div class="grid-wrap">
   <div class="grid" class:many={round.categories.length >= 8} bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
     {#each round.categories as cat, ci (cat.id)}
@@ -713,7 +773,7 @@
 {/if}
 <p class="muted small tip">
   Tips: drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it. Right-click a tile, a category or a row value for
-  more. Drop image files onto a category or a tile to use them there. Paste a column of clues from a spreadsheet on a category's name to fill it.
+  more. Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face). Paste a column of clues from a spreadsheet on a category's name to fill it.
 </p>
 
 <style>
@@ -739,6 +799,12 @@
   }
   .values input {
     width: 80px;
+  }
+  .drop-ask {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border: 1px dashed var(--accent);
+    border-radius: 8px;
   }
   .grid-wrap {
     overflow-x: auto;

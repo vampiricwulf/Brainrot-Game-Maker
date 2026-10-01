@@ -83,9 +83,22 @@ try {
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);
 
-  // ---------- Play: players on the pre-game screen ----------
+  // ---------- Play: players on the pre-game screen; Start places a Daily Double the board wants but hasn't got ----------
+  await page.locator('nav button.round-tab').first().click();
+  await page.getByLabel('How many Daily Doubles').fill('1');
+  await page.getByLabel('How many Daily Doubles').press('Tab');
   await playWithPlayers(page, 3);
+  const ddNote = page.locator('.actions', { hasText: '⭐ 1 Daily Double not placed' });
+  assert((await ddNote.count()) === 1, 'the pre-game screen says, next to Start game, that a Daily Double isn’t placed yet');
+  // (Its random pick is the last tile it could take, so the first tile clicked below is an ordinary clue.)
+  await page.evaluate(() => {
+    window.__random = Math.random;
+    Math.random = () => 0.9999;
+  });
   await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.evaluate(() => (Math.random = window.__random));
+  await page.locator('.toast', { hasText: '⭐ Placed 1 Daily Double at random in Jeopardy!' }).waitFor();
+  assert(true, 'Start game places it at random and says so');
   await page.locator('.stage-box .title-card').waitFor();
   assert((await played(page, 'roundIntro')) === 1, 'the round intro plays its built-in sound with the title card');
   await page.getByRole('button', { name: 'Skip intro' }).click();

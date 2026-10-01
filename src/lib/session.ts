@@ -326,6 +326,21 @@ export function clueScored(session: Session, clueId: string): boolean {
 }
 
 /**
+ * How each player was marked on a clue (since `since`, when it was opened: a reopened tile starts afresh): right or
+ * wrong by their last mark, with the points it came to. The host panel shows it on their chip, and a second ✔ or ✘
+ * the same way isn't taken again.
+ */
+export function clueMarks(session: Session, clueId: string, since = 0): Record<string, { right: boolean; delta: number }> {
+  const marks: Record<string, { right: boolean; delta: number }> = {};
+  for (const e of session.scoreLog) {
+    if (e.undone || e.clueId !== clueId || e.ts < since) continue;
+    const right = e.right ?? e.delta > 0;
+    marks[e.playerId] = { right, delta: (marks[e.playerId]?.delta ?? 0) + e.delta };
+  }
+  return marks;
+}
+
+/**
  * Close the current clue and mark it used, unless `markUsed` is false (cancelled, or the question never showed).
  * Returns the id of the clue that was marked used.
  */

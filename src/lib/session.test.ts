@@ -7,7 +7,7 @@ import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
-  toggleUsed, usedTiles, describeStep, awardOpen, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
+  toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList,
 } from './session';
@@ -31,6 +31,21 @@ describe('scoring', () => {
     applyScore(session, game, [c], -125, 'x');
     applyScore(session, game, [], 400, 'nobody');
     expect([score(session, a), score(session, b), score(session, c)]).toEqual([350, 350, -125]);
+  });
+
+  it('knows how each player was marked on a clue (since it opened, undone marks left out)', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a], 400, 'old', 'q1');
+    const since = Date.now() + 1;
+    for (const e of session.scoreLog) e.ts = since - 10;
+    applyScore(session, game, [a], -400, 'x', 'q1');
+    applyScore(session, game, [b], 400, 'x', 'q1');
+    applyScore(session, game, [b], -400, 'x', 'q1');
+    applyScore(session, game, [c], 400, 'x', 'q1');
+    undo(session);
+    applyScore(session, game, [c], 400, 'x', 'other');
+    for (const e of session.scoreLog) if (e.reason === 'x') e.ts = since;
+    expect(clueMarks(session, 'q1', since)).toEqual({ [a]: { right: false, delta: -400 }, [b]: { right: false, delta: 0 } });
   });
 
   it('clamps deductions at 0 when negative scores are off', () => {

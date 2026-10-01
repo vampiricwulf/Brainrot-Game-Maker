@@ -1,11 +1,11 @@
-// The ▶ Play screen before the game (players, 📋 Game rules, the sticky Start bar, Ctrl+Z / Ctrl+Y there, History's
+// The ▶ Play screen before the game (players, ⚖ Game rules, the sticky Start bar, Ctrl+Z / Ctrl+Y there, History's
 // Go there), the rules mid-game, a rematch keeping the players' pictures, and phone buzzers in a copy without a buzzer
 // server (an old game with Buzzer mode on, an exported player-only file).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportHtml, openRules } from './helpers.mjs';
+import { exportHtml, noDailyDoubles, openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -44,11 +44,12 @@ try {
   await page.goto(pathToFileURL(file).href);
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  await noDailyDoubles(page);
 
   // ---------- 🔊 Sounds points to ▶ Play ----------
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
   const elsewhere = page.locator('.elsewhere');
-  assert((await elsewhere.innerText()).includes('📋 Game rules') && (await elsewhere.getByRole('button', { name: 'Open the Play screen ›' }).count()) === 1, '🔊 Sounds says, at the top, where the players and rules are, with a ▶ Play button');
+  assert((await elsewhere.innerText()).includes('⚖ Game rules') && (await elsewhere.getByRole('button', { name: 'Open the Play screen ›' }).count()) === 1, '🔊 Sounds says, at the top, where the players and rules are, with a ▶ Play button');
   assert((await page.getByRole('button', { name: /^Back to the built-in .* sound$/ }).count()) === 0, '(no ↺ until a sound has a file of its own)');
 
   // ---------- Enter adds the next player: each one named is one step, called by their name ----------
@@ -70,9 +71,9 @@ try {
   }
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  // ---------- The sticky Start bar, with 📋 Game rules open, at 1280×720 ----------
+  // ---------- The sticky Start bar, with ⚖ Game rules open, at 1280×720 ----------
   const rules = await openRules(page);
-  assert((await rules.locator('summary h2').innerText()).includes('📋 Game rules'), 'the rules’ fold is a heading of its own: 📋 Game rules');
+  assert((await rules.locator('summary h2').innerText()).includes('⚖ Game rules'), 'the rules’ fold is a heading of its own: ⚖ Game rules');
   await page.evaluate(() => window.scrollTo(0, 0));
   const startBox = await start.boundingBox();
   const onTop = await start.evaluate((b) => {
@@ -133,8 +134,8 @@ try {
   await start.click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
 
-  // ---------- 📋 Game rules mid-game, and raising Most players from 👥 Players ----------
-  await page.getByRole('button', { name: '📋 Game rules' }).click();
+  // ---------- ⚖ Game rules mid-game, and raising Most players from 👥 Players ----------
+  await page.getByRole('button', { name: '⚖ Rules' }).click();
   const rulesDialog = page.getByRole('dialog', { name: 'Game rules' });
   const most = rulesDialog.getByLabel('Most players');
   await most.fill('1');
@@ -147,7 +148,7 @@ try {
   await playersDialog.getByRole('button', { name: 'Raise Most players to 3' }).click();
   assert(await playersDialog.getByRole('button', { name: '＋ Add player' }).isEnabled(), '…and Raise Most players lets one more in');
   await playersDialog.getByRole('button', { name: 'Done' }).click();
-  await page.getByRole('button', { name: '📋 Game rules' }).click();
+  await page.getByRole('button', { name: '⚖ Rules' }).click();
   assert((await most.inputValue()) === '3', 'the rules show the new Most players');
   await page.keyboard.press('Escape');
   assert((await rulesDialog.count()) === 0, 'Esc closes the rules');
@@ -157,6 +158,10 @@ try {
   await page.getByRole('button', { name: 'End game ▶' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  // Rematch asks first (the results go).
+  await page.getByRole('button', { name: '🔁 Rematch' }).click();
+  await page.getByText('Start a rematch? Scores go back to 0.').waitFor();
+  await page.waitForTimeout(450);
   await page.getByRole('button', { name: '🔁 Rematch' }).click();
   await start.waitFor();
   assert((await page.getByRole('button', { name: 'Picture for Bo' }).locator('img').count()) === 1, 'a rematch keeps the players’ pictures');

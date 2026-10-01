@@ -1,7 +1,7 @@
 // Pure helpers behind the slide and image editors: undo history, placement, crop geometry, pastes and playback.
 // (Hit testing and restacking live in layers.ts.) No DOM or Svelte state here, so all of it is
 // unit-tested (editing.test.ts).
-import { SLIDE_H, SLIDE_W } from './model';
+import { SLIDE_H, SLIDE_W, type SlideElement } from './model';
 
 // ---------- Undo history ----------
 
@@ -87,6 +87,77 @@ export function knobPlacement(el: Box & { rotation: number }, dist: number): 'ab
   if (on(-(el.h / 2 + dist))) return 'above';
   if (on(el.h / 2 + dist)) return 'below';
   return 'inside';
+}
+
+/** A slide item as far as placing a new picture goes. */
+export interface PlacedItem extends Box {
+  id: string;
+  kind: string;
+}
+
+/**
+ * Where a new picture (w × h, already sized for the slide) goes, so it doesn't land on the question's text. A slide
+ * with nothing on it but its main text box (a clue's question, as new): the picture takes the upper part and the text
+ * box moves into a band below it (`text`, its new box). Otherwise the picture goes beside, above or below the text,
+ * where it can be biggest (shrunk to fit, never grown), or in the middle when there's no text or no room.
+ * Audio items don't count (they're hidden in play or a small icon).
+ */
+export function placePicture(items: PlacedItem[], w: number, h: number, W = SLIDE_W, H = SLIDE_H): { box: Box; text?: { id: string; box: Box } } {
+  const centred = { x: Math.round((W - w) / 2), y: Math.round((H - h) / 2), w, h };
+  const shown = items.filter((e) => e.kind !== 'audio');
+  const texts = shown.filter((e) => e.kind === 'text');
+  if (!texts.length) return { box: centred };
+  const M = 40;
+  const GAP = 30;
+  // Fit into a region, no bigger than it was.
+  const fit = (r: Box): Box | null => {
+    const k = Math.min(1, r.w / w, r.h / h);
+    if (!(k > 0)) return null;
+    const bw = Math.round(w * k);
+    const bh = Math.round(h * k);
+    return { x: Math.round(r.x + (r.w - bw) / 2), y: Math.round(r.y + (r.h - bh) / 2), w: bw, h: bh };
+  };
+  if (shown.length === 1) {
+    // The question alone: the picture on top, the text in the band below (at least 310 of the 1080 high).
+    const t = texts[0];
+    const band = { x: 120, y: 50, w: W - 240, h: Math.round(H * 0.6) - 50 };
+    const pic = fit(band)!;
+    pic.y = band.y;
+    const top = pic.y + pic.h + GAP;
+    return { box: pic, text: { id: t.id, box: { x: 120, y: top, w: W - 240, h: H - 50 - top } } };
+  }
+  // Around the text: the free strips above, below, left and right of all of it.
+  const x0 = Math.min(...texts.map((e) => e.x));
+  const y0 = Math.min(...texts.map((e) => e.y));
+  const x1 = Math.max(...texts.map((e) => e.x + e.w));
+  const y1 = Math.max(...texts.map((e) => e.y + e.h));
+  const strips: Box[] = [
+    { x: M, y: M, w: W - 2 * M, h: y0 - GAP - M },
+    { x: M, y: y1 + GAP, w: W - 2 * M, h: H - M - y1 - GAP },
+    { x: M, y: M, w: x0 - GAP - M, h: H - 2 * M },
+    { x: x1 + GAP, y: M, w: W - M - x1 - GAP, h: H - 2 * M },
+  ];
+  let best: Box | null = null;
+  for (const s of strips) {
+    if (s.w <= 0 || s.h <= 0) continue;
+    const b = fit(s);
+    if (b && (!best || b.w * b.h > best.w * best.h)) best = b;
+  }
+  // Too small to see (under a sixth of its size, or a sliver): the middle, as before.
+  return { box: best && best.w * best.h >= (w * h) / 6 && Math.min(best.w, best.h) >= 120 ? best : centred };
+}
+
+/**
+ * Move a new picture (not on the slide yet) to its place among `elements` (see placePicture), and the main text with
+ * it when that moves too. A text box that doesn't shrink its words to fit gets a smaller size to match its new box.
+ */
+export function placeNewPicture(elements: SlideElement[], pic: Box): void {
+  const { box, text } = placePicture(elements, pic.w, pic.h);
+  Object.assign(pic, box);
+  const t = text && elements.find((e) => e.id === text.id);
+  if (t?.kind !== 'text') return;
+  if (!t.autoFit) t.size = Math.max(12, Math.round(t.size * Math.min(1, text!.box.h / t.h, text!.box.w / t.w)));
+  Object.assign(t, text!.box);
 }
 
 // ---------- Links ----------

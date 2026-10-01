@@ -24,7 +24,7 @@
 <h2>{finalName(round)}</h2>
 <div class="grid">
   <label class="field">
-    Name (shown on screen)
+    Round name
     <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" data-round-name />
   </label>
   <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" data-field="final-category" /></label>

@@ -4,7 +4,7 @@
   import { textOn } from '../lib/colors';
   import { takeFocus } from '../lib/modal';
   import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -21,7 +21,7 @@
   import { app } from '../lib/app.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
   import { scoresWindow } from '../lib/sync.svelte';
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
 
   let {
     game,
@@ -67,6 +67,7 @@
     ontiebreakerdone,
     oncowinners,
     onjudge,
+    onrevealnext,
     onrolloff,
     onlog,
     onplayers,
@@ -147,11 +148,13 @@
     oncowinners?: () => void;
     /** The Final reveals: a player marked right or wrong (with its sound). */
     onjudge: (playerId: string, right: boolean) => void;
+    /** The Final reveals' next step (N): show the spotlit wager, then the next player. */
+    onrevealnext: () => void;
     onrolloff?: (ids: string[]) => void;
     /** Open or close the 📜 Log (with a tab: open it on that tab). */
     onlog: (tab?: LogTab) => void;
     onplayers: () => void;
-    /** 📋 Game rules, mid-game (a window). */
+    /** ⚖ Game rules, mid-game (a window). */
     onrules: () => void;
     onhide: () => void;
     onexit: () => void;
@@ -253,6 +256,24 @@
     editingScore = null;
   }
 
+  // How each player was marked on the open clue (✔ / ✘, or Award / Deduct): on their chip, and the same quick button
+  // again isn't taken twice. Only since the clue opened (a reopened tile starts afresh; after a reload, all of it).
+  let markSince = $state(0);
+  let markClue: string | null = untrack(() => clueKey());
+  function clueKey(): string | null {
+    const c = session.phase === 'clue' ? session.currentClue : null;
+    return c ? `${c.round}.${c.cat}.${c.row}` : null;
+  }
+  $effect(() => {
+    const k = clueKey();
+    untrack(() => {
+      if (k === markClue) return;
+      markClue = k;
+      markSince = Date.now();
+    });
+  });
+  const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, markSince) : {});
+
   /** The quick ✔/✘ buttons: clue phase only, and during a Daily Double only for the player who found it. */
   const quickFor = (id: string) =>
     game.settings.deductOnWrong && session.phase === 'clue' && !!info && (session.dd?.stage !== 'question' || session.dd.playerId === id);
@@ -264,7 +285,7 @@
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
       {#if session.intro}
-        <span class="muted">Round intro… <span class="hint">click the screen or press N to continue</span></span>
+        <span class="muted">Round intro <span class="hint">· click the screen or press N to go on</span></span>
       {:else}
         <span class="muted">Pick a tile on the board.</span>
       {/if}
@@ -334,13 +355,13 @@
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
         <!-- Its title card is up: viewers don't see the category yet. -->
-        <span class="muted">Title card <span class="hint">· click the screen or press N to start the round</span></span>
+        <span class="muted">Title card <span class="hint">· click the screen or press N to go on</span></span>
       {:else}
         <span class="muted">{finalStepText[session.finalStep ?? 'category']}</span>
       {/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
-      <span class="muted">Title card <span class="hint">· click the screen or press N to start the round</span></span>
+      <span class="muted">Title card <span class="hint">· click the screen or press N to go on</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
@@ -358,6 +379,7 @@
       <b>Game over</b>
       <span class="muted hint">Click a score to fix it.</span>
     {/if}
+    {#if app.live.cover}<span class="covered">⏸ Viewers see the cover <span class="hint">(K to uncover)</span></span>{/if}
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
     {@render phoneChip?.()}
@@ -401,7 +423,7 @@
   <!-- (Not while its title card is up: the category isn't on screen yet.) -->
   {#if session.phase === 'final' && session.intro?.stage !== 'title'}
     <div class="mode-host">
-      <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} {onjudge} onback={onbackfromfinal} />
+      <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} {onjudge} {onrevealnext} onback={onbackfromfinal} />
     </div>
   {/if}
 
@@ -481,18 +503,31 @@
           {/if}
           <!-- Just the marks (the value is in their names): the chips keep their width, so opening a clue doesn't wrap the
                row and shrink the stage. -->
+          {#if marks[p.id]}
+            {@const m = marks[p.id]}
+            <!-- Marked on this clue: what it came to. -->
+            <span class="mark" class:right={m.right} class:wrong={!m.right}>
+              {m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}
+            </span>
+          {/if}
           {#if quickFor(p.id)}
+            <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose). -->
+            {@const was = marks[p.id]?.right}
             <button
               class="small quick right"
               onclick={() => onright(p.id)}
+              disabled={was === true}
               aria-label="Right: {p.name} +{formatPoints(quickValue, sym)}"
-              title="Correct: award {formatPoints(quickValue, sym)} to {p.name} only">✔</button
+              title={was === true ? `${p.name} is marked right on this clue (＋ Award gives more)` : `Correct: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
+              >✔</button
             >
             <button
               class="small quick wrong"
               onclick={() => onwrong(p.id)}
+              disabled={was === false}
               aria-label="Wrong: {p.name} −{formatPoints(quickValue, sym)}"
-              title="Wrong: deduct {formatPoints(quickValue, sym)} from {p.name}">✘</button
+              title={was === false ? `${p.name} is marked wrong on this clue (− Deduct takes more)` : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
+              >✘</button
             >
           {/if}
         </div>
@@ -546,97 +581,103 @@
     </div>
   {/if}
 
+  <!-- Two parts: what this moment needs (it changes) on the left, and the panel's own buttons (📜 Log … 🚪 Exit) in a
+       column of their own on the right, so they stay put from the board to a clue, a Daily Double or the Final. -->
   <div class="row nav">
-    {#if session.phase === 'clue' && !ddWager}
-      {#if !toolOnly}
-        <!-- A clue just opened: the focus is here (not lost on the tile that went away). -->
-        <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)" use:takeFocus={{ preventScroll: true }}>
-          {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
+    <div class="now">
+      {#if session.phase === 'clue' && !ddWager}
+        {#if !toolOnly}
+          <!-- A clue just opened: the focus is here (not lost on the tile that went away). -->
+          <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)" use:takeFocus={{ preventScroll: true }}>
+            {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
+          </button>
+        {/if}
+        <button class:primary={session.revealed} onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
+      {:else if session.phase === 'tiebreaker'}
+        <button class:primary={!session.tiebreakerRevealed} onclick={onreveal} title="R (press again to hide)">
+          {answerShowing(session) ? '🙈 Hide answer' : '👁 Reveal answer'}
         </button>
+        <button onclick={ontiebreakerdone}>🏁 Back to results</button>
       {/if}
-      <button class:primary={session.revealed} onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
-    {:else if session.phase === 'tiebreaker'}
-      <button class:primary={!session.tiebreakerRevealed} onclick={onreveal} title="R (press again to hide)">
-        {answerShowing(session) ? '🙈 Hide answer' : '👁 Reveal answer'}
-      </button>
-      <button onclick={ontiebreakerdone}>🏁 Back to results</button>
-    {/if}
-    {@render tools?.()}
-    <span class="spacer"></span>
-    {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame'}
-      <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
-      <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
-      {#key session.currentRound}
-        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} />
-      {/key}
-      <span class="divider" aria-hidden="true"></span>
-    {/if}
-    <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
-    <!-- Right-click either one for the whole history. Kept together when the row wraps. -->
-    <span class="pair">
-      <button
-        onclick={onundo}
-        oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
-        disabled={!undoText}
-        title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ Undo</button
-      >
-      <button
-        onclick={onredo}
-        oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
-        disabled={!redoText}
-        title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
-      >
-    </span>
-    <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
-    <!-- The game's rules go with its players (Most players): a small button, so the row doesn't grow. -->
-    <span class="pair">
-      <button onclick={onplayers}>👥 Players</button>
-      <button onclick={onrules} aria-label="📋 Game rules" title="📋 Game rules: scoring, most players, timers, the round intro">📋</button>
-    </span>
-    <button class="cover-toggle" class:on={app.live.cover} aria-pressed={!!app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
-      ⏸ Cover
-    </button>
-    <button onclick={onhide} title="H">🙈 Hide controls</button>
-    <!-- Out here with Exit, away from the everyday buttons: closing it blacks out the stream capture, so it asks first. -->
-    {#if askCloseAudience}
-      <InlineAsk
-        text="Close the audience window? Your stream capture goes black."
-        ok="Close it"
-        cancel="Keep it"
-        danger
-        onok={() => ((askCloseAudience = false), onaudience())}
-        oncancel={() => (askCloseAudience = false)}
-      />
-    {:else}
-      <!-- The scores-only window (a lower third for OBS) goes with it, as a small button so the row doesn't grow. -->
+      {@render tools?.()}
+      <span class="spacer"></span>
+      {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame'}
+        <!-- Round navigation lives on the right, away from the clue buttons, so a double-click can't reach it. -->
+        <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
+        {#key session.currentRound}
+          <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} />
+        {/key}
+        <span class="divider" aria-hidden="true"></span>
+      {/if}
+      <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
+      <!-- Right-click either one for the whole history. Kept together when the row wraps. -->
       <span class="pair">
         <button
-          onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
-          class:on={dual}
-          title={dual ? 'Close the audience window (A brings it to the front)' : 'A opens or focuses it'}
-        >{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+          onclick={onundo}
+          oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
+          disabled={!undoText}
+          title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ Undo</button
+        >
         <button
-          onclick={onscores}
-          class:on={scoresWindow.open}
-          aria-label={scoresWindow.open ? 'Close the scores window' : 'Scores window'}
-          title={scoresWindow.open
-            ? 'Close the scores window'
-            : 'Scores window: only the score plates and the countdown, for a lower-third capture in OBS (Shift+A)'}>▭</button
+          onclick={onredo}
+          oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
+          disabled={!redoText}
+          title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
         >
       </span>
-    {/if}
-    {#if askExit}
-      <InlineAsk
-        text={session.phase === 'end' ? 'Leave the results screen? (Copy the results first if you want to keep them.)' : `Leave this game? You can resume it from the ${app.playerOnly ? 'start screen' : 'editor'}.`}
-        ok="Leave"
-        cancel="Stay"
-        danger
-        onok={onexit}
-        oncancel={() => (askExit = false)}
-      />
-    {:else}
-      <button class="ghost" onclick={() => (askExit = true)}>🚪 Exit</button>
-    {/if}
+    </div>
+    <div class="fixed">
+      <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
+      <!-- The game's rules go with its players (Most players). -->
+      <span class="pair">
+        <button onclick={onplayers}>👥 Players</button>
+        <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ Rules</button>
+      </span>
+      <button class="cover-toggle" class:on={app.live.cover} aria-pressed={!!app.live.cover} onclick={() => (app.live.cover = !app.live.cover)} title="K: viewers see only a 'Be right back' card">
+        ⏸ Cover
+      </button>
+      <button onclick={onhide} title="H">🙈 Hide controls</button>
+      <!-- Out here with Exit, away from the everyday buttons: closing it blacks out the stream capture, so it asks first. -->
+      {#if askCloseAudience}
+        <InlineAsk
+          text="Close the audience window? Your stream capture goes black."
+          ok="Close it"
+          cancel="Keep it"
+          danger
+          onok={() => ((askCloseAudience = false), onaudience())}
+          oncancel={() => (askCloseAudience = false)}
+        />
+      {:else}
+        <!-- The scores-only window (a lower third for OBS) goes with it, as a small button so the row doesn't grow. -->
+        <span class="pair">
+          <button
+            onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
+            class:on={dual}
+            title={dual ? 'Close the audience window (A brings it to the front)' : 'A opens or focuses it'}
+          >{dual ? '📺 Close audience window' : '📺 Audience window'}</button>
+          <button
+            onclick={onscores}
+            class:on={scoresWindow.open}
+            aria-label={scoresWindow.open ? 'Close the scores window' : 'Scores window'}
+            title={scoresWindow.open
+              ? 'Close the scores window'
+              : 'Scores window: only the score plates and the countdown, for a lower-third capture in OBS (Shift+A)'}>▭</button
+          >
+        </span>
+      {/if}
+      {#if askExit}
+        <InlineAsk
+          text={session.phase === 'end' ? 'Leave the results screen? (Copy the standings first if you want to keep them.)' : `Leave this game? You can resume it from the ${app.playerOnly ? 'start screen' : 'editor'}.`}
+          ok="Leave"
+          cancel="Stay"
+          danger
+          onok={onexit}
+          oncancel={() => (askExit = false)}
+        />
+      {:else}
+        <button class="ghost" onclick={() => (askExit = true)}>🚪 Exit</button>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -690,11 +731,29 @@
     min-height: 0;
     overflow: auto;
   }
+  /* The changing part wraps on its own; the fixed part keeps its place at the foot, on the right (Exit at the far end). */
+  .nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+  .now,
+  .fixed {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: inherit;
+  }
+  .fixed {
+    justify-content: flex-end;
+  }
   .side > .nav,
   .side > .nav :global(.tl) {
     gap: 4px;
   }
+  /* A column beside the stage, at its foot: the fixed part goes under the rest. */
   .side > .nav {
+    grid-template-columns: minmax(0, 1fr);
     margin-top: auto;
   }
   .side > .nav :global(:is(button, select)) {
@@ -746,6 +805,15 @@
     background: var(--panel-2);
     padding: 2px 8px;
     border-radius: 6px;
+  }
+  .covered {
+    color: var(--warn);
+    font-weight: 600;
+  }
+  .mark {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 4px;
   }
   .pending {
     background: var(--warn);
