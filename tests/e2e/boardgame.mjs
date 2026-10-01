@@ -361,6 +361,9 @@ try {
   await page.getByText(/^Opened “/).waitFor();
   const line = page.locator('nav .problem', { hasText: 'Board game' });
   assert(((await line.getAttribute('title')) ?? (await line.innerText())).includes('Finish is under the stats strip (move it up)'), 'the checklist warns about a space under the stats strip');
+  await line.click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Finish', null, { timeout: 3000 });
+  assert((await page.locator('.canvas .space.sel').getAttribute('aria-label')) === 'Finish', 'a click on the line goes to that space (selected, with the focus)');
   await page.getByRole('button', { name: '▶ Play' }).click();
   // (The game left behind earlier is asked about first.)
   const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
