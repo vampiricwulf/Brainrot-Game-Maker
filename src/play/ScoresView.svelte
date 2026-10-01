@@ -20,7 +20,8 @@
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
 </script>
 
-<div class="frame" bind:clientWidth={w} bind:clientHeight={h} style:background={keyColor ?? '#000'}>
+<!-- data-stage: viewers see it, so ⚙ Settings › Reduce motion on stream calms it like the stage (app.css). -->
+<div class="frame" data-stage bind:clientWidth={w} bind:clientHeight={h} style:background={keyColor ?? '#000'}>
   <!-- Nothing before the game starts (the host is on the pre-game screen). -->
   {#if session && !live.pregame && session.players.length}
     <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
