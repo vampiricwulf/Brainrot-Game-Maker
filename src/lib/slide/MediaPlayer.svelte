@@ -56,6 +56,9 @@
   }
 
   onMount(() => {
+    // Muted here once, not as an attribute: an attribute is set again whenever anything else on the element changes
+    // (its title says Play/Pause), which unmuted a video the host had muted (M).
+    if (node) node.muted = mode === 'edit' || role === 'mirror' || el.muted;
     if (mode !== 'play' || !node) return;
     const n = node;
     loop = el.loop;
@@ -177,7 +180,6 @@
     style:object-fit={fit}
     playsinline
     preload={mode === 'edit' ? 'metadata' : 'auto'}
-    muted={mode === 'edit' || role === 'mirror' || el.muted}
     onloadedmetadata={onmeta}
     ontimeupdate={ontime}
     onended={onended}

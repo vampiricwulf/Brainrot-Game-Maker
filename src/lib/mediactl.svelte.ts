@@ -110,6 +110,8 @@ function restore(id: string, patch: Partial<MediaState>): void {
   if (Date.now() > r.until) return void restoring.delete(id);
   if (!r.seeked && patch.duration) {
     r.seeked = true;
+    // (Again: the element's own muted attribute may have been applied after it registered.)
+    e.handle.setMuted(e.role === 'mirror' || r.k.muted);
     e.handle.seek(r.k.time);
     if (r.k.paused) e.handle.pause();
     else e.handle.play();

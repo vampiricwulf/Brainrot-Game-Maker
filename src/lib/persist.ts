@@ -15,6 +15,8 @@ export interface SavedPlay {
   game: Game;
   session: Session;
   savedAt: number;
+  /** The screen was covered (⏸ Cover): resuming covers it again. */
+  cover?: boolean;
 }
 
 async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -149,8 +151,8 @@ export function usePlayerStorage(gameId: string, exported?: string | null): void
 }
 
 export const loadPlay = () => safe(() => get<SavedPlay>(playKey));
-export const savePlay = (game: Game, session: Session) =>
-  write('play', () => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
+export const savePlay = (game: Game, session: Session, cover = false) =>
+  write('play', () => set(playKey, { game, session, savedAt: Date.now(), ...(cover ? { cover } : {}) } satisfies SavedPlay));
 export const clearPlay = () => safe(() => del(playKey));
 
 /**

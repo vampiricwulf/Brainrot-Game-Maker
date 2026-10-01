@@ -7,13 +7,22 @@
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
   import { onlineCount } from './lib/usage';
+  import type { Snippet } from 'svelte';
 
   let {
     onplay,
     resumable,
     onresume,
     ondiscard,
-  }: { onplay: () => void; resumable: SavedPlay | null; onresume: () => void; ondiscard: () => void } = $props();
+    ask,
+  }: {
+    onplay: () => void;
+    resumable: SavedPlay | null;
+    onresume: () => void;
+    ondiscard: () => void;
+    /** Resume game was pressed: how the game is shown (asked in place of the buttons). */
+    ask?: Snippet;
+  } = $props();
 
   const game = $derived(app.game);
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -54,11 +63,15 @@
       {@const ended = resumable.session.phase === 'end'}
       <div class="resume">
         <span>{ended ? 'A finished game' : 'A game in progress'} was saved {new Date(resumable.savedAt).toLocaleString()}.</span>
-        <div class="row">
-          <button class="primary" onclick={onresume}>{ended ? 'View results' : 'Resume game'}</button>
-          <!-- App asks before deleting a game in progress. -->
-          <button class="ghost" onclick={ondiscard}>{ended ? 'New game' : 'Start over'}</button>
-        </div>
+        {#if ask}
+          {@render ask()}
+        {:else}
+          <div class="row">
+            <button class="primary" onclick={onresume}>{ended ? 'View results' : 'Resume game'}</button>
+            <!-- App asks before deleting a game in progress. -->
+            <button class="ghost" onclick={ondiscard}>{ended ? 'New game' : 'Start over'}</button>
+          </div>
+        {/if}
       </div>
     {:else}
       <button class="primary big" onclick={onplay}>▶ Play</button>
