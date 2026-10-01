@@ -127,6 +127,10 @@ try {
   // Everyone right: ONE pop for the group.
   await page.keyboard.press('0');
   await page.keyboard.press('Enter');
+  // The answer at once: the reveal's sound doesn't cut off the right answer's.
+  await page.keyboard.press('r');
+  const sounds = await page.evaluate(() => [...document.querySelectorAll('.stage-box audio')].map((a) => a.src.split('#').pop()));
+  assert(sounds.includes('right') && sounds.includes('reveal'), `short sounds overlap (${sounds.join(', ')})`);
   await stage('.pop', { hasText: '$400' }).first().waitFor();
   // (The earlier award's pop may still be fading.)
   const pops = (await stage('.pop').allInnerTexts()).filter((t) => t.includes('$400'));
