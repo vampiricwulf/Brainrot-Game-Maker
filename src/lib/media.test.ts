@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { addMediaFile, getBlob, mediaUrls, pruneMedia, registerBlob, restoreStash, stashMedia } from './media.svelte';
 import { newGame } from './model';
+import { app } from './app.svelte';
 import { saveEditor, watchWrites } from './persist';
 import type { SavedHistory } from './history.svelte';
 
@@ -15,6 +16,19 @@ describe('adding files', () => {
     );
     await expect(addMediaFile(game, new File(['x'], 'photo.heif'))).rejects.toThrow('Convert it to JPG or PNG first.');
     expect(game.media).toEqual([]);
+  });
+
+  it('stores the same bytes once: a second drop of the same picture reuses the file', async () => {
+    const game = newGame();
+    const a = await addMediaFile(game, new File(['same bytes'], 'meme.png', { type: 'image/png' }));
+    const b = await addMediaFile(game, new File(['same bytes'], 'copy of meme.png', { type: 'image/png' }));
+    expect(b).toBe(a);
+    expect(game.media).toHaveLength(1);
+    expect(app.toast).toContain('already in 🖼 Media');
+    // Other bytes of the same size are another file.
+    const c = await addMediaFile(game, new File(['other byte'], 'meme.png', { type: 'image/png' }));
+    expect(c.id).not.toBe(a.id);
+    expect(game.media).toHaveLength(2);
   });
 
   it('keeps a file in memory when storage fails, and says the write failed', async () => {

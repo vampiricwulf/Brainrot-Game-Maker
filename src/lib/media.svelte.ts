@@ -13,6 +13,7 @@ import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, pars
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
 import { kindOfMime, mimeFromName, soundTwin } from './sniff';
 import { inTauri } from './platform';
+import { toast } from './app.svelte';
 
 const blobs = new Map<string, Blob>();
 /** id → object URL (or the web link of a live-link file), reactive so components re-render when media arrives. */
@@ -240,9 +241,42 @@ export const ACCEPT = {
   any: 'image/*,video/*,audio/*,.mkv,.mov,.flac,.opus,.m4a,.weba,.mka',
 };
 
+/** A file's SHA-256 (hex), worked out once per stored blob. */
+const digests = new WeakMap<Blob, Promise<string>>();
+export function fileDigest(blob: Blob): Promise<string> {
+  let d = digests.get(blob);
+  if (!d) {
+    d = blob.arrayBuffer().then(async (buf) => {
+      const subtle = globalThis.crypto?.subtle;
+      // (No Web Crypto, an insecure page: the bytes themselves, so equal files still match.)
+      if (!subtle) return Array.from(new Uint8Array(buf), (b) => String.fromCharCode(b)).join('');
+      return Array.from(new Uint8Array(await subtle.digest('SHA-256', buf)), (b) => b.toString(16).padStart(2, '0')).join('');
+    });
+    digests.set(blob, d);
+  }
+  return d;
+}
+
+/**
+ * A file already in the game with exactly the same bytes (the same picture dropped on another clue), or undefined.
+ * Only stored files of the same kind and size are compared.
+ */
+export async function identicalMedia(game: Game, blob: Blob, kind: MediaKind): Promise<MediaRef | undefined> {
+  const same = game.media.filter((m) => !m.url && m.kind === kind && m.size === blob.size && blobs.has(m.id));
+  if (!same.length) return undefined;
+  const mine = await fileDigest(blob);
+  for (const m of same) {
+    const b = blobs.get(m.id);
+    if (b && (await fileDigest(b)) === mine) return m;
+  }
+  return undefined;
+}
+
 /**
  * Store a user file with the game and return its ref. SVGs are sanitized first. `extra` (where a
  * downloaded file came from) is set before the ref joins the game, so it's part of the reactive copy.
+ * A file with exactly the same bytes as one already in the game isn't stored again: that one is used (and a toast says
+ * so), so the same picture on 25 clues takes its space once.
  */
 export async function addMediaFile(
   game: Game,
@@ -251,6 +285,11 @@ export async function addMediaFile(
   extra: Pick<MediaRef, 'source' | 'expiresAt'> = {},
 ): Promise<MediaRef> {
   const { mime, kind, blob } = await checkedFile(file, name);
+  const twin = await identicalMedia(game, blob, kind);
+  if (twin) {
+    toast(`“${twin.name}” is already in 🖼 Media: using that one`, 3500);
+    return twin;
+  }
   // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.
   const ref: MediaRef = { id: newId(), name: uniqueMediaName(game.media.map((m) => m.name), name), mime, size: blob.size, kind, ...extra };
   await putMedia(ref.id, blob.type ? blob : new Blob([blob], { type: mime }));

@@ -9,6 +9,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
+  import { fileKind } from '../lib/mediadrop';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
   import { align, centreOn, clampOnto, restack, type Pt } from '../lib/layers';
@@ -134,11 +135,12 @@
       let i = 0;
       for (const file of Array.from(files)) {
         try {
-          const ref = await addMediaFile(game, file);
-          if (ref.kind !== 'image') {
-            toast(`"${ref.name}" isn't an image. Board images can be pictures or GIFs.`);
+          // Checked before it's stored: a video or a sound mustn't end up in 🖼 Media unused.
+          if (fileKind(file) !== 'image') {
+            toast(`"${file.name}" isn't an image. Board images can be pictures or GIFs.`);
             continue;
           }
+          const ref = await addMediaFile(game, file);
           await add(ref.id, at && { x: at.x + i * 40, y: at.y + i * 40 });
           i++;
         } catch (e) {
