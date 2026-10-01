@@ -3,7 +3,7 @@
   import type { Snippet } from 'svelte';
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
-  import type { EntranceType, Game, SlideElement, TextEl } from '../../lib/model';
+  import type { EntranceType, Fit, Game, SlideElement, TextEl } from '../../lib/model';
   import { openMediaPopup } from '../../lib/mediactl.svelte';
   import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, formatWhen, linkHost } from '../../lib/links';
   import SaveCopyButton from '../SaveCopyButton.svelte';
@@ -290,6 +290,18 @@
           <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
         {/if}
         <button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))}>Test link ↗</button>
+        {#if el.embedKind === 'remoteImage'}
+          <!-- An online picture fits and rounds like a picture of the game's own. -->
+          <label class="field">
+            Fit
+            <select value={el.fit ?? 'contain'} onchange={(e) => (el.fit = e.currentTarget.value as Fit)}>
+              <option value="contain">Fit inside box</option>
+              <option value="cover">Fill box (crop edges)</option>
+              <option value="fill">Stretch</option>
+            </select>
+          </label>
+          <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
+        {/if}
       {:else}
         <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
         {@render liveNote()}

@@ -162,6 +162,9 @@ export interface EmbedEl extends ElementBase, Playback {
   /** The link as pasted; the player's address is worked out from it when the slide shows. */
   url: string;
   embedKind: EmbedKind;
+  /** 'remoteImage': how the picture fills its box, and its rounded corners (as a picture's). */
+  fit?: Fit;
+  radius?: number;
 }
 
 export type SlideElement = TextEl | ImageEl | VideoEl | AudioEl | ShapeEl | EmbedEl;

@@ -103,7 +103,8 @@
         {:else if src}
           <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" onerror={(e) => imgError(e, src)} />
         {:else}
-          <div class="missing">Missing image</div>
+          <!-- A file missing from this computer: only the host is told (viewers see an empty spot). -->
+          {#if hostView}<div class="missing">Missing image</div>{/if}
         {/if}
       {:else if el.kind === 'shape'}
         <ShapeView {el} />
@@ -112,7 +113,7 @@
         {#if src || mode === 'edit'}
           <MediaPlayer {el} {src} {mode} {role} label={label(el)} />
         {:else}
-          <div class="missing">Missing {el.kind}</div>
+          {#if hostView}<div class="missing">Missing {el.kind}</div>{/if}
         {/if}
       {:else if el.kind === 'embed'}
         {#if el.embedKind === 'youtube'}
@@ -120,7 +121,7 @@
         {:else if el.embedKind === 'drive' || el.embedKind === 'streamable'}
           <PlayerEmbed {el} {mode} {role} label={label(el)} />
         {:else if el.embedKind === 'remoteImage'}
-          <img src={el.url} alt="" style:object-fit="contain" draggable="false" />
+          <img src={el.url} alt="" style:object-fit={el.fit ?? 'contain'} style:border-radius="{el.radius ?? 0}px" draggable="false" />
         {:else}
           <MediaPlayer {el} src={el.url} {mode} {role} label={label(el)} />
         {/if}
