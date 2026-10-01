@@ -12,8 +12,12 @@ export class Announcer {
   constructor(
     private say: (text: string) => void,
     private wait = ANNOUNCE_WAIT,
-    private timers: { set: typeof setTimeout; clear: typeof clearTimeout } = { set: setTimeout, clear: clearTimeout },
   ) {}
+  /** (Called through these, never as methods of another object: browsers' timers must be called on the window.) */
+  private timers = {
+    set: (f: () => void, ms: number) => setTimeout(f, ms),
+    clear: (t: ReturnType<typeof setTimeout> | undefined) => clearTimeout(t),
+  };
 
   push(message: string): void {
     const m = message.replace(/\s+/g, ' ').trim();
