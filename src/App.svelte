@@ -1,11 +1,26 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { clearPlay, debounce, dropStraySteps, loadEditor, loadPlay, saveEditor, savePlay, testStorage, usePlayerStorage, watchWrites, type SavedPlay } from './lib/persist';
+  import {
+    clearPlay,
+    debounce,
+    dropStraySteps,
+    loadEditor,
+    loadPlay,
+    retryWrites,
+    saveEditor,
+    savePlay,
+    testStorage,
+    usePlayerStorage,
+    watchWrites,
+    type SavedPlay,
+  } from './lib/persist';
   import { openPack } from './lib/pack';
-  import { unpackEmbedded } from './lib/export';
+  import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
-  import { holdOpenLock, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
+  import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
+  import { claimEditor } from './lib/editorlock';
+  import { hasWork } from './lib/recent';
   import { validate, type Problem } from './lib/validate';
   import { migrateGame, newId } from './lib/model';
   import { closeAudienceWindow } from './lib/sync.svelte';
@@ -19,7 +34,7 @@
   import { flushOnClose } from './lib/desktop.svelte';
   import { prefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
-  import { arriving, commit, heldMedia, history, listen, mark, startHistory, toSave } from './lib/history.svelte';
+  import { arriving, commit, heldMedia, history, listen, mark, savedSinceChange, startHistory, toSave } from './lib/history.svelte';
   import type { Game, Session } from './lib/model';
   import Play from './play/Play.svelte';
 
@@ -30,6 +45,14 @@
 
   let loaded = $state(false);
   let loadError = $state('');
+  /** While an exported game opens: its files unpacked so far, of how many. */
+  let unpacked = $state<{ done: number; total: number } | null>(null);
+  /** Another tab (or window) of the app edits the game: this one leaves the autosave alone until told to take over. */
+  let paused = $state(false);
+  /** This copy is the one that edits and autosaves the game. */
+  let editing = false;
+  /** Set just before reloading to take over editing from another tab. */
+  const TAKE_KEY = 'brainrot.takeEditor';
 
   /** A saved game in progress, converted if it was saved by an older version. */
   function resumed(play: SavedPlay): SavedPlay {
@@ -38,11 +61,15 @@
   }
 
   onMount(async () => {
+    app.playerOnly = playerOnly;
     if (embedded) {
       try {
-        app.game = await openPack(await unpackEmbedded(embedded));
+        const info = packInfo();
+        // Its files stay in memory: every file opened from disk shares one storage with the builder (see keepInMemory).
+        keepInMemory();
+        app.game = await openPack(await unpackEmbedded(embedded, info.cut), (done, total) => (unpacked = { done, total }));
         document.title = app.game.title;
-        usePlayerStorage(app.game.id);
+        usePlayerStorage(app.game.id, info.exported);
         app.storageOk = await testStorage();
         const play = await loadPlay();
         if (play) app.resumable = resumed(play);
@@ -53,6 +80,19 @@
       return;
     }
     holdOpenLock();
+    let take = false;
+    try {
+      take = sessionStorage.getItem(TAKE_KEY) === '1';
+      sessionStorage.removeItem(TAKE_KEY);
+    } catch {
+      /* no session storage: wait to be asked */
+    }
+    if (!(await claimEditor(take, stopEditing))) {
+      paused = true;
+      loaded = true;
+      return;
+    }
+    editing = true;
     const [editor, play, ok] = await Promise.all([loadEditor(), loadPlay(), testStorage()]);
     app.storageOk = ok;
     /** Removed files the undo history can bring back. */
@@ -76,17 +116,59 @@
     loaded = true;
   });
 
+  /** Another tab takes over editing: write the last changes, then leave the autosave alone. */
+  async function stopEditing(): Promise<void> {
+    if (!editing) return;
+    if (watch) commit();
+    await saveEditorNow();
+    editing = false;
+    paused = true;
+  }
+
+  /** "Edit here instead": the tab editing now writes its last changes and lets go, then this one starts afresh. */
+  function editHere(): void {
+    try {
+      sessionStorage.setItem(TAKE_KEY, '1');
+    } catch {
+      /* it asks again after the reload */
+    }
+    location.reload();
+  }
+
   // A write that fails after the start (the disk or the browser's storage is full) switches the header to "use Save",
   // saying so once; one that works again switches it back. A player-only file has no Save: its game restarts on refresh.
+  // A write that fails after the start (the disk or the browser's storage is full) switches the header to "use Save",
+  // saying so once. Failed writes are tried again (on the next write, and every little while), and the header says ✓
+  // Autosaved again only once all of them went through. A player-only file has no Save: its game restarts on refresh.
   watchWrites((err) => {
     if (!loaded) return;
-    if (!err) return void (app.storageOk = true);
+    if (!err) {
+      if (!app.storageOk) toast('Autosave works again: everything is saved', 4000);
+      app.storageOk = true;
+      return;
+    }
     if (app.storageOk) {
       const full = err instanceof DOMException && err.name === 'QuotaExceededError';
       const then = playerOnly ? 'a refresh restarts the game' : 'use Save to keep this game';
       toast(`${full ? 'Storage is full, so autosave stopped' : 'Autosave stopped working'}: ${then}`, 8000);
     }
     app.storageOk = false;
+  });
+  $effect(() => {
+    if (app.storageOk || !loaded) return;
+    const id = setInterval(retryWrites, 20_000);
+    return () => clearInterval(id);
+  });
+
+  // Closing the tab while nothing can be autosaved loses the changes since the last Save: the browser asks first.
+  onMount(() => {
+    const warn = (e: BeforeUnloadEvent) => {
+      if (!editing || app.storageOk || !hasWork(app.game) || savedSinceChange()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
   });
 
   // The game in the editor, watched for changes: the autosaves write its plain copy (watch.svelte.ts), instead of
@@ -95,7 +177,8 @@
   let watching: Game | null = null;
   // Autosave (spec §5.8 / §6.5), with the undo history. Only after the initial load so a blank game never overwrites a
   // draft.
-  const saveEditorSoon = debounce(() => watch && saveEditor({ draft: watch.value(), ...toSave(newId()) }), 500);
+  const saveEditorNow = () => saveEditor(() => (watch && editing ? { draft: watch.value(), ...toSave(newId()) } : null));
+  const saveEditorSoon = debounce(saveEditorNow, 500);
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
   const savePlaySoon = debounce((session: Session) => playWatch && savePlay(playWatch.value(), session), 300);
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
@@ -118,7 +201,7 @@
   // at once.
   $effect(() => {
     const game = app.game;
-    if (!loaded || playerOnly) return;
+    if (!loaded || !editing) return;
     problems = untrack(() => validate(game));
     requestAnimationFrame(() => setTimeout(() => startWatch(game)));
   });
@@ -169,13 +252,13 @@
   // Steps made, undone or redone (and saves, plays…) are saved with the draft.
   $effect(() => {
     void [history.entries, history.index, history.marks, history.origin];
-    if (loaded && !playerOnly) saveEditorSoon();
+    if (loaded && editing) saveEditorSoon();
   });
 
   // Don't lose the last edits if the tab is closed or hidden right after typing (they're a step of their own then).
   onMount(() => {
     const flush = () => {
-      if (watch) {
+      if (watch && editing) {
         commit();
         saveEditorSoon();
       }
@@ -299,9 +382,32 @@
 <svelte:window ondragover={ignoreFiles} ondrop={ignoreFiles} />
 
 {#if !loaded}
-  <div class="loading muted">Loading…</div>
+  <div class="loading muted" role="status">
+    {#if playerOnly}
+      <span>
+        Loading the game…
+        {#if unpacked?.total}<br /><span class="small">Unpacking files: {unpacked.done} of {unpacked.total}</span>{/if}
+      </span>
+    {:else}
+      Loading…
+    {/if}
+  </div>
 {:else if loadError}
-  <div class="loading">Couldn't open this game: {loadError}</div>
+  <div class="loading">
+    <div class="card" role="alert">
+      <h1>Couldn't open this game</h1>
+      <p>{loadError}</p>
+    </div>
+  </div>
+{:else if paused && app.screen === 'editor'}
+  <div class="loading">
+    <div class="card" role="alert">
+      <h1>This game is open in another tab</h1>
+      <p class="muted">Editing here is paused, so the two tabs don't overwrite each other's changes.</p>
+      <button class="primary" onclick={editHere}>Edit here instead</button>
+      <p class="muted small">The other tab saves its changes first, then pauses.</p>
+    </div>
+  </div>
 {:else if playerOnly && app.screen === 'editor'}
   <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => resume()} ondiscard={discardResume} />
 {:else if app.screen === 'editor'}
@@ -340,6 +446,26 @@
     display: grid;
     place-items: center;
     height: 100%;
+    padding: 16px;
+    text-align: center;
+  }
+  .card {
+    width: min(520px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 28px 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .card h1 {
+    margin: 0;
+    font-size: 22px;
+  }
+  .card p {
+    margin: 0;
   }
   .resume {
     display: flex;

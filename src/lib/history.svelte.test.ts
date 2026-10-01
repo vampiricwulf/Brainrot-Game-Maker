@@ -17,11 +17,13 @@ import {
   onApplied,
   onNotify,
   redo,
+  savedSinceChange,
   startHistory,
   step,
   stepAsync,
   toSave,
   undo,
+  wholeHistory,
 } from './history.svelte';
 import { watchGame, type GameWatch } from './watch.svelte';
 import { getBlob, registerBlob, stashMedia } from './media.svelte';
@@ -542,6 +544,47 @@ describe('undo history: saved with the draft', () => {
     expect(s.dropped).toHaveLength(1);
     clear();
     expect(toSave('r4').dropped).toHaveLength(2);
+  });
+
+  it('writes the steps of a failed write with the next one', () => {
+    toSave('r0');
+    step(null, () => (g.title = 'One'));
+    const s = toSave('r1');
+    expect(s.steps).toHaveLength(1);
+    // Storage was full: the step waits for the next write, with the one made since.
+    s.failed();
+    step(null, () => (g.title = 'Two'));
+    expect(toSave('r2').steps.map((e) => e.label)).toEqual(['Renamed the game “One”', 'Renamed the game “Two”']);
+  });
+
+  it('says whether the game was saved to a file since its last change', () => {
+    expect(savedSinceChange()).toBe(true);
+    step(null, () => (g.title = 'One'));
+    expect(savedSinceChange()).toBe(false);
+    mark('exported', 'Exported JSON');
+    expect(savedSinceChange()).toBe(false);
+    mark('saved', 'Saved');
+    expect(savedSinceChange()).toBe(true);
+    step(null, () => (g.title = 'Two'));
+    expect(savedSinceChange()).toBe(false);
+  });
+
+  it('keeps the whole history for a recent game, and writes its steps when it comes back', () => {
+    step(null, () => (g.title = 'One'));
+    step(null, () => (g.title = 'Two'));
+    toSave('r0');
+    const kept = wholeHistory();
+    expect(kept.steps.map((e) => e.label)).toEqual(['Renamed the game “One”', 'Renamed the game “Two”']);
+    const again = live(JSON.parse(JSON.stringify($state.snapshot(g))));
+    const w2 = watchGame(again);
+    arriving({ kind: 'reopened', label: 'Reopened “Two”' }, kept, true);
+    startHistory(again, w2);
+    const s = toSave('r1');
+    expect(s.steps).toHaveLength(2);
+    expect(s.dropped).toEqual([]);
+    undo();
+    expect(again.title).toBe('One');
+    w2.destroy();
   });
 
   it('goes on with a saved history when the game arrives with it', () => {

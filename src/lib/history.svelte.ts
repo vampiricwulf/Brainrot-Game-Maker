@@ -155,7 +155,7 @@ let group: { label: string | null; opts: StepOptions } = { label: null, opts: {}
 /** A name for the next step (nameStep). */
 let named: { label: string; opts: StepOptions } | null = null;
 /** Where the next game that arrives comes from (New, Open…), and its history when it was saved with it. */
-let next: { origin: Omit<Origin, 'ts'>; saved?: { saved: SavedHistory; steps: StoredStep[] } } | null = null;
+let next: { origin: Omit<Origin, 'ts'>; saved?: { saved: SavedHistory; steps: StoredStep[] }; store?: boolean } | null = null;
 /** Steps new or changed since the history was last saved, and the ids of the ones gone since. */
 const unsaved = new Set<string>();
 const goneIds = new Set<string>();
@@ -171,9 +171,12 @@ const notifyFns = new Set<(e: HistoryEntry) => void>();
 
 const focused = (): Element | null => (typeof document === 'undefined' ? null : document.activeElement);
 
-/** The next game to arrive (New, Open…) starts its history from this, or goes on with the history saved with it. */
-export function arriving(origin: Omit<Origin, 'ts'>, saved?: { saved: SavedHistory; steps: StoredStep[] }): void {
-  next = { origin, saved };
+/**
+ * The next game to arrive (New, Open…) starts its history from this, or goes on with the history saved with it.
+ * `store`: its steps aren't stored with the draft yet (a recent game reopened), so the next save writes them all.
+ */
+export function arriving(origin: Omit<Origin, 'ts'>, saved?: { saved: SavedHistory; steps: StoredStep[] }, store = false): void {
+  next = { origin, saved, store };
 }
 
 /** Start the history over a game that arrived (the draft at the start, New, Open…), watched by `w`. */
@@ -192,6 +195,12 @@ export function startHistory(g: Game, w: GameWatch): void {
     h.origin = saved.saved.origin;
     h.marks = saved.saved.marks;
     h.trimmed = saved.saved.trimmed;
+    // A recent game reopened: its steps are written with the draft (they were kept with the game).
+    if (next?.store)
+      for (const e of h.entries) {
+        unsaved.add(e.id);
+        goneIds.delete(e.id);
+      }
   }
   next = null;
   groups = 0;
@@ -496,11 +505,25 @@ function left(steps: readonly HistoryEntry[]): void {
 
 /**
  * What to store of the history with the draft written now (`rev` marks that draft): the steps new or changed since
- * the last time, and the ones gone since.
+ * the last time, and the ones gone since. When that write fails, `failed()` makes them wait for the next one.
  */
-export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[]; dropped: string[] } {
-  const steps = h.entries.filter((e) => unsaved.has(e.id)).map(({ target: _t, focusSession: _f, ...e }) => e);
-  const history: SavedHistory = {
+export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[]; dropped: string[]; failed: () => void } {
+  const steps = h.entries.filter((e) => unsaved.has(e.id)).map(stored);
+  const dropped = [...goneIds];
+  unsaved.clear();
+  goneIds.clear();
+  const failed = () => {
+    const now = new Set(h.entries.map((e) => e.id));
+    for (const s of steps) if (now.has(s.id)) unsaved.add(s.id);
+    for (const id of dropped) if (!now.has(id)) goneIds.add(id);
+  };
+  return { history: savedIndex(rev), steps, dropped, failed };
+}
+
+const stored = ({ target: _t, focusSession: _f, ...e }: HistoryEntry): StoredStep => e;
+
+function savedIndex(rev: string): SavedHistory {
+  return {
     v: 1,
     gameId: game?.id ?? '',
     rev,
@@ -510,10 +533,21 @@ export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[
     trimmed: h.trimmed,
     marks: h.marks,
   };
-  const dropped = [...goneIds];
-  unsaved.clear();
-  goneIds.clear();
-  return { history, steps, dropped };
+}
+
+/** The whole history as it stands (every step), to keep with the game when another game replaces it (recent.ts). */
+export function wholeHistory(): { saved: SavedHistory; steps: StoredStep[] } {
+  commit();
+  return { saved: savedIndex(''), steps: h.entries.map(stored) };
+}
+
+/**
+ * The game was saved to a file since its last change (Save, or the desktop app's autosave file), or nothing has changed
+ * since it arrived. (An export doesn't count: Export JSON leaves the files out.)
+ */
+export function savedSinceChange(): boolean {
+  if (h.pending) return false;
+  return !h.entries.length || h.marks.some((m) => m.at === h.index && (m.kind === 'saved' || m.kind === 'autosaved'));
 }
 
 /** Forget every step. */

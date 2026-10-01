@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, nameGame } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -634,6 +634,7 @@ try {
     assert((await about.count()) === 0 && (await notice.count()) === 0, 'Esc closes About, and the notice is gone');
     // Save goes to BrainrotSaves next to the app (not a download), as raw bytes with the file name.
     await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await nameGame(page);
     await called(page, 'save_file');
     const saveCall = (await calls(page, 'save_file'))[0];
     assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'backup', `Save sends the pack to the app, replacing the game's last save with a backup kept (${JSON.stringify(saveCall)})`);

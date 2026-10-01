@@ -2,6 +2,7 @@
 // Authored content (Game) is kept separate from runtime state (Session).
 
 import { isWebUrl } from './links';
+import { nextFreeColor } from './colors';
 import { dedupeMediaNames } from './medianame';
 import { presetTheme, type Theme } from './theme';
 
@@ -1036,7 +1037,113 @@ export function migrateGame(input: Game): Game {
   g.dice ??= [];
   g.theme = { ...d.theme, ...(data.theme ?? {}) };
   g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
+  repairGame(g);
   return g;
+}
+
+// ---------- Hand-edited games ----------
+// A game edited by hand can miss parts the app needs (a player's color, a board's values, a slide's elements…). The
+// ones that have an obvious fill are filled in place; a game that's whole is left exactly as it is.
+
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+/** The objects in a list (anything else in it is dropped); not a list: none. */
+function objects<T>(v: unknown): T[] {
+  if (!Array.isArray(v)) return [];
+  return (v.every(isObj) ? v : v.filter(isObj)) as T[];
+}
+const fixId = (o: { id: Id }) => typeof o.id === 'string' && o.id ? o.id : (o.id = newId());
+
+function repairSlide(s: unknown): Slide {
+  if (!isObj(s)) return textSlide();
+  const slide = s as unknown as Slide;
+  if (!isObj(slide.background)) slide.background = {};
+  const els = objects<SlideElement>(slide.elements);
+  if (els !== slide.elements) slide.elements = els;
+  for (const el of els) {
+    fixId(el);
+    if (el.kind === 'text' && typeof el.text !== 'string') el.text = el.text == null ? '' : String(el.text);
+  }
+  return slide;
+}
+
+function repairGame(g: Game): void {
+  if (typeof g.title !== 'string') g.title = g.title == null ? 'Untitled Game' : String(g.title);
+  if (!isObj(g.settings.roundIntro)) g.settings.roundIntro = newGame().settings.roundIntro;
+  const players = objects<PlayerTemplate>(g.players);
+  if (players !== g.players) g.players = players;
+  players.forEach((p, i) => {
+    fixId(p);
+    if (typeof p.name !== 'string') p.name = `Player ${i + 1}`;
+    if (typeof p.color !== 'string' || !p.color) p.color = nextFreeColor(players.filter((o) => o !== p && typeof o.color === 'string').map((o) => o.color));
+  });
+  const rounds = objects<Round>(g.rounds);
+  if (rounds !== g.rounds) g.rounds = rounds;
+  for (const r of rounds) {
+    fixId(r);
+    if (isBoard(r)) {
+      const cats = objects<Category>(r.categories);
+      if (cats !== r.categories) r.categories = cats;
+      for (const c of cats) {
+        fixId(c);
+        if (typeof c.title !== 'string') c.title = c.title == null ? '' : String(c.title);
+        const clues = objects<Clue>(c.clues);
+        if (clues !== c.clues) c.clues = clues;
+        for (const cl of clues) {
+          fixId(cl);
+          if (cl.value !== null && typeof cl.value !== 'number') cl.value = null;
+          cl.type ??= 'standard';
+          cl.questionSlide = repairSlide(cl.questionSlide);
+          cl.answerSlide = repairSlide(cl.answerSlide);
+        }
+      }
+      // No row values: the usual 200, 400… for as many rows as the board has.
+      if (!Array.isArray(r.values) || r.values.some((v) => typeof v !== 'number')) {
+        const rows = Math.max(0, ...cats.map((c) => c.clues.length));
+        r.values = Array.from({ length: rows || DEFAULT_VALUES.length }, (_, i) => (typeof r.values?.[i] === 'number' ? r.values[i] : (i + 1) * 200));
+      }
+    } else if (isFinal(r)) {
+      r.questionSlide = repairSlide(r.questionSlide);
+      r.answerSlide = repairSlide(r.answerSlide);
+      if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
+      if (typeof r.timerSeconds !== 'number') r.timerSeconds = 30;
+    } else if (isBoardGame(r)) {
+      r.slide = repairSlide(r.slide);
+      if (!Array.isArray(r.spaces)) r.spaces = [];
+      if (!Array.isArray(r.zones)) r.zones = [];
+    }
+  }
+  if (g.tiebreaker !== undefined) {
+    if (!isObj(g.tiebreaker)) delete g.tiebreaker;
+    else {
+      g.tiebreaker.questionSlide = repairSlide(g.tiebreaker.questionSlide);
+      g.tiebreaker.answerSlide = repairSlide(g.tiebreaker.answerSlide);
+    }
+  }
+  const media = objects<MediaRef>(g.media).filter((m) => typeof m.id === 'string' && m.id);
+  if (media.length !== g.media.length) g.media = media;
+  for (const m of media) if (typeof m.name !== 'string') m.name = m.id;
+  for (const k of ['wheels', 'dice'] as const) {
+    const list = objects<WheelPreset & DicePreset>(g[k]);
+    if (list !== g[k]) g[k] = list;
+    for (const w of list) fixId(w);
+  }
+  for (const w of g.wheels) if (!Array.isArray(w.segments)) w.segments = [];
+  for (const d of g.dice) if (!Array.isArray(d.dice)) d.dice = [];
+}
+
+const KNOWN_MODES = new Set<string>(['board', 'final', 'rpg', 'boardgame']);
+
+/**
+ * What a game the app can't use is missing, as the first place it's wrong ("rounds[2].world: no such world"), or null
+ * when it looks whole. For an opened file that the repairs above couldn't fix.
+ */
+export function gameProblem(g: Game): string | null {
+  for (const [i, r] of g.rounds.entries()) {
+    const at = `rounds[${i}]`;
+    if (!KNOWN_MODES.has(r.mode)) return `${at}.mode: "${r.mode}" isn't a kind of round`;
+    if (isRpg(r) && !g.worlds?.some((w) => w.id === r.world)) return `${at}.world: no world "${r.world}" in worlds`;
+  }
+  return null;
 }
 
 /** Display name of a round (never empty). */

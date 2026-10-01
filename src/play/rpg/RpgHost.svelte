@@ -381,9 +381,12 @@
       </button>
       <span class="muted small">or drop a picture on the stage</span>
       <span class="spacer"></span>
-      <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
-        💾 Keep in game
-      </button>
+      <!-- (An exported player-only file has no editor to keep it in.) -->
+      {#if !app.playerOnly}
+        <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
+          💾 Keep in game
+        </button>
+      {/if}
     </div>
     {#if ask && here}
       {@const a = ask}
@@ -463,7 +466,7 @@
       <div class="side">
         {#if obj}
           {#key obj.el.id}
-            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} {dual} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={() => keep({ map: obj.map.id, screen: obj.screen.id })} />
+            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} {dual} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={app.playerOnly ? undefined : () => keep({ map: obj.map.id, screen: obj.screen.id })} />
           {/key}
         {:else}
           <div class="muted small">Objects here (or click one on the stage):</div>

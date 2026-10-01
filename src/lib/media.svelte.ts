@@ -7,7 +7,8 @@ import { del, delMany, get, getMany, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
 import { clipboard } from './clipboard.svelte';
-import { loadPlay, write } from './persist';
+import { askToKeepStorage, loadPlay, unstored, write } from './persist';
+import { recentMedia } from './recent';
 import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, parseMediaLink, type LinkKind, type MediaLink } from './links';
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
 import { kindOfMime, mimeFromName, soundTwin } from './sniff';
@@ -42,10 +43,32 @@ export function getBlob(id: string): Blob | undefined {
   return blobs.get(id);
 }
 
+/** An exported player-only file: its files stay in memory and never touch the stored ones (see keepInMemory). */
+let memoryOnly = false;
+/**
+ * Keep files in memory only, for an exported player-only file: every copy of the app opened from disk shares one
+ * storage, so storing them would put an older export's files back in place of the builder's (same ids).
+ */
+export function keepInMemory(): void {
+  memoryOnly = true;
+}
+
+/** Write a file's bytes (what's in memory under `id`, or none) to storage; tried again later if it fails. */
+function store(id: string): Promise<boolean> {
+  if (memoryOnly) return Promise.resolve(true);
+  return write(KEY(id), async () => {
+    const blob = blobs.get(id);
+    if (blob) await set(KEY(id), blob);
+    else await del(KEY(id));
+  });
+}
+
 export async function putMedia(id: string, blob: Blob): Promise<void> {
   registerBlob(id, blob);
-  // Storage unavailable or full: media lives in memory until the game is saved (the header says so).
-  await write(() => set(KEY(id), blob));
+  if (!memoryOnly) askToKeepStorage();
+  // Storage unavailable or full: media lives in memory until it can be stored, or the game is saved (the header says
+  // so meanwhile).
+  await store(id);
 }
 
 /**
@@ -57,7 +80,7 @@ export async function stashMedia(id: string): Promise<string | null> {
   if (!blob) return null;
   const stash = `stash-${newId()}`;
   blobs.set(stash, blob);
-  await write(() => set(KEY(stash), blob));
+  await store(stash);
   return stash;
 }
 
@@ -70,7 +93,7 @@ export async function restoreStash(id: string, stash: string | null): Promise<vo
     forget(id);
     blobs.delete(id);
     delete mediaUrls[id];
-    await write(() => del(KEY(id)));
+    await store(id);
     return;
   }
   let blob = blobs.get(stash);
@@ -80,7 +103,7 @@ export async function restoreStash(id: string, stash: string | null): Promise<vo
     blobs.set(stash, blob);
   }
   registerBlob(id, blob);
-  await write(() => set(KEY(id), blob));
+  await store(id);
 }
 
 /** Load any of the game's media that isn't in memory yet from IndexedDB. Returns ids still missing. */
@@ -137,22 +160,25 @@ export async function pruneMedia(games: (Game | null | undefined)[], held: Reado
   // Every copy of the app opened from disk shares one storage: with another copy open (a second tab
   // or window), its media would look unused here, so leave storage alone.
   const shared = await otherCopiesOpen();
-  // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it.
+  // Safety net: never delete what a resumable saved game still needs, even if a caller forgot to pass it. Nor what the
+  // recent games (New and Open… keep the game they replace) use or can bring back.
   const saved = (await loadPlay())?.game;
+  const recent = await recentMedia();
   // Checked again once the stored files are listed: media added while this runs must survive.
   const keep = () => new Set([...[...games, saved].flatMap((g) => g?.media?.map((m) => m.id) ?? []), ...clipboard.media.map((m) => m.id), ...held]);
   if (!shared) {
     try {
       const stored = await keys();
-      const used = keep();
+      const used = new Set([...keep(), ...recent]);
       await delMany(stored.filter((k) => typeof k === 'string' && k.startsWith('media:') && !used.has(k.slice(6))));
     } catch {
       /* ignore */
     }
   }
+  // A recent game's files are read back from storage when it's reopened (unless storing them failed so far).
   const kept = keep();
   for (const id of [...blobs.keys()]) {
-    if (!kept.has(id)) {
+    if (!kept.has(id) && !unstored(KEY(id))) {
       blobs.delete(id);
       forget(id);
       delete mediaUrls[id];
