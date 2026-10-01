@@ -40,22 +40,24 @@ try {
     if (answer === 'offline') return route.abort();
     return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(answer) });
   });
-  // (Downloads opened from the notice land here instead of on GitHub.)
-  await context.route('https://github.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/plain', body: 'download' }));
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(url);
   const notice = page.locator('.data-notice', { hasText: 'is out' });
   await notice.waitFor();
   assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
-  const [popup] = await Promise.all([page.waitForEvent('popup'), notice.getByRole('button', { name: '⬇ Download 99.0.0' }).click()]);
-  await popup.waitForURL(/\/v99\.0\.0\/brainrot-game-maker\.html$/);
-  assert(true, 'Download opens the new HTML file’s link');
-  await popup.close().catch(() => {});
+  // (The link it opens is noted rather than opened, so the test doesn't go to GitHub.)
+  await page.evaluate(() => (window.open = (u) => ((window.__opened = String(u)), null)));
+  await notice.getByRole('button', { name: '⬇ Download 99.0.0' }).click();
+  const opened = await page.evaluate(() => window.__opened);
+  assert(/\/v99\.0\.0\/brainrot-game-maker\.html$/.test(opened), `Download opens the new HTML file’s link (${opened})`);
 
   // Not now: put away for this version, also after a reload (which uses what it heard, without asking again).
   await notice.getByRole('button', { name: 'Not now' }).click();
   await notice.waitFor({ state: 'detached' });
+  // (The browser stores what a page set a moment later: a reload within a second or two can come back without it.)
+  await page.waitForFunction(() => localStorage.getItem('jb.updateSkip') === '99.0.0');
+  await page.waitForTimeout(3000);
   const before = asked;
   await page.reload();
   await page.getByRole('button', { name: 'Open…' }).waitFor();
@@ -83,7 +85,8 @@ try {
   await dlg.getByRole('button', { name: '⬇ Download 99.1.0' }).waitFor();
   assert(true, 'a newer version shows in ℹ About with its download');
   await page.keyboard.press('Escape');
-  await page.locator('.data-notice', { hasText: '99.1.0 is out' }).waitFor();
+  const again = page.locator('.data-notice', { hasText: '99.1.0 is out' });
+  await again.waitFor();
   assert(true, 'and the editor’s notice comes back for it (put away was only for 99.0.0)');
 
   // ⚙ Settings can turn the start-up check off.
