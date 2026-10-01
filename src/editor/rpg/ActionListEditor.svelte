@@ -14,6 +14,7 @@
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
+  import { typedSteps } from '../../lib/actions';
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { mediaDrop } from '../../lib/mediadrop';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -375,7 +376,11 @@
             type="number"
             min="1"
             value={Math.abs(a.steps)}
-            onchange={(e) => (a.steps = (a.steps < 0 ? -1 : 1) * Math.max(1, Math.round(+e.currentTarget.value) || 1))}
+            onchange={(e) => {
+              // (A negative number turns it round; the box always shows what's kept.)
+              a.steps = typedSteps(a.steps, +e.currentTarget.value);
+              e.currentTarget.value = String(Math.abs(a.steps));
+            }}
             aria-label="Spaces"
             class="n"
           />
@@ -387,11 +392,14 @@
             type="number"
             min="1"
             value={a.turns ?? 1}
-            onchange={(e) => (a.turns = Math.max(1, Math.round(+e.currentTarget.value) || 1))}
+            onchange={(e) => {
+              a.turns = Math.max(1, Math.abs(Math.round(+e.currentTarget.value)) || 1);
+              e.currentTarget.value = String(a.turns);
+            }}
             aria-label="Turns"
             class="n"
           />
-          <span class="small muted">turn(s)</span>
+          <span class="small muted">{(a.turns ?? 1) === 1 ? 'turn' : 'turns'}</span>
           {@render who(a, 'party')}
         {:else if a.do === 'again'}
           <span class="small muted">Next turn comes back to them</span>

@@ -53,6 +53,12 @@ try {
   await page.getByLabel(/Show the category and value on clue screens/).check();
   await page.getByLabel('Countdown minutes').fill('2');
   await page.getByRole('button', { name: '▶ Start countdown' }).click();
+  assert(/^Starting in [12]:\d\d$/.test(await page.getByRole('timer').innerText()), 'the host sees the countdown’s time left');
+  assert((await page.getByRole('button', { name: 'Stop countdown' }).count()) === 1, 'next to ■ Stop');
+  // Reduce motion on stream is here too (the same setting as ⚙ Settings).
+  await page.getByLabel(/Reduce motion on stream/).check();
+  assert(await page.evaluate(() => document.documentElement.classList.contains('reduce-stream')), 'the pre-game screen has Reduce motion on stream');
+  await page.getByLabel(/Reduce motion on stream/).uncheck();
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   await aud.locator('.soon-text').waitFor();
   assert((await aud.locator('.soon-text').innerText()) === 'Back in a sec, chat', 'the Starting soon card says what the host typed');

@@ -31,7 +31,10 @@ on a board takes a sheet pasted from Google Sheets or Excel, and **Find** (`Ctrl
 
 ## Round modes
 
-A game is a list of rounds, and each round has a mode. You can reorder, duplicate or delete any round.
+A game is a list of rounds, and each round has a mode. You can reorder, duplicate or delete any round. **Copy round**
+(a round tab's right-click menu) and **📋 Paste round**, or **📂 Import rounds…** (from a .brainrot file), bring a round from
+another game with the worlds, wheels, dice, stats, items, shops and files it uses. Where this game already has one of
+those from another copy of the same game but it differs, the other version comes in as a copy and this game's stays.
 
 | Mode | What it is |
 |---|---|
@@ -123,11 +126,12 @@ own. Copies built without one say "Phone buzzers aren't set up in this copy", an
 on without it (you pick who answers); the setting stays with the game for a copy that has a server.
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
-off in the editor's 🔊 Sounds tab (↺ goes back to the built-in sound). The players and rules aren't there: the tab
-says so at the top, with a button to the ▶ Play screen.
+off in the editor's 🔊 Sounds tab (↺ goes back to the built-in sound; a sound switched off keeps the file chosen for it).
+The players and rules aren't there: the tab says so at the top, with a button to the ▶ Play screen.
 
 **For OBS:** Theme › Stage background can be chroma green or magenta for keying, and **▭** (or `Shift+A`) opens a
-scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown.
+scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown
+(the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
 
 **Single-window mode shows viewers everything on screen**, including wagers as you type them, answers, host notes and
 hidden objects. Use the separate audience window when that matters.
@@ -194,8 +198,9 @@ hidden objects. Use the separate audience window when that matters.
   in the desktop app, BrainrotSaves. It also opens exported HTML files. Dropping a `.brainrot` on the editor opens it,
   and the desktop app opens a game file you open it with.
 - New and Open… ask **Save first / Discard / Cancel** when the game has unsaved changes. Only one browser tab edits at a
-  time.
-- **⬇ Export HTML** makes a single, play-only file to share.
+  time: another tab waits, paused, and offers **Edit here** once the editing tab closes.
+- **⬇ Export HTML** makes a single file to host the game from, with everything inside. It shows the answers, so keep
+  it to yourself.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **⬆ Add files…**.
 - **⚙ Settings** (in the header's ⋯ menu, with Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).

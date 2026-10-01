@@ -12,6 +12,18 @@ describe('Find', () => {
     expect(hits).toHaveLength(1);
     expect(hits[0].where).toBe('Jeopardy! › Gaming › $400 › Answer');
     expect(hits[0].place).toMatchObject({ tab: 'round', part: { kind: 'clue', side: 'a' } });
+    // Go there puts the focus in the Answer field.
+    expect(hits[0].focus).toBe('[data-field="a"]');
+  });
+
+  it('says Category alike for boards and Finals, gives spaces their own icon, and the field to focus', () => {
+    const cat = findAll(game, 'gaming').find((h) => h.place.tab === 'round' && h.place.part?.kind === 'category')!;
+    expect(cat.where).toBe('Jeopardy! › Category');
+    expect(cat.focus).toMatch(/^\[data-place="category:.+"\] textarea$/);
+    const space = findAll(game, 'nap time')[0];
+    expect(space.icon).toBe('⬤');
+    expect(space.focus).toBe('main input[aria-label="Space name"]');
+    expect(findAll(game, 'jeopardy!').find((h) => h.icon === '🏷')?.focus).toBe('main [data-round-name]');
   });
 
   it('needs every word, in any case', () => {

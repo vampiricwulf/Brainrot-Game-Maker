@@ -137,6 +137,7 @@ try {
   await play.click();
   const ask = page.getByRole('alertdialog');
   await ask.waitFor();
+  assert((await ask.getAttribute('aria-modal')) === 'true', 'an in-app question is aria-modal');
   assert((await ask.innerText()).includes('can still be resumed') && (await focused()) === 'Keep it', 'Play over a saved game asks in the app, the focus on “Keep it”');
   await page.keyboard.press('Escape');
   assert((await ask.count()) === 0 && (await page.getByRole('button', { name: 'Resume game' }).isVisible()), 'Esc keeps the saved game');

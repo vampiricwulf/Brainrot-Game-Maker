@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPlan, cluesFromTable, parseTable, parseValue, pasteColumn, planImport } from './clueimport';
+import { applyPlan, cluesFromTable, parseTable, parseValue, pasteColumn, planImport, tableSeparator } from './clueimport';
 import { newRound, setSlideText, slideText } from './model';
 
 const q = (r: ReturnType<typeof newRound>, c: number, row: number) => slideText(r.categories[c].clues[row].questionSlide);
@@ -22,6 +22,19 @@ describe('clue import: reading tables', () => {
       ['Memes', 100, 'Doge breed?', 'Shiba Inu'],
       ['Memes', 200, 'Rick?', 'Astley'],
     ]);
+  });
+
+  it('reads a CSV with semicolons (Excel where the decimal mark is a comma)', () => {
+    const text = 'Category;Value;Question;Answer\nGeo;1,000;"Capital of France; obviously";Paris\nWords;400;Greeting?;Hi, you\n';
+    expect(tableSeparator(text)).toBe(';');
+    expect(cluesFromTable(parseTable(text))).toEqual([
+      { category: 'Geo', value: 1000, question: 'Capital of France; obviously', answer: 'Paris' },
+      { category: 'Words', value: 400, question: 'Greeting?', answer: 'Hi, you' },
+    ]);
+    // Commas still win where there are more of them, and tabs over both.
+    expect(tableSeparator('a,b;c,d\n')).toBe(',');
+    expect(tableSeparator('"x;y;z",b,c\n')).toBe(',');
+    expect(tableSeparator('a;b;c\td\n')).toBe('\t');
   });
 
   it('reads values written with symbols and separators', () => {

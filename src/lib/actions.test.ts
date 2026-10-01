@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runAction, type RunContext } from './actions';
+import { runAction, typedSteps, type RunContext } from './actions';
 import { newBoardGameRound } from './boardgame';
 import { newLive } from './live';
 import { newGame, type Action } from './model';
@@ -42,5 +42,17 @@ describe('running buttons that point nowhere', () => {
     ctx.world = newWorld();
     ctx.st = { positions: {}, parties: [], active: '', knowledge: {}, objects: {}, added: {}, mapShown: false };
     expect(runAction(ctx, { id: '3', do: 'move', to: { map: ctx.world.maps[0].id, screen: 'gone' } })).toBe('That screen no longer exists');
+  });
+});
+
+describe('typed steps', () => {
+  it('a negative number turns a move round; never 0', () => {
+    expect(typedSteps(1, 3)).toBe(3);
+    expect(typedSteps(-1, 3)).toBe(-3);
+    expect(typedSteps(1, -4)).toBe(-4);
+    expect(typedSteps(-2, -4)).toBe(4);
+    expect(typedSteps(-2, 0)).toBe(-1);
+    expect(typedSteps(1, NaN)).toBe(1);
+    expect(typedSteps(1, 2.6)).toBe(3);
   });
 });

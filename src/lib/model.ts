@@ -274,8 +274,9 @@ export interface GameSettings {
 }
 
 /**
- * Sounds played on the audience side at key moments (spec §9). Each one is an audio file's id, '' for none, or
- * left out for the app's built-in sound (see sounds.ts; the think music has none).
+ * Sounds played on the audience side at key moments (spec §9). Each one is an audio file's id, or left out for the
+ * app's built-in sound (see sounds.ts; the think music has none). One switched off is in Game.soundsOff ('' here in
+ * older games).
  */
 export interface GameAudio {
   roundIntro?: Id;
@@ -452,6 +453,8 @@ export interface Game {
   rounds: Round[];
   media: MediaRef[];
   audio: GameAudio;
+  /** Sounds switched off (each keeps the file chosen for it, for when it's switched back on). */
+  soundsOff?: Partial<Record<keyof GameAudio, boolean>>;
   wheels: WheelPreset[];
   dice: DicePreset[];
   theme: Theme;
@@ -1068,6 +1071,12 @@ export function migrateGame(input: Game): Game {
   }
   dedupeMediaNames(g.media);
   g.audio ??= {};
+  // A sound switched off used to be '' in its place (forgetting its file): now it's in soundsOff.
+  for (const [k, v] of Object.entries(g.audio) as [keyof GameAudio, string | undefined][])
+    if (v === '') {
+      delete g.audio[k];
+      (g.soundsOff ??= {})[k] = true;
+    }
   g.wheels ??= [];
   g.dice ??= [];
   g.theme = { ...d.theme, ...(data.theme ?? {}) };

@@ -532,7 +532,7 @@
   <div class="row settings">
     <label class="field grow">How to win<input bind:value={round.winNotes} placeholder="e.g. Own 3 Flamingos and get back to Start" /></label>
     <label class="check small"><input type="checkbox" bind:checked={round.winPublic} /> Show it on the board</label>
-    <label class="field grow">Host notes<input bind:value={round.hostNotes} placeholder="Only you see these" /></label>
+    <label class="field grow">Host notes<input bind:value={round.hostNotes} data-field="round-notes" placeholder="Only you see these" /></label>
   </div>
 
   <div class="tabs" role="tablist">
@@ -684,12 +684,12 @@
           <h5>When landed on</h5>
           <ActionListEditor bind:actions={sel.onLand} board={round} />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
-          <label class="field">Host notes<textarea rows="2" bind:value={sel.hostNotes}></textarea></label>
+          <label class="field">Host notes<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">
             <button class="small" onclick={() => (round.start = sel.id)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
             <button class="small" onclick={() => duplicateSpace(sel)} title="A copy after it on the path (Ctrl+D)">⧉ Duplicate space</button>
             <span class="spacer"></span>
-            <button class="ghost small" onclick={() => removeSpace(sel)}>Delete space</button>
+            <button class="ghost small" onclick={() => removeSpace(sel)}>🗑 Delete space</button>
           </div>
         {:else}
           <p class="muted small">

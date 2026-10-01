@@ -410,7 +410,7 @@ await page.getByRole('button', { name: 'Leave', exact: true }).click();
 const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
 await chooser.setFiles({ name: 'links.jbr', mimeType: 'application/zip', buffer: readFileSync(await download.path()) });
 // (The game open is the one saved, so it isn't asked about; the same game opens in its place.)
-await page.getByText(/^Opened "/).waitFor();
+await page.getByText(/^Opened “/).waitFor();
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Links');
 await page.locator('.tile').nth(3).click();
 await page.locator('.canvas img').waitFor();

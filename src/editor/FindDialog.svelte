@@ -11,7 +11,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { modal } from '../lib/modal';
   import { findAll, type Hit } from '../lib/find';
-  import { goTo } from '../lib/nav.svelte';
+  import { goTo, placeKey } from '../lib/nav.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -28,7 +28,32 @@
     if (!h) return;
     onclose();
     const to = goTo(h.place);
-    if (!to) toast('It was deleted since', 3000);
+    if (!to) return toast('It was deleted since', 3000);
+    focusThere(to === h.place ? h.focus : undefined, placeKey(to));
+  }
+
+  /**
+   * Once what Find went to is on screen, the focus goes there: to the field with the words (`selector`), else to what
+   * flashes (or the first field in it). Never left on the page itself.
+   */
+  function focusThere(selector: string | undefined, key: string | null): void {
+    let frames = 0;
+    const tryNow = () => {
+      const field = selector ? document.querySelector<HTMLElement>(selector) : null;
+      const flashed = key ? document.querySelector<HTMLElement>(`[data-place="${CSS.escape(key)}"]`) : null;
+      const target =
+        field ??
+        (flashed?.matches('button, input, textarea, select, [tabindex]') ? flashed : flashed?.querySelector<HTMLElement>('input, textarea, select, button'));
+      // (What opens there can take a few frames: a clue editor, a space's card.)
+      if (!target && ++frames < 30) return void requestAnimationFrame(tryNow);
+      if (!target) return;
+      // After what opened has put the focus where it wants it.
+      requestAnimationFrame(() => {
+        target.focus();
+        if (target === field && target instanceof HTMLInputElement) target.select();
+      });
+    };
+    requestAnimationFrame(tryNow);
   }
 
   function onkey(e: KeyboardEvent): void {
@@ -69,6 +94,10 @@
       <input
         class="q"
         type="search"
+        role="combobox"
+        aria-expanded={hits.length > 0}
+        aria-autocomplete="list"
+        aria-activedescendant={hits.length ? `find-hit-${at}` : undefined}
         bind:value={query}
         oninput={() => (at = 0)}
         onkeydown={onkey}
@@ -90,7 +119,18 @@
     {#if hits.length}
       <div class="hits" id="find-hits" role="listbox" aria-label="Found" bind:this={listEl}>
         {#each hits as h, i (i)}
-          <button class="hit" class:on={i === at} data-hit={i} role="option" aria-selected={i === at} onclick={() => go(h)} onmouseenter={() => (at = i)}>
+          <!-- (One Tab stop: ↑/↓ in the box pick a result, which it announces.) -->
+          <button
+            class="hit"
+            class:on={i === at}
+            id="find-hit-{i}"
+            data-hit={i}
+            role="option"
+            tabindex="-1"
+            aria-selected={i === at}
+            onclick={() => go(h)}
+            onmouseenter={() => (at = i)}
+          >
             <span class="icon" aria-hidden="true">{h.icon}</span>
             <span class="txt">
               <span class="t">{h.text}</span>

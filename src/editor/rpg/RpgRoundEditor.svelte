@@ -99,7 +99,7 @@
     {/if}
     <label class="field notes">
       Host notes
-      <textarea rows="2" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
+      <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
     </label>
   {/if}
   {#if world}

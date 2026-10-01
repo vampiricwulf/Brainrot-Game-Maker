@@ -58,6 +58,13 @@ async function toPregame(page, url, { introSound = false } = {}) {
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
     await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(2) });
     await page.getByText('🔊 intro.wav').waitFor();
+    // Switched off, it keeps its file; switched back on, it plays that file again (not the built-in sound).
+    const box = page.getByLabel(/^Play the .* sound$/).first();
+    await box.uncheck();
+    await page.getByText('(keeps intro.wav)').waitFor();
+    await box.check();
+    await page.getByText('🔊 intro.wav').waitFor();
+    assert(true, 'a sound switched off and on again keeps its own file');
   }
   await playWithPlayers(page, 2);
 }

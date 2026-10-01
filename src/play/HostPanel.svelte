@@ -318,6 +318,9 @@
       {:else}
         <span class="muted">{finalStepText[session.finalStep ?? 'category']}</span>
       {/if}
+    {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
+      <b>{round?.name}</b>
+      <span class="muted">Title card <span class="hint">· click the screen or press N to start the round</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
@@ -375,7 +378,8 @@
     {/key}
   {/if}
 
-  {#if session.phase === 'final'}
+  <!-- (Not while its title card is up: the category isn't on screen yet.) -->
+  {#if session.phase === 'final' && session.intro?.stage !== 'title'}
     <div class="mode-host">
       <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
     </div>

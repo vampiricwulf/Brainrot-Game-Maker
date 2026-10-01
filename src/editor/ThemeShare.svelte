@@ -2,9 +2,10 @@
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
   import { step } from '../lib/history.svelte';
-  import { loadMyTheme, saveMyTheme, themeMedia, withMyTheme } from '../lib/mytheme';
+  import { loadMyTheme, missingFonts, saveMyTheme, themeMedia, usesUploadedFonts, withMyTheme } from '../lib/mytheme';
+  import type { Theme } from '../lib/theme';
   import { clone } from '../lib/ops';
-  import { addMedia } from '../lib/roundcopy';
+  import { addMedia, sameContent } from '../lib/roundcopy';
   import { pickOtherGame } from './roundtools';
 
   let mine = $state(loadMyTheme());
@@ -12,18 +13,25 @@
   function save(): void {
     if (!saveMyTheme($state.snapshot(app.game.theme))) return void toast('This browser won’t store it (storage is blocked or full)', 4000);
     mine = loadMyTheme();
-    toast('Saved as my theme: “Use my theme” in any game on this computer (pictures stay with this game)', 5000);
+    const fonts = usesUploadedFonts(app.game.theme);
+    toast(`Saved as my theme: “Use my theme” in any game on this computer (pictures${fonts ? ' and uploaded fonts' : ''} stay with this game)`, 5000);
   }
 
   function useMine(): void {
     const m = mine;
     if (!m) return;
     const game = app.game;
-    step('Theme: my theme', () => (game.theme = withMyTheme(game.theme, clone(m))), { notify: true });
+    const now = $state.snapshot(game.theme) as Theme;
+    const next = withMyTheme(now, clone(m), game.media);
+    const missing = missingFonts(m, game.media).length;
+    const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
+    if (sameContent(next, now)) return void toast(`This game already looks like my theme${note}`, 4000);
+    step('Theme: my theme', () => (game.theme = next), { notify: true });
+    if (note) toast(`Used my theme${note}`, 5000);
   }
 
   async function fromGame(): Promise<void> {
-    const other = await pickOtherGame();
+    const other = await pickOtherGame(app.game);
     if (!other) return;
     const game = app.game;
     step(`Theme from “${other.title}”`, () => {

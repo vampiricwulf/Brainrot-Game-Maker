@@ -1,6 +1,7 @@
 <script lang="ts">
   import { modal, takeFocus } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
+  import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
@@ -232,7 +233,7 @@
     return () => (app.onAir = false);
   });
   // An RPG round's question (a new screen's name…), its object card and a board game's space card are for that round
-  // only, and so are a shop, a player's sheet or an object's pop-up on the stage: they don't follow into the next round.
+  // only, and so are a shop, a player's sheet, an object's pop-up, dice or a wheel on the stage: they don't follow into the next round.
   $effect(() => {
     void session.currentRound;
     rpgAsk = null;
@@ -240,7 +241,7 @@
     bgSpace = null;
     untrack(() => {
       const k = app.live.overlay?.kind;
-      if (k === 'shop' || k === 'sheet' || k === 'popup') app.live.overlay = null;
+      if (k === 'shop' || k === 'sheet' || k === 'popup' || k === 'dice' || k === 'wheel') app.live.overlay = null;
     });
   });
   /** The round's party or turn order takes in the players added or removed. */
@@ -1330,8 +1331,21 @@
     if (app.game.id === game.id) step(label, () => apply(app.game), { during: 'play' });
   }
 
+  /** A stream card's words changed, as the 🕘 History says it ("Cover card text “Snack break”"). */
+  const cardLabel = (card: string, text: string) => (text.trim() ? `${card} card text “${text.trim().slice(0, 40)}”` : `${card} card text back to the default`);
+
   /** Minutes the "Starting soon" card counts down from. */
   let soonMinutes = $state(5);
+  /** Seconds left on the "Starting soon" countdown, for the host (ticks only while there's one). */
+  let soonLeft = $state(0);
+  $effect(() => {
+    const at = app.live.soonAt;
+    if (!at) return;
+    const tick = () => (soonLeft = Math.max(0, Math.ceil((at - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  });
 
   function addSamplePlayers(): void {
     for (const name of ['Alex', 'Sam', 'Jordan']) {
@@ -1851,13 +1865,14 @@
               <input
                 value={stream.soonText ?? ''}
                 placeholder="Starting soon…"
-                onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, 'Starting soon card text')}
+                onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, cardLabel('Starting soon', e.currentTarget.value))}
               />
             </label>
             <div class="row">
               <span class="muted small">Countdown on it:</span>
               {#if app.live.soonAt}
-                <button class="small" onclick={() => (app.live.soonAt = undefined)}>■ Stop countdown</button>
+                <span class="small soon-left" role="timer">{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span>
+                <button class="small" onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
               {:else}
                 <label class="check small">
                   <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
@@ -1872,7 +1887,7 @@
               <input
                 value={stream.coverText ?? ''}
                 placeholder="Be right back"
-                onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, 'Cover card text')}
+                onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, cardLabel('Cover', e.currentTarget.value))}
               />
             </label>
             <span class="muted small">The theme's banner picture shows on both cards, when there is one.</span>
@@ -1880,7 +1895,7 @@
               <input
                 type="checkbox"
                 checked={!!stream.clueCaption}
-                onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, 'Category and value caption on clues')}
+                onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, `Category and value caption on clues ${e.currentTarget.checked ? 'on' : 'off'}`)}
               />
               Show the category and value on clue screens (“MEMES · $400”)
             </label>
@@ -1888,9 +1903,13 @@
               <input
                 type="checkbox"
                 checked={!!stream.placeCaption}
-                onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, 'Screen name caption in RPG rounds')}
+                onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
               />
               Show the screen's name in RPG rounds
+            </label>
+            <label class="check small" title="The same as ⚙ Settings › Reduce motion on stream (kept on this computer)">
+              <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
+              Reduce motion on stream (no pop-ins, fly-ins or confetti)
             </label>
           </div>
 

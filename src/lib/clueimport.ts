@@ -15,12 +15,25 @@ export interface ImportedClue {
 const MAX = 10;
 
 /**
- * Split a table into rows of cells. Tabs (a spreadsheet's copy, or a .tsv) win over commas; quoted cells may hold
- * the separator, quotes ("") and line breaks.
+ * The separator of a table: tabs (a spreadsheet's copy, or a .tsv) win; otherwise commas, or semicolons when its first
+ * line has more of them (a CSV saved by Excel where the decimal mark is a comma).
  */
-export function parseTable(text: string, sep?: ',' | '\t'): string[][] {
+export function tableSeparator(text: string): ',' | ';' | '\t' {
+  if (text.includes('\t')) return '\t';
+  const first = text.replace(/^﻿/, '').split(/\r?\n/).find((l) => l.trim()) ?? '';
+  // (Outside quoted cells.)
+  const bare = first.replace(/"(?:[^"]|"")*"/g, '');
+  const count = (ch: string) => bare.split(ch).length - 1;
+  return count(';') > count(',') ? ';' : ',';
+}
+
+/**
+ * Split a table into rows of cells (see tableSeparator); quoted cells may hold the separator, quotes ("") and line
+ * breaks.
+ */
+export function parseTable(text: string, sep?: ',' | ';' | '\t'): string[][] {
   text = text.replace(/^﻿/, '');
-  sep ??= text.includes('\t') ? '\t' : ',';
+  sep ??= tableSeparator(text);
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';

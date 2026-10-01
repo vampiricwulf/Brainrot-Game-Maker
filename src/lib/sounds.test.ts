@@ -7,6 +7,9 @@ describe('cueMedia', () => {
     expect(cueMedia({ audio: {} }, 'right')).toBe(BUILTIN + 'right');
     expect(cueMedia({ audio: { right: 'm1' } }, 'right')).toBe('m1');
     expect(cueMedia({ audio: { right: '' } }, 'right')).toBeUndefined();
+    // Switched off with its own file: nothing plays, and the file is kept for when it's back on.
+    expect(cueMedia({ audio: { right: 'm1' }, soundsOff: { right: true } }, 'right')).toBeUndefined();
+    expect(cueMedia({ audio: { right: 'm1' }, soundsOff: { wrong: true } }, 'right')).toBe('m1');
   });
 
   it('has no built-in think music', () => {

@@ -51,8 +51,11 @@ export async function savePack(game: Game, onProgress?: PackProgress): Promise<{
 /** Said when a game file (or an exported one) didn't arrive whole. */
 export const CUT_OFF = "This file is incomplete: it probably didn't finish downloading or uploading. Ask for it again.";
 
+/** What's done with each file of a pack as it's read: stored (by default). */
+export type PutMedia = (id: string, blob: Blob) => Promise<void>;
+
 /** Open a .brainrot pack; `onProgress` hears how many of its files are unpacked so far (a big game has hundreds). */
-export async function openPack(file: Blob, onProgress?: (done: number, total: number) => void): Promise<Game> {
+export async function openPack(file: Blob, onProgress?: (done: number, total: number) => void, put: PutMedia = putMedia): Promise<Game> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(file);
@@ -70,7 +73,7 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
     const entry = zip.file(mediaPath(ref));
     if (!entry) continue;
     const data = await entry.async('blob');
-    await putMedia(ref.id, new Blob([data], { type: mimeFor(ref.name, ref.mime) }));
+    await put(ref.id, new Blob([data], { type: mimeFor(ref.name, ref.mime) }));
   }
   registerLinks(game);
   return game;
@@ -80,19 +83,19 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
  * Open a .brainrot pack (or a .jbr from before the rename: same format), a plain .json game, the game in an exported
  * .html, or a backup the desktop app kept of one of those ("Game.brainrot.bak").
  */
-export async function openGameFile(file: File): Promise<Game> {
+export async function openGameFile(file: File, put: PutMedia = putMedia): Promise<Game> {
   // A pack is a zip, which starts with "PK": one saved or renamed as .json still opens.
   const zip = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
   const name = file.name.replace(/\.bak\d*$/i, '');
   if (!zip && (/\.html?$/i.test(name) || file.type === 'text/html')) {
     const inside = packInHtml(await file.text());
     if (!inside) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
-    return openPack(await unpackEmbedded(inside.pack, inside.cut));
+    return openPack(await unpackEmbedded(inside.pack, inside.cut), undefined, put);
   }
   if (!zip && (/\.json$/i.test(name) || file.type === 'application/json')) {
     const game = migrateGame(parseGame(await file.text()));
     registerLinks(game);
     return game;
   }
-  return openPack(file);
+  return openPack(file, undefined, put);
 }

@@ -4,6 +4,7 @@
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel } from './layerlabel';
 import { categoryLabel, clueValue, formatPoints, roundName, type Action, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
+import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
 import { PRESETS, type ThemePreset } from './theme';
@@ -119,7 +120,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     owned = true;
     const a = byId<Action>(list, path[i]);
     if (!a) return;
-    reached(i + 1, 'button', '', undefined, false);
+    reached(i + 1, 'button', describeAction(game, a), undefined, false);
     if (a.do === 'popup' && path[i + 1] === 'slide') {
       at.crumbs.push('pop-up');
       slide(a.slide, i + 2, placeFor);
@@ -236,6 +237,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       break;
     }
     case 'audio':
+    case 'soundsOff':
       at.crumbs.push('Sounds');
       at.icon = '🔊';
       go({ tab: 'sounds' });
@@ -388,6 +390,16 @@ const TILE_TYPES: Record<string, string> = {
   standard: 'Made it a standard tile',
 };
 
+/** A theme setting's new value, as the label says it (" chroma green", " off"), or '' when it says nothing readable. */
+function themeValue(k: Seg, v: unknown): string {
+  if (k === 'stageBg') return v ? ` chroma ${String(v)}` : ': theme colors';
+  if (typeof v === 'boolean') return v ? ' on' : ' off';
+  if (v === undefined || v === null || v === '') return ' off';
+  if (typeof v === 'number') return ` ${v}`;
+  // (Not a file's id.)
+  return typeof v === 'string' && v.length <= 30 && !/^[0-9a-f-]{20,}$/i.test(v) ? ` ${v}` : '';
+}
+
 const fieldName = (k: Seg) => (typeof k === 'number' ? 'item' : (FIELDS[k] ?? k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()));
 /** Text as a label shows it: its first line, 40 characters at most. */
 export const short = (s: string) => {
@@ -424,7 +436,9 @@ function movedIds(b: string[], a: string[]): string[] {
 /** The op that says what a step did: the first insert, delete or move nearest the top, else the first op. */
 function primary(ops: readonly Op[]): Op {
   let best: Op | undefined;
-  for (const op of ops) if (op.t !== 'set' && (!best || op.p.length < best.p.length)) best = op;
+  // (Rounds before players and the rest: the sample game adds both, and it's its rounds that show.)
+  const rank = (o: Op) => o.p.length * 2 + (o.p[0] === 'rounds' ? 0 : 1);
+  for (const op of ops) if (op.t !== 'set' && (!best || rank(op) < rank(best))) best = op;
   return best ?? ops[0];
 }
 
@@ -528,6 +542,13 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     const rule = RULES[k] ?? fieldName(k);
     return typeof v === 'boolean' ? `Rule: ${rule} ${v ? 'on' : 'off'}` : `Rule: ${rule} = ${v ?? 'off'}`;
   }
+  if (top === 'soundsOff') {
+    // (The game's first sound switched off brings the whole list.)
+    const key = op.p.length ? k : Object.keys((v ?? (op as Op & { t: 'set' }).b ?? {}) as Obj)[0];
+    const name = cueName(String(key)) ?? fieldName(key ?? k);
+    const on = op.p.length ? !v : !v || !(v as Obj)[key];
+    return `Turned ${on ? 'on' : 'off'} the ${name} sound`;
+  }
   if (top === 'audio') {
     const name = cueName(String(k)) ?? fieldName(k);
     if (v === '') return `Turned off the ${name} sound`;
@@ -537,7 +558,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (top === 'theme') {
     const preset = sets.find((o) => o.k === 'preset' && o.p.length === 1);
     if (preset) return `Theme preset: ${PRESETS[preset.a as ThemePreset]?.label ?? preset.a}`;
-    return ops.length === 1 && op.p.length === 1 ? `Theme: ${fieldName(k)}` : 'Changed the theme';
+    return ops.length === 1 && op.p.length === 1 ? `Theme: ${fieldName(k)}${themeValue(k, v)}` : 'Changed the theme';
   }
   if (!op.p.length && k === 'tiebreaker') return v === undefined ? 'Tiebreaker off' : 'Tiebreaker on';
 

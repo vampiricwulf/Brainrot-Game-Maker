@@ -115,6 +115,8 @@ done, the Unreleased lines move under that day's heading.
   and ✕ closes everywhere, and every window has the same ✕ and Done / Cancel. (4729d75)
 - **Readable colours**: text on player colours picks black or white by contrast, the Pastel theme's stage text is
   dark, and filled buttons are darker. (4729d75)
+- **Reduce motion on stream** is also on the pre-game screen's On stream section (the same setting as ⚙ Settings), so
+  an exported game file can use it too.
 
 ### Added
 - **Phone buzzers** (the pre-game screen's 📱 Phone buzzers card): before the game, ▶ Start the room shows a
@@ -215,6 +217,46 @@ done, the Unreleased lines move under that day's heading.
   incomplete. (64eba3f, 13b208f)
 - Desktop saves are synced to disk before they replace the old file, and closing the window keeps the last edits.
   (769dbf8)
+- **Import round / Paste round from another copy of the same game** no longer silently uses this game's own world,
+  wheels, dice, stats, items, shops or files where the other copy's differ: the other version comes in as a copy (the
+  toast says "Brought the file's “Adventure” world as a copy"), and this game's stays as it was. The same thing with the
+  same content is still shared. Opening another game to take rounds or a theme from no longer overwrites this game's
+  file of the same id in the browser's storage.
+- Pasting a round twice names them "Adventure (copy)" and "Adventure (copy 2)", and a template added twice is
+  "Jeopardy! (2)".
+- **↔ Move ±N spaces**: typing a negative number turns the move round ("-4" going forward is back 4) instead of
+  quietly saving 1 while the box kept showing "-4"; the box always shows what's kept. "Miss 1 turn" no longer says
+  "turn(s)".
+- A board game's movement dice (or a wheel) no longer stays on stream over the next round's title card.
+- With this browser's storage full, the Save first / Discard question says Discard loses the game (it can't be kept
+  in Recent games), and doesn't ask a second time.
+- The Export HTML button's tip no longer says to share the file with players: it's the host's copy and shows the
+  answers.
+- The "Starting soon" countdown shows the host its time left ("Starting in 4:32 · ■ Stop").
+- A toast from the editor ("Added a sample game…") no longer follows into ▶ Play over the Start game button.
+- A tab paused because the game was open in another tab notices when that tab closes: it says "The other tab was
+  closed" and offers **Edit here**.
+- Keyboard and screen reader: Try a sample game, a template, a pasted or an imported round put the focus on the new
+  round's name; Find's Go there puts it in the field that has the words (a category's name, a Final's category,
+  question or answer, a space's name, a round's name) instead of losing it, and an Answer found opens with the focus
+  in the Answer field. Find's results are one Tab stop (↑/↓ pick, and the box says which). Menus take `Home` and `End`.
+  In-app questions are marked as modal.
+- Find says "› Category" for board categories as for Finals, and board spaces have their own ⬤ icon (dice keep 🎲).
+- 🕘 History names are clearer: a space's, an object's, an item's or a wheel slice's button is named as the editor
+  shows it ("Added button “Back 3 spaces”"); the On stream captions say on or off and the cards' words what they say
+  now; a theme change says its new value ("Theme: stage background chroma green"); and "Added the sample game" is
+  placed at its rounds, not at Play › Players (its Undo / Redo note too).
+- A Final's title card no longer shows the host "Category is on screen" and Lock category under "Title card…"; RPG
+  and board-game rounds say "Title card · press N to start the round" too.
+- 🎨 **Save as my theme** says when the theme's uploaded fonts stay with this game, and **Use my theme** in a game
+  without those fonts keeps that game's font for that text (instead of a fallback font) and says so. Use my theme
+  says "This game already looks like my theme" when nothing changes.
+- **Import clues** reads CSV files that use semicolons (as Excel saves them where the decimal mark is a comma).
+- 🔊 Sounds: switching off a sound that has your own file no longer forgets the file: it says "Off (keeps
+  intro.wav)", and ticking it again plays that file, not the built-in sound. (Games saved before keep working; a sound
+  they had switched off simply stays off.)
+- Small wording: ＋ Add round's "📂 Import rounds…" is no longer cut off; the space card's Delete space has its 🗑;
+  the "Opened “…”" toast uses curly quotes; the sample game's Final answer is "Just chatting", like its board answers.
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

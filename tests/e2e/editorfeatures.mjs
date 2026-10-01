@@ -2,7 +2,7 @@
 // (Ctrl+F), Copy / Paste round, Most players, my theme, the Media and shortcuts filters, and the board-game spaces
 // that move players back, skip a turn or roll again (played, with undo).
 import { chromium } from 'playwright-core';
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -30,6 +30,14 @@ try {
 
   // ---------- The sample game ----------
   await page.getByRole('button', { name: /Try a sample game/ }).click();
+  await page.waitForTimeout(100);
+  assert(await page.evaluate(() => document.activeElement?.hasAttribute('data-round-name')), 'Try a sample game puts the focus on its first round’s name');
+  // Its toast stays in the editor: it would cover ▶ Play's Start game.
+  assert((await page.locator('.toast').count()) === 1, 'the sample game says what it added');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByRole('button', { name: /Start game/ }).waitFor();
+  assert((await page.locator('.toast').count()) === 0, 'and its toast doesn’t follow into ▶ Play');
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
   let t = await tabs();
   assert(t.length === 4 && t[0].includes('Jeopardy!') && t[3].includes('Final'), `the sample game has a board, an adventure, a board game and a Final (${t.join(' | ')})`);
   await page.locator('.problems.ok').waitFor({ timeout: 3000 });
@@ -66,7 +74,7 @@ try {
   // ---------- Find ----------
   await page.locator('nav > button.round-tab').nth(2).click();
   await page.keyboard.press('Control+f');
-  const find = page.getByRole('searchbox', { name: 'Find' });
+  const find = page.getByRole('combobox', { name: 'Find' });
   await find.fill('cheesy');
   const opts = await page.getByRole('listbox', { name: 'Found' }).getByRole('option').allInnerTexts();
   assert(opts.length === 1, `Ctrl+F finds a clue by its words (${opts.join(' | ')})`);
@@ -78,10 +86,33 @@ try {
   await find.fill('nap time');
   await find.press('Enter');
   assert((await page.locator('nav > button.round-tab.active').innerText()).includes('Board game'), 'and finds board-game spaces');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Space name', null, { timeout: 3000 });
+  assert(true, 'Go there to a space puts the focus on its name');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+f');
+  await find.fill('nachos');
+  assert((await page.getByRole('option').first().getAttribute('tabindex')) === '-1', 'Find’s results are not Tab stops');
+  assert((await find.getAttribute('aria-activedescendant')) === (await page.getByRole('option').first().getAttribute('id')), 'the box points at the picked result');
+  await find.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('data-field') === 'a', null, { timeout: 3000 });
+  assert(true, 'an Answer found by Find has the focus in the Answer field');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+f');
+  await find.fill('snacks');
+  await page.getByRole('option', { name: /Category/ }).first().click();
+  await page.waitForFunction(() => document.activeElement?.closest('[data-place^="category:"]'), null, { timeout: 3000 });
+  assert(true, 'and a category its name');
 
   // ---------- Templates, Copy / Paste round ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.keyboard.press('End');
+  assert((await page.evaluate(() => document.activeElement?.textContent)).includes('Import round'), 'End in a menu goes to its last item (Paste round is greyed out)');
+  await page.keyboard.press('Home');
+  assert((await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem' && (await page.evaluate(() => document.activeElement?.parentElement?.querySelector('button:not(:disabled)') === document.activeElement)), 'Home to its first');
   await page.getByRole('menuitem', { name: /20-space loop/ }).click();
+  await page.waitForTimeout(100);
+  assert(await page.evaluate(() => document.activeElement?.hasAttribute('data-round-name')), 'a template round has the focus on its name');
   assert((await page.getByRole('button', { name: /^Space / }).count()) === 20, 'the 20-space loop template has 20 spaces');
   t = await tabs();
   assert(t.at(-1).includes('Final'), 'a template round goes before the Final');
@@ -100,7 +131,16 @@ try {
   assert((await page.getByRole('menuitem', { name: '⏭ Skip next turn' }).count()) === 1, 'a space offers ⏭ Skip next turn');
   assert((await page.getByRole('menuitem', { name: '↔ Move ±N spaces' }).count()) === 1, '↔ Move ±N spaces');
   assert((await page.getByRole('menuitem', { name: '🔁 Roll again' }).count()) === 1, 'and 🔁 Roll again');
-  await page.keyboard.press('Escape');
+  // ↔ Move ±N: a negative number turns it round, and the box shows what's kept.
+  await page.getByRole('menuitem', { name: '↔ Move ±N spaces' }).click();
+  const spaces = page.getByLabel('Spaces').last();
+  await spaces.fill('-4');
+  await spaces.press('Tab');
+  const way = await page.getByLabel('Which way').last().inputValue();
+  assert(way === 'on' && (await spaces.inputValue()) === '4', `↔ Move: typing -4 on Back 3 turns it round, Forward 4 (${way} ${await spaces.inputValue()})`);
+  await page.getByRole('button', { name: '＋ Add button' }).last().click();
+  await page.getByRole('menuitem', { name: '⏭ Skip next turn' }).click();
+  assert((await page.getByText('turn(s)').count()) === 0 && (await page.getByText(/^turn$/).count()) >= 1, '“Miss 1 turn”, not “turn(s)”');
 
   // ---------- Theme: my theme ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
@@ -109,6 +149,9 @@ try {
   await page.getByRole('button', { name: /Classic/ }).click();
   await page.getByRole('button', { name: '⭐ Use my theme' }).click();
   assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use my theme puts the saved theme back');
+  await page.getByRole('button', { name: '⭐ Use my theme' }).click();
+  await page.getByText('This game already looks like my theme').waitFor({ timeout: 3000 });
+  assert(true, 'Use my theme again says nothing changed');
 
   // ---------- Shortcuts filter ----------
   await page.getByRole('button', { name: /^More:/ }).click();
@@ -127,7 +170,7 @@ try {
   copyFileSync(await download.path(), other);
   const before = (await tabs()).length;
   await page.getByRole('button', { name: '＋ Add round' }).click();
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: /Import round from a \.brainrot/ }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
   await chooser.setFiles(other);
   const pick = page.getByRole('dialog', { name: 'Import rounds' });
   await pick.getByLabel(/Adventure/).check();
@@ -137,6 +180,22 @@ try {
   assert(t.length === before + 2 && t.at(-1).includes('Final Jeopardy! (copy)'), `Import round brings in the rounds picked (${t.join(' | ')})`);
   await page.keyboard.press('Control+z');
   assert((await tabs()).length === before, 'as one step');
+  // Another copy of this game whose Adventure world was changed since: its world comes in as a copy, this one's stays.
+  const json = JSON.parse(readFileSync(other, 'utf8'));
+  const rpgWorld = json.worlds.find((w) => w.id === json.rounds.find((r) => r.mode === 'rpg').world);
+  const ownName = rpgWorld.name;
+  rpgWorld.name = `${ownName} v2`;
+  const changed = join(tmpdir(), `editorfeatures-changed-${Date.now()}.json`);
+  writeFileSync(changed, JSON.stringify(json));
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  const [chooser3] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
+  await chooser3.setFiles(changed);
+  const pick2 = page.getByRole('dialog', { name: 'Import rounds' });
+  await pick2.getByLabel(/Adventure/).check();
+  await pick2.getByRole('button', { name: 'Import 1 round' }).click();
+  await page.getByText(`Brought the file’s “${ownName} v2” world as a copy`).waitFor({ timeout: 3000 });
+  assert(true, 'a world changed in the file comes in as a copy, and the toast says so');
+  await page.keyboard.press('Control+z');
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   await page.getByRole('button', { name: /Pastel/ }).click();
   const [chooser2] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: /Use a theme from another game/ }).click()]);

@@ -11,6 +11,8 @@ export interface Hit {
   /** Where it is: "Round 1 › Memes › $400". */
   where: string;
   place: Place;
+  /** What gets the focus there (a CSS selector), when it's a field of its own rather than what flashes. */
+  focus?: string;
 }
 
 /** Every bit of text on a slide (text boxes, item and object names). */
@@ -35,32 +37,36 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   const sym = game.settings.currencySymbol;
   const match = (text: string | undefined) => !!text && words.every((w) => text.toLowerCase().includes(w));
   /** The first text of `texts` that matches, as a hit. */
-  const look = (icon: string, texts: (string | undefined)[], where: string, place: Place) => {
+  const look = (icon: string, texts: (string | undefined)[], where: string, place: Place, focus?: string) => {
     const t = texts.find(match);
-    if (t && hits.length < limit) hits.push({ icon, text: snippet(t, words[0]), where, place });
+    if (t && hits.length < limit) hits.push({ icon, text: snippet(t, words[0]), where, place, ...(focus ? { focus } : {}) });
   };
+  /** The field that has the text: the first one of `fields` (selectors, with the texts) that matches. */
+  const field = (pairs: [string | undefined, string][]) => pairs.find(([t]) => match(t))?.[1];
 
   game.rounds.forEach((r, i) => {
     const rn = roundName(r, i);
-    look('🏷', [r.name, r.mode === 'rpg' || r.mode === 'boardgame' || r.mode === 'final' ? r.hostNotes : undefined], rn, { tab: 'round', round: r.id });
+    const notes = r.mode === 'rpg' || r.mode === 'boardgame' || r.mode === 'final' ? r.hostNotes : undefined;
+    look('🏷', [r.name, notes], rn, { tab: 'round', round: r.id }, field([[r.name, 'main [data-round-name]'], [notes, 'main [data-field="round-notes"]']]));
     if (r.mode === 'board') {
       for (const cat of r.categories) {
         const cn = categoryLabel(cat);
-        look('🟦', [cat.title], `${rn} › category`, { tab: 'round', round: r.id, part: { kind: 'category', category: cat.id } });
+        look('🟦', [cat.title], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'category', category: cat.id } }, `[data-place="category:${cat.id}"] textarea`);
         cat.clues.forEach((clue, row) => {
           const where = `${rn} › ${cn} › ${sym}${clue.value ?? r.values[row] ?? ''}`;
           const at = (side?: 'q' | 'a'): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side } });
-          look('❓', slideWords(clue.questionSlide), `${where} › Question`, at('q'));
-          look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'));
-          look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at());
+          look('❓', slideWords(clue.questionSlide), `${where} › Question`, at('q'), '[data-field="q"]');
+          look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');
+          look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at(), field([[clue.hostNotes, '[data-field="notes"]']]));
         });
       }
     } else if (r.mode === 'final') {
-      look('⭐', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } });
-      look('❓', slideWords(r.questionSlide), `${rn} › Question`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } });
-      look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } });
+      look('⭐', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="final-category"]');
+      look('❓', slideWords(r.questionSlide), `${rn} › Question`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
+      look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
     } else if (r.mode === 'boardgame') {
-      for (const s of r.spaces) look('🎲', [s.name, s.hostNotes], `${rn} › Space`, { tab: 'round', round: r.id, part: { kind: 'space', space: s.id } });
+      for (const s of r.spaces)
+        look('⬤', [s.name, s.hostNotes], `${rn} › Space`, { tab: 'round', round: r.id, part: { kind: 'space', space: s.id } }, field([[s.name, 'main input[aria-label="Space name"]'], [s.hostNotes, 'main [data-field="space-notes"]']]));
       for (const z of r.zones) look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], `${rn} › Zone`, { tab: 'round', round: r.id, part: { kind: 'zone', zone: z.id } });
       look('🏆', [r.winNotes], `${rn} › How to win`, { tab: 'round', round: r.id });
     }

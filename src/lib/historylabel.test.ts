@@ -3,6 +3,7 @@ import { diff } from './historyops';
 import { describe as describeStep, placeAt, short } from './historylabel';
 import { newImageEl, newTextEl, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
 import { jeopardyGame } from './testgame';
+import { addSampleGame } from './samples';
 import { newRpgRound, newScreen, newVariant } from './rpg';
 import { newWheel } from './tools';
 import { newStatField } from './toolset';
@@ -151,6 +152,13 @@ describe('step labels', () => {
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
     expect(step((g) => (g.audio.dailyDouble = 'm1')).label).toBe('Changed the Daily Double sound');
     expect(step((g) => (g.audio.wheelTick = '')).label).toBe('Turned off the wheel tick sound');
+    expect(step((g) => (g.soundsOff = { wheelTick: true })).label).toBe('Turned off the wheel tick sound');
+    expect(step((g) => (g.soundsOff = { right: true }), undefined)).toMatchObject({ where: 'Sounds' });
+    const offs = (g: Game) => (g.soundsOff = { right: true, wrong: true });
+    const both = step(offs).after;
+    const on = structuredClone(both);
+    delete on.soundsOff!.wrong;
+    expect(describeStep(diff(both, on), both, on).label).toBe('Turned on the wrong sound');
     const own = sample();
     own.audio.dailyDouble = 'm1';
     const back = structuredClone(own);
@@ -158,7 +166,10 @@ describe('step labels', () => {
     expect(describeStep(diff(own, back), own, back).label).toBe('Built-in Daily Double sound');
     expect(step((g) => (g.settings.buzzer = true))).toMatchObject({ label: 'Rule: Buzzer mode on', where: 'Play › Phone buzzers' });
     expect(step((g) => (g.theme = { ...g.theme, preset: 'neon', tile: '#000' })).label).toBe('Theme preset: Brainrot Neon');
-    expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile');
+    expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile #123456');
+    // The new value, in words.
+    expect(step((g) => (g.theme.stageBg = 'green')).label).toBe('Theme: stage background chroma green');
+    expect(step((g) => (g.theme.scoreBar = 'top')).label).toBe('Theme: score bar top');
     const file = step((g) => g.media.push({ id: 'm2', name: 'clip.mp4', mime: 'video/mp4', size: 1, kind: 'video' }));
     expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎬', place: { tab: 'media', media: 'm2' } });
     expect(step((g) => g.media.pop()).label).toBe('Removed file “a.png”');
@@ -166,7 +177,9 @@ describe('step labels', () => {
     expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels & Dice › Punishments', icon: '🎡' });
     expect(step((g) => (g.wheels[0].segments[0].label = 'Dance')).label).toBe('Renamed slice “Dance”');
     // A slice's (an object's, an item's, a space's) buttons are called buttons, as the editor calls them.
-    expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button');
+    expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button “📝 Hi”');
+    // (Named as the editor shows it.)
+    expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'steps', steps: -3 }])).label).toBe('Added button “Back 3 spaces”');
     const two = (g: Game) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }, { id: 'b2', do: 'score', amount: 5 }]);
     expect(step((g) => two(g)).label).toBe('Added 2 buttons');
     const tb = { questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } };
@@ -212,6 +225,13 @@ describe('step labels', () => {
       board(g).categories[1].clues[4].type = 'dailyDouble';
     });
     expect(one.place).toEqual({ tab: 'round', round: one.after.rounds[0].id, part: { kind: 'category', category: board(one.after).categories[1].id } });
+    // The sample game adds rounds and players: it shows at its rounds, not at Play › Players.
+    const sampled = step((g) => {
+      g.players = [];
+      addSampleGame(g);
+    }, 'Added the sample game');
+    expect(sampled.where).not.toContain('Players');
+    expect(sampled.place).toMatchObject({ tab: 'round' });
     const players = step((g) => (g.players = [1, 2].map((n) => ({ id: `p${n}`, name: `Player ${n}`, color: '#fff' }))), 'Saved the players from the show');
     expect(players).toMatchObject({ where: 'Play › Players', place: { tab: 'play', part: 'players' } });
     // Items on one slide are shown themselves (and selected together).

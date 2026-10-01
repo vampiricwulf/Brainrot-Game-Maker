@@ -1,5 +1,5 @@
 <!--
-  Import round from a .brainrot…: the rounds of another game, to tick and bring in (with their worlds, wheels, items
+  Import rounds…: the rounds of another game, to tick and bring in (with their worlds, wheels, items
   and files). One step.
 -->
 <script lang="ts">
@@ -9,7 +9,8 @@
   import { step } from '../lib/history.svelte';
   import { ROUND_MODES } from '../lib/modes';
   import { roundName, type Game } from '../lib/model';
-  import { addBundledRound, bundleRound, placeFor } from '../lib/roundcopy';
+  import { addBundledRound, bundleRound, copiesMessage, placeFor, type CopyIds } from '../lib/roundcopy';
+  import { copiedFiles } from './roundtools';
 
   let { source, onclose, onadded }: { source: Game; onclose: () => void; onadded: (index: number) => void } = $props();
 
@@ -21,14 +22,21 @@
     if (!rounds.length) return;
     const game = app.game;
     let first = -1;
+    const copied: string[] = [];
+    // The rounds share the copies they bring.
+    const ids: CopyIds = new Map();
+    const media = new Map<string, { id: string; name: string }>();
     step(`Imported ${rounds.length === 1 ? `round “${roundName(rounds[0])}”` : `${rounds.length} rounds`} from “${source.title}”`, () => {
       for (const r of rounds) {
-        const added = addBundledRound(game, bundleRound(source, r), placeFor(game, r));
+        const b = bundleRound(source, r);
+        for (const m of b.media) media.set(m.id, m);
+        const added = addBundledRound(game, b, placeFor(game, r), copied, ids);
         const i = game.rounds.indexOf(added);
         if (first < 0 || i < first) first = i;
       }
     });
-    toast(`Imported ${rounds.length} round${rounds.length === 1 ? '' : 's'} from “${source.title}”`);
+    const copies = copiesMessage([...copied, ...copiedFiles(source, [...media.values()])], 'the file');
+    toast(`Imported ${rounds.length} round${rounds.length === 1 ? '' : 's'} from “${source.title}”${copies ? `. ${copies}` : ''}`, copies ? 7000 : undefined);
     onclose();
     onadded(first);
   }

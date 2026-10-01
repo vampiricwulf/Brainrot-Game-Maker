@@ -19,7 +19,7 @@
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
   import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
-  import { claimEditor } from './lib/editorlock';
+  import { claimEditor, watchEditor } from './lib/editorlock';
   import { hasWork } from './lib/recent';
   import { validate, type Problem } from './lib/validate';
   import { migrateGame, newId } from './lib/model';
@@ -51,6 +51,12 @@
   let unpacked = $state<{ done: number; total: number } | null>(null);
   /** Another tab (or window) of the app edits the game: this one leaves the autosave alone until told to take over. */
   let paused = $state(false);
+  /** While paused: the tab that was editing has closed, so nothing stops this one editing. */
+  let otherClosed = $state(false);
+  $effect(() => {
+    if (!paused) return;
+    return watchEditor((taken) => (otherClosed = !taken));
+  });
   /** This copy is the one that edits and autosaves the game. */
   let editing = false;
   /** Set just before reloading to take over editing from another tab. */
@@ -328,6 +334,8 @@
     app.session = newSession(app.playGame);
     app.live = newLive();
     app.pregame = true;
+    // An editor toast ("Added a sample game…") would cover the Start game button.
+    app.toast = '';
     app.screen = 'play';
   }
 
@@ -345,6 +353,7 @@
     app.session = saved.session;
     app.live = newLive();
     app.pregame = false;
+    app.toast = '';
     app.screen = 'play';
     app.resumable = null;
   }
@@ -405,10 +414,16 @@
 {:else if paused && app.screen === 'editor'}
   <div class="loading">
     <div class="card" role="alert">
-      <h1>This game is open in another tab</h1>
-      <p class="muted">Editing here is paused, so the two tabs don't overwrite each other's changes.</p>
-      <button class="primary" onclick={editHere}>Edit here instead</button>
-      <p class="muted small">The other tab saves its changes first, then pauses.</p>
+      {#if otherClosed}
+        <h1>The other tab was closed</h1>
+        <p class="muted">Its changes are saved. Nothing else is editing this game now.</p>
+        <button class="primary" onclick={editHere}>Edit here</button>
+      {:else}
+        <h1>This game is open in another tab</h1>
+        <p class="muted">Editing here is paused, so the two tabs don't overwrite each other's changes.</p>
+        <button class="primary" onclick={editHere}>Edit here instead</button>
+        <p class="muted small">The other tab saves its changes first, then pauses.</p>
+      {/if}
     </div>
   </div>
 {:else if playerOnly && app.screen === 'editor'}

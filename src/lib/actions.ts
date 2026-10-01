@@ -51,6 +51,15 @@ export function targets(ctx: RunContext, who: Who | undefined): string[] {
 const names = (ctx: RunContext, ids: string[]) => nameList(ids.map((id) => ctx.session.players.find((p) => p.id === id)?.name ?? '?'));
 
 /** Whether an action needs players to act on (so the card asks for them first). */
+/**
+ * A "Move ±N spaces" action's steps after typing `typed` in its Spaces box while it goes `steps` (negative: back). A
+ * negative number turns it round ("-4" going forward is back 4); never 0.
+ */
+export function typedSteps(steps: number, typed: number): number {
+  const n = Math.round(typed) || 0;
+  return (steps < 0 ? -1 : 1) * (n < 0 ? -1 : 1) * Math.max(1, Math.abs(n));
+}
+
 export function needsPlayers(a: Action): boolean {
   if (a.do === 'steps' || a.do === 'skip' || a.do === 'again') return !!a.who && a.who !== 'party';
   return a.do === 'stat' || a.do === 'item' || a.do === 'score' || ((a.do === 'move' || a.do === 'goto') && a.who !== 'party');
