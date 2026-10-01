@@ -366,7 +366,7 @@
   .big .dot {
     width: 20px;
     height: 20px;
-    font-size: 10px;
+    font-size: 10px; /* glyph: initials */
   }
   .big .cell.none {
     border: 1px dashed rgba(255, 255, 255, 0.12);
@@ -401,7 +401,8 @@
     height: 13px;
     border-radius: 50%;
     border: 1px solid #000;
-    font: 700 7px/1 'Inter', system-ui, sans-serif;
+    font: 700 1px/1 'Inter', system-ui, sans-serif;
+    font-size: 7px; /* glyph: a player's initials in their dot (the name is in its tooltip) */
     letter-spacing: -0.5px;
     overflow: hidden;
   }
