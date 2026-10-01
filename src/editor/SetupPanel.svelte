@@ -3,6 +3,7 @@
   import { step } from '../lib/history.svelte';
   import PlayerList from './PlayerList.svelte';
   import SoundSlots from './SoundSlots.svelte';
+  import { buzzerBase } from '../lib/remote.svelte';
 
   const s = $derived(app.game.settings);
   /** Most players a game can have (the stats strip and the player list stay readable). */
@@ -105,7 +106,12 @@
       />
     </label>
   </div>
-  {#if s.buzzer && s.buzzFrom === 'phones'}
+  {#if s.buzzer && s.buzzFrom === 'phones' && !buzzerBase()}
+    <p class="warn small">
+      Phone buzzers aren't set up in this copy: they need a buzzer server (⚙ Settings › Buzzer server). Until then players
+      buzz from this computer's keys.
+    </p>
+  {:else if s.buzzer && s.buzzFrom === 'phones'}
     <p class="muted small">
       Phone buzzers: on the pre-game screen, start a room; players open the link (or scan the code) on their phone and tap
       their name. Phones need this computer online.
@@ -171,6 +177,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
   }
   .grid {
     display: grid;

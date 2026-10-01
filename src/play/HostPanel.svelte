@@ -74,6 +74,7 @@
     oncloseoverlay,
     onopenbuzzers,
     buzzExtra,
+    phoneChip,
   }: {
     game: Game;
     session: Session;
@@ -153,6 +154,8 @@
     onopenbuzzers?: (all?: boolean) => void;
     /** Buzzer mode: what phones add to the buzzer row (later buzzes, the phones' status). */
     buzzExtra?: Snippet;
+    /** Phone buzzers: the "📱 3/4" chip (its list of phones). */
+    phoneChip?: Snippet;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -329,6 +332,7 @@
     {/if}
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
+    {@render phoneChip?.()}
     <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} />
   </div>
 

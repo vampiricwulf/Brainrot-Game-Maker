@@ -4,9 +4,13 @@
   import { inTauri } from '../lib/platform';
   import { keepLimits } from '../lib/history.svelte';
   import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
+  import { DEFAULT_BUZZER_URL, testServer } from '../lib/remote.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
   const desktop = inTauri();
+  /** What ⚙ Test found at the buzzer server. */
+  let tested = $state('');
+  let testing = $state(false);
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
@@ -87,6 +91,33 @@
       spin. The editor and the host’s controls follow your computer’s “reduce motion” setting.
     </p>
 
+    <h3>Phone buzzers</h3>
+    <label class="field inline">
+      Buzzer server
+      <input
+        class="url"
+        type="url"
+        bind:value={prefs.buzzerServer}
+        onchange={() => ((tested = ''), savePrefs())}
+        placeholder={DEFAULT_BUZZER_URL || 'https://…'}
+        aria-label="Buzzer server"
+      />
+      <button
+        class="small"
+        disabled={testing || !(prefs.buzzerServer || DEFAULT_BUZZER_URL)}
+        onclick={async () => {
+          testing = true;
+          tested = await testServer(prefs.buzzerServer || DEFAULT_BUZZER_URL);
+          testing = false;
+        }}>{testing ? 'Testing…' : 'Test'}</button
+      >
+    </label>
+    {#if tested}<p class="small" role="status">{tested}</p>{/if}
+    <p class="muted small">
+      Advanced: where phone buzzer rooms are made (Setup › Rules › Players buzz from: their phones too).
+      {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : "This copy comes without one: phone buzzers need an address here."}
+    </p>
+
     <div class="row">
       <button
         class="ghost small"
@@ -146,6 +177,10 @@
   }
   .n {
     width: 70px;
+  }
+  .url {
+    flex: 1;
+    min-width: 0;
   }
   .small {
     font-size: 12px;
