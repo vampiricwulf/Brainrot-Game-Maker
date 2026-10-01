@@ -25,7 +25,7 @@
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
-  import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, pastingOurs } from '../../lib/clipboard.svelte';
+  import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingOurs } from '../../lib/clipboard.svelte';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, canPlay, mediaUrls, type LinkAdded } from '../../lib/media.svelte';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
@@ -505,6 +505,7 @@
   function copySlide(): void {
     clipboard.slide = clone(slide);
     holdMedia(game);
+    holdUsedBy(game, clipboard.slide);
     toast('Slide copied');
   }
 
@@ -515,6 +516,7 @@
     const s = clone(clipboard.slide);
     for (const e of s.elements) e.id = newId();
     adoptMedia(game, elementMediaIds(s.elements, s.background));
+    adoptUsedBy(game, s);
     undoApi.step('Pasted a slide', () => {
       slide.background = s.background;
       slide.elements = s.elements;
@@ -554,6 +556,13 @@
       drawing = false;
       picker = null;
       replacing = null;
+      return;
+    }
+    // Esc in the slide's own fields (a text box's text…) leaves the field, the item still selected: the next Esc
+    // deselects, and the one after that closes the clue. (After the field's own Esc, which may cancel a rename.)
+    if (e.key === 'Escape' && typing(e) && !picker && root?.contains(e.target as Node)) {
+      const field = e.target as HTMLElement;
+      setTimeout(() => !e.defaultPrevented && document.activeElement === field && field.blur());
       return;
     }
     if (typing(e) || picker) return;
@@ -665,6 +674,7 @@
     // (Copied from the board images: their board-only settings stay behind.)
     for (const c of copies) for (const key of ['behind', 'clickThrough'] as const) delete (c as Record<string, unknown>)[key];
     adoptMedia(game, elementMediaIds(copies));
+    adoptUsedBy(game, copies);
     if (at) centreOn(copies, at);
     else {
       // Copies that would land exactly on an existing item (pasting onto the same slide) shift down-right.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { adoptUsedBy, clipboard, holdUsedBy, toolHere } from './clipboard.svelte';
-import { newClue, newGame, type Game } from './model';
+import { adoptUsedBy, clipboard, copyElements, holdUsedBy, toolHere } from './clipboard.svelte';
+import { newClue, newGame, newTextEl, type Game } from './model';
 import { newDice, newWheel } from './tools';
 
 /** A game with a wheel whose slice shows a picture, and a dice preset. */
@@ -33,6 +33,17 @@ describe('copying a wheel or dice clue into another game', () => {
     expect(b.dice).toEqual([]);
     adoptUsedBy(b, diceClue);
     expect(b.dice.map((d) => d.id)).toEqual([a.dice[0].id]);
+  });
+
+  it('an RPG object copied as a slide item keeps the wheel its Spin button uses', () => {
+    const a = withTools();
+    const obj = newTextEl('Wizard');
+    obj.role = { class: 'npc', actions: [{ id: 'x', do: 'wheel', wheel: a.wheels[0].id }] };
+    clipboard.wheels = [];
+    copyElements(a, [obj], null);
+    const b = newGame();
+    adoptUsedBy(b, clipboard.elements);
+    expect(b.wheels.map((w) => w.name)).toEqual(['Punishments']);
   });
 
   it('adds nothing for a clue that uses no wheel', () => {

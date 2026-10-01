@@ -248,6 +248,16 @@ try {
   await page.getByRole('button', { name: /Wheels & Dice/ }).click();
   assert(wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1', 'a wheel tile pasted in another game brings its wheel');
 
+  // Esc leaves a new text box's text field, then deselects it, then closes the clue.
+  await tabs.nth(0).click();
+  await tile(1, 1).click();
+  await page.getByRole('button', { name: '🅣 Text' }).click();
+  await key('Escape');
+  await key('Escape');
+  const clueOpen = await page.getByRole('dialog', { name: 'Edit clue' }).count();
+  await key('Escape');
+  assert(clueOpen === 1 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, 'Esc steps out of a text field, the selection, then the clue');
+
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');
 } finally {

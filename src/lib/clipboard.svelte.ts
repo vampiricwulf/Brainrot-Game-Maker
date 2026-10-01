@@ -95,6 +95,8 @@ export function copyElements(game: Game, from: SlideElement[], data: DataTransfe
   const words = items.flatMap((x) => (x.kind === 'text' && x.text.trim() ? [x.text] : [])).join('\n');
   clipboard.elements = items;
   holdMedia(game);
+  // (An RPG object's Spin button keeps its wheel.)
+  holdUsedBy(game, items);
   clipboard.token = newId();
   clipboard.text = words || `${items.length} slide item${items.length === 1 ? '' : 's'}`;
   data?.setData('text/plain', clipboard.text);

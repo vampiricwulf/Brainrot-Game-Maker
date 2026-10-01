@@ -68,7 +68,7 @@
         ['Ctrl+C / X / V', 'Copy, cut and paste items (between slides, clues, games and board images)'],
         ['Ctrl+B / I / U', 'Bold, italic, underline the selected text boxes'],
         ['Delete / Backspace', 'Delete the selection (locked items stay)'],
-        ['Esc', 'Deselect (or stop previewing, drawing, or close the link box)'],
+        ['Esc', 'Leave a text field, then deselect (or stop previewing, drawing, or close the link box)'],
       ],
     ],
     [
