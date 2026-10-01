@@ -263,10 +263,18 @@ try {
     await page.locator('.canvas .hit').first().click();
   }
 
-  // Clicks go through a locked item, so a slide whose only item is locked still lists it to unlock it.
-  assert((await page.locator('.layers-box').count()) === 0, 'a slide with one item has no Layers list');
+  // A slide with one item lists it too (the keyboard way to it), and a locked one (clicks go through it) unlocks there.
+  assert((await layers.count()) === 1, 'a slide with one item has the Layers list');
+  const only = layers.first();
+  const label = (await only.locator('.txt').innerText()).trim();
+  assert(
+    (await only.getByRole('button', { name: `Lock: ${label}`, exact: true }).count()) === 1 &&
+      (await only.getByRole('button', { name: `Hide while editing: ${label}`, exact: true }).count()) === 1 &&
+      (await only.getByRole('button', { name: `Bring forward: ${label}`, exact: true }).count()) === 1,
+    `its buttons say which item they're for ("Lock: ${label}")`,
+  );
   await page.locator('.insp').getByLabel('Lock', { exact: true }).check();
-  assert((await layers.count()) === 1, 'but it shows once that item is locked');
+  assert((await layers.count()) === 1, 'it stays listed once that item is locked');
   await layers.first().getByRole('button', { name: /^Unlock: / }).click();
   assert(!(await page.locator('.insp').getByLabel('Lock', { exact: true }).isChecked()), 'and unlocks it from there');
 
