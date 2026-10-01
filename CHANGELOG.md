@@ -11,6 +11,10 @@ done, the Unreleased lines move under that day's heading.
 ## Unreleased
 
 ### Changed
+- The editor sidebar groups the rounds (Tiebreaker right after them) and the game-wide tabs; the checklist is one line
+  per round and a click jumps to the first unfinished tile. Categories show ⋯ for their menu and many-category boards
+  fit the screen. Delete world is in a ⋯ menu. Only the header has ↶ ↷ (except windows that cover it). The first
+  screen shows the mode cards two by two; "Rows (questions per category)". (46f2a13)
 - **RPG and board game rounds on a widescreen window put the host controls in a column beside the stage**, so the
   stage (the stream in single-window mode) gets most of the window: 860×484 at 1280×720 instead of as little as
   487×274. (b0fbaab)
@@ -33,6 +37,9 @@ done, the Unreleased lines move under that day's heading.
   answer again, `Ctrl+Y`, and `Esc` closing a card. (1d763ac)
 
 ### Added
+- Dice tiles can use standard dice (d4–d100, 2d6). "＋ New wheel…" / "＋ New dice…" right in the clue editor and in a
+  board game's Move by. 🚪 Doorway and 🧙 Character buttons on RPG screens. A game-wide clue text font and colour in
+  🎨 Theme, whose preview can show any round or a clue. (46f2a13)
 - This changelog.
 - README: fresh screenshots (the new host column in RPG and board game rounds) and one of the 🕘 History tab.
 - **Jeopardy board editor**: drag round tabs to reorder them (`Alt`+`↑`/`↓`, `Delete`, `F2`, `Ctrl+D` on a tab); drag a
@@ -70,6 +77,9 @@ done, the Unreleased lines move under that day's heading.
   never a redo.
 
 ### Fixed
+- Later boards no longer keep doubling their values; long category names aren't cut off; the Daily Double count is
+  capped at the playable tiles; a blank row value keeps its old value and negatives read −$100; a stat preset can't be
+  added twice; focus goes to the new round after ＋ Add round; Setup checkboxes don't shrink. (46f2a13)
 - Opening a tab right after an undo or redo no longer jumps back to the undone place (a clue editor could reopen over
   the board). This was also why about half the CI builds failed. (a58527b)
 - A wheel or dice clue, screen, set of buttons, slide item or slide pasted into another game brings its wheels and
