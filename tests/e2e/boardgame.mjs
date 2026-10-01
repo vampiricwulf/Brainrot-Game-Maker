@@ -277,8 +277,8 @@ try {
   const replace = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
   if (await replace.isVisible().catch(() => false)) await replace.getByRole('button', { name: 'Discard', exact: true }).click();
   await page.getByText(/^Opened “/).waitFor();
-  const line = page.locator('nav .problem', { hasText: 'Board game' });
-  assert(((await line.getAttribute('title')) ?? (await line.innerText())).includes('Finish is under the stats strip (move it up)'), 'the checklist warns about a space under the stats strip');
+  // Finish is low down (y 910), but the board is scaled into the room above the stats strip in play: no warning.
+  assert(!(await page.locator('nav .problem', { hasText: 'stats strip' }).count()), 'the checklist no longer warns about spaces under the stats strip');
   await page.getByRole('button', { name: '▶ Play' }).click();
   // (The game left behind earlier is asked about first.)
   const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
@@ -329,6 +329,39 @@ try {
   await page.keyboard.press('Enter');
   assert((await toast()).includes('Bob: At Fork: which way?'), `after moving back onto the fork, the next move asks the way again (${await toast()})`);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-file.png` });
+
+  // Twelve players: the stats strip is one row of compact cards, and it never covers a space (Finish is low down).
+  console.log('Twelve players on the board:');
+  const crowd = { ...g, id: 'g_board_crowd', title: 'Board crowd', settings: { ...g.settings, maxPlayers: 12 } };
+  crowd.players = ['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jay', 'Kim', 'Lou'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'][i] }));
+  const crowdFile = resolve('test-results/boardgame-crowd.json');
+  writeFileSync(crowdFile, JSON.stringify(crowd));
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const host = await ctx2.newPage();
+  host.on('pageerror', (e) => errors.push(`[crowd] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await openGameFile(host, crowdFile);
+  await host.getByText(/^Opened “/).waitFor();
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  aud.on('pageerror', (e) => errors.push(`[crowd audience] ${e.message}`));
+  await aud.setViewportSize({ width: 1280, height: 720 });
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  await host.locator('.bh').waitFor();
+  if (await aud.locator('.title-card').count()) await host.locator('.stage-box .title-card').click().catch(() => {});
+  await aud.locator('[data-space="b8"]').waitFor();
+  await aud.waitForTimeout(600);
+  const cards = aud.locator('.strip .card');
+  const tops = await cards.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
+  assert((await cards.count()) === 12 && tops.length === 1, `the stats strip is one row of 12 cards (rows at ${tops.join(', ')})`);
+  const stripTop = (await aud.locator('.bg > .strip').boundingBox()).y;
+  const lowest = await aud.locator('[data-space]').evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().bottom)));
+  assert(lowest <= stripTop + 1, `no space is under the stats strip (lowest space ends at ${Math.round(lowest)}, the strip starts at ${Math.round(stripTop)})`);
+  const tokensLow = await aud.locator('.tok.on-board').evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().bottom)));
+  assert(tokensLow <= stripTop + 1, 'nor a token');
+  if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd.png` });
+  await ctx2.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame.png` });

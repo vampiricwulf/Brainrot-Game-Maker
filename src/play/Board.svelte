@@ -2,7 +2,7 @@
 <script lang="ts">
   import { categoryLabel, clueValue, formatPoints, isBoard, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit, softHyphens } from '../lib/autofit';
-  import { CAT_MIN } from '../lib/boardfit';
+  import { CAT_FLOOR, CAT_MIN } from '../lib/boardfit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
 
   let {
@@ -82,12 +82,12 @@
             <div class="title has-image" class:revealing={!!intro}>
               <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
               {#if cat.showTitleOverImage && cat.title}
-                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, hyphenate: true, enabled: true, text: cat.title }}><div>{softHyphens(cat.title)}</div></div>
+                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, text: cat.title }}><div>{softHyphens(cat.title)}</div></div>
               {/if}
             </div>
           {:else}
             <!-- Never so small it can't be read on a scaled-down stream: at the smallest size, long words are hyphenated. -->
-            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, hyphenate: true, enabled: true, text: cat.title }}>
+            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, text: cat.title }}>
               <div>{softHyphens(cat.title)}</div>
             </div>
           {/if}

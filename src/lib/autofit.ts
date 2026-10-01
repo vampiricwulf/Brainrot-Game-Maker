@@ -24,6 +24,8 @@ export interface AutofitOptions {
    * fits that way) before breaking it anywhere. The text must carry soft hyphens where it may break (softHyphens).
    */
   hyphenate?: boolean;
+  /** With hyphenate: text that doesn't fit even hyphenated at `min` may go down to this size instead of being cut off. */
+  floor?: number;
   /** Never break a word: at the smallest size, what's left over is cut (CSS shows "…" where it's set). */
   noBreak?: boolean;
   /**
@@ -61,7 +63,7 @@ export function largestFitting(lo: number, hi: number, fits: (n: number) => bool
 }
 
 /** The sizes one box tries, ending on the one it keeps (which is the last one tried). */
-function* fitting({ size, enabled, min = 12, hyphenate, noBreak }: AutofitOptions): Generator<Try, FitResult, boolean> {
+function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: AutofitOptions): Generator<Try, FitResult, boolean> {
   // Words stay whole: the longest one must fit on a line. Only if that's impossible even at the
   // smallest size are words hyphenated (if asked) or allowed to break (then at the largest size that fits that way).
   if (!enabled) return { size, overflow: yield { size, wrap: '' } };
@@ -73,6 +75,11 @@ function* fitting({ size, enabled, min = 12, hyphenate, noBreak }: AutofitOption
   if (hyphenate) {
     s = yield* largest(lo, size, 'hyphen');
     if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
+    // Still too much for the box: smaller than the smallest after all (down to `floor`), rather than cut off.
+    if (floor !== undefined && floor < lo) {
+      s = yield* largest(floor, lo, 'hyphen');
+      if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
+    }
   }
   s = yield* largest(lo, size, 'anywhere');
   return { size: s, overflow: yield { size: s, wrap: 'anywhere' } };
@@ -109,13 +116,18 @@ function applyTry(node: HTMLElement, t: Try, hyphenate?: boolean): void {
   node.style.hyphens = !hyphenate ? '' : t.wrap === 'hyphen' ? 'manual' : 'none';
 }
 
-function overflows(node: HTMLElement): boolean {
+/**
+ * The content doesn't fit its box. A one-line box that cuts its text ("…", noBreak) is measured with a pixel to spare:
+ * sizes are whole pixels, and a fraction of a pixel over is enough for the browser to cut the last character.
+ */
+function overflows(node: HTMLElement, strict = false): boolean {
   const inner = node.firstElementChild as HTMLElement | null;
   if (!inner) return node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth;
   const cs = getComputedStyle(node);
   const boxW = node.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const boxH = node.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  return Math.max(inner.scrollWidth, inner.offsetWidth) > boxW + 0.5 || Math.max(inner.scrollHeight, inner.offsetHeight) > boxH + 0.5;
+  const wide = strict ? inner.scrollWidth > boxW - 1.5 : Math.max(inner.scrollWidth, inner.offsetWidth) > boxW + 0.5;
+  return wide || Math.max(inner.scrollHeight, inner.offsetHeight) > boxH + 0.5;
 }
 
 interface Box {
@@ -145,7 +157,7 @@ function fitAll(): void {
   while (live.length) {
     // Every box sets its size first, then every box is measured: one layout for the lot.
     for (const { box, step } of live) applyTry(box.node, step.value as Try, box.opts().hyphenate);
-    for (const x of live) x.step = x.steps.next(overflows(x.box.node));
+    for (const x of live) x.step = x.steps.next(overflows(x.box.node, !!x.box.opts().noBreak));
     live = live.filter((x) => {
       if (!x.step.done) return true;
       const r = x.step.value;

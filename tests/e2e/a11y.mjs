@@ -123,6 +123,13 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.locator('.board .tile').first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
+  // Screen readers hear an award from the page's polite live region (on the page all along, not mounted with its words).
+  const region = page.locator('#live-region');
+  assert((await region.getAttribute('aria-live')) === 'polite', 'the page has a polite live region');
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => /Player 1 \+\$200, now \$200/.test(document.getElementById('live-region')?.textContent ?? ''), null, { timeout: 3000 });
+  assert(true, `the live region announces the award (“${await region.textContent()}”)`);
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '👥 Players' }).click();
   const playersDlg = page.getByRole('dialog', { name: 'Players' });
@@ -161,6 +168,40 @@ try {
     return { over: h.scrollWidth - h.clientWidth, right: p.right };
   });
   assert(fit.over <= 0 && fit.right <= 853, `at 150% zoom (853px) the header fits and ▶ Play shows (${JSON.stringify(fit)})`);
+
+  // ---------- 200% zoom on a laptop (720 CSS px): the header wraps, nothing runs off the side ----------
+  await page.setViewportSize({ width: 720, height: 450 });
+  await page.waitForTimeout(150);
+  const fit720 = await page.evaluate(() => {
+    const h = document.querySelector('header');
+    const right = Math.max(...[...h.querySelectorAll('button')].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect().right));
+    const play = [...h.querySelectorAll('button')].find((b) => b.textContent.includes('Play')).getBoundingClientRect();
+    return { over: h.scrollWidth - h.clientWidth, right, page: document.documentElement.scrollWidth, playRight: play.right };
+  });
+  assert(fit720.over <= 0 && fit720.right <= 720 && fit720.page <= 720 && fit720.playRight <= 720, `at 200% zoom (720px) every header button is on screen and the page doesn’t scroll sideways (${JSON.stringify(fit720)})`);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  // ---------- Windows High Contrast (forced colors): the selected and pressed states still show ----------
+  const fc = await browser.newContext({ viewport: { width: 1280, height: 720 }, forcedColors: 'active' });
+  const hc = await fc.newPage();
+  hc.on('pageerror', (e) => errors.push(`[forced colors] ${e.message}`));
+  await hc.goto(pathToFileURL(file).href);
+  await addClassicRounds(hc);
+  await hc.getByRole('button', { name: '🎨 Theme' }).click();
+  const outlined = (loc) => loc.evaluate((e) => { const cs = getComputedStyle(e); return cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2; });
+  const chosen = hc.locator('.preset[aria-pressed="true"]');
+  const other = hc.locator('.preset[aria-pressed="false"]').first();
+  assert((await outlined(chosen)) && !(await outlined(other)), 'with forced colors, the chosen theme preset is outlined (the others aren’t)');
+  await hc.getByRole('button', { name: '▶ Play' }).click();
+  await hc.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  await hc.getByRole('button', { name: '＋ Add player' }).click();
+  await hc.getByRole('button', { name: '＋ Add player' }).click();
+  await hc.getByRole('button', { name: 'Start game ▶' }).click();
+  await hc.getByRole('button', { name: 'Skip intro' }).click();
+  await hc.keyboard.press('1');
+  const sel = hc.locator('.panel .p.on');
+  assert((await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hc.locator('.panel .p:not(.on)').first())), 'and a selected player in the host panel is outlined');
+  await fc.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);
   console.log('a11y: all passed');

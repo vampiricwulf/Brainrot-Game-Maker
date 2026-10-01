@@ -3,6 +3,8 @@ import { boardLayout, type Theme } from './theme';
 
 /** Category names never shrink below this (stage px): about 13px tall at 480p. Longer words are hyphenated instead. */
 export const CAT_MIN = 30;
+/** Only a name too long for its cell even then goes smaller, down to this (the editor's checklist says to shorten it). */
+export const CAT_FLOOR = 20;
 
 /** The board's padding and gaps, and a cell's padding (Board.svelte). */
 const PAD = 10;

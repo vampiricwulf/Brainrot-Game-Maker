@@ -917,8 +917,9 @@
   }
   .pops {
     position: absolute;
-    left: 24px;
-    right: 24px;
+    left: 0;
+    right: 0;
+    padding: 0 24px;
     display: flex;
     flex-wrap: wrap-reverse;
     gap: 20px;

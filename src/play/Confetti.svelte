@@ -24,9 +24,10 @@
     const H = (canvas.height = 1080);
     const parts = Array.from({ length: PIECES }, () => ({
       x: confettiX(Math.random(), W, keepOut),
-      y: -Math.random() * H,
+      // A burst: on screen within the first second (it only lasts a few).
+      y: -40 - Math.random() * H * 0.6,
       vx: (Math.random() - 0.5) * 3,
-      vy: 4 + Math.random() * 5,
+      vy: 6 + Math.random() * 6,
       r: Math.random() * Math.PI,
       vr: (Math.random() - 0.5) * 0.2,
       w: 26 + Math.random() * 16,
