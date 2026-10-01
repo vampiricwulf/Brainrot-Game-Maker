@@ -15,11 +15,13 @@ export interface Prefs {
   undoSteps: number;
   /** Viewers see no pop-ins, fly-ins or confetti (motion.svelte.ts). */
   reduceMotion: boolean;
+  /** Phone buzzers: the buzzer server's address ('' for the one this copy was built with). */
+  buzzerServer: string;
   /** Which defaults the stored settings were made with (2: Save replaces by default). */
   v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, v: 2 };
+export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', v: 2 };
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 
@@ -41,6 +43,7 @@ export const prefs = $state<Prefs>(load());
 export function savePrefs(): void {
   prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(Number(prefs.autosaveMinutes) || 0)));
   prefs.autosaveKeep = Math.max(1, Math.min(50, Math.round(Number(prefs.autosaveKeep) || 1)));
+  prefs.buzzerServer = String(prefs.buzzerServer ?? '').trim();
   prefs.undoSteps = Math.max(UNDO_STEPS.min, Math.min(UNDO_STEPS.max, Math.round(Number(prefs.undoSteps) || DEFAULT_PREFS.undoSteps)));
   try {
     localStorage.setItem(KEY, JSON.stringify($state.snapshot(prefs)));
