@@ -13,7 +13,7 @@ done, the Unreleased lines move under that day's heading.
 ### Added
 - **Screen readers hear the game**: the host panel's status line, awards and score changes ("Ann +$200, now $1,200"),
   the phone buzz order, a tie, who is answering, toasts and the undo notes are read out from one polite live region
-  that's always on the page. A burst of changes is said once, together. (8bb6edc, c34ccb7, 8b514bd)
+  that's always on the page. A burst of changes is said once, together. (8bb6edc, c34ccb7, 8b514bd, 65c0fb7)
 - **A warning before a chroma-key game** when a player's color is close to the key (a green player on a green key): OBS
   would key them out. It suggests another color or the other key. (8bb6edc)
 - **The editor's checklist says when a category name is too long** to read on its board. (8bb6edc, 2c772e8)
@@ -107,7 +107,7 @@ done, the Unreleased lines move under that day's heading.
   above (or below) the strip, so no space, avatar or line of text is hidden; past 6 players the strip is one row of
   compact cards (past 9 without the avatar). The board-game checklist no longer warns about spaces under the strip.
   The map on stream is solid, with bigger names; players' dots on the maps carry their initials. RPG nameplates stay on
-  one line ("…"), so a crowd of avatars no longer overlaps. (8bb6edc, 8b514bd)
+  one line ("…"), so a crowd of avatars no longer overlaps. (8bb6edc, 8b514bd, 65c0fb7, 253d436, 8ce0d87)
 - **New default player colors** that stay apart for colour-blind viewers (deuteranopia and protanopia) for the first 8
   players: red, sky blue, yellow, navy, orange, white, green, pink. Games keep the colors they were saved with. (8bb6edc)
 - **The winner's confetti** is a short burst (about 4.5 s) of fewer, bigger pieces either side of the standings,
