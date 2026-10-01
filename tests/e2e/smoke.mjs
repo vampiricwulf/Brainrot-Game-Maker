@@ -642,6 +642,11 @@ for (const n of [1, 2, 3]) {
 }
 assert((await page.getByText('Click to type the question').count()) === 0, 'the empty-slide placeholder is gone once there is text');
 await page.getByRole('button', { name: 'Done' }).click();
+// Right after an undo (or redo), opening another tab and coming back must not jump back to the undone place. (CI was
+// fast enough to do this inside the old 1.5 s window half the time, and the clue editor reopened over the board.)
+await page.getByRole('button', { name: '🎨 Theme' }).click();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
+assert((await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, 'a tab opened right after a redo doesn\'t reopen the redone clue');
 const col6 = await Promise.all([5, 11, 17].map((i) => page.locator('.tile').nth(i).innerText()));
 assert(col6.every((t, i) => t.includes(`Q${i + 1} question`) && !t.includes('No answer')), 'three clues written from the keyboard show on the board with their answers');
 

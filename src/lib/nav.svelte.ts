@@ -35,9 +35,28 @@ export function goTo(place: Place, items: string[] = []): Place | null {
   const found = resolve(app.game, place);
   if (!found) return null;
   nav.request = { place: found, items, seq: ++seq, at: Date.now() };
+  endOnNextInput();
   const key = placeKey(found);
   if (key) flash(key);
   return found;
+}
+
+/**
+ * A request is over as soon as the user does something else: a tab opened by a click right after an undo must not
+ * still go to the undone step's place (it used to, for the rest of FRESH_MS).
+ */
+function endOnNextInput(): void {
+  if (typeof window === 'undefined') return;
+  const end = () => {
+    nav.request = null;
+    window.removeEventListener('pointerdown', end, true);
+    window.removeEventListener('keydown', end, true);
+  };
+  // After this tick: the key or click that asked for the undo is still being handled.
+  setTimeout(() => {
+    window.addEventListener('pointerdown', end, true);
+    window.addEventListener('keydown', end, true);
+  });
 }
 
 /**
