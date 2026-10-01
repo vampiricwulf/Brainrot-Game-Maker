@@ -134,7 +134,12 @@ try {
   assert((await big(p1).innerText()) === 'Player 1', 'the phones stay in their seats: "The host is setting up — hang on"');
   await host.getByRole('button', { name: '▶ Play' }).click();
   await card.locator(`[aria-label="Room code ${code}"]`).waitFor();
-  await card.getByText('2 of 2 players joined').waitFor();
+  await card.getByText('2 of 2 players joined').waitFor({ timeout: 15_000 }).catch(async (e) => {
+    // What the Play screen holds when the phones don't show as joined (CI only ever saw this).
+    console.log('DEBUG card:', JSON.stringify(await card.innerText()));
+    console.log('DEBUG players:', JSON.stringify(await host.locator('.pregame input.name').evaluateAll((els) => els.map((i) => i.value))));
+    throw e;
+  });
   await small(p2).getByText('The game starts soon').waitFor();
   assert(true, '▶ Play goes back into the same room: same code, both phones still joined');
 

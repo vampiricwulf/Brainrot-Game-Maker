@@ -408,6 +408,9 @@
     if (room && room.gameId === app.game.id) {
       app.session.remote = room.remote;
       app.playGame.settings.buzzer = true;
+      // The players the phones joined as (the Play screen sets the players; a quick reload can leave the editor's copy
+      // of them behind).
+      if (Array.isArray(room.players) && room.players.length) app.session.players = room.players;
     } else if (room) {
       endRoom(room.remote);
       void clearRoom();
