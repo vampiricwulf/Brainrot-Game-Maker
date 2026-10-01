@@ -11,6 +11,12 @@ done, the Unreleased lines move under that day's heading.
 ## Unreleased
 
 ### Changed
+- **RPG and board game rounds on a widescreen window put the host controls in a column beside the stage**, so the
+  stage (the stream in single-window mode) gets most of the window: 860×484 at 1280×720 instead of as little as
+  487×274. (b0fbaab)
+- Lists of player names read "A, B & C" everywhere (ties, the Final's waiting list, group awards). The history says
+  whose turn it is ("Ann's turn") and names a regrouped party. A Final player who can only wager $0 gets it filled in.
+  The 📜 Log's row buttons have their own column, so they never cover the text. (726fa84, df6ee8b)
 - Editor wording: action lists say **button** throughout ("＋ Add button"); **Delete** means it's gone and **Remove**
   means it's taken off but stays in the game (a file, a wheel from a button, an item from a shop). Wheels & Dice use ⧉
   and 🗑 like the round bar, and round moves say ▲ / ▼. (62c8851)
