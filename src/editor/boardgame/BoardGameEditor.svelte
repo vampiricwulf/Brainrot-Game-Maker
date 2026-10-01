@@ -65,6 +65,7 @@
   /** A selection box being dragged on the empty board (`add`: Shift keeps the ones selected). */
   let box = $state<{ x0: number; y0: number; x1: number; y1: number; add: boolean } | null>(null);
   let canvas = $state<HTMLDivElement>();
+  let root = $state<HTMLDivElement>();
 
   // ---------- Undo: the game's history (Ctrl+Z / Ctrl+Shift+Z are the editor's) ----------
   // A drag is one step, and so is a delete.
@@ -277,7 +278,7 @@
       const list = picked;
       showMenu(e, [
         { heading: `${list.length} spaces` },
-        { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), hint: 'Delete' },
+        { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), keys: 'Delete' },
       ]);
     } else if (s) {
       selectOnly(s.id);
@@ -286,16 +287,16 @@
         { label: '🏁 Make it Start', onclick: () => (round.start = s.id), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
         { label: '🔗 Link it to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
         { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
-        { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), hint: 'Ctrl+D' },
+        { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), keys: 'Ctrl+D' },
         { sep: true },
-        { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s) },
+        { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s), keys: 'Delete' },
       ]);
     } else if (la && lb) linkMenu(e, la, lb);
     else
       showMenu(e, [
         { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) },
-        { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), hint: 'Ctrl+A' },
-        { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length },
+        { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), keys: 'Ctrl+A' },
+        { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
       ]);
   }
 
@@ -316,6 +317,9 @@
     if (e.defaultPrevented || document.querySelector('[role="dialog"], [role="menu"]')) return;
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
     if (view !== 'spaces') return;
+    // (Not a key meant for something else in focus: a round's tab, the header's buttons…)
+    const at = document.activeElement;
+    if (at && at !== document.body && !root?.contains(at)) return;
     const k = e.key.toLowerCase();
     const mod = e.ctrlKey || e.metaKey;
     const onBoard = document.activeElement === document.body || !!canvas?.contains(document.activeElement);
@@ -436,7 +440,7 @@
 <!-- A drag ends wherever the pointer is let go (it's one undo step). -->
 <svelte:window onkeydown={key} onpointerup={pointerUp} onpointercancel={pointerUp} />
 
-<div class="bge">
+<div class="bge" bind:this={root}>
   <div class="row settings">
     <label class="field">Round name<input bind:value={round.name} /></label>
     <label class="field">
@@ -482,8 +486,8 @@
   </div>
 
   {#snippet undoRedo()}
-    <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo">↶</button>
-    <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo">↷</button>
+    <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
+    <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
   {/snippet}
 
   {#if view === 'spaces'}

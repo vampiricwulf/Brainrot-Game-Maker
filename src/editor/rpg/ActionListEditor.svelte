@@ -4,13 +4,13 @@
 -->
 <script lang="ts">
   import { editedGame, toast } from '../../lib/app.svelte';
-  import { clipboard, mediaShownBy } from '../../lib/clipboard.svelte';
+  import { adoptUsedBy, clipboard, holdUsedBy, toolHere } from '../../lib/clipboard.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
   import { copyActions, moveTo } from '../../lib/listedit';
-  import { uniqueMediaName } from '../../lib/medianame';
   import { clone } from '../../lib/ops';
-  import { dropMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, showMenu } from '../../lib/menustate.svelte';
+  import { isTextField } from '../../lib/undokeys';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { statFields } from '../../lib/toolset';
@@ -122,14 +122,31 @@
     step(`Duplicated button “${LABEL[a.do]}”`, () => (actions = list));
   }
 
+  /** A button's right-click menu (not in its text fields, which keep the browser's own). */
+  function rowMenu(e: MouseEvent, a: Action, i: number): void {
+    if (isTextField(e.target)) return;
+    const n = actions?.length ?? 0;
+    const k = clipboard.actions.length;
+    showMenu(e, [
+      { heading: LABEL[a.do] },
+      { label: '⧉ Duplicate', onclick: () => duplicate(a), keys: 'Ctrl+D' },
+      { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: '📋 Copy buttons', onclick: copyAll },
+      { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
+      { sep: true },
+      { label: '🗑 Delete button', danger: true, onclick: () => remove(a) },
+    ]);
+  }
+
   /** The whole set to the in-app clipboard, with the files it plays or shows (so it pastes into another game too). */
   function copyAll(): void {
     const list = actions ?? [];
     if (!list.length) return;
     clipboard.actions = clone(list);
-    const refs = [...clipboard.media, ...mediaShownBy(clipboard.actions, game.media)];
-    clipboard.media = clone(refs.filter((m, i) => refs.findIndex((x) => x.id === m.id) === i));
-    toast(`Copied ${list.length} button${list.length === 1 ? '' : 's'}: paste them on any object, item, space or slice`);
+    holdUsedBy(game, clipboard.actions);
+    toast(`Copied ${list.length} button${list.length === 1 ? '' : 's'}: paste ${list.length === 1 ? 'it' : 'them'} on any object, item, space or slice`);
   }
 
   /** The copied set, after these ones (the ones that can't work here are left out). */
@@ -152,11 +169,12 @@
       if (a.do === 'stat' && !numbers.some((f) => f.id === a.field)) a.field = numbers[0]?.id ?? '';
       if (a.do === 'item' && !game.items?.some((x) => x.id === a.item)) a.item = game.items?.[0]?.id ?? '';
       if (a.do === 'shop' && !game.shops?.some((x) => x.id === a.shop)) a.shop = game.shops?.[0]?.id ?? '';
-      if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
+      // (Wheels copied with them come along.)
+      if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !toolHere(game, a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
+      if (a.do === 'wheel' && a.also) a.also = a.also.filter((id) => id === PLAYER_WHEEL || toolHere(game, id));
     }
     step(`Pasted ${copies.length} button${copies.length === 1 ? '' : 's'}`, () => {
-      for (const m of mediaShownBy(copies, clipboard.media))
-        if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+      adoptUsedBy(game, copies);
       actions = [...(actions ?? []), ...copies];
     });
     if (left) toast(`${left} of them can’t work here, so ${left === 1 ? 'it was' : 'they were'} left out`);
@@ -212,6 +230,7 @@
         const m = rows.drop(e, (actions ?? []).map((x) => x.id));
         if (m) move(m.from, m.to);
       }}
+      oncontextmenu={(e) => rowMenu(e, a, i)}
       use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(a) }}
     >
       <div class="head">

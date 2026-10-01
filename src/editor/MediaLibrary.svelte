@@ -75,8 +75,12 @@
     const label = refs.length === 1 ? `Removed file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Removed ${refs.length} files${used ? ` (${used} in use)` : ''}`;
     remove(refs.map((m) => m.id), label);
   }
+  let library = $state<HTMLDivElement>();
   function onkey(e: KeyboardEvent): void {
-    if (!picked.length || (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) return;
+    if (!picked.length || e.defaultPrevented || (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) return;
+    // (Not with a window or a menu open, nor for something else in focus: a round's tab, the header's buttons…)
+    const at = document.activeElement;
+    if (document.querySelector('[role="dialog"], [role="menu"]') || (at && at !== document.body && !library?.contains(at))) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       removePicked();
@@ -197,6 +201,7 @@
 
 <div
   class="library"
+  bind:this={library}
   class:dropping
   ondragover={over}
   ondragleave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && (dropping = false)}

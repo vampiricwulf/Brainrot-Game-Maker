@@ -209,6 +209,15 @@ try {
   await key('Control+z');
   assert((await page.getByPlaceholder('Type the answer…').inputValue()) === '' && (await page.getByRole('tab', { name: /Answer slide/ }).getAttribute('aria-selected')) === 'true', 'undoing the answer shows the answer slide');
   await shot('final-1280');
+  // A key on a round's tab is the tab's alone, even with a slide item selected.
+  await page.getByRole('tab', { name: /Question slide/ }).click();
+  await page.locator('.canvas .hit').first().click();
+  const slideItems = await page.locator('.canvas .hit').count();
+  await tabs.nth(0).focus();
+  await key('ArrowDown');
+  await key('Delete');
+  assert((await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'), 'Delete on a round tab deletes the round, not the selected slide item too');
+  await key('Control+z');
   await page.getByRole('button', { name: /^Tiebreaker/ }).click();
   await page.getByLabel('Include a tiebreaker clue').check();
   await page.getByPlaceholder('Type the tiebreaker question…').fill('How many rizz?');
@@ -219,6 +228,36 @@ try {
   await shot('board-1920');
 
   assert(!dialogs.length, 'no browser dialogs');
+
+  // A wheel tile pasted into another game brings its wheel along (not "⚠ Deleted wheel").
+  await page.getByRole('button', { name: /Wheels & Dice/ }).click();
+  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  await tabs.nth(0).click();
+  await tile(2, 2).click();
+  await page.locator('select').first().selectOption('wheel');
+  await page.locator('select').nth(1).selectOption({ label: 'Wheel 1' });
+  await key('Escape');
+  await key('Control+c');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await addRound(/Jeopardy board/);
+  await tile(0, 0).focus();
+  await key('Control+v');
+  await tile(0, 0).click();
+  const wheelShown = await page.locator('select').nth(1).evaluate((s) => s.options[s.selectedIndex].text);
+  await key('Escape');
+  await page.getByRole('button', { name: /Wheels & Dice/ }).click();
+  assert(wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1', 'a wheel tile pasted in another game brings its wheel');
+
+  // Esc leaves a new text box's text field, then deselects it, then closes the clue.
+  await tabs.nth(0).click();
+  await tile(1, 1).click();
+  await page.getByRole('button', { name: '🅣 Text' }).click();
+  await key('Escape');
+  await key('Escape');
+  const clueOpen = await page.getByRole('dialog', { name: 'Edit clue' }).count();
+  await key('Escape');
+  assert(clueOpen === 1 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, 'Esc steps out of a text field, the selection, then the clue');
+
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');
 } finally {

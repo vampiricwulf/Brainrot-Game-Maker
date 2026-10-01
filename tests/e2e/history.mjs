@@ -205,6 +205,25 @@ try {
   await page.waitForTimeout(250);
   assert((await page.locator('.cell.screen.sel').getAttribute('aria-label')) === 'Screen Screen C1', 'Ctrl+Z brings it back, selected');
 
+  // A map's tab has the round tabs' keys, and they never reach the selected screen.
+  const mapTabs = page.getByRole('tablist', { name: 'Maps' }).getByRole('tab');
+  const mapNames = async () => (await mapTabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim()).join('|');
+  const screens = await page.locator('.cell.screen').count();
+  await page.getByRole('button', { name: '＋ Map' }).click();
+  await mapTabs.first().click();
+  await page.getByRole('button', { name: 'Screen Screen C1' }).click();
+  await mapTabs.first().focus();
+  await key('Control+d');
+  assert((await mapNames()) === 'Overworld|Overworld (copy)|Area 1', `Ctrl+D on a map's tab duplicates the map (${await mapNames()})`);
+  await mapTabs.nth(1).focus();
+  await key('Alt+ArrowRight');
+  assert((await mapNames()) === 'Overworld|Area 1|Overworld (copy)', "Alt+→ moves it later");
+  await mapTabs.nth(2).focus();
+  await key('Delete');
+  assert((await mapNames()) === 'Overworld|Area 1' && (await notice.innerText()).startsWith('Deleted map “Overworld (copy)”'), 'Delete deletes the map, with a note');
+  await mapTabs.first().click();
+  assert((await page.locator('.cell.screen').count()) === screens, 'and none of those keys touched the screens');
+
   // ---------- Removed and replaced files ----------
   await page.getByRole('button', { name: /🖼 Media/ }).click();
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Add files…' }).click()]);

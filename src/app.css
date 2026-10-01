@@ -101,6 +101,8 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   /* Messages only: clicks go through to what's underneath (in play, the host's nav row). */
   pointer-events: none;
 }
+/* Above the editor's "Deleted … · Undo" note (HistoryNotice), not over it. */
+body:has(.history-notice) .toast { bottom: 72px; }
 
 /* Where an undo or redo changed something, for a moment (nav.svelte.ts). */
 .flash { animation: flash 1.2s ease-out; }

@@ -492,12 +492,12 @@
             oncontextmenu={(e) =>
               showMenu(e, [
                 { heading: roundName(round, i) },
-                { label: '✎ Rename', onclick: () => (renamingRound = round.id), hint: 'F2 or double-click' },
-                { label: '◀ Move earlier', onclick: () => moveRound(i, i - 1), disabled: i === 0, hint: 'Alt+↑' },
-                { label: 'Move later ▶', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, hint: 'Alt+↓' },
-                { label: '⧉ Duplicate', onclick: () => duplicateRound(i), hint: 'Ctrl+D' },
+                { label: '✎ Rename', onclick: () => (renamingRound = round.id), keys: 'F2 or double-click' },
+                { label: '◀ Move earlier', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+                { label: 'Move later ▶', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
+                { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
                 { sep: true },
-                { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), hint: 'Delete' },
+                { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), keys: 'Delete' },
               ])}
             ondragstart={(e) => {
               roundDrag = round.id;

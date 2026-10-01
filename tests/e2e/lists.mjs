@@ -137,6 +137,14 @@ try {
   assert((await labels.count()) === 5 && (await notice.innerText()).startsWith('Deleted slice “Dance”'), '✕ deletes a slice, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await labels.count()) === 6, 'and Undo brings it back');
+  await page.locator('.seg .pct').nth(2).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '▲ Move up' }).click();
+  assert((await values(labels)).slice(0, 3).join() === 'Dance,Option 1,Dance', `a slice's right-click menu moves it (${await values(labels)})`);
+  await page.locator('.seg .pct').nth(1).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '🗑 Delete slice' }).click();
+  assert((await values(labels)).slice(0, 2).join() === 'Dance,Dance', 'and deletes it');
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
   await page.locator('.preview path[data-slice="3"]').click({ force: true });
   assert(await labels.nth(3).evaluate((e) => e === document.activeElement), 'clicking a slice on the preview goes to its row');
 

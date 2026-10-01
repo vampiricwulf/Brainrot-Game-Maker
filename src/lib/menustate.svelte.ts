@@ -1,7 +1,8 @@
 // Right-click menus: one open at a time, shown by the app root (ContextMenu.svelte).
 
 export type MenuEntry =
-  | { label: string; onclick: () => void; disabled?: boolean; danger?: boolean; hint?: string }
+  /** `hint`: a tooltip; `keys`: the item's keyboard shortcut, shown beside it ("Ctrl+D", "Delete"). */
+  | { label: string; onclick: () => void; disabled?: boolean; danger?: boolean; hint?: string; keys?: string }
   | { sep: true }
   | { heading: string };
 
