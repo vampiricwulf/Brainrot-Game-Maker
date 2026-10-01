@@ -9,8 +9,11 @@
     rotation,
     spin,
     now,
+    players = false,
   }: {
     segments: WheelSegment[];
+    /** The Pick a player wheel: a name too long to read at a decent size shows as initials. */
+    players?: boolean;
     rotation: number;
     spin: { from: number; to: number; startedAt: number; duration: number } | null;
     now: number;
@@ -42,6 +45,18 @@
   /** Roughly how wide the bold board font is, per character, for its size. */
   const CHAR = 0.6;
   const shown = (label: string) => (label.length > 30 ? label.slice(0, 29) + '…' : label);
+  /** Smallest label that reads once the stream is scaled down (480p): a player's name gives way to initials below it. */
+  const READABLE = 28;
+  /** "TheRealMcCoy Bartholomew" → "TB"; one long word → its first letters. */
+  function short(name: string): string {
+    const words = name.split(/[\s_.-]+/).filter(Boolean);
+    if (words.length > 1) return words.slice(0, 3).map((w) => Array.from(w)[0].toUpperCase()).join('');
+    return Array.from(name).slice(0, 5).join('') + '…';
+  }
+  function labelFor(label: string, span: number): string {
+    const full = shown(label);
+    return players && fontFor(span, full) < READABLE ? short(label) : full;
+  }
   /** As big as the slice's width allows, and small enough for the label to fit between the hub and the rim. */
   const fontFor = (span: number, label: string) => Math.max(14, Math.min(56, span * 1.6, LEN / (CHAR * Math.max(4, label.length))));
   /** On the left half (where it is right now), a label is turned the other way round so it never reads upside down. */
@@ -54,7 +69,7 @@
       {@const a = angles[i]}
       {@const mid = (a.start + a.end) / 2}
       <path d={path(a.start, a.end)} fill={s.color} stroke="#000" stroke-width="3" data-slice={i} />
-      {@const label = shown(s.label)}
+      {@const label = labelFor(s.label, a.end - a.start)}
       {@const size = fontFor(a.end - a.start, label)}
       <g transform="rotate({mid})" data-slice={i}>
         <!-- Squeezed to fit when the font's guess runs long: it never crosses the rim or the hub. -->

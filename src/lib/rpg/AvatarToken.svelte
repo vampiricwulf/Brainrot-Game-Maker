@@ -33,7 +33,7 @@
     <Avatar {player} {size} />
     {#each placed.filter((g) => !g.p.behind) as g (g.d.id)}{@render gear(g)}{/each}
   </div>
-  {#if name}<div class="nameplate" style:background={player.color} style:color={textOn(player.color)}>{player.name}</div>{/if}
+  {#if name}<div class="nameplate" style:background={player.color} style:color={textOn(player.color)} title={player.name}>{player.name}</div>{/if}
 </div>
 
 {#snippet gear(g: (typeof placed)[number])}
@@ -81,11 +81,15 @@
     font: calc(var(--s) * 0.22) 'Anton', 'Oswald', sans-serif;
     text-shadow: 1px 1px 0 #000;
     position: relative;
-    /* A long name takes two lines under its avatar instead of running into the next player's. */
-    max-width: calc(var(--s) * 1.5);
+    /* One line, a little wider than the avatar: a long name ends in "…" instead of running into the next player's
+       (players stand about 1.4 avatars apart). */
+    box-sizing: border-box;
+    max-width: calc(var(--s) * 1.35);
     width: max-content;
     text-align: center;
-    line-height: 1.1;
-    overflow-wrap: break-word;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>

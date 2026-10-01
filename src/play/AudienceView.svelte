@@ -29,6 +29,7 @@
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
   import { soundUrl } from './cues';
+  import { PILL_BAND, TIMER_BAND } from './stagefit';
 
   let {
     game,
@@ -122,8 +123,12 @@
   function popX(playerId: string | undefined): number | null {
     const i = playerId ? session.players.findIndex((p) => p.id === playerId) : -1;
     if (i < 0) return null;
-    return Math.min(1720, Math.max(200, plateCenter(session.players.length, i, codeSpot === 'bar' ? 230 : 0)));
+    return Math.min(1920 - POP_HALF, Math.max(POP_HALF, plateCenter(session.players.length, i, codeSpot === 'bar' ? 230 : 0)));
   }
+  /** An anchored pop is at most this wide (its name gives way to "…"), so it stays on the stage. */
+  const POP_HALF = 300;
+  /** The clue's caption is up (bottom left): pops along the foot go above it. */
+  const captionUp = $derived(!!stream?.clueCaption && session.phase === 'clue' && session.dd?.stage !== 'splash');
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
   /** The round's title card, for an RPG, board-game or Final round (a board round has its own, before the tiles fill in). */
@@ -133,6 +138,20 @@
     return isFinal(r) ? finalName(r) : roundName(r, session.currentRound);
   });
   const answering = $derived(session.phase === 'clue' && !session.dd && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
+  /**
+   * While the countdown, "Ann is answering" or the Daily Double badge is up over a question, the slide moves down into
+   * the room under them (a top band), so they never cover its first line.
+   */
+  const band = $derived.by(() => {
+    const onSlide =
+      (session.phase === 'clue' && session.dd?.stage !== 'splash') ||
+      (session.phase === 'final' && (session.finalStep === 'question' || session.finalStep === 'answer')) ||
+      session.phase === 'tiebreaker';
+    if (!onSlide) return 0;
+    if (live.timer) return TIMER_BAND;
+    return answering || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) ? PILL_BAND : 0;
+  });
+  const bandScale = $derived(band ? (1080 - band) / 1080 : undefined);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
   // started) stays quiet: an audience window opened mid-game doesn't replay the round intro. Short cues overlap (a
@@ -295,7 +314,7 @@
         role="presentation"
         in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}
       >
-        {#if !waiting}<SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} />{/if}
+        {#if !waiting}<div class="slide-area" style:scale={bandScale}><SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} /></div>{/if}
       </div>
     {/key}
     {#if stream?.clueCaption && !waiting}
@@ -324,9 +343,9 @@
         <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
         <div class="score-area"><ScoreBar {game} {session} host={!!onact} lit={null} ticks={wagersIn} /></div>
       {:else if session.finalStep === 'question'}
-        {#if finalRound}<SlideView slide={finalRound.questionSlide} {role} />{/if}
+        {#if finalRound}<div class="slide-area" style:scale={bandScale}><SlideView slide={finalRound.questionSlide} {role} /></div>{/if}
       {:else if session.finalStep === 'answer'}
-        {#if finalRound}<SlideView slide={finalRound.answerSlide} {role} />{/if}
+        {#if finalRound}<div class="slide-area" style:scale={bandScale}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
       {:else if session.finalStep === 'reveal'}
         <div class="reveal">
           <div class="final-label small">{finalLabel}</div>
@@ -371,7 +390,7 @@
       role="presentation"
       in:fade={{ duration: 300 }}
     >
-      <SlideView slide={session.tiebreakerRevealed ? game.tiebreaker.answerSlide : game.tiebreaker.questionSlide} {role} />
+      <div class="slide-area" style:scale={bandScale}><SlideView slide={session.tiebreakerRevealed ? game.tiebreaker.answerSlide : game.tiebreaker.questionSlide} {role} /></div>
       <div class="final-label small">TIEBREAKER</div>
     </div>
   {/key}
@@ -379,7 +398,7 @@
   {@const ranked = places(session)}
   <!-- The tiebreaker line takes a row's room. -->
   <div class="full end" in:fade={{ duration: 500 }} style:--n={ranked.length}>
-    {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} />{/if}
+    {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} keepOut={{ left: 410, right: 1510 }} />{/if}
     <h1>
       {#if tieOpen}
         Tie for first: {nameList(winners.map((w) => w.name))}!
@@ -422,7 +441,7 @@
 <div
   class="pops"
   style:top={popsOnBar ? `${barTop ? popsOnBar.top + popsOnBar.height - 30 : popsOnBar.top + 30}px` : undefined}
-  style:bottom={popsOnBar ? undefined : '40px'}
+  style:bottom={popsOnBar ? undefined : captionUp ? '130px' : '40px'}
   class:on-bar={!!popsOnBar}
   class:bar-top={barTop}
 >
@@ -437,7 +456,7 @@
       in:fly={{ y: barTop ? -60 : 60, duration: 250 }}
       out:fade
     >
-      {p.text}
+      {#if p.who}<span class="who">{p.who}</span> <span class="amt">{p.amount}</span>{:else}<span class="who">{p.text}</span>{/if}
     </div>
   {/each}
 </div>
@@ -524,7 +543,7 @@
     transform: translateY(-50%);
   }
   .jb-how {
-    font-size: 22px;
+    font-size: 30px;
   }
   .jb-code {
     font-size: 44px;
@@ -621,6 +640,13 @@
     position: absolute;
     inset: 0;
     background: var(--tile);
+  }
+  /* A slide, moved down under a top band when there's something over its top (see band). */
+  .slide-area {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 100%;
+    transition: scale 0.3s ease;
   }
   .clickable {
     cursor: pointer;
@@ -724,7 +750,7 @@
     font-size: 230px;
     line-height: 0.95;
     font-weight: 900;
-    color: var(--value);
+    color: var(--dd-text, var(--value));
     text-align: center;
     text-shadow: 12px 12px 0 #000;
     -webkit-text-stroke: 5px #000;
@@ -798,7 +824,8 @@
     padding: 40px 80px;
     border-radius: 30px;
     border: 8px solid var(--c);
-    background: rgba(0, 0, 0, 0.45);
+    /* Dark enough for white words on any tile color (Pastel's pink too), compressed. */
+    background: rgba(0, 0, 0, 0.78);
     color: #fff;
     font-family: var(--board-font);
     min-width: 900px;
@@ -871,7 +898,7 @@
     font-size: calc(56px * var(--k));
     font-weight: 800;
     font-family: var(--board-font);
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.72);
     border-left: 14px solid var(--c);
     padding: calc(10px * var(--k)) 24px;
     border-radius: 10px;
@@ -892,11 +919,14 @@
     position: absolute;
     left: 0;
     right: 0;
+    padding: 0 24px;
     display: flex;
+    flex-wrap: wrap-reverse;
     gap: 20px;
     justify-content: center;
     pointer-events: none;
-    z-index: 10;
+    /* Over the clue's caption, the timer's band and the answering plate's. */
+    z-index: 17;
   }
   .pops.on-bar {
     transform: translateY(-100%);
@@ -910,6 +940,18 @@
   .pop.anchored {
     position: absolute;
     translate: -50% 0;
+    max-width: 600px;
+  }
+  /* A long name gives way ("…"); the points always show. */
+  .who {
+    display: inline-block;
+    max-width: 1400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+  .anchored .who {
+    max-width: 280px;
   }
   .on-bar .pop.anchored {
     bottom: 0;
@@ -928,12 +970,18 @@
     background: rgba(0, 0, 0, 0.7);
     color: #fff;
     font-family: var(--board-font);
-    font-size: 36px;
+    font-size: 44px;
     font-weight: 800;
     text-transform: uppercase;
     pointer-events: none;
+    max-width: 1500px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .pop {
+    max-width: 100%;
+    box-sizing: border-box;
     white-space: nowrap;
     font-family: var(--value-font);
     font-size: 60px;

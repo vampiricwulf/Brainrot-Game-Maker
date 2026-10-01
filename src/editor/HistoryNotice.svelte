@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import { history, onApplied, onNotify, redo, undo, type HistoryEntry } from '../lib/history.svelte';
   import { goTo } from '../lib/nav.svelte';
+  import { announce } from '../lib/announce';
 
   /** The History tab is showing: it shows the steps itself. */
   let { quiet = false }: { quiet?: boolean } = $props();
@@ -17,6 +18,8 @@
 
   function show(kind: Kind, entry: HistoryEntry, ms: number): void {
     notice = { kind, entry, index: history.index };
+    // Read out from the page's live region (one that appears with its words isn't always read).
+    announce([kind === 'made' ? entry.label : `${kind === 'undid' ? 'Undid' : 'Redid'} ${entry.label}`, entry.where].filter(Boolean).join(' · '));
     clearTimeout(timer);
     timer = setTimeout(() => (notice = null), ms);
   }
@@ -51,7 +54,7 @@
 
 {#if notice && !quiet}
   {@const { kind, entry } = notice}
-  <div class="history-notice" data-over-modal role="status" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
+  <div class="history-notice" data-over-modal role="region" aria-label="Last change" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
     <span class="text">
       {#if kind === 'made'}
         {entry.label}

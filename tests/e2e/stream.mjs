@@ -2,10 +2,10 @@
 // keeping its size (a clue opening, the Final's steps), the in-panel key list, score pops, the stream cards (Starting
 // soon with a countdown, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings.
 import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -34,6 +34,122 @@ const nextRound = async () => {
   const yes = page.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible()) await yes.click();
 };
+
+/**
+ * A crowded game on a 720p stream: 12 players with long names and big scores, a board of 10 categories with long
+ * names. Nothing viewers need is cut off, shrunk past reading, or covered.
+ */
+async function crowd() {
+  console.log('A crowded game at 1280×720:');
+  const NAMES = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
+  const SCORES = [12400, -3200, 800, 0, 25600, 1000000, -400, 600, 200, 1600, 3000, 99999];
+  const COLORS = ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'];
+  const CATS = ['Famous Internet Personalities of the 2010s', 'Skibidi Lore', 'Minecraft Speedrunning Strategies', 'Rizz', 'Things That Happened Only in Ohio', 'Anime Openings', 'Supercalifragilisticexpialidocious Words', 'Gen Alpha Slang Dictionary', 'Twitch Streamers', 'Memes'];
+  const LONG = 'This streamer once spent forty-eight consecutive hours playing the same level of a notoriously difficult platformer while chat voted on every single jump he made';
+  const text = (t) => ({ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: true, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, shadow: { color: '#000000', x: 6, y: 6, blur: 0 }, autoFit: true });
+  const values = [200, 400, 600, 800, 1000];
+  const game = {
+    id: 'g_crowd', version: 2, title: 'Crowded',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 12, stream: { clueCaption: true } },
+    players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: COLORS[i], startScore: SCORES[i] })),
+    rounds: [{
+      id: 'r_big', name: 'Big board', mode: 'board', values,
+      categories: CATS.map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] }, answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] } })) })),
+    }],
+    media: [], audio: {}, wheels: [], dice: [], theme: {},
+  };
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const gameFile = resolve('test-results/stream-crowd.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const host = await ctx.newPage();
+  host.on('pageerror', (e) => errors.push(`[crowd] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await openGameFile(host, gameFile);
+  await host.getByText(/^Opened “/).waitFor();
+  await host.locator('nav .problem', { hasText: 'Big board' }).waitFor();
+  const line = host.locator('nav .problem', { hasText: 'Big board' });
+  assert(((await line.getAttribute('title')) ?? (await line.innerText())).includes('too long to read on the board'), 'the editor’s checklist says which category names are too long for the board');
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  aud.on('pageerror', (e) => errors.push(`[crowd audience] ${e.message}`));
+  await aud.setViewportSize({ width: 1280, height: 720 });
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  await host.getByRole('button', { name: 'Skip intro' }).click();
+  await aud.locator('.board .header .title').first().waitFor();
+  await aud.waitForTimeout(800);
+
+  // Every score whole on its plate (none cut to "$1,60"), and every name on one line ("…" if it must).
+  const clipped = (loc) =>
+    loc.evaluateAll((els) =>
+      els.filter((e) => {
+        const box = e.closest('.plate').getBoundingClientRect();
+        const r = e.getBoundingClientRect();
+        return e.scrollWidth > e.clientWidth + 1 || r.left < box.left - 1 || r.right > box.right + 1;
+      }).length,
+    );
+  assert((await aud.locator('.plate').count()) === 12 && (await clipped(aud.locator('.plate .score .nm'))) === 0, '12 players at 1280: no score is cut off');
+  const nameRows = await aud.locator('.plate .name').evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().height)))]);
+  assert(nameRows.length === 1, `every name row is the same height (${nameRows.join(', ')})`);
+  const nameSizes = await aud.locator('.plate .name .fit').evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).fontSize)));
+  assert(Math.min(...nameSizes) >= 28, `names stay readable (${Math.min(...nameSizes)}px at the smallest, in stage pixels)`);
+
+  // Ten columns of values: all whole, one size for the board, not shrunk to nothing.
+  const vals = await aud.locator('.board .tile .face').evaluateAll((els) =>
+    els.map((e) => ({ size: parseFloat(getComputedStyle(e).fontSize), over: e.firstElementChild.scrollWidth > e.clientWidth + 1 })),
+  );
+  assert(vals.length === 50 && !vals.some((v) => v.over), '10 categories: every value fits its tile');
+  assert(new Set(vals.map((v) => v.size)).size === 1 && vals[0].size >= 40, `one size for every value on the board (${vals[0].size}px)`);
+  const cats = await aud.locator('.board .header .title').evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).fontSize)));
+  // (Two of them are too long for a 10-column board: the editor's checklist said so, and they alone go smaller.)
+  const small = cats.filter((n) => n < 30);
+  assert(cats.length === 10 && small.length <= 2 && Math.min(...cats) >= 20, `category names stay at 30 stage px or more (${cats.join(', ')})`);
+  const catsOver = await aud.locator('.board .header .title').evaluateAll((els) =>
+    els.filter((e) => e.firstElementChild.scrollHeight > e.clientHeight + 1).map((e) => `${e.textContent} ${e.firstElementChild.scrollHeight}/${e.clientHeight} ${e.style.fontSize} ${e.style.hyphens}`),
+  );
+  assert(catsOver.length === 0, `and they all fit their cells ${catsOver.join(' | ')}`);
+
+  // The ▭ scores window (a lower third): no score cut off there either, the countdown beside them.
+  const [sc] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('Shift+A')]);
+  await sc.setViewportSize({ width: 1280, height: 240 });
+  await sc.locator('.plate').first().waitFor();
+  await sc.waitForTimeout(500);
+  assert((await clipped(sc.locator('.plate .score .nm'))) === 0, 'the ▭ scores window cuts no score off');
+
+  // A long clue with the countdown up: the slide moves down under it, so the countdown never covers its first line.
+  await host.bringToFront();
+  await host.locator('.stage-box .board .tile').first().click();
+  await aud.locator('.slide-area').waitFor();
+  await host.keyboard.press('t');
+  await aud.locator('.timer').waitFor();
+  await aud.waitForTimeout(600);
+  const timer = await aud.locator('.timer').boundingBox();
+  const words = await aud.locator('.slide-area .inner').boundingBox();
+  assert(words.y >= timer.y + timer.height, `the countdown doesn’t cover the clue’s first line (timer ends at ${Math.round(timer.y + timer.height)}, the words start at ${Math.round(words.y)})`);
+  assert((await sc.locator('.clock .timer').count()) === 1, 'the scores window shows the countdown too');
+  const caption = await aud.locator('.caption').evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  assert(caption >= 44, `the clue caption is big enough to read on a scaled-down stream (${caption}px)`);
+  await host.keyboard.press('t');
+
+  // A pop for the last player (a long name): it stays on the stage, above the caption, and its points always show.
+  await host.locator('.panel .p').nth(11).locator('.sel').click();
+  await host.keyboard.press('Enter');
+  await aud.locator('.pop').waitFor();
+  // (Once it has flown in.)
+  await aud.waitForTimeout(400);
+  const pop = await aud.locator('.pop').boundingBox();
+  const cap = await aud.locator('.caption').boundingBox();
+  assert(pop.x >= 0 && pop.x + pop.width <= 1280 && pop.y + pop.height <= cap.y, `the score pop stays on the stage, above the caption (${JSON.stringify(pop)})`);
+  assert((await aud.locator('.pop .amt').innerText()).includes('$200'), 'with its points shown in full');
+  await host.keyboard.press('Escape');
+  await aud.locator('.board .tile').first().waitFor();
+  await aud.waitForTimeout(300);
+  const onBar = await aud.locator('.pop').boundingBox();
+  assert(onBar.x >= 0 && onBar.x + onBar.width <= 1280.5, `back on the board, the pop over the last plate stays on the stage (${JSON.stringify(onBar)})`);
+  if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-crowd.png` });
+  await ctx.close();
+}
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -152,6 +268,8 @@ try {
   assert((await stageSize()) === finalSize, 'and so do the reveals');
   const spot = await page.locator('.stage .spot-name').innerText();
   assert((await page.locator('.stage .score-area .plate.picker').innerText()).includes(spot), 'the score bar lights up the spotlit player');
+
+  await crowd();
 
   assert(!dialogs.length, 'no browser dialogs' + (dialogs.length ? ': ' + dialogs.join(' | ') : ''));
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

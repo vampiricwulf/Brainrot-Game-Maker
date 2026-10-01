@@ -961,6 +961,19 @@ export function newClue(): Clue {
   return { id: newId(), value: null, type: 'standard', questionSlide: textSlide(), answerSlide: textSlide() };
 }
 
+/** A player's initials ("Ann Lee" → "AL", "Player 2" → "P2"): on their avatar token and their dot on a map. */
+export function initials(name: string): string {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .map((w) => w[0] ?? '')
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?'
+  );
+}
+
 /** A category's name for the host (log, notes, lists), even when the board shows an image instead. */
 export function categoryLabel(cat: Category): string {
   return cat.title.trim() || (cat.image ? '🖼 Image category' : 'Category');

@@ -981,6 +981,13 @@
       display: none;
     }
   }
+  /* Very narrow (200% zoom on a laptop): the header wraps onto a second line instead of running off the side. */
+  @media (max-width: 900px) {
+    header {
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+  }
   /* Short, so it stays on one line (the details are in its tooltip). */
   .saved {
     white-space: nowrap;

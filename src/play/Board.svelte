@@ -1,7 +1,8 @@
 <!-- The game board in stage coordinates (fills its parent). -->
 <script lang="ts">
   import { categoryLabel, clueValue, formatPoints, isBoard, type ClueRef, type Game, type Session } from '../lib/model';
-  import { autofit } from '../lib/autofit';
+  import { autofit, softHyphens } from '../lib/autofit';
+  import { CAT_FLOOR, CAT_MIN } from '../lib/boardfit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
 
   let {
@@ -28,6 +29,26 @@
     return Array.from({ length: 200 }, () => Math.random() * 1.4);
   });
   const catShown = (ci: number) => !intro || (intro.stage === 'categories' && ci < intro.revealed);
+  /** The board's values share one size: as big as the widest one allows (10 columns of "$1,000" shrink together). */
+  const uid = $props.id();
+  const valueGroup = `values-${uid}`;
+
+  /**
+   * The host's board is one Tab stop (a roving tabindex): the tile last focused, else the first playable one. The
+   * arrow keys go from tile to tile.
+   */
+  let roving = $state<string | null>(null);
+  const tabTile = $derived.by(() => {
+    if (!round) return null;
+    const ids = round.categories.flatMap((c) => c.clues.map((cl) => cl.id));
+    if (roving && ids.includes(roving)) return roving;
+    for (let row = 0; row < round.values.length; row++)
+      for (const cat of round.categories) {
+        const cl = cat.clues[row];
+        if (cl && !cl.empty && !session.used[cl.id]) return cl.id;
+      }
+    return ids[0] ?? null;
+  });
 
   /**
    * The arrow keys move across the board, tile to tile (played ones too: their menu is still there). Only in the host's
@@ -61,12 +82,13 @@
             <div class="title has-image" class:revealing={!!intro}>
               <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
               {#if cat.showTitleOverImage && cat.title}
-                <div class="caption" use:autofit={{ size: 40, enabled: true, text: cat.title }}><div>{cat.title}</div></div>
+                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, text: cat.title }}><div>{softHyphens(cat.title)}</div></div>
               {/if}
             </div>
           {:else}
-            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, enabled: true, text: cat.title }}>
-              <div>{cat.title}</div>
+            <!-- Never so small it can't be read on a scaled-down stream: at the smallest size, long words are hyphenated. -->
+            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, text: cat.title }}>
+              <div>{softHyphens(cat.title)}</div>
             </div>
           {/if}
         {/if}
@@ -77,14 +99,15 @@
         {@const clue = cat.clues[row]}
         {@const used = clue.empty || !!session.used[clue.id]}
         {@const value = formatPoints(clueValue(round, row, clue), sym)}
-        <!-- Played tiles are out of the Tab order (the arrow keys still reach them, for their menu). -->
+        <!-- One Tab stop for the whole board (the arrow keys reach every tile, played ones too, for their menu). -->
         <button
           class="cell tile"
           class:used
           data-clue={clue.id}
           data-row={row}
           data-cat={ci}
-          tabindex={used ? -1 : undefined}
+          tabindex={onpick ? (clue.id === tabTile ? 0 : -1) : undefined}
+          onfocus={onpick ? () => (roving = clue.id) : undefined}
           onkeydown={onpick ? (e) => arrows(e, row, ci) : undefined}
           class:fill={intro?.stage === 'fill'}
           style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
@@ -101,7 +124,7 @@
             {#if clue.tileFace?.text}
               <span class="face" use:autofit={{ size: 84, enabled: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>
             {:else if !clue.tileFace?.image}
-              <span>{value}</span>
+              <span class="face" use:autofit={{ size: 84, min: 24, noBreak: true, enabled: true, group: valueGroup, text: value }}><span class="v">{value}</span></span>
             {/if}
           {/if}
         </button>
@@ -189,7 +212,7 @@
     font-weight: 800;
     text-transform: uppercase;
     line-height: 1.05;
-    text-shadow: 4px 4px 0 #000;
+    text-shadow: 4px 4px 0 var(--tile-shadow, #000);
     border-bottom: 6px solid #000;
   }
   .tile {
@@ -197,7 +220,7 @@
     font-size: 84px;
     font-weight: 800;
     color: var(--value);
-    text-shadow: 5px 5px 0 #000;
+    text-shadow: 5px 5px 0 var(--tile-shadow, #000);
     cursor: pointer;
     transition: filter 0.12s;
   }
@@ -213,6 +236,9 @@
     width: calc(100% - 12px);
     height: calc(100% - 12px);
     object-fit: contain;
+  }
+  .v {
+    white-space: nowrap;
   }
   .face {
     position: relative;

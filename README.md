@@ -118,6 +118,10 @@ The rules can change mid-game too: **📋** next to 👥 Players in the host pan
 and are kept with the game), and at the most players 👥 Players offers **Raise Most players**.
 Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.
 Nothing pops up over the stage: questions for the host (a locked door, naming a new screen…) appear in the host panel.
+Screen readers hear what's going on: the host panel's status line, awards and scores, the buzz order and who is
+answering, and the app's notes are announced (politely, a burst of changes said once). The host's board is one Tab
+stop: the arrow keys go from tile to tile. In Windows High Contrast, the selected players and pressed buttons are
+outlined.
 
 ![A clue on screen](docs/screenshots/play-clue.png)
 
@@ -152,9 +156,18 @@ doorways, pick-ups, coins and damage…): preview, replace or switch each
 off in the editor's 🔊 Sounds tab (↺ goes back to the built-in sound; a sound switched off keeps the file chosen for it).
 The players and rules aren't there: the tab says so at the top, with a button to the ▶ Play screen.
 
-**For OBS:** Theme › Stage background can be chroma green or magenta for keying, and **▭** (or `Shift+A`) opens a
+**For OBS:** Theme › Stage background can be chroma green or magenta for keying (the pre-game screen warns when a
+player's color is close to the key, which would key it out), and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown
 (the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
+
+**Made to read on a scaled-down stream** (720p or 480p in Discord): scores shrink to fit their plates and long names
+end in "…" instead of being cut off, a board's values share one size that fits its columns, category names never get
+smaller than about 30 stage pixels (very long words are hyphenated; the editor's checklist says when a name is too long
+for the board), the countdown and "🔔 Ann is answering" move the question down instead of covering its first line,
+and score pops stay on screen. New players get colors that stay apart for colour-blind viewers (the first 8); a game
+keeps the colors it was saved with. The winner's confetti is a short burst beside the standings (none with Reduce
+motion on stream).
 
 **Single-window mode shows viewers everything on screen**, including wagers as you type them, answers, host notes and
 hidden objects. Use the separate audience window when that matters.
@@ -163,6 +176,9 @@ hidden objects. Use the separate audience window when that matters.
 
 **RPG rounds** have these controls:
 
+- The stats strip along the bottom never covers the screen: the screen is scaled into the room above it (past 6
+  players the strip is one row of compact cards). The map on stream is solid, and the players' dots on it carry their
+  initials.
 - A movement pad, and a minimap that expands to the full map so you can jump the party anywhere. On a big world the
   minimap shows the screens around the party; the arrow keys go from screen to screen on it.
 - The map on stream (`V`) shows only what viewers know, with a cell around it, and says when the party is on a map
@@ -172,7 +188,8 @@ hidden objects. Use the separate audience window when that matters.
 - Shops.
 - Live improvising: edit the screen, add text, or draw objects on a drawpad.
 
-**Board game rounds** have these controls:
+**Board game rounds** have these controls (as in RPG rounds, the board is scaled into the room above the stats
+strip, so no space is ever under it):
 
 - Roll (or spin the movement wheel) and move, picking the way at each fork. Moving back goes back the way the player
   came.

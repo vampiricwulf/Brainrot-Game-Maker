@@ -355,18 +355,10 @@ describe('board game: what spaces show', () => {
     expect(spaceNumber('Start')).toBeUndefined();
   });
 
-  it('warns about spaces under the stats strip', () => {
+  it('never says a space is under the stats strip (the board is scaled into the room above it)', () => {
     const { game, round } = setup();
-    expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
-    round.spaces[3].y = 910;
+    round.spaces[3].y = 1000;
     round.spaces[3].name = 'Finish';
-    expect(boardGameProblems(game, round, 'Board', 1)).toContainEqual({
-      text: 'Board: Finish is under the stats strip (move it up)',
-      tab: 1,
-      level: 'warn',
-      place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[3].id } },
-    });
-    game.theme = { ...game.theme, scoreBar: 'hidden' };
     expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
   });
 });

@@ -2,18 +2,11 @@
 <script lang="ts">
   import { textOn } from '../colors';
   import { mediaUrls } from '../media.svelte';
+  import { initials } from '../model';
 
   let { player, size = 64, ring = true }: { player: { name: string; color: string; avatar?: string }; size?: number; ring?: boolean } = $props();
   const src = $derived(player.avatar ? mediaUrls[player.avatar] : undefined);
-  const initials = $derived(
-    player.name
-      .trim()
-      .split(/\s+/)
-      .map((w) => w[0] ?? '')
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || '?',
-  );
+  const letters = $derived(initials(player.name));
 </script>
 
 <span
@@ -27,7 +20,7 @@
   style:font-size="{Math.round(size * 0.42)}px"
   aria-hidden="true"
 >
-  {#if src}<img {src} alt="" draggable="false" />{:else}{initials}{/if}
+  {#if src}<img {src} alt="" draggable="false" />{:else}{letters}{/if}
 </span>
 
 <style>

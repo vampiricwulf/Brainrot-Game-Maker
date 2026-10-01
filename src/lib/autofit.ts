@@ -19,6 +19,20 @@ export interface AutofitOptions {
   text?: string;
   /** Smallest size to shrink to (px). */
   min?: number;
+  /**
+   * Where a word longer than the line still doesn't fit at the smallest size, hyphenate it (at the largest size that
+   * fits that way) before breaking it anywhere. The text must carry soft hyphens where it may break (softHyphens).
+   */
+  hyphenate?: boolean;
+  /** With hyphenate: text that doesn't fit even hyphenated at `min` may go down to this size instead of being cut off. */
+  floor?: number;
+  /** Never break a word: at the smallest size, what's left over is cut (CSS shows "…" where it's set). */
+  noBreak?: boolean;
+  /**
+   * Boxes with the same group all take the smallest size any of them fits at (a board's values, a bar's scores), so
+   * they read as one set instead of one odd number shrunk on its own.
+   */
+  group?: string;
   /** Told the fitted size after every fit (the slide editor shows it). */
   onfit?: (r: FitResult) => void;
 }
@@ -26,7 +40,7 @@ export interface AutofitOptions {
 /** One size to try, and how words may break at it. The fitting is then told whether the content overflows. */
 interface Try {
   size: number;
-  wrap: '' | 'normal' | 'anywhere';
+  wrap: '' | 'normal' | 'hyphen' | 'anywhere';
 }
 
 /** The largest whole number in [lo, hi] that fits (doesn't overflow), or lo if none does. */
@@ -49,31 +63,79 @@ export function largestFitting(lo: number, hi: number, fits: (n: number) => bool
 }
 
 /** The sizes one box tries, ending on the one it keeps (which is the last one tried). */
-function* fitting({ size, enabled, min = 12 }: AutofitOptions): Generator<Try, FitResult, boolean> {
+function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: AutofitOptions): Generator<Try, FitResult, boolean> {
   // Words stay whole: the longest one must fit on a line. Only if that's impossible even at the
-  // smallest size are words allowed to break (then at the largest size that fits that way).
+  // smallest size are words hyphenated (if asked) or allowed to break (then at the largest size that fits that way).
   if (!enabled) return { size, overflow: yield { size, wrap: '' } };
   if (!(yield { size, wrap: 'normal' })) return { size, overflow: false };
   const lo = Math.min(min, size);
   let s = yield* largest(lo, size, 'normal');
-  if (!(yield { size: s, wrap: 'normal' })) return { size: s, overflow: false };
+  const left = yield { size: s, wrap: 'normal' };
+  if (!left || noBreak) return { size: s, overflow: left };
+  if (hyphenate) {
+    s = yield* largest(lo, size, 'hyphen');
+    if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
+    // Still too much for the box: smaller than the smallest after all (down to `floor`), rather than cut off.
+    if (floor !== undefined && floor < lo) {
+      s = yield* largest(floor, lo, 'hyphen');
+      if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
+    }
+  }
   s = yield* largest(lo, size, 'anywhere');
   return { size: s, overflow: yield { size: s, wrap: 'anywhere' } };
 }
 
-function overflows(node: HTMLElement): boolean {
+/**
+ * The size a box keeps, given whether its content overflows at a size and wrap mode (`measure` stands in for the
+ * page: the tests use it to check the fitting without a browser).
+ */
+export function fitWith(opts: AutofitOptions, measure: (size: number, wrap: Try['wrap']) => boolean): FitResult & { wrap: Try['wrap'] } {
+  const steps = fitting(opts);
+  let step = steps.next();
+  let last: Try = { size: opts.size, wrap: '' };
+  while (!step.done) {
+    last = step.value;
+    step = steps.next(measure(last.size, last.wrap));
+  }
+  return { ...step.value, wrap: last.wrap };
+}
+
+/** The one size a group of boxes shares: the smallest any of them fits at (none: undefined). */
+export function groupSize(sizes: (number | undefined)[]): number | undefined {
+  const known = sizes.filter((n): n is number => typeof n === 'number');
+  return known.length ? Math.min(...known) : undefined;
+}
+
+/**
+ * One try's size and line breaking. A box that may hyphenate has soft hyphens in its long words (see softHyphens):
+ * they're break points only in the 'hyphen' tries, so no word is broken while shrinking would do.
+ */
+function applyTry(node: HTMLElement, t: Try, hyphenate?: boolean): void {
+  node.style.fontSize = `${t.size}px`;
+  node.style.overflowWrap = t.wrap === 'hyphen' ? 'normal' : t.wrap;
+  node.style.hyphens = !hyphenate ? '' : t.wrap === 'hyphen' ? 'manual' : 'none';
+}
+
+/**
+ * The content doesn't fit its box. A one-line box that cuts its text ("…", noBreak) is measured with a pixel to spare:
+ * sizes are whole pixels, and a fraction of a pixel over is enough for the browser to cut the last character.
+ */
+function overflows(node: HTMLElement, strict = false): boolean {
   const inner = node.firstElementChild as HTMLElement | null;
   if (!inner) return node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth;
   const cs = getComputedStyle(node);
   const boxW = node.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const boxH = node.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  return Math.max(inner.scrollWidth, inner.offsetWidth) > boxW + 0.5 || Math.max(inner.scrollHeight, inner.offsetHeight) > boxH + 0.5;
+  const wide = strict ? inner.scrollWidth > boxW - 1.5 : Math.max(inner.scrollWidth, inner.offsetWidth) > boxW + 0.5;
+  return wide || Math.max(inner.scrollHeight, inner.offsetHeight) > boxH + 0.5;
 }
 
 interface Box {
   node: HTMLElement;
   opts: () => AutofitOptions;
   fitted: (r: FitResult) => void;
+  /** The size this box fits at on its own (before its group's shared size). */
+  natural?: number;
 }
 
 /** Boxes waiting for a fit, fitted together in a microtask (before the next paint). */
@@ -94,18 +156,33 @@ function fitAll(): void {
   waiting.clear();
   while (live.length) {
     // Every box sets its size first, then every box is measured: one layout for the lot.
-    for (const { box, step } of live) {
-      const t = step.value as Try;
-      box.node.style.fontSize = `${t.size}px`;
-      box.node.style.overflowWrap = t.wrap;
-    }
-    for (const x of live) x.step = x.steps.next(overflows(x.box.node));
+    for (const { box, step } of live) applyTry(box.node, step.value as Try, box.opts().hyphenate);
+    for (const x of live) x.step = x.steps.next(overflows(x.box.node, !!x.box.opts().noBreak));
     live = live.filter((x) => {
-      if (x.step.done) x.box.fitted(x.step.value);
-      return !x.step.done;
+      if (!x.step.done) return true;
+      const r = x.step.value;
+      x.box.natural = r.size;
+      const g = x.box.opts().group;
+      if (g) groups.add(g);
+      else x.box.fitted(r);
+      return false;
     });
   }
+  // A group's boxes all take its smallest size (smaller than its own never makes a box overflow).
+  for (const g of groups) {
+    const members = [...boxes.values()].filter((b) => b.opts().group === g && b.node.isConnected);
+    const size = groupSize(members.map((b) => b.natural));
+    if (size === undefined) continue;
+    for (const b of members) {
+      b.node.style.fontSize = `${size}px`;
+      b.fitted({ size, overflow: false });
+    }
+  }
+  groups.clear();
 }
+
+/** Groups with a box fitted in this pass. */
+const groups = new Set<string>();
 
 /** Every box on the page, by its element. */
 const boxes = new Map<Element, Box>();
@@ -125,6 +202,9 @@ function unwatch(box: Box): void {
   boxes.delete(box.node);
   waiting.delete(box);
   resized?.unobserve(box.node);
+  // The rest of its group may grow back now (a long score gone from the bar).
+  const g = box.opts().group;
+  if (g) for (const b of boxes.values()) if (b.opts().group === g) request(b);
   if (boxes.size) return;
   resized?.disconnect();
   resized = null;
@@ -169,4 +249,16 @@ export function autofit(node: HTMLElement, opts: AutofitOptions) {
       unwatch(box);
     },
   };
+}
+
+/**
+ * Soft hyphens (U+00AD) inside long words, where a hyphenating box may break them, never leaving fewer than 3 letters
+ * on either side. They're invisible unless a word is broken there (then a "-" shows). Browsers' own hyphenation needs
+ * a dictionary a stream PC may not have; these always work.
+ */
+export function softHyphens(text: string, from = 8): string {
+  return text.replace(new RegExp(`\\p{L}{${from},}`, 'gu'), (w) => {
+    const ch = Array.from(w);
+    return ch.map((c, i) => (i >= 3 && i <= ch.length - 3 ? '\u00ad' + c : c)).join('');
+  });
 }

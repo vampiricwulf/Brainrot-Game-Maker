@@ -255,9 +255,6 @@ export function shownSpace(bs: BoardGameState, playerId: Id, now: number): Id | 
   return bs.positions[playerId]?.space;
 }
 
-/** Below this (above SLIDE_H minus it, with the strip along the top) a space and its name go under the stats strip. */
-export const STRIP_EDGE = 860;
-
 /** A board space's radius (BoardSpaces draws them 116px across), and how far a token may tuck in over its rim. */
 const SPACE_R = 58;
 const TUCK = 12;
@@ -305,16 +302,7 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
     out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn', place: at() });
   if (moverDiceGone(game, round)) out.push({ text: `${name}: the movement dice no longer exist (pick others in Move by)`, tab, level: 'warn', place: at() });
-  // Spaces the stats strip covers in play (it runs along the bottom, or the top), with the players' tokens on them.
-  const bar = game.theme?.scoreBar ?? 'bottom';
-  const under = bar === 'hidden' ? [] : round.spaces.filter((s) => (bar === 'bottom' ? s.y > STRIP_EDGE : s.y < SLIDE_H - STRIP_EDGE));
-  if (under.length)
-    out.push({
-      text: `${name}: ${under.map((s) => s.name).join(', ')} ${under.length === 1 ? 'is' : 'are'} under the stats strip (move ${under.length === 1 ? 'it' : 'them'} ${bar === 'bottom' ? 'up' : 'down'})`,
-      tab,
-      level: 'warn',
-      place: at(under[0]),
-    });
+  // (No space is ever under the stats strip: in play the board is scaled into the room the strip leaves.)
   // A deleted space, zone, item… (or nothing chosen).
   const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])].filter((a) => actionProblem(game, a, { board: round })).map(() => s));
   if (nowhere.length) {

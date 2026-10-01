@@ -25,11 +25,14 @@
   let fitted = $state<FitResult>({ size: 0, overflow: false });
   const ghost = $derived(edit && !el.text && !!placeholder);
 
-  const color = $derived(onTile && !el.background && /^#?(fff|ffffff)$/i.test(el.color.trim()) ? 'var(--stage-text, #fff)' : el.color);
+  const themed = $derived(onTile && !el.background && /^#?(fff|ffffff)$/i.test(el.color.trim()));
+  const color = $derived(themed ? 'var(--stage-text, #fff)' : el.color);
   const justify = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
   const shadow = $derived.by(() => {
     const parts: string[] = [];
-    if (el.shadow) parts.push(`${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur}px ${el.shadow.color}`);
+    // The plain black drop shadow under theme-colored text follows the theme too (a light one under Pastel's dark words).
+    const sc = el.shadow && themed && /^#?(000|000000)$/i.test(el.shadow.color.trim()) ? 'var(--tile-shadow, #000)' : el.shadow?.color;
+    if (el.shadow) parts.push(`${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur}px ${sc}`);
     if (el.glow) parts.push(`0 0 ${el.glow.blur}px ${el.glow.color}`, `0 0 ${el.glow.blur * 2}px ${el.glow.color}`);
     return parts.join(', ') || 'none';
   });

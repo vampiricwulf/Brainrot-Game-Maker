@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { textOn } from './colors';
+import { contrast, textOn } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -133,6 +133,7 @@ export function stageText(t: Pick<Theme, 'preset' | 'tile' | 'stageText'>): stri
 /** CSS custom properties for a theme (inherit into Board, ScoreBar, slides…). */
 export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string {
   const th = t ?? presetTheme('classic');
+  const light = textOn(th.tile) === '#000';
   const vars: Record<string, string> = {
     '--tile': th.tile,
     '--tile-used': th.tileUsed,
@@ -141,12 +142,19 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     '--board-text': th.boardText,
     '--stage-text': stageText(th),
     // Negative scores: a light red on dark tiles, a dark one on light tiles.
-    '--stage-bad': textOn(th.tile) === '#000' ? '#b3261e' : '#ff6b6b',
+    '--stage-bad': light ? '#b3261e' : '#ff6b6b',
     '--board-font': th.boardFont,
     '--value-font': th.valueFont,
     '--glow': th.glow === 'none' ? 'transparent' : th.glow,
     '--glow-size': th.glow === 'none' ? '0px' : '18px',
     '--scorebar-bg': th.scoreBarBg,
+    // The bar darkens a little towards the foot, never to black (a pastel bar stays pastel on a compressed stream).
+    '--scorebar-end': `color-mix(in srgb, ${th.scoreBarBg} 72%, #000)`,
+    // Hard drop shadows behind words on the tiles: black on dark tiles; a soft light one on light tiles, where a black
+    // one smears dark words once the stream is compressed.
+    '--tile-shadow': light ? 'rgba(255, 255, 255, 0.75)' : '#000',
+    // The Daily Double splash is purple: the value color on it, unless that's too close (Pastel's purple), then white.
+    '--dd-text': contrast(th.value, '#7a00ff') >= 3 ? th.value : '#ffffff',
     '--board-image': boardImageUrl ? cssUrl(boardImageUrl) : 'none',
   };
   return Object.entries(vars)

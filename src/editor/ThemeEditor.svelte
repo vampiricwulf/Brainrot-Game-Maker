@@ -94,7 +94,7 @@
     </div>
     <ThemeShare />
 
-    <h4>Colors</h4>
+    <h3>Colors</h3>
     <div class="grid">
       {#each COLORS as [key, label]}
         <label class="check">
@@ -109,7 +109,7 @@
       </label>
     </div>
 
-    <h4>Fonts</h4>
+    <h3>Fonts</h3>
     <div class="grid">
       <label class="field">
         Category names
@@ -127,7 +127,7 @@
       </label>
     </div>
 
-    <h4>Clue text</h4>
+    <h3>Clue text</h3>
     <div class="grid">
       <label class="field">
         Font
@@ -153,7 +153,7 @@
       you styled yourself keeps its look. Without a font here, new text uses {FACTORY_FONT.split(',')[0].replace(/'/g, '')}.
     </p>
 
-    <h4>Board</h4>
+    <h3>Board</h3>
     <div class="grid">
       <div class="row pop">
         <span>Background image</span>
@@ -233,7 +233,7 @@
   h2 {
     margin: 0 0 10px;
   }
-  h4 {
+  h3 {
     margin: 16px 0 6px;
     font-size: 12px;
     text-transform: uppercase;

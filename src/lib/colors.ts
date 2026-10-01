@@ -1,18 +1,22 @@
-// Distinct, stream-readable player colors (spec §5.1: colors must be unique).
+// Distinct, stream-readable player colors (spec §5.1: colors must be unique). The first 8 stay apart for colour-blind
+// viewers too (deuteranopia and protanopia, simulated: see colors.test.ts), mostly from the Okabe–Ito set; each takes
+// black or white text (textOn) at 4.5:1 or better. Games keep the colors they were saved with.
 export const PLAYER_PALETTE = [
   '#e6194b', // red
-  '#3cb44b', // green
-  '#ffe119', // yellow
-  '#4363d8', // blue
-  '#f58231', // orange
+  '#56b4e9', // sky blue
+  '#f0e442', // yellow
+  '#1f3a93', // navy
+  '#d55e00', // orange (vermillion)
+  '#f2f2f2', // white
+  '#009e73', // bluish green
+  '#cc79a7', // pink
   '#911eb4', // purple
-  '#42d4f4', // cyan
-  '#f032e6', // magenta
-  '#bfef45', // lime
-  '#fabed4', // pink
-  '#469990', // teal
   '#9a6324', // brown
+  '#bfef45', // lime
+  '#f032e6', // magenta
 ];
+/** How many of the palette's first colors stay apart for colour-blind viewers. */
+export const CVD_SAFE_UPTO = 8;
 
 export function normalizeColor(c: string): string {
   return c.trim().toLowerCase();
@@ -63,4 +67,59 @@ export function contrast(a: string, b: string): number {
 export function textOn(bg: string): string {
   if (!parseHex(bg)) return '#fff';
   return contrast(bg, '#000') > contrast(bg, '#fff') ? '#000' : '#fff';
+}
+
+/** Colour vision as simulated (Machado et al. 2009, full strength), in linear RGB. */
+export type Vision = 'normal' | 'deutan' | 'protan';
+const CVD: Record<Exclude<Vision, 'normal'>, number[][]> = {
+  deutan: [
+    [0.367322, 0.860646, -0.227968],
+    [0.280085, 0.672501, 0.047413],
+    [-0.01182, 0.04294, 0.968881],
+  ],
+  protan: [
+    [0.152286, 1.052583, -0.204868],
+    [0.114503, 0.786281, 0.099216],
+    [-0.003882, -0.048116, 1.051998],
+  ],
+};
+
+const toLinear = (v: number) => {
+  const s = v / 255;
+  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+};
+
+/** A color in CIE L*a*b* (D65) as someone with this vision sees it (unreadable colors: black). */
+export function labOf(c: string, vision: Vision = 'normal'): [number, number, number] {
+  let rgb = (parseHex(c) ?? [0, 0, 0]).map(toLinear);
+  if (vision !== 'normal') {
+    const lin = rgb;
+    rgb = CVD[vision].map((row) => Math.max(0, Math.min(1, row[0] * lin[0] + row[1] * lin[1] + row[2] * lin[2])));
+  }
+  const [r, g, b] = rgb;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047);
+  const y = f(0.2126 * r + 0.7152 * g + 0.0722 * b);
+  const z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+
+/** How far apart two colors look (CIE76 ΔE: about 2 is just noticeable, 15 and more clearly different), for this vision. */
+export function colorDistance(a: string, b: string, vision: Vision = 'normal'): number {
+  const p = labOf(a, vision);
+  const q = labOf(b, vision);
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+}
+
+/**
+ * A player color a chroma key would take out: close in hue to the key color and colorful enough (OBS keys by hue and
+ * saturation more than brightness, so a dark green goes too).
+ */
+export function nearKey(color: string, key: string): boolean {
+  const c = labOf(color);
+  const k = labOf(key);
+  if (!parseHex(color) || Math.hypot(c[1], c[2]) < 25) return false;
+  const hue = (l: number[]) => (Math.atan2(l[2], l[1]) * 180) / Math.PI;
+  const d = Math.abs(hue(c) - hue(k));
+  return Math.min(d, 360 - d) < 30;
 }

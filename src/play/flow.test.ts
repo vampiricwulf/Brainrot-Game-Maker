@@ -32,11 +32,13 @@ describe('score pops', () => {
   it('shows one pop for a group award, and one per player for a single award', () => {
     const { game, session, ids } = setup(3);
     const all = applyScore(session, game, ids, 200, 'x');
-    expect(groupPops(all, session.players, '$', '#fc0')).toEqual([{ text: 'Everyone +$200', color: '#fc0' }]);
+    expect(groupPops(all, session.players, '$', '#fc0')).toEqual([{ text: 'Everyone +$200', who: 'Everyone', amount: '+$200', color: '#fc0' }]);
     const two = applyScore(session, game, ids.slice(0, 2), 1000, 'x');
-    expect(groupPops(two, session.players, '$', '#fc0')).toEqual([{ text: `Ann & Bo +$${(1000).toLocaleString()}`, color: '#fc0' }]);
+    expect(groupPops(two, session.players, '$', '#fc0')).toEqual([
+      { text: `Ann & Bo +$${(1000).toLocaleString()}`, who: 'Ann & Bo', amount: `+$${(1000).toLocaleString()}`, color: '#fc0' },
+    ]);
     const one = applyScore(session, game, [ids[2]], -400, 'x');
-    expect(groupPops(one, session.players, '$', '#fc0')).toEqual([{ text: 'Cy −$400', color: '#000002', playerId: ids[2] }]);
+    expect(groupPops(one, session.players, '$', '#fc0')).toEqual([{ text: 'Cy −$400', who: 'Cy', amount: '−$400', color: '#000002', playerId: ids[2] }]);
   });
 
   it('names three players when not everyone scored, and splits a group whose amounts differ', () => {

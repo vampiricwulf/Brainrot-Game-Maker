@@ -1,6 +1,7 @@
 <!-- Players' name plates + scores along the bottom of the stage (name + color only, spec §14). -->
 <script lang="ts">
   import { textOn } from '../lib/colors';
+  import { autofit } from '../lib/autofit';
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { score } from '../lib/session';
 
@@ -30,9 +31,11 @@
   } = $props();
   const sym = $derived(game.settings.currencySymbol);
   const litId = $derived(lit === undefined ? session.currentPickerId : lit);
-  // Few players: wider plates, so long names fit. Long names take a smaller font, then a second line, before "…".
+  // Few players: wider plates, so long names fit. A long name shrinks a little (never below a size that reads on a
+  // scaled-down stream), then ends in "…": one line, whole words, the same height on every plate.
   const wide = $derived(session.players.length <= 4);
-  const nameSize = (name: string) => (name.length > 16 ? 28 : name.length > 11 ? 32 : 36);
+  const NAME = 36;
+  const NAME_MIN = 28;
 </script>
 
 <div class="bar" style:padding-right={reserve ? `${24 + reserve}px` : undefined}>
@@ -48,8 +51,12 @@
       onclick={() => onpicker?.(p.id)}
       title={onpicker ? hint : undefined}
     >
-      <span class="name" style:background={p.color} style:color={textOn(p.color)} style:font-size="{nameSize(p.name)}px">{p.name}</span>
-      <span class="score" class:neg={s < 0}>{formatPoints(s, sym)}</span>
+      <span class="name" style:background={p.color} style:color={textOn(p.color)} title={p.name}>
+        <span class="fit" use:autofit={{ size: NAME, min: NAME_MIN, noBreak: true, enabled: true, text: p.name }}><span class="nm">{p.name}</span></span>
+      </span>
+      <span class="score" class:neg={s < 0}>
+        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm">{formatPoints(s, sym)}</span></span>
+      </span>
       {#if ticks.includes(p.id)}<span class="tick" title="Wager in">✔</span>{/if}
     </button>
   {/each}
@@ -63,7 +70,7 @@
     gap: 18px;
     padding: 18px 24px;
     justify-content: center;
-    background: linear-gradient(var(--scorebar-bg, #050835), #000);
+    background: linear-gradient(var(--scorebar-bg, #050835), var(--scorebar-end, #000));
   }
   .plate {
     position: relative;
@@ -91,18 +98,30 @@
     box-shadow: 0 0 0 6px #fff, 0 0 40px 12px var(--c);
     transform: translateY(-6px);
   }
+  /* One line, the same height on every plate: the scores line up. */
   .name {
+    flex: none;
+    height: 52px;
+    padding: 0 10px;
     font-family: var(--board-font);
-    font-size: 36px;
     font-weight: 800;
-    padding: 6px 10px;
     line-height: 1.1;
     overflow: hidden;
-    overflow-wrap: anywhere;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+  }
+  .fit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .nm {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .tick {
     position: absolute;
@@ -121,13 +140,16 @@
   }
   .score {
     flex: 1;
-    display: grid;
-    place-items: center;
+    min-height: 0;
+    padding: 0 8px;
     font-family: var(--value-font);
-    font-size: 64px;
     font-weight: 800;
     color: var(--stage-text, #fff);
-    text-shadow: 4px 4px 0 #000;
+    text-shadow: 4px 4px 0 var(--tile-shadow, #000);
+  }
+  .score .nm {
+    /* Room for the shadow, so the last digit isn't cut. */
+    padding-right: 4px;
   }
   .score.neg {
     color: var(--stage-bad, #ff6b6b);

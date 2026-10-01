@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  import type { Dir8, Player, Screen, ScreenRef, World, WorldMap, WorldState } from '../../lib/model';
+  import { initials, type Dir8, type Player, type Screen, type ScreenRef, type World, type WorldMap, type WorldState } from '../../lib/model';
   import { DIR_ARROW, DIR_VEC, DIRS, exitOf, mapCrop, mapState, mapVisible, sameRef } from '../../lib/rpg';
   import { dropHover, dropTarget } from '../dragdrop.svelte';
 
@@ -67,6 +67,8 @@
     const row = Math.max(0, Math.min(m.rows - rows, at.row - Math.floor(rows / 2)));
     return { col, row, cols, rows };
   }
+  /** A player's dot carries their initials: colour isn't all that tells two players apart. */
+  const initial = initials;
   const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
   /** Players by screen. */
   const byScreen = $derived.by(() => {
@@ -80,11 +82,11 @@
   });
 
   /** The players on a screen being dragged (their dots follow the pointer) to another screen. */
-  let dotDrag = $state<{ from: ScreenRef; colors: string[]; sx: number; sy: number; x: number; y: number; moved: boolean } | null>(null);
+  let dotDrag = $state<{ from: ScreenRef; players: Player[]; sx: number; sy: number; x: number; y: number; moved: boolean } | null>(null);
 
   function dotsDown(e: PointerEvent, from: ScreenRef, here: Player[]): void {
     if (!onmove || !here.length || e.button !== 0) return;
-    dotDrag = { from, colors: here.map((p) => p.color), sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false };
+    dotDrag = { from, players: here, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false };
   }
 
   /** The screen under the pointer (on this map or any other), when it isn't the one the players are on. */
@@ -224,7 +226,7 @@
                 >
                   {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
                   <span class="dots">
-                    {#each here as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
+                    {#each here as p (p.id)}<span class="dot" style:background={p.color} style:color={textOn(p.color)} title={p.name}>{initial(p.name)}</span>{/each}
                   </span>
                   {#each arrows.get(s.id) ?? [] as d (d)}
                     <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
@@ -242,7 +244,7 @@
 </div>
 {#if dotDrag?.moved}
   <div class="dots ghost" style:left="{dotDrag.x}px" style:top="{dotDrag.y}px" aria-hidden="true">
-    {#each dotDrag.colors as c, i (i)}<span class="dot" style:background={c}></span>{/each}
+    {#each dotDrag.players as p (p.id)}<span class="dot" style:background={p.color} style:color={textOn(p.color)}>{initial(p.name)}</span>{/each}
   </div>
 {/if}
 
@@ -279,7 +281,7 @@
     opacity: 0.8;
   }
   .audience .title {
-    font-size: 28px;
+    font-size: 36px;
     color: #fff;
     text-shadow: 2px 2px 0 #000;
   }
@@ -323,15 +325,16 @@
     justify-content: space-between;
   }
   .audience .cell {
-    font-size: 20px;
+    font-size: 28px;
     border-width: 4px;
   }
   .cell.none {
     border: none;
     background: transparent;
   }
+  /* Darkened, the screen's name still bright enough to read on a stream (an inset shadow sits under the words). */
   .cell.discovered {
-    filter: saturate(0.25) brightness(0.6);
+    box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.5);
   }
   .cell.unknown {
     opacity: 0.45;
@@ -361,8 +364,9 @@
     min-height: 44px;
   }
   .big .dot {
-    width: 14px;
-    height: 14px;
+    width: 20px;
+    height: 20px;
+    font-size: 10px; /* glyph: initials */
   }
   .big .cell.none {
     border: 1px dashed rgba(255, 255, 255, 0.12);
@@ -375,6 +379,10 @@
   }
   .cell:disabled {
     cursor: default;
+  }
+  /* Viewers' cells are disabled buttons: not faded like a disabled button (only unknown screens are). */
+  .cell:disabled:not(.unknown) {
+    opacity: 1;
   }
   .nm {
     padding: 1px 4px;
@@ -391,10 +399,16 @@
     padding: 2px 4px;
   }
   .dot {
-    width: 9px;
-    height: 9px;
+    display: grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     border: 1px solid #000;
+    font: 700 1px/1 'Inter', system-ui, sans-serif;
+    font-size: 7px; /* glyph: a player's initials in their dot (the name is in its tooltip) */
+    letter-spacing: -0.5px;
+    overflow: hidden;
   }
   /* The dragged players' dots, beside the pointer (the screen under it stays in sight). */
   .ghost {
@@ -407,13 +421,15 @@
     pointer-events: none;
   }
   .ghost .dot {
-    width: 14px;
-    height: 14px;
-  }
-  .audience .dot {
     width: 18px;
     height: 18px;
+    font-size: 12px;
+  }
+  .audience .dot {
+    width: 38px;
+    height: 38px;
     border-width: 2px;
+    font-size: 18px;
   }
   .arrow {
     position: absolute;

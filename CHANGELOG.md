@@ -11,6 +11,14 @@ done, the Unreleased lines move under that day's heading.
 ## Unreleased
 
 ### Added
+- **Screen readers hear the game**: the host panel's status line, awards and score changes ("Ann +$200, now $1,200"),
+  the phone buzz order, a tie, who is answering, toasts and the undo notes are read out from one polite live region
+  that's always on the page. A burst of changes is said once, together. (8bb6edc, c34ccb7, 8b514bd, 65c0fb7)
+- **A warning before a chroma-key game** when a player's color is close to the key (a green player on a green key): OBS
+  would key them out. It suggests another color or the other key. (8bb6edc)
+- **The editor's checklist says when a category name is too long** to read on its board. (8bb6edc, 2c772e8)
+- **Windows High Contrast**: selected players, pressed buttons and the chosen theme preset are outlined, as box shadows
+  and tints disappear there. (8bb6edc)
 - **Remote buzzers, the server half**: a small buzzer room (`buzzer/`, a free Cloudflare Worker) and its phone page.
   Players open the link on their phone, tap their name and get one big BUZZ button in their colour; the room decides
   who buzzed first, says "Too early" (with a short lock-out) or "Too late — Ann is answering", and gives a player
@@ -109,6 +117,34 @@ done, the Unreleased lines move under that day's heading.
   written or read. (08a9602, 6119c64)
 - Dropping a `.zip` game pack on the editor opens it, as Browse… already did; Open… says it takes `.json` and `.bak`
   files too. (08a9602, 6119c64)
+- **Easier to read on a scaled-down stream** (Discord or OBS at 720p/480p):
+  - Scores shrink to fit their plates instead of being cut off ("$1,60"), on the board, in the Final and in the ▭
+    scores window; long player names stay on one line and end in "…", every plate's name row the same height.
+  - A board's values share one size that fits its columns (10 categories of "$1,000" no longer run into each other).
+  - Category names stay at 30 stage pixels or more (about 13 px tall at 480p); a word too long for its column is
+    hyphenated rather than broken anywhere. Only a name too long for its cell even then goes smaller.
+  - The countdown, "🔔 Ann is answering" and the Daily Double badge no longer cover a long clue's first line: the
+    question moves down under them while they're up.
+  - Score pops stay on the stage (a long name ends in "…", the points always show) and go above the clue caption.
+  - The clue caption and the "📱 Buzz in" badge are bigger.
+  - Light themes (Pastel): no hard black shadow behind dark words, the score bar no longer fades to black, the Daily
+    Double splash has white words on its purple, and the Final's spotlight card and the end screen's rows are dark
+    enough for their white words.
+  - "Who goes first": players out of the running are dimmed less, and the tiny "d20" on each die is gone.
+  - The Pick a player wheel shows initials for a name too long to read on its slice.
+  (8bb6edc, 2c772e8)
+- **The stats strip never covers the play** (RPG and board-game rounds): the screen or board is scaled into the room
+  above (or below) the strip, so no space, avatar or line of text is hidden; past 6 players the strip is one row of
+  compact cards (past 9 without the avatar). The board-game checklist no longer warns about spaces under the strip.
+  The map on stream is solid, with bigger names; players' dots on the maps carry their initials. RPG nameplates stay on
+  one line ("…"), so a crowd of avatars no longer overlaps. (8bb6edc, 8b514bd, 65c0fb7, 253d436, 8ce0d87)
+- **New default player colors** that stay apart for colour-blind viewers (deuteranopia and protanopia) for the first 8
+  players: red, sky blue, yellow, navy, orange, white, green, pink. Games keep the colors they were saved with. (8bb6edc)
+- **The winner's confetti** is a short burst (about 4.5 s) of fewer, bigger pieces either side of the standings,
+  never over them; with Reduce motion on stream there's none (it used to stay frozen on screen). (8bb6edc, 2c772e8)
+- **The host's board is one Tab stop**: the arrow keys go from tile to tile (it used to be one stop per tile). (8bb6edc)
+- **Pre-game player rows line up**: every row wraps at the same place, whatever the name's length. (8bb6edc)
+- The editor's header wraps onto a second line at 200% zoom instead of running off the side. (8bb6edc)
 - **Slide editor: dragging beside a text box's words draws a selection box** instead of moving the text box (a
   full-slide question used to slide off when you meant to select). Pressing its words, or dragging it once it's
   selected, still moves it; a click beside them still selects it. `Alt`+drag always draws a box (`Alt`+click still
@@ -343,6 +379,9 @@ done, the Unreleased lines move under that day's heading.
   Documents, and Save then replaces only that game's own save there. (08a9602, 6119c64)
 - **Desktop app: a save that fails leaves its backups as they were** (it used to lose the oldest `.bak2`). (08a9602, 6119c64)
 - The Open… list of BrainrotSaves closes with Esc only when nothing is open over it. (08a9602, 6119c64)
+- Accessibility checks: ＋ Map sits beside the map tabs (not in their tab list), ＋ Add player beside the player list,
+  History's "Go there ›" and the phone page's name under BUZZ! read at 4.5:1, and the Theme tab's headings go in
+  order. (8bb6edc)
 - **An emptied number field in the slide Inspector** (Size, X/Y/W/H, line height, outline width, shadow, entrance
   times…) no longer saves "nothing" into the slide (which drew the text at 14 px after a reload): leaving the field
   keeps the last value, and a number out of range is pulled into it. Games saved that way open with the usual values.
@@ -491,7 +530,7 @@ done, the Unreleased lines move under that day's heading.
 - **Picking something up with several players picked** gives it to the first one, and the button names just them
   ("✋ Bob & Cy picks up" gave it to Bob only). (79dbf8e)
 - **Board spaces only draw a number when they're named "Space N"**: "Move +3" no longer shows a big 3. Tokens stay
-  above the stats strip, and the editor's checklist warns about spaces under it. (79dbf8e)
+  above the stats strip. (79dbf8e)
 - **Ctrl+C on a board tile, an RPG screen or board spaces** copies it right after adding a round: the round's name,
   still selected from when it was added, no longer takes the copy. (ad6b92d)
 - **The board game editor no longer traps the keyboard**: `Tab` from the round's settings reaches the board and goes on

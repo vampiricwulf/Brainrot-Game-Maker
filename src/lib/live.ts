@@ -14,6 +14,9 @@ export interface Pop {
   color: string;
   /** One player's pop: on the board it sits over their plate (a group's pop sits in the middle). */
   playerId?: string;
+  /** The text in two parts: who (cut short with "…" when long) and the points (always shown). */
+  who?: string;
+  amount?: string;
 }
 
 /** Countdown clock. Time is computed from timestamps so both windows agree without ticking messages. */

@@ -906,7 +906,9 @@
   </div>
 {:else}
   <div class="we" bind:this={mapView}>
-    <div class="tabs" role="tablist" aria-label="Maps">
+    <!-- (＋ Map is beside the tab list, not in it: only tabs belong there.) -->
+    <div class="tabs">
+      <div class="tablist" role="tablist" aria-label="Maps">
       {#each world.maps as m, i (m.id)}
         {#if renaming === m.id}
           <input
@@ -949,6 +951,7 @@
           </button>
         {/if}
       {/each}
+      </div>
       <button class="ghost" onclick={addMap} title="A dungeon, a shop, an interior, the Shadow Realm… joined to the rest by doorways">＋ Map</button>
     </div>
 
@@ -1328,6 +1331,9 @@
     gap: 4px;
     flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
+  }
+  .tablist {
+    display: contents;
   }
   .tabs button {
     position: relative;
