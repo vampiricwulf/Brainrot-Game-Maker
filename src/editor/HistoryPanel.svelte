@@ -21,6 +21,7 @@
     older: '⋯',
     restarted: '⚠',
     cleared: '🧹',
+    rescued: '🛟',
   };
   /** Jumps longer than this ask first. */
   const ASK_OVER = 20;

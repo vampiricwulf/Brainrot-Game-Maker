@@ -213,6 +213,18 @@ try {
   await page.locator('.panel').waitFor({ state: 'detached' });
   assert(true, 'closing the log hides the controls again (H had hidden them)');
   // A Daily Double with the controls hidden: they come back for its wager (typed digits would pick players), and go again.
+  // (The stage grows back to full size as the controls go: the tile is clicked once it has stopped moving.)
+  await page.waitForFunction(
+    (sel) => {
+      const r = document.querySelectorAll(sel)[3]?.getBoundingClientRect();
+      const key = r && `${r.x},${r.y},${r.width}`;
+      const same = key === window.__tileAt;
+      window.__tileAt = key;
+      return same;
+    },
+    '.stage-box .board .tile',
+    { polling: 100 },
+  );
   await tile(3).click({ button: 'right', force: true });
   await page.getByRole('menuitem', { name: /Put it back on the board/ }).click();
   await tile(3).click();

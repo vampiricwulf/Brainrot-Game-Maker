@@ -7,6 +7,7 @@
     debounce,
     dropStraySteps,
     loadEditor,
+    rescueDraft,
     loadPlay,
     applyRoomSettings,
     loadRoom,
@@ -129,7 +130,10 @@
       const game = migrateGame(editor.draft);
       const saved = editor.history && JSON.stringify(game) === plain ? editor.history : undefined;
       app.game = game;
-      arriving({ kind: 'reopened', label: `Reopened “${game.title}”` }, saved);
+      if (editor.rescued) {
+        arriving({ kind: 'rescued', label: `“${game.title}” as it was when the page closed` });
+        toast('Your last changes before the page closed are back (the undo history starts again here)', 6000);
+      } else arriving({ kind: 'reopened', label: `Reopened “${game.title}”` }, saved);
       held = heldMedia(saved?.steps ?? []);
       void dropStraySteps(saved?.saved.ids ?? []);
       await loadGameMedia(app.game);
@@ -351,6 +355,7 @@
     const flush = () => {
       if (watch && editing) {
         commit();
+        rescueDraft(watch.value());
         saveEditorSoon();
       }
       saveEditorSoon.flush();

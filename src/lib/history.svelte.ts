@@ -61,7 +61,7 @@ export interface Mark {
 
 /** What the history starts from (undoing everything goes back to it). */
 export interface Origin {
-  kind: Mark['kind'] | 'reopened' | 'older' | 'restarted' | 'cleared';
+  kind: Mark['kind'] | 'reopened' | 'older' | 'restarted' | 'cleared' | 'rescued';
   label: string;
   ts: number;
 }
@@ -588,7 +588,9 @@ export function wholeHistory(): { saved: SavedHistory; steps: StoredStep[] } {
  */
 export function savedSinceChange(): boolean {
   if (h.pending) return false;
-  return !h.entries.length || h.marks.some((m) => m.at === h.index && (m.kind === 'saved' || m.kind === 'autosaved'));
+  if (h.marks.some((m) => m.at === h.index && (m.kind === 'saved' || m.kind === 'autosaved'))) return true;
+  // Brought back as it was when the page closed: its last changes were never saved anywhere.
+  return !h.entries.length && h.origin.kind !== 'rescued';
 }
 
 /** Forget every step. */

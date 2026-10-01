@@ -218,6 +218,24 @@ try {
   assert(scores[0].includes('300'), `the other tab resumes it as it was left (${scores.join(', ')})`);
   await played.close();
 
+  // A reload a moment after a change: the autosave started as the page went away may not finish, so a copy written at
+  // once comes back instead (it lost the change every time before).
+  const quick = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const q = await open('quick reload', true, quick);
+  await q.getByRole('button', { name: '＋ Add round' }).click();
+  await q.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  await q.locator('nav > button.round-tab').first().waitFor();
+  await q.reload();
+  await q.getByRole('button', { name: 'Open…' }).waitFor();
+  await q.locator('nav > button.round-tab').first().waitFor({ timeout: 5000 });
+  assert(await q.getByText('Your last changes before the page closed are back').isVisible(), 'a reload right after adding a round keeps it, and says so');
+  await q.waitForTimeout(1500); // the autosave catches up
+  await q.reload();
+  await q.getByRole('button', { name: 'Open…' }).waitFor();
+  await q.waitForTimeout(800);
+  assert((await q.locator('nav > button.round-tab').count()) === 1 && !(await q.getByText('Your last changes before').count()), 'and once saved normally, the next reload is an ordinary one');
+  await quick.close();
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSave E2E passed.');
 } finally {

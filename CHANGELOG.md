@@ -271,6 +271,10 @@ in plain words for the people who make and host games. Anything committed but no
   Question and Answer boxes.
 
 ### Fixed
+- **A reload (or a closed tab) right after a change no longer loses it**: the autosave started as the page goes away
+  didn't always finish, so a round added a moment before a reload could be gone even though the header said
+  "✓ Autosaved". A copy is now written instantly as the page closes and comes back on the next start ("Your last
+  changes before the page closed are back"); the game still counts as unsaved, so opening another one asks first.
 - **Two tabs no longer both play the same game**: when another tab takes over ("Edit here instead") while a game
   is being played, the first tab saves it and stops, showing "This game is open in another tab"; the phones stay in
   the buzzer room. Resume game in the other tab carries on from where it was left, not from an older copy.

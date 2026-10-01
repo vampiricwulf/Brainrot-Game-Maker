@@ -7,6 +7,14 @@ const DRAFT_KEY = 'editorDraft';
 /** New with every draft written: the undo history written with it says which draft it goes with. */
 const DRAFT_REV_KEY = 'editorDraftRev';
 const HISTORY_KEY = 'editorHistory';
+/** When the draft was written (Date.now()), to tell whether a rescue copy is newer. */
+const DRAFT_AT_KEY = 'editorDraftAt';
+/**
+ * A copy of the draft written to localStorage as the page goes away: unlike IndexedDB, that write is done before the
+ * page is. The IndexedDB write started then may not finish (a reload a moment after an edit), so the next start uses
+ * this copy when it's newer than the stored draft.
+ */
+const RESCUE_KEY = 'jb.editorRescue';
 /** Each step of the undo history is stored once, on its own. */
 const stepKey = (id: string) => `${HISTORY_KEY}:${id}`;
 const PLAY_KEY = 'playSession';
@@ -109,22 +117,65 @@ export const saveEditor = (make: () => (EditorSave & { failed?: () => void }) | 
   write('editor', async () => {
     const s = make();
     if (!s) return;
+    const at = Date.now();
     try {
       const steps = s.steps.map((e): [string, StoredStep] => [stepKey(e.id), e]);
-      await setMany([[DRAFT_KEY, s.draft], [DRAFT_REV_KEY, s.history.rev], [HISTORY_KEY, s.history], ...steps]);
+      await setMany([[DRAFT_KEY, s.draft], [DRAFT_REV_KEY, s.history.rev], [HISTORY_KEY, s.history], [DRAFT_AT_KEY, at], ...steps]);
       if (s.dropped.length) await delMany(s.dropped.map(stepKey));
     } catch (err) {
       s.failed?.();
       throw err;
     }
+    // Written: a rescue copy from before this write is out of date.
+    const r = readRescue();
+    if (r && r.at <= at) dropRescue();
   });
+
+interface Rescue {
+  at: number;
+  draft: Game;
+}
+function readRescue(): Rescue | null {
+  try {
+    const r = JSON.parse(localStorage.getItem(RESCUE_KEY) ?? 'null') as Rescue | null;
+    return r && typeof r.at === 'number' && r.draft && typeof r.draft === 'object' ? r : null;
+  } catch {
+    return null;
+  }
+}
+function dropRescue(): void {
+  try {
+    localStorage.removeItem(RESCUE_KEY);
+  } catch {
+    // Storage off: there's no copy either.
+  }
+}
+/**
+ * The page is going away: a copy of the draft that's written at once (call it before starting the last IndexedDB
+ * write, so that write, if it finishes, is newer and drops it). Too big for localStorage: nothing (the IndexedDB
+ * write is all there is).
+ */
+export function rescueDraft(draft: Game): void {
+  try {
+    localStorage.setItem(RESCUE_KEY, JSON.stringify({ at: Date.now(), draft } satisfies Rescue));
+  } catch {
+    dropRescue();
+  }
+}
 
 /**
  * The draft, and its undo history when that was written with this very draft (another copy of the app, or a version
  * from before the history, may have written the draft since) and all its steps are there.
  */
-export async function loadEditor(): Promise<{ draft?: Game; history?: { saved: SavedHistory; steps: StoredStep[] } }> {
-  const [draft, rev, saved] = (await safe(() => getMany([DRAFT_KEY, DRAFT_REV_KEY, HISTORY_KEY]))) ?? [];
+export async function loadEditor(): Promise<{ draft?: Game; history?: { saved: SavedHistory; steps: StoredStep[] }; rescued?: boolean }> {
+  const [draft, rev, saved, at] = (await safe(() => getMany([DRAFT_KEY, DRAFT_REV_KEY, HISTORY_KEY, DRAFT_AT_KEY]))) ?? [];
+  // The last changes before the page went away, when their IndexedDB write didn't finish: the undo history stored is
+  // for an older draft, so it doesn't come with it.
+  // (The same as the stored draft: that write did finish, and the history goes with it.)
+  const rescue = readRescue();
+  if (rescue && !(typeof at === 'number' && at >= rescue.at) && JSON.stringify(rescue.draft) !== JSON.stringify(draft))
+    return { draft: rescue.draft, rescued: true };
+  if (rescue) dropRescue();
   if (!draft) return {};
   const game = draft as Game;
   const index = saved as SavedHistory | undefined;
