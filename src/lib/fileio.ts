@@ -81,6 +81,11 @@ export function saveTarget(
 }
 
 /** "Saved to …\\BrainrotSaves\\Game.brainrot" (or "Downloaded Game.brainrot"), for the toast. */
+/** The name a save was written under: the desktop app may have picked another ("Game (2).brainrot"). */
+export function savedName(saved: SavedFile | null, filename: string): string {
+  return saved ? baseName(saved.path) : filename;
+}
+
 export function savedWhere(saved: SavedFile | null, filename: string): string {
   if (!saved) return `Downloaded ${filename}`;
   return `Saved to ${saved.path}${saved.fallback ? ' (the app’s folder can’t be written, so in Documents)' : ''}`;

@@ -2,7 +2,7 @@
 import JSZip from 'jszip';
 import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks } from './media.svelte';
 import { migrateGame, type Game } from './model';
-import { parseGame, safeFilename, saveFile, savedWhere } from './fileio';
+import { parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
 import { buildZip, type ZipEntry } from './zipwrite';
 import { packInHtml, unpackEmbedded } from './export';
 
@@ -41,10 +41,11 @@ export async function buildPack(game: Game, onProgress?: PackProgress): Promise<
 }
 
 /** Save the game as a .brainrot pack. Returns the media that couldn't be included and where it was saved. */
-export async function savePack(game: Game, onProgress?: PackProgress): Promise<{ missing: string[]; where: string }> {
+export async function savePack(game: Game, onProgress?: PackProgress): Promise<{ missing: string[]; where: string; file: string }> {
   const { blob, missing } = await buildPack(game, onProgress);
   const name = `${safeFilename(game.title)}.brainrot`;
-  return { missing, where: savedWhere(await saveFile(name, blob, game.id), name) };
+  const saved = await saveFile(name, blob, game.id);
+  return { missing, where: savedWhere(saved, name), file: savedName(saved, name) };
 }
 
 /** Said when a game file (or an exported one) didn't arrive whole. */
@@ -84,9 +85,9 @@ export async function openGameFile(file: File): Promise<Game> {
   const zip = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
   const name = file.name.replace(/\.bak\d*$/i, '');
   if (!zip && (/\.html?$/i.test(name) || file.type === 'text/html')) {
-    const pack = packInHtml(await file.text());
-    if (!pack) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
-    return openPack(await unpackEmbedded(pack));
+    const inside = packInHtml(await file.text());
+    if (!inside) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
+    return openPack(await unpackEmbedded(inside.pack, inside.cut));
   }
   if (!zip && (/\.json$/i.test(name) || file.type === 'application/json')) {
     const game = migrateGame(parseGame(await file.text()));

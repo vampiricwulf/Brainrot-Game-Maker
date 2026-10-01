@@ -83,6 +83,16 @@ describe('opening game files', () => {
     await expect(openGameFile(new File(['<!doctype html><p>hi</p>'], 'Page.html'))).rejects.toThrow('This page has no game inside');
   });
 
+  it('opens an export that says its pack size and date, and refuses one cut off', async () => {
+    const zip = new JSZip();
+    zip.file('game.json', JSON.stringify({ ...jeopardyGame(), title: 'Sized' }));
+    const b64 = await zip.generateAsync({ type: 'base64' });
+    const page = (pack: string) =>
+      `<!doctype html><html><body><script>const t = \`<script type="application/octet-stream" id="jb-pack" data-size="\${n}">\`;</script><script type="application/octet-stream" id="jb-pack" data-size="${b64.length}" data-exported="1700000000000">${pack}</script>\n</body></html>`;
+    expect((await openGameFile(new File([page(b64)], 'Sized.html', { type: 'text/html' }))).title).toBe('Sized');
+    await expect(openGameFile(new File([page(b64.slice(0, b64.length - 40))], 'Sized.html'))).rejects.toThrow('This file is incomplete');
+  });
+
   it('opens a backup the desktop app kept', async () => {
     const file = new File([JSON.stringify({ ...jeopardyGame(), title: 'Older' })], 'Older.json.bak2');
     expect((await openGameFile(file)).title).toBe('Older');

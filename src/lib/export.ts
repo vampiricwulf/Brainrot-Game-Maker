@@ -13,13 +13,21 @@ export function embeddedPack(): string | null {
   return document.getElementById(PACK_ELEMENT_ID)?.textContent?.trim() || null;
 }
 
-/** The game pack (base64) inside an exported game's HTML file, for Open… (null: it has none). */
-export function packInHtml(html: string): string | null {
-  // The pack comes last, after the app's own code.
-  const marker = `id="${PACK_ELEMENT_ID}">`;
-  const at = html.lastIndexOf(marker);
-  const end = at < 0 ? -1 : html.indexOf('</script>', at);
-  return end < 0 ? null : html.slice(at + marker.length, end).trim() || null;
+/**
+ * The game pack (base64) inside an exported game's HTML file, for Open… (null: it has none), and whether the file is cut
+ * off (exports say how long their pack is, see packInfo).
+ */
+export function packInHtml(html: string): { pack: string; cut: boolean } | null {
+  // The pack comes last, after the app's own code. Its tag may carry data-size and data-exported after the id.
+  const tags = [...html.matchAll(new RegExp(`<script\\b[^>]*\\bid="${PACK_ELEMENT_ID}"[^>]*>`, 'g'))];
+  const tag = tags[tags.length - 1];
+  if (!tag) return null;
+  const from = tag.index + tag[0].length;
+  const end = html.indexOf('</script>', from);
+  const pack = (end < 0 ? html.slice(from) : html.slice(from, end)).trim();
+  if (!pack) return null;
+  const size = Number(/\bdata-size="(\d+)"/.exec(tag[0])?.[1]);
+  return { pack, cut: end < 0 || (!!size && pack.length < size) };
 }
 
 /**
