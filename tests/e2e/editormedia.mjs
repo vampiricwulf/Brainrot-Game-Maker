@@ -170,7 +170,8 @@ try {
   await page.locator('.insp textarea').fill('Second');
   const x2 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
   const w2 = Number(await pos.getByLabel('W', { exact: true }).inputValue());
-  assert(Math.abs(x2 + w2 / 2 - 200) < 5, 'there, where the menu was opened');
+  // (Centred on that spot as far as the slide allows: a box that would stick out past the edge is moved onto it.)
+  assert(x2 === 0 && x2 + w2 >= 200, 'there, where the menu was opened, kept on the slide');
   await page.keyboard.press('Escape');
 
   // Items: Copy, then Paste on an empty spot puts it there.

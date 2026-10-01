@@ -51,7 +51,7 @@ async function click(x, y) {
 /** Every item on the slide as drawn: [left, top, width, height] in stage px, with its id. */
 const drawn = () =>
   canvas.locator('.slide .el').evaluateAll((els) =>
-    els.map((e) => ({ id: e.dataset.el, x: parseFloat(e.style.left), y: parseFloat(e.style.top), w: parseFloat(e.style.width), h: parseFloat(e.style.height) })),
+    els.map((e) => ({ id: e.dataset.el, img: !!e.querySelector('img'), x: parseFloat(e.style.left), y: parseFloat(e.style.top), w: parseFloat(e.style.width), h: parseFloat(e.style.height) })),
   );
 const position = insp.locator('section', { hasText: 'Position' });
 const posField = (name) => position.getByLabel(name, { exact: true });
@@ -139,7 +139,7 @@ try {
   await drag([1450, 750], [1800, 1000], { alt: true });
   const rect = (await drawn()).find((e) => e.w === 300);
   assert(rect.x === 1400 && rect.y === 700, 'Alt+drag starting on the rectangle draws a box instead of moving it');
-  assert((await insp.locator('h4', { hasText: 'Shape' }).count()) === 1, 'and selects it');
+  assert((await page.locator('.side').innerText()).includes('2 items selected'), 'and selects what the box touches (the rectangle and the text box)');
 
   // ---------- Snapping while resizing ----------
   await addRect(100, 100, 200, 100);
@@ -155,9 +155,13 @@ try {
   // The text box is locked, so Ctrl+A takes the four rectangles.
   await click(960, 540);
   await lock.check();
+  // (The first Esc leaves the checkbox, the second deselects.)
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(100);
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+a');
-  assert((await page.locator('.side').innerText()).includes('4 items selected'), 'Ctrl+A selects the four rectangles');
+  const side = await page.locator('.side').innerText();
+  assert(side.includes('4 items selected'), 'Ctrl+A selects the four rectangles' + (side.includes('4 items') ? '' : ` (${side.slice(0, 80)})`));
   const rects = async () => (await drawn()).filter((e) => e.id !== text0.id);
   await page.getByRole('button', { name: 'Line up their top edges' }).click();
   assert(new Set((await rects()).map((e) => e.y)).size === 1 && (await rects())[0].y === 50, 'Top lines them up with the highest one (y 50), not the slide’s edge');
@@ -197,7 +201,7 @@ try {
   // ---------- Dropped at the edge, and the same file dropped again ----------
   const before = await mediaCount();
   await dropAt(await picture('big.png', 800, 600, '#ff0000'), 1900, 1070);
-  const pic = (await drawn()).find((e) => e.w > 900);
+  const pic = (await drawn()).find((e) => e.img);
   assert(pic && pic.x + pic.w <= 1920 && pic.y + pic.h <= 1080 && pic.x >= 0 && pic.y >= 0, `a picture dropped at the corner stays on the slide (${pic?.x}, ${pic?.y})`);
   assert((await mediaCount()) === before + 1, 'it is in 🖼 Media');
   await dropAt(await picture('big copy.png', 800, 600, '#ff0000'), 600, 400);
@@ -205,7 +209,7 @@ try {
   await page.keyboard.press('Delete');
 
   // ---------- 🎨 Edit image › Apply after a turn keeps the picture in its box ----------
-  const editPic = (await drawn()).find((e) => e.w > 900);
+  const editPic = (await drawn()).find((e) => e.img);
   await click(editPic.x + editPic.w / 2, editPic.y + editPic.h / 2);
   await insp.getByRole('button', { name: '🎨 Edit image…' }).click();
   await page.getByRole('button', { name: '⟳ 90°' }).click();

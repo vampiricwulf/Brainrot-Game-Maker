@@ -474,7 +474,7 @@
           </label>
           {#if overPlates.length && game.theme.scoreBar !== 'hidden'}
             <p class="warn small" role="status">
-              ⚠ {overPlates.length === 1 ? `“${overPlates[0]}” covers` : `${overPlates.length} images cover`} a player's score with {previewPlayers}
+              ⚠ {overPlates.length === 1 ? `“${overPlates[0]}” covers` : `${overPlates.slice(0, 3).map((n) => `“${n}”`).join(', ')}${overPlates.length > 3 ? ` and ${overPlates.length - 3} more` : ''} cover`} a player's score with {previewPlayers}
               player{previewPlayers === 1 ? '' : 's'}. Move {overPlates.length === 1 ? 'it' : 'them'} off the score bar, or put {overPlates.length === 1 ? 'it' : 'them'} behind the tiles.
             </p>
           {/if}
