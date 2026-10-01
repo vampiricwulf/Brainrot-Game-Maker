@@ -486,8 +486,8 @@
   </div>
 
   {#snippet undoRedo()}
-    <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo">↶</button>
-    <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo">↷</button>
+    <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
+    <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
   {/snippet}
 
   {#if view === 'spaces'}
