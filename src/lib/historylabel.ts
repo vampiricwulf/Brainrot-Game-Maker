@@ -340,9 +340,7 @@ const RULES: Record<string, string> = {
   tileFill: 'Tile fill animation',
   categoryReveal: 'Category reveal',
   buzzer: 'Buzzer mode',
-  buzzKeys: 'Buzz-in keys',
   buzzArm: 'When the buzzers open',
-  buzzFrom: 'Phone buzzers',
   phoneJoin: 'New players from their phone',
   earlyBuzzLock: 'Early buzz wait',
 };

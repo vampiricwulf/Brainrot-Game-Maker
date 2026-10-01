@@ -110,3 +110,15 @@ describe('hand-edited games', () => {
   });
 });
 
+
+describe('buzzer settings', () => {
+  it('buzzing from keys is gone: buzzKeys and buzzFrom are dropped, Buzzer mode stays on (phones)', () => {
+    const g = jeopardyGame();
+    Object.assign(g.settings, { buzzer: true, buzzKeys: 'QPZM', buzzFrom: 'keys', buzzArm: 'host' });
+    const m = migrateGame(JSON.parse(JSON.stringify(g)) as Game);
+    expect(m.settings.buzzer).toBe(true);
+    expect(m.settings.buzzArm).toBe('host');
+    expect(m.settings).not.toHaveProperty('buzzKeys');
+    expect(m.settings).not.toHaveProperty('buzzFrom');
+  });
+});

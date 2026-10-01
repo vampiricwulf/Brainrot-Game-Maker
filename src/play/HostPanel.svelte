@@ -496,13 +496,12 @@
       {#if buzzing}
         <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. -->
         {#if buzz?.phase === 'armed' && !selected.length}
-          <span class="muted hint">🔔 Buzzers open: the first one in (1–{Math.min(9, session.players.length) || 9}) answers</span>
-        {:else if buzz?.phase === 'answering' || selected.length}
-          <button class="ghost" onclick={() => onopenbuzzers?.(true)} title="0: let everyone buzz in again">🔔 Open the buzzers</button>
-        {:else}
+          <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
+        {:else if !(buzz?.phase === 'answering' || selected.length)}
           <button class="primary" onclick={() => onopenbuzzers?.()} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           <span class="muted hint">Buzzers closed (number keys still pick)</span>
         {/if}
+        <button class="ghost" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
         {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
         {@render buzzExtra?.()}
       {:else if selected.length}

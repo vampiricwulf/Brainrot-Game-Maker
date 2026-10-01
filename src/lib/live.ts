@@ -72,8 +72,13 @@ export type Overlay =
   | {
       kind: 'rolloff';
       nonce: string;
-      /** 'tiebreak': tied winners roll for the win (default: who goes first). */
-      purpose?: 'first' | 'tiebreak';
+      /**
+       * 'tiebreak': tied winners roll for the win; 'buzz': players whose phone buzzes tied roll for the answering
+       * order (ranking, every place settled); default: who goes first.
+       */
+      purpose?: 'first' | 'tiebreak' | 'buzz';
+      /** 'buzz': the buzzer opening whose tie this settles. */
+      armId?: number;
       sides: number;
       rounds: RollOffRound[];
       ranking: Id[];

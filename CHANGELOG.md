@@ -16,8 +16,30 @@ done, the Unreleased lines move under that day's heading.
   who buzzed first, says "Too early" (with a short lock-out) or "Too late — Ann is answering", and gives a player
   their seat back after a reload. Deploys from `main` once the Cloudflare secrets are set (see `buzzer/README.md`).
   (1c5bfc0, 5f8bc06, b525be7)
+- **Phone buzzers are fair on a slow connection**: each phone times how fast its player reacted to the BUZZ! light,
+  and the fastest reaction wins, not the first buzz to reach the server. The server checks each phone's timing
+  against that phone's own connection speed, so a phone can't fake much of a head start.
+  (bde9ae8, 9920218)
+- **Every phone buzz counts, fastest first**: the host panel lists everyone who buzzed on the clue in order ("2. Bo
+  +0.12 s"), and phones show their place ("You're 2nd — 0.12 s behind Ann"). After a wrong answer the buzzers still
+  open again for the rest (as before), and **→ Next in line: Bo** gives the answer straight to the next one who buzzed.
+  (bde9ae8, 9920218)
+- **Ties**: buzzes within 0.01 s of each other are a tie and nobody is picked. The host panel says "Tie: Ann & Bo" with
+  **🎲 Roll for it**: the tied players roll, and the roll sets who answers first, second… ("🎲 1st"). The host can
+  also just pick one. Tied phones say "Tie! The host is rolling for it", then "Tie — you rolled 2nd".
+  (bde9ae8, 9920218)
+- **↺ Reset buzzers** in the host panel (or `0`): nobody is locked out of the clue any more and the buzzers open for
+  everyone. (9920218)
+- If the buzzer server turns down a new room, the pre-game card shows its reason in plain words. (9920218)
+- **The buzzer server limits new rooms**: 6 a minute from one address ("Too many new rooms — wait a minute") and 1000
+  a day in all ("The buzzer server is busy today — try again tomorrow"), so nobody can use up its free daily quota.
+  (bde9ae8)
 
 ### Changed
+- **Buzzer mode moved to the pre-game screen**: the 📱 Phone buzzers card turns it on and sets its options (when the
+  buzzers open, new players from their phone, the early-buzz wait); they are saved with the game and are no longer in
+  Setup › Rules. Mid-game, the 📱 chip's list can change when the buzzers open. In buzzer mode the number keys simply
+  pick who answers, by hand (over a phone's buzz); `0` resets the buzzers. (4306034)
 - **Buzzer mode: a wrong answer locks that player out of the clue** and opens the buzzers again for the others (a
   rebound); `0` still opens them for everyone, a right answer closes them, and a new tile starts afresh. New rule in
   Setup › Rules: **Open the buzzers when the clue opens, or when I press `U`** (after reading it; the host panel's
@@ -157,6 +179,11 @@ done, the Unreleased lines move under that day's heading.
   incomplete. (64eba3f, 13b208f)
 - Desktop saves are synced to disk before they replace the old file, and closing the window keeps the last edits.
   (769dbf8)
+
+### Removed
+- **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz
+  from" choice and the audience window's buzz-in keys are gone (older games drop them quietly; one with Buzzer mode on
+  keeps it, now meaning phone buzzers). (4306034)
 
 ## 2026-09-30
 

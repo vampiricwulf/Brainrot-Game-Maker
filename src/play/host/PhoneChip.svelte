@@ -1,12 +1,15 @@
 <!-- Host panel: "📱 3/4", the phones joined. Click for the list (kick, people asking to join), the code and the link. -->
 <script lang="ts">
-  import type { Session } from '../../lib/model';
+  import type { GameSettings, Session } from '../../lib/model';
   import { remote, roomLink } from '../../lib/remote.svelte';
+  import BuzzerOptions, { type SetBuzzSetting } from '../BuzzerOptions.svelte';
   import { copyText } from '../standings';
   import PhoneList from '../PhoneList.svelte';
 
   let {
     session,
+    settings,
+    onset,
     max,
     onstart,
     onadd,
@@ -14,6 +17,8 @@
     onkick,
   }: {
     session: Session;
+    settings: GameSettings;
+    onset: SetBuzzSetting;
     max: number;
     onstart: () => void;
     onadd: (conn: string, name: string) => void;
@@ -66,6 +71,7 @@
         {/if}
         <PhoneList {session} {max} {onadd} {onreject} {onkick} />
       {/if}
+      <BuzzerOptions {settings} {onset} compact />
     </div>
   {/if}
 </span>

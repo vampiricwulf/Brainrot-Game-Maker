@@ -260,14 +260,13 @@ export interface GameSettings {
     roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
   /** What viewers see around the game (set on the pre-game screen): the cards' words and the captions. */
   stream?: { soonText?: string; coverText?: string; clueCaption?: boolean; placeCaption?: boolean };
-  /** Buzzer mode: during a clue, the first player number pressed answers and the others are locked out (0 opens it again). */
+  /**
+   * Buzzer mode (phone buzzers): during a clue players buzz in from their phones (a buzzer room, see remote.svelte.ts);
+   * the fastest answers and a wrong answer locks them out of the clue. Set on the pre-game screen.
+   */
   buzzer?: boolean;
-  /** Buzzer mode: keys that buzz players 1, 2, 3… in from the audience window (e.g. "QPZM"). */
-  buzzKeys?: string;
   /** Buzzer mode: the buzzers open when the clue opens ('open', the default), or when the host opens them (U) after reading it. */
   buzzArm?: 'open' | 'host';
-  /** Buzzer mode: players buzz from this computer's keys only, or from their phones too (a buzzer room, see remote.svelte.ts). */
-  buzzFrom?: 'keys' | 'phones';
   /** Phone buzzers: someone not in the game can ask to join from their phone (the host adds them). */
   phoneJoin?: boolean;
   /** Phone buzzers: seconds a phone that buzzes before the buzzers open has to wait once they do (default 1; 0: none). */
@@ -1057,6 +1056,10 @@ export function migrateGame(input: Game): Game {
   const old = g.settings as GameSettings & { finalAllowNonPositive?: boolean };
   for (const r of g.rounds) if (isFinal(r)) r.allowNonPositive ??= old.finalAllowNonPositive ?? false;
   delete old.finalAllowNonPositive;
+  // Buzzers are phones only now: buzzing from this computer's keys (and the audience window's buzz keys) is gone.
+  const buzzOld = g.settings as GameSettings & { buzzKeys?: string; buzzFrom?: string };
+  delete buzzOld.buzzKeys;
+  delete buzzOld.buzzFrom;
   g.media ??= [];
   // Links only ever point at web pages (a hand-edited game must not smuggle in javascript: or file:).
   for (const m of g.media) {

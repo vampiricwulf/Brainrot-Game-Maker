@@ -17,7 +17,7 @@
       title: 'Everywhere',
       keys: [
         ['1 – 9', 'Select / deselect player N (for scoring)'],
-        ['0', 'Select everyone, or no one (buzzer mode, during a clue: open the buzzers again)'],
+        ['0', 'Select everyone, or no one (buzzer mode, during a clue: reset the buzzers)'],
         ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
         ['P then 1 – 9', 'Make player N the current picker'],
         ['Esc', 'Close the log, a tool or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
@@ -59,13 +59,12 @@
     },
     {
       // A player-only file has no editor: no Setup to point to.
-      title: app.playerOnly ? 'Buzzer mode' : 'Buzzer mode (Setup › Rules)',
+      title: 'Buzzer mode (phone buzzers, set on the pre-game screen)',
       keys: [
-        ['1 – 9', 'During a clue: player N buzzes in; the first one answers, the rest are locked out'],
-        ['0', 'During a clue: open the buzzers again, for everyone (also those who missed it)'],
-        ['U', 'Open the buzzers (when Setup says you open them after reading the clue; after a right answer, for the rest)'],
+        ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz)'],
+        ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone'],
+        ['U', 'Open the buzzers (when they open on your key, after reading the clue; after a right answer, for the rest)'],
         ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the buzzers open for the others'],
-        ['Buzz-in keys', 'Pressed in the audience window, they buzz players 1, 2, 3… in (there, those letters only buzz)'],
       ],
     },
     {

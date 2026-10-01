@@ -1,14 +1,23 @@
 /**
  * The buzzer room server: a Worker that makes rooms and serves the phone page, and one Durable Object (BuzzRoom) per
  * room code that holds the sockets and runs room.ts. Sockets use the hibernation API, and everything the room knows
- * is in DO storage or on the sockets, so an idle room can sleep (and be evicted) without losing a thing.
+ * is in DO storage or on the sockets, so an idle room can sleep (and be evicted) without losing a thing. The one timer
+ * (a buzz's grace window, a quarter second) keeps the room awake while it runs; a room restarted in the middle of one
+ * finishes it from storage (see room.ts).
+ *
+ * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT) and DAILY_ROOMS a day in all
+ * (RoomCounter, one Durable Object for the whole server).
  */
 import { DurableObject } from 'cloudflare:workers';
 import { BUZZ_PROTOCOL, ROOM_ALPHABET, ROOM_CODE_LENGTH, isRoomCode, type NewRoom, type RoomToHost, type RoomToPhone } from '../../src/lib/buzzproto';
+import { BUSY_TODAY, countRoom, TOO_MANY_ROOMS, type DayCount } from './limits';
 import { Room, emptyRoom, type PhoneSaved, type RoomSaved } from './room';
 
 export interface Env {
   BUZZ_ROOM: DurableObjectNamespace<BuzzRoom>;
+  ROOM_COUNTER: DurableObjectNamespace<RoomCounter>;
+  /** New rooms per address per minute (Workers Rate Limiting). */
+  NEW_ROOM_LIMIT: RateLimit;
   ASSETS: Fetcher;
 }
 
@@ -56,6 +65,10 @@ export default {
     if (path === '/api/health') return json({ ok: true, protocol: BUZZ_PROTOCOL });
 
     if (path === '/api/rooms' && request.method === 'POST') {
+      // Cloudflare sets CF-Connecting-IP to the caller's address (a caller can't choose it).
+      const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+      if (!(await env.NEW_ROOM_LIMIT.limit({ key: ip })).success) return json({ error: TOO_MANY_ROOMS }, 429);
+      if (!(await env.ROOM_COUNTER.getByName('rooms').take())) return json({ error: BUSY_TODAY }, 503);
       for (let i = 0; i < 10; i++) {
         const code = randomCode();
         const hostToken = randomToken();
@@ -114,7 +127,13 @@ export class BuzzRoom extends DurableObject<Env> {
       let hostHere = false;
       for (const s of ctx.getWebSockets()) {
         const a = s.deserializeAttachment() as Attachment | null;
-        if (a?.role === 'phone') phones.push({ conn: a.conn, seatId: a.seatId, ...(a.pendingName !== undefined ? { pendingName: a.pendingName } : {}) });
+        if (a?.role === 'phone')
+          phones.push({
+            conn: a.conn,
+            seatId: a.seatId,
+            ...(a.pendingName !== undefined ? { pendingName: a.pendingName } : {}),
+            ...(Array.isArray(a.rtts) ? { rtts: a.rtts } : {}),
+          });
         else if (a?.role === 'host' && s.readyState === OPEN) hostHere = true;
       }
       this.room = this.makeRoom(this.meta.code, saved, phones, hostHere);
@@ -139,8 +158,11 @@ export class BuzzRoom extends DurableObject<Env> {
           for (const s of this.ctx.getWebSockets('host')) send(s, m);
         },
         toPhone: (conn, m) => send(this.ctx.getWebSockets(conn)[0], m),
-        saveRoom: (s) => void this.ctx.storage.put('room', s),
+        // Not after wipe(): a timer left over from an ended room mustn't bring its storage back.
+        saveRoom: (s) => void (this.meta && this.ctx.storage.put('room', s)),
         savePhone: (p) => this.ctx.getWebSockets(p.conn)[0]?.serializeAttachment({ role: 'phone', ...p } satisfies Attachment),
+        schedule: (ms, fn) => setTimeout(fn, ms),
+        cancel: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
       },
       saved,
       phones,
@@ -263,6 +285,17 @@ export class BuzzRoom extends DurableObject<Env> {
     this.room = null;
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
+  }
+}
+
+/** Counts the rooms made today (one instance, 'rooms', for the whole server). */
+export class RoomCounter extends DurableObject<Env> {
+  /** One more room: false when today's cap is reached. */
+  async take(): Promise<boolean> {
+    const next = countRoom(await this.ctx.storage.get<DayCount>('today'), Date.now());
+    if (!next) return false;
+    await this.ctx.storage.put('today', next);
+    return true;
   }
 }
 

@@ -1,10 +1,11 @@
 // The host's line to its buzzer room (see buzzproto.ts): make a room, keep a WebSocket to it open (reconnecting with the
 // same code and host token after a drop), send the host's state, and pass on what the room says. No Svelte here, so it
 // can be tested with a fake WebSocket; remote.svelte.ts makes it reactive for the app.
-import { BUZZ_PROTOCOL, isRoomCode, socketUrl, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type RoomToHost } from './buzzproto';
+import { BUZZ_PROTOCOL, isRoomCode, socketUrl, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type QueuedBuzz, type RoomToHost } from './buzzproto';
 
 export type RoomStatus = 'off' | 'connecting' | 'online' | 'reconnecting' | 'error';
 export type RoomBuzz = Extract<RoomToHost, { t: 'buzz' }>;
+export type RoomQueue = Extract<RoomToHost, { t: 'queue' }>;
 
 /** What the link needs from a WebSocket (the browser's, or a test's fake). */
 export interface SocketLike {
@@ -29,6 +30,8 @@ export interface LinkEvents {
   /** The status, code, phones or error changed. */
   onChange?: () => void;
   onBuzz?: (b: RoomBuzz) => void;
+  /** The room's queue of buzzes for an arm changed. */
+  onQueue?: (q: RoomQueue) => void;
 }
 
 const OPEN = 1;
@@ -51,6 +54,12 @@ function parsePhone(x: unknown): PhoneInfo | null {
   return { conn: x.conn, seatId: x.seatId, connected: x.connected, ...(x.pendingName !== undefined ? { pendingName: x.pendingName } : {}) };
 }
 
+function parseQueued(x: unknown): QueuedBuzz | null {
+  if (!isObj(x) || !isStr(x.seatId) || !isNum(x.afterMs)) return null;
+  if (x.rolled !== undefined && !(isNum(x.rolled) && x.rolled >= 1)) return null;
+  return { seatId: x.seatId, afterMs: x.afterMs, ...(x.rolled !== undefined ? { rolled: x.rolled } : {}) };
+}
+
 /** A message from the room, checked field by field (anything else is dropped). Takes the raw WebSocket data. */
 export function parseRoomMsg(data: unknown): RoomToHost | null {
   let m: unknown;
@@ -69,6 +78,13 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return isNum(m.armId) && isStr(m.seatId) && isNum(m.rank) && m.rank >= 1 && isNum(m.afterMs)
         ? { t: 'buzz', armId: m.armId, seatId: m.seatId, rank: m.rank, afterMs: m.afterMs }
         : null;
+    case 'queue': {
+      if (!isNum(m.armId) || !Array.isArray(m.queue) || m.queue.length > 200) return null;
+      const queue = m.queue.map(parseQueued);
+      if (!queue.every((q) => q)) return null;
+      if (m.tie !== undefined && !(Array.isArray(m.tie) && m.tie.length <= 200 && m.tie.every((id) => isStr(id)))) return null;
+      return { t: 'queue', armId: m.armId, queue: queue as QueuedBuzz[], ...(m.tie !== undefined ? { tie: m.tie as string[] } : {}) };
+    }
     case 'phones': {
       if (!Array.isArray(m.phones) || m.phones.length > 200) return null;
       const phones = m.phones.map(parsePhone);
@@ -82,6 +98,9 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return null;
   }
 }
+
+/** The `error` of a server's JSON error answer, or ''. */
+const errorText = (x: unknown): string => (isObj(x) && isStr(x.error, 200) ? x.error : '');
 
 /** POST /api/rooms's answer. */
 export function parseNewRoom(x: unknown): NewRoom | null {
@@ -129,7 +148,8 @@ export class RoomLink {
     this.set('connecting');
     try {
       const res = await this.deps.fetch(`${this.base}/api/rooms`, { method: 'POST' });
-      if (!res.ok) throw new Error(`The buzzer server said no (${res.status})`);
+      // The server says why in plain words (too many new rooms, busy today): show that.
+      if (!res.ok) throw new Error((await res.json().then(errorText, () => '')) || `The buzzer server said no (${res.status})`);
       const room = parseNewRoom(await res.json());
       if (!room) throw new Error('The buzzer server gave an answer this app doesn’t understand');
       if (this.stopped) throw new Error('Stopped');
@@ -300,6 +320,9 @@ export class RoomLink {
         return;
       case 'buzz':
         this.ev.onBuzz?.(m);
+        return;
+      case 'queue':
+        this.ev.onQueue?.(m);
         return;
       case 'phones':
         this.phones = m.phones;

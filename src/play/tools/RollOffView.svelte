@@ -32,7 +32,9 @@
 </script>
 
 <div class="wrap">
-  <div class="title">{roundIdx === 0 ? (o.purpose === 'tiebreak' ? 'Tiebreaker roll-off!' : 'Who goes first?') : 'Tiebreak roll!'}</div>
+  <div class="title">
+    {roundIdx === 0 ? (o.purpose === 'tiebreak' ? 'Tiebreaker roll-off!' : o.purpose === 'buzz' ? 'Tie! Roll for it' : 'Who goes first?') : 'Tiebreak roll!'}
+  </div>
   <div class="row">
     {#each round.players as pid, i (pid)}
       {@const p = byId[pid]}
@@ -45,7 +47,7 @@
   {#if tied}<div class="msg">Tie! Re-rolling…</div>{/if}
   {#if done && winner}
     <div class="win" in:fly={{ y: 60, duration: 400 }}>
-      <span style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> {o.purpose === 'tiebreak' ? 'wins the game!' : 'goes first!'}
+      <span style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> {o.purpose === 'tiebreak' ? 'wins the game!' : o.purpose === 'buzz' ? 'answers first!' : 'goes first!'}
     </div>
   {/if}
 </div>

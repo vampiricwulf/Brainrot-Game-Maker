@@ -1,6 +1,9 @@
 /**
  * The phone page: room code → tap your name → one big buzzer. Talks to the room over one WebSocket (see
  * src/lib/buzzproto.ts); keeps its seat token in localStorage so a reload or a dropped connection gets the seat back.
+ *
+ * Fair timing: the page notes when it shows BUZZ! for an arm and sends the time from then to the press (reactMs) with
+ * the buzz; it answers every pong with a sync at once, so the room can time this phone's round trip itself.
  */
 import { isRoomCode, type PhoneView, type RoomToPhone } from '../../src/lib/buzzproto';
 
@@ -43,6 +46,9 @@ let result: ResultMsg | null = null;
 /** Server time this seat's early-buzz lock ends. */
 let lockedUntil = 0;
 let tick = 0;
+/** When (performance.now()) this phone first showed BUZZ! for armId litArm. */
+let litArm = -1;
+let litAt = 0;
 
 // ---- saved seat (per room code) ----
 
@@ -106,7 +112,9 @@ function connect(): void {
     const saved = loadSeat();
     rejoining = !!saved;
     if (saved) send({ t: 'join', seatId: saved.seatId, token: saved.token });
+    // A few quick pings first, so the room has this phone's round trip before the first buzz.
     ping();
+    for (const ms of [300, 600]) setTimeout(() => ws === s && ping(), ms);
     clearInterval(pingTimer);
     pingTimer = window.setInterval(() => {
       // No pong for a while: the connection is dead even if the browser hasn't noticed.
@@ -216,9 +224,11 @@ function onMessage(m: RoomToPhone): void {
       ended();
       return;
     case 'pong':
+      // Straight back, before anything else: the room times the round trip from its pong to this.
+      send({ t: 'sync', serverNow: m.serverNow });
       lastPong = Date.now();
       offset = m.serverNow - (m.at + Date.now()) / 2;
-      break;
+      return;
   }
   render();
 }
@@ -246,9 +256,11 @@ function denied(reason: Extract<RoomToPhone, { t: 'denied' }>['reason']): void {
 
 const serverNow = () => Date.now() + offset;
 
-function buzz(): void {
+/** at: when the press happened (an event's timeStamp, same clock as performance.now()). */
+function buzz(at = performance.now()): void {
   if (!view || !connected || view.phase === 'lobby') return;
-  send({ t: 'buzz', armId: view.armId });
+  const reactMs = litArm === view.armId && view.phase === 'armed' ? Math.max(0, Math.round(at - litAt)) : undefined;
+  send({ t: 'buzz', armId: view.armId, ...(reactMs !== undefined ? { reactMs } : {}) });
   vibrate(30);
   const b = $('buzz');
   b.classList.add('pressed');
@@ -360,9 +372,18 @@ function renderBuzz(v: PhoneView): void {
   if (v.phase === 'lobby') {
     big = you.name;
     small = 'Wait for the next clue';
-  } else if (v.phase === 'answering' && v.answering) {
-    if (v.answering.you) [cls, big, small] = ['first', "You're answering!", 'Say your answer'];
-    else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', `${v.answering.name} is answering`];
+  } else if (v.phase === 'answering' && v.answering?.you) {
+    const how = mine?.rolled === 1 ? 'You won the roll' : mine?.byMs !== undefined ? `You were first by ${secs(mine.byMs)}` : 'Say your answer';
+    [cls, big, small] = ['first', "You're answering!", how];
+  } else if (v.phase === 'answering') {
+    const who = v.answering ? `${v.answering.name} is answering` : 'Tie! The host is rolling for it';
+    if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host is rolling for it'];
+    else if (mine?.outcome === 'late' && mine.rank) {
+      const how = mine.rolled ? `Tie — you rolled ${ordinal(mine.rolled)}` : mine.afterMs !== undefined && mine.behind ? `${secs(mine.afterMs)} behind ${mine.behind}` : who;
+      [cls, big, small] = ['off', `You're ${ordinal(mine.rank)}`, how];
+    } else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', who];
+  } else if (mine?.outcome === 'pending' && v.phase === 'armed') {
+    [cls, big, small] = ['off', '…', 'Buzzed! Checking who was first'];
   } else if (you.lockedOut) {
     [cls, big, small] = ['off', 'Wait', 'You already answered this one'];
   } else if (left > 0) {
@@ -371,6 +392,11 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['armed', 'BUZZ!', you.name];
   } else {
     [cls, big, small] = ['ready', 'Get ready…', "Don't buzz yet"];
+  }
+  // The moment BUZZ! first shows for this arm: reaction times count from here.
+  if (cls === 'armed' && litArm !== v.armId) {
+    litArm = v.armId;
+    litAt = performance.now();
   }
   b.className = cls;
   $('buzz-big').textContent = big;
@@ -385,6 +411,11 @@ function renderBuzz(v: PhoneView): void {
   if (left > 0) tick = window.setTimeout(render, 200);
 }
 
+/** 0.04 s */
+const secs = (ms: number): string => `${(ms / 1000).toFixed(2)} s`;
+/** 1st, 2nd, 3rd, 4th… */
+const ordinal = (n: number): string => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'));
+
 /** Black or white text, whichever reads on this colour. */
 function ink(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
@@ -397,13 +428,13 @@ function ink(hex: string): string {
 
 $('buzz').addEventListener('pointerdown', (e) => {
   e.preventDefault();
-  buzz();
+  buzz(e.timeStamp);
 });
 $('buzz').addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('keydown', (e) => {
   if ((e.key === ' ' || e.key === 'Enter') && !e.repeat && !$('s-buzz').hidden) {
     e.preventDefault();
-    buzz();
+    buzz(e.timeStamp);
   }
 });
 document.addEventListener('pointerdown', () => void (wakeWanted || wake()), { capture: true });
