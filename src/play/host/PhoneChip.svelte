@@ -1,5 +1,9 @@
-<!-- Host panel: "📱 3/4", the phones joined. Click for the list (kick, people asking to join), the code and the link. -->
+<!--
+  Host panel: "📱 3/4", the phones joined. Click for the list (kick, people asking to join), the code and the link. It
+  opens downward over the host panel (which grows for it in a single window), never over the stage viewers see.
+-->
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { GameSettings, Session } from '../../lib/model';
   import { FULL_SHOWN_MS, remote, roomLink } from '../../lib/remote.svelte';
   import BuzzerOptions, { type SetBuzzSetting } from '../BuzzerOptions.svelte';
@@ -29,6 +33,19 @@
   } = $props();
 
   let open = $state(false);
+  /** The height the list has under its chip, down to the host panel's foot. */
+  let room = $state<number>();
+  let chip = $state<HTMLButtonElement>();
+
+  async function toggle(): Promise<void> {
+    open = !open;
+    if (!open) return;
+    // Measured once it's open: the panel grows to make room for it (see HostPanel).
+    await tick();
+    const panel = chip?.closest('.panel')?.getBoundingClientRect();
+    const b = chip?.getBoundingClientRect();
+    room = panel && b ? Math.max(160, panel.bottom - b.bottom - 12) : undefined;
+  }
   const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
   const asking = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)).length);
   const trouble = $derived(remote.status === 'reconnecting' || remote.status === 'error');
@@ -61,11 +78,12 @@
     class:ask={asking > 0}
     aria-expanded={open}
     aria-controls="phone-pop"
-    onclick={() => (open = !open)}
+    bind:this={chip}
+    onclick={toggle}
     title={trouble ? 'The buzzer room isn’t reachable right now: phones can’t buzz' : 'Phone buzzers: who has joined'}
   >{label}</button>
   {#if open}
-    <div class="pop" id="phone-pop" role="region" aria-label="Phone buzzers">
+    <div class="pop" id="phone-pop" role="region" aria-label="Phone buzzers" style:max-height={room === undefined ? undefined : `${room}px`}>
       {#if remote.status === 'off'}
         <p class="muted small">No buzzer room is running.</p>
         <button class="small" onclick={onstart}>▶ Start the room</button>
@@ -103,7 +121,7 @@
   }
   .pop {
     position: absolute;
-    bottom: calc(100% + 6px);
+    top: calc(100% + 6px);
     right: 0;
     z-index: 40;
     width: 300px;

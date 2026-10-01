@@ -36,11 +36,11 @@
 
   /**
    * Close the menu after picking from it: the focus goes back to its button (else it would drop to the page, and the
-   * keyboard would have to start over), or to the tool's own Roll again / Spin! when it's on screen.
+   * keyboard would have to start over), or to the tool's own Roll! / Spin! (the panel's main button) when it's on screen.
    */
   function done(): void {
     menu = null;
-    void tick().then(() => (document.querySelector<HTMLElement>('[data-tool-controls] button.primary:not(:disabled)') ?? opener)?.focus());
+    void tick().then(() => (document.querySelector<HTMLElement>('.panel [data-next]:not(:disabled)') ?? opener)?.focus());
   }
 
   function dice(sides: number, count: number, name?: string): void {
@@ -80,7 +80,7 @@
   }}
 />
 
-<div class="tl">
+<div class="tl" class:open={!!menu}>
   <div class="pop">
     <button onclick={(e) => toggle('dice', e)} title="D rolls the last dice" aria-haspopup="dialog" aria-expanded={menu === 'dice'}>🎲 Dice</button>
     {#if menu === 'dice'}
@@ -181,9 +181,10 @@
   .pop {
     position: relative;
   }
-  /* Above the backdrop, so another tool's button switches menus in one click. */
-  .pop > button,
-  .tl > button {
+  /* Above the backdrop while a menu is open, so another tool's button switches menus in one click. (Only then: the
+     📜 Log open over the panel stays over them.) */
+  .open > .pop > button,
+  .open > button {
     position: relative;
     z-index: 61;
   }

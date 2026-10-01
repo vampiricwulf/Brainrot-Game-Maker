@@ -159,9 +159,9 @@
   const dual = $derived(audience.open);
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
-  // RPG, board-game and Final rounds have a tall host panel (the Final's wagers and reveal rows): on a wide window it goes
-  // beside the stage instead of under it, so the stage keeps a good share, the same size all through the Final.
-  const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'final'));
+  // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): on a wide window it
+  // goes beside the stage instead of under it, so the stage keeps a good share. (The Final fits under the stage.)
+  const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
 
   // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.
   const pending = new Set<ReturnType<typeof setTimeout>>();
@@ -2451,19 +2451,17 @@
         onaudience={toggleAudience}
         onscores={toggleScores}
         onsound={() => (showSound = true)}
+        onkeys={() => (showKeys = true)}
         oncloseoverlay={closeOverlay}
         onopenbuzzers={openBuzzers}
+        tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
+        onrolltie={rollTie}
         {phonesDown}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={() => ((hideAgain = false), (hideControls = true))}
         onexit={exitGame}
       >
         {#snippet buzzExtra()}
-          {#if tie.length}
-            <span class="tie">Tie: {nameList(tie.map((id) => playerName(session, id)))}</span>
-            <button class="primary" onclick={rollTie}>🎲 Roll for it</button>
-            <span class="muted later-buzz">or pick one (click or 1–9)</span>
-          {/if}
           {#if buzzing && buzz.phase === 'answering' && buzz.answering}
             <button onclick={skipAnswering} title="No points taken: they can't buzz again on this clue, and the next in the buzz order answers">
               ⏭ Skip {playerName(session, buzz.answering)}
@@ -2499,7 +2497,6 @@
         {/snippet}
         {#snippet tools()}
           <ToolLauncher {game} {session} onrolloff={rolloff} />
-          <button class="ghost" onclick={() => (showKeys = true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>
         {/snippet}
       </HostPanel>
     {/if}
@@ -2647,13 +2644,6 @@
   .warn {
     color: var(--warn);
   }
-  .later-buzz {
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .tie {
-    font-weight: 700;
-  }
   .buzz-queue {
     display: flex;
     flex-wrap: wrap;
@@ -2795,11 +2785,13 @@
     pointer-events: none;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
   }
-  /* Out of sight (it would be on stream) until the mouse moves; keyboard focus shows it too. */
+  /* Out of sight (it would be on stream) until the mouse moves; keyboard focus shows it too. At the top right, clear of
+     the score plates along the stage's foot. */
   .show-controls {
     position: fixed;
     right: 8px;
-    bottom: 8px;
+    top: 8px;
+    z-index: 5;
     opacity: 0;
     font-size: 12px;
     transition: opacity 0.3s;

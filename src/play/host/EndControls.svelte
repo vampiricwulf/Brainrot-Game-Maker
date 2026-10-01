@@ -1,10 +1,11 @@
 <!-- End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. -->
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { isFinal, roundName, type Game, type Session } from '../../lib/model';
   import { nameList, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
-  import InlineAsk from './InlineAsk.svelte';
+  import { hostAsk, offerNext } from './slots.svelte';
 
   let {
     game,
@@ -27,23 +28,44 @@
     /** New game with the same players, via the pre-game screen. */
     onrematch: () => void;
   } = $props();
-  const ties = $derived(tiedLeaders(session));
+  const ties = $derived(session.coWinners ? [] : tiedLeaders(session));
   const lastIndex = $derived(game.rounds.length - 1);
   const last = $derived(game.rounds[lastIndex]);
 
   const copyStandings = () => copyText(standingsText(game, session), 'Standings copied: paste them in chat');
-  /** 🔁 Rematch was pressed: it asks inline first (the results go, and it's one click from Copy standings). */
-  let askRematch = $state(false);
+  const rollOff = () => onrolloff?.(ties.map((p) => p.id));
+
+  // A tie for first: settling it is the main button (the tiebreaker clue when the game has one, else a roll-off).
+  offerNext('end', () =>
+    !ties.length ? null : game.tiebreaker ? { label: '❓ Tiebreaker clue', run: ontiebreaker } : onrolloff ? { label: '🎲 Tiebreaker roll-off', key: 'O', run: rollOff } : null,
+  );
+
+  /** 🔁 Rematch asks first, in the panel's confirmation strip: the results go. */
+  const setAsk = hostAsk();
+  let asking = $state(false);
+  function askRematch(): void {
+    asking = true;
+    setAsk({
+      text: 'Start a rematch? Scores go back to 0.',
+      ok: '🔁 Rematch',
+      cancel: 'Stay',
+      danger: true,
+      onok: () => ((asking = false), setAsk(null), onrematch()),
+      oncancel: () => ((asking = false), setAsk(null)),
+    });
+  }
+  onDestroy(() => asking && setAsk(null));
 </script>
 
-{#if ties.length && !session.coWinners}
+{#if ties.length}
   <div class="tie">
     <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
     <div class="row">
-      {#if onrolloff}<button onclick={() => onrolloff(ties.map((p) => p.id))}>🎲 Tiebreaker roll-off</button>{/if}
-      <button onclick={ontiebreaker} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : "Write one on the editor's Tiebreaker tab"}>
-        ❓ Tiebreaker clue
-      </button>
+      <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
+      {#if game.tiebreaker && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
+      {#if !game.tiebreaker}
+        <button disabled title="Write one on the editor's Tiebreaker tab">❓ Tiebreaker clue</button>
+      {/if}
       <button
         onclick={() => {
           logged(session, 'Co-winners declared', () => (session.coWinners = true));
@@ -61,16 +83,15 @@
 {:else if session.coWinners}
   <div class="muted">🤝 Co-winners declared.</div>
 {/if}
+<!-- The way back quiet on the left, the rematch (it clears the results) at the far end. -->
 <div class="row">
   {#if last}
     <button class="ghost" onclick={onback}>{isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`}</button>
   {/if}
   <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
-  {#if askRematch}
-    <InlineAsk text="Start a rematch? Scores go back to 0." ok="🔁 Rematch" cancel="Stay" onok={onrematch} oncancel={() => (askRematch = false)} />
-  {:else}
-    <button onclick={() => (askRematch = true)} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>
-  {/if}
+  <span class="spacer"></span>
+  <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
+  {#if !asking}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
 </div>
 
 <style>

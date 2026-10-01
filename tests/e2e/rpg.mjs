@@ -441,7 +441,7 @@ try {
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
   assert((await page.locator('.tc', { hasText: 'Spin another wheel' }).innerText()).includes('Editing Pick a player'), 'an added wheel has its own edit box');
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
-  await page.locator('.tc').getByRole('button', { name: 'Spin!' }).click();
+  await page.locator('.panel [data-next]', { hasText: 'Spin!' }).click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 12000 });
   assert(true, 'both wheels land, each showing its result');
   assert((await page.locator('.tc .result').innerText()).includes(' · '), 'the host sees both results');

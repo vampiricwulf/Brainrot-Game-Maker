@@ -4,6 +4,7 @@
   import { textOn } from '../../lib/colors';
   import { formatPoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
+  import { offerNext } from './slots.svelte';
 
   let {
     game,
@@ -24,6 +25,14 @@
   // Initial choice only: whoever is picking (the host can change it). With no picker, nobody: the host picks (never a
   // silent Player 1).
   let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? ''));
+
+  /** Who found it: the splash on stage (and their phone) names them at once, not only once the question shows. */
+  function pick(id: string): void {
+    playerId = id;
+    if (session.dd) session.dd.playerId = id;
+    // Their wager next: typed digits would otherwise select players.
+    wagerBox?.focus();
+  }
   let wager = $state<number | null>(null);
   let override = $state(false);
   let wagerBox = $state<HTMLInputElement>();
@@ -40,6 +49,15 @@
     e.stopPropagation();
     if (valid) onshow(playerId, wager!);
   }
+
+  // The main button, in the panel's main cell (Enter in the wager box does it too).
+  offerNext('dd', () => ({
+    label: 'Show question ▶',
+    key: '⏎',
+    title: valid ? 'Enter in the wager box' : playerId ? 'Type a wager within the max (or tick Ignore the limit)' : 'Pick who found it first',
+    disabled: !valid,
+    run: () => valid && onshow(playerId, wager!),
+  }));
 </script>
 
 <div class="dd">
@@ -52,11 +70,8 @@
         style:border-color={p.color}
         style:background={playerId === p.id ? p.color : undefined}
         style:color={playerId === p.id ? textOn(p.color) : undefined}
-        onclick={() => {
-          playerId = p.id;
-          // Their wager next: typed digits would otherwise select players.
-          wagerBox?.focus();
-        }}
+        aria-pressed={playerId === p.id}
+        onclick={() => pick(p.id)}
       >
         {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
@@ -83,8 +98,6 @@
     <label class="check small">
       <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>
-    <span class="spacer"></span>
-    <button class="primary" disabled={!playerId || !valid} onclick={() => onshow(playerId, wager!)}>Show question ▶</button>
   </div>
   {#if !dual}
     <span class="exposed">⚠ Viewers can see this: they see this window, the wager as you type it too.</span>

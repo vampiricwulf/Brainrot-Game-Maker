@@ -112,6 +112,36 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **The host panel has one layout in every round**: what's going on at the top (with the 📱 and ⏱ chips and ↩ Cancel
+  (keep tile) on the right), the players, the row of what this moment needs, then the tools with the round navigation
+  at their right, and a fixed bar at the foot that never moves: ↶ Undo ↷ Redo 🔊 Sound ⌨ · 📜 Log 👥 Players ⚖ Rules ·
+  ⏸ Cover 🙈 Hide · 📺 Audience ▭ · 🚪 Exit. Undo, Log and Exit are in the same place on the board, in a clue, a Daily
+  Double, the Final, RPG and board-game rounds and the end screen.
+- **One main button at a time, always in the same place**: the next step is the one blue button, at the right of the
+  action row, with its key on it (👁 Reveal answer `R`, ▦ Done ▶ board `Esc`, Show question ▶ `⏎`, Spin! `W`, Roll!
+  `D`, Next turn ▶ `N`, the Final's steps `N`, ❓ Tiebreaker clue on a tied end screen). In a clue it goes 🎲 Roll for
+  it (a buzzer tie) › 🔔 Open the buzzers › 👁 Reveal answer › ▦ Done ▶ board; while someone is answering, the green
+  ＋ Award is the main one. ＋ Award and − Deduct show their keys (`⏎`, `⇧⏎`) too.
+- **Questions that ask first are one strip above the fixed bar**: Exit, closing the audience window, leaving a round,
+  🔁 Rematch and finishing the Final with players unjudged. Cancel is on the left with the focus on it, the answer on
+  the right (red when it can't easily be taken back, as Leave, Close it and Rematch). The same order everywhere a
+  question is asked in the app.
+- **Leaving a round is a quiet button that always asks**, also from an RPG or board-game round ("Leave Adventure?"),
+  where Next round ▶ used to be blue and went at once. A played-out board's Next round ▶ is the main button instead.
+- **The Final keeps the panel under the stage** on a wide window (it fits); only RPG and board-game rounds put it
+  beside the stage, where the fixed bar is a two-column grid with 🚪 Exit in its bottom-right corner.
+- **Buzzers**: 🔔 Open the buzzers is the main button while they're closed; ⏭ Skip, → Next in line and the buzz order
+  come after a divider, and ↺ Reset buzzers is last, a quiet button after another one. A tie says it once: "Tie: Ann &
+  Bob · 🎲 Roll for it, or pick one" (not "Buzzers open" as well), with 🎲 Roll for it as the main button.
+- **On the board the Amount row is folded** behind **± Adjust score** until a player is selected (pressing their number
+  opens it too).
+- **Labels**: 📺 Audience (📺 Audience ● while the window is open; closing it still asks), 🙈 Hide (for Hide controls),
+  and ⏸ Cover turns into a filled orange **▶ Uncover** while viewers see the cover. ⌨ moved to the fixed bar.
+- **A wheel or dice tile with nothing to ask** has one way out, the tool's **Close ▶ board** (`Esc`); it no longer shows
+  ▦ Done ▶ board, ✔ / ✘ or "Pick who answered" with nothing to judge.
+- **The end screen**: on a tie, settling it (❓ Tiebreaker clue, or 🎲 Tiebreaker roll-off when there's no tiebreaker
+  clue) is the main button; ◀ Back is quiet on the left and 🔁 Rematch at the far right, away from 📋 Copy standings.
+- **Show controls** (with the controls hidden) waits in the top-right corner, off the score plates.
 - **A points symbol that's a word goes after the number**: "200 pts" and "−300 pts" instead of "pts200", with a
   space; $, €, £, R$ or an emoji still go in front ("$200"). The same everywhere, the phones too.
 - **Scores too long for their plate are shortened** on the score bar ("$999.9M", "−1.2B pts"), never cut off in the
@@ -356,6 +386,15 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **Exit and closing the audience window no longer squash the host panel**: their question pushed the panel's
+  buttons over each other; it's now a strip of its own.
+- **📱 The phones list opens in sight in a single window**: it opened upward, hidden behind the stage. It opens
+  downward over the host panel now (which makes room for it), never over what viewers see.
+- **📜 Log in a single window**: the 🎲 Dice / 🎡 Wheel / 🏁 buttons no longer show through it.
+- **A double-click on Start game ▶ no longer opens the audience window**: the fixed bar ignores clicks for a moment
+  after the screen changes.
+- **Score chips keep their width** when a player is marked ✔ / ✘ on a clue, so the buttons beside them don't move.
+- **The Daily Double's splash names the player you pick** at once (it kept showing the picker until Show question).
 - **A game with a category short of clues opens**: a hand-edited game where a category had fewer clues than rows
   (or none) broke the editor after half-opening. The missing tiles are added empty (a longer category gets rows added),
   and a game the app still can't show is refused before it replaces yours.

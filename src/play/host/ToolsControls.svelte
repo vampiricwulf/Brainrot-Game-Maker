@@ -1,4 +1,7 @@
-<!-- Host controls for whatever tool overlay is on screen. -->
+<!--
+  Host controls for whatever tool overlay is on screen. Its main button (Spin!, Roll!, then Close) is the panel's main
+  one, in the main cell: the card keeps the result, the actions and spinning or rolling again.
+-->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app } from '../../lib/app.svelte';
@@ -16,6 +19,8 @@
   import { rpgNow } from '../rpg/hostops';
   import { setPicker } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
+  import { currentClueInfo, toolOnlyClue } from '../../lib/session';
+  import { offerNext } from './slots.svelte';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
@@ -82,6 +87,28 @@
 
   /** The wheel landed or the dice came up: Close is the main button now, and spinning or rolling again is secondary. */
   const landed = $derived(!busy && ((o?.kind === 'wheel' && !!o.spin) || (o?.kind === 'dice' && !!o.roll)));
+  /** A wheel/dice tile with nothing to ask, showing its own tool: closing it goes back to the board (the tile is done). */
+  const tileDone = $derived.by(() => {
+    const info = session.phase === 'clue' ? currentClueInfo(session, game) : undefined;
+    return !!info && !!o && toolOnlyClue(info.clue) && o.kind === info.clue.type;
+  });
+
+  // The main button: spin or roll until it's done, then close (a question pop-up reveals its answer first). A shop has its
+  // own 🚪 Leave shop.
+  offerNext('tool', () => {
+    if (!o || o.kind === 'shop') return null;
+    // (A spent wheel can't spin: Close it, or Restore its slices in the card.)
+    if (o.kind === 'wheel' && !landed && !spent)
+      return {
+        label: o.spin ? 'Spin again' : 'Spin!',
+        key: 'W',
+        disabled: busy,
+        run: () => spinWheel(app.live, session, game),
+      };
+    if (o.kind === 'dice' && !landed) return { label: o.roll ? 'Roll again' : 'Roll!', key: 'D', disabled: busy, run: () => rollDice(app.live, session, o.preset) };
+    if (o.kind === 'popup' && o.answer && !o.revealed) return { label: '👁 Reveal answer', key: 'R', run: () => (o.revealed = true) };
+    return { label: tileDone ? 'Close ▶ board' : 'Close', key: 'Esc', run: onclose };
+  });
 
   function tag(id: string): void {
     if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !lastRoll) return;
@@ -98,9 +125,8 @@
     <div class="row">
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
-        <button class:primary={!landed} disabled={busy || spent} onclick={() => spinWheel(app.live, session, game)} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>
-          {o.spin ? 'Spin again' : 'Spin!'}
-        </button>
+        <!-- (Spin! is the main button until it lands, then Close is.) -->
+        {#if landed}<button onclick={() => spinWheel(app.live, session, game)} disabled={spent} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>Spin again</button>{/if}
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => (o.editing = !o.editing)} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{o.pool ? ' (edited)' : ''}
         </button>
@@ -141,7 +167,7 @@
         {/if}
       {:else if o.kind === 'dice'}
         <b>🎲 {o.name}</b>
-        <button class:primary={!landed} disabled={busy} onclick={() => rollDice(app.live, session, o.preset)} title="D">{o.roll ? 'Roll again' : 'Roll!'}</button>
+        {#if landed}<button onclick={() => rollDice(app.live, session, o.preset)} title="D">Roll again</button>{/if}
       {:else if o.kind === 'rolloff'}
         <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
         {#if !busy && o.purpose === 'buzz'}
@@ -152,8 +178,8 @@
       {:else if o.kind === 'popup'}
         <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
         {#if o.value}<span class="muted small">worth {o.value}</span>{/if}
-        {#if o.answer}
-          <button class:primary={!o.revealed} onclick={() => (o.revealed = !o.revealed)} title="R">{o.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}</button>
+        {#if o.answer && o.revealed}
+          <button onclick={() => (o.revealed = false)} title="R">🙈 Hide answer</button>
         {/if}
       {:else if o.kind === 'sheet'}
         {@const i = session.players.findIndex((p) => p.id === o.playerId)}
@@ -170,8 +196,6 @@
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
-      <!-- A shop has its own 🚪 Leave shop. -->
-      {#if o.kind !== 'shop'}<button class:primary={landed} onclick={onclose} title="Esc">Close</button>{/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">

@@ -136,9 +136,9 @@ try {
   assert((await scores()) === '$300 $400 $400' && (await names()).startsWith('Alice'), 'Redo to here brings them all back');
   await page.keyboard.press('Escape');
 
-  // K covers the screen in any round, and the nav row's ⏸ Cover shows it.
+  // K covers the screen in any round, and the fixed bar's ⏸ Cover shows it (filled, saying ▶ Uncover).
   await page.keyboard.press('k');
-  assert(await page.getByRole('button', { name: '⏸ Cover' }).evaluate((e) => e.classList.contains('on')), 'K covers the screen on the board');
+  assert(await page.getByRole('button', { name: '▶ Uncover' }).evaluate((e) => e.classList.contains('on')), 'K covers the screen on the board (the button says ▶ Uncover)');
   await page.keyboard.press('k');
 
   // Timer: +10 without restarting.
@@ -173,6 +173,8 @@ try {
   // Board game: D, then Enter moves; Shift+N goes back a turn.
   await nextRound();
   await page.locator('.bh').waitFor();
+  // (It fades out.)
+  await page.locator('.stage-box .sheet').waitFor({ state: 'detached', timeout: 3000 }).catch(() => {});
   assert((await page.locator('.stage-box .sheet').count()) === 0, "a player's sheet doesn't follow into the next round");
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
@@ -220,11 +222,11 @@ try {
   assert(true, 'and takes the judgment back');
 
   // Dual window: keys pressed in the audience window work on the host.
-  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   await aud.locator('.spot').waitFor();
   await aud.locator('.aud').click();
   await aud.keyboard.press('k');
-  await page.waitForFunction(() => [...document.querySelectorAll('.nav button.on')].some((b) => b.textContent?.includes('Cover')));
+  await page.waitForFunction(() => [...document.querySelectorAll('.panel .fixed button.on')].some((b) => b.textContent?.includes('Uncover')));
   assert(true, 'K pressed in the audience window covers the screen');
   await aud.keyboard.press('k');
   await aud.keyboard.press('2');

@@ -120,11 +120,25 @@ same steps as the editor's 🕘 History, where **Go there** brings you back to t
 Viewers see a "Starting soon…" card until you press **Start game**, which stays at the foot of the window however long
 the page gets (on a wide screen the page is two columns). A **🔁 Rematch** keeps the players, their colors and pictures.
 
-- **Single window**: viewers see this window. Press `H` to hide the host controls.
+- **Single window**: viewers see this window. Press `H` (or **🙈 Hide**) to hide the host controls; **Show controls**
+  waits, out of sight, in the top-right corner until the mouse moves.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 
-Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **Award** or **Deduct**.
+Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **＋ Award** (`Enter`) or
+**− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
+selected.
+
+The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Cancel
+(keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one
+main button with its key (**👁 Reveal answer** `R`, **▦ Done ▶ board** `Esc`, **Show question ▶**, **Spin!** `W`,
+**Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 📊
+Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right, then a fixed bar that
+never moves: **↶ Undo ↷ Redo 🔊 Sound ⌨ · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺 Audience ▭ · 🚪 Exit**.
+Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
+above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
+(then **Next round ▶** is the main button). In RPG and board-game rounds on a wide window the panel is a column beside
+the stage, with the same parts and 🚪 Exit in the bottom-right corner.
 The rules can change mid-game too: **⚖ Rules** next to 👥 Players in the host panel opens ⚖ Game rules (they count at once
 and are kept with the game), and at the most players 👥 Players offers **Raise Most players**.
 Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.

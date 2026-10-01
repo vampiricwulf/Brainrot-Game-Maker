@@ -1,6 +1,6 @@
 <!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
@@ -9,6 +9,7 @@
     currentFinal, finalChoose, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagerRefused, finalWagersOk, hasWager, nameList, score,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
+  import { hostAsk, offerNext } from './slots.svelte';
 
   let {
     game,
@@ -130,23 +131,37 @@
   const lastRound = $derived(game.rounds[session.currentRound - 1]);
   const unjudged = $derived(finalUnjudged(session).length);
 
-  /** "Finish game" was pressed with players still unjudged: it asks inline (a browser dialog would show on stream). */
+  /**
+   * "Finish game" was pressed with players still unjudged: it asks in the panel's confirmation strip (a browser dialog
+   * would show on stream).
+   */
   let askFinish = $state(false);
-  let askedAt = 0;
+  const setAsk = hostAsk();
+  function stopAsking(): void {
+    if (!askFinish) return;
+    askFinish = false;
+    setAsk(null);
+  }
   $effect(() => {
-    if (!unjudged || session.finalStep !== 'reveal') askFinish = false;
+    if (!unjudged || session.finalStep !== 'reveal') stopAsking();
   });
+  onDestroy(stopAsking);
 
   function next(): void {
-    // Finishing shows the winner and confetti on stream, so ask first if some players were never judged.
+    // Finishing shows the winner and confetti on stream, so ask first if some players were never judged. (The strip's
+    // own guard keeps the second half of a double-click on "Finish game" from answering it.)
     if (session.finalStep === 'reveal' && unjudged && !askFinish) {
       askFinish = true;
-      askedAt = Date.now();
+      setAsk({
+        text: `${unjudged} player${unjudged === 1 ? '' : 's'} not judged yet · finish anyway?`,
+        ok: 'Finish',
+        cancel: 'Keep judging',
+        onok: next,
+        oncancel: stopAsking,
+      });
       return;
     }
-    // The second half of a double-click on "Finish game" doesn't count as the answer.
-    if (askFinish && Date.now() - askedAt < 400) return;
-    askFinish = false;
+    stopAsking();
     wagerDone();
     // From the wagers to the question is a step: Ctrl+Z goes back to the wagers, as they were.
     finalNextStep(session, game);
@@ -215,6 +230,22 @@
     question: 'Reveal answer ▶',
     answer: 'Start player reveals ▶',
     reveal: goOn,
+  });
+
+  // The step's main button, in the panel's main cell (N does it too). In the reveals, until everyone is judged, it's N's
+  // next step (show the wager, the next player); finishing early is the quiet button beside it, and asks first.
+  offerNext('final', () => {
+    if (!f) return null;
+    if (session.finalStep === 'reveal' && unjudged)
+      return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
+    const step = session.finalStep ?? 'category';
+    return {
+      label: labels[step],
+      key: 'N',
+      disabled: step === 'wagers' && !wagersOk,
+      title: step === 'wagers' && !wagersOk ? 'Every wager in first' : 'N',
+      run: step === 'question' ? onreveal : next,
+    };
   });
 </script>
 
@@ -375,18 +406,9 @@
         {/if}
       {/if}
       <span class="spacer"></span>
-      {#if askFinish}
-        <span class="ask">{unjudged} player{unjudged === 1 ? '' : 's'} not judged yet · finish anyway?</span>
-        <button class="primary small" onclick={next}>Finish</button>
-        <button class="small" onclick={() => (askFinish = false)}>Keep judging</button>
-      {:else if session.finalStep === 'reveal' && unjudged}
+      {#if session.finalStep === 'reveal' && unjudged && !askFinish}
         <!-- Until everyone is judged the main button is N's next step; finishing early asks first. -->
         <button class="ghost" onclick={next}>{goOn}</button>
-        <button class="primary" onclick={onrevealnext} disabled={!!revealStep.disabled} title={revealStep.disabled ?? 'N'}>{revealStep.label}</button>
-      {:else}
-        <button class="primary" onclick={session.finalStep === 'question' ? onreveal : next} disabled={session.finalStep === 'wagers' && !wagersOk} title="N">
-          {labels[session.finalStep ?? 'category']}
-        </button>
       {/if}
     </div>
   </div>
@@ -507,10 +529,5 @@
   .armed {
     color: var(--good);
     font-weight: 600;
-  }
-  .ask {
-    color: var(--warn);
-    font-weight: 600;
-    font-size: 12px;
   }
 </style>

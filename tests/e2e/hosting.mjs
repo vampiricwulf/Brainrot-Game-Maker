@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, confirmStrip, mainButton, mainLabel, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -264,12 +264,14 @@ try {
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
-  const goOn = page.locator('.rn .ask');
+  // It asks in the strip above the fixed bar, the focus on its Cancel (Yes is to its right).
+  const goOn = confirmStrip(page);
   await goOn.waitFor();
+  assert((await goOn.innerText()).includes('clues left · go on?'), 'Next round with clues left asks in the confirmation strip');
   await page.waitForTimeout(4400);
   assert(await goOn.isVisible(), '“N clues left · go on?” stays up while the keyboard focus is in it');
   await page.waitForTimeout(450);
-  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
 
   // ---------- The Final: wagers, Ctrl+Z back to them, ✔/✘ with their sounds ----------
@@ -299,7 +301,7 @@ try {
   for (let i = 0; i < (await ticks.count()); i++) if (await ticks.nth(i).isChecked()) playing.push(i);
   for (const i of playing) await ticks.nth(i).uncheck();
   await page.locator('.fj .nobody', { hasText: 'Nobody is playing this Final' }).waitFor();
-  assert((await page.locator('.fj button.primary').innerText()).includes('Finish game'), 'nobody playing the Final: it says so, and offers to go on (Finish game)');
+  assert((await mainLabel(page)).includes('Finish game'), 'nobody playing the Final: it says so, and offers to go on (Finish game)');
   for (const i of [...playing].reverse()) await ticks.nth(i).check();
   assert((await page.locator('.fj .nobody').count()) === 0, 'and ticked back in, the Final is played as usual');
   await page.locator('.panel .status').click();
@@ -342,7 +344,7 @@ try {
   assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
   // The main button is N's next step until everyone is judged (finishing early is the smaller one), and the how-to is
   // open the first time.
-  const revealMain = () => page.locator('.fj button.primary').innerText();
+  const revealMain = () => mainLabel(page);
   assert(
     /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await page.locator('.fj button.ghost', { hasText: 'Finish game ▶' }).count()) === 1,
     `in the reveals the main button is the next step (${await revealMain()}), Finish game a smaller one`,

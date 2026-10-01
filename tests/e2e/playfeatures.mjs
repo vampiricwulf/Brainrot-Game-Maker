@@ -122,7 +122,7 @@ try {
   assert((await pressed()).length === 0, 'a wrong answer plays the wrong sound (at its volume)');
 
   // ---------- The audience window: the plate, sounds there, the chroma background ----------
-  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   watch(aud, 'audience');
   await aud.locator('.stage .full').waitFor();
   const audBg = await aud.locator('.aud').evaluate((e) => getComputedStyle(e).backgroundColor);
@@ -145,7 +145,10 @@ try {
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   await page.getByRole('button', { name: '🎯 Pick a player' }).click();
   await page.waitForTimeout(100);
-  assert((await page.evaluate(() => document.activeElement?.textContent?.trim())) === 'Spin!', 'a wheel picked from the 🎡 menu puts the focus on its Spin!');
+  assert(
+    await page.evaluate(() => document.activeElement?.matches('.panel [data-next]') && document.activeElement.textContent?.trim().startsWith('Spin!')),
+    'a wheel picked from the 🎡 menu puts the focus on its Spin! (the panel’s main button)',
+  );
   await page.keyboard.press('w');
   await aud.waitForFunction(() => window.__plays.filter((s) => s.endsWith('#wheelTick')).length >= 3);
   assert((await played(aud, 'wheelLand')) === 0, 'a spinning wheel ticks in the audience window');

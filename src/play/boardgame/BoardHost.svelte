@@ -16,6 +16,7 @@
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
   import { boardNow, busyZones, moveNow, moverDiceName, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
+  import { offerNext } from '../host/slots.svelte';
 
   let {
     game,
@@ -58,6 +59,8 @@
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
   const showPlayers = $derived(cardsShown());
+  // The round's main button, in the host panel's main cell: the next turn.
+  offerNext('turn', () => (bs ? { label: 'Next turn ▶', key: 'N', run: () => turnNow(game, session, 1) } : null));
 
   // A new turn starts with no count: the last player's roll isn't theirs. A move (a way picked on the stage too) uses it up.
   $effect(() => {
@@ -203,7 +206,6 @@
       <button class="ghost small" onclick={shuffle}>🔀 Shuffle</button>
       <span class="spacer"></span>
       <button class="small" onclick={() => turnNow(game, session, -1)} title="Shift+N">◀ Previous turn</button>
-      <button class="primary" onclick={() => turnNow(game, session, 1)} title="N">Next turn ▶</button>
     </div>
 
     <div class="row move">
@@ -316,7 +318,7 @@
         <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
         <span class="muted small">(or click the space on the stage)</span>
         {#each forkWays as n (n)}
-          <button class="primary" onclick={() => move(fork.stepsLeft, n)}>→ {spaceById(round, n)?.name}</button>
+          <button class="good" onclick={() => move(fork.stepsLeft, n)}>→ {spaceById(round, n)?.name}</button>
         {/each}
       </div>
     {/if}

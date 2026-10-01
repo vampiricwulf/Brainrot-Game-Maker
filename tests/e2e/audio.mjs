@@ -140,7 +140,7 @@ try {
     // Dual mode: the audience window plays the chime, the host stays silent. The round intro's sound (built in) is old by
     // the time the window opens, so the window doesn't play it again.
     await page.waitForTimeout(Math.max(0, startedAt + 4100 - Date.now()));
-    const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+    const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
     watch(aud, 'audience');
     await aud.locator('.board').waitFor();
     // Nothing clicked in the audience window yet (and no aud.evaluate, which Playwright runs as a click). Its
@@ -511,7 +511,7 @@ try {
     await warning.waitFor();
     assert((await dialog(page).count()) === 0, 'the host panel warns too, without opening the Sound help');
     assert((await warning.getByText('Restart Brainrot Games Maker to try again').count()) === 1, 'the warning says a restart should bring it back');
-    const created = await createdAudience(page, '📺 Audience window');
+    const created = await createdAudience(page, /^📺 Audience$/);
     assert(!('additionalBrowserArgs' in created), 'running without the switches: the fallback audience window keeps the defaults');
     await warning.getByRole('button', { name: '🔊 Help' }).click();
     const help = dialog(page);

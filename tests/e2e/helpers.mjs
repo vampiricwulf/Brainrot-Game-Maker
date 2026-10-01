@@ -99,6 +99,18 @@ export async function openRules(page) {
   return rules;
 }
 
+// ---------- The host panel ----------
+
+/** The host panel's main button (its NEXT cell: Reveal answer, Show question ▶, Spin!…). */
+export const mainButton = (page) => page.locator('.panel [data-next]');
+
+/** What the main button says, without its key cap (R, N, Esc…). */
+export const mainLabel = (page) =>
+  mainButton(page).evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
+
+/** The confirmation strip above the fixed bar (Leave this game?, N clues left · go on?…). */
+export const confirmStrip = (page) => page.locator('.panel .confirm');
+
 // ---------- Phone buzzers ----------
 
 /**

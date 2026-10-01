@@ -349,7 +349,7 @@ await page.getByRole('button', { name: '＋ Add 3 sample players' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
 await page.locator('.board .tile').first().waitFor();
-const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
 await aud.locator('.board').waitFor();
 await aud.mouse.click(20, 20); // lets the audience window play sound
 const natural = (loc) => loc.evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth) : (i.onload = () => res(i.naturalWidth)))));

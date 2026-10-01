@@ -143,7 +143,7 @@ try {
   assert((await answer(page)) === 0, 'clicking the icon again pauses it');
 
   // Dual-window mode: the host clicks its (silent) copy, the audience window plays.
-  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   const audVideo = '.full video';
   const audAudio = '.full audio';

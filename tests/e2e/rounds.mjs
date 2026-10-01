@@ -121,14 +121,15 @@ try {
   const goTo = page.getByText(/clues? left · go to Final Jeopardy!\?/);
   await goTo.waitFor();
   await page.waitForTimeout(450);
-  await page.locator('.rn').getByRole('button', { name: 'Cancel' }).click();
+  // (It asks in the strip above the fixed bar.)
+  await page.locator('.panel .confirm').getByRole('button', { name: 'Cancel' }).click();
   assert(
     (await goTo.count()) === 0 && (await picker.locator('option:checked').innerText()).includes('Double Jeopardy!'),
     'Cancel on “N clues left · go to …?” stays on this round, and the round list shows it again',
   );
   await picker.selectOption({ label: '⭐ Final Jeopardy!' });
   await page.waitForTimeout(450);
-  await page.locator('.rn').getByRole('button', { name: 'Yes' }).click();
+  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
   await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   await page.locator('.fj').waitFor();

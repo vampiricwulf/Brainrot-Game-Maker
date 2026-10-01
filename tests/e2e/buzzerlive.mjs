@@ -244,7 +244,7 @@ try {
   await press(p1);
   await press(p2);
   // The tied names come in the order their buzzes reached the room, which varies.
-  await host.getByText(/^Tie: Player [12] & Player [12]$/).waitFor();
+  await host.locator('.panel .tie', { hasText: /^Tie: Player [12] & Player [12] ·/ }).waitFor();
   await big(p1).getByText('Tie!').waitFor();
   assert((await small(p2).innerText()) === 'The host decides who goes first', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"');
   await host.getByRole('button', { name: '🎲 Roll for it' }).click();

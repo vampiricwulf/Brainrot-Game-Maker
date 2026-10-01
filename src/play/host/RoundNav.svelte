@@ -1,11 +1,14 @@
 <!--
-  Prev / Next round (or the final round / End game), and Go to round. Moving on while tiles are left takes a second,
-  inline click ("12 clues left · go on? Yes"), so a stray click or a double-click never jumps ahead on stream.
+  Prev / Next round (or the final round / End game), and Go to round: quiet buttons at the end of the tools row.
+  Leaving a round always asks first, in the panel's confirmation strip ("12 clues left · go on? Cancel / Yes"; an RPG
+  or board-game round: "Leave Adventure?"), so a stray click or a double-click never jumps ahead on stream. Only a
+  board played out goes on at once: then its Next round ▶ is the panel's main button.
 -->
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte';
-  import { isFinal, playableClues, roundName, type Game, type Session } from '../../lib/model';
+  import { onDestroy } from 'svelte';
+  import { isBoard, isFinal, playableClues, roundName, type Game, type Session } from '../../lib/model';
   import { ROUND_MODES } from '../../lib/modes';
+  import { hostAsk, offerNext } from './slots.svelte';
 
   let {
     game,
@@ -16,91 +19,91 @@
   }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void } = $props();
 
   const round = $derived(game.rounds[session.currentRound]);
+  const board = $derived(!!round && isBoard(round));
   const left = $derived(round ? playableClues(round).filter((c) => !session.used[c.id]).length : 0);
-  const done = $derived(!session.intro && left === 0);
+  // (An RPG or board-game round has no clues to count: it's never "done", leaving it always asks.)
+  const done = $derived(board && !session.intro && left === 0);
   const isLast = $derived(session.currentRound >= game.rounds.length - 1);
   const nextRound = $derived(game.rounds[session.currentRound + 1]);
   const target = $derived(isLast || !nextRound ? 'the end screen' : roundName(nextRound, session.currentRound + 1));
+  const nextLabel = $derived(isLast || !nextRound ? 'End game ▶' : isFinal(nextRound) ? `${roundName(nextRound)} ▶` : 'Next round ▶');
 
   // Clicks right after this row appears (e.g. the second half of a double-click on "Done ▶ board") are ignored.
   const GUARD_MS = 400;
   const shownAt = Date.now();
-  let askedAt = $state(0);
   /** Asking before moving on: to the next round (`'next'`), or to the round picked in Go to round (its index). */
   let asking = $state<'next' | number | null>(null);
-  const askedFor = $derived(typeof asking === 'number' ? roundName(game.rounds[asking], asking) : target);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let cancelBtn = $state<HTMLButtonElement>();
-  let rowEl = $state<HTMLDivElement>();
-  // The 4 s ran out with the focus in the row (a keyboard user reading it): it goes once the focus leaves.
-  let lapsed = false;
-  onDestroy(() => clearTimeout(timer));
+  let picker = $state<HTMLSelectElement>();
+  const setAsk = hostAsk();
+  onDestroy(() => {
+    clearTimeout(timer);
+    if (asking !== null) setAsk(null);
+  });
+
+  // A played-out board: going on is the moment's main button.
+  offerNext('board', () => (done ? { label: nextLabel, run: next } : null));
 
   function next(): void {
     if (Date.now() - shownAt < GUARD_MS) return;
     if (done) return onnext();
-    void ask('next');
+    ask('next');
   }
 
   /** A round picked in Go to round: at once when this one is played out, else asked like Next round. */
   function goto(i: number): void {
     if (i === session.currentRound) return;
     if (done) ongoto?.(i);
-    else void ask(i);
+    else ask(i);
   }
 
-  async function ask(what: 'next' | number): Promise<void> {
-    asking = what;
-    askedAt = Date.now();
+  function stop(): void {
+    asking = null;
     clearTimeout(timer);
-    lapsed = false;
-    timer = setTimeout(() => {
-      if (rowEl?.contains(document.activeElement)) lapsed = true;
-      else asking = null;
-    }, 4000);
-    // The clicked button is gone: keep keyboard focus in the row, on the harmless choice.
-    await tick();
-    cancelBtn?.focus();
+    setAsk(null);
+    // Cancel puts the list back on this round.
+    if (picker) picker.value = String(session.currentRound);
+  }
+
+  /** It goes after 4 s, unless the keyboard focus is in it (someone reading it): then once the focus leaves. */
+  function lapse(): void {
+    timer = setTimeout(() => (document.activeElement?.closest('.confirm') ? lapse() : stop()), 4000);
+  }
+
+  function ask(what: 'next' | number): void {
+    asking = what;
+    clearTimeout(timer);
+    lapse();
+    const name = typeof what === 'number' ? roundName(game.rounds[what], what) : target;
+    const r = round;
+    // Short, so it reads at a glance. A round picked in Go to round is named (it may not be the next one).
+    const text = board
+      ? `${left} clue${left === 1 ? '' : 's'} left · ${what === 'next' ? 'go on?' : `go to ${name}?`}`
+      : `Leave ${r ? roundName(r, session.currentRound) : 'this round'}${what === 'next' ? '' : ` for ${name}`}?`;
+    setAsk({ text, ok: 'Yes', onok: yes, oncancel: stop });
   }
 
   function yes(): void {
-    if (Date.now() - askedAt < GUARD_MS) return;
     const what = asking;
-    asking = null;
-    clearTimeout(timer);
+    stop();
     if (what === 'next') onnext();
     else if (what !== null) ongoto?.(what);
   }
 </script>
 
-<div class="rn" bind:this={rowEl} onfocusout={(e) => lapsed && !rowEl?.contains(e.relatedTarget as Node | null) && (asking = null)}>
-  {#if asking !== null}
-    <!-- Short, so it fits where the two round buttons were (the row doesn't re-wrap under the host's cursor). A round
-         picked in Go to round is named (it may not be the next one). Cancel puts the list back on this round. -->
-    <span class="ask" title="Go to {askedFor} with {left} clue{left === 1 ? '' : 's'} not played?"
-      >{left} clue{left === 1 ? '' : 's'} left · {asking === 'next' ? 'go on?' : `go to ${askedFor}?`}</span
-    >
-    <button class="primary small" onclick={yes}>Yes</button>
-    <!-- The focus is put here, so Enter and Space press it (not the host's Enter = Award). -->
-    <button
-      class="small"
-      bind:this={cancelBtn}
-      onclick={() => ((asking = null), clearTimeout(timer))}
-      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && e.stopPropagation()}>Cancel</button
-    >
-  {:else}
-    <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
-    {#if ongoto && game.rounds.length > 2}
-      <!-- Rounds can be played out of order: jump to any of them. -->
-      <select class="pick" aria-label="Go to round" value={session.currentRound} onchange={(e) => goto(+e.currentTarget.value)}>
-        {#each game.rounds as r, i (r.id)}
-          <option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>
-        {/each}
-      </select>
-    {/if}
-    <button class={done ? 'primary' : 'ghost'} onclick={next} title={done ? '' : `${left} clue${left === 1 ? '' : 's'} not played yet`}>
-      {isLast || !nextRound ? 'End game ▶' : isFinal(nextRound) ? `${roundName(nextRound)} ▶` : 'Next round ▶'}
-    </button>
+<div class="rn">
+  <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
+  {#if ongoto && game.rounds.length > 2}
+    <!-- Rounds can be played out of order: jump to any of them. -->
+    <select class="pick" aria-label="Go to round" bind:this={picker} value={session.currentRound} onchange={(e) => goto(+e.currentTarget.value)}>
+      {#each game.rounds as r, i (r.id)}
+        <option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>
+      {/each}
+    </select>
+  {/if}
+  <!-- Played out, it's the main button instead (one of them, not two). -->
+  {#if !done}
+    <button class="ghost" onclick={next} title={board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'Asks first'}>{nextLabel}</button>
   {/if}
 </div>
 
@@ -109,18 +112,6 @@
     display: flex;
     gap: 6px;
     align-items: center;
-  }
-  .ask {
-    max-width: 260px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--warn);
-    font-weight: 600;
-    font-size: 12px;
-  }
-  .small {
-    font-size: 12px;
   }
   .pick {
     max-width: 180px;

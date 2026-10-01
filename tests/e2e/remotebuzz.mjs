@@ -302,6 +302,25 @@ try {
   assert(true, 'back to the board: the phones go back to the lobby');
   await shot('rb-4-host');
 
+  // ---------- One window: the phones list opens over the host panel, never the stage viewers see ----------
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: '📺 Audience ●' }).click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Close it' }).click();
+  if (!aud.isClosed()) await aud.waitForEvent('close', { timeout: 3000 });
+  await chip.click();
+  await pop.waitFor();
+  await page.waitForTimeout(300);
+  const popAt = await pop.boundingBox();
+  const stageAt = await page.locator('.stage-box').boundingBox();
+  const vp = page.viewportSize();
+  assert(
+    popAt.y >= stageAt.y + stageAt.height - 1 && popAt.y + popAt.height <= vp.height + 1,
+    `single window: the 📱 phones list shows in the host panel, all of it in sight (${Math.round(popAt.y)}–${Math.round(popAt.y + popAt.height)}, the stage ends at ${Math.round(stageAt.y + stageAt.height)})`,
+  );
+  await page.keyboard.press('Escape');
+  await pop.waitFor({ state: 'detached' });
+
   // ---------- Exit closes the room ----------
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);

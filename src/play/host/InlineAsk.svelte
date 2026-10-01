@@ -1,7 +1,7 @@
 <!--
   A question asked right in the host panel, where a browser dialog (prompt, confirm) would show on stream: the
-  question, a text box when it wants a name or some text, and the answer and Cancel buttons. In the box, Enter
-  answers and Esc cancels.
+  question, a text box when it wants a name or some text, then Cancel (the safe answer, on the left) and the answer
+  button (rightmost, filled red when it can't easily be taken back). In the box, Enter answers and Esc cancels.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -13,6 +13,7 @@
     ok,
     cancel = 'Cancel',
     danger = false,
+    focusCancel = false,
     onok,
     oncancel,
   }: {
@@ -27,6 +28,11 @@
     cancel?: string;
     /** The answer can't be taken back easily (leaving the game): a red button. */
     danger?: boolean;
+    /**
+     * With no text box: the focus goes to Cancel, so Enter or Space presses the harmless choice (never the host's
+     * Enter = Award), and Esc there cancels.
+     */
+    focusCancel?: boolean;
     /** Answered (with the text typed, trimmed). */
     onok: (text: string) => void;
     oncancel: () => void;
@@ -34,9 +40,13 @@
 
   let typed = $state(untrack(() => value));
   let box = $state<HTMLInputElement>();
+  let cancelBtn = $state<HTMLButtonElement>();
   // Into the box, with the text it starts with selected so typing replaces it. (Not `autofocus`: that leaves the focus
   // on the button that asked, where typing would reach the host's shortcuts.)
-  onMount(() => box?.select());
+  onMount(() => {
+    if (box) box.select();
+    else if (focusCancel) cancelBtn?.focus();
+  });
   const blank = $derived(field !== undefined && !typed.trim());
   // A click right after the question shows (the second half of the double-click that asked it) isn't the answer.
   const shownAt = Date.now();
@@ -60,8 +70,21 @@
       }}
     />
   {/if}
+  <button
+    class="small ghost"
+    bind:this={cancelBtn}
+    onclick={oncancel}
+    onkeydown={(e) => {
+      // The keys stay here: Enter or Space presses Cancel, Esc cancels (neither reaches the host's shortcuts).
+      if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+      else if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        oncancel();
+      }
+    }}>{cancel}</button
+  >
   <button class="small {danger ? 'bad' : 'primary'}" disabled={blank} onclick={() => Date.now() - shownAt > 400 && answer()}>{ok}</button>
-  <button class="small" onclick={oncancel}>{cancel}</button>
 </div>
 
 <style>

@@ -81,7 +81,7 @@ async function answerDialog(action, accept) {
 /** Exit asks inline (a browser dialog would show on stream): answers Leave and returns what it asked. */
 async function exitGame() {
   await page.getByRole('button', { name: 'Exit' }).click();
-  const asked = await page.locator('.panel .ask').innerText();
+  const asked = await page.locator('.panel .confirm').innerText();
   // The ask ignores the second half of a double-click on Exit.
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Leave', exact: true }).click();
@@ -926,7 +926,7 @@ assert((await scoreOf(0)) === '$350', 'scores survive a reload');
 assert(await isUsed(0), 'used tiles survive a reload');
 
 // Dual-window mode: the audience window never shows the answer before reveal.
-const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
+const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
 await aud.locator('.board').waitFor();
 assert(true, 'audience window opened and synced the board');
 await page.keyboard.press('a');
@@ -948,12 +948,12 @@ assert(await aud.locator('.board .tile').nth(2).evaluate((e) => e.classList.cont
 if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
 if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
 // Closing it asks inline (a browser dialog would show on stream): Keep it, then Close it.
-await page.getByRole('button', { name: '📺 Close audience window' }).click();
-assert((await page.locator('.panel .ask').innerText()).includes('stream capture goes black'), 'closing the audience window asks first, inline');
+await page.getByRole('button', { name: '📺 Audience ●' }).click();
+assert((await page.locator('.panel .confirm').innerText()).includes('stream capture goes black'), 'closing the audience window asks first, inline');
 await page.getByRole('button', { name: 'Keep it' }).click();
 await page.waitForTimeout(200);
 assert(!aud.isClosed(), 'Keep it leaves the audience window open');
-await page.getByRole('button', { name: '📺 Close audience window' }).click();
+await page.getByRole('button', { name: '📺 Audience ●' }).click();
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Close it' }).click();
 if (!aud.isClosed()) await aud.waitForEvent('close', { timeout: 3000 });
@@ -1015,7 +1015,7 @@ await page.getByRole('button', { name: '▦ Done ▶ board' }).dblclick();
 await page.locator('.board').waitFor();
 await page.waitForTimeout(300);
 assert((await page.locator('.final-label').count()) === 0 && (await page.locator('.round-name').count()) === 0, 'double-clicking Done stays on this round');
-if (await page.locator('.nav .backdrop').count()) await page.locator('.nav .backdrop').click();
+if (await page.locator('.panel .backdrop').count()) await page.locator('.panel .backdrop').click();
 
 // Moving on with tiles left takes an inline second click.
 await page.waitForTimeout(450); // round buttons ignore clicks right after they appear
