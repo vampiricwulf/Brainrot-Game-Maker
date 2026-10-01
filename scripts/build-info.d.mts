@@ -1,1 +1,1 @@
-export function buildInfo(): { version: string; commit: string; date: string };
+export function buildInfo(): { version: string; commit: string; date: string; release: boolean };

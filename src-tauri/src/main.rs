@@ -37,6 +37,7 @@ use std::time::Duration;
 
 mod migrate;
 mod saves;
+mod update;
 
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{AppHandle, Emitter, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -688,6 +689,19 @@ fn page_flags(start: Start, fix_saved: bool) -> String {
     js
 }
 
+/// This build can update itself in place (it carries the key releases are signed with).
+#[tauri::command]
+fn can_self_update() -> bool {
+    update::PUBLIC_KEY.is_some()
+}
+
+/// Download a release's .exe, check its signature, and put it in place of this one (update.rs). The page restarts the
+/// app afterwards, once its game is saved.
+#[tauri::command]
+async fn install_update(exe_url: String, signature_url: String) -> Result<(), String> {
+    update::install(&exe_url, &signature_url).await
+}
+
 /// Close the audience windows the page opened (Exit, Close audience window): a window opened through `window.open` may
 /// not close from the page's side, and after a reload of the host page it no longer has a handle on it at all.
 #[tauri::command]
@@ -1036,9 +1050,12 @@ fn main() {
             flush_on_close,
             close_app,
             hold_close,
-            close_audience
+            close_audience,
+            can_self_update,
+            install_update
         ])
         .setup(|app| {
+            update::clean_up_after_update();
             let handle = app.handle();
             move_old_data(handle);
             let plan = plan_start(

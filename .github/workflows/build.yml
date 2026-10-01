@@ -1,11 +1,11 @@
 name: Build
 
-# Every push to main: check, test, build the single-file app and the Windows .exe, then replace the
-# rolling "latest" GitHub Release with the new files. Version tags (v*) get their own permanent release.
+# Every push to main is a release: check, test, build the single-file app and the Windows .exe, stamped with the
+# version this push is released as (scripts/version.mjs: the last release's, stepped up by the changelog lines the
+# push adds), then publish them as GitHub Release vX.Y.Z, marked latest. The app checks that release for updates.
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -17,7 +17,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version:
+    # The version this commit is released as, and its release notes (the changelog lines added since the last one).
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Every tag and the history since the last one: the version steps up from it.
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node scripts/version.mjs check
+      - id: next
+        run: node scripts/version.mjs next notes.md
+      - run: cat notes.md
+      - uses: actions/upload-artifact@v6
+        with:
+          name: release-notes
+          path: notes.md
+
   build:
+    needs: version
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,6 +52,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Stamp the version (${{ needs.version.outputs.version }})
+        run: node scripts/version.mjs set "${{ needs.version.outputs.version }}"
       - run: npm run check
       # npm test also runs the buzzer room's unit tests (buzzer/src/*.test.ts).
       - run: npm test
@@ -54,6 +81,8 @@ jobs:
         env:
           # The phone buzzers' server (a repository variable; blank: phone buzzers are off in this build).
           VITE_BUZZER_URL: ${{ vars.BUZZER_URL }}
+          # A published release: it checks for newer ones when it starts.
+          BRAINROT_RELEASE: '1'
       - name: Name the single-file app
         run: mkdir -p out && cp dist/index.html out/brainrot-game-maker.html
       - uses: actions/upload-artifact@v6
@@ -91,6 +120,7 @@ jobs:
   windows:
     # The desktop app (Tauri). Skipped for pull requests (desktop.yml covers src-tauri changes there).
     if: github.event_name != 'pull_request'
+    needs: version
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -104,24 +134,45 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
+      - name: Stamp the version (${{ needs.version.outputs.version }})
+        run: node scripts/version.mjs set "${{ needs.version.outputs.version }}"
       - run: npx tauri build
         env:
           VITE_BUZZER_URL: ${{ vars.BUZZER_URL }}
+          BRAINROT_RELEASE: '1'
+          # The public half of the key releases are signed with (a repository variable): built in, it lets the app
+          # update itself in place, checking each new version's signature. Blank: it offers the download instead.
+          BRAINROT_UPDATE_PUBKEY: ${{ vars.UPDATE_PUBKEY }}
       - name: Collect the Windows files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/brainrot-game-maker.exe out/brainrot-game-maker-portable.exe
           Get-ChildItem out
+      - name: Sign the .exe for in-place updates
+        shell: bash
+        env:
+          # The private key (`npx tauri signer generate`) and its password, as repository secrets.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.UPDATE_SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::notice title=Not signed::The .exe isn't signed: add the UPDATE_SIGNING_KEY secret (and UPDATE_PUBKEY variable) for in-place updates"
+            exit 0
+          fi
+          npx tauri signer sign out/brainrot-game-maker-portable.exe
+          ls out
       - uses: actions/upload-artifact@v6
         with:
           name: brainrot-game-maker-windows
-          path: out/*.exe
+          path: |
+            out/*.exe
+            out/*.sig
 
-  release-latest:
-    # Rolling release: replaced on every push to main, always the newest build.
+  release:
+    # Every push to main: release vX.Y.Z (a new tag on this commit), marked latest. The app's update check reads it.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build, windows]
+    needs: [version, build, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -130,42 +181,30 @@ jobs:
         with:
           path: out
           merge-multiple: true
-      - name: Publish the "latest" release
+      - name: Publish release v${{ needs.version.outputs.version }}
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
-          MESSAGE: ${{ github.event.head_commit.message }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
+          mv out/notes.md notes-changes.md
           ls -la out
-          SHORT="${SHA:0:7}"
-          SUBJECT="$(printf '%s' "$MESSAGE" | head -n 1)"
-          cat > notes.md <<NOTES
-          Newest build of \`main\` (${SHORT}): ${SUBJECT}
-
-          **Downloads**
-          - \`brainrot-game-maker.html\`: the whole app in one file. Download it and double-click to open it in Chrome, Edge or Firefox.
-          - \`brainrot-game-maker-portable.exe\`: Windows desktop app, no install needed (uses the WebView2 runtime that Windows 10/11 already have).
-
-          This release is replaced automatically on every push to \`main\`.
-          NOTES
-          gh release delete latest --repo "$REPO" --yes --cleanup-tag || true
-          gh release create latest out/* --repo "$REPO" --target "$SHA" --latest \
-            --title "Latest build (${SHORT})" --notes-file notes.md
-
-  release-tag:
-    # Permanent release for version tags like v1.0.0.
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, windows]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v7
-        with:
-          path: out
-          merge-multiple: true
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: out/*
-          generate_release_notes: true
+          {
+            cat notes-changes.md
+            echo
+            echo '**Downloads**'
+            echo '- `brainrot-game-maker.html`: the whole app in one file. Download it and double-click to open it in Chrome, Edge or Firefox.'
+            echo '- `brainrot-game-maker-portable.exe`: Windows desktop app, no install needed (uses the WebView2 runtime that Windows 10/11 already have). It updates itself: ⬆ Update in the editor when a new version is out.'
+            echo
+            echo "Built from ${SHA:0:7}. Every push to \`main\` is released; see CHANGELOG.md for the whole history."
+          } > notes.md
+          if gh release view "v$VERSION" --repo "$REPO" > /dev/null 2>&1; then
+            # A run again on a released commit: its files are replaced.
+            gh release upload "v$VERSION" out/* --repo "$REPO" --clobber
+          else
+            gh release create "v$VERSION" out/* --repo "$REPO" --target "$SHA" --latest \
+              --title "Brainrot Games Maker $VERSION" --notes-file notes.md
+          fi
+          # The rolling "latest" release from before numbered versions: gone (releases/latest still finds the newest).
+          gh release delete latest --repo "$REPO" --yes --cleanup-tag 2>/dev/null || true

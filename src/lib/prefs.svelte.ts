@@ -17,11 +17,13 @@ export interface Prefs {
   reduceMotion: boolean;
   /** Phone buzzers: the buzzer server's address ('' for the one this copy was built with). */
   buzzerServer: string;
+  /** Ask GitHub whether a newer version is out when the app starts (update.svelte.ts). */
+  checkUpdates: boolean;
   /** Which defaults the stored settings were made with (2: Save replaces by default). */
   v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', v: 2 };
+export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', checkUpdates: true, v: 2 };
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 

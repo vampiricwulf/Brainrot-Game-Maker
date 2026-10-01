@@ -1,5 +1,7 @@
 // Stamped in at build time by vite.config.ts (shown in ℹ About).
 declare const __APP_VERSION__: string;
+/** A published release build (it checks for newer ones when it starts). */
+declare const __RELEASE__: boolean;
 /** Short commit hash, or '' when built outside git. */
 declare const __BUILD_COMMIT__: string;
 /** YYYY-MM-DD. */

@@ -91,6 +91,16 @@
       spin. The editor and the host’s controls follow your computer’s “reduce motion” setting.
     </p>
 
+    <h3>Updates</h3>
+    <label class="check">
+      <input type="checkbox" bind:checked={prefs.checkUpdates} onchange={savePrefs} />
+      Check for a newer version when the app starts
+    </label>
+    <p class="muted small">
+      Asks GitHub, where new versions are published (at most every few hours), and says so in the editor when one is out.
+      ℹ About can check any time.
+    </p>
+
     <h3>Phone buzzers</h3>
     <label class="field inline">
       Buzzer server

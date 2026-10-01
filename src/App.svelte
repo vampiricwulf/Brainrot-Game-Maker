@@ -31,6 +31,7 @@
   import { validate } from './lib/validate';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
   import { migrateGame, newId } from './lib/model';
+  import { checkForUpdate } from './lib/update.svelte';
   import { audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
   import { migrateSession, newSession, rebaseSession } from './lib/session';
@@ -158,6 +159,8 @@
     await pruneMedia([app.game, app.resumable?.game], held);
     loaded = true;
     await restoreRoom();
+    // Is a newer version out? (The builder only: an exported game file isn't updated.)
+    void checkForUpdate();
   });
 
   /**

@@ -284,6 +284,29 @@ export const writing = (): boolean => writes > 0;
 /** Asked when the window is closed while a save is written. */
 export const CLOSE_ASK = 'A save is in progress. Closing now would cut it off.\n\nThe app closes by itself once it’s done.';
 
+/** What writes the last edits (given to flushOnClose). */
+let closeFlush: (() => void) | null = null;
+
+/** Write the last edits and wait for every write under way (before the app restarts for an update). */
+export async function saveEverythingNow(): Promise<void> {
+  closeFlush?.();
+  await new Promise((r) => setTimeout(r));
+  await (await import('idb-keyval')).get('__probe');
+  if (writing()) await writesFinished();
+}
+
+/** This copy of the desktop app can update itself in place (it carries the key releases are signed with). */
+export async function canSelfUpdate(): Promise<boolean> {
+  return inTauri() && (await invoke<boolean>('can_self_update').catch(() => false));
+}
+
+/** Put a release's .exe in place of this one (its signature checked), then restart into it once everything's saved. */
+export async function installUpdate(exeUrl: string, signatureUrl: string): Promise<void> {
+  await invoke('install_update', { exeUrl, signatureUrl });
+  await saveEverythingNow();
+  await invoke('restart_app');
+}
+
 /**
  * When the app's window is closed: run `flush` (it writes the last edits), then close once those writes are done (the
  * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits. While a save,
@@ -291,6 +314,7 @@ export const CLOSE_ASK = 'A save is in progress. Closing now would cut it off.\n
  */
 export function flushOnClose(flush: () => void): void {
   if (!isHost()) return;
+  closeFlush = flush;
   /** Waiting for a save to finish before closing (the ✕ clicked again changes nothing). */
   let waiting = false;
   import('@tauri-apps/api/event')

@@ -48,6 +48,8 @@
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
+  import UpdateControls from './UpdateControls.svelte';
+  import { update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import ShortcutsDialog from './ShortcutsDialog.svelte';
   import { inTauri } from '../lib/platform';
@@ -716,6 +718,13 @@
       <span>Brainrot Games Maker saves your autosave and media in a folder on this PC.</span>
       <button class="small" onclick={() => ((about = true), dismissNotice())}>ℹ See where</button>
       <button class="small ghost" onclick={dismissNotice}>Got it</button>
+    </div>
+  {/if}
+  {#if (update.status === 'available' || update.status === 'installing') && update.latest && update.latest.version !== update.skipped}
+    {@const latest = update.latest}
+    <div class="data-notice" role="status">
+      <span>⬆ <b>Brainrot Games Maker {latest.version}</b> is out (this is {__APP_VERSION__}).</span>
+      <UpdateControls release={latest} notice />
     </div>
   {/if}
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}

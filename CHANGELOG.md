@@ -1,7 +1,8 @@
 # Changelog
 
-What changed in Brainrot Games Maker, newest first. Every push to `main` builds the **Latest** release, so entries
-are grouped by the day they were pushed (Pacific time, PST/PDT) rather than by version. Each entry names the commits
+What changed in Brainrot Games Maker, newest first. Every push to `main` is released as a numbered version
+(`vX.Y.Z`, from 1.0.0 on: see "Versions and releases" in README.md), whose release notes are the lines it adds here;
+entries are grouped by the day they were pushed (Pacific time, PST/PDT). Each entry names the commits
 it covers, so it also serves as the readable record where a commit title says little (see
 [Notes on the history](#notes-on-the-history)).
 
@@ -13,6 +14,11 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **Version numbers and updates**: the app has a version (1.0.0 to start; every push to `main` is released as the
+  next one, `MAJOR.MINOR.PATCH`), shown in ℹ About. When a newer version is out, the editor says so: the desktop app
+  updates itself in place (⬆ Update: it downloads the new `.exe`, checks it's signed with the project's key, saves your
+  game and restarts into it), the HTML file offers the new file to download. ℹ About can check any time, and ⚙
+  Settings can turn the check at start-up off.
 - **⏭ Skip** in the host panel, for the player answering on a phone buzz: they pass with no points taken (they can't
   buzz again on that clue), and the next in the buzz order answers.
 - **A volume for each sound** in 🔊 Sounds (0–100%, full volume to begin with): the game plays it that loud, and

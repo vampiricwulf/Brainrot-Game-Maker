@@ -14,6 +14,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(build.version),
     __BUILD_COMMIT__: JSON.stringify(build.commit),
     __BUILD_DATE__: JSON.stringify(build.date),
+    // A published release (CI sets BRAINROT_RELEASE): it checks for newer ones when it starts. Other builds (tests,
+    // local ones) only check when asked (ℹ About).
+    __RELEASE__: JSON.stringify(build.release),
   },
   build: { outDir: 'dist', assetsInlineLimit: 100_000_000 },
   test: {

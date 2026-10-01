@@ -10,10 +10,21 @@ desktop app.
 
 ## Download
 
-Get it from the **[Latest release](../../releases/latest)**, which is rebuilt on every push to `main`:
+Get it from the **[Latest release](../../releases/latest)** (every push to `main` is released, numbered
+`MAJOR.MINOR.PATCH`):
 
 - **`brainrot-game-maker.html`**: double-click it to open it in Chrome, Edge or Firefox.
 - **`brainrot-game-maker-portable.exe`**: the Windows desktop app. No install needed.
+
+**Updating.** When a newer version is out, the editor says so (it asks GitHub when it starts, at most every few hours;
+⚙ Settings can turn that off, and ℹ About checks any time):
+
+- The desktop app updates itself: **⬆ Update to …** downloads the new `.exe`, checks it's signed with the project's
+  key, saves your game and restarts into it, in the same place. (A copy built without the key offers the download.)
+- The HTML file offers the new file: save it in place of the old one (same name and folder) and open it. Your games
+  carry over: they're kept in the browser, not in the file.
+
+ℹ About shows which version you have.
 
 Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
 
@@ -331,4 +342,28 @@ The stack is Svelte 5, TypeScript and Vite, bundled into a single file. The desk
 | `src/play/` | Hosting: the stage, host panel, RPG and board game play |
 | `src/audience/` | The audience window |
 | `src-tauri/` | The desktop app |
-| `tests/e2e/`, `scripts/` | Browser tests and the screenshot script |
+| `tests/e2e/`, `scripts/` | Browser tests, the screenshot script and the version script |
+
+### Versions and releases
+
+Versions follow [Semantic Versioning](https://semver.org). Every push to `main` is released by CI as `vX.Y.Z`
+(`.github/workflows/build.yml`), numbered by `scripts/version.mjs` from the last release and the `CHANGELOG.md`
+lines the push adds:
+
+- only lines under **Fixed** → a patch (1.4.2 → 1.4.3);
+- anything under **Added**, **Changed** or **Removed** → a minor (1.4.2 → 1.5.0);
+- a line marked **Breaking** (e.g. saves older versions can't open) → a major (1.4.2 → 2.0.0).
+
+`package.json`'s version is a floor: raise it by hand (`node scripts/version.mjs set 2.0.0`) for a deliberate step.
+`node scripts/version.mjs check` makes sure `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`,
+`Cargo.toml` and `Cargo.lock` agree. The release notes are the changelog lines added since the last release.
+
+**Signing the desktop app's updates** (once): the desktop app only installs an update signed with the project's key.
+
+1. `npx tauri signer generate -w ~/.tauri/brainrot-update.key` (pick a password; keep the key file private and
+   backed up: without it, installed copies can't update themselves any more).
+2. In the repository's Settings › Secrets and variables › Actions: secret **`UPDATE_SIGNING_KEY`** = the key file's
+   contents, secret **`UPDATE_SIGNING_KEY_PASSWORD`** = its password, variable **`UPDATE_PUBKEY`** = the public key
+   it printed (also in `brainrot-update.key.pub`).
+
+Without them CI still releases, unsigned, and the desktop app offers the download instead of updating itself.

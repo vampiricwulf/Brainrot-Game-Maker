@@ -1,0 +1,106 @@
+// Is a newer version out? GitHub's "latest release" answer is faked here: the editor says when one is out (with the
+// new file to download, for the HTML file), "Not now" puts it away for that version, and ℹ About checks on demand.
+import { chromium } from 'playwright-core';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const file = resolve(process.env.APP_FILE || 'dist/index.html');
+if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const url = pathToFileURL(file).href;
+const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+const browser = await chromium.launch({ executablePath });
+const errors = [];
+function assert(cond, msg) {
+  if (!cond) throw new Error('Assertion failed: ' + msg);
+  console.log('  ✓ ' + msg);
+}
+
+const DL = 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/download';
+const release = (v) => ({
+  tag_name: `v${v}`,
+  html_url: `https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/tag/v${v}`,
+  body: '### Added\n- Something new',
+  draft: false,
+  prerelease: false,
+  assets: ['brainrot-game-maker.html', 'brainrot-game-maker-portable.exe', 'brainrot-game-maker-portable.exe.sig'].map((name) => ({
+    name,
+    browser_download_url: `${DL}/v${v}/${name}`,
+  })),
+});
+
+try {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // The start-up check is on for this test (published releases have it on; test builds don't ask GitHub by themselves).
+  await context.addInitScript(() => localStorage.setItem('jb.updateCheck', 'on'));
+  let answer = release('99.0.0');
+  let asked = 0;
+  await context.route('https://api.github.com/**', (route) => {
+    asked++;
+    if (answer === 'offline') return route.abort();
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(answer) });
+  });
+  // (Downloads opened from the notice land here instead of on GitHub.)
+  await context.route('https://github.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/plain', body: 'download' }));
+  const page = await context.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(url);
+  const notice = page.locator('.data-notice', { hasText: 'is out' });
+  await notice.waitFor();
+  assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
+  const [popup] = await Promise.all([page.waitForEvent('popup'), notice.getByRole('button', { name: '⬇ Download 99.0.0' }).click()]);
+  await popup.waitForURL(/\/v99\.0\.0\/brainrot-game-maker\.html$/);
+  assert(true, 'Download opens the new HTML file’s link');
+  await popup.close().catch(() => {});
+
+  // Not now: put away for this version, also after a reload (which uses what it heard, without asking again).
+  await notice.getByRole('button', { name: 'Not now' }).click();
+  await notice.waitFor({ state: 'detached' });
+  const before = asked;
+  await page.reload();
+  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await page.waitForTimeout(800);
+  assert((await notice.count()) === 0 && asked === before, 'Not now puts it away for that version (a reload asks GitHub no sooner than a few hours later)');
+
+  // ℹ About checks on demand: a still newer one shows again; this one is the newest; offline says so.
+  const about = async () => {
+    await page.getByRole('button', { name: /^More:/ }).click();
+    await page.getByRole('menuitem', { name: /About/ }).click();
+    return page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
+  };
+  let dlg = await about();
+  answer = release('0.0.1');
+  await dlg.getByRole('button', { name: 'Check for updates' }).click();
+  await dlg.getByText('✓ This is the newest version.').waitFor();
+  assert(true, 'ℹ About › Check for updates: "This is the newest version" when it is');
+  answer = 'offline';
+  await dlg.getByRole('button', { name: 'Check for updates' }).click();
+  await dlg.getByText(/Couldn't reach GitHub/).waitFor();
+  assert(true, 'and says when GitHub can’t be reached');
+  answer = release('99.1.0');
+  await dlg.getByRole('button', { name: 'Check for updates' }).click();
+  await dlg.getByRole('button', { name: '⬇ Download 99.1.0' }).waitFor();
+  assert(true, 'a newer version shows in ℹ About with its download');
+  await page.keyboard.press('Escape');
+  await page.locator('.data-notice', { hasText: '99.1.0 is out' }).waitFor();
+  assert(true, 'and the editor’s notice comes back for it (put away was only for 99.0.0)');
+
+  // ⚙ Settings can turn the start-up check off.
+  await page.getByRole('button', { name: /^More:/ }).click();
+  await page.getByRole('menuitem', { name: /Settings/ }).click();
+  const box = page.getByLabel('Check for a newer version when the app starts');
+  assert(await box.isChecked(), '⚙ Settings has the start-up check, on');
+  await box.uncheck();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => localStorage.removeItem('jb.update'));
+  const n = asked;
+  await page.reload();
+  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await page.waitForTimeout(800);
+  assert(asked === n, 'with it off, starting doesn’t ask GitHub');
+
+  assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
+  console.log('Update E2E passed.');
+} finally {
+  await browser.close();
+}

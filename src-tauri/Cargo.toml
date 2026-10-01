@@ -1,6 +1,6 @@
 [package]
 name = "brainrot-game-maker"
-version = "0.1.0"
+version = "1.0.0"
 description = "Brainrot Games Maker desktop app"
 edition = "2021"
 
@@ -16,6 +16,9 @@ tauri-plugin-single-instance = "2"
 # the Origin header the plugin would otherwise add, so it looks like a normal browser download.
 # Keep the same major.minor as @tauri-apps/plugin-http in package.json: `tauri build` refuses mismatches.
 tauri-plugin-http = { version = "~2.7", features = ["unsafe-headers"] }
+# The desktop app's in-place updates: a new version's signature is checked (minisign, as `tauri signer` makes it).
+minisign-verify = "0.2"
+base64 = "0.22"
 
 [target.'cfg(windows)'.dependencies]
 # Detects running as administrator (which makes Discord/OBS miss the game's sound), and shows a message

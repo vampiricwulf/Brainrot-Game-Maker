@@ -7,6 +7,8 @@
   import { dataFolders, openDataFolder, openLink, type DataFolders, type FolderName } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
   import { storageKept } from '../lib/persist';
+  import { checkForUpdate, update } from '../lib/update.svelte';
+  import UpdateControls from './UpdateControls.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -59,7 +61,17 @@
       <dt>Source</dt>
       <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker</a></dd>
       <dt>Updates</dt>
-      <dd><a href={`${REPO}/releases/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a></dd>
+      <dd class="updates">
+        <span role="status">
+          {#if update.status === 'checking'}Checking…{:else if update.status === 'available' && update.latest}Version {update.latest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{/if}
+        </span>
+        {#if (update.status === 'available' || update.status === 'installing') && update.latest}
+          <UpdateControls release={update.latest} />
+        {:else}
+          <a href={`${REPO}/releases/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
+        {/if}
+        <button class="small" onclick={() => checkForUpdate(true)} disabled={update.status === 'checking' || update.status === 'installing'}>Check for updates</button>
+      </dd>
       <dt>Problems</dt>
       <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue</a></dd>
       <dt>License</dt>
@@ -190,6 +202,12 @@
   }
   dd {
     margin: 0;
+  }
+  .updates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
   }
   .folder {
     display: flex;

@@ -12,5 +12,7 @@ export function buildInfo() {
       commit = '';
     }
   }
-  return { version, commit, date: new Date().toISOString().slice(0, 10) };
+  // A published release (CI sets BRAINROT_RELEASE=1 for the files it releases): it checks for newer ones on its own.
+  const release = process.env.BRAINROT_RELEASE === '1';
+  return { version, commit, date: new Date().toISOString().slice(0, 10), release };
 }
