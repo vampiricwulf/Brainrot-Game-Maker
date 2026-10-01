@@ -249,6 +249,17 @@ try {
   await page.getByRole('button', { name: /Wheels & Dice/ }).click();
   assert(wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1', 'a wheel tile pasted in another game brings its wheel');
 
+  // Right after a round is added (its name selected, ready to type), Ctrl+C on a tile copies the tile, not the name.
+  await addRound(/Jeopardy board/);
+  const nameSelected = await page.evaluate(() => {
+    const a = document.activeElement;
+    return a?.hasAttribute('data-round-name') && a.selectionEnd - a.selectionStart === a.value.length;
+  });
+  await tile(0, 1).focus();
+  await key('Control+c');
+  const copied = await page.locator('.toast').innerText();
+  assert(nameSelected && /^Copied Category 1 \$\d+/.test(copied), `Ctrl+C on a tile right after adding a round copies the tile (${copied})`);
+
   // Esc leaves a new text box's text field, then deselects it, then closes the clue.
   await tabs.nth(0).click();
   await tile(1, 1).click();

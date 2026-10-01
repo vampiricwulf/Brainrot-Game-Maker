@@ -26,6 +26,7 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 const where = () => page.locator('.rh .where').innerText();
+const toast = () => page.locator('.toast').innerText();
 
 /** A big world (20×20 screens) from a file, with four players and an audience window. */
 async function bigWorld() {
@@ -237,6 +238,31 @@ try {
   await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   assert(await page.getByRole('button', { name: 'Screen Screen B1' }).isVisible(), 'a screen can be added to the map grid');
+  const focusedLabel = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+  assert((await focusedLabel()) === 'Screen Screen B1', `the new screen has the focus (not the page) (${await focusedLabel()})`);
+  // Ctrl+C on it copies the screen, though the round's name is still selected from when the round was added.
+  await page.keyboard.press('Control+c');
+  assert((await toast()).startsWith('Copied Screen B1'), `Ctrl+C right after adding the round copies the screen (${await toast()})`);
+  // Enter on an empty cell adds a screen there, and the focus stays on the map.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  assert((await focusedLabel()) === 'Screen Screen B2', `Enter on an empty cell adds a screen with the focus on it (${await focusedLabel()})`);
+  await page.keyboard.press('Delete');
+  assert(!(await page.getByRole('button', { name: 'Screen Screen B2' }).count()), 'Delete takes it away again');
+  // Alt+drag from a screen (the map full where it starts) draws a box: both screens selected, nothing moved.
+  const startBox = await page.getByRole('button', { name: 'Screen Start' }).boundingBox();
+  const b1Box = await page.getByRole('button', { name: 'Screen Screen B1' }).boundingBox();
+  await page.keyboard.down('Alt');
+  await page.mouse.move(startBox.x + startBox.width / 2, startBox.y + startBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b1Box.x + b1Box.width / 2, b1Box.y + b1Box.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  await page.waitForTimeout(150);
+  const boxed = await page.locator('.grid-map .cell.screen.sel').count();
+  const startAt = await page.getByRole("button", { name: "Screen Start" }).getAttribute("data-cell");
+  assert(boxed === 2 && startAt === "0,0" && (await page.locator(".side h4").first().innerText()) === '2 screens selected', `Alt+drag from a screen draws a box (${boxed} selected, Start at ${startAt})`);
+  await page.keyboard.press('Escape');
   // Put a secret Potion on the start screen.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();

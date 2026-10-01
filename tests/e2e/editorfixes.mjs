@@ -1,6 +1,8 @@
 // Editor polish at 1280×720: the first screen, the sidebar and its checklist, board values, category names and tools,
 // Daily Doubles, standard dice tiles, wheels and dice made where they're picked, stat presets, RPG doorways and
-// characters, the world's menu, one set of ↶ ↷, and the theme's clue text and preview.
+// characters, the world's menu, one set of ↶ ↷, and the theme's clue text and preview. Also: Enter in a category's
+// name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, and ＋ buttons that put the
+// focus on what they add.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -28,6 +30,14 @@ const header = page.locator('.editor > header');
 const tabs = page.locator('nav > button.round-tab');
 const values = (loc) => loc.evaluateAll((els) => els.map((e) => e.value));
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('data-place') ?? document.activeElement?.tagName);
+const note = page.locator('.history-notice');
+const toastText = async () => ((await page.locator('.toast').count()) ? await page.locator('.toast').innerText() : '');
+/** The focused text box: its label, value, and whether all of it is selected (ready to type over). */
+const typingIn = () =>
+  page.evaluate(() => {
+    const a = document.activeElement;
+    return { label: a?.getAttribute('aria-label'), value: a?.value, all: !!a?.value && a.selectionStart === 0 && a.selectionEnd === a.value.length };
+  });
 
 async function addRound(mode) {
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -96,6 +106,46 @@ try {
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   assert((await page.locator('.cat').count()) === 6, 'back to six');
   assert((await page.getByText('Rows (questions per category)').count()) === 1, 'the rows field says rows');
+  // Enter in a category's name goes to its top tile (Shift+Enter is a new line); a new line left at its end goes.
+  const cat3 = page.locator('[data-cat-name="2"]');
+  await cat3.fill('Memes');
+  await cat3.press('Enter');
+  assert((await page.evaluate(() => document.activeElement?.getAttribute('data-tile'))) === '2,0' && (await cat3.inputValue()) === 'Memes', 'Enter in a category name goes to its top tile, adding no new line');
+  await cat3.fill('Memes\n');
+  await page.locator('[data-tile="2,1"]').focus();
+  assert((await cat3.inputValue()) === 'Memes', 'a new line left at the end of a name goes when the box is left');
+  await cat3.focus();
+  await page.keyboard.press('Shift+Enter');
+  await page.keyboard.type('2');
+  assert((await cat3.inputValue()) === 'Memes\n2', 'Shift+Enter starts a second line');
+  await cat3.fill('Memes');
+  // Ctrl+Enter on the last clue: a note says so (not nothing at all).
+  await page.locator('[data-tile="5,4"]').click();
+  await page.keyboard.press('Control+Enter');
+  assert((await toastText()).includes('last clue'), `Ctrl+Enter on the last clue says it's the last (${await toastText()})`);
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // ---------- Import clues keeps what was pasted ----------
+  await page.getByRole('button', { name: 'Import clues…' }).click();
+  const imp = page.getByRole('dialog', { name: 'Import clues' });
+  await imp.getByLabel('Clues to import').fill('Science\t200\tH2O is this\tWater\nScience\t400\tCO2 is this\tCarbon dioxide');
+  await page.mouse.click(4, 4);
+  assert(await imp.isVisible(), 'a click outside Import clues doesn’t close it (nor lose what was pasted)');
+  await page.keyboard.press('Escape');
+  await imp.waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Import clues…' }).click();
+  assert((await imp.getByLabel('Clues to import').inputValue()).startsWith('Science\t200'), 'closed with Esc and opened again, what was pasted is still there');
+  await imp.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Import clues…' }).click();
+  assert((await imp.getByLabel('Clues to import').inputValue()).startsWith('Science\t200'), 'and after Cancel');
+  await imp.getByRole('button', { name: /^Import \d+ clue/ }).click();
+  await note.waitFor();
+  const imported = await note.innerText();
+  assert(/Imported \d+ clues? into Jeopardy!/.test(imported) && !imported.includes('Row values') && !(await toastText()).includes('Imported'), `importing says so once, at the board (${imported.replace(/\n/g, ' ')})`);
+  await page.keyboard.press('Control+z');
+  await page.getByRole('button', { name: 'Import clues…' }).click();
+  assert((await imp.getByLabel('Clues to import').inputValue()) === '', 'once imported, the box starts empty');
+  await page.keyboard.press('Escape');
 
   // ---------- Row values and Daily Doubles ----------
   const row1 = page.getByLabel('Row 1 value');
@@ -139,6 +189,18 @@ try {
   assert(!(await page.locator('nav .problem').allInnerTexts()).some((l) => l.includes('wheel/dice')), 'a tile with standard dice is not a problem');
   await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
   assert(await page.getByRole('button', { name: 'Spicy Wheel' }).isVisible(), 'and the wheel made there is in Wheels & Dice');
+  // A slice's weight: named after its slice, and never 0 or less (the slice would drop off the wheel).
+  await page.getByRole('button', { name: 'Spicy Wheel' }).click();
+  const weight = page.getByLabel('Option 1 weight');
+  await weight.fill('0');
+  await weight.press('Tab');
+  assert((await weight.inputValue()) === '0.1', `a weight of 0 is the least a slice can have (${await weight.inputValue()})`);
+  await weight.fill('');
+  await weight.press('Tab');
+  assert((await weight.inputValue()) === '1', 'a blank weight is 1');
+  await weight.fill('-3');
+  await weight.press('Tab');
+  assert((await weight.inputValue()) === '0.1', 'and a negative one the least');
   assert((await page.locator('main main').count()) === 0 && (await page.locator('main').count()) === 1, 'no main inside main');
 
   // ---------- Board game: Move by a new dice ----------
@@ -156,6 +218,8 @@ try {
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   assert(await page.getByRole('button', { name: /HP \(bar/ }).isDisabled(), 'a stat preset can only be added once');
+  const hp = await typingIn();
+  assert(hp.label === 'Stat name' && hp.value === 'HP' && hp.all, `a stat preset puts the typing in its name (${JSON.stringify(hp)})`);
 
   // ---------- RPG: doorways and characters ----------
   await addRound(/RPG/);
@@ -169,9 +233,40 @@ try {
   assert((await page.getByLabel('Object class').inputValue()) === 'doorway', 'the 🚪 Doorway button places a doorway');
   assert(await page.getByLabel('Leads to: screen').evaluate((s) => s === document.activeElement), 'and its screen list has the focus');
   await page.getByLabel('Leads to: screen').selectOption({ label: 'Screen B1' });
+  // 📦 Item ▾ with no items yet: make one here, or go to 📊 Stats & Items.
+  await page.getByRole('button', { name: '📦 Item ▾' }).click();
+  const itemMenu = await page.getByRole('menu').getByRole('menuitem').allInnerTexts();
+  assert(itemMenu.some((t) => t.includes('New item here')) && itemMenu.some((t) => t.includes('Stats & Items')), `📦 Item ▾ with no items offers to make one (${itemMenu.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: /New item here/ }).click();
+  assert(
+    (await page.getByLabel('Object class').inputValue()) === 'item' && (await page.getByLabel('Item', { exact: true }).evaluate((s) => s.selectedOptions[0].text)) === 'Item 1',
+    'which puts a new catalog item on the screen',
+  );
   await page.getByRole('button', { name: '🧙 Character' }).click();
   assert((await page.getByLabel('Object class').inputValue()) === 'npc', 'the 🧙 Character button places a character');
+  const npcName = await typingIn();
+  assert(npcName.value === 'Character' && npcName.all, `with its name ready to type over (${JSON.stringify(npcName)})`);
+  await page.getByRole('button', { name: '＋ Stat (power, HP…)' }).click();
+  const npcStat = await typingIn();
+  assert(npcStat.label === 'Stat name' && npcStat.all, 'its ＋ Stat puts the typing in the stat’s name');
+  await page.getByRole('button', { name: 'Delete stat', exact: true }).click();
+  assert((await note.innerText()).includes('Deleted stat “Power” of “Character”'), 'deleting its stat says so, with Undo');
+  await page.getByRole('button', { name: '＋ Dialogue slide' }).click();
+  await page.getByRole('dialog', { name: /Dialogue slide/ }).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Delete dialogue' }).click();
+  assert((await note.innerText()).includes('Deleted the dialogue slide of “Character”'), 'and so does deleting its dialogue slide');
+  await note.getByRole('button', { name: '↶ Undo' }).click();
+  assert((await page.getByRole('button', { name: 'Edit dialogue slide…' }).count()) === 1, 'whose Undo brings it back');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
+
+  // ---------- ＋ Item and ＋ Shop put the typing in the new one's name ----------
+  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '＋ Item' }).click();
+  const item = await typingIn();
+  assert(item.label === 'Item name' && item.value === 'Item 2' && item.all, `＋ Item puts the typing in its name (${JSON.stringify(item)})`);
+  await page.getByRole('button', { name: '＋ Shop' }).click();
+  const shop = await typingIn();
+  assert(shop.label === 'Shop name' && shop.value === 'Shop 1' && shop.all, `＋ Shop too (${JSON.stringify(shop)})`);
 
   // ---------- Pre-game: 📋 Game rules ----------
   await page.getByRole('button', { name: '▶ Play' }).click();
