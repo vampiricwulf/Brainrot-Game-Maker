@@ -173,11 +173,11 @@ try {
   assert((await page.getByLabel('Object class').inputValue()) === 'npc', 'the 🧙 Character button places a character');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
-  // ---------- Pre-game: ⚙ Game rules ----------
+  // ---------- Pre-game: 📋 Game rules ----------
   await page.getByRole('button', { name: '▶ Play' }).click();
   const rules = await openRules(page);
   const boxes = await rules.locator('.check input[type=checkbox]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
-  assert(boxes.length > 3 && new Set(boxes).size === 1, `every checkbox in ⚙ Game rules is the same size (${boxes})`);
+  assert(boxes.length > 3 && new Set(boxes).size === 1, `every checkbox in 📋 Game rules is the same size (${boxes})`);
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
 
   // ---------- Theme: clue text and preview ----------

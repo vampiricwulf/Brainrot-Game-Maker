@@ -144,7 +144,7 @@ try {
   await page.waitForTimeout(300);
   assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use a theme from another game takes its theme');
 
-  // ---------- Pre-game: ⚙ Game rules › Most players ----------
+  // ---------- Pre-game: 📋 Game rules › Most players ----------
   await page.getByRole('button', { name: '▶ Play' }).click();
   await openRules(page);
   await page.getByLabel('Most players').fill('12');

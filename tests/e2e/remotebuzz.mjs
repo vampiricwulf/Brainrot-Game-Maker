@@ -104,10 +104,10 @@ try {
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');
   await settings.getByRole('button', { name: 'Done' }).click();
 
-  // ---------- Pre-game: players; ⚙ Game rules has no buzzer options (they're on the 📱 Phone buzzers card) ----------
+  // ---------- Pre-game: players; 📋 Game rules has no buzzer options (they're on the 📱 Phone buzzers card) ----------
   await playWithPlayers(page, 3);
   const rules = await openRules(page);
-  assert((await rules.getByLabel(/Buzzer mode/).count()) === 0 && (await rules.getByLabel('Open the buzzers').count()) === 0, '⚙ Game rules has no buzzer options');
+  assert((await rules.getByLabel(/Buzzer mode/).count()) === 0 && (await rules.getByLabel('Open the buzzers').count()) === 0, '📋 Game rules has no buzzer options');
 
   // ---------- Pre-game: Buzzer mode, its options, start the room ----------
   const card = page.getByRole('region', { name: 'Phone buzzers' });

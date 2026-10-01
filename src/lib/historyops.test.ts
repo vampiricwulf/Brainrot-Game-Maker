@@ -251,6 +251,15 @@ describe('random edits (seeded)', () => {
 });
 
 describe('mergeOps', () => {
+  it('folds typing in something just added into its insert (a player added, then named)', () => {
+    const ins: Op = { t: 'ins', p: ['players'], i: 1, id: 'p2', v: { id: 'p2', name: 'Player 2', color: '#fff' } };
+    const name = (b: string, a: string): Op => ({ t: 'set', p: ['players', 'p2'], k: 'name', b, a });
+    expect(mergeOps([ins], [name('Player 2', 'Cy')])).toEqual([{ ...ins, v: { id: 'p2', name: 'Cy', color: '#fff' } }]);
+    // Not another player's name, nor one that doesn't follow on from it.
+    expect(mergeOps([ins], [{ t: 'set', p: ['players', 'p1'], k: 'name', b: 'A', a: 'B' }])).toBeNull();
+    expect(mergeOps([ins], [name('Someone', 'Cy')])).toBeNull();
+  });
+
   const set = (k: string, b: Json | undefined, a: Json | undefined, p = ['rounds', 'r1']): Op => {
     const op: Op = { t: 'set', p, k };
     if (b !== undefined) op.b = b;

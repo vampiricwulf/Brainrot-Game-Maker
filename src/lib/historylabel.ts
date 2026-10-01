@@ -22,7 +22,18 @@ export type Place =
   | { tab: 'tiebreaker'; side?: Side; element?: string }
   | { tab: 'round'; round: string; part?: RoundPart }
   | { tab: 'world'; world: string; map?: string; screen?: string; look?: string; inSlide?: boolean; element?: string }
-  | { tab: 'history' };
+  | { tab: 'history' }
+  /** The ▶ Play screen's pre-game settings (the players, the rules, the phone buzzers, on stream). */
+  | { tab: 'play'; part: PlayPart };
+
+export type PlayPart = 'players' | 'rules' | 'buzzers' | 'stream';
+/** Each part of the pre-game screen: its name and icon. */
+const PLAY_PARTS: Record<PlayPart, [string, string]> = {
+  players: ['Players', '👤'],
+  rules: ['Game rules', '📋'],
+  buzzers: ['Phone buzzers', '📱'],
+  stream: ['On stream', '📺'],
+};
 
 export type RoundPart =
   | { kind: 'category'; category: string }
@@ -216,11 +227,14 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       at.crumbs.push('Game title');
       go({ tab: 'title' });
       break;
-    // The rules, the buzzers and the players are set on the ▶ Play screen (no place in the editor shows them).
-    case 'settings':
-      at.crumbs.push('Play', path[1] === 'stream' ? 'On stream' : BUZZ_SETTINGS.has(path[1]) ? 'Phone buzzers' : 'Game rules');
-      at.icon = '⚙';
+    // The rules, the buzzers and the players are set on the ▶ Play screen (Go there opens it).
+    case 'settings': {
+      const part = path[1] === 'stream' ? 'stream' : BUZZ_SETTINGS.has(path[1]) ? 'buzzers' : 'rules';
+      at.crumbs.push('Play', PLAY_PARTS[part][0]);
+      at.icon = PLAY_PARTS[part][1];
+      go({ tab: 'play', part });
       break;
+    }
     case 'audio':
       at.crumbs.push('Sounds');
       at.icon = '🔊';
@@ -229,6 +243,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     case 'players': {
       at.crumbs.push('Play', 'Players');
       at.icon = '👤';
+      go({ tab: 'play', part: 'players' });
       const p = byId<Game['players'][number]>(game.players, path[1]);
       if (!p) break;
       reached(2, 'player', p.name);
@@ -342,7 +357,7 @@ const RULES: Record<string, string> = {
   phoneJoin: 'New players from their phone',
   earlyBuzzLock: 'Early buzz wait',
 };
-/** Settings on the pre-game screen's 📱 Phone buzzers card (the rest are in ⚙ Game rules). */
+/** Settings on the pre-game screen's 📱 Phone buzzers card (the rest are in 📋 Game rules). */
 const BUZZ_SETTINGS = new Set<unknown>(['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock']);
 const FIELDS: Record<string, string> = {
   hostNotes: 'host notes',

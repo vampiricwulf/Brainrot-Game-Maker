@@ -2,6 +2,7 @@
 import { newGame, type Game, type Session } from './model';
 import { newLive, type Live } from './live';
 import type { SavedPlay } from './persist';
+import type { PlayPart } from './historylabel';
 
 export type Screen = 'editor' | 'play';
 
@@ -28,6 +29,8 @@ export const app = $state<{
   fileAutosave: { path: string; at: number } | null;
   /** An exported, player-only game file: no editor, and nothing it keeps outlasts a refresh but the game in progress. */
   playerOnly: boolean;
+  /** The part of the pre-game screen to show when it opens (History's Go there), then cleared. */
+  pregameAt: PlayPart | null;
 }>({
   screen: 'editor',
   game: newGame(),
@@ -42,6 +45,7 @@ export const app = $state<{
   editGame: null,
   fileAutosave: null,
   playerOnly: false,
+  pregameAt: null,
 });
 
 /** The game the editing components change: the one being played while it's edited live, else the editor's. */

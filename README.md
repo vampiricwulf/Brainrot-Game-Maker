@@ -83,7 +83,7 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 ## Hosting
 
 Press **▶ Play** to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
-`Alt`+arrows to reorder; they're kept with the game for next time), open **⚙ Game rules** for scoring, the most
+`Alt`+arrows to reorder; they're kept with the game for next time), open **📋 Game rules** for scoring, the most
 players, timers and the round intro, and turn on phone buzzers on the **📱 Phone buzzers** card (all saved with the game
 too). Then pick one of two modes. Viewers see a "Starting soon…" card until you press **Start game**.
 

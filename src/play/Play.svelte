@@ -1,8 +1,9 @@
 <script lang="ts">
   import { modal, takeFocus } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
-  import { step } from '../lib/history.svelte';
-  import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
+  import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
+  import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
+  import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
@@ -12,7 +13,7 @@
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, type BuzzState } from '../lib/buzz';
   import {
-    acceptPhone, buzzerBase, closeRoom, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState, roomLink, sendHostState,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState, roomLink, sendHostState,
     startRoom,
   } from '../lib/remote.svelte';
   import type { RoomBuzz, RoomQueue } from '../lib/roomlink';
@@ -29,6 +30,7 @@
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
   import GameRules from './GameRules.svelte';
+  import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
   import HostPanel from './HostPanel.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
@@ -53,7 +55,7 @@
   import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
-  import type { ActionEvent, Dir8, Game, GameSettings, Player, PlayerTemplate, ScoreEvent } from '../lib/model';
+  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
   import {
     audience,
     audienceTitle,
@@ -71,7 +73,7 @@
   import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   let {
@@ -96,6 +98,8 @@
   /** The 📜 Log's tab (L opens the one used last, 🕘 History to begin with). */
   let logTab = $state<LogTab>('history');
   let showPlayers = $state(false);
+  /** 📋 Game rules mid-game (the host panel's 📋): the same rules as before the game, in a window. */
+  let showRules = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
   /** The streaming-sound help (Test sound, output device, Discord/OBS steps). */
@@ -185,7 +189,7 @@
     finishArmed = false;
   });
   $effect(() => {
-    if (dual || !(showKeys || showPlayers)) return void (panelBox = null);
+    if (dual || !(showKeys || showPlayers || showRules)) return void (panelBox = null);
     // The list needs the controls (H hid them).
     hideControls = false;
     let ro: ResizeObserver | undefined;
@@ -380,7 +384,7 @@
   const info = $derived(currentClueInfo(session, game));
 
   /** Buzzer mode, while a clue is open (a Daily Double has its one player): players buzz in. */
-  const buzzing = $derived(!!game.settings.buzzer && session.phase === 'clue' && !session.dd);
+  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd);
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
   const playerIds = () => session.players.map((p) => p.id);
@@ -414,7 +418,7 @@
     untrack(() => {
       const b = app.live.buzz;
       if (!on) {
-        if (!game.settings.buzzer && (b?.answering ?? null) !== one) app.live.buzz = { ...buzzIdle(buzz), answering: one };
+        if (!buzzerOn(game.settings) && (b?.answering ?? null) !== one) app.live.buzz = { ...buzzIdle(buzz), answering: one };
         return;
       }
       if (!b) return;
@@ -458,8 +462,11 @@
 
   // ---------- Phone buzzers ----------
 
-  /** Buzzer mode (the pre-game screen's 📱 Phone buzzers card): players buzz from their phones. */
-  const phonesOn = $derived(!!game.settings.buzzer);
+  /**
+   * Buzzer mode (the pre-game screen's 📱 Phone buzzers card): players buzz from their phones. Off in a copy with no
+   * buzzer server, whatever the game says (its setting is kept for a copy that has one).
+   */
+  const phonesOn = $derived(buzzerOn(game.settings));
 
   /** A buzzer setting, here and in the editor's copy of this game (kept, undoable there). Turning it off ends the room. */
   const setBuzzSetting: SetBuzzSetting = (key, value, label) => {
@@ -550,7 +557,7 @@
 
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
   function addPhonePlayer(conn: string, name: string): void {
-    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (⚙ Game rules, before the game)`);
+    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (📋 Game rules › Most players)`);
     const who = name.trim().slice(0, 40) || `Player ${session.players.length + 1}`;
     const p = { id: newId(), name: who, color: nextFreeColor(session.players.map((x) => x.color)), startScore: 0 };
     if (app.pregame) session.players.push(p);
@@ -818,12 +825,13 @@
     amount = game.rounds.map((_, i) => roundMaxValue(game, i)).filter(Boolean).at(-1) ?? null;
   }
 
-  /** Same players (names and colors) at 0 and a fresh board, via the pre-game screen. */
+  /** Same players (names, colors and pictures) at 0 and a fresh board, via the pre-game screen. */
   function rematch(): void {
     // Until the rematch starts, the finished game stays viewable from the editor ("View results").
     app.resumable = { game: $state.snapshot(game), session: $state.snapshot(session), savedAt: Date.now() };
     const s = newSession(game);
-    s.players = session.players.map(({ id, name, color }) => ({ id, name, color, startScore: 0 }));
+    // (With their pictures: a picture is only taken off with its −🖼.)
+    s.players = session.players.map(({ id, name, color, avatar }) => ({ id, name, color, startScore: 0, ...(avatar ? { avatar } : {}) }));
     // The same buzzer room: the phones stay joined.
     s.remote = session.remote;
     selected = [];
@@ -1263,40 +1271,38 @@
    * the order, a player added or deleted) is kept with the game, in the editor's copy too, as an undoable change in its
    * history. Sample players nobody renamed aren't kept. (Start scores are only for this game.)
    */
-  function keepRoster(g: Game, list: PlayerTemplate[]): void {
-    const old = new Map(g.players.map((p) => [p.id, p]));
-    const next = list.map((p) => {
-      const t: PlayerTemplate = { ...$state.snapshot(old.get(p.id) ?? {}), id: p.id, name: p.name, color: p.color };
-      if (p.avatar) t.avatar = p.avatar;
-      else delete t.avatar;
-      return t;
-    });
+  function keepRoster(g: Game, list: RosterRow[], before: RosterRow[]): void {
+    const next = keptRoster($state.snapshot(g.players), list, before);
     if (JSON.stringify(next) !== JSON.stringify($state.snapshot(g.players))) g.players = next;
   }
-  let rosterSeen: { s: unknown; key: string } = { s: null, key: '' };
+  /** The pre-game list as last kept (for its pictures: one taken off there comes off the game's player too). */
+  let rosterSeen: { s: unknown; key: string; list: RosterRow[] } = { s: null, key: '', list: [] };
   $effect(() => {
     if (!app.pregame) return;
-    const list = session.players.filter((p) => samples.get(p.id) !== p.name).map(({ id, name, color, avatar }) => ({ id, name, color, avatar }));
+    const list: RosterRow[] = session.players
+      .filter((p) => samples.get(p.id) !== p.name)
+      .map(({ id, name, color, avatar }) => ({ id, name, color, ...(avatar ? { avatar } : {}) }));
     const key = JSON.stringify(list);
     // A new pre-game (a rematch) starts from its players as they are.
-    if (rosterSeen.s !== session) return void (rosterSeen = { s: session, key });
+    if (rosterSeen.s !== session) return void (rosterSeen = { s: session, key, list });
     if (key === rosterSeen.key) return;
-    rosterSeen.key = key;
+    const before = rosterSeen.list;
+    rosterSeen = { s: session, key, list };
     untrack(() => {
-      keepRoster(game, list);
-      if (editorHasIt()) keepRoster(app.game, list);
+      keepRoster(game, list, before);
+      if (editorHasIt()) keepRoster(app.game, list, before);
     });
   });
 
-  /** The settings ⚙ Game rules sets. */
+  /** The settings 📋 Game rules sets. */
   const RULES = [
     'allowNegativeScores', 'deductOnWrong', 'pickerFollowsAward', 'currencySymbol', 'maxPlayers', 'defaultTimerSeconds', 'timerAutoStart',
     'roundIntro',
   ] as const satisfies readonly (keyof GameSettings)[];
-  // ⚙ Game rules changes the game being played; the editor's copy of the game keeps each change (undoable there).
+  // 📋 Game rules changes the game being played (before it, or mid-game from the host panel); the editor's copy of
+  // the game keeps each change (undoable there).
   let rulesSeen = '';
   $effect(() => {
-    if (!app.pregame) return void (rulesSeen = '');
     const rules = JSON.stringify(RULES.map((k) => game.settings[k] ?? null));
     if (!rulesSeen || rules === rulesSeen) return void (rulesSeen = rules);
     rulesSeen = rules;
@@ -1335,6 +1341,112 @@
       session.players.push({ id, name, color: nextFreeColor(session.players.map((p) => p.color)), startScore: 0 });
     }
   }
+
+  /** At the most players (👥 Players, or before the game): one more may join. */
+  function raiseMost(): void {
+    if (game.settings.maxPlayers < MAX_PLAYERS) game.settings.maxPlayers++;
+  }
+
+  // ---------- Undo and redo before the game ----------
+
+  /** The editor's steps when this pre-game opened: Ctrl+Z here takes back only the changes made since. */
+  let editorSteps = new Set<string>();
+  $effect(() => {
+    if (!app.pregame) return;
+    void session;
+    untrack(() => {
+      commit();
+      editorSteps = new Set(history.entries.map((e) => e.id));
+    });
+  });
+
+  // The text field in focus, so Ctrl+Z stays its own while it has typing of its own (as in the editor).
+  const fields = createFieldTracker();
+
+  /**
+   * Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) before the game: the editor's history, as in the editor (the same steps 🕘 History
+   * shows), for the changes made here (players, rules, buzzers, on stream, Daily Doubles placed). Never the browser's
+   * own undo, which would change the last field typed in.
+   */
+  function pregameKey(e: KeyboardEvent): void {
+    const key = undoKeyOf(e);
+    if (!key || e.defaultPrevented || fields.native(e, key)) return;
+    e.preventDefault();
+    // A window over the screen (🔊 Sound for Discord / OBS) isn't about the game.
+    if (showSound) return;
+    if (!editorHasIt()) return void toast(app.playerOnly ? 'Nothing to undo here' : 'Undo works for the game open in the editor');
+    commit();
+    const next = key === 'undo' ? history.entries[history.index - 1] : history.entries[history.index];
+    if (!next || editorSteps.has(next.id)) {
+      return void toast(key === 'undo' ? 'Nothing more to undo here (earlier changes are undone in the editor)' : 'Nothing to redo');
+    }
+    const done = key === 'undo' ? undoStep('key') : redoStep('key');
+    fields.afterGlobal();
+    if (!done) return;
+    fromEditor();
+    toast(`${key === 'undo' ? '↶ Undid' : '↷ Redid'} ${done.label}`);
+  }
+
+  /** The buzzer settings (the 📱 Phone buzzers card). */
+  const BUZZ = ['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock'] as const satisfies readonly (keyof GameSettings)[];
+
+  /** An undo or redo changed the editor's game: the game here, and the players listed, follow it. */
+  function fromEditor(): void {
+    const src = app.game;
+    const to = game.settings as unknown as Record<string, unknown>;
+    for (const k of [...RULES, ...BUZZ, 'stream'] as const) {
+      const v = $state.snapshot(src.settings[k]);
+      if (JSON.stringify(v ?? null) === JSON.stringify($state.snapshot(to[k]) ?? null)) continue;
+      if (v === undefined) delete to[k];
+      else to[k] = v;
+    }
+    if (!buzzerOn(game.settings)) closeRoom();
+    // Daily Doubles placed here (🎲 Place now).
+    for (const r of game.rounds) {
+      const e = src.rounds.find((x) => x.id === r.id);
+      if (!isBoard(r) || !isBoard(e)) continue;
+      for (const c of r.categories)
+        for (const cl of c.clues) {
+          const t = e.categories.find((x) => x.id === c.id)?.clues.find((x) => x.id === cl.id)?.type;
+          if (t && t !== cl.type && (t === 'dailyDouble' || cl.type === 'dailyDouble')) cl.type = t;
+        }
+    }
+    // The players: as the editor's game has them (start scores kept), and the sample players nobody renamed.
+    const was = new Map(session.players.map((p) => [p.id, p]));
+    const kept = src.players.map((t) => {
+      const p = was.get(t.id);
+      return { id: t.id, name: t.name, color: t.color, ...(t.avatar ? { avatar: t.avatar } : {}), startScore: p?.startScore ?? 0 };
+    });
+    const sampled = session.players.filter((p) => samples.get(p.id) === p.name && !kept.some((k) => k.id === p.id));
+    const list = [...kept, ...$state.snapshot(sampled)];
+    if (JSON.stringify(list) !== JSON.stringify($state.snapshot(session.players))) session.players = list;
+    const players = $state.snapshot(src.players);
+    if (JSON.stringify(players) !== JSON.stringify($state.snapshot(game.players))) game.players = players;
+  }
+
+  // Before the game, what Tab reaches near the foot of the window scrolls above the sticky Start bar, not under it.
+  $effect(() => {
+    if (!app.pregame) return;
+    const root = document.documentElement;
+    root.style.scrollPaddingBottom = '96px';
+    return () => void (root.style.scrollPaddingBottom = '');
+  });
+
+  // ---------- History's Go there (a pre-game part) ----------
+
+  onMount(() => {
+    const part = app.pregameAt;
+    app.pregameAt = null;
+    if (!part || !app.pregame) return;
+    void tick().then(() => {
+      const el = document.querySelector<HTMLElement>(`[data-place="play:${part}"]`);
+      if (!el) return;
+      if (el instanceof HTMLDetailsElement) el.open = true;
+      el.scrollIntoView({ block: 'nearest' });
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 1200);
+    });
+  });
 
   // ---------- Players mid-game ----------
 
@@ -1422,8 +1534,9 @@
 
   function onkey(e: KeyboardEvent): void {
     if (showPlayers && e.key === 'Escape' && e.target) return playersEsc(e);
+    if (app.pregame) return pregameKey(e);
     // The live screen editor (RPG) has its own keys.
-    if (app.pregame || showPlayers || showKeys || showSound || app.editGame || rpgMap) return;
+    if (showPlayers || showRules || showKeys || showSound || app.editGame || rpgMap) return;
     // (A key from the audience window has no target here.)
     const t = e.target instanceof HTMLElement ? e.target : null;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
@@ -1651,141 +1764,170 @@
   onfocusin={(e) => {
     tabbedTo = tabbing ? e.target : null;
     tabbing = false;
+    fields.focusin(e);
   }}
+  oninput={(e) => fields.input(e as Event & { inputType?: string })}
 />
 
 {#if app.pregame}
   <div class="pregame">
-    <!-- ▶ Play lands here (keyboard and screen reader users start at the top of the page, not on <body>). -->
-    <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
-    {#if app.resumable && app.resumable.session.phase !== 'end'}
-      <p class="warn">
-        ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the
-        {app.playerOnly ? 'start screen' : 'editor'} and press Resume game.
-      </p>
-    {/if}
-    <h2>👥 Players</h2>
-    <p class="muted">
-      Who's playing: add, rename, recolor and reorder them here{app.playerOnly ? '' : ' (they’re kept with the game for next time)'}.
-      Names and colors can still change during the game.
-    </p>
-    <!-- Deleting is done at once: the note under the list offers Undo. -->
-    <PlayerList bind:players={session.players} max={game.settings.maxPlayers} showScores avatars={!app.playerOnly} rowMenu />
-    {#if !session.players.length}
-      <div class="row">
-        <span class="warn">Add players to start: ＋ Add player, or</span>
-        <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
-      </div>
-    {/if}
-    <PhoneRoom
-      {session}
-      settings={game.settings}
-      onset={setBuzzSetting}
-      max={game.settings.maxPlayers}
-      onstart={startPhoneRoom}
-      onadd={addPhonePlayer}
-      onreject={rejectPhone}
-      onkick={kickPhone}
-    />
-    <GameRules s={game.settings} players={session.players.length} />
-
-    <h2>Display</h2>
-    <div class="modes">
-      <button class="mode" class:on={!dual} aria-pressed={!dual} onclick={() => dual && closeAudienceWindow()}>
-        <b>Single window</b>
-        <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
-      </button>
-      <button class="mode" class:on={dual} aria-pressed={!!dual} onclick={() => !dual && openAudience()}>
-        <b>📺 Separate audience window <span class="tag">Recommended</span></b>
-        <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
-      </button>
+    <div class="pregame-top">
+      <!-- ▶ Play lands here (keyboard and screen reader users start at the top of the page, not on <body>). -->
+      <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
+      {#if app.resumable && app.resumable.session.phase !== 'end'}
+        <p class="warn">
+          ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the
+          {app.playerOnly ? 'start screen' : 'editor'} and press Resume game.
+        </p>
+      {/if}
     </div>
-    {#if !dual}
-      <p class="warn small exposed">
-        ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
-        and hidden objects shown in the controls. To keep those secret, use the audience window.
-      </p>
-    {/if}
-    <SoundWarnings {dual} onhelp={() => (showSound = true)} />
+    <!-- Wide windows: who's playing on the left, how it's played and shown on the right. -->
+    <div class="cols">
+      <div class="col">
+        <section class="part" data-place="play:players" aria-labelledby="pregame-players">
+          <h2 id="pregame-players">👥 Players</h2>
+          <p class="muted">
+            Who's playing: add, rename, recolor and reorder them here{app.playerOnly ? '' : ' (they’re kept with the game for next time)'}.
+            Names and colors can still change during the game.
+          </p>
+          <!-- Deleting is done at once: the note under the list offers Undo. -->
+          <PlayerList
+            bind:players={session.players}
+            max={game.settings.maxPlayers}
+            showScores
+            avatars={!app.playerOnly}
+            rowMenu
+            onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
+          />
+          {#if !session.players.length}
+            <div class="row">
+              <span class="warn">Add players to start: ＋ Add player, or</span>
+              <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
+            </div>
+          {/if}
+        </section>
+        <div class="part" data-place="play:buzzers">
+          <PhoneRoom
+            {session}
+            settings={game.settings}
+            onset={setBuzzSetting}
+            max={game.settings.maxPlayers}
+            onstart={startPhoneRoom}
+            onadd={addPhonePlayer}
+            onreject={rejectPhone}
+            onkick={kickPhone}
+          />
+        </div>
+      </div>
+      <div class="col">
+        <GameRules s={game.settings} players={session.players.length} />
 
-    <h2>On stream</h2>
-    <div class="stream-opts">
-      <label>
-        <span>“Starting soon” card</span>
-        <input
-          value={stream.soonText ?? ''}
-          placeholder="Starting soon…"
-          onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, 'Starting soon card text')}
-        />
-      </label>
-      <div class="row">
-        <span class="muted small">Countdown on it:</span>
-        {#if app.live.soonAt}
-          <button class="small" onclick={() => (app.live.soonAt = undefined)}>■ Stop countdown</button>
-        {:else}
-          <label class="check small">
-            <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
-          </label>
-          <button class="small" disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
-            ▶ Start countdown
-          </button>
+        <section class="part" aria-labelledby="pregame-display">
+          <h2 id="pregame-display">Display</h2>
+          <div class="modes">
+            <button class="mode" class:on={!dual} aria-pressed={!dual} onclick={() => dual && closeAudienceWindow()}>
+              <b>Single window</b>
+              <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
+            </button>
+            <button class="mode" class:on={dual} aria-pressed={!!dual} onclick={() => !dual && openAudience()}>
+              <b>📺 Separate audience window <span class="tag">Recommended</span></b>
+              <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
+            </button>
+          </div>
+          {#if !dual}
+            <p class="warn small exposed">
+              ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
+              and hidden objects shown in the controls. To keep those secret, use the audience window.
+            </p>
+          {/if}
+          <SoundWarnings {dual} onhelp={() => (showSound = true)} />
+        </section>
+
+        <section class="part" data-place="play:stream" aria-labelledby="pregame-stream">
+          <h2 id="pregame-stream">On stream</h2>
+          <div class="stream-opts">
+            <label>
+              <span>“Starting soon” card</span>
+              <input
+                value={stream.soonText ?? ''}
+                placeholder="Starting soon…"
+                onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, 'Starting soon card text')}
+              />
+            </label>
+            <div class="row">
+              <span class="muted small">Countdown on it:</span>
+              {#if app.live.soonAt}
+                <button class="small" onclick={() => (app.live.soonAt = undefined)}>■ Stop countdown</button>
+              {:else}
+                <label class="check small">
+                  <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
+                </label>
+                <button class="small" disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
+                  ▶ Start countdown
+                </button>
+              {/if}
+            </div>
+            <label>
+              <span>Cover card (K)</span>
+              <input
+                value={stream.coverText ?? ''}
+                placeholder="Be right back"
+                onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, 'Cover card text')}
+              />
+            </label>
+            <span class="muted small">The theme's banner picture shows on both cards, when there is one.</span>
+            <label class="check small">
+              <input
+                type="checkbox"
+                checked={!!stream.clueCaption}
+                onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, 'Category and value caption on clues')}
+              />
+              Show the category and value on clue screens (“MEMES · $400”)
+            </label>
+            <label class="check small">
+              <input
+                type="checkbox"
+                checked={!!stream.placeCaption}
+                onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, 'Screen name caption in RPG rounds')}
+              />
+              Show the screen's name in RPG rounds
+            </label>
+          </div>
+
+          <div class="row">
+            <button class="small" onclick={() => (showSound = true)}>🔊 Sound for Discord / OBS…</button>
+            <span class="muted small">Test the sound, pick where it plays, and see how to stream it.</span>
+          </div>
+        </section>
+
+        {#if checks.length}
+          <details class="checks">
+            <summary>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</summary>
+            <ul>
+              {#each checks as c}
+                <li>
+                  {c.text}
+                  {#if c.ddRound !== undefined}
+                    {@const ri = c.ddRound}
+                    <button class="small" onclick={() => placeDailyDoubles(ri)}>🎲 Place now</button>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+            <div class="row">
+              {#if !app.playerOnly}<button class="small" onclick={oncancel}>◀ Fix in editor</button>{/if}
+              <span class="muted small">These are only warnings: you can still start.</span>
+            </div>
+          </details>
         {/if}
       </div>
-      <label>
-        <span>Cover card (K)</span>
-        <input
-          value={stream.coverText ?? ''}
-          placeholder="Be right back"
-          onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, 'Cover card text')}
-        />
-      </label>
-      <span class="muted small">The theme's banner picture shows on both cards, when there is one.</span>
-      <label class="check small">
-        <input
-          type="checkbox"
-          checked={!!stream.clueCaption}
-          onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, 'Category and value caption on clues')}
-        />
-        Show the category and value on clue screens (“MEMES · $400”)
-      </label>
-      <label class="check small">
-        <input
-          type="checkbox"
-          checked={!!stream.placeCaption}
-          onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, 'Screen name caption in RPG rounds')}
-        />
-        Show the screen's name in RPG rounds
-      </label>
     </div>
 
-    <div class="row">
-      <button class="small" onclick={() => (showSound = true)}>🔊 Sound for Discord / OBS…</button>
-      <span class="muted small">Test the sound, pick where it plays, and see how to stream it.</span>
-    </div>
-
-    {#if checks.length}
-      <details class="checks">
-        <summary>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</summary>
-        <ul>
-          {#each checks as c}
-            <li>
-              {c.text}
-              {#if c.ddRound !== undefined}
-                {@const ri = c.ddRound}
-                <button class="small" onclick={() => placeDailyDoubles(ri)}>🎲 Place now</button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-        <div class="row">
-          {#if !app.playerOnly}<button class="small" onclick={oncancel}>◀ Fix in editor</button>{/if}
-          <span class="muted small">These are only warnings: you can still start.</span>
-        </div>
-      </details>
-    {/if}
-
-    <div class="row actions">
+    <!-- Always in view at the foot of the window, however long the page above gets. -->
+    <div class="actions">
       <button class="ghost" onclick={oncancel}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
+      <span class="spacer"></span>
+      {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
       <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add players to start'}>
         Start game ▶
       </button>
@@ -1793,7 +1935,7 @@
   </div>
 {:else}
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. -->
-  <div class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers)} oncontextmenu={playerMenuAt} role="presentation">
+  <div class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers || showRules)} oncontextmenu={playerMenuAt} role="presentation">
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
       <div
@@ -1883,6 +2025,7 @@
           showLog = !!tab || !showLog;
         }}
         onplayers={openPlayers}
+        onrules={() => (showRules = true)}
         {dual}
         {side}
         onaudience={toggleAudience}
@@ -1957,7 +2100,13 @@
       <div class="modal" role="dialog" aria-modal="true" aria-label="Players" use:modal>
         <div class="row"><h2 class="modal-title">👥 Players</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
         <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
-        <PlayerList bind:players={session.players} max={game.settings.maxPlayers} inGame onremove={(id) => (removing = id)} />
+        <PlayerList
+          bind:players={session.players}
+          max={game.settings.maxPlayers}
+          inGame
+          onremove={(id) => (removing = id)}
+          onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
+        />
         {#if removingPlayer}
           {@const p = removingPlayer}
           <div class="ask" role="alert">
@@ -1988,6 +2137,30 @@
     </div>
   {/if}
 {/if}
+{#if showRules && !app.pregame}
+  <!-- 📋 Game rules mid-game: changes count at once, and are kept with the game in the editor (undoable there). -->
+  <div
+    class="backdrop"
+    class:in-panel={!!panelBox}
+    style:top={panelBox ? `${panelBox.top}px` : undefined}
+    style:left={panelBox ? `${panelBox.left}px` : undefined}
+    style:width={panelBox ? `${panelBox.width}px` : undefined}
+    style:height={panelBox ? `${panelBox.height}px` : undefined}
+    role="presentation"
+    onclick={(e) => e.target === e.currentTarget && (showRules = false)}
+  >
+    <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false) }}>
+      <div class="row">
+        <h2 class="modal-title">📋 Game rules</h2>
+        <span class="spacer"></span>
+        <button class="ghost modal-x" onclick={() => (showRules = false)} aria-label="Close" title="Close (Esc)">✕</button>
+      </div>
+      <p class="muted">For this game from now on{editorHasIt() ? ', and kept with it in the editor' : ''}.</p>
+      <GameRules s={game.settings} players={session.players.length} folded={false} />
+      <div class="modal-foot"><button class="primary" onclick={() => (showRules = false)}>Done</button></div>
+    </div>
+  </div>
+{/if}
 <!-- Before the game too (from the display settings) and during it (🔊 Sound in the host panel). -->
 {#if showSound}
   <AudioHelp {dual} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
@@ -1997,10 +2170,35 @@
   .pregame {
     max-width: 860px;
     margin: 0 auto;
-    padding: 32px 20px;
+    padding: 32px 20px 0;
     display: flex;
     flex-direction: column;
     gap: 14px;
+  }
+  .pregame-top,
+  .col,
+  .part {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+  .cols {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  /* Wide windows: two columns, players and buzzers on the left; the rules, the display and on stream on the right. */
+  @media (min-width: 1400px) {
+    .pregame {
+      max-width: 1360px;
+    }
+    .cols {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
   }
   .pregame h1 {
     margin: 0;
@@ -2079,8 +2277,20 @@
     flex-direction: column;
     gap: 4px;
   }
+  /* The way out and Start: stuck to the foot of the window, however long the page above (an open 📋 Game rules). */
   .actions {
-    margin-top: 12px;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 4px -20px 0;
+    padding: 10px 20px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 16px -8px rgba(0, 0, 0, 0.6);
   }
   .big {
     font-size: 16px;

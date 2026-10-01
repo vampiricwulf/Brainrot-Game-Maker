@@ -8,6 +8,7 @@ import {
   commit,
   heldMedia,
   history,
+  joinTyping,
   jumpTo,
   listen,
   mark,
@@ -179,6 +180,35 @@ describe('undo history: steps', () => {
     await seen();
     vi.advanceTimersByTime(700);
     expect(history.entries).toHaveLength(0);
+  });
+
+  it('joins a player added (Enter in a name) and then named in their new box: one step, with the name typed', async () => {
+    const first = field('p1');
+    focus(win, first);
+    g.players = [{ id: 'p1', name: 'Player 1', color: '#e6194b' }];
+    await seen();
+    vi.advanceTimersByTime(700);
+    g.players[0].name = 'Bo';
+    await seen();
+    // Enter: the name typed so far is its own step, then the next player is added and their box takes the focus.
+    commit();
+    g.players.push({ id: 'p2', name: 'Player 2', color: '#3cb44b' });
+    await seen();
+    const second = field('p2');
+    focus(win, second);
+    joinTyping(second);
+    vi.advanceTimersByTime(300);
+    g.players[1].name = 'C';
+    await seen();
+    vi.advanceTimersByTime(200);
+    g.players[1].name = 'Cy';
+    await seen();
+    vi.advanceTimersByTime(700);
+    // (Bo, named in the box they were added with, is one step too.)
+    expect(history.entries.map((e) => e.label)).toEqual(['Added player “Bo”', 'Added player “Cy”']);
+    // One undo takes the added player away, and Bo stays.
+    undo();
+    expect(g.players.map((p) => p.name)).toEqual(['Bo']);
   });
 
   it("doesn't join typing after focus left the field, after an undo, or a minute later", async () => {

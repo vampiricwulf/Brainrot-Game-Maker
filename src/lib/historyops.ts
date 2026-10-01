@@ -178,6 +178,7 @@ const pathKey = (op: Op) => JSON.stringify(opPath(op));
  * when they aren't the same few values changed again. [] = the second undid the first.
  */
 export function mergeOps(older: readonly Op[], newer: readonly Op[]): Op[] | null {
+  if (older.length === 1 && older[0].t === 'ins') return intoInsert(older[0], newer);
   if (!older.length || older.length !== newer.length) return null;
   const ends = new Map<string, Op & { t: 'set' }>();
   for (const op of newer) {
@@ -196,6 +197,22 @@ export function mergeOps(older: readonly Op[], newer: readonly Op[]): Op[] | nul
     out.push(merged);
   }
   return ends.size ? null : out;
+}
+
+/**
+ * Something just added, then typed on in its own box (a player added with Enter, then named): the one insert, of what
+ * it is now. Only its own plain fields; anything else isn't the same step.
+ */
+function intoInsert(ins: Op & { t: 'ins' }, newer: readonly Op[]): Op[] | null {
+  if (!newer.length || !isObj(ins.v)) return null;
+  const at = JSON.stringify([...ins.p, ins.id]);
+  const v: Obj = { ...ins.v };
+  for (const op of newer) {
+    if (op.t !== 'set' || !primitive(op.b) || !primitive(op.a) || typeof op.k !== 'string' || JSON.stringify(op.p) !== at || v[op.k] !== op.b) return null;
+    if (op.a === undefined) delete v[op.k];
+    else v[op.k] = op.a;
+  }
+  return [{ ...ins, v }];
 }
 
 /** About how many bytes the ops take (for the history's memory budget). */

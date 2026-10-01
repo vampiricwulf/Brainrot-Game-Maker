@@ -66,7 +66,7 @@ export async function playWithPlayers(page, n) {
   await addPlayers(page, n);
 }
 
-/** The pre-game screen's ⚙ Game rules, opened (rules, timers, the round intro). */
+/** The pre-game screen's 📋 Game rules, opened (rules, timers, the round intro). */
 export async function openRules(page) {
   const rules = page.locator('details.rules');
   await rules.waitFor();

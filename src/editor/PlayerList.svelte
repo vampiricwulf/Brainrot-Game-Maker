@@ -11,6 +11,7 @@
   import { toast } from '../lib/app.svelte';
   import { showMenu } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
+  import { commit, joinTyping } from '../lib/history.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -31,6 +32,7 @@
     avatars = false,
     record = (_label, fn) => fn(),
     rowMenu = false,
+    onraise,
   }: {
     players: P[];
     max?: number;
@@ -45,6 +47,8 @@
     record?: (label: string, fn: () => void) => void;
     /** Right-click a row for its menu (the pre-game screen). */
     rowMenu?: boolean;
+    /** At the most players: raise 📋 Game rules › Most players by one (left out when it can't go higher). */
+    onraise?: () => void;
   } = $props();
   let list = $state<HTMLElement>();
   /** The player whose avatar picker is open. */
@@ -60,12 +64,23 @@
   }
 
   /** Typing in a player's name (all of it selected). */
-  const editName = (p: P) => void tick().then(() => list?.querySelector<HTMLInputElement>(`[data-place="player:${p.id}"] input.name`)?.select());
+  async function editName(p: P): Promise<HTMLInputElement | undefined> {
+    await tick();
+    const box = list?.querySelector<HTMLInputElement>(`[data-place="player:${p.id}"] input.name`) ?? undefined;
+    box?.select();
+    return box;
+  }
 
   /** ＋ Add player: the next player, typing in their name. */
   function addAndName(): void {
+    // Before the game, the name typed so far is a step of its own in the editor's history, not part of this addition…
+    if (!inGame) commit();
     const p = add();
-    if (p) editName(p);
+    if (!p) return;
+    void editName(p).then((box) => {
+      // …and the name typed in the new player's box joins the addition ("Added player “Bo”").
+      if (box && !inGame && document.activeElement === box) joinTyping(box);
+    });
   }
 
   /** Enter in a name: the next player, typing in their name (keyboard-first roster entry). */
@@ -106,7 +121,7 @@
     if (!rowMenu || isTextField(e.target)) return;
     showMenu(e, [
       { heading: p.name || `Player ${i + 1}` },
-      { label: '✎ Rename', onclick: () => editName(p) },
+      { label: '✎ Rename', onclick: () => void editName(p) },
       { label: '▲ Move up', onclick: () => move(i, -1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => move(i, 1), disabled: i === players.length - 1, keys: 'Alt+↓' },
       { sep: true },
@@ -194,8 +209,8 @@
       {#if showScores}
         <label class="field score">Start score<input type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" /></label>
       {/if}
-      <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">▲</button>
-      <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move down">▼</button>
+      <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
+      <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
       <button class="ghost small del" onclick={() => remove(p)} aria-label="{removeWord} {p.name}" title="{removeWord} {p.name}">{inGame ? '−' : '🗑'}</button>
     </div>
   {/each}
@@ -204,6 +219,9 @@
     <span class="muted">
       {players.length}/{max} players · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>
+    {#if players.length >= max && onraise}
+      <button class="small" onclick={onraise} title="📋 Game rules › Most players">Raise Most players to {max + 1}</button>
+    {/if}
   </div>
   {#if undone}
     <div class="undo-note" role="status">
