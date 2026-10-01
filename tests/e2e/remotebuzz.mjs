@@ -1,7 +1,8 @@
 // Phone buzzers, the host's side, against a fake buzzer room (a WebSocket and fetch put in the page before it loads):
-// starting the room (code, link, QR), the phones list, a new player joining from their phone, opening the buzzers with U,
-// a phone's buzz picking the player (and the audience plate), a wrong answer locking them out, a kick, a reconnect, and
-// Exit closing the room.
+// Buzzer mode and its options on the pre-game card, starting the room (a refusal in the server's words, then the code,
+// link, QR), the phones list, a new player joining from their phone, opening the buzzers with U, a phone's buzz picking
+// the player (and the audience plate), the queue of buzzes, a wrong answer locking them out, → Next in line, ↺ Reset
+// buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, and Exit closing the room.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -22,12 +23,13 @@ await context.addInitScript(() => {
     const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
     if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: 'https://buzz.test' }));
   } catch {}
-  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0 });
+  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '' });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, init) => {
     const u = String(url);
     if (u === 'https://buzz.test/api/rooms' && init?.method === 'POST') {
       room.posts++;
+      if (room.refuse) return new Response(JSON.stringify({ error: room.refuse }), { status: 429, headers: { 'content-type': 'application/json' } });
       return new Response(JSON.stringify({ code: 'BCDF', hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u === 'https://buzz.test/api/health') {
@@ -102,23 +104,28 @@ try {
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');
   await settings.getByRole('button', { name: 'Done' }).click();
 
-  // ---------- Pre-game: players; ⚙ Game rules: buzzer mode, opened by the host, phones, new players from phones ----------
+  // ---------- Pre-game: players; ⚙ Game rules has no buzzer options (they're on the 📱 Phone buzzers card) ----------
   await playWithPlayers(page, 3);
-  await openRules(page);
-  assert((await page.getByRole('region', { name: 'Phone buzzers' }).count()) === 0, 'no 📱 Phone buzzers card until the rules say phones');
-  await page.getByLabel(/Buzzer mode/).check();
-  await page.getByLabel('Open the buzzers').selectOption('host');
-  assert((await page.getByLabel(/Let new players join/).count()) === 0, 'the phone options show only once phones are chosen');
-  await page.getByLabel('Players buzz from').selectOption('phones');
-  await page.getByLabel(/Let new players join/).check();
-  await shot('rb-0-setup');
+  const rules = await openRules(page);
+  assert((await rules.getByLabel(/Buzzer mode/).count()) === 0 && (await rules.getByLabel('Open the buzzers').count()) === 0, '⚙ Game rules has no buzzer options');
 
-  // ---------- Pre-game: start the room ----------
+  // ---------- Pre-game: Buzzer mode, its options, start the room ----------
   const card = page.getByRole('region', { name: 'Phone buzzers' });
   await card.waitFor();
+  assert((await card.getByLabel('Open the buzzers').count()) === 0 && (await card.getByRole('button', { name: '▶ Start the room' }).count()) === 0, 'with Buzzer mode off the card only offers to turn it on');
+  await card.getByLabel(/Buzzer mode/).check();
+  await card.getByLabel('Open the buzzers').selectOption('host');
+  await card.getByLabel(/Let new players join/).check();
+  await shot('rb-0-setup');
+  // The server turns the first room down: its words show.
+  await page.evaluate(() => (window.__room.refuse = 'Too many new rooms — wait a minute'));
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByRole('alert').getByText('Too many new rooms — wait a minute').waitFor();
+  assert(true, 'a refused room shows the server’s reason (Too many new rooms — wait a minute)');
+  await page.evaluate(() => (window.__room.refuse = ''));
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code BCDF').waitFor();
-  assert((await page.evaluate(() => window.__room.posts)) === 1, 'Start the room asks the server for a room');
+  assert((await page.evaluate(() => window.__room.posts)) === 2, 'Start the room asks the server for a room');
   assert((await page.evaluate(() => window.__room.sockets[0].url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'and connects to it as the host');
   assert((await card.getByRole('link').innerText()) === 'https://buzz.test/BCDF', 'the card shows the join link');
   assert((await card.getByRole('img', { name: /QR code/ }).count()) === 1, 'and a QR code for it');
@@ -170,13 +177,18 @@ try {
   await stateIs((s, a) => s.phase === 'armed' && s.armId > a, closed.armId);
   const armed = await state();
   assert(true, `U opens the buzzers (a new armId ${armed.armId})`);
-  await say({ t: 'buzz', armId: armed.armId, seatId: seats[1].id, rank: 1, afterMs: 100 });
-  await say({ t: 'buzz', armId: armed.armId, seatId: seats[2].id, rank: 2, afterMs: 220 });
+  await say({ t: 'buzz', armId: armed.armId, seatId: seats[1].id, rank: 1, afterMs: 0 });
+  await say({ t: 'queue', armId: armed.armId, queue: [{ seatId: seats[1].id, afterMs: 0 }] });
   await aud.locator('.plate').waitFor();
   assert((await aud.locator('.plate').innerText()).includes('Player 2'), 'a phone’s buzz picks the player: viewers see Player 2 is answering');
   assert((await pressed()).join() === '2Player 2' || (await pressed())[0].includes('Player 2'), 'Player 2 is selected in the host panel');
-  await page.getByText('Player 3 +0.12 s').waitFor();
-  assert(true, 'the host panel shows the next one in (Player 3 +0.12 s)');
+  // A later buzz joins the queue.
+  await say({ t: 'buzz', armId: armed.armId, seatId: seats[2].id, rank: 2, afterMs: 120 });
+  await say({ t: 'queue', armId: armed.armId, queue: [{ seatId: seats[1].id, afterMs: 0 }, { seatId: seats[2].id, afterMs: 120 }] });
+  const queue = page.getByRole('list', { name: 'Buzz order' });
+  await queue.locator('li', { hasText: 'Player 3' }).waitFor();
+  const rows = (await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+  assert(rows.join(' | ') === '1. Player 2 | 2. Player 3 +0.12 s', `the host panel lists the buzzes fastest first (${rows.join(' | ')})`);
   await stateIs((s, id) => s.phase === 'answering' && s.answering === id, seats[1].id);
   await shot('rb-3-answering');
 
@@ -187,26 +199,49 @@ try {
   await page.getByText('Missed: Player 2').waitFor();
   await aud.locator('.plate').waitFor({ state: 'detached' });
   assert(true, 'the plate goes');
-  await page.keyboard.press('2');
-  await page.waitForTimeout(150);
-  assert((await pressed()).length === 0, 'Player 2’s key doesn’t buzz them in again');
+  assert((await queue.locator('li.out', { hasText: 'Player 2' }).count()) === 1, 'the queue stays, Player 2 struck out');
   // A late buzz for the old opening doesn't count.
   const n = (await sent()).length;
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[0].id, rank: 1, afterMs: 0 });
   await page.waitForTimeout(150);
   assert((await pressed()).length === 0, 'a buzz from an earlier opening is ignored');
   assert((await sent()).slice(n).some((m) => m.t === 'state'), 'and the room hears the host’s state again');
-  // The host picks someone by key first: a phone's buzz then doesn't override it.
-  await page.keyboard.press('3');
+  // → Next in line: Player 3 answers now, without a new opening.
   const rearmed = await state();
+  await page.getByRole('button', { name: '→ Next in line: Player 3' }).click();
+  await stateIs((s, a) => s.phase === 'answering' && s.answering === a.id && s.armId === a.armId, { id: seats[2].id, armId: rearmed.armId });
+  assert((await pressed())[0].includes('Player 3'), '→ Next in line gives Player 3 the answer (same opening, no re-arm)');
+  // A phone that buzzed at the same moment doesn't override the host's choice.
   await say({ t: 'buzz', armId: rearmed.armId, seatId: seats[0].id, rank: 1, afterMs: 10 });
   await page.waitForTimeout(150);
-  assert((await pressed())[0].includes('Player 3') && (await pressed()).length === 1, 'the host’s key wins over a phone that buzzed at the same time');
-  await stateIs((s, id) => s.answering === id, seats[2].id);
-  assert(true, 'and the room is told Player 3 is answering');
-  await page.keyboard.press('0');
-  await stateIs((s) => s.phase === 'armed' && s.lockedOut.length === 0);
-  assert(true, '0 opens the buzzers for everyone again');
+  assert((await pressed())[0].includes('Player 3') && (await pressed()).length === 1, 'the host’s pick wins over a phone that buzzed at the same time');
+  // The host picks by hand with a number key too.
+  await page.keyboard.press('3');
+  await page.keyboard.press('4');
+  await stateIs((s, id) => s.answering === id, (await state()).seats[3].id);
+  assert(true, 'number keys pick who answers by hand (Zed, 4)');
+  // ↺ Reset buzzers: nobody locked out, open for everyone.
+  await page.getByRole('button', { name: '↺ Reset buzzers' }).click();
+  await stateIs((s) => s.phase === 'armed' && s.lockedOut.length === 0 && !s.answering);
+  assert((await pressed()).length === 0 && (await queue.count()) === 0, '↺ Reset buzzers opens them for everyone again (Player 2 too) and clears the queue');
+
+  // A tie: the room picks nobody; 🎲 Roll for it sets the answering order.
+  const tieArm = (await state()).armId;
+  await say({ t: 'queue', armId: tieArm, queue: [{ seatId: seats[0].id, afterMs: 0 }, { seatId: seats[1].id, afterMs: 4 }], tie: [seats[0].id, seats[1].id] });
+  await page.getByText('Tie: Player 1 & Player 2').waitFor();
+  assert((await pressed()).length === 0, 'a tie: nobody is picked, the host panel says "Tie: Player 1 & Player 2"');
+  await shot('rb-3b-tie');
+  await page.getByRole('button', { name: '🎲 Roll for it' }).click();
+  await aud.getByText('Tie! Roll for it').waitFor();
+  assert(true, 'Roll for it rolls on stream for the tied players');
+  await stateIs((s, a) => s.phase === 'answering' && s.armId === a && s.rollOrder?.length === 2 && s.rollOrder[0] === s.answering, tieArm);
+  const rolled = (await state()).rollOrder;
+  assert(rolled.slice().sort().join() === [seats[0].id, seats[1].id].sort().join(), 'the roll sets the answering order of the tied players (sent to the room as rollOrder)');
+  await say({ t: 'queue', armId: tieArm, queue: rolled.map((id, i) => ({ seatId: id, afterMs: 0, rolled: i + 1 })) });
+  await queue.getByText('🎲 2nd').waitFor();
+  assert((await pressed())[0].includes(rolled[0] === seats[0].id ? 'Player 1' : 'Player 2'), 'the first in the roll answers; the queue shows 🎲 1st, 🎲 2nd');
+  await page.keyboard.press('Escape');
+  await aud.getByText('Tie! Roll for it').waitFor({ state: 'detached' });
 
   // ---------- The 📱 chip: kick, a new player mid-game ----------
   const chip = page.locator('.panel .chip');
@@ -233,7 +268,7 @@ try {
   assert(true, 'a dropped connection shows ⚠ on the chip');
   await page.waitForFunction(() => window.__room.sockets.length === 2 && !document.querySelector('.panel .chip')?.textContent.includes('⚠'));
   assert((await page.evaluate(() => window.__room.sockets[1].url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'it reconnects to the same room');
-  assert((await page.evaluate(() => window.__room.posts)) === 1, 'without making a new one');
+  assert((await page.evaluate(() => window.__room.posts)) === 2, 'without making a new one');
 
   // Back to the board: the lobby, nobody locked out.
   await page.keyboard.press('Escape');

@@ -164,22 +164,9 @@
    */
   function forwardKey(e: KeyboardEvent): void {
     if (NO_GESTURE.includes(e.key) && e.key !== 'Escape') return;
-    // Buzzer mode's buzz-in keys (⚙ Game rules): during a clue, the Nth key buzzes player N in; otherwise they do nothing here.
-    const buzz = game?.settings.buzzer && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 ? buzzKey(e.key) : 0;
-    if (buzz) {
-      e.preventDefault();
-      if (session?.phase === 'clue' && !session.dd) send({ type: 'key', key: { key: String(buzz), code: `Digit${buzz}`, shiftKey: false, ctrlKey: false, altKey: false, metaKey: false } });
-      return;
-    }
     const { key, code, shiftKey, ctrlKey, altKey, metaKey } = e;
     send({ type: 'key', key: { key, code, shiftKey, ctrlKey, altKey, metaKey } });
     if (!ctrlKey && !metaKey && !/^F\d+$/.test(key)) e.preventDefault();
-  }
-
-  /** Which player (1–9) a buzz-in key is for, or 0. */
-  function buzzKey(key: string): number {
-    const at = (game?.settings.buzzKeys ?? '').toUpperCase().slice(0, 9).indexOf(key.toUpperCase());
-    return at < 0 || key === ' ' ? 0 : at + 1;
   }
 
   const keyColor = $derived(game?.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);

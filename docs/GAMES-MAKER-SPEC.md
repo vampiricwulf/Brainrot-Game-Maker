@@ -511,7 +511,7 @@ interface Avatar {                         // how the token is drawn in play
 }
 ```
 
-- Avatars are set with the players on the **▶ Play** pre-game screen (formerly Setup & Players): an image or GIF per player, with the player color as the nameplate and
+- Avatars are set with the players on the **▶ Play** pre-game screen: an image or GIF per player, with the player color as the nameplate and
   ring.
 - **Fallback token:** a colored circle with the player's initials in a readable text color.
 - **Equipment:** a wearable item has a slot (head, hand, body, back, or "badge") and an optional image. It shows on
@@ -692,7 +692,7 @@ RPG toolset: avatars, stats, items, shops, actions, wheels and the host-confirme
 - New nav entries appear only when they're used:
   - **🌍 Worlds:** shows once there is an RPG round or a world.
   - **📊 Stats & Items:** the stat fields; the item catalog also lives per world.
-- **Setup & Players** gains avatars (§7.6) and starting stats.
+- The players list (on the **▶ Play** pre-game screen) gains avatars (§7.6) and starting stats.
 - The checklist gains RPG checks:
   - a doorway with no target;
   - a screen unreachable from the start, shown as info only, because it may be intentional (e.g. the Shadow Realm);
@@ -878,7 +878,7 @@ Each milestone is shippable on its own and keeps every existing test green.
 | M2 | **Round modes (no behavior change)** | The `ModeModule` interface; board rounds move behind it; session state per round; round picker; v2 format and migration with tests. |
 | M3 | **Final as a round** | The final becomes a `final`-mode round that can be placed anywhere; FinalEditor becomes a round editor; the old "Final" nav item goes; saves and sessions are migrated. |
 | M4 | **Toolset additions** | Stat fields (Stats tab, player cards, HUD); items and inventory; pop-up slide; action runner with confirmation; the global action log with undo; cover card; element names, classes, `hidden` and host notes. |
-| M5 | **RPG: build** | Worlds, maps, screens; world map editor with exits and warps; screen editor with the Class section, Region, Draw (path) and Spawn tools; item catalog with CSV; avatars in Setup. |
+| M5 | **RPG: build** | Worlds, maps, screens; world map editor with exits and warps; screen editor with the Class section, Region, Draw (path) and Spawn tools; item catalog with CSV; avatars for the players. |
 | M6 | **RPG: play** | Positions, parties, 8-way movement, doorways, transitions, focus and split view, preview/on air, drag avatars, the object action card, knowledge states, map overlay (full/discovered/hidden, exit arrows), keys. |
 | M7 | **Shops and economy** | Shops, pools, shop overlay, buy/sell/haggle, score↔currency convert, currency objects, equipment on avatars. |
 | M8 | **Improvising and polish** | Drop-to-add objects, add screen live, "Keep in game", screen variants, NPC stats and Compare, wheel outcomes with actions, map and screen music with cross-fades, performance with many screens and players. |

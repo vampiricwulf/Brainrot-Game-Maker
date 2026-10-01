@@ -1,10 +1,10 @@
-// Hosting extras: who's answering on stream, buzzer mode (with buzz-in keys in the audience window), the built-in sound
-// cues (and switching one off in 🔊 Sounds), the chroma-key stage background and the scores-only window for OBS.
+// Hosting extras: who's answering on stream, the built-in sound cues (and switching one off in 🔊 Sounds), the chroma-key
+// stage background and the scores-only window for OBS. (Buzzer mode is phone buzzers: remotebuzz.mjs, buzzerlive.mjs.)
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -45,6 +45,7 @@ try {
 
   // ---------- 🔊 Sounds: the sound list ----------
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
+  assert((await page.getByLabel(/Buzzer mode/).count()) === 0 && (await page.getByLabel(/Buzz-in keys/).count()) === 0, 'the editor has no buzzer options (they are on the pre-game screen)');
   const rows = page.locator('.sound');
   assert((await rows.count()) === 14, '🔊 Sounds lists every sound cue');
   assert((await rows.filter({ hasText: 'Built-in' }).count()) === 13, 'all but the think music play a built-in sound to begin with');
@@ -67,12 +68,8 @@ try {
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);
 
-  // ---------- Play: players and buzzer mode with keys, on the pre-game screen ----------
+  // ---------- Play: players on the pre-game screen ----------
   await playWithPlayers(page, 3);
-  await openRules(page);
-  await page.getByLabel(/Buzzer mode/).check();
-  await page.getByLabel(/Buzz-in keys/).fill('qp!');
-  assert((await page.getByLabel(/Buzz-in keys/).inputValue()) === 'QP', 'buzz-in keys are letters and digits, shown in capitals');
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.locator('.stage-box .title-card').waitFor();
   assert((await played(page, 'roundIntro')) === 1, 'the round intro plays its built-in sound with the title card');
@@ -81,41 +78,30 @@ try {
   await page.waitForTimeout(300);
   assert((await played(page, 'tileOpen')) === 0, 'the tile-open sound is off, so nothing plays');
 
-  // Buzzer mode: 2 buzzes in first; 1 is locked out; 0 opens the buzzers again.
+  // Who's answering: the one player picked during a clue.
   await page.keyboard.press('2');
   await page.locator('.stage-box .plate').waitFor();
   assert((await page.locator('.stage-box .plate').innerText()).includes('Player 2') && (await page.locator('.stage-box .plate').innerText()).includes('is answering'), 'the stage says who is answering');
-  await page.keyboard.press('1');
   const pressed = () => page.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts();
-  const sel = await pressed();
-  assert(sel.length === 1 && sel[0].includes('Player 2'), 'a later buzz is locked out (only the first is selected)');
-  await page.waitForFunction(() => window.__plays.filter((s) => s.endsWith('#buzz')).length === 1);
-  assert(true, 'the first buzz plays the buzz sound, the locked-out one doesn’t');
-  assert((await page.getByRole('button', { name: '🔔 Open the buzzers' }).count()) === 1, 'the host panel offers to open the buzzers again');
+  assert((await page.getByRole('button', { name: '↺ Reset buzzers' }).count()) === 0, 'no buzzer controls outside buzzer mode');
   await shot('pf-1-answering');
-  await page.keyboard.press('0');
+  await page.keyboard.press('1');
   await page.locator('.stage-box .plate').waitFor({ state: 'detached' });
-  assert((await pressed()).length === 0, '0 opens the buzzers again (nobody selected, the plate goes)');
-  await page.keyboard.press('3');
+  assert((await pressed()).length === 2, 'two picked: nobody in particular is answering, the plate goes');
+  await page.keyboard.press('1');
   await page.keyboard.press('Shift+Enter');
   await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#wrong')));
-  assert((await pressed()).length === 0, 'a wrong answer plays the wrong sound and opens the buzzers for the others');
+  assert((await pressed()).length === 0, 'a wrong answer plays the wrong sound');
 
-  // ---------- The audience window: buzz-in keys, the plate, sounds there, the chroma background ----------
-  const hostBuzzes = await played(page, 'buzz');
+  // ---------- The audience window: the plate, sounds there, the chroma background ----------
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);
   watch(aud, 'audience');
   await aud.locator('.stage .full').waitFor();
   const audBg = await aud.locator('.aud').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(audBg === 'rgb(0, 255, 0)', 'the audience window is chroma green around the stage');
-  await aud.keyboard.press('p');
+  await aud.keyboard.press('3');
   await aud.locator('.plate').waitFor();
-  assert((await aud.locator('.plate').innerText()).includes('Player 2'), 'P (the second buzz-in key) in the audience window buzzes player 2 in');
-  await aud.keyboard.press('q');
-  await page.waitForTimeout(300);
-  assert((await aud.locator('.plate').innerText()).includes('Player 2'), 'Q then is locked out');
-  await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#buzz')));
-  assert((await played(page, 'buzz')) === hostBuzzes, 'the buzz plays in the audience window, not the host’s');
+  assert((await aud.locator('.plate').innerText()).includes('Player 3'), 'a number key pressed in the audience window picks that player (viewers see who is answering)');
   await shot('pf-2-audience-answering', aud);
   await page.keyboard.press('Enter');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));

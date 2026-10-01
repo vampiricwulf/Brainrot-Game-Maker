@@ -1,11 +1,10 @@
 <!--
-  Pre-game: ⚙ Game rules (scoring, buzzers, most players, timers, the round intro). Saved with the game: the play screen
-  keeps the editor's copy of it in step (an undoable change in its history). Folded away until opened; this computer
-  remembers whether it was open.
+  Pre-game: ⚙ Game rules (scoring, most players, timers, the round intro; the buzzers are on the 📱 Phone buzzers
+  card). Saved with the game: the play screen keeps the editor's copy of it in step (an undoable change in its
+  history). Folded away until opened; this computer remembers whether it was open.
 -->
 <script lang="ts">
   import type { GameSettings } from '../lib/model';
-  import { buzzerBase } from '../lib/remote.svelte';
 
   let { s, players }: { s: GameSettings; /** Players in the game now ("Most players" never goes below it). */ players: number } = $props();
 
@@ -33,7 +32,6 @@
   /** The rules at a glance, on the closed fold. */
   const gist = $derived(
     [
-      s.buzzer ? (s.buzzFrom === 'phones' ? 'Buzzers (phones too)' : 'Buzzers') : 'No buzzers',
       s.defaultTimerSeconds ? `${s.defaultTimerSeconds} s countdown` : 'No countdown',
       `${s.maxPlayers} players at most`,
       s.allowNegativeScores ? 'Negative scores' : 'No negative scores',
@@ -44,7 +42,7 @@
 <details class="rules" {open} ontoggle={toggled}>
   <summary><b>⚙ Game rules</b> <span class="muted small">{gist}</span></summary>
   <div class="body">
-    <h3>Scoring and buzzers</h3>
+    <h3>Scoring and players</h3>
     <div class="grid">
       <label class="check"><input type="checkbox" bind:checked={s.allowNegativeScores} /> Allow negative scores</label>
       <label class="check">
@@ -53,55 +51,6 @@
       <label class="check">
         <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
       </label>
-      <label class="check">
-        <input type="checkbox" bind:checked={s.buzzer} /> Buzzer mode: the first number pressed in a clue answers, the rest are locked out
-      </label>
-      {#if s.buzzer}
-        <label class="field">
-          Buzz-in keys in the audience window (player 1, 2, 3…)
-          <input
-            value={s.buzzKeys ?? ''}
-            oninput={(e) => (s.buzzKeys = e.currentTarget.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 9) || undefined)}
-            placeholder="e.g. QPZM (blank: none)"
-            maxlength="9"
-          />
-        </label>
-        <label class="field">
-          Open the buzzers
-          <select value={s.buzzArm ?? 'open'} onchange={(e) => (s.buzzArm = e.currentTarget.value === 'host' ? 'host' : undefined)}>
-            <option value="open">When the clue opens</option>
-            <option value="host">When I press U (after reading it)</option>
-          </select>
-        </label>
-        <label class="field">
-          Players buzz from
-          <select value={s.buzzFrom ?? 'keys'} onchange={(e) => (s.buzzFrom = e.currentTarget.value === 'phones' ? 'phones' : undefined)}>
-            <option value="keys">This computer's keys</option>
-            <option value="phones">Their phones too</option>
-          </select>
-        </label>
-        {#if s.buzzFrom === 'phones'}
-          <label class="check">
-            <input type="checkbox" checked={!!s.phoneJoin} onchange={(e) => (s.phoneJoin = e.currentTarget.checked || undefined)} />
-            Let new players join from their phone (you add them)
-          </label>
-          <label class="field">
-            A phone that buzzes too early waits (seconds)
-            <input
-              type="number"
-              min="0"
-              max="5"
-              step="0.25"
-              value={s.earlyBuzzLock ?? 1}
-              onchange={(e) => {
-                const n = Math.max(0, Math.min(5, Number(e.currentTarget.value)));
-                s.earlyBuzzLock = Number.isFinite(n) && n !== 1 ? n : undefined;
-                e.currentTarget.value = String(s.earlyBuzzLock ?? 1);
-              }}
-            />
-          </label>
-        {/if}
-      {/if}
       <label class="field">
         Points symbol
         <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" />
@@ -122,13 +71,6 @@
         />
       </label>
     </div>
-    <!-- (Without a buzzer server, the 📱 Phone buzzers card above says so.) -->
-    {#if s.buzzer && s.buzzFrom === 'phones' && buzzerBase()}
-      <p class="muted small">
-        Phone buzzers: start the room in 📱 Phone buzzers above; players open the link (or scan the code) on their phone
-        and tap their name. Phones need this computer online.
-      </p>
-    {/if}
     {#if s.maxPlayers > 9}
       <p class="muted small">While hosting, the number keys 1–9 pick only the first 9 players: click the others.</p>
     {:else}

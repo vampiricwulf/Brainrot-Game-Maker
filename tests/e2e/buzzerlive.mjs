@@ -1,5 +1,6 @@
 // Phone buzzers, both halves together: the built app hosts a game against the real buzzer room (buzzer/ under
-// `wrangler dev`, local, no Cloudflare account) and two phones play on the real phone page. Needs `npm ci` in buzzer/.
+// `wrangler dev`, local, no Cloudflare account) and two phones play on the real phone page: the queue, a wrong answer,
+// → Next in line, ↺ Reset buzzers, and a tie settled with 🎲 Roll for it. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -7,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, playWithPlayers, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -72,7 +73,7 @@ try {
   const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
   browser = await chromium.launch({ executablePath });
 
-  // ---------- The host: buzzer mode, opened by the host, phones ----------
+  // ---------- The host: buzzer mode (on the pre-game card), opened by the host ----------
   const hostCtx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   await hostCtx.addInitScript((server) => {
     try {
@@ -84,11 +85,9 @@ try {
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
   await playWithPlayers(host, 2);
-  await openRules(host);
-  await host.getByLabel(/Buzzer mode/).check();
-  await host.getByLabel('Open the buzzers').selectOption('host');
-  await host.getByLabel('Players buzz from').selectOption('phones');
   const card = host.getByRole('region', { name: 'Phone buzzers' });
+  await card.getByLabel(/Buzzer mode/).check();
+  await card.getByLabel('Open the buzzers').selectOption('host');
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = card.locator('[aria-label^="Room code "]');
   await codeEl.waitFor();
@@ -97,9 +96,11 @@ try {
   assert((await card.getByRole('link').innerText()) === `${base}/${code}`, 'the join link points at the room server');
 
   // ---------- Two phones join ----------
+  const taps = new Map();
   const phone = async (name) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });
     const p = watch(await ctx.newPage(), name);
+    taps.set(p, await tap(p));
     await p.goto(`${base}/${code}`);
     await p.getByRole('heading', { name: 'Tap your name' }).waitFor();
     await p.getByRole('button', { name }).click();
@@ -134,20 +135,56 @@ try {
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   assert((await selected()).length === 1, 'the first phone in is picked in the host panel; the other phone sees who is answering');
   await press(p1);
-  await big(p1).getByText('Too late').waitFor();
-  assert(true, 'a second buzz is too late');
+  await big(p1).getByText("You're 2nd").waitFor();
+  assert(/^\d\.\d\d s behind Player 2$/.test(await small(p1).innerText()), `a second buzz still counts: "You're 2nd — ${await small(p1).innerText()}"`);
+  const queue = host.getByRole('list', { name: 'Buzz order' });
+  await queue.locator('li', { hasText: 'Player 1' }).waitFor();
+  assert((await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1', 'the host panel lists both, fastest first');
 
-  // Wrong: Player 2 is locked out, the buzzers open again for Player 1.
+  // Wrong: Player 2 is locked out, the buzzers open again for the rest (the rebound), and Player 1 is next in line.
   await host.keyboard.press('Shift+Enter');
   await small(p2).getByText('You already answered this one').waitFor();
   await big(p1).getByText('BUZZ!').waitFor();
   assert(true, 'a wrong answer locks Player 2 out and reopens the buzzers for Player 1');
-  await press(p1);
+  await host.getByRole('button', { name: '→ Next in line: Player 1' }).click();
   await big(p1).getByText("You're answering!").waitFor();
-  await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
+  assert(true, '→ Next in line: Player 1 answers without buzzing again');
+  // Wrong too: everyone has missed it, the buzzers stay closed. ↺ Reset buzzers lets them both buzz again.
+  await host.keyboard.press('Shift+Enter');
+  await small(p1).getByText('You already answered this one').waitFor();
+  await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
+  await big(p2).getByText('BUZZ!').waitFor();
+  await big(p1).getByText('BUZZ!').waitFor();
+  assert(true, '↺ Reset buzzers: the locked-out phones can buzz again');
+  await press(p2);
+  await big(p2).getByText("You're answering!").waitFor();
+  await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   await host.keyboard.press('Enter');
-  await p1.locator('#me').getByText('200').waitFor();
-  assert(true, 'Player 1 buzzes in, is awarded, and their phone shows the new score');
+  await p2.locator('#me').getByText('Player 2 · 0').waitFor();
+  assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');
+
+  // ---------- A tie: 🎲 Roll for it sets who answers first ----------
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box .board .tile').nth(1).click();
+  await big(p1).getByText('Get ready…').waitFor();
+  await host.keyboard.press('u');
+  await big(p1).getByText('BUZZ!').waitFor();
+  await big(p2).getByText('BUZZ!').waitFor();
+  tieThem([taps.get(p1), taps.get(p2)]);
+  await press(p1);
+  await press(p2);
+  await host.getByText('Tie: Player 1 & Player 2').waitFor();
+  await big(p1).getByText('Tie!').waitFor();
+  assert((await small(p2).innerText()) === 'The host is rolling for it', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host is rolling for it"');
+  await host.getByRole('button', { name: '🎲 Roll for it' }).click();
+  const won = await Promise.race([p1, p2].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
+  const [rollWin, rollSecond] = won === 0 ? [p1, p2] : [p2, p1];
+  await small(rollWin).getByText('You won the roll').waitFor();
+  await small(rollSecond).getByText('Tie — you rolled 2nd').waitFor();
+  assert((await big(rollSecond).innerText()) === "You're 2nd", `the roll sets the order: Player ${won + 1} answers, the other "You're 2nd — Tie — you rolled 2nd"`);
+  await queue.getByText('🎲 2nd').waitFor();
+  assert(true, 'the host panel queue shows the roll order (🎲 1st, 🎲 2nd)');
+  await host.keyboard.press('Escape');
 
   // ---------- Exit ends the room ----------
   await host.getByRole('button', { name: 'Exit' }).click();

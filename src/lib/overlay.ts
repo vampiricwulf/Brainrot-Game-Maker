@@ -214,11 +214,12 @@ export function quickDice(sides: number, count: number, name = `${count > 1 ? co
   return { id: 'quick', name, showTotal: count > 1, dice: [{ id: 'q', sides, count }] };
 }
 
-export function startRollOff(live: Live, session: Session, playerIds: string[], sides: number, purpose: 'first' | 'tiebreak' = 'first'): void {
+/** armId: for a buzzer tie ('buzz'), the opening it settles. */
+export function startRollOff(live: Live, session: Session, playerIds: string[], sides: number, purpose: 'first' | 'tiebreak' | 'buzz' = 'first', armId?: number): void {
   if (!playerIds.length) return;
   // A blank die is a d20, and a die has at least 2 sides (a d1 would tie every round).
   sides = Math.min(1000, Math.max(2, Math.floor(sides) || 20));
-  const plan = planRollOff(playerIds, sides);
+  const plan = planRollOff(playerIds, sides, undefined, purpose === 'buzz');
   live.overlay = {
     kind: 'rolloff',
     nonce: newId(),
@@ -229,14 +230,15 @@ export function startRollOff(live: Live, session: Session, playerIds: string[], 
     winner: plan.winner,
     startedAt: Date.now(),
     roundMs: 2600,
+    ...(armId !== undefined ? { armId } : {}),
   };
   const name = (id: string) => session.players.find((p) => p.id === id)?.name ?? '?';
   const first = plan.rounds[0];
   logRoll(
     session,
     'rolloff',
-    purpose === 'tiebreak' ? `Tiebreaker roll-off (d${sides})` : `Roll-off (d${sides})`,
-    `${name(plan.winner)} ${purpose === 'tiebreak' ? 'wins' : 'goes first'} · ${first.players.map((p) => `${name(p)} ${first.rolls[p]}`).join(', ')}${plan.rounds.length > 1 ? ` (+${plan.rounds.length - 1} tiebreak)` : ''}`,
+    purpose === 'tiebreak' ? `Tiebreaker roll-off (d${sides})` : purpose === 'buzz' ? `Buzzer tie roll (d${sides})` : `Roll-off (d${sides})`,
+    `${purpose === 'buzz' ? plan.ranking.map(name).join(' → ') : `${name(plan.winner)} ${purpose === 'tiebreak' ? 'wins' : 'goes first'}`} · ${first.players.map((p) => `${name(p)} ${first.rolls[p]}`).join(', ')}${plan.rounds.length > 1 ? ` (+${plan.rounds.length - 1} tiebreak)` : ''}`,
     [plan.winner],
   );
 }

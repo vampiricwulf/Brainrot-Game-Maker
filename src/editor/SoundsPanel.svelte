@@ -7,7 +7,7 @@
   <h2>Sounds</h2>
   <p class="muted">Played on stream at key moments: short built-in sounds, or your own audio files. Untick one to switch it off.</p>
   <SoundSlots />
-  <p class="muted small">Players and the game rules (buzzers, timers, the round intro) are set on the ▶ Play screen, before the game starts.</p>
+  <p class="muted small">Players, the game rules (timers, the round intro) and the phone buzzers are set on the ▶ Play screen, before the game starts.</p>
 </section>
 
 <style>

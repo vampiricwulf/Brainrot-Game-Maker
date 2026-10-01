@@ -16,18 +16,41 @@ done, the Unreleased lines move under that day's heading.
   who buzzed first, says "Too early" (with a short lock-out) or "Too late — Ann is answering", and gives a player
   their seat back after a reload. Deploys from `main` once the Cloudflare secrets are set (see `buzzer/README.md`).
   (1c5bfc0, 5f8bc06, b525be7)
+- **Phone buzzers are fair on a slow connection**: each phone times how fast its player reacted to the BUZZ! light,
+  and the fastest reaction wins, not the first buzz to reach the server. The server checks each phone's timing
+  against that phone's own connection speed, so a phone can't fake much of a head start.
+  (bde9ae8, 9920218)
+- **Every phone buzz counts, fastest first**: the host panel lists everyone who buzzed on the clue in order ("2. Bo
+  +0.12 s"), and phones show their place ("You're 2nd — 0.12 s behind Ann"). After a wrong answer the buzzers still
+  open again for the rest (as before), and **→ Next in line: Bo** gives the answer straight to the next one who buzzed.
+  (bde9ae8, 9920218)
+- **Ties**: buzzes within 0.01 s of each other are a tie and nobody is picked. The host panel says "Tie: Ann & Bo" with
+  **🎲 Roll for it**: the tied players roll, and the roll sets who answers first, second… ("🎲 1st"). The host can
+  also just pick one. Tied phones say "Tie! The host is rolling for it", then "Tie — you rolled 2nd".
+  (bde9ae8, 9920218)
+- **↺ Reset buzzers** in the host panel (or `0`): nobody is locked out of the clue any more and the buzzers open for
+  everyone. (9920218)
+- If the buzzer server turns down a new room, the pre-game card shows its reason in plain words. (9920218)
+- **The buzzer server limits new rooms**: 6 a minute from one address ("Too many new rooms — wait a minute") and 1000
+  a day in all ("The buzzer server is busy today — try again tomorrow"), so nobody can use up its free daily quota.
+  (bde9ae8)
 
 ### Changed
-- **⚙ Setup & Players is now 🔊 Sounds**, and holds only the sounds. **Players are added on the ▶ Play screen** (before
-  the game): add, rename, recolor, pick a picture, reorder and delete them there, and they're kept with the game for
-  next time (undoable in the editor's 🕘 History). The rules, timers and round intro moved there too, in a
-  **⚙ Game rules** fold that remembers whether you left it open; they're still saved with the game. A game with no
-  players can still go to ▶ Play ("Add players to start"); the checklist's "No players yet" line takes you there.
-  Find no longer lists players.
+- **The editor's ⚙ Setup tab is now 🔊 Sounds**, and holds only the sounds. **Players are added on the ▶ Play
+  screen** (before the game): add, rename, recolor, pick a picture, reorder and delete them there, and they're kept
+  with the game for next time (undoable in the editor's 🕘 History). The rules, timers and round intro moved there
+  too, in a **⚙ Game rules** fold that remembers whether you left it open (the buzzer options are on the 📱 Phone
+  buzzers card above it); they're still saved with the game. A game with no players can still go to ▶ Play ("Add
+  players to start"); the checklist's "No players yet" line takes you there. Find no longer lists players.
+  (e2032fc, 64b7501, c63c83e)
+- **Buzzer mode moved to the pre-game screen**: the 📱 Phone buzzers card turns it on and sets its options (when the
+  buzzers open, new players from their phone, the early-buzz wait); they are saved with the game and are no longer
+  among the rules. Mid-game, the 📱 chip's list can change when the buzzers open. In buzzer mode the number keys simply
+  pick who answers, by hand (over a phone's buzz); `0` resets the buzzers. (4306034)
 - **Buzzer mode: a wrong answer locks that player out of the clue** and opens the buzzers again for the others (a
-  rebound); `0` still opens them for everyone, a right answer closes them, and a new tile starts afresh. New rule in
-  ⚙ Game rules: **Open the buzzers when the clue opens, or when I press `U`** (after reading it; the host panel's
-  🔔 Open the buzzers does the same). Number keys still pick a player while the buzzers are closed. (8daeb88)
+  rebound); `0` still opens them for everyone, a right answer closes them, and a new tile starts afresh. New option
+  (now on the 📱 Phone buzzers card): **Open the buzzers when the clue opens, or when I press `U`** (after reading it;
+  the host panel's 🔔 Open the buzzers does the same). Number keys still pick a player while the buzzers are closed. (8daeb88)
 - The editor sidebar groups the rounds (Tiebreaker right after them) and the game-wide tabs; the checklist is one line
   per round and a click jumps to the first unfinished tile. Categories show ⋯ for their menu and many-category boards
   fit the screen. Delete world is in a ⋯ menu. Only the header has ↶ ↷ (except windows that cover it). The first
@@ -46,7 +69,7 @@ done, the Unreleased lines move under that day's heading.
 - Keep in game and Resume with my edits follow screens moved in the editor; a party on a screen that no longer exists
   goes to the start. (4eef0fe)
 - A Final round has its own **"Players with a score of 0 or less can play it"** option (on for a new Final). It used to
-  be one game-wide setting in ⚙ Setup; older games keep their choice on each of their Finals. (288972f)
+  be one game-wide rule; older games keep their choice on each of their Finals. (288972f)
 - A **Daily Double's wager stays off the stream** until the host presses **Show wager**, as a Final's wagers do.
   (288972f) In single-window mode viewers still see the wager box while the host types in it.
 - **＋ Add round** puts the cursor in the new round's name, selected, ready to type over (it went to the round's tab).
@@ -75,7 +98,7 @@ done, the Unreleased lines move under that day's heading.
   dark, and filled buttons are darker. (4729d75)
 
 ### Added
-- **Phone buzzers** (⚙ Game rules › Players buzz from: their phones too): before the game, ▶ Start the room shows a
+- **Phone buzzers** (the pre-game screen's 📱 Phone buzzers card): before the game, ▶ Start the room shows a
   room code, a join link (📋 Copy link for the Discord chat) and a QR code, also on the viewers' Starting soon card.
   Players open it on their phone, tap their name and get a big BUZZ button; the first one in answers, and the host
   panel shows who came next ("Bo +0.12 s"). The 📱 3/4 chip in the host panel lists the phones (✕ takes a seat back)
@@ -121,8 +144,8 @@ done, the Unreleased lines move under that day's heading.
   tab and map tab keys. (84ad8f2, 7180280, 86f9f05, f3405d5)
 - ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
   never a redo.
-- **Buzzer mode** (⚙ Game rules): during a clue the first player number pressed answers and the others are locked out
-  with a buzz; `0` opens the buzzers again. Players can buzz from the audience window with their own keys. Viewers see
+- **Buzzer mode** (now on the pre-game screen's 📱 Phone buzzers card): during a clue the first player number
+  pressed answers and the others are locked out with a buzz; `0` opens the buzzers again. Players can buzz from the audience window with their own keys. Viewers see
   "🔔 Ann is answering" while one player is picked. (3a6c269)
 - RPG, board game and Final rounds open on a **title card**, like boards. **Built-in sounds**, on by default (round
   intro, tile, Daily Double, buzz, right, wrong, reveal, time's up, dice, wheel, board move, winner); each can be
@@ -144,7 +167,7 @@ done, the Unreleased lines move under that day's heading.
 ### Fixed
 - Later boards no longer keep doubling their values; long category names aren't cut off; the Daily Double count is
   capped at the playable tiles; a blank row value keeps its old value and negatives read −$100; a stat preset can't be
-  added twice; focus goes to the new round after ＋ Add round; Setup checkboxes don't shrink. (46f2a13)
+  added twice; focus goes to the new round after ＋ Add round; the rules' checkboxes don't shrink. (46f2a13)
 - Opening a tab right after an undo or redo no longer jumps back to the undone place (a clue editor could reopen over
   the board). This was also why about half the CI builds failed. (a58527b)
 - A wheel or dice clue, screen, set of buttons, slide item or slide pasted into another game brings its wheels and
@@ -163,6 +186,11 @@ done, the Unreleased lines move under that day's heading.
   incomplete. (64eba3f, 13b208f)
 - Desktop saves are synced to disk before they replace the old file, and closing the window keeps the last edits.
   (769dbf8)
+
+### Removed
+- **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz
+  from" choice and the audience window's buzz-in keys are gone (older games drop them quietly; one with Buzzer mode on
+  keeps it, now meaning phone buzzers). (4306034)
 
 ## 2026-09-30
 

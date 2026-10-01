@@ -1,6 +1,10 @@
-<!-- Pre-game: 📱 Phone buzzers. Start the room, then players open the link (or scan the code) and tap their name. -->
+<!--
+  Pre-game: 📱 Phone buzzers. Turn Buzzer mode on and set its options (saved with the game), start the room, then
+  players open the link (or scan the code) and tap their name.
+-->
 <script lang="ts">
-  import type { Session } from '../lib/model';
+  import type { GameSettings, Session } from '../lib/model';
+  import BuzzerOptions, { type SetBuzzSetting } from './BuzzerOptions.svelte';
   import QrCode from '../lib/QrCode.svelte';
   import { buzzerBase, remote, roomLink } from '../lib/remote.svelte';
   import { copyText } from './standings';
@@ -8,6 +12,8 @@
 
   let {
     session,
+    settings,
+    onset,
     max,
     onstart,
     onadd,
@@ -15,6 +21,8 @@
     onkick,
   }: {
     session: Session;
+    settings: GameSettings;
+    onset: SetBuzzSetting;
     max: number;
     onstart: () => void;
     onadd: (conn: string, name: string) => void;
@@ -34,8 +42,24 @@
       Phone buzzers aren't set up in this copy. A buzzer server's address can go in ⚙ Settings › Buzzer server (in the
       editor).
     </p>
+  {:else}
+    <label class="check">
+      <input type="checkbox" checked={!!settings.buzzer} onchange={(e) => onset('buzzer', e.currentTarget.checked || undefined, 'Buzzer mode')} />
+      Buzzer mode: players buzz in from their phones
+    </label>
+    {#if !settings.buzzer}
+      <p class="muted small">
+        Turn it on and players buzz in from their phone during a clue: the fastest reaction answers, and a wrong answer
+        locks that player out of the clue. You can still pick who answers by hand (1–9 or a click).
+      </p>
+    {:else}
+      <BuzzerOptions {settings} {onset} />
+    {/if}
+  {/if}
+  {#if !base || !settings.buzzer}
+    <!-- Nothing to start until it's on. -->
   {:else if !remote.code || remote.status === 'off'}
-    <p class="muted small">Players buzz from their phone: start the room, then share the link or the code on stream.</p>
+    <p class="muted small">Start the room, then share the link or the code on stream.</p>
     <div class="row">
       <button class="primary" onclick={onstart} disabled={remote.status === 'connecting'}>
         {remote.status === 'connecting' ? 'Starting the room…' : '▶ Start the room'}

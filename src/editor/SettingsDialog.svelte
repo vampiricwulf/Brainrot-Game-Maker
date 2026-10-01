@@ -114,7 +114,7 @@
     </label>
     {#if tested}<p class="small" role="status">{tested}</p>{/if}
     <p class="muted small">
-      Advanced: where phone buzzer rooms are made (▶ Play › ⚙ Game rules › Players buzz from: their phones too).
+      Advanced: where phone buzzer rooms are made (▶ Play › 📱 Phone buzzers › Buzzer mode).
       {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : "This copy comes without one: phone buzzers need an address here."}
     </p>
 

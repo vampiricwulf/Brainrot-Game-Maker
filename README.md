@@ -83,9 +83,9 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 ## Hosting
 
 Press **▶ Play** to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
-`Alt`+arrows to reorder; they're kept with the game for next time), and open **⚙ Game rules** for scoring, buzzers, the
-most players, timers and the round intro (saved with the game too). Then pick one of two modes. Viewers see a
-"Starting soon…" card until you press **Start game**.
+`Alt`+arrows to reorder; they're kept with the game for next time), open **⚙ Game rules** for scoring, the most
+players, timers and the round intro, and turn on phone buzzers on the **📱 Phone buzzers** card (all saved with the game
+too). Then pick one of two modes. Viewers see a "Starting soon…" card until you press **Start game**.
 
 - **Single window**: viewers see this window. Press `H` to hide the host controls.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
@@ -104,16 +104,17 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 - 🏁 Who goes first
 - 📊 Scores (with 📋 Copy standings for chat)
 
-**Buzzer mode** (⚙ Game rules, on the pre-game screen): the first player number pressed answers and the others are locked out with a buzz;
-a wrong answer locks that player out of the clue and opens the buzzers for the rest, and `0` opens them for everyone.
-The buzzers can open when the clue does, or when you press `U` after reading it. Players can also buzz from the
-audience window with their own keys. Viewers see "🔔 Ann is answering" whenever one player is picked during a clue.
-
-**Phone buzzers** (Buzzer mode › Players buzz from: their phones too): start the room on the pre-game screen and share
-the code, link or QR code (it's on the viewers' Starting soon card too). Players open the link on their phone, tap
-their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you allow it. The
-rooms run on a small buzzer server (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings ›
-Buzzer server can point at your own. Copies built without one say "Phone buzzers aren't set up in this copy".
+**Phone buzzers** (Buzzer mode, on the pre-game screen's 📱 Phone buzzers card, saved with the game): start the room
+and share the code, link or QR code (it's on the viewers' Starting soon card too). Players open the link on their
+phone, tap their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you
+allow it. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
+on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every buzz is listed in the host panel,
+fastest first: a wrong answer locks that player out and opens the buzzers for the rest, **→ Next in line** gives the
+answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a
+tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
+see "🔔 Ann is answering" whenever one player is picked during a clue. The rooms run on a small buzzer server
+(`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings › Buzzer server can point at your
+own. Copies built without one say "Phone buzzers aren't set up in this copy".
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
 off in the editor's 🔊 Sounds tab.
@@ -168,7 +169,7 @@ hidden objects. Use the separate audience window when that matters.
 | `T` | Start/pause the timer |
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off / scoreboard |
 | `K` or `B` | "Be right back" cover (every round) |
-| `0` | Select everyone or no one (in buzzer mode: open the buzzers again) |
+| `0` | Select everyone or no one (in buzzer mode: reset the buzzers) |
 | `U` | Buzzer mode: open the buzzers (when they open on your key) |
 | `Shift+A` | Scores-only window |
 | `Space` / `←` `→` / `M` | Play/pause, seek, mute media |

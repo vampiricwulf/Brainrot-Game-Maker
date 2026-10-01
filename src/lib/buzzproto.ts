@@ -5,8 +5,10 @@
  * Who decides what:
  * - The host owns the game: seats (the players), whether buzzers are open, the clue text phones may see, who is locked
  *   out, scores. It sends its whole HostState whenever that changes; the room keeps the latest one.
- * - The room owns the race: while armed, the first buzz it receives from a seat that may buzz wins. It moves to
- *   'answering' on its own (so a second buzz can never also win), tells the host, and the host follows.
+ * - The room owns the race: while armed, the seat that reacted fastest to the BUZZ! light on its own phone wins (each
+ *   phone measures its reaction time; the room checks it against that phone's round trip and collects buzzes for a
+ *   short grace window before deciding). It moves to 'answering' on its own (so a second buzz can never also win),
+ *   tells the host, and the host follows.
  * - Phones only ever see phoneView(): never answers, notes, media or other players' tokens.
  *
  * This file is shared by the app and the Worker (buzzer/ imports it), so it has no app imports.
@@ -30,8 +32,8 @@ export interface Seat {
 /**
  * - lobby: no clue open (the board, between rounds, before the game). Phones show their name and score.
  * - closed: a clue is open but buzzers aren't armed yet (the host is reading). A buzz now is early.
- * - armed: buzzers are open; the first buzz wins.
- * - answering: someone is answering (answering is set); others wait.
+ * - armed: buzzers are open; the fastest buzz wins.
+ * - answering: someone is answering (answering is set; null while a tie waits on the host); others wait.
  */
 export type BuzzPhase = 'lobby' | 'closed' | 'armed' | 'answering';
 
@@ -52,6 +54,8 @@ export interface HostState {
   clue?: { text: string; caption?: string } | null;
   /** The seat answering (phase 'answering'). */
   answering?: string | null;
+  /** After a tie: the order the tied seats rolled in (answering first); they go first in the queue in this order. */
+  rollOrder?: string[];
   /** Seats that can't buzz on this clue (they already missed it). */
   lockedOut: string[];
   /** A buzz while 'closed' locks that phone out for this long once the buzzers open (0 = no penalty). */
@@ -106,14 +110,30 @@ export type HostMsg =
   | { t: 'close' }
   | { t: 'ping'; at: number };
 
+/** One place in the room's queue of buzzes (see the 'queue' message). */
+export interface QueuedBuzz {
+  seatId: string;
+  afterMs: number;
+  rolled?: number;
+}
+
+/** Buzzes this close (ms) are a tie: below that it's touch sampling and screen timing, not who reacted first. */
+export const TIE_MS = 10;
+
 /** The room → host. */
 export type RoomToHost =
   | { t: 'welcome'; code: string; protocol: number; serverNow: number }
   /**
    * A buzz the room counted while armed. rank 1 is the winner (the room has moved to 'answering'); later ranks came
-   * after. afterMs: 0 for the winner, ms after the winner for later ranks.
+   * after. afterMs: 0 for the winner; for later ranks, how much slower than the winner they reacted (ms).
    */
   | { t: 'buzz'; armId: number; seatId: string; rank: number; afterMs: number }
+  /**
+   * Every buzz counted in this arm, fastest reaction first, sent again whenever it changes (late buzzes keep coming).
+   * afterMs: behind the first. tie: seats tied for first (within TIE_MS): the room picked nobody, the host decides
+   * (pick one, or roll and send rollOrder). rolled: a tied seat's place in the host's roll.
+   */
+  | { t: 'queue'; armId: number; queue: QueuedBuzz[]; tie?: string[] }
   | { t: 'phones'; phones: PhoneInfo[] }
   | { t: 'pong'; at: number; serverNow: number }
   | { t: 'error'; message: string };
@@ -124,9 +144,12 @@ export type PhoneMsg =
   | { t: 'join'; seatId: string; token?: string }
   /** Ask to join as a new player (only when allowNew). */
   | { t: 'new'; name: string }
-  | { t: 'buzz'; armId: number }
+  /** reactMs: ms from this phone showing BUZZ! for armId to the press (old phones leave it out). */
+  | { t: 'buzz'; armId: number; reactMs?: number }
   | { t: 'leave' }
-  | { t: 'ping'; at: number };
+  | { t: 'ping'; at: number }
+  /** Sent straight back on every pong, echoing its serverNow, so the room can time the round trip itself. */
+  | { t: 'sync'; serverNow: number };
 
 /** The room → a phone. */
 export type RoomToPhone =
@@ -137,8 +160,25 @@ export type RoomToPhone =
   | { t: 'waiting' }
   | { t: 'denied'; reason: 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' }
   | { t: 'view'; view: PhoneView }
-  /** This phone's own buzz: rank 1 = you're answering; 'early' = before the buzzers opened (locked until lockedUntil); 'late' / 'locked' = didn't count. */
-  | { t: 'result'; armId: number; outcome: 'first' | 'late' | 'early' | 'locked'; rank?: number; afterMs?: number; lockedUntil?: number }
+  /**
+   * This phone's own buzz, sent again whenever its place in the queue changes. 'pending' = counted, the room is still
+   * collecting buzzes (a quarter second); 'first' = you're answering (byMs: how much faster than the next one, once
+   * there is one); 'late' = in the queue at rank, afterMs behind the first (no rank: it didn't count); 'tie' = tied for
+   * first, the host is deciding; 'early' = before the buzzers opened (locked until lockedUntil); 'locked' = can't buzz.
+   */
+  | {
+      t: 'result';
+      armId: number;
+      outcome: 'pending' | 'first' | 'late' | 'tie' | 'early' | 'locked';
+      rank?: number;
+      afterMs?: number;
+      byMs?: number;
+      /** The name of the player first in the queue (who afterMs is behind). */
+      behind?: string;
+      /** In a tie the host rolled for: this phone's place in the roll (1 = rolled highest). */
+      rolled?: number;
+      lockedUntil?: number;
+    }
   | { t: 'kicked' }
   /** The host closed the room (or it expired). */
   | { t: 'closed' }
