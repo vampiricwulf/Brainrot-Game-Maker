@@ -103,8 +103,15 @@ Nothing pops up over the stage: questions for the host (a locked door, naming a 
 - 📊 Scores (with 📋 Copy standings for chat)
 
 **Buzzer mode** (Setup › Rules): the first player number pressed answers and the others are locked out with a buzz;
-`0` opens the buzzers again. Players can also buzz from the audience window with their own keys. Viewers see
-"🔔 Ann is answering" whenever one player is picked during a clue.
+a wrong answer locks that player out of the clue and opens the buzzers for the rest, and `0` opens them for everyone.
+The buzzers can open when the clue does, or when you press `U` after reading it. Players can also buzz from the
+audience window with their own keys. Viewers see "🔔 Ann is answering" whenever one player is picked during a clue.
+
+**Phone buzzers** (Buzzer mode › Players buzz from: their phones too): start the room on the pre-game screen and share
+the code, link or QR code (it's on the viewers' Starting soon card too). Players open the link on their phone, tap
+their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you allow it. The
+rooms run on a small buzzer server (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings ›
+Buzzer server can point at your own. Copies built without one say "Phone buzzers aren't set up in this copy".
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
 off in Setup › Sounds.

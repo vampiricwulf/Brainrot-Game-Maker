@@ -107,10 +107,14 @@ try {
 
   const bad = await new Promise((ok) => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}?host=nope`);
-    ws.onopen = () => ok('open');
-    ws.onerror = () => ok('refused');
+    ws.onclose = (e) => ok(e.code);
   });
-  assert(bad === 'refused', 'a wrong host token is refused');
+  assert(bad === 4003, `a wrong host token is turned away with a "don't come back" code (${bad})`);
+  const gone = await new Promise((ok) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/ZZZZ?host=nope`);
+    ws.onclose = (e) => ok(e.code);
+  });
+  assert(gone === 4004, `so is a host for a room that doesn't exist (${gone})`);
 
   const host = await connectHost(room.code, room.hostToken);
   assert((await host.wait((m) => m.t === 'welcome', 'welcome')).code === room.code, 'the host is welcomed');

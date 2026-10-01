@@ -164,9 +164,11 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   async fetch(request: Request): Promise<Response> {
-    if (!this.meta || !this.room) return new Response('No such room', { status: 404 });
     const hostToken = new URL(request.url).searchParams.get('host');
-    if (hostToken !== null && !sameToken(hostToken, this.meta.hostToken)) return new Response('Wrong host token', { status: 403 });
+    // Turned away: accepted, then closed with a 4xxx code. A browser sees an HTTP refusal only as a dropped connection
+    // (and would try again forever); 4000–4999 tells the host the room is gone for good.
+    if (!this.meta || !this.room) return refuse(4004, 'no such room');
+    if (hostToken !== null && !sameToken(hostToken, this.meta.hostToken)) return refuse(4003, 'wrong host token');
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
     if (hostToken !== null) {
@@ -262,4 +264,12 @@ export class BuzzRoom extends DurableObject<Env> {
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
   }
+}
+
+/** Accept a WebSocket only to close it at once with code (4000–4999: don't come back). */
+function refuse(code: number, reason: string): Response {
+  const pair = new WebSocketPair();
+  pair[1].accept();
+  pair[1].close(code, reason);
+  return new Response(null, { status: 101, webSocket: pair[0] });
 }

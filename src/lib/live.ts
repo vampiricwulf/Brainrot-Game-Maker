@@ -1,6 +1,7 @@
 // Transient on-screen state shared between the host and the audience window (not saved with the game).
 import { newId, type DicePreset, type Id, type Slide, type WheelSegment } from './model';
 import type { DiceRoll, PoolSlice, RollOffRound } from './tools';
+import type { BuzzState } from './buzz';
 
 /** What a host click on the stage asks for (the host's view decides what it means right now). */
 export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay';
@@ -121,8 +122,13 @@ export interface Live {
   pregame?: boolean;
   /** When the show starts (ms timestamp): the "Starting soon" card counts down to it. */
   soonAt?: number;
-  /** The one player selected during a clue (buzzer mode: the first in): viewers see "🔔 Ann is answering". */
-  answering?: Id | null;
+  /**
+   * Buzzer mode during a clue: open or not, who is answering, who already missed it. Outside buzzer mode `answering` is
+   * the one player selected during a clue. Viewers see "🔔 Ann is answering".
+   */
+  buzz?: BuzzState;
+  /** Phone buzzers: the room's code and join link, on the "Starting soon" card so viewers can join. */
+  room?: { code: string; link: string } | null;
 }
 
 export function newLive(): Live {

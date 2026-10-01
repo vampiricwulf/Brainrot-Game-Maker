@@ -18,6 +18,10 @@ done, the Unreleased lines move under that day's heading.
   (1c5bfc0, 5f8bc06, b525be7)
 
 ### Changed
+- **Buzzer mode: a wrong answer locks that player out of the clue** and opens the buzzers again for the others (a
+  rebound); `0` still opens them for everyone, a right answer closes them, and a new tile starts afresh. New rule in
+  Setup › Rules: **Open the buzzers when the clue opens, or when I press `U`** (after reading it; the host panel's
+  🔔 Open the buzzers does the same). Number keys still pick a player while the buzzers are closed. (8daeb88)
 - The editor sidebar groups the rounds (Tiebreaker right after them) and the game-wide tabs; the checklist is one line
   per round and a click jumps to the first unfinished tile. Categories show ⋯ for their menu and many-category boards
   fit the screen. Delete world is in a ⋯ menu. Only the header has ↶ ↷ (except windows that cover it). The first
@@ -65,6 +69,14 @@ done, the Unreleased lines move under that day's heading.
   dark, and filled buttons are darker. (4729d75)
 
 ### Added
+- **Phone buzzers** (Setup › Rules › Players buzz from: their phones too): before the game, ▶ Start the room shows a
+  room code, a join link (📋 Copy link for the Discord chat) and a QR code, also on the viewers' Starting soon card.
+  Players open it on their phone, tap their name and get a big BUZZ button; the first one in answers, and the host
+  panel shows who came next ("Bo +0.12 s"). The 📱 3/4 chip in the host panel lists the phones (✕ takes a seat back)
+  and warns while reconnecting. With **Let new players join from their phone**, people can ask to join and the host
+  adds them (✔ Add), mid-game too. A phone that buzzes too early waits a moment (1 s by default). A reload gets back
+  into the same room; Exit closes it. ⚙ Settings › **Buzzer server** sets where rooms are made, with a Test button.
+  (ea18c23, 65cd85e, f8cbaf8)
 - Dice tiles can use standard dice (d4–d100, 2d6). "＋ New wheel…" / "＋ New dice…" right in the clue editor and in a
   board game's Move by. 🚪 Doorway and 🧙 Character buttons on RPG screens. A game-wide clue text font and colour in
   🎨 Theme, whose preview can show any round or a clue. (46f2a13)

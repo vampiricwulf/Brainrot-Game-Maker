@@ -25,6 +25,7 @@
   import type { AvatarDrop } from './rpg/hostops';
   import { boardLayout, STAGE_KEYS, themeStyle } from '../lib/theme';
   import AnsweringPlate from './AnsweringPlate.svelte';
+  import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
   import { soundUrl } from './cues';
 
@@ -122,7 +123,7 @@
     if (session.intro?.stage !== 'title' || session.phase === 'board' || !r) return null;
     return isFinal(r) ? finalName(r) : roundName(r, session.currentRound);
   });
-  const answering = $derived(session.phase === 'clue' && !session.dd && live.answering ? byId[live.answering] : undefined);
+  const answering = $derived(session.phase === 'clue' && !session.dd && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
   // started) stays quiet: an audience window opened mid-game doesn't replay the round intro.
@@ -148,11 +149,22 @@
 {#if live.pregame}
   <!-- The host is still on the pre-game screen. -->
   <div class="full title-card" in:fade={{ duration: 300 }}>
-    <div class="soon">
+    <div class="soon" class:has-room={!!live.room}>
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
       <div class="round-name">{game.title}</div>
       <div class="soon-text">{stream?.soonText?.trim() || 'Starting soon…'}</div>
       {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
+      {#if live.room}
+        <!-- Phone buzzers: viewers who play join from their phone. -->
+        <div class="join">
+          <QrCode text={live.room.link} size={240} label="QR code to join on your phone" />
+          <div class="join-text">
+            <div class="join-how">📱 Buzz from your phone</div>
+            <div class="join-code">{live.room.code}</div>
+            <div class="join-link">{live.room.link.replace(/^https?:\/\//, '')}</div>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 {:else if introName}
@@ -512,6 +524,41 @@
   }
   .soon .round-name {
     font-size: 150px;
+  }
+  .soon.has-room {
+    gap: 28px;
+  }
+  .soon.has-room .round-name {
+    font-size: 110px;
+  }
+  .join {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    padding: 24px 36px;
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .join-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #fff;
+    font-family: var(--board-font);
+  }
+  .join-how {
+    font-size: 44px;
+    font-weight: 800;
+  }
+  .join-code {
+    font-family: var(--value-font);
+    font-size: 120px;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: var(--value);
+  }
+  .join-link {
+    font-size: 36px;
   }
   .soon-text,
   .soon-count {

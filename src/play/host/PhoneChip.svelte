@@ -1,0 +1,123 @@
+<!-- Host panel: "📱 3/4", the phones joined. Click for the list (kick, people asking to join), the code and the link. -->
+<script lang="ts">
+  import type { Session } from '../../lib/model';
+  import { remote, roomLink } from '../../lib/remote.svelte';
+  import { copyText } from '../standings';
+  import PhoneList from '../PhoneList.svelte';
+
+  let {
+    session,
+    max,
+    onstart,
+    onadd,
+    onreject,
+    onkick,
+  }: {
+    session: Session;
+    max: number;
+    onstart: () => void;
+    onadd: (conn: string, name: string) => void;
+    onreject: (conn: string) => void;
+    onkick: (seatId: string) => void;
+  } = $props();
+
+  let open = $state(false);
+  const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
+  const asking = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)).length);
+  const trouble = $derived(remote.status === 'reconnecting' || remote.status === 'error');
+  const label = $derived(
+    remote.status === 'off'
+      ? '📱 Phones off'
+      : remote.status === 'connecting'
+        ? '📱 Starting…'
+        : `📱 ${joined}/${session.players.length}${asking ? ` · ${asking} asking` : ''}${trouble ? ' ⚠' : ''}`,
+  );
+</script>
+
+<svelte:window onkeydowncapture={(e) => open && e.key === 'Escape' && (e.stopImmediatePropagation(), (open = false))} />
+
+<span class="wrap">
+  <button
+    class="small chip"
+    class:warn={trouble}
+    class:ask={asking > 0}
+    aria-expanded={open}
+    aria-controls="phone-pop"
+    onclick={() => (open = !open)}
+    title={trouble ? 'The buzzer room isn’t reachable right now: phones can’t buzz' : 'Phone buzzers: who has joined'}
+  >{label}</button>
+  {#if open}
+    <div class="pop" id="phone-pop" role="region" aria-label="Phone buzzers">
+      {#if remote.status === 'off'}
+        <p class="muted small">No buzzer room is running.</p>
+        <button class="small" onclick={onstart}>▶ Start the room</button>
+      {:else}
+        <div class="row">
+          <b class="code">{remote.code}</b>
+          <button class="small" onclick={() => copyText(roomLink(), 'Join link copied')}>📋 Copy link</button>
+          <span class="spacer"></span>
+          <button class="ghost small" onclick={() => (open = false)} aria-label="Close the phones list">✕</button>
+        </div>
+        {#if remote.status === 'reconnecting'}
+          <p class="warn small" role="status">⚠ Reconnecting to the buzzer room… phones can’t buzz until it’s back.</p>
+        {:else if remote.status === 'error'}
+          <p class="warn small" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</p>
+          <button class="small" onclick={onstart}>Start a new room</button>
+        {/if}
+        <PhoneList {session} {max} {onadd} {onreject} {onkick} />
+      {/if}
+    </div>
+  {/if}
+</span>
+
+<style>
+  .wrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .chip.warn {
+    border-color: var(--warn);
+    color: var(--warn);
+  }
+  .chip.ask {
+    border-color: var(--accent);
+  }
+  .pop {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    width: 300px;
+    max-height: 60vh;
+    overflow: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+  .row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .spacer {
+    flex: 1;
+  }
+  .code {
+    font-size: 18px;
+    letter-spacing: 0.1em;
+  }
+  p {
+    margin: 0;
+  }
+  .small {
+    font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
+  }
+</style>

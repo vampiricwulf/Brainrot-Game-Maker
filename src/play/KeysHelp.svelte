@@ -62,7 +62,9 @@
       title: app.playerOnly ? 'Buzzer mode' : 'Buzzer mode (Setup › Rules)',
       keys: [
         ['1 – 9', 'During a clue: player N buzzes in; the first one answers, the rest are locked out'],
-        ['0', 'During a clue: open the buzzers again'],
+        ['0', 'During a clue: open the buzzers again, for everyone (also those who missed it)'],
+        ['U', 'Open the buzzers (when Setup says you open them after reading the clue; after a right answer, for the rest)'],
+        ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the buzzers open for the others'],
         ['Buzz-in keys', 'Pressed in the audience window, they buzz players 1, 2, 3… in (there, those letters only buzz)'],
       ],
     },
