@@ -1,10 +1,10 @@
 // RPG rounds: build a tiny world (two screens, an item, stats), then play it: move with the pad and the keys, pick
 // the item up, change a stat, undo and redo, show the map, and check viewers never see secret objects.
 import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, dragBy, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -26,6 +26,172 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 const where = () => page.locator('.rh .where').innerText();
+
+/** A big world (20×20 screens) from a file, with four players and an audience window. */
+async function bigWorld() {
+  console.log('A 20×20 world:');
+  const text = (id, t, x, y) => ({ id, kind: 'text', text: t, x, y, w: 520, h: 100, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 48, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+  const shape = (id, name, x, y, role) => ({ id, name, kind: 'shape', shape: 'rect', x, y, w: 150, h: 150, rotation: 0, opacity: 1, zIndex: 1, fill: '#aa5500', stroke: '#000', strokeWidth: 0, radius: 0, role });
+  const screens = [];
+  for (let r = 0; r < 20; r++)
+    for (let c = 0; c < 20; c++)
+      screens.push({ id: `sc_${c}_${r}`, name: `Field ${c},${r}`, col: c, row: r, slide: { background: { color: `hsl(${(c * 17 + r * 7) % 360},40%,30%)` }, elements: [text(`t_${c}_${r}`, `Field ${c},${r}`, 700, 40)] } });
+  screens[0].name = 'Village';
+  screens[0].slide.elements.push(
+    shape('el_door', 'Dungeon door', 200, 300, { class: 'doorway', to: { map: 'm_dun', screen: 'd_1' } }),
+    shape('el_gold', 'Gold pile', 900, 300, { class: 'currency', field: 'f_gold', amount: 10 }),
+    shape('el_trap', 'Trap', 1400, 300, { class: 'hazard', actions: [{ id: 'a_trap', do: 'stat', field: 'f_hp', op: 'add', amount: -3, who: 'party' }] }),
+  );
+  screens[1].exits = { e: { kind: 'blocked', note: 'A wall of fire' } };
+  const map = (id, name, cols, rows, list, visibility) => ({ id, name, cols, rows, screens: list, visibility, showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut' });
+  const game = {
+    id: 'g_big_world', version: 2, title: 'Big world',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+    players: ['Ann', 'Bob', 'Cy', 'Dee'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
+    rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
+    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    statFields: [
+      { id: 'f_hp', name: 'HP', type: 'number', start: 10, min: 0, max: 10, display: 'hearts', audience: 'hud' },
+      { id: 'f_gold', name: 'Gold', type: 'number', start: 5, min: 0, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' },
+    ],
+    items: [],
+    worlds: [{ id: 'w1', name: 'World', maps: [map('m_main', 'Overworld', 20, 20, screens, 'discovered'), map('m_dun', 'Dungeon', 1, 1, [{ id: 'd_1', name: 'Dungeon 1', col: 0, row: 0, slide: { background: { color: '#222' }, elements: [] } }], 'hidden')] }],
+  };
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const gameFile = resolve('test-results/rpg-big-world.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  // Every sound a window starts (a built-in cue's link ends in #its-name).
+  await ctx.addInitScript(() => {
+    window.__plays = [];
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      window.__plays.push(this.src);
+      return play.call(this);
+    };
+  });
+  const host = await ctx.newPage();
+  host.on('pageerror', (e) => errors.push(`[big world] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await openGameFile(host, gameFile);
+  await host.getByText(/^Opened “/).waitFor();
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  aud.on('pageerror', (e) => errors.push(`[big world audience] ${e.message}`));
+  await aud.setViewportSize({ width: 1280, height: 720 });
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  await host.locator('.rh').waitFor();
+  await host.waitForTimeout(500);
+  const cues = (p) => p.evaluate(() => window.__plays.filter((s) => s.includes('#')).map((s) => s.split('#').pop()));
+  const said = () => host.locator('.toast').innerText();
+  const there = () => host.locator('.rh .where').innerText();
+
+  // The minimap: the cells around the party, big enough to read, and one Tab stop (the arrow keys go between screens).
+  const mini = host.locator('.rh .mapbox .cell');
+  const cell = await mini.first().boundingBox();
+  assert((await mini.count()) === 35 && cell.height >= 12 && cell.width >= 20, `the minimap shows the 7×5 screens around the party (${await mini.count()}, ${Math.round(cell.width)}×${Math.round(cell.height)})`);
+  const stops = host.locator('.rh .mapbox .cell:not([tabindex="-1"])');
+  assert((await stops.count()) === 1, 'the minimap is one Tab stop');
+  await stops.focus();
+  await host.keyboard.press('ArrowRight');
+  assert((await host.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === 'Overworld · Field 1,0', 'the arrow keys go to the next screen on it');
+  // The full map (J) stays in the window.
+  await host.getByRole('button', { name: '⤢ Full map' }).click();
+  const jump = host.getByRole('dialog', { name: 'Full map' });
+  const jb = await jump.boundingBox();
+  const close = await jump.getByRole('button', { name: 'Close' }).boundingBox();
+  assert(jb.x >= 0 && jb.x + jb.width <= 1280 && jb.y + jb.height <= 720 && close.x + close.width <= 1280, `the full map fits the window, ✕ included (${JSON.stringify(jb)})`);
+  assert(await jump.locator('.cell[aria-label="Overworld · Field 19,0"]').isVisible(), 'all 20 columns are in it');
+  await host.keyboard.press('Escape');
+  await jump.waitFor({ state: 'detached' });
+
+  // The map on stream: just the part viewers know (and a cell around it), with big cells.
+  await host.getByRole('button', { name: '🗺 Map' }).click();
+  await aud.locator('.map-ov .cell').first().waitFor();
+  const shown = await aud.locator('.map-ov .cell').count();
+  const ac = await aud.locator('.map-ov .cell').first().boundingBox();
+  assert(shown === 9 && ac.width > 100, `viewers’ map shows the known screens and one cell around them (${shown} cells, ${Math.round(ac.width)}px wide)`);
+  // Moving with it on stream stays quick.
+  const cdp = await aud.context().newCDPSession(aud);
+  await cdp.send('Performance.enable');
+  const busy = async () => (await cdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'ScriptDuration').value;
+  const before = await busy();
+  for (let i = 0; i < 10; i++) {
+    await host.keyboard.press(i % 2 ? 'Numpad4' : 'Numpad6');
+    await host.waitForTimeout(40);
+  }
+  await host.waitForTimeout(500);
+  const spent = (await busy()) - before;
+  assert(spent < 1.5, `ten moves with the map on stream keep the audience window quick (${spent.toFixed(2)}s of script)`);
+  await host.getByRole('button', { name: '🗺 Map' }).click();
+
+  // Walking in from the south edge, the avatars stand clear of the stats strip.
+  await host.keyboard.press('Numpad2');
+  await host.waitForTimeout(400);
+  await host.keyboard.press('Numpad8');
+  await host.waitForTimeout(800);
+  const stripTop = Math.min(...(await host.locator('.rpg .strip .card').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top))));
+  const lowest = Math.max(...(await host.locator('.rpg .avatar[data-player-id]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom))));
+  assert((await there()).includes('Village') && lowest <= stripTop, `arriving from the south they stand above the stats strip (${Math.round(lowest)} ≤ ${Math.round(stripTop)})`);
+  assert((await cues(aud)).includes('step'), 'a step plays the Step sound on stream');
+  await host.keyboard.press('Numpad6');
+  await host.waitForTimeout(300);
+  await host.keyboard.press('Numpad6');
+  assert((await said()) === 'Blocked: A wall of fire', 'a blocked way says so');
+  await host.waitForTimeout(300);
+  assert((await cues(aud)).includes('blocked'), '…with the Blocked sound');
+  await host.keyboard.press('Numpad4');
+  await host.waitForTimeout(400);
+
+  // Four players with 10 hearts each: a count, so the gold stays on its card.
+  const cards = await host.locator('.rpg .strip .card').evaluateAll((els) =>
+    els.map((c) => ({ text: c.innerText, right: c.getBoundingClientRect().right, last: c.querySelector('.stats > :last-child')?.getBoundingClientRect().right ?? 0 })),
+  );
+  assert(cards.every((c) => c.text.includes('♥ 10/10') && c.text.includes('🪙5') && c.last <= c.right), 'many hearts show as “♥ 10/10”, and the gold stays on each card');
+
+  // Picking up with two players picked: the first one picks it up, and the button says so.
+  await host.keyboard.press('1');
+  await host.keyboard.press('2');
+  await host.locator('.rh .objs button', { hasText: 'Gold pile' }).click();
+  const pick = host.getByRole('dialog', { name: 'Object: Gold pile' }).getByRole('button', { name: /picks up/ });
+  assert((await pick.innerText()) === '✋ Ann picks up 🪙10', `the pick-up button names the one who picks it up (${await pick.innerText()})`);
+  await pick.click();
+  await host.waitForTimeout(300);
+  assert((await host.locator('.rpg .strip .card').first().innerText()).includes('🪙15') && (await cues(aud)).includes('pickUp'), 'Ann gets it, with the Pick up sound');
+
+  // Cy & Dee split off and walk south (viewers follow them); the Trap at the Village hurts the party standing there.
+  await host.keyboard.press('Escape');
+  await host.keyboard.press('3');
+  await host.keyboard.press('4');
+  await host.getByRole('button', { name: '✂ Split off selected' }).click();
+  await host.keyboard.press('Numpad2');
+  await host.waitForTimeout(400);
+  await host.getByRole('button', { name: '▦ Split view' }).click();
+  await host.waitForTimeout(400);
+  await host.locator('.rpg .hit[data-object="el_trap"]').click();
+  await host.getByRole('dialog', { name: 'Object: Trap' }).getByRole('button', { name: 'HP −3' }).click();
+  assert((await said()) === 'Trap: HP −3: Ann & Bob', `the Trap’s party button hurts the party at the Trap, not the one viewers follow (${await said()})`);
+  await host.waitForTimeout(300);
+  assert((await cues(aud)).includes('hurt'), '…with the Damage sound');
+  await host.keyboard.press('Escape');
+
+  // Everyone back together at the Village (with Ann & Bob's party), through the door to a map viewers aren't shown:
+  // their map says so.
+  await host.locator('.rh .party', { hasText: 'Party 1' }).click();
+  await host.keyboard.press('g');
+  await host.waitForTimeout(300);
+  await host.locator('.rh .objs button', { hasText: 'Dungeon door' }).click();
+  await host.getByRole('button', { name: '🚪 Go through (party)' }).click();
+  await host.waitForTimeout(500);
+  assert((await there()).includes('Dungeon 1') && (await cues(aud)).includes('doorway'), 'through the door, with the Doorway sound');
+  await host.getByRole('button', { name: '🗺 Map' }).click();
+  await aud.locator('.map-ov').waitFor();
+  assert((await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()), 'on a hidden map, the viewers’ map says it’s hidden');
+  if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/rpg-big-hidden.png` });
+  await ctx.close();
+}
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -473,6 +639,8 @@ try {
 
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg.png` });
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
+
+  await bigWorld();
   console.log('rpg: all passed');
 } catch (e) {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-failure.png` }).catch(() => {});
