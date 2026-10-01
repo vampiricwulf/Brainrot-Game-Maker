@@ -403,8 +403,12 @@
     // The room left open going back to the editor: the same one again (phones stay joined), if it's this game's.
     const room = kept.room;
     kept.room = null;
-    if (room && room.gameId === app.game.id && app.game.settings.buzzer) app.session.remote = room.remote;
-    else if (room) {
+    // (A kept room means Buzzer mode is on: turning it off closes the room. The editor's copy of the setting may not
+    // say so yet after a quick reload.)
+    if (room && room.gameId === app.game.id) {
+      app.session.remote = room.remote;
+      app.playGame.settings.buzzer = true;
+    } else if (room) {
       endRoom(room.remote);
       void clearRoom();
     }

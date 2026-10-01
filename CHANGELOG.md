@@ -360,7 +360,8 @@ done, the Unreleased lines move under that day's heading.
 
 ### Fixed
 - **Phone buzzers**: reloading on the ▶ Play screen right after turning Buzzer mode on no longer closes the room (the
-  reload could come back before the setting was written, and the room was closed for it).
+  reload could come back before the setting was written, and the room was closed for it), and ◀ Back to editor then
+  ▶ Play still goes back into that room.
 - **Opening an older copy of a game no longer changes the pictures and sounds of the game you have open** (or of a
   game kept in Recent games). Its files were stored over the newer ones with the same name inside before the game was
   even opened, and stayed changed when you then said Keep it or the file turned out to be broken. Now a file is stored
