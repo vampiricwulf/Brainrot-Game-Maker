@@ -144,6 +144,8 @@ try {
 
   // Another game with the same title gets its own file.
   await d.getByRole('button', { name: 'New', exact: true }).click();
+  // New replaces the game once the old one is kept in Recent games: wait for it to go, or the title typed next lands in it.
+  await d.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
   await addClassicRounds(d);
   await d.locator('input.title').fill('Quiz');
   await d.waitForTimeout(300);
