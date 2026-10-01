@@ -695,3 +695,4 @@ Commits whose titles don't say what they contain:
 |---|---|---|
 | bbb1495 | Merge 2 | Merge of the play timeline and undo for the host's choices (d2c21f8, 5f079cc) |
 | d83cd7b | Revert "Undo covers tiles…" | Takes back fb07abe (Ctrl+Z reopening a closed tile). Tiles can still be put back with ↶ Reopen or a right-click, and closing a tile is an undoable step since d2c21f8. |
+| 65ee428 | Merge branch 'worktree-agent-afc90569301405f5c' | Merge of the big-game speed-ups, the buzzer server carried into exports, no-rounds export blocked, compressed packs, one-line pre-game player rows and README fixes (33a9ac2) |
