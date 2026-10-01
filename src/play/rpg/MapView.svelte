@@ -67,6 +67,8 @@
     const row = Math.max(0, Math.min(m.rows - rows, at.row - Math.floor(rows / 2)));
     return { col, row, cols, rows };
   }
+  /** A player's dot carries their initial: colour isn't all that tells two players apart. */
+  const initial = (name: string) => (Array.from(name.trim())[0] ?? '?').toUpperCase();
   const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
   /** Players by screen. */
   const byScreen = $derived.by(() => {
@@ -80,11 +82,11 @@
   });
 
   /** The players on a screen being dragged (their dots follow the pointer) to another screen. */
-  let dotDrag = $state<{ from: ScreenRef; colors: string[]; sx: number; sy: number; x: number; y: number; moved: boolean } | null>(null);
+  let dotDrag = $state<{ from: ScreenRef; players: Player[]; sx: number; sy: number; x: number; y: number; moved: boolean } | null>(null);
 
   function dotsDown(e: PointerEvent, from: ScreenRef, here: Player[]): void {
     if (!onmove || !here.length || e.button !== 0) return;
-    dotDrag = { from, colors: here.map((p) => p.color), sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false };
+    dotDrag = { from, players: here, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false };
   }
 
   /** The screen under the pointer (on this map or any other), when it isn't the one the players are on. */
@@ -224,7 +226,7 @@
                 >
                   {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
                   <span class="dots">
-                    {#each here as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
+                    {#each here as p (p.id)}<span class="dot" style:background={p.color} style:color={textOn(p.color)} title={p.name}>{initial(p.name)}</span>{/each}
                   </span>
                   {#each arrows.get(s.id) ?? [] as d (d)}
                     <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
@@ -242,7 +244,7 @@
 </div>
 {#if dotDrag?.moved}
   <div class="dots ghost" style:left="{dotDrag.x}px" style:top="{dotDrag.y}px" aria-hidden="true">
-    {#each dotDrag.colors as c, i (i)}<span class="dot" style:background={c}></span>{/each}
+    {#each dotDrag.players as p (p.id)}<span class="dot" style:background={p.color} style:color={textOn(p.color)}>{initial(p.name)}</span>{/each}
   </div>
 {/if}
 
@@ -279,7 +281,7 @@
     opacity: 0.8;
   }
   .audience .title {
-    font-size: 28px;
+    font-size: 36px;
     color: #fff;
     text-shadow: 2px 2px 0 #000;
   }
@@ -323,7 +325,7 @@
     justify-content: space-between;
   }
   .audience .cell {
-    font-size: 20px;
+    font-size: 28px;
     border-width: 4px;
   }
   .cell.none {
@@ -361,8 +363,9 @@
     min-height: 44px;
   }
   .big .dot {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
   }
   .big .cell.none {
     border: 1px dashed rgba(255, 255, 255, 0.12);
@@ -391,10 +394,14 @@
     padding: 2px 4px;
   }
   .dot {
-    width: 9px;
-    height: 9px;
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     border: 1px solid #000;
+    font: 700 10px/1 'Inter', system-ui, sans-serif;
+    overflow: hidden;
   }
   /* The dragged players' dots, beside the pointer (the screen under it stays in sight). */
   .ghost {
@@ -407,13 +414,15 @@
     pointer-events: none;
   }
   .ghost .dot {
-    width: 14px;
-    height: 14px;
-  }
-  .audience .dot {
     width: 18px;
     height: 18px;
+    font-size: 12px;
+  }
+  .audience .dot {
+    width: 34px;
+    height: 34px;
     border-width: 2px;
+    font-size: 22px;
   }
   .arrow {
     position: absolute;

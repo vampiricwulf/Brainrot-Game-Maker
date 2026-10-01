@@ -7,6 +7,7 @@ import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
 import { tileDice } from './tools';
+import { categoryTooLong } from './boardfit';
 
 export interface Problem {
   text: string;
@@ -47,6 +48,14 @@ export function validate(game: Game): Problem[] {
     if (!playable.length) out.push({ text: `${r.name}: no playable tiles`, tab: i, level: 'warn' });
     const unnamed = r.categories.filter((c) => !c.title.trim() && !c.image).length;
     if (unnamed) out.push({ text: `${r.name}: ${plural(unnamed, 'category')} with no name`, tab: i, level: 'warn' });
+    // Only a name drawn as text (an image category's caption is smaller and optional).
+    const long = r.categories.filter((c) => !c.image && categoryTooLong(c.title, r.categories.length, r.values.length, game.theme));
+    if (long.length)
+      out.push({
+        text: `${r.name}: ${long.length === 1 ? `"${long[0].title.trim()}" is` : `${long.length} category names are`} too long to read on the board (shorten ${long.length === 1 ? 'it' : 'them'})`,
+        tab: i,
+        level: 'info',
+      });
     const tools = playable.filter((c) => c.type === 'wheel' || c.type === 'dice');
     const noQ = playable.filter((c) => !tools.includes(c) && !slideHasContent(c.questionSlide)).length;
     const noA = playable.filter((c) => !tools.includes(c) && !slideHasContent(c.answerSlide)).length;

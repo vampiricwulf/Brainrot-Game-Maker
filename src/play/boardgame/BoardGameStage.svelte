@@ -19,6 +19,7 @@
   import StatsStrip from '../rpg/StatsStrip.svelte';
   import { dropHover, dropTarget } from '../dragdrop.svelte';
   import { boardNow } from './bgops';
+  import { aboveStrip } from '../stagefit';
 
   let {
     game,
@@ -66,10 +67,14 @@
   /** The height of the label row (whose turn, how to win, zones), and of the stats strip, in stage pixels. */
   let labelsH = $state(0);
   let stripH = $state(0);
-  /** Along the top, tokens stay below the label row, or below the stats strip when it's at the top (the labels go to the bottom then). */
-  const clearTop = $derived(bar === 'top' ? stripH + 8 : 20 + labelsH + 8);
-  /** Along the bottom, tokens stay above the stats strip (or the label row, when the strip is at the top). */
-  const clearBottom = $derived(bar === 'bottom' ? stripH + 8 : bar === 'top' ? 20 + labelsH + 8 : 0);
+  /** The board is scaled into the room the stats strip leaves, so the strip never covers a space (see stagefit.ts). */
+  const area = $derived(aboveStrip(bar === 'hidden' ? 0 : stripH, bar));
+  /** Room for the label row, in the board's own pixels. */
+  const labelRoom = $derived((20 + labelsH + 8) / area.scale);
+  /** Along the top, tokens stay below the label row (unless the labels are at the bottom, with the strip at the top). */
+  const clearTop = $derived(bar === 'top' ? 8 : labelRoom);
+  /** Along the bottom, tokens stay above the edge (or the label row, when the strip is at the top). */
+  const clearBottom = $derived(bar === 'top' ? labelRoom : 8);
 
   /** Each token on the board and where it's drawn (keyed by player, so a move slides from space to space). */
   const tokens = $derived.by(() => {
@@ -121,7 +126,7 @@
 
   function tokenMove(e: PointerEvent): void {
     if (!drag) return;
-    const s = stage?.scale || 1;
+    const s = (stage?.scale || 1) * area.scale;
     const moved = drag.moved || Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4;
     drag = { ...drag, x: Math.round(drag.ox + (e.clientX - drag.sx) / s), y: Math.round(drag.oy + (e.clientY - drag.sy) / s), moved };
     const to = moved ? where(tokenOver(e)) : undefined;
@@ -155,6 +160,7 @@
 
 <div class="bg">
   {#if round && bs}
+    <div class="play-area" style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
     {#if zone}
       {#key zone.id}
         <div class="layer" in:fade={{ duration: 300 }}>
@@ -197,6 +203,7 @@
         {/each}
       </div>
     {/if}
+    </div>
     <!-- Whose turn, how to win, who's in a zone: one thin row along the top (the bottom when the stats strip is at the top). -->
     <div class="labels" class:low={bar === 'top'} bind:clientHeight={labelsH}>
       {#if turn}
@@ -285,11 +292,22 @@
   .layer.clickable :global([data-space]) {
     cursor: pointer;
   }
+  /* The board (or a zone's screen), scaled into the room above or below the stats strip. */
+  .play-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: 0 0;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+  }
   .zone-players {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 200px;
+    bottom: 60px;
     display: flex;
     justify-content: center;
     gap: 40px;

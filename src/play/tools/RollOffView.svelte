@@ -39,7 +39,7 @@
     {#each round.players as pid, i (pid)}
       {@const p = byId[pid]}
       <div class="pl" class:lead={!rolling && round.rolls[pid] === top} class:out={!rolling && round.rolls[pid] !== top}>
-        <Die value={shown(pid, i)} sides={o.sides} color={p?.color ?? '#fff'} {rolling} size={round.players.length > 5 ? 160 : 200} />
+        <Die value={shown(pid, i)} sides={o.sides} color={p?.color ?? '#fff'} {rolling} size={round.players.length > 5 ? 160 : 200} label={false} />
         <div class="nm" style:background={p?.color} style:color={p ? textOn(p.color) : undefined}>{p?.name ?? '?'}</div>
       </div>
     {/each}
@@ -85,8 +85,12 @@
   .pl.lead {
     scale: 1.12;
   }
+  .pl.lead .nm {
+    box-shadow: 0 0 0 5px #fff;
+  }
+  /* Out of the running, but still readable on a scaled-down stream. */
   .pl.out {
-    opacity: 0.4;
+    opacity: 0.72;
   }
   .nm {
     font-family: var(--board-font);

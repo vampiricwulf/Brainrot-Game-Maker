@@ -40,7 +40,7 @@
 {#if !many}
   <div class="wrap">
     <div class="title">{o.name}</div>
-    <div class="disc single"><WheelDisc segments={o.segments} rotation={o.rotation} spin={o.spin} {now} /></div>
+    <div class="disc single"><WheelDisc segments={o.segments} rotation={o.rotation} spin={o.spin} {now} players={!!o.players} /></div>
     {#if !o.spin}<div class="hint">Get ready to spin…</div>{/if}
     {#if landed && seg}
       <div class="reveal"><OutcomeCard outcome={seg} {game} {role} color={seg.color} /></div>
@@ -52,7 +52,7 @@
       {@const s = w.result !== null ? w.segments[w.result] : undefined}
       <div class="cell">
         <div class="name">{w.name}</div>
-        <div class="disc"><WheelDisc segments={w.segments} rotation={w.rotation} spin={w.spin} {now} /></div>
+        <div class="disc"><WheelDisc segments={w.segments} rotation={w.rotation} spin={w.spin} {now} players={!!w.players} /></div>
         <div class="res">
           {#if s && landedAt(w)}
             <span class="chip" style:background={s.color} style:color={textOn(s.color)}>{s.label}</span>

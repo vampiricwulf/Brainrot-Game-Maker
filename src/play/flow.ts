@@ -28,12 +28,12 @@ export function groupPops(events: ScoreEvent[], players: Player[], sym: string, 
   for (const [delta, list] of byDelta) {
     if (list.length === 1) {
       const p = players.find((x) => x.id === list[0].playerId)!;
-      out.push({ text: `${p.name} ${amount(delta)}`, color: p.color, playerId: p.id });
+      out.push({ text: `${p.name} ${amount(delta)}`, who: p.name, amount: amount(delta), color: p.color, playerId: p.id });
       continue;
     }
     const everyone = list.length === players.length && players.length > 2;
     const who = everyone ? 'Everyone' : nameList(list.map((e) => players.find((p) => p.id === e.playerId)!.name));
-    out.push({ text: `${who} ${amount(delta)}`, color: groupColor });
+    out.push({ text: `${who} ${amount(delta)}`, who, amount: amount(delta), color: groupColor });
   }
   return out;
 }

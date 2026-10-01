@@ -1,4 +1,5 @@
 // Global app state (Svelte 5 runes). Components mutate it directly; App.svelte autosaves it.
+import { announce } from './announce';
 import { newGame, type Game, type Session } from './model';
 import { newLive, type Live } from './live';
 import type { SavedPlay } from './persist';
@@ -56,6 +57,8 @@ export function editedGame(): Game {
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export function toast(msg: string, ms = 2500): void {
   app.toast = msg;
+  // Screen readers hear it from the page's live region (the toast itself comes and goes too fast to be read reliably).
+  announce(msg);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (app.toast = ''), ms);
 }

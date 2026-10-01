@@ -320,7 +320,8 @@
   }
   .gobtn {
     visibility: hidden;
-    color: var(--accent);
+    /* Lighter than the accent: 4.5:1 on a highlighted row too. */
+    color: color-mix(in srgb, var(--accent) 65%, #fff);
     border: none;
   }
   .hr:hover .gobtn,

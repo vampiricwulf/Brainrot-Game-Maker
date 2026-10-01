@@ -25,10 +25,12 @@
     draggable?: boolean;
   } = $props();
   const fields = $derived(statFields(game).filter((f) => f.audience === 'hud'));
-  // Smaller cards when there's a lot on them. Up to 6 players stay on one row (cards shrink to fit): a second row
-  // would cover the bottom of the screen.
+  // Smaller cards when there's a lot on them. Always one row (the stage is scaled into the room above it, so a second
+  // row would only shrink the play): past 6 players the cards are compact and share the width; past 9 they drop the
+  // avatar (the name, in the player's colour, is on the card).
   const compact = $derived(players.length > 6 || players.length * (1 + fields.length) > 12);
-  const oneRow = $derived(players.length <= 6);
+  const many = $derived(players.length > 6);
+  const noAvatar = $derived(players.length > 9);
   /**
    * More hearts than this (a few players: 10, more: 5) show as "♥ 7/10": a long row of hearts would push what comes
    * after it (the gold) under the next card.
@@ -36,7 +38,7 @@
   const heartsUpTo = $derived(players.length <= 3 ? 10 : 5);
 </script>
 
-<div class="strip" class:compact class:one-row={oneRow} role="list">
+<div class="strip" class:compact class:many role="list">
   {#each players as p (p.id)}
     <div
       class="card"
@@ -48,7 +50,7 @@
       ondragstart={draggable ? (e) => e.dataTransfer?.setData('text/x-player', p.id) : undefined}
       title={draggable ? 'Right-click for their menu · drag onto a party to join it' : undefined}
     >
-      <Avatar player={p} size={compact ? 64 : 92} />
+      {#if !noAvatar}<Avatar player={p} size={many ? 52 : compact ? 64 : 92} />{/if}
       <div class="info">
         <div class="name" style:background={p.color} style:color={textOn(p.color)}>{p.name}</div>
         <div class="stats">
@@ -85,12 +87,35 @@
     display: flex;
     gap: 12px;
     justify-content: center;
-    flex-wrap: wrap;
-    padding: 10px 16px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.75) 30%);
-  }
-  .strip.one-row {
     flex-wrap: nowrap;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.75);
+  }
+  /* Many players: compact cards sharing the width evenly. */
+  .many {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .many .card {
+    flex: 1 1 0;
+    max-width: 300px;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 18px;
+  }
+  .many .info {
+    flex: 1;
+  }
+  /* The score on a line of its own, the rest under it (a narrow card has no room for both side by side). */
+  .strip.many .stats {
+    flex-wrap: wrap;
+    gap: 0 8px;
+    font-size: 22px;
+    line-height: 1.15;
+  }
+  .many .stats > .bar {
+    flex: 1 1 60px;
+    min-width: 40px;
   }
   /* Big enough to read once the stream is scaled down (720p, a phone): about 1.5× the old size. */
   .card {
@@ -141,7 +166,7 @@
     font-weight: 700;
   }
   /* One row of cards: the bars give way before anything goes onto a second line. */
-  .one-row .stats {
+  .strip .stats {
     flex-wrap: nowrap;
   }
   .stats > * {

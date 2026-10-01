@@ -57,7 +57,7 @@
   }
   /* One background for the whole strip (the plates' and the clock's): the score bar's, or nothing over the key color. */
   .strip:not(.keyed) {
-    background: linear-gradient(var(--scorebar-bg, #050835), #000);
+    background: linear-gradient(var(--scorebar-bg, #050835), var(--scorebar-end, #000));
   }
   .plates :global(.bar) {
     background: none;

@@ -583,7 +583,7 @@
 <ContextMenu />
 <AskDialog />
 {#if app.toast && !app.onAir}
-  <div class="toast" role="status" data-over-modal>{app.toast}</div>
+  <div class="toast" data-over-modal>{app.toast}</div>
 {/if}
 
 <style>

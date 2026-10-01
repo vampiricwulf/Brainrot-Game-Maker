@@ -19,6 +19,7 @@
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
+  import { aboveStrip } from '../stagefit';
 
   let {
     game,
@@ -94,6 +95,9 @@
   /** The stage, and its stats strip (a dropped avatar stays clear of it). */
   let rpgEl = $state<HTMLElement>();
   let stripEl = $state<HTMLElement>();
+  /** The strip's height: the screens are scaled into the room above (or below) it, so it never covers them. */
+  let stripH = $state(0);
+  const area = $derived(aboveStrip(bar === 'hidden' ? 0 : stripH, bar));
   // Leaving the round mid-drag leaves nothing lit up or following the pointer.
   onDestroy(() => {
     dragGhost.now = null;
@@ -111,7 +115,7 @@
 
   /** Where the pointer has taken something dragged from (ox, oy) on its screen: split view draws each screen at half size. */
   function dragged<T extends { sx: number; sy: number; ox: number; oy: number; x: number; y: number; moved: boolean }>(d: T, e: PointerEvent): T {
-    const s = (stage?.scale || 1) * (split ? 0.5 : 1);
+    const s = (stage?.scale || 1) * area.scale * (split ? 0.5 : 1);
     const moved = d.moved || Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 4;
     return { ...d, x: Math.round(d.ox + (e.clientX - d.sx) / s), y: Math.round(d.oy + (e.clientY - d.sy) / s), moved };
   }
@@ -283,6 +287,7 @@
 
 <div class="rpg" class:split bind:this={rpgEl}>
   {#if world && st}
+    <div class="play-area" style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
     {#each panes as ref, i (ref.screen)}
       {@const found = findIn(world, ref)}
       {#if found}
@@ -309,11 +314,12 @@
         </div>
       {/if}
     {/each}
+    </div>
     {#if bar !== 'hidden'}
-      <div class="strip bar-{bar}" bind:this={stripEl}><StatsStrip {game} {session} players={stripPlayers} host={!!onavatar} draggable={!!onavatar} /></div>
+      <div class="strip bar-{bar}" bind:this={stripEl} bind:clientHeight={stripH}><StatsStrip {game} {session} players={stripPlayers} host={!!onavatar} draggable={!!onavatar} /></div>
     {/if}
     {#if st.mapShown}
-      <div class="map-ov bar-{bar}" transition:fade={{ duration: 200 }}>
+      <div class="map-ov bar-{bar}" style:--strip="{stripH}px" transition:fade={{ duration: 200 }}>
         <MapView {world} {st} players={session.players} audience fit focus={panes[0]} />
       </div>
     {/if}
@@ -332,6 +338,16 @@
     inset: 0;
     overflow: hidden;
     background: #000;
+  }
+  /* The screens, scaled into the room the stats strip leaves (see stagefit.ts). */
+  .play-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: 0 0;
+    transition: transform 0.3s ease;
   }
   .pane {
     position: absolute;
@@ -469,19 +485,19 @@
   .strip.bar-top {
     top: 0;
   }
-  /* Clear of the stats strip, wherever it is. */
+  /* Clear of the stats strip, wherever it is; solid, so the screen behind doesn't show through on a compressed stream. */
   .map-ov {
     position: absolute;
-    inset: 60px 80px 200px;
+    inset: 40px 60px calc(var(--strip, 180px) + 20px);
     z-index: 8000;
     padding: 30px;
     border-radius: 24px;
-    background: rgba(0, 0, 20, 0.88);
+    background: #00000f;
     border: 4px solid #ffcc00;
     overflow: hidden;
   }
   .map-ov.bar-top {
-    inset: 200px 80px 60px;
+    inset: calc(var(--strip, 180px) + 20px) 60px 40px;
   }
   .map-ov.bar-hidden {
     inset: 60px 80px;

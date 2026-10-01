@@ -29,7 +29,9 @@
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { validate } from '../lib/validate';
-  import { nextFreeColor } from '../lib/colors';
+  import { nearKey, nextFreeColor } from '../lib/colors';
+  import { announce } from '../lib/announce';
+  import { STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
@@ -443,6 +445,11 @@
       setBuzz(sign > 0 ? buzzDone(b) : buzzMissed(b, b.answering, session.players.map((p) => p.id)));
     // One pop per player, or one for a group ("Everyone +$200").
     for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
+    // Screen readers: what changed, and where that leaves each player.
+    for (const e of events) {
+      const total = formatPoints(score(session, e.playerId), sym);
+      announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${total}`);
+    }
     // Awarding control of the board follows TV rules: the last correct player picks next.
     if (game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1) session.currentPickerId = ids[0];
     selected = [];
@@ -464,6 +471,12 @@
     if (p) pop({ text: `${p.name} wins the tiebreaker!`, color: p.color });
     selected = [];
   }
+
+  /** Players whose color a chroma-key stage background would take out on stream (the pre-game screen warns). */
+  const keyedOut = $derived.by(() => {
+    const key = game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined;
+    return key ? session.players.filter((p) => nearKey(p.color, key)) : [];
+  });
 
   const info = $derived(currentClueInfo(session, game));
 
@@ -589,6 +602,18 @@
       ? queueRows.find((r) => !r.out && r.id !== buzz.answering)
       : undefined,
   );
+  // Screen readers hear the buzz order, a tie, and who answers as they change (said once, after a moment's quiet).
+  const buzzOrderSaid = $derived(queueRows.map((r) => `${r.rank}. ${r.name}${r.out ? ' (out)' : ''}`).join(', '));
+  $effect(() => {
+    if (buzzOrderSaid) announce(`Buzz order: ${buzzOrderSaid}`);
+  });
+  $effect(() => {
+    if (tie.length) announce(`Tie: ${nameList(tie.map((id) => playerName(session, id)))}`);
+  });
+  $effect(() => {
+    const id = buzzing ? app.live.buzz?.answering : null;
+    if (id) announce(`${playerName(session, id)} is answering`);
+  });
   const ordinal = (n: number) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'));
 
   function roomQueueIn(q: RoomQueue): void {
@@ -2001,6 +2026,13 @@
             rowMenu
             onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
           />
+          {#if keyedOut.length && game.theme?.stageBg}
+            {@const other = game.theme.stageBg === 'green' ? 'magenta' : 'green'}
+            <p class="warn small" data-warn="chroma">
+              ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({game.theme.stageBg}, 🎨 Theme ›
+              Stage background): OBS would key it out on stream. Pick another color, or a {other} key.
+            </p>
+          {/if}
           {#if !session.players.length}
             <div class="row">
               <span class="warn">Add players to start: ＋ Add player, or</span>
@@ -2252,7 +2284,7 @@
       >
         {#snippet buzzExtra()}
           {#if tie.length}
-            <span class="tie" role="status">Tie: {nameList(tie.map((id) => playerName(session, id)))}</span>
+            <span class="tie">Tie: {nameList(tie.map((id) => playerName(session, id)))}</span>
             <button class="primary" onclick={rollTie}>🎲 Roll for it</button>
             <span class="muted later-buzz">or pick one (click or 1–9)</span>
           {/if}

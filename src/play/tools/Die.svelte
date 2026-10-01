@@ -1,8 +1,22 @@
 <!-- One die showing a number or custom face label. -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  let { value, sides, color = '#ffffff', rolling = false, size = 200 }: { value: string; sides: number; color?: string; rolling?: boolean; size?: number } =
-    $props();
+  let {
+    value,
+    sides,
+    color = '#ffffff',
+    rolling = false,
+    size = 200,
+    label = true,
+  }: {
+    value: string;
+    sides: number;
+    color?: string;
+    rolling?: boolean;
+    size?: number;
+    /** The small "d6" in a corner (left off where every die is the same, like a roll-off: it's unreadable on a stream). */
+    label?: boolean;
+  } = $props();
   const shape = $derived(sides === 4 ? 'tri' : sides === 6 ? 'sq' : sides === 8 || sides === 10 ? 'dia' : sides === 12 ? 'pent' : sides === 20 ? 'hex' : 'sq');
 </script>
 
@@ -16,7 +30,7 @@
   style:font-size="{Math.max(24, Math.min(size * 0.45, (size * 1.7) / Math.max(1, value.length)))}px"
 >
   <span>{value}</span>
-  <small>d{sides}</small>
+  {#if label}<small>d{sides}</small>{/if}
 </div>
 
 <style>

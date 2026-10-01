@@ -153,7 +153,8 @@
   const rows = new DragOrder();
 </script>
 
-<div class="players" role="list" aria-label="Players" bind:this={list}>
+<div class="players" bind:this={list}>
+  <div class="rows" role="list" aria-label="Players">
   {#each players as p, i (p.id)}
     {@const line = rows.lineAt(p.id)}
     <div
@@ -202,7 +203,8 @@
             <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
           {/if}
         </div>
-        {#if p.avatar}<button class="ghost small" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">−🖼</button>{/if}
+        <!-- (Its room is kept when there's no picture, so every row lines up and wraps alike.) -->
+        {#if p.avatar}<button class="ghost small unpic" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">−🖼</button>{:else}<span class="unpic" aria-hidden="true"></span>{/if}
       {/if}
       <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
       <span class="chip" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
@@ -214,6 +216,7 @@
       <button class="ghost small del" onclick={() => remove(p)} aria-label="{removeWord} {p.name}" title="{removeWord} {p.name}">{inGame ? '−' : '🗑'}</button>
     </div>
   {/each}
+  </div>
   <div class="row">
     <button class="add" onclick={addAndName} disabled={players.length >= max}>＋ Add player</button>
     <span class="muted">
@@ -243,7 +246,8 @@
     border-radius: 8px;
     background: var(--panel-2);
   }
-  .players {
+  .players,
+  .rows {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -289,13 +293,23 @@
     width: 200px;
     border-left-width: 6px;
   }
+  /* The same width on every row (a long name ends in "…"), so the rows line up and wrap at the same place. */
   .chip {
+    box-sizing: border-box;
+    flex: none;
+    width: 110px;
     padding: 3px 10px;
     border-radius: 999px;
     font-weight: 700;
     font-size: 12px;
-    min-width: 60px;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .unpic {
+    flex: none;
+    min-width: 36px;
   }
   .score {
     flex-direction: row;

@@ -1,5 +1,6 @@
 <!-- Host-only controls (scoring, reveal, navigation). Never part of the audience view. -->
 <script lang="ts">
+  import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
   import { takeFocus } from '../lib/modal';
   import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
@@ -242,7 +243,10 @@
 
   function commitScore(id: string, value: string): void {
     const n = Number(value);
-    if (value.trim() !== '' && Number.isFinite(n)) setScore(session, id, n);
+    if (value.trim() !== '' && Number.isFinite(n)) {
+      setScore(session, id, n);
+      announce(`${session.players.find((p) => p.id === id)?.name ?? 'Player'} now ${formatPoints(n, sym)}`);
+    }
     editingScore = null;
   }
 
@@ -252,7 +256,8 @@
 </script>
 
 <div class="panel" class:dual class:side class:slim={side && session.phase === 'final'}>
-  <div class="status row">
+  <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). -->
+  <div class="status row" use:announceChanges>
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
       {#if session.intro}
