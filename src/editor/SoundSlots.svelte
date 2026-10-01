@@ -1,4 +1,4 @@
-<!-- Setup's sound cues: each plays the built-in sound, an audio file chosen for it, or nothing (switched off). -->
+<!-- 🔊 Sounds' cues: each plays the built-in sound, an audio file chosen for it, or nothing (switched off). -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
   import { mediaDrop } from '../lib/mediadrop';

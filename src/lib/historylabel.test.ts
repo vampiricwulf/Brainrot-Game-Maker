@@ -138,7 +138,7 @@ describe('step labels', () => {
   });
 
   it('names rules, sounds, the theme, files, wheels and the tiebreaker', () => {
-    expect(step((g) => (g.settings.allowNegativeScores = false))).toMatchObject({ label: 'Rule: Negative scores off', where: 'Setup › Rules', icon: '⚙' });
+    expect(step((g) => (g.settings.allowNegativeScores = false))).toMatchObject({ label: 'Rule: Negative scores off', where: 'Play › Game rules', icon: '⚙', place: null });
     expect(step((g) => (g.settings.currencySymbol = 'pts')).label).toBe('Rule: Points symbol = pts');
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
     expect(step((g) => (g.audio.dailyDouble = 'm1')).label).toBe('Changed the Daily Double sound');
@@ -205,7 +205,7 @@ describe('step labels', () => {
     });
     expect(one.place).toEqual({ tab: 'round', round: one.after.rounds[0].id, part: { kind: 'category', category: board(one.after).categories[1].id } });
     const players = step((g) => (g.players = [1, 2].map((n) => ({ id: `p${n}`, name: `Player ${n}`, color: '#fff' }))), 'Saved the players from the show');
-    expect(players).toMatchObject({ where: 'Setup › Players', place: { tab: 'setup' } });
+    expect(players).toMatchObject({ where: 'Play › Players', place: null });
     // Items on one slide are shown themselves (and selected together).
     const items = step((g) => ((screens(g)[1].slide.elements[0].x += 10), (screens(g)[1].slide.elements[1].x += 10)));
     expect(items.place).toMatchObject({ element: screens(items.after)[1].slide.elements[0].id });
@@ -243,6 +243,7 @@ describe('placeAt', () => {
     const g = sample();
     const at = placeAt(g, ['rounds', g.rounds[0].id, 'categories', 'nope', 'clues']);
     expect(at).toMatchObject({ noun: 'round', crumbs: ['Jeopardy!'], place: { tab: 'round', round: g.rounds[0].id } });
-    expect(placeAt(g, ['players'])).toMatchObject({ place: { tab: 'setup' }, crumbs: ['Setup', 'Players'] });
+    expect(placeAt(g, ['players'])).toMatchObject({ place: null, crumbs: ['Play', 'Players'] });
+    expect(placeAt(g, ['audio', 'buzz'])).toMatchObject({ place: { tab: 'sounds' }, crumbs: ['Sounds'] });
   });
 });

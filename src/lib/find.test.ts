@@ -20,12 +20,12 @@ describe('Find', () => {
     expect(findAll(game, '  ')).toEqual([]);
   });
 
-  it('finds screens and what is on them, spaces, items and players', () => {
+  it('finds screens and what is on them, spaces and items (not players: they are set on the Play screen)', () => {
     expect(findAll(game, 'forest').map((h) => h.place.tab)).toContain('world');
     expect(findAll(game, 'riddle').some((h) => h.icon === '🧩')).toBe(true);
     expect(findAll(game, 'nap time')[0].place).toMatchObject({ tab: 'round', part: { kind: 'space' } });
     expect(findAll(game, 'potion').map((h) => h.place.tab)).toContain('stats');
-    expect(findAll(game, 'ann')[0].place.tab).toBe('setup');
+    expect(findAll(game, 'ann').some((h) => h.icon === '👤')).toBe(false);
   });
 
   it('shortens long text around the match', () => {

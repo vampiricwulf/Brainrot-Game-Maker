@@ -1,7 +1,7 @@
 <!--
-  Editable player roster with enforced unique colors. Used in Setup, the pre-game screen and the in-game Players
+  Editable player roster with enforced unique colors. Used on the pre-game screen (the game's players) and in the in-game Players
   dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; ＋ Add player and Enter in a name add the next
-  player, typing in their name. In the editor a row has a right-click menu (in play, the host's own player menu is the one).
+  player, typing in their name. Before the game a row has a right-click menu (in play, the host's own player menu is the one).
 -->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
@@ -43,7 +43,7 @@
     avatars?: boolean;
     /** Makes a change one named step (the editor's undo history). */
     record?: (label: string, fn: () => void) => void;
-    /** Right-click a row for its menu (⚙ Setup). */
+    /** Right-click a row for its menu (the pre-game screen). */
     rowMenu?: boolean;
   } = $props();
   let list = $state<HTMLElement>();

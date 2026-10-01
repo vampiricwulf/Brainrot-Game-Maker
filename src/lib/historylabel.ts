@@ -14,7 +14,7 @@ export type Side = 'q' | 'a';
 /** A place in the editor: the tab, and what's open or selected in it. */
 export type Place =
   | { tab: 'title' }
-  | { tab: 'setup'; player?: string }
+  | { tab: 'sounds' }
   | { tab: 'theme' }
   | { tab: 'tools'; wheel?: string; dice?: string }
   | { tab: 'stats'; stat?: string; item?: string; shop?: string }
@@ -216,24 +216,22 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       at.crumbs.push('Game title');
       go({ tab: 'title' });
       break;
+    // The rules and the players are set on the ▶ Play screen (no place in the editor shows them).
     case 'settings':
-      at.crumbs.push('Setup', 'Rules');
+      at.crumbs.push('Play', path[1] === 'stream' ? 'On stream' : 'Game rules');
       at.icon = '⚙';
-      go({ tab: 'setup' });
       break;
     case 'audio':
-      at.crumbs.push('Setup', 'Sounds');
+      at.crumbs.push('Sounds');
       at.icon = '🔊';
-      go({ tab: 'setup' });
+      go({ tab: 'sounds' });
       break;
     case 'players': {
-      at.crumbs.push('Setup', 'Players');
+      at.crumbs.push('Play', 'Players');
       at.icon = '👤';
-      go({ tab: 'setup' });
       const p = byId<Game['players'][number]>(game.players, path[1]);
       if (!p) break;
       reached(2, 'player', p.name);
-      go({ tab: 'setup', player: p.id });
       break;
     }
     case 'rounds': {

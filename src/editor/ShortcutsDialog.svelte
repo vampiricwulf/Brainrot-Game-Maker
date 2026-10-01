@@ -141,7 +141,7 @@
         ['Alt+↑ / ↓ or drag ⋮⋮', 'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, slices, players, zones'],
         ['Ctrl+D', 'Duplicate the row: a stat, item, shop, button, wheel, dice, slice or zone'],
         ['Right-click a row', 'Stats, items, shops, wheels and dice, slices, buttons, zones: duplicate, move up or down, delete…'],
-        ['Right-click what a shop sells, or a player', 'Move it up or down, remove it from the shop / rename or delete the player (⚙ Setup)'],
+        ['Right-click what a shop sells, or a player', 'Move it up or down, remove it from the shop / rename or delete the player (▶ Play, before the game)'],
         ['Drag an item’s 📦 icon onto a shop', 'Sell it there (a picture file dropped on the icon is its icon instead)'],
         ['F2 or double-click', 'Wheels & Dice: rename the wheel or dice in focus'],
         ['Delete', 'Wheels & Dice: delete the wheel or dice in focus'],

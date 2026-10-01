@@ -34,7 +34,7 @@
   import { exportStandaloneHtml } from '../lib/export';
   import { formatBytes, loadGameMedia, pruneMedia } from '../lib/media.svelte';
   import { askToKeepStorage } from '../lib/persist';
-  import SetupPanel from './SetupPanel.svelte';
+  import SoundsPanel from './SoundsPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
   import TiebreakerEditor from './TiebreakerEditor.svelte';
@@ -69,8 +69,8 @@
   /** `problems`: the checklist, worked out by the app a moment after changes stop. */
   let { onplay, problems }: { onplay: () => void; problems: Problem[] } = $props();
 
-  // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
-  let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
+  // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
+  let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
   const game = $derived(app.game);
   /** The round tab last open (🎨 Theme previews it). */
   let lastRound = $state(0);
@@ -276,6 +276,8 @@
 
   /** A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile has the focus). */
   function goFix(line: ChecklistLine): void {
+    // Players are set on the ▶ Play screen.
+    if (line.tab === 'play') return onplay();
     tab = line.tab;
     if (!line.place?.tab || line.place.tab !== 'round' || !line.place.part) return;
     goTo(line.place);
@@ -754,7 +756,7 @@
       </button>
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <div class="navlabel muted">Game</div>
-      <button class:active={tab === 'setup'} aria-current={tab === 'setup' ? 'page' : undefined} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
+      <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
       <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} aria-current={tab === 'tools' ? 'page' : undefined} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
@@ -781,8 +783,8 @@
       <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
            (another save of the same game has the same round ids). -->
       {#key game}
-        {#if tab === 'setup'}
-          <SetupPanel />
+        {#if tab === 'sounds'}
+          <SoundsPanel />
         {:else if tab === 'stats'}
           <StatsItemsEditor />
         {:else if tab === 'tiebreaker'}

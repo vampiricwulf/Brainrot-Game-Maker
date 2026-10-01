@@ -11,7 +11,7 @@
     onkick,
   }: {
     session: Session;
-    /** Most players the game takes (Setup). */
+    /** Most players the game takes (⚙ Game rules). */
     max: number;
     /** Add the person waiting on this phone as a new player. */
     onadd: (conn: string, name: string) => void;
@@ -49,7 +49,7 @@
     {#each waiting as w (w.conn)}
       <div class="ask">
         <span>📱 <b>{w.pendingName}</b> wants to join</span>
-        <button class="good small" disabled={full} title={full ? 'The game is full (Setup › Most players)' : 'Add them as a new player'} onclick={() => onadd(w.conn, w.pendingName ?? '')}>✔ Add</button>
+        <button class="good small" disabled={full} title={full ? 'The game is full (⚙ Game rules › Most players)' : 'Add them as a new player'} onclick={() => onadd(w.conn, w.pendingName ?? '')}>✔ Add</button>
         <button class="small" onclick={() => onreject(w.conn)} aria-label="Turn {w.pendingName} away" title="Turn them away">✕</button>
       </div>
     {/each}

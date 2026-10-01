@@ -1,6 +1,5 @@
 <!-- Host keyboard shortcuts (spec §6.8). -->
 <script lang="ts">
-  import { app } from '../lib/app.svelte';
   import { modal } from '../lib/modal';
 
   let {
@@ -58,12 +57,11 @@
       ],
     },
     {
-      // A player-only file has no editor: no Setup to point to.
-      title: app.playerOnly ? 'Buzzer mode' : 'Buzzer mode (Setup › Rules)',
+      title: 'Buzzer mode (⚙ Game rules, before the game)',
       keys: [
         ['1 – 9', 'During a clue: player N buzzes in; the first one answers, the rest are locked out'],
         ['0', 'During a clue: open the buzzers again, for everyone (also those who missed it)'],
-        ['U', 'Open the buzzers (when Setup says you open them after reading the clue; after a right answer, for the rest)'],
+        ['U', 'Open the buzzers (when the game rules say you open them after reading the clue; after a right answer, for the rest)'],
         ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the buzzers open for the others'],
         ['Buzz-in keys', 'Pressed in the audience window, they buzz players 1, 2, 3… in (there, those letters only buzz)'],
       ],

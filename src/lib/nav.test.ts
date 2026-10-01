@@ -21,8 +21,7 @@ const board = (g: Game) => g.rounds[0] as BoardRound;
 describe('places', () => {
   it('names what flashes there', () => {
     expect(placeKey({ tab: 'title' })).toBe('title');
-    expect(placeKey({ tab: 'setup' })).toBeNull();
-    expect(placeKey({ tab: 'setup', player: 'p1' })).toBe('player:p1');
+    expect(placeKey({ tab: 'sounds' })).toBeNull();
     expect(placeKey({ tab: 'tools', dice: 'd1' })).toBe('dice:d1');
     expect(placeKey({ tab: 'stats', shop: 's1' })).toBe('shop:s1');
     expect(placeKey({ tab: 'media', media: 'm1' })).toBe('media:m1');
@@ -84,7 +83,7 @@ describe('places', () => {
     w.maps[0].screens.splice(1, 1);
     expect(resolve(g, inLook)).toEqual({ tab: 'world', world: w.id, map: w.maps[0].id });
     expect(resolve(g, { tab: 'tools', wheel: 'gone' })).toEqual({ tab: 'tools' });
-    expect(resolve(g, { tab: 'setup', player: 'gone' })).toEqual({ tab: 'setup' });
+    expect(resolve(g, { tab: 'sounds' })).toEqual({ tab: 'sounds' });
   });
 });
 

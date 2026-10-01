@@ -89,8 +89,6 @@ export function placeKey(p: Place): string | null {
   switch (p.tab) {
     case 'title':
       return 'title';
-    case 'setup':
-      return p.player ? `player:${p.player}` : null;
     case 'tools':
       return p.wheel ? `wheel:${p.wheel}` : p.dice ? `dice:${p.dice}` : null;
     case 'stats':
@@ -141,8 +139,6 @@ const inSlide = (s: Slide | undefined, id: string | undefined) => !!has(s?.eleme
 /** The part of `place` that's still in `game` (the same object when all of it is), or null when none is. */
 export function resolve(game: Game, place: Place): Place | null {
   switch (place.tab) {
-    case 'setup':
-      return !place.player || has(game.players, place.player) ? place : { tab: 'setup' };
     case 'tools':
       return (place.wheel ? has(game.wheels, place.wheel) : !place.dice || has(game.dice, place.dice)) ? place : { tab: 'tools' };
     case 'stats': {

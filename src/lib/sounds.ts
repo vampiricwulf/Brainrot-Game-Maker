@@ -6,7 +6,7 @@ import { segmentAngles } from './tools';
 
 export type CueKey = keyof GameAudio;
 
-/** Every cue, in the order Setup lists them: [key, name, when it plays]. */
+/** Every cue, in the order 🔊 Sounds lists them: [key, name, when it plays]. */
 export const CUES: [CueKey, string, string][] = [
   ['roundIntro', 'Round intro', 'With the round title card'],
   ['tileOpen', 'Tile opens', 'When a clue opens'],

@@ -164,7 +164,7 @@
    */
   function forwardKey(e: KeyboardEvent): void {
     if (NO_GESTURE.includes(e.key) && e.key !== 'Escape') return;
-    // Buzzer mode's buzz-in keys (Setup): during a clue, the Nth key buzzes player N in; otherwise they do nothing here.
+    // Buzzer mode's buzz-in keys (⚙ Game rules): during a clue, the Nth key buzzes player N in; otherwise they do nothing here.
     const buzz = game?.settings.buzzer && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 ? buzzKey(e.key) : 0;
     if (buzz) {
       e.preventDefault();

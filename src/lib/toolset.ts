@@ -30,7 +30,7 @@ function defaultValue(f: StatField): StatValue {
   return f.type === 'number' ? 0 : f.type === 'checkbox' ? false : f.type === 'tags' ? [] : '';
 }
 
-/** A player's value for a field: set during the game, else their Setup value, else the field's start. */
+/** A player's value for a field: set during the game, else the game's value for them, else the field's start. */
 export function statValue(game: Game, session: Session, playerId: string, field: StatField): StatValue {
   const v = session.stats?.[playerId]?.[field.id];
   if (v !== undefined) return v;

@@ -596,7 +596,7 @@ export interface StatField {
   id: Id;
   name: string;
   type: 'number' | 'text' | 'checkbox' | 'tags';
-  /** Starting value for every player (a player can override it in Setup). */
+  /** Starting value for every player (a player can start with their own). */
   start?: StatValue;
   min?: number;
   max?: number;

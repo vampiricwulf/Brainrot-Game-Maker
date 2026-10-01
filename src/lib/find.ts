@@ -1,5 +1,5 @@
 // Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
-// on them, board-game spaces and zones, items, stats, shops, wheels, dice, players, media files — with the place to go
+// on them, board-game spaces and zones, items, stats, shops, wheels, dice, media files — with the place to go
 // to (nav.svelte.ts's goTo, as the History tab's Go there).
 import { categoryLabel, roundName, type Game, type Slide } from './model';
 import type { Place } from './historylabel';
@@ -85,7 +85,6 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   for (const w of game.wheels) look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details])], 'Wheels & Dice › Wheel', { tab: 'tools', wheel: w.id });
   for (const d of game.dice)
     look('🎲', [d.name, ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details])), ...(d.totalOutcomes ?? []).map((t) => t.outcome.label)], 'Wheels & Dice › Dice', { tab: 'tools', dice: d.id });
-  for (const p of game.players) look('👤', [p.name], 'Setup › Player', { tab: 'setup', player: p.id });
   for (const m of game.media) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {

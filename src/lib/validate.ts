@@ -10,8 +10,8 @@ import { tileDice } from './tools';
 
 export interface Problem {
   text: string;
-  /** Editor tab that fixes it: 'setup' | 'tiebreaker' | 'media' | 'tools' | round index. */
-  tab: 'setup' | 'tiebreaker' | 'media' | 'tools' | number;
+  /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'tools' | round index), or 'play' (the pre-game screen). */
+  tab: 'play' | 'tiebreaker' | 'media' | 'tools' | number;
   level: 'warn' | 'info';
 }
 
@@ -22,9 +22,9 @@ function plural(n: number, word: string): string {
 
 export function validate(game: Game): Problem[] {
   const out: Problem[] = [];
-  if (!game.players.length) out.push({ text: 'No players yet (you can also add them before starting)', tab: 'setup', level: 'info' });
+  if (!game.players.length) out.push({ text: 'No players yet: add them on the ▶ Play screen', tab: 'play', level: 'info' });
   const colors = game.players.map((p) => normalizeColor(p.color));
-  if (new Set(colors).size !== colors.length) out.push({ text: 'Two players share a color', tab: 'setup', level: 'warn' });
+  if (new Set(colors).size !== colors.length) out.push({ text: 'Two players share a color', tab: 'play', level: 'warn' });
 
   if (!game.rounds.length) out.push({ text: 'No rounds yet: add one to play', tab: 0, level: 'warn' });
   game.rounds.forEach((round, i) => {

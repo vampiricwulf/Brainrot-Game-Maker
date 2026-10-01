@@ -387,7 +387,7 @@
   }
 
   // The buzzers follow the clue: a tile opening (or a resumed game opening on one) starts them afresh, open at once or
-  // closed until the host opens them (Setup); leaving it (back to the board, a Daily Double) puts them away.
+  // closed until the host opens them (⚙ Game rules); leaving it (back to the board, a Daily Double) puts them away.
   let buzzClue: string | null = null;
   $effect(() => {
     const c = session.currentClue;
@@ -455,7 +455,7 @@
 
   // ---------- Phone buzzers ----------
 
-  /** Setup › Rules: players buzz from their phones too. */
+  /** ⚙ Game rules: players buzz from their phones too. */
   const phonesOn = $derived(!!game.settings.buzzer && game.settings.buzzFrom === 'phones');
   const earlyMs = $derived(Math.round((game.settings.earlyBuzzLock ?? 1) * 1000));
   /** The room's later buzzes on this opening (the host panel shows "Bo +0.12 s" for a moment). */
@@ -497,7 +497,7 @@
 
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
   function addPhonePlayer(conn: string, name: string): void {
-    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (Setup)`);
+    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (⚙ Game rules, before the game)`);
     const who = name.trim().slice(0, 40) || `Player ${session.players.length + 1}`;
     const p = { id: newId(), name: who, color: nextFreeColor(session.players.map((x) => x.color)), startScore: 0 };
     if (app.pregame) session.players.push(p);
@@ -1501,7 +1501,7 @@
         break;
       }
       case 'u':
-        // Buzzer mode: open the buzzers (after reading the clue, when Setup says the host opens them).
+        // Buzzer mode: open the buzzers (after reading the clue, when the game rules say the host opens them).
         if (!buzzing) return;
         openBuzzers();
         break;

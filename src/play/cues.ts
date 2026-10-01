@@ -19,7 +19,7 @@ export function soundUrl(media: string | undefined): string | undefined {
   return url;
 }
 
-/** Play a cue on stream (a sound already playing stops). A cue switched off in Setup does nothing. */
+/** Play a cue on stream (a sound already playing stops). A cue switched off in 🔊 Sounds does nothing. */
 export function playCue(live: Live, game: Game, key: CueKey): void {
   const media = cueMedia(game, key);
   if (media) playSound(live, media);
