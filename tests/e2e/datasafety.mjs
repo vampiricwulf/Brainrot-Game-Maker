@@ -123,7 +123,8 @@ try {
   assert((await mediaWidth()) === 40, 'and the file added while it was full is there after a reload');
 
   // ---------- ℹ About says whether the browser keeps the storage ----------
-  await page.getByRole('button', { name: 'ℹ About' }).click();
+  await page.getByRole('button', { name: /^More:/ }).click();
+  await page.getByRole('menuitem', { name: 'ℹ About' }).click();
   await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).getByText(/^Storage: (kept|may be cleared)/).waitFor();
   assert(true, 'ℹ About says whether the storage is kept for good');
   await page.keyboard.press('Escape');
@@ -195,12 +196,16 @@ try {
   writeFileSync(resolve('test-results/datasafety-bad.json'), JSON.stringify(game));
   dialogs.length = 0;
   await openGameFile(page, resolve('test-results/datasafety-bad.json'));
-  await page.waitForTimeout(500);
-  assert(dialogs.length === 1 && dialogs[0].includes('rounds[0].mode') && dialogs[0].includes('edited by hand'), `one it can't use says where it's wrong (${dialogs[0]})`);
+  // Said in the app's own message window (not a browser alert).
+  const told = page.getByRole('alertdialog');
+  await told.waitFor();
+  const msg = await told.innerText();
+  assert(!dialogs.length && msg.includes('rounds[0].mode') && msg.includes('edited by hand'), `one it can't use says where it's wrong (${msg})`);
+  await told.getByRole('button', { name: 'OK' }).click();
 
   // ---------- Exported player files never touch the builder's files ----------
   await page.getByRole('button', { name: /🖼 Media/ }).click();
-  const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export HTML' }).click()]);
+  const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
   const exported = resolve('test-results/datasafety-export.html');
   await html.saveAs(exported);
   const [replace] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace…' }).click()]);

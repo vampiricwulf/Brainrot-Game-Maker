@@ -120,7 +120,8 @@ try {
   assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use my theme puts the saved theme back');
 
   // ---------- Shortcuts filter ----------
-  await page.getByRole('button', { name: 'Keyboard shortcuts' }).click();
+  await page.getByRole('button', { name: /^More:/ }).click();
+  await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
   assert(rows.length >= 1 && rows.every((r) => /ctrl\+f/i.test(r)), `the shortcuts filter keeps the matching keys (${rows.length})`);
@@ -129,7 +130,7 @@ try {
   await page.keyboard.press('Escape');
 
   // ---------- Rounds and a theme from another game ----------
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON' }).click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
   // (Saved under its own name: the file's name says it's a game.)
   const other = join(tmpdir(), `editorfeatures-${Date.now()}.json`);
   copyFileSync(await download.path(), other);

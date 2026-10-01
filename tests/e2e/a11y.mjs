@@ -81,15 +81,16 @@ try {
   const firstTile = page.locator('.tile').first();
   assert(/^Category 1, \$200: no question yet, no answer$/.test(await firstTile.getAttribute('aria-label')), `a tile is named by category, value and question (${await firstTile.getAttribute('aria-label')})`);
   await page.locator('.cat textarea').first().fill('Memes');
-  assert((await page.getByRole('button', { name: 'Move Memes right' }).count()) === 1, 'a category’s ▶ is named “Move Memes right”');
-  await page.getByRole('button', { name: 'Delete category Memes' }).click();
-  assert(/^Delete category/.test(await focused()), `after deleting a category the focus goes to the next one’s 🗑 (${await focused()})`);
+  // Its moves and Delete are in its ⋯ menu (named after the category).
+  await page.getByRole('button', { name: 'More for category 1: Memes' }).click();
+  await page.getByRole('menuitem', { name: /Delete category/ }).click();
+  assert(/^More for category 1/.test(await focused()), `after deleting a category the focus goes to the next one’s ⋯ (${await focused()})`);
   await page.keyboard.press('Control+z');
   assert((await page.locator('nav [aria-current="page"]').count()) === 1, 'the sidebar marks the tab on screen (aria-current)');
 
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
-  assert(await page.evaluate(() => document.activeElement?.matches('.body > main input')), 'a new round puts the focus in its name');
+  assert(await page.evaluate(() => document.activeElement?.matches('nav .round-tab.active')), 'a new round puts the focus on its tab');
 
   // ---------- Readable colors ----------
   const play = page.getByRole('button', { name: '▶ Play' });
