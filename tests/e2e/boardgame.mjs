@@ -92,7 +92,9 @@ try {
   await page.waitForTimeout(450);
   const yes = page.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible()) await yes.click();
-  // The round opens on its title card: clicking it goes on.
+  // The round opens on its title card (the host's status line says so): clicking it goes on.
+  await page.locator('.stage-box .title-card').waitFor();
+  assert((await page.locator('.status').first().innerText()).includes('Title card'), 'the host panel says the title card is up');
   await page.locator('.stage-box .title-card').click();
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
@@ -109,7 +111,16 @@ try {
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   assert(true, 'D rolls the dice and fills in the steps');
-  await page.keyboard.press('Escape');
+  // The dice don't stay on stream into another round.
+  assert((await page.locator('.stage-box .ov').count()) === 1, 'the dice are on the stage');
+  await page.getByRole('button', { name: '◀ Prev round' }).click();
+  await page.waitForTimeout(450);
+  assert((await page.locator('.stage-box .ov').count()) === 0, 'and gone once the round changes');
+  await page.getByRole('button', { name: 'Next round ▶' }).click();
+  await page.waitForTimeout(450);
+  if (await yes.isVisible()) await yes.click();
+  if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
+  await page.locator('.bh').waitFor();
 
   await page.getByLabel('Steps').fill('2');
   await page.getByRole('button', { name: /^▶ Move Player 1/ }).click();

@@ -32,6 +32,12 @@ try {
   await page.getByRole('button', { name: /Try a sample game/ }).click();
   await page.waitForTimeout(100);
   assert(await page.evaluate(() => document.activeElement?.hasAttribute('data-round-name')), 'Try a sample game puts the focus on its first round’s name');
+  // Its toast stays in the editor: it would cover ▶ Play's Start game.
+  assert((await page.locator('.toast').count()) === 1, 'the sample game says what it added');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByRole('button', { name: /Start game/ }).waitFor();
+  assert((await page.locator('.toast').count()) === 0, 'and its toast doesn’t follow into ▶ Play');
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
   let t = await tabs();
   assert(t.length === 4 && t[0].includes('Jeopardy!') && t[3].includes('Final'), `the sample game has a board, an adventure, a board game and a Final (${t.join(' | ')})`);
   await page.locator('.problems.ok').waitFor({ timeout: 3000 });
