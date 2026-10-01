@@ -1,7 +1,7 @@
 // What the parts of a game point at (a button's stat, item, shop, wheel, screen, space or zone; an object's item or
 // shop) and whether it's still there. Deleting something can leave these pointing nowhere: the editor's checklist
 // lists them, and running such a button says why it can't instead of misbehaving.
-import { PLAYER_WHEEL, type Action, type BoardGameRound, type Game, type SlideElement, type World } from './model';
+import { PLAYER_WHEEL, type Action, type BoardGameRound, type Game, type Screen, type SlideElement, type World, type WorldMap } from './model';
 
 /** Why an action can't run as set up (what it points at was deleted, or nothing is chosen), or null. */
 export function actionProblem(game: Game, a: Action, where: { world?: World; board?: BoardGameRound } = {}): string | null {
@@ -32,6 +32,24 @@ export function actionProblem(game: Game, a: Action, where: { world?: World; boa
     default:
       return null;
   }
+}
+
+/** Names for a checklist line: “Cave”, “Cave” and “Town”, or “Cave”, “Town” and 3 more (each once). */
+export function nameList(names: readonly string[], max = 2): string {
+  const list = [...new Set(names)].map((n) => `“${n}”`);
+  if (list.length <= 1) return list[0] ?? '';
+  if (list.length <= max) return `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`;
+  return `${list.slice(0, max).join(', ')} and ${list.length - max} more`;
+}
+
+/** Every object on a world's screens with where it is: its map, its screen and the look it's in (none: the screen's own). */
+export function objectsWhere(world: World): { el: SlideElement; map: WorldMap; screen: Screen; look?: string }[] {
+  return world.maps.flatMap((map) =>
+    map.screens.flatMap((screen) => [
+      ...screen.slide.elements.map((el) => ({ el, map, screen })),
+      ...(screen.variants ?? []).flatMap((v) => v.slide.elements.map((el) => ({ el, map, screen, look: v.id }))),
+    ]),
+  );
 }
 
 /** Every object on a world's screens, in every look. */

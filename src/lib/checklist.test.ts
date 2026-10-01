@@ -3,6 +3,8 @@ import { jeopardyGame } from './testgame';
 import { newRound, setSlideText, type BoardRound } from './model';
 import { validate } from './validate';
 import { checklistLines } from './checklist';
+import { newRpgRound, newScreen } from './rpg';
+import { raceRound } from './samples';
 import { STD_DICE, tileDice } from './tools';
 import { FACTORY_FONT, followClueText, setClueText } from './cluetext';
 
@@ -14,6 +16,8 @@ describe('the checklist in the sidebar', () => {
     game.rounds.push(newRound('Double Jeopardy!'));
     const lines = () => checklistLines(game, validate(game));
     const board = game.rounds[0] as BoardRound;
+    // (Daily Doubles: below.)
+    board.dailyDoubleCount = 0;
     expect(lines().filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 30 clues to finish']);
     expect(lines().filter((l) => l.tab === 2)).toHaveLength(1);
     fill(board);
@@ -28,6 +32,45 @@ describe('the checklist in the sidebar', () => {
     const only = lines().find((l) => l.tab === 0)!;
     expect(only.text).toBe('Jeopardy!: 1 category with no name');
     expect(only.place).toEqual({ tab: 'round', round: board.id, part: { kind: 'category', category: board.categories[4].id } });
+  });
+});
+
+describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () => {
+  it('says when a board has fewer Daily Doubles than it wants, as the pre-game screen does', () => {
+    const game = jeopardyGame();
+    const board = game.rounds[0] as BoardRound;
+    fill(board);
+    board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
+    board.dailyDoubleCount = 2;
+    board.categories[1].clues[4].type = 'dailyDouble';
+    expect(checklistLines(game, validate(game)).filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 2 Daily Doubles wanted, 1 placed']);
+    board.categories[3].clues[2].type = 'dailyDouble';
+    expect(checklistLines(game, validate(game)).filter((l) => l.tab === 0)).toEqual([]);
+    // No more than the board has tiles for.
+    board.dailyDoubleCount = 99;
+    board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'dailyDouble')));
+    expect(validate(game).some((p) => p.text.includes('Daily Double'))).toBe(false);
+  });
+
+  it('goes to the screen or the space a problem is on', () => {
+    const game = jeopardyGame();
+    game.rounds = [];
+    const rpg = newRpgRound(game, 'Quest');
+    game.rounds.push(rpg);
+    const world = game.worlds![0];
+    const map = world.maps[0];
+    const cave = newScreen(1, 0, 'Cave');
+    map.screens.push(cave);
+    cave.exits = { e: { kind: 'warp', to: { map: map.id, screen: 'gone' } } };
+    const race = raceRound();
+    game.rounds.push(race);
+    race.spaces[3].onLand = [{ id: 'g', do: 'goto', space: 'gone', who: 'ask' }];
+    const lines = checklistLines(game, validate(game));
+    expect(lines.find((l) => l.tab === 0)).toMatchObject({ text: 'Quest: a way out of “Cave” leads nowhere', place: { tab: 'world', world: world.id, map: map.id, screen: cave.id } });
+    // (The Race's Finish is where the path is meant to end: nothing to say about it.)
+    expect(lines.find((l) => l.tab === 1)).toMatchObject({ text: 'Race: a button on “Space 4” points nowhere', place: { tab: 'round', round: race.id, part: { kind: 'space', space: race.spaces[3].id } } });
+    race.spaces[3].onLand = undefined;
+    expect(lines.length - checklistLines(game, validate(game)).length).toBe(1);
   });
 });
 

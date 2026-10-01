@@ -287,21 +287,34 @@
   /** The checklist, one line a round. */
   const checklist = $derived(checklistLines(game, problems));
 
-  /** A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile has the focus). */
+  /**
+   * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen or
+   * a board game's space has the focus).
+   */
   function goFix(line: ChecklistLine): void {
     // Players are set on the ▶ Play screen.
     if (line.tab === 'play') return onplay();
     tab = line.tab;
-    if (!line.place?.tab || line.place.tab !== 'round' || !line.place.part) return;
-    goTo(line.place);
-    const part = line.place.part;
-    const key = part.kind === 'clue' ? `clue:${part.clue}` : part.kind === 'category' ? `category:${part.category}` : null;
+    const place = line.place;
+    if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world')) return;
+    goTo(place);
+    const part = place.tab === 'round' ? place.part : undefined;
+    const key =
+      part?.kind === 'clue'
+        ? `clue:${part.clue}`
+        : part?.kind === 'category'
+          ? `category:${part.category}`
+          : part?.kind === 'space'
+            ? `space:${part.space}`
+            : place.tab === 'world' && place.screen && !place.inSlide
+              ? `screen:${place.screen}`
+              : null;
     if (!key) return;
     void tick()
       .then(tick)
       .then(() => {
         const el = document.querySelector<HTMLElement>(`[data-place="${key}"]`);
-        (el?.matches('button') ? el : el?.querySelector<HTMLElement>('textarea'))?.focus();
+        (el?.matches('button, [tabindex]') ? el : el?.querySelector<HTMLElement>('textarea'))?.focus();
       });
   }
 

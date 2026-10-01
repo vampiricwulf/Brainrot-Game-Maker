@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
 import { describe as describeStep, placeAt, short } from './historylabel';
-import { newImageEl, newTextEl, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
+import { newImageEl, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
 import { newRpgRound, newScreen, newVariant } from './rpg';
 import { newWheel } from './tools';
+import { newBoardGameRound } from './boardgame';
 import { newStatField } from './toolset';
 
 function sample(): Game {
@@ -279,6 +280,39 @@ describe('step labels', () => {
       board(g).categories[0].clues[0].questionSlide.elements.push({ ...newImageEl('m2'), id: 'a' }, { ...newImageEl('m3'), id: 'b' });
     });
     expect(two).toMatchObject({ label: 'Added 2 images', where: 'Jeopardy! › Category 1 › $200 › Question' });
+  });
+
+  it('says switches turned on and off in words, not field names', () => {
+    const el = (g: Game) => screens(g)[1].slide.elements;
+    const door = (g: Game) => {
+      el(g)[0].name = 'Doorway';
+      el(g)[0].role = { class: 'doorway' };
+    };
+    const lock = (on: boolean) => {
+      const before = sample();
+      door(before);
+      const after = structuredClone(before);
+      el(after)[0].role!.locked = on;
+      return describeStep(diff(before, after), before, after).label;
+    };
+    expect(lock(true)).toBe('Locked “Doorway”');
+    expect(lock(false)).toBe('Unlocked “Doorway”');
+    expect(step((g) => (el(g)[1].secret = true)).label).toBe('Made “Old Man” secret');
+    expect(step((g) => (el(g)[1].role!.statsShown = true)).label).toBe('Showed the stats of “Old Man” to viewers');
+    const withBoard = () => {
+      const g = sample();
+      g.rounds.push(newBoardGameRound('Race'));
+      return g;
+    };
+    const before = withBoard();
+    const after = structuredClone(before);
+    (after.rounds.at(-1) as BoardGameRound).winPublic = true;
+    expect(describeStep(diff(before, after), before, after).label).toBe('Showed how to win on the board of “Race”');
+    const space = structuredClone(before);
+    (space.rounds.at(-1) as BoardGameRound).spaces[2].secret = true;
+    expect(describeStep(diff(before, space), before, space).label).toBe('Made “Space 3” secret');
+    expect(step((g) => (board(g).dailyDoubleCount = 2)).label).toBe('Set round “Jeopardy!” to 2 Daily Doubles');
+    expect(step((g) => (screens(g)[1].exits = { n: { kind: 'blocked' } })).label).toBe('Changed ways out of screen “Town”');
   });
 
   it('lets an editor name the step, keeping the places from the ops', () => {

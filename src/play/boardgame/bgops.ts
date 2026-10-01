@@ -1,7 +1,7 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { currentPlayer, moveInOrder, movePlayer, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
+import { currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
 import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -100,10 +100,10 @@ export function turnNow(game: Game, session: Session, delta = 1): void {
 }
 
 /** The name the round's movement dice roll under (a saved preset's, else what the round says: "2d6"). */
-function moverDiceName(game: Game, round: BoardGameRound): string | undefined {
+export function moverDiceName(game: Game, round: BoardGameRound): string | undefined {
   const m = round.mover;
   if (m.kind !== 'dice') return undefined;
-  return game.dice.find((d) => d.name === m.dice || d.id === m.dice)?.name ?? (m.dice || 'd6');
+  return moverPreset(game, round)?.name ?? (parseDice(m.dice) ? m.dice.trim() : 'd6');
 }
 
 /**
@@ -137,7 +137,7 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
     return null;
   }
   if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
-  const preset = game.dice.find((d) => d.name === m.dice || d.id === m.dice);
+  const preset = moverPreset(game, round);
   if (preset) rollDice(live, session, preset);
   else {
     const d = parseDice(m.dice) ?? { sides: 6, count: 1 };

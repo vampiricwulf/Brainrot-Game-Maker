@@ -6,7 +6,7 @@
   import { tick } from 'svelte';
   import type { WheelPreset, WheelSegment } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
-  import { newSegment, parseQuickWheel, segmentAngles, spinTarget, weightedIndex } from '../../lib/tools';
+  import { MIN_WEIGHT, newSegment, parseQuickWheel, segmentAngles, sliceWeight, spinTarget, weightedIndex } from '../../lib/tools';
   import { app } from '../../lib/app.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
@@ -138,8 +138,23 @@
           >
           <input type="color" bind:value={seg.color} aria-label="Slice color" />
           <OutcomeEditor outcome={seg} placeholder="Slice label" labelkey={(e) => labelKey(e, i)} />
-          <label class="w" title="Weight (relative size / chance)">
-            ×<input type="number" min="0.1" step="0.5" bind:value={seg.weight} />
+          <label class="w" title="Weight: how big the slice is, and how likely (at least {MIN_WEIGHT}; delete a slice to take it off)">
+            ×<input
+              type="number"
+              min={MIN_WEIGHT}
+              step="0.5"
+              value={seg.weight}
+              oninput={(e) => {
+                // (A blank or 0 while typing a new number isn't kept: only a weight the wheel can use.)
+                const n = Number(e.currentTarget.value);
+                if (e.currentTarget.value.trim() !== '' && n >= MIN_WEIGHT) seg.weight = n;
+              }}
+              onchange={(e) => {
+                seg.weight = sliceWeight(e.currentTarget.value);
+                e.currentTarget.value = String(seg.weight);
+              }}
+              aria-label="{seg.label.trim() || `Option ${i + 1}`} weight"
+            />
           </label>
           <span class="pct muted">{pct[i]?.toFixed(0)}%</span>
           <button class="ghost small" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>

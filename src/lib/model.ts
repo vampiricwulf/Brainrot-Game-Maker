@@ -1238,6 +1238,20 @@ function repairGame(g: Game): void {
   }
   for (const w of g.wheels) if (!Array.isArray(w.segments)) w.segments = [];
   for (const d of g.dice) if (!Array.isArray(d.dice)) d.dice = [];
+  linkMoverDice(g);
+}
+
+/**
+ * Board games saved before their movement dice were linked by id named them: link them to the saved dice of that
+ * name (or id), so renaming the dice no longer breaks the link. Dice typed in ("2d6") stay as they are.
+ */
+export function linkMoverDice(game: Pick<Game, 'dice' | 'rounds'>): void {
+  for (const r of game.rounds) {
+    if (!isBoardGame(r) || r.mover?.kind !== 'dice' || r.mover.diceId) continue;
+    const m = r.mover;
+    const d = game.dice.find((x) => x.id === m.dice) ?? game.dice.find((x) => x.name === m.dice);
+    if (d) r.mover = { ...m, dice: d.name, diceId: d.id };
+  }
 }
 
 const KNOWN_MODES = new Set<string>(['board', 'final', 'rpg', 'boardgame']);
@@ -1305,10 +1319,10 @@ export interface BoardGameRound {
   /** Where everyone starts (default: the first space). */
   start?: Id;
   /**
-   * How a turn's move is decided: dice ("d6", "2d6", a saved dice preset's name), a saved wheel, or 'step': one
-   * space per turn, the player choosing which way.
+   * How a turn's move is decided: dice, a saved wheel, or 'step': one space per turn, the player choosing which way.
+   * Dice are standard dice as typed ("d6", "2d6"), or saved dice (`diceId`; `dice` then has their name when picked).
    */
-  mover: { kind: 'dice'; dice: string } | { kind: 'wheel'; wheel: Id } | { kind: 'step' };
+  mover: { kind: 'dice'; dice: string; diceId?: Id } | { kind: 'wheel'; wheel: Id } | { kind: 'step' };
   zones: BoardZone[];
   /** How to win, shown to the host; public ones are shown on the board too. */
   winNotes?: string;

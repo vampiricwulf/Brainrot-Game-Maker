@@ -380,6 +380,16 @@ const FIELDS: Record<string, string> = {
   variants: 'looks',
   statFields: 'stats',
   stageBg: 'stage background',
+  exits: 'ways out',
+  winPublic: 'how to win on the board',
+  dailyDoubleCount: 'Daily Doubles wanted',
+};
+/** Switches: what turning each on or off says (`who`: “Doorway”, or "the space" for one with no name). */
+const TOGGLES: Record<string, (on: boolean, who: string) => string> = {
+  winPublic: (on, who) => (on ? `Showed how to win on the board of ${who}` : `Took how to win off the board of ${who}`),
+  locked: (on, who) => (on ? `Locked ${who}` : `Unlocked ${who}`),
+  secret: (on, who) => (on ? `Made ${who} secret` : `Made ${who} not secret`),
+  statsShown: (on, who) => (on ? `Showed the stats of ${who} to viewers` : `Hid the stats of ${who} from viewers`),
 };
 /** Fields that are words people type: a change says what they say now. */
 const TEXTS = new Set(['text', 'category', 'hostNotes', 'details', 'description', 'label', 'winNotes', 'notes']);
@@ -665,6 +675,11 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     return cls ? `Made ${who} ${/^[aeiou]/.test(kind) ? 'an' : 'a'} ${kind}` : `Made ${who} ${kind}`;
   }
 
+  if (typeof k === 'string' && TOGGLES[k] && (typeof v === 'boolean' || v === undefined) && !several) {
+    const who = at.name.trim() ? `“${short(at.name)}”` : `the ${nounOf(at)}`;
+    return TOGGLES[k](!!v, who);
+  }
+  if (k === 'dailyDoubleCount' && typeof v === 'number') return `Set ${what(at)} to ${v} Daily Double${v === 1 ? '' : 's'}`;
   if (at.noun === 'row values') return 'Changed the row values';
   const own = op.p.length === at.depth;
   if (own && at.noun === 'clue' && k === 'type') return TILE_TYPES[v as string] ?? 'Changed the tile type';

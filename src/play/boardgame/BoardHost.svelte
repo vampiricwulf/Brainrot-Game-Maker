@@ -14,7 +14,7 @@
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, moveNow, moverDiceName, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
 
   let {
@@ -209,8 +209,8 @@
           {/each}
         {/if}
       {:else}
-      <button onclick={roll} title="D: {round.mover.kind === 'dice' ? round.mover.dice : 'the movement wheel'}">
-        {round.mover.kind === 'wheel' ? '🎡 Spin to move' : `🎲 Roll ${round.mover.dice || 'd6'}`}
+      <button onclick={roll} title="D: {round.mover.kind === 'dice' ? moverDiceName(game, round) : 'the movement wheel'}">
+        {round.mover.kind === 'wheel' ? '🎡 Spin to move' : `🎲 Roll ${moverDiceName(game, round)}`}
       </button>
       <label class="small">
         Steps
