@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { parseGame } from './fileio';
-import { FINAL_V1_ROUND_ID, isBoard, isFinal, migrateGame, newGame, textSlide, type Game } from './model';
+import { FINAL_V1_ROUND_ID, gameProblem, isBoard, isFinal, migrateGame, newGame, textSlide, type Game } from './model';
 import { validate } from './validate';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
 
@@ -69,6 +69,44 @@ describe('a new game', () => {
     const g = newGame();
     expect(g.rounds).toEqual([]);
     expect(validate(g).find((p) => p.text.startsWith('No rounds yet'))).toMatchObject({ tab: 0, level: 'warn' });
+  });
+});
+
+describe('hand-edited games', () => {
+  const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
+
+  it('leaves a whole game exactly as it is', () => {
+    const once = migrateGame(plain(jeopardyGame()));
+    expect(JSON.stringify(migrateGame(plain(once)))).toBe(JSON.stringify(once));
+  });
+
+  it('fills in what has an obvious fill', () => {
+    const g = plain(jeopardyGame());
+    const board = g.rounds[0];
+    delete board.values;
+    delete board.categories[0].clues[0].answerSlide;
+    board.categories[0].clues[1].questionSlide.elements[0].text = null;
+    delete board.categories[1].clues[0].id;
+    g.players = [{ name: 'Ann', color: '#e6194b' }, { name: 'Bo' }];
+    const m = migrateGame(g);
+    const r = m.rounds[0];
+    if (!isBoard(r)) throw new Error('not a board');
+    expect(r.values).toEqual([200, 400, 600, 800, 1000]);
+    expect(r.categories[0].clues[0].answerSlide.elements).toHaveLength(1);
+    expect((r.categories[0].clues[1].questionSlide.elements[0] as { text: string }).text).toBe('');
+    expect(r.categories[1].clues[0].id).toBeTruthy();
+    expect(m.players.every((p) => p.id)).toBe(true);
+    expect(m.players[1].color).toBeTruthy();
+    expect(m.players[1].color).not.toBe('#e6194b');
+    expect(() => validate(m)).not.toThrow();
+    expect(() => newSession(m)).not.toThrow();
+    expect(gameProblem(m)).toBeNull();
+  });
+
+  it("names the first part it can't use", () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].mode = 'quiz';
+    expect(gameProblem(migrateGame(g))).toBe('rounds[1].mode: "quiz" isn\'t a kind of round');
   });
 });
 
