@@ -1325,6 +1325,9 @@
     if (app.game.id === game.id) step(label, () => apply(app.game), { during: 'play' });
   }
 
+  /** A stream card's words changed, as the 🕘 History says it ("Cover card text “Snack break”"). */
+  const cardLabel = (card: string, text: string) => (text.trim() ? `${card} card text “${text.trim().slice(0, 40)}”` : `${card} card text back to the default`);
+
   /** Minutes the "Starting soon" card counts down from. */
   let soonMinutes = $state(5);
   /** Seconds left on the "Starting soon" countdown, for the host (ticks only while there's one). */
@@ -1726,7 +1729,7 @@
         <input
           value={stream.soonText ?? ''}
           placeholder="Starting soon…"
-          onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, 'Starting soon card text')}
+          onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, cardLabel('Starting soon', e.currentTarget.value))}
         />
       </label>
       <div class="row">
@@ -1748,7 +1751,7 @@
         <input
           value={stream.coverText ?? ''}
           placeholder="Be right back"
-          onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, 'Cover card text')}
+          onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, cardLabel('Cover', e.currentTarget.value))}
         />
       </label>
       <span class="muted small">The theme's banner picture shows on both cards, when there is one.</span>
@@ -1756,7 +1759,7 @@
         <input
           type="checkbox"
           checked={!!stream.clueCaption}
-          onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, 'Category and value caption on clues')}
+          onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, `Category and value caption on clues ${e.currentTarget.checked ? 'on' : 'off'}`)}
         />
         Show the category and value on clue screens (“MEMES · $400”)
       </label>
@@ -1764,7 +1767,7 @@
         <input
           type="checkbox"
           checked={!!stream.placeCaption}
-          onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, 'Screen name caption in RPG rounds')}
+          onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
         />
         Show the screen's name in RPG rounds
       </label>

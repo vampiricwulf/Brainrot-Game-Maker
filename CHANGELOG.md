@@ -214,6 +214,12 @@ done, the Unreleased lines move under that day's heading.
   in the Answer field. Find's results are one Tab stop (↑/↓ pick, and the box says which). Menus take `Home` and `End`.
   In-app questions are marked as modal.
 - Find says "› Category" for board categories as for Finals, and board spaces have their own ⬤ icon (dice keep 🎲).
+- 🕘 History names are clearer: a space's, an object's, an item's or a wheel slice's button is named as the editor
+  shows it ("Added button “Back 3 spaces”"); the On stream captions say on or off and the cards' words what they say
+  now; a theme change says its new value ("Theme: stage background chroma green"); and "Added the sample game" is
+  placed at its rounds, not at Play › Players (its Undo / Redo note too).
+- A Final's title card no longer shows the host "Category is on screen" and Lock category under "Title card…"; RPG
+  and board-game rounds say "Title card · press N to start the round" too.
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz
