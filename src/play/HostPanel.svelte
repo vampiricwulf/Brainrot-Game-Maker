@@ -290,7 +290,12 @@
       >↩ Cancel (keep tile)</button>
     {:else if session.phase === 'final'}
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
-      <span class="muted">{finalStepText[session.finalStep ?? 'category']}</span>
+      {#if session.intro?.stage === 'title'}
+        <!-- Its title card is up: viewers don't see the category yet. -->
+        <span class="muted">Title card <span class="hint">· click the screen or press N to start the round</span></span>
+      {:else}
+        <span class="muted">{finalStepText[session.finalStep ?? 'category']}</span>
+      {/if}
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>

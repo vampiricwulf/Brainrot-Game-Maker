@@ -28,6 +28,19 @@ describe('my theme', () => {
     expect(withMyTheme(other, mine)).toMatchObject({ tile: t.tile, scoreBar: 'top', banner: 'mine', boardImage: undefined });
   });
 
+  it('keeps the clue text look and the OBS stage background', () => {
+    const t = { ...presetTheme('neon'), clueFont: 'Georgia, serif', clueColor: '#ffeeaa', stageBg: 'green' as const };
+    expect(saveMyTheme(t)).toBe(true);
+    const mine = loadMyTheme()!;
+    expect(mine).toMatchObject({ clueFont: 'Georgia, serif', clueColor: '#ffeeaa', stageBg: 'green' });
+    const other = { ...presetTheme('classic'), clueFont: 'Impact', stageBg: 'magenta' as const };
+    expect(withMyTheme(other, mine)).toMatchObject({ clueFont: 'Georgia, serif', clueColor: '#ffeeaa', stageBg: 'green' });
+    // A saved theme without them takes them off (the game's own don't linger).
+    saveMyTheme(presetTheme('dark'));
+    const plain = withMyTheme(other, loadMyTheme()!);
+    expect([plain.clueFont, plain.clueColor, plain.stageBg]).toEqual([undefined, undefined, undefined]);
+  });
+
   it('says so when the browser won’t store it', () => {
     delete (globalThis as { localStorage?: unknown }).localStorage;
     expect(saveMyTheme(presetTheme('dark'))).toBe(false);
@@ -43,6 +56,10 @@ describe('my theme', () => {
     );
     g.theme.boardImage = 'bg';
     g.theme.boardFont = `'${uploadedFamily('font12345678')}', sans-serif`;
+    expect(themeMedia(g).map((m) => m.id)).toEqual(['bg', 'font12345678']);
+    // An uploaded font used only for the clue text comes along too.
+    g.theme.boardFont = 'serif';
+    g.theme.clueFont = `'${uploadedFamily('font12345678')}', sans-serif`;
     expect(themeMedia(g).map((m) => m.id)).toEqual(['bg', 'font12345678']);
   });
 });

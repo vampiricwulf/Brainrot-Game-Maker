@@ -30,15 +30,26 @@ export function saveMyTheme(theme: Theme): boolean {
   }
 }
 
-/** A saved theme on a game's theme: its colors, fonts and layout; the game's own pictures stay. */
+/**
+ * A saved theme on a game's theme: its colors, fonts and layout; the game's own pictures stay. The clue text look and
+ * the stage background are the saved theme's too, even when it has none (they'd otherwise linger from the game's).
+ */
 export function withMyTheme(current: Theme, mine: SavedTheme): Theme {
-  return { ...current, ...mine, boardImage: current.boardImage, banner: current.banner };
+  return {
+    ...current,
+    ...mine,
+    clueFont: mine.clueFont,
+    clueColor: mine.clueColor,
+    stageBg: mine.stageBg,
+    boardImage: current.boardImage,
+    banner: current.banner,
+  };
 }
 
-/** The files a theme uses in its game: its board picture and banner, and uploaded fonts it uses. */
+/** The files a theme uses in its game: its board picture and banner, and uploaded fonts it uses (the clue text's too). */
 export function themeMedia(game: Game): MediaRef[] {
   const t = game.theme;
   return game.media.filter(
-    (m) => m.id === t.boardImage || m.id === t.banner || (m.kind === 'font' && [t.boardFont, t.valueFont].some((f) => f?.includes(uploadedFamily(m.id)))),
+    (m) => m.id === t.boardImage || m.id === t.banner || (m.kind === 'font' && [t.boardFont, t.valueFont, t.clueFont].some((f) => f?.includes(uploadedFamily(m.id)))),
   );
 }

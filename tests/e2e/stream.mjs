@@ -115,7 +115,15 @@ try {
 
   // The Final: the stage keeps one size through its steps; the wager boxes say viewers can see them.
   await nextRound();
+  // Its title card comes first: the stage already has the Final's size, and the status line says what's on screen.
+  await page.locator('.title-card .round-name').waitFor();
   const finalSize = await stageSize();
+  const status = await page.locator('.panel .status').innerText();
+  assert(status.includes('Title card') && !status.includes('Category on screen'), `the status line says the title card is up (${status})`);
+  await page.getByRole('button', { name: 'Start the round ▶' }).click();
+  await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
+  assert((await stageSize()) === finalSize, `starting the Final keeps the stage at ${finalSize}`);
+  assert((await page.locator('.panel .status').innerText()).includes('Category on screen'), 'then the category is on screen');
   assert(!(await page.locator('.stage .final-label').count()), 'a Final without a category shows its name once');
   await page.getByRole('button', { name: /take wagers/ }).click();
   assert((await stageSize()) === finalSize, `taking wagers keeps the stage at ${finalSize}`);

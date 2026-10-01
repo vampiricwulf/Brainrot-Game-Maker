@@ -164,6 +164,9 @@ try {
     if (await yes.isVisible()) await yes.click();
   }
   await page.locator('.bh').waitFor();
+  // The round opens on its title card (N would go on from it, not to the next turn).
+  await page.getByRole('button', { name: 'Start the round ▶' }).click();
+  await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   // Ann: Start + 5 lands on Go back (3 back: Space 3).
   await page.getByLabel('Steps').fill('5');
   await page.getByRole('button', { name: /^▶ Move Ann/ }).click();
