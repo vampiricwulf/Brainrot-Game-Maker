@@ -7,6 +7,7 @@
   import { mediaUrls } from '../media.svelte';
   import type { BoardGameRound, BoardSpace } from '../model';
   import { SLIDE_H, SLIDE_W } from '../model';
+  import { spaceNumber } from '../boardgame';
 
   let {
     round,
@@ -33,8 +34,11 @@
 
   const R = 58;
   const hidden = (s: BoardSpace) => audience && !!s.secret && !revealed.includes(s.id);
-  /** The number in a space's name ("Space 4" → 4), drawn in it: its place in the list would disagree after a delete. */
-  const number = (s: BoardSpace) => /(\d+)$/.exec(s.name)?.[1];
+  /**
+   * The number in a numbered space's name ("Space 4" → 4), drawn in it: its place in the list would disagree after a
+   * delete. Other names keep their numbers to themselves ("Move +3" isn't space 3).
+   */
+  const number = (s: BoardSpace) => spaceNumber(s.name);
   const byId = $derived(new Map(round.spaces.map((s) => [s.id, s])));
 
   /** A link from a to b, stopping at the edge of each circle. */

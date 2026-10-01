@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { runAction, typedSteps, type RunContext } from './actions';
-import { newBoardGameRound } from './boardgame';
+import { runAction, targets, typedSteps, type RunContext } from './actions';
+import { ensureBoard, newBoardGameRound } from './boardgame';
 import { newLive } from './live';
 import { newGame, type Action } from './model';
-import { newWorld } from './rpg';
+import { addScreenBeside, ensureWorld, moveTo, newRpgRound, newWorld } from './rpg';
 import { newSession } from './session';
 import { newStatField, statValue } from './toolset';
 
@@ -54,5 +54,60 @@ describe('typed steps', () => {
     expect(typedSteps(-2, 0)).toBe(-1);
     expect(typedSteps(1, NaN)).toBe(1);
     expect(typedSteps(1, 2.6)).toBe(3);
+  });
+});
+
+describe('who “the party” is', () => {
+  function board() {
+    const game = newGame();
+    game.players = ['Ann', 'Bob'].map((name, i) => ({ id: 'ab'[i], name, color: '#e6194b' }));
+    const round = newBoardGameRound();
+    game.rounds = [round];
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    return { game, session, round, bs, ctx: { game, session, live: newLive(), board: round, bs, selected: [] } as RunContext };
+  }
+
+  it('on a board, is the player the button is for (not whoever’s turn it is)', () => {
+    const { round, bs, ctx } = board();
+    // Ann's turn; the button is Bob's (he landed there, or was picked on the space's card).
+    expect(targets({ ...ctx, chosen: ['b'] }, 'party')).toEqual(['b']);
+    expect(runAction({ ...ctx, chosen: ['b'] }, { id: '1', do: 'steps', steps: 3, who: 'party' })).toBe('Forward 3 spaces: Bob · Landed on Space 4');
+    expect(bs.positions.b.space).toBe(round.spaces[3].id);
+    expect(bs.positions.a.space).toBe(round.spaces[0].id);
+    // Unset means the same; with nobody chosen it's whoever's turn it is.
+    runAction({ ...ctx, chosen: ['b'] }, { id: '2', do: 'skip' });
+    expect(bs.skips).toEqual({ b: 1 });
+    expect(targets(ctx, 'party')).toEqual(['a']);
+  });
+
+  it('in an RPG, is the party standing where the object is (not the one viewers follow)', () => {
+    const game = newGame();
+    game.players = ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: 'abc'[i], name, color: '#e6194b' }));
+    const hp = { ...newStatField('HP'), id: 'hp', start: 10 };
+    game.statFields = [hp];
+    const round = newRpgRound(game);
+    game.rounds = [round];
+    const world = game.worlds![0];
+    const map = world.maps[0];
+    const village = addScreenBeside(map, map.screens[0], 'e', 'Village')!;
+    const cave = addScreenBeside(map, village, 'e', 'Cave')!;
+    const session = newSession(game);
+    const st = ensureWorld(session, game, round)!;
+    // Cy goes to the Village on his own (viewers follow him), Ann & Bob stay at the start.
+    moveTo(game, st, world, { map: map.id, screen: village.id }, { players: ['c'] });
+    const [ab, c] = st.parties;
+    st.active = c.id;
+    const ctx: RunContext = { game, session, live: newLive(), world, st, selected: [] };
+    // A trap at the start hurts Ann & Bob, not Cy.
+    runAction({ ...ctx, at: map.screens[0].id }, { id: '1', do: 'stat', field: 'hp', op: 'add', amount: -3, who: 'party' });
+    expect(['a', 'b', 'c'].map((id) => statValue(game, session, id, hp))).toEqual([7, 7, 10]);
+    // On a screen nobody stands on (or with no object), it's the followed party.
+    expect(targets({ ...ctx, at: cave.id }, 'party')).toEqual(['c']);
+    expect(targets(ctx, 'party')).toEqual(['c']);
+    // A move from the start's object moves Ann & Bob there, as they are.
+    runAction({ ...ctx, at: map.screens[0].id }, { id: '2', do: 'move', to: { map: map.id, screen: cave.id }, who: 'party' });
+    expect([st.positions.a.screen, st.positions.b.screen, st.positions.c.screen]).toEqual([cave.id, cave.id, village.id]);
+    expect(st.parties.map((p) => p.members)).toEqual([ab.members, ['c']]);
   });
 });

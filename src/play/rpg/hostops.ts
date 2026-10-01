@@ -1,10 +1,10 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import {
-  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Party, type Position, type ScreenRef, type Session,
+  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Position, type ScreenRef, type Session,
   type SlideElement, type World, type WorldState,
 } from '../../lib/model';
 import {
-  activeParty, allElements, audienceSees, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyScreen, regroup, splitParty,
+  activeParty, allElements, audienceSees, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyOn, regroup, splitParty,
   step, worldById,
 } from '../../lib/rpg';
 import { nameList } from '../../lib/session';
@@ -59,7 +59,10 @@ export function splitOff(game: Game, session: Session, ids: string[]): string | 
   const { st } = rpgNow(game, session);
   if (!st) return 'No world';
   if (!ids.length) return 'Select the players who split off first (1–9)';
-  if (ids.length === session.players.length && st.parties.length === 1) return 'That’s everyone: select only the ones who split off';
+  // Everyone, or players standing in different places, would make one party in two places.
+  if (ids.length === session.players.length) return st.parties.length === 1 ? 'That’s everyone: select only the ones who split off' : 'That’s everyone: 🤝 Regroup (G) brings everyone together';
+  const screens = new Set(ids.map((id) => st.positions[id]?.screen));
+  if (screens.size > 1) return 'They aren’t all in one place: split off players standing together (or move them together first)';
   logged(session, `Split off ${names(session, ids)}`, () => splitParty(st, ids));
   return null;
 }
@@ -106,13 +109,6 @@ export function joinPartyNow(game: Game, session: Session, ids: string[], partyI
   const text = `${names(session, who)} ${who.length > 1 ? 'join' : 'joins'} ${party.name}`;
   logged(session, text, () => joinParty(game, st, world, who, party.id));
   return text;
-}
-
-/** The party standing on a screen: the followed one if it's there, else the first one there. */
-export function partyOn(st: WorldState, screenId: string): Party | undefined {
-  const on = (p: Party | undefined) => partyScreen(st, p)?.screen === screenId;
-  const followed = activeParty(st);
-  return on(followed) ? followed : st.parties.find(on);
 }
 
 /**
@@ -343,4 +339,4 @@ export async function droppedFile(game: Game, file: File, at: { x: number; y: nu
   return el;
 }
 
-export { findIn, focusRef };
+export { findIn, focusRef, partyOn };

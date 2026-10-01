@@ -49,6 +49,9 @@
   const picked = $derived(chosen ?? (ctx.selected.length ? ctx.selected : null));
   const who = $derived(picked ?? here);
   const whoNames = $derived(nameList(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?')) || 'nobody');
+  /** Who picks it up: the first one picked (a pick-up goes to one player, and the button names them). */
+  const picker = $derived(who[0]);
+  const pickerName = $derived(session.players.find((p) => p.id === picker)?.name ?? 'Nobody');
   const title = $derived(objectName(el));
   const locked = $derived(o?.locked ?? role?.locked ?? false);
   const npcStats = $derived(o?.stats ?? role?.stats ?? []);
@@ -67,7 +70,7 @@
     let said: string[] = [];
     // One undoable step for all of them.
     logged(session, `${title}: ${list.map((a) => describeAction(game, a)).join(', ')}`, () => {
-      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st }, a, `${title}: ${describeAction(game, a)}`));
+      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a)}`));
     });
     toast(said.join(' · '), 4000);
   }
@@ -96,7 +99,7 @@
 
   function run(a: NonNullable<typeof role>['actions'] extends (infer T)[] | undefined ? T : never): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: who, world, st }, a, `${title}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a)}`), 3000);
   }
 
   function setShown(v: boolean): void {
@@ -126,8 +129,8 @@
   }
 
   function pickUp(): void {
-    if (!who.length) return void toast('Pick who picks it up');
-    pickUpNow(game, session, st, el, who[0]);
+    if (!picker) return void toast('Pick who picks it up');
+    pickUpNow(game, session, st, el, picker);
     onclose();
   }
 
@@ -202,10 +205,10 @@
         {locked ? '🔓 Unlock' : '🔒 Lock'}
       </button>
     {:else if role?.class === 'item'}
-      <button class="primary" onclick={pickUp}>✋ {whoNames.split(',')[0]} picks up {role.qty ?? 1} {itemDef(game, role.item)?.name ?? title}</button>
+      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {role.qty ?? 1} {itemDef(game, role.item)?.name ?? title}</button>
     {:else if role?.class === 'currency'}
       {@const f = statFields(game).find((x) => x.id === role.field)}
-      <button class="primary" onclick={pickUp}>✋ {whoNames.split(',')[0]} picks up {f ? formatStat(f, role.amount ?? 0) : role.amount}</button>
+      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {f ? formatStat(f, role.amount ?? 0) : role.amount}</button>
     {/if}
     {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
     {#if role?.shop}<button onclick={() => (ctx.live.overlay = { kind: 'shop', nonce: newId(), shopId: role.shop!, buyer: who[0] })}>🛒 Shop</button>{/if}

@@ -10,6 +10,7 @@ import {
   type Game,
   type ObjectClass,
   type ObjectOverride,
+  type Party,
   type Position,
   type RpgRound,
   type Screen,
@@ -215,6 +216,13 @@ export function activeParty(st: WorldState) {
   return st.parties.find((p) => p.id === st.active) ?? st.parties[0];
 }
 
+/** The party standing on a screen: the followed one if it's there, else the first one there. */
+export function partyOn(st: WorldState, screenId: string): Party | undefined {
+  const on = (p: Party | undefined) => partyScreen(st, p)?.screen === screenId;
+  const followed = activeParty(st);
+  return on(followed) ? followed : st.parties.find(on);
+}
+
 /** The screen the audience follows: the active party's. */
 export function focusRef(st: WorldState): ScreenRef | null {
   const p = partyScreen(st, activeParty(st));
@@ -233,9 +241,27 @@ export function discover(st: WorldState, world: World, ref: ScreenRef): void {
   }
 }
 
+/** Room an avatar needs around where it stands: its token above, its nameplate below. */
+const AV_UP = 80;
+const AV_DOWN = 90;
+const AV_SIDE = 90;
+/** About how much of a screen the stats strip covers, and a pane's caption (split view, "📍 Village") at the other edge. */
+const STRIP_H = 150;
+const CAPTION_H = 110;
+
+/** Where avatars can stand on a screen: on it, clear of the stats strip and of a pane's caption. */
+export function standArea(game: Game): { left: number; right: number; top: number; bottom: number } {
+  const bar = game.theme?.scoreBar ?? 'bottom';
+  const top = bar === 'top' ? STRIP_H : CAPTION_H;
+  const bottom = bar === 'bottom' ? STRIP_H : bar === 'top' ? CAPTION_H : 0;
+  return { left: AV_SIDE, right: SLIDE_W - AV_SIDE, top: top + AV_UP, bottom: SLIDE_H - bottom - AV_DOWN };
+}
+
 /**
  * Put players on a screen. Coming in from a side, they enter from the opposite edge; through a doorway, at its
- * arrival object (or the screen's first spawn point); otherwise in the middle. They fan out so no one overlaps.
+ * arrival object (or the screen's first spawn point); otherwise in the middle. They stand side by side so no one
+ * overlaps, all of them clear of the stats strip: a line that would run off the screen slides back onto it, and one
+ * too long for it goes on in a second line, further in.
  */
 export function place(game: Game, st: WorldState, world: World, players: string[], to: ScreenRef, via: Dir8 | null, arriveAt?: string): void {
   const map = world.maps.find((m) => m.id === to.map);
@@ -254,16 +280,34 @@ export function place(game: Game, st: WorldState, world: World, players: string[
     cx = SLIDE_W / 2 + dx * (SLIDE_W / 2 - AVATAR);
     cy = SLIDE_H / 2 + dy * (SLIDE_H / 2 - AVATAR);
   }
+  const area = standArea(game);
+  const fit = (v: number, lo: number, hi: number) => Math.round(Math.max(lo, Math.min(Math.max(lo, hi), v)));
+  cx = fit(cx, area.left, area.right);
+  cy = fit(cy, area.top, area.bottom);
   const n = players.length;
+  const gap = AVATAR + 20;
   // Along the edge they came in from (a column for east/west, a row otherwise).
   const vertical = via === 'e' || via === 'w';
-  const spots = (shift: number) =>
-    players.map((_, i) => {
-      const off = (i - (n - 1) / 2) * (AVATAR + 20) + shift;
-      const x = vertical ? cx : cx + off;
-      const y = vertical ? cy + off : cy;
-      return { x: Math.round(Math.max(AVATAR / 2, Math.min(SLIDE_W - AVATAR / 2, x))), y: Math.round(Math.max(AVATAR / 2, Math.min(SLIDE_H - AVATAR / 2, y))) };
-    });
+  const [lo, hi] = vertical ? [area.top, area.bottom] : [area.left, area.right];
+  const perLine = Math.max(1, Math.floor((hi - lo) / gap) + 1);
+  // Further lines go towards the middle of the screen.
+  const inward = vertical ? (cx > SLIDE_W / 2 ? -1 : 1) : cy > SLIDE_H / 2 ? -1 : 1;
+  const spots = (shift: number) => {
+    const out: { x: number; y: number }[] = [];
+    for (let first = 0, line = 0; first < n; first += perLine, line++) {
+      const count = Math.min(perLine, n - first);
+      let along = Array.from({ length: count }, (_, k) => (vertical ? cy : cx) + (k - (count - 1) / 2) * gap + shift);
+      // Off an edge: the whole line slides back on (not each one pushed onto the edge, on top of each other).
+      const over = Math.max(...along) - hi;
+      const under = lo - Math.min(...along);
+      if (over > 0) along = along.map((a) => a - over);
+      else if (under > 0) along = along.map((a) => a + under);
+      const across = (vertical ? cx : cy) + line * gap * inward;
+      for (const a of along)
+        out.push(vertical ? { x: fit(across, area.left, area.right), y: fit(a, lo, hi) } : { x: fit(a, lo, hi), y: fit(across, area.top, area.bottom) });
+    }
+    return out;
+  };
   // Not on top of anyone already standing there (joining their party, say): the line moves along, one way or the other.
   const others = Object.entries(st.positions)
     .filter(([id, p]) => p.screen === to.screen && !p.hidden && !players.includes(id))
@@ -271,7 +315,7 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const clear = (row: { x: number; y: number }[]) => row.every((a) => others.every((o) => Math.abs(a.x - o.x) >= AVATAR || Math.abs(a.y - o.y) >= AVATAR));
   let row = spots(0);
   for (let k = 1; k <= 12 && !clear(row); k++) {
-    const next = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * (AVATAR + 20));
+    const next = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * gap);
     if (clear(next)) row = next;
   }
   players.forEach((id, i) => (st.positions[id] = { ...st.positions[id], map: to.map, screen: to.screen, ...row[i] }));
@@ -607,6 +651,22 @@ export function mapState(st: WorldState | undefined, map: WorldMap, screen: Scre
 /** Is a map worth showing to viewers at all? */
 export function mapVisible(st: WorldState | undefined, map: WorldMap): boolean {
   return map.visibility !== 'hidden' && (map.visibility === 'full' || map.screens.some((s) => st?.knowledge[s.id]));
+}
+
+/**
+ * The part of a map the viewers' map shows: the screens they know of, with one cell around them (where an arrow says
+ * a way leads), kept on the grid. A big world mostly unexplored stays readable. Null when they know of none.
+ */
+export function mapCrop(st: WorldState | undefined, map: WorldMap): { col: number; row: number; cols: number; rows: number } | null {
+  const known = map.screens.filter((s) => mapState(st, map, s));
+  if (!known.length) return null;
+  const cols = known.map((s) => s.col);
+  const rows = known.map((s) => s.row);
+  const col = Math.max(0, Math.min(...cols) - 1);
+  const row = Math.max(0, Math.min(...rows) - 1);
+  const lastCol = Math.min(map.cols - 1, Math.max(...cols) + 1);
+  const lastRow = Math.min(map.rows - 1, Math.max(...rows) + 1);
+  return { col, row, cols: lastCol - col + 1, rows: lastRow - row + 1 };
 }
 
 // ---------- Checklist ----------

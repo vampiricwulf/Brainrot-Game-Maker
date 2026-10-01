@@ -3,7 +3,7 @@ import { newGame, type BoardGameRound, type BoardGameState, type Game } from './
 import { newSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, rimSpots,
+  boardGameProblems, rimSpots, spaceNumber,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -275,5 +275,53 @@ describe('board game: tokens on a space', () => {
       for (let i = 1; i < n; i++) expect(Math.hypot(spots[i].dx - spots[i - 1].dx, spots[i].dy - spots[i - 1].dy)).toBeGreaterThanOrEqual(2 * r - 1);
     }
     expect(rimSpots(1, 42)[0]).toEqual({ dx: 0, dy: -88 });
+  });
+});
+
+describe('board game: moving back where ways split or meet', () => {
+  it('goes back the way the player came, not along the other way into the space', () => {
+    const { game, round, ids } = setup();
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    const cut = round.spaces.at(-1)!;
+    // Start → Space 3 (the fork), then along the Shortcut to Space 6, where it meets the main way.
+    movePlayer(round, bs, 'a', 2);
+    expect(movePlayer(round, bs, 'a', 2, cut.id)).toBe('Landed on Space 6');
+    expect(movePlayer(round, bs, 'a', -1)).toBe('Landed on Shortcut');
+    // Two back from Space 6 the other time, after coming along the main way.
+    sendTo(bs, ['b'], { space: ids[2] });
+    movePlayer(round, bs, 'b', 3, ids[3]);
+    expect(bs.positions.b.space).toBe(ids[5]);
+    expect(movePlayer(round, bs, 'b', -2)).toBe('Landed on Space 4');
+  });
+
+  it('after a move back onto a fork, the next move forward asks which way again', () => {
+    const { game, round, ids } = setup();
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    sendTo(bs, ['a'], { space: ids[2] });
+    expect(movePlayer(round, bs, 'a', 1, ids[3])).toBe('Landed on Space 4');
+    expect(movePlayer(round, bs, 'a', -1)).toBe('Landed on Space 3');
+    expect(movePlayer(round, bs, 'a', 2)).toBe('At Space 3: which way? (2 to go)');
+    expect(waysNow(round, bs)?.ways).toEqual([ids[3], round.spaces.at(-1)!.id]);
+  });
+});
+
+describe('board game: what spaces show', () => {
+  it('numbers only spaces named “Space N”', () => {
+    expect(spaceNumber('Space 12')).toBe('12');
+    expect(spaceNumber('Move +3')).toBeUndefined();
+    expect(spaceNumber('Back 4')).toBeUndefined();
+    expect(spaceNumber('Start')).toBeUndefined();
+  });
+
+  it('warns about spaces under the stats strip', () => {
+    const { game, round } = setup();
+    expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
+    round.spaces[3].y = 910;
+    round.spaces[3].name = 'Finish';
+    expect(boardGameProblems(game, round, 'Board', 1)).toContainEqual({ text: 'Board: Finish is under the stats strip (move it up)', tab: 1, level: 'warn' });
+    game.theme = { ...game.theme, scoreBar: 'hidden' };
+    expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
   });
 });

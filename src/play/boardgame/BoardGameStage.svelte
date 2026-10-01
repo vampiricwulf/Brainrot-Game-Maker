@@ -11,7 +11,7 @@
   import { currentPlayer, HOP_MS, rimSpots, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
-  import type { Game, Session } from '../../lib/model';
+  import { SLIDE_H, type Game, type Session } from '../../lib/model';
   import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { nameList } from '../../lib/session';
@@ -68,6 +68,8 @@
   let stripH = $state(0);
   /** Along the top, tokens stay below the label row, or below the stats strip when it's at the top (the labels go to the bottom then). */
   const clearTop = $derived(bar === 'top' ? stripH + 8 : 20 + labelsH + 8);
+  /** Along the bottom, tokens stay above the stats strip (or the label row, when the strip is at the top). */
+  const clearBottom = $derived(bar === 'bottom' ? stripH + 8 : bar === 'top' ? 20 + labelsH + 8 : 0);
 
   /** Each token on the board and where it's drawn (keyed by player, so a move slides from space to space). */
   const tokens = $derived.by(() => {
@@ -84,9 +86,12 @@
       const small = ids.length > 3;
       const spots = rimSpots(ids.length, small ? 32 : 42);
       // On a space near the top (boards made before spaces started lower), a token that would slip under the turn
-      // banner, the win notes or the stats strip comes down just enough to stay in sight. The board itself stays as it is.
-      const lowest = clearTop + (small ? 32 : 42);
-      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: Math.max(lowest, sp.y + spots[i].dy), small }));
+      // banner, the win notes or the stats strip comes down just enough to stay in sight; near the bottom, it goes up
+      // above the stats strip. The board itself stays as it is (the editor's checklist warns about such spaces).
+      const r = small ? 32 : 42;
+      const lowest = clearTop + r;
+      const highest = Math.max(lowest, SLIDE_H - clearBottom - r);
+      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: Math.min(highest, Math.max(lowest, sp.y + spots[i].dy)), small }));
     }
     return out;
   });

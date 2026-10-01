@@ -124,7 +124,7 @@
       <span class="muted small">Sell ({Math.round(shop.buysBack.rate * 100)}%):</span>
       {#each sellable as e (e.id)}
         {@const pr = sellPrice(game, shop, e.item) ?? 0}
-        <button class="small" onclick={() => sellEntry(e.id)}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''} → {formatPrice(game, shop, pr)}</button>
+        <button class="small" onclick={() => sellEntry(e.id)} title={e.equipped ? 'The one they wear' : undefined}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{e.equipped ? ' (worn)' : ''} → {formatPrice(game, shop, pr)}</button>
       {:else}
         <span class="muted small">Nothing to sell.</span>
       {/each}

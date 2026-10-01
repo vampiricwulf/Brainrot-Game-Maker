@@ -7,7 +7,7 @@ import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './ove
 import { parseDice } from './tools';
 import { actionProblem } from './refs';
 import { applyScore, nameList } from './session';
-import { activeParty, moveTo, override } from './rpg';
+import { activeParty, moveTo, override, partyOn } from './rpg';
 import { addStat, giveItem, itemDef, logged, setStat, statFields, takeItem } from './toolset';
 
 export interface RunContext {
@@ -22,8 +22,16 @@ export interface RunContext {
   bs?: BoardGameState;
   /** Players the host has selected (the 1–9 keys / chips). */
   selected: string[];
-  /** Who "ask" means: the players the host picked on the card. */
+  /** Who "ask" means: the players the host picked on the card. In board games also who "party" means (the mover). */
   chosen?: string[];
+  /** RPG rounds: the screen the object whose button it is stands on ("party" is the party standing there). */
+  at?: string;
+}
+
+/** RPG rounds: the party a button's "party" means: the one standing on its object's screen, else the followed one. */
+function partyOf(ctx: RunContext) {
+  if (!ctx.st) return undefined;
+  return (ctx.at ? partyOn(ctx.st, ctx.at) : undefined) ?? activeParty(ctx.st);
 }
 
 /** The players an action applies to. */
@@ -34,11 +42,12 @@ export function targets(ctx: RunContext, who: Who | undefined): string[] {
       return all;
     case 'party':
       if (ctx.bs) {
-        // Board games: whoever's turn it is.
+        // Board games: the player the button is for (who moved, the ones picked on a space's card), else whoever's turn it is.
+        if (ctx.chosen?.length) return ctx.chosen;
         const cur = ctx.bs.order[ctx.bs.turn];
         return cur ? [cur] : [];
       }
-      return ctx.st ? (activeParty(ctx.st)?.members ?? []) : ctx.selected.length ? ctx.selected : all;
+      return ctx.st ? (partyOf(ctx)?.members ?? []) : ctx.selected.length ? ctx.selected : all;
     case 'selected':
       return ctx.selected;
     case 'picker':
@@ -187,7 +196,10 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       return text;
     case 'move': {
       if (!ctx.world || !ctx.st) return 'Moves only work in RPG rounds';
-      const who = a.who === 'party' || !a.who ? undefined : targets(ctx, a.who);
+      // The party: the one standing where the object is (only another one than the followed party needs naming).
+      const party = partyOf(ctx);
+      const other = party && party !== activeParty(ctx.st) ? party.members : undefined;
+      const who = a.who === 'party' || !a.who ? other : targets(ctx, a.who);
       const st = ctx.st;
       const world = ctx.world;
       logged(session, `${text} (${who ? names(ctx, who) : 'party'})`, () => moveTo(game, st, world, a.to, { players: who }));
