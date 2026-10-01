@@ -122,44 +122,73 @@ export interface ImportPlan {
 }
 
 /**
+ * Which row each clue goes on, among the rows `free` allows: a clue with a value goes on the row of that value when
+ * it's free, the others on the free rows left, top down. Clues with no room are left out.
+ */
+function rowsFor(clues: ImportedClue[], values: number[], free: (row: number) => boolean): [number, ImportedClue][] {
+  const taken = new Set<number>();
+  const out: [number, ImportedClue][] = [];
+  const rest: ImportedClue[] = [];
+  for (const c of clues) {
+    const row = c.value === null ? -1 : values.findIndex((v, i) => v === c.value && free(i) && !taken.has(i));
+    if (row >= 0) {
+      taken.add(row);
+      out.push([row, c]);
+    } else rest.push(c);
+  }
+  for (let row = 0; row < values.length && rest.length; row++) {
+    if (!free(row) || taken.has(row)) continue;
+    taken.add(row);
+    out.push([row, rest.shift()!]);
+  }
+  return out;
+}
+
+/** Row values for a new board of imported clues: their values when every clue has one, else `fallback`'s. */
+function valuesFor(groups: { clues: ImportedClue[] }[], fallback: number[]): number[] {
+  const all = groups.flatMap((g) => g.clues);
+  const longest = Math.max(1, ...groups.map((g) => g.clues.length));
+  const distinct = [...new Set(all.map((c) => c.value))].sort((a, b) => (a ?? 0) - (b ?? 0));
+  if (all.every((c) => c.value !== null) && distinct.length >= longest && distinct.length <= MAX) return distinct as number[];
+  const values = fallback.slice(0, Math.min(MAX, longest));
+  // More rows go on in the same steps.
+  while (values.length < Math.min(MAX, longest)) values.push((values.at(-1) ?? 0) + (values.length > 1 ? values.at(-1)! - values.at(-2)! : 200));
+  return values;
+}
+
+/**
  * The board after importing: `fill` keeps what's there, putting each category's clues on its empty tiles (a category
- * of the same name, else an unused one, else a new one); `replace` makes the board exactly the imported categories,
- * with as many rows as the longest one (row values from the imported ones).
+ * of the same name, else an unused one, else a new one); `replace` makes the board exactly the imported categories
+ * (with the imported values as its rows, when every clue has one). A clue goes on the row of its value when it can.
  */
 export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fill' | 'replace'): ImportPlan {
   const round = clone(source);
   const groups = groupByCategory(clues);
   const filled = new Set<string>();
   let placed = 0;
+  const put = (row: number, clue: Clue, c: ImportedClue) => {
+    write(round, row, clue, c);
+    filled.add(clue.id);
+    placed++;
+  };
   if (mode === 'replace' && groups.length) {
-    const rows = Math.max(1, Math.min(MAX, Math.max(...groups.map((g) => g.clues.length))));
-    // Row values: the imported ones where a row has one, else the board's (more rows go on in the same steps).
-    const values: number[] = [];
-    for (let i = 0; i < rows; i++) {
-      const step = i > 1 ? values[i - 1] - values[i - 2] : 200;
-      values.push(groups.find((g) => g.clues[i]?.value != null)?.clues[i].value ?? source.values[i] ?? (values[i - 1] ?? 0) + step);
-    }
-    round.values = values;
-    const cats = groups.slice(0, MAX).map((g, i) => {
+    round.values = valuesFor(groups, source.values);
+    const rows = round.values.length;
+    round.categories = groups.slice(0, MAX).map((g, i) => {
       // Existing categories keep their ids (and their images): the board changes in place.
       const cat = round.categories[i] ?? newCategory(rows);
       cat.title = g.name;
       while (cat.clues.length < rows) cat.clues.push(newClue());
       cat.clues.length = rows;
-      cat.clues.forEach((clue, row) => {
-        const c = g.clues[row];
-        if (c) {
-          write(round, row, clue, c);
-          filled.add(clue.id);
-          placed++;
-        } else {
-          clearClue(clue);
-          clue.value = null;
-        }
-      });
+      for (const clue of cat.clues) {
+        clearClue(clue);
+        clue.value = null;
+        clue.empty = undefined;
+        if (clue.type === 'dailyDouble') clue.type = 'standard';
+      }
+      for (const [row, c] of rowsFor(g.clues, round.values, () => true)) put(row, cat.clues[row], c);
       return cat;
     });
-    round.categories = cats;
   } else if (mode === 'fill') {
     const used = new Set<string>();
     for (const g of groups) {
@@ -174,13 +203,8 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
       if (!cat) continue;
       used.add(cat.id);
       if (name) cat.title = name;
-      const queue = [...g.clues];
-      cat.clues.forEach((clue, row) => {
-        if (!queue.length || clue.empty || clueHasContent(clue)) return;
-        write(round, row, clue, queue.shift()!);
-        filled.add(clue.id);
-        placed++;
-      });
+      const c = cat;
+      for (const [row, ic] of rowsFor(g.clues, round.values, (r) => !c.clues[r].empty && !clueHasContent(c.clues[r]))) put(row, c.clues[row], ic);
     }
   }
   return { round, placed, left: clues.length - placed, filled };

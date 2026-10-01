@@ -59,6 +59,18 @@ describe('clue import: onto a board', () => {
     expect([q(round, 1, 0), q(round, 1, 1)]).toEqual(['F1', '']);
   });
 
+  it('puts a clue on the row of its value', () => {
+    const round = newRound('R', 2, [200, 400, 600]);
+    const clues = cluesFromTable(parseTable('Memes,600,Late,l\nMemes,,First free,f'));
+    applyPlan(round, planImport(round, clues, 'fill'));
+    expect([q(round, 0, 0), q(round, 0, 1), q(round, 0, 2)]).toEqual(['First free', '', 'Late']);
+    // Replacing: the rows are the values given (every clue has one).
+    const r2 = newRound('R', 2);
+    applyPlan(r2, planImport(r2, cluesFromTable(parseTable('A,100,a1,x\nA,300,a3,x\nB,200,b2,x')), 'replace'));
+    expect(r2.values).toEqual([100, 200, 300]);
+    expect([q(r2, 0, 2), q(r2, 1, 1), q(r2, 1, 0)]).toEqual(['a3', 'b2', '']);
+  });
+
   it('adds categories up to 10 and counts what found no room', () => {
     const round = newRound('R', 1, [100]);
     const rows = Array.from({ length: 12 }, (_, i) => `C${i},100,Q${i},A${i}`).join('\n');

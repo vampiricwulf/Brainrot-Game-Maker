@@ -10,6 +10,7 @@
         ['Ctrl+Z', 'Undo (every change to the game, one step at a time; 🕘 History goes back further)'],
         ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
         ['Ctrl+S', 'Save the game'],
+        ['Ctrl+F', 'Find: clues, screens, spaces, items, wheels… anywhere in the game (↑ / ↓ and Enter go there)'],
         ['Esc', 'Close the window, picker or menu that’s open'],
         ['?', 'This list (not while typing)'],
         ['Drop a file', 'On a Choose… button, an icon, an avatar or an open picker: use it there. A .brainrot game dropped anywhere else opens'],
@@ -23,7 +24,8 @@
         ['F2 or double-click', 'Rename it'],
         ['Ctrl+D', 'Duplicate it'],
         ['Delete / Backspace', 'Delete it'],
-        ['Right-click a round', 'All of these'],
+        ['Right-click a round', 'All of these, and Copy round / Paste round (into this game or another)'],
+        ['＋ Add round', 'A blank round, a template, a round from another .brainrot, or a copied round'],
       ],
     ],
     [
@@ -38,6 +40,7 @@
         ['Right-click a tile', 'Edit, Daily Double, leave empty, copy, paste, clear; insert, move or delete its row'],
         ['Right-click a category', 'Move, insert, duplicate, clear or delete it; its image'],
         ['Drop pictures', 'On a tile: its image, shown instead of the value (several fill the tiles after it). On a category: its image'],
+        ['Paste lines on a category’s name', 'Fill its column, top down (copied from a spreadsheet: question, answer; a first line alone is the name)'],
       ],
     ],
     [
@@ -152,13 +155,22 @@
   ];
   /** "Ctrl+" reads "⌘" on a Mac. */
   const keys = (k: string) => (mac ? k.replaceAll('Ctrl+', '⌘') : k);
+
+  /** The filter box: rows whose keys or words have every word typed (an area's name shows all of it). */
+  let filter = $state('');
+  const shown = $derived.by(() => {
+    const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
+    const has = (t: string) => words.every((w) => t.toLowerCase().includes(w));
+    if (!words.length) return AREAS;
+    return AREAS.map(([area, rows]) => [area, has(area) ? rows : rows.filter(([k, d]) => has(`${keys(k)} ${k} ${d}`))] as [string, [string, string][]]).filter(([, rows]) => rows.length);
+  });
 </script>
 
 <svelte:window
   onkeydown={(e) => {
     // '?' typed into a text field is just a question mark.
     const typing = (e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]');
-    if (e.key === 'Escape' || (e.key === '?' && !typing)) {
+    if ((e.key === 'Escape' && !e.defaultPrevented) || (e.key === '?' && !typing)) {
       e.stopImmediatePropagation();
       e.preventDefault();
       onclose();
@@ -173,9 +185,21 @@
       <span class="spacer"></span>
       <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
     </div>
-    <p class="muted small">Keys and mouse moves in the editor. The host’s keys during a game are listed there (press ? while playing).</p>
+    <div class="row">
+      <p class="muted small">Keys and mouse moves in the editor. The host’s keys during a game are listed there (press ? while playing).</p>
+      <span class="spacer"></span>
+      <input
+        class="filter"
+        type="search"
+        bind:value={filter}
+        placeholder="🔍 Filter: a key or a word"
+        aria-label="Filter shortcuts"
+        onkeydown={(e) => e.key === 'Escape' && filter && (e.preventDefault(), (filter = ''))}
+      />
+    </div>
+    {#if !shown.length}<p class="muted">Nothing matches “{filter}”.</p>{/if}
     <div class="areas">
-      {#each AREAS as [area, rows] (area)}
+      {#each shown as [area, rows] (area)}
         <section>
           <h3>{area}</h3>
           <table>
@@ -259,5 +283,8 @@
   }
   .small {
     font-size: 12px;
+  }
+  .filter {
+    width: 220px;
   }
 </style>

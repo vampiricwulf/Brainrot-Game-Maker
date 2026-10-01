@@ -1,8 +1,41 @@
-// In-app clipboard for slide elements, whole slides, board clues, RPG screens and sets of buttons (works across slides,
-// clues, maps and games).
+// In-app clipboard for slide elements, whole slides, board clues, RPG screens, sets of buttons and whole rounds (works
+// across slides, clues, maps and games).
 // The board images editor shares the slide items, so pictures copy between boards and slides both ways.
 import { uniqueMediaName } from './medianame';
-import { newId, type Action, type Clue, type DicePreset, type Game, type MediaRef, type Screen, type Slide, type SlideElement, type WheelPreset } from './model';
+import {
+  newId,
+  type Action,
+  type Clue,
+  type DicePreset,
+  type Game,
+  type ItemDef,
+  type MediaRef,
+  type Round,
+  type Screen,
+  type Shop,
+  type Slide,
+  type SlideElement,
+  type StatField,
+  type WheelPreset,
+  type World,
+} from './model';
+
+/**
+ * A round with what it needs from its game (its RPG world, the wheels, dice, stats, items and shops it uses, its
+ * files), so it goes into another game whole (roundcopy.ts).
+ */
+export interface RoundBundle {
+  round: Round;
+  /** The game it came from, for messages. */
+  from: string;
+  worlds: World[];
+  wheels: WheelPreset[];
+  dice: DicePreset[];
+  statFields: StatField[];
+  items: ItemDef[];
+  shops: Shop[];
+  media: MediaRef[];
+}
 
 /** A deep copy (ops.ts's clone: importing ops here would lead back round to media.svelte.ts, which imports this). */
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -16,6 +49,8 @@ export const clipboard = $state<{
   clue: Clue | null;
   /** Buttons (actions) of an object, item, space or wheel slice. */
   actions: Action[];
+  /** A whole round, with what it uses (its files are in `media` too, so they're kept while it's copied). */
+  round: RoundBundle | null;
   /** The files the copied items, slide, clue, screen and buttons show, so they paste into another game with them (see pruneMedia). */
   media: MediaRef[];
   /** The wheels and dice the copied clue, screen and buttons use (a wheel or dice clue, a Spin button…), for the same. */
@@ -25,7 +60,7 @@ export const clipboard = $state<{
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, screen: null, clue: null, actions: [], media: [], wheels: [], dice: [], token: '', text: '' });
+}>({ elements: [], slide: null, screen: null, clue: null, actions: [], round: null, media: [], wheels: [], dice: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
@@ -53,7 +88,7 @@ export function holdMedia(game: Game): void {
   const ids = new Set([...elementMediaIds(clipboard.elements), ...(s ? elementMediaIds(s.elements, s.background) : [])]);
   const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
   // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
-  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.actions, clipboard.wheels, clipboard.dice], clipboard.media)];
+  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.actions, clipboard.wheels, clipboard.dice, clipboard.round], clipboard.media)];
   clipboard.media = clone(once(all));
 }
 
