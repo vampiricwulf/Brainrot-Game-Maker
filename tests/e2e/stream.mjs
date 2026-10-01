@@ -97,6 +97,8 @@ try {
 
   // The key list stays over the host panel in single-window mode: the stage is not covered.
   await page.keyboard.press('?');
+  // (It moves there once the host panel's box is measured, a frame after it opens.)
+  await page.locator('.backdrop.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
   const keys = await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).boundingBox();
   const stage = await page.locator('.stage-box').boundingBox();
   assert(keys.y >= stage.y + stage.height - 1, 'the keyboard shortcuts show under the stage, not over it');
