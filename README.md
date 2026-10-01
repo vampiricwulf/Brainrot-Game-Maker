@@ -167,6 +167,7 @@ hidden objects. Use the separate audience window when that matters.
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off / scoreboard |
 | `K` or `B` | "Be right back" cover (every round) |
 | `0` | Select everyone or no one (in buzzer mode: open the buzzers again) |
+| `U` | Buzzer mode: open the buzzers (when they open on your key) |
 | `Shift+A` | Scores-only window |
 | `Space` / `←` `→` / `M` | Play/pause, seek, mute media |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
