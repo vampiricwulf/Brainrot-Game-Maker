@@ -144,14 +144,14 @@ try {
   assert((await spaces.count()) === 12, 'and they go again');
   await space('Start').click();
 
-  // Move by › ＋ New dice…: the box says Dice (not "＋ New dice…"), and the dice stay linked when renamed.
+  // Move by › ＋ Add dice…: the box says Dice (not "＋ Add dice…"), and the dice stay linked when renamed.
   await page.getByLabel('Move by').selectOption('new-dice');
   const dicePop = page.getByRole('dialog', { name: 'Dice' });
   await dicePop.waitFor();
   await dicePop.getByLabel('Dice name').fill('Big dice');
   await dicePop.getByRole('button', { name: 'Close' }).click();
   const diceBox = page.locator('.bge input[list="bg-dice"]');
-  assert((await page.getByLabel('Move by').inputValue()) === 'dice' && (await diceBox.inputValue()) === 'Big dice', 'after ＋ New dice…, Move by says Dice and the new dice are the ones rolled');
+  assert((await page.getByLabel('Move by').inputValue()) === 'dice' && (await diceBox.inputValue()) === 'Big dice', 'after ＋ Add dice…, Move by says Dice and the new dice are the ones rolled');
   await page.getByRole('button', { name: '✎ Edit dice' }).click();
   await dicePop.getByLabel('Dice name').fill('Huge dice');
   await dicePop.getByRole('button', { name: 'Close' }).click();
@@ -161,9 +161,9 @@ try {
 
   // A zone.
   await page.getByRole('tab', { name: /Off-board zones/ }).click();
-  await page.getByRole('button', { name: '＋ Zone' }).click();
+  await page.getByRole('button', { name: '＋ Add zone' }).click();
   assert((await page.getByLabel('Zone name').inputValue()) === 'Shadow Realm', 'the first zone is the Shadow Realm');
-  assert(await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length), '＋ Zone puts the typing in its name');
+  assert(await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length), '＋ Add zone puts the typing in its name');
 
   // Play with two players, straight to the board game.
   await playWithPlayers(page, 2);

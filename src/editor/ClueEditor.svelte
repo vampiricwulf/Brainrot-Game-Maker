@@ -43,7 +43,7 @@
   let tool = $state<{ kind: 'wheel' | 'dice'; id: string } | null>(null);
   const NEW = 'new';
 
-  /** A wheel or dice picked for the tile; ＋ New… makes one (with the tile using it: one step) and opens it. */
+  /** A wheel or dice picked for the tile; ＋ Add… makes one (with the tile using it: one step) and opens it. */
   function pickTool(kind: 'wheel' | 'dice', sel: HTMLSelectElement): void {
     const c = clue;
     if (!c) return;
@@ -85,7 +85,7 @@
   /** Ctrl+Enter / Ctrl+Shift+Enter: the next or previous clue; at the end of the board, a note says so. */
   function step(d: 1 | -1): void {
     const to = d > 0 ? next : prev;
-    if (!to) return void toast(d > 0 ? 'That’s the last clue: Esc when you’re done' : 'That’s the first clue', 3000);
+    if (!to) return void toast(d > 0 ? 'That’s the last clue: Esc when you’re done' : 'That’s the first clue');
     go(to);
   }
 
@@ -121,15 +121,15 @@
 <svelte:window onkeydown={onkey} />
 
 {#if clue}
-  <div class="backdrop" role="presentation">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal>
+  <div class="modal-backdrop clue-backdrop" role="presentation">
+    <div class="modal clue" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal>
       <header>
         <div>
-          <div class="muted small">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>
-          <div class="value">{formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}</div>
+          <div class="hint">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>
+          <h2 class="modal-title value">{formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}</h2>
         </div>
         <span class="spacer"></span>
-        <span class="muted small keys">Ctrl+Enter next clue · Alt+arrows: the clue above, below or beside</span>
+        <span class="hint keys">Ctrl+Enter next clue · Alt+arrows: the clue above, below or beside</span>
         <button onclick={() => step(-1)} disabled={!prev} title="Shift+Ctrl+Enter">◀ Prev</button>
         <button onclick={() => step(1)} disabled={!next} title="Ctrl+Enter">Next ▶</button>
         <button class="primary" onclick={onclose}>Done</button>
@@ -137,7 +137,7 @@
       </header>
 
       <div class="opts row">
-        <label class="check">
+        <label class="field">
           Type
           <!-- (Making it a Daily Double raises the board's ⭐ Daily Doubles count when it's more than that.) -->
           <select value={clue.type} disabled={clue.empty} onchange={(e) => setType(e.currentTarget.value as ClueType)}>
@@ -148,20 +148,25 @@
           </select>
         </label>
         {#if clue.type === 'wheel'}
-          <select value={clue.wheelId ?? ''} disabled={clue.empty} aria-label="Which wheel" onchange={(e) => pickTool('wheel', e.currentTarget)}>
+          <label class="field">
+            Which wheel
+          <select value={clue.wheelId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('wheel', e.currentTarget)}>
             <option value="">Choose a wheel…</option>
             {#if clue.wheelId && clue.wheelId !== PLAYER_WHEEL && !app.game.wheels.some((w) => w.id === clue.wheelId)}
               <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
             {/if}
             <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
             {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
-            <option value={NEW}>＋ New wheel…</option>
+            <option value={NEW}>＋ Add wheel…</option>
           </select>
+          </label>
           {#if clue.wheelId && app.game.wheels.some((w) => w.id === clue.wheelId)}
-            <button class="small ghost" disabled={clue.empty} onclick={() => (tool = { kind: 'wheel', id: clue.wheelId! })} title="Change this wheel's slices">✎ Edit wheel</button>
+            <button disabled={clue.empty} onclick={() => (tool = { kind: 'wheel', id: clue.wheelId! })} title="Change this wheel's slices">✎ Edit wheel</button>
           {/if}
         {:else if clue.type === 'dice'}
-          <select value={clue.diceId ?? ''} disabled={clue.empty} aria-label="Which dice" onchange={(e) => pickTool('dice', e.currentTarget)}>
+          <label class="field">
+            Which dice
+          <select value={clue.diceId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('dice', e.currentTarget)}>
             <option value="">Choose dice…</option>
             {#if clue.diceId && !tileDice(app.game, clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
             {#if app.game.dice.length}
@@ -172,14 +177,15 @@
             <optgroup label="Standard dice">
               {#each QUICK_DICE as d (d.label)}<option value="{STD_DICE}{d.label}">🎲 {d.label}</option>{/each}
             </optgroup>
-            <option value={NEW}>＋ New dice…</option>
+            <option value={NEW}>＋ Add dice…</option>
           </select>
+          </label>
           {#if clue.diceId && app.game.dice.some((d) => d.id === clue.diceId)}
-            <button class="small ghost" disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
+            <button disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
           {/if}
         {/if}
         <label class="check"><input type="checkbox" bind:this={emptyBox} bind:checked={clue.empty} /> Empty tile (not playable)</label>
-        <label class="check">
+        <label class="field">
           Value
           <!-- Whole points, never below 0 (blank: the row's value). -->
           <input
@@ -193,8 +199,8 @@
             onchange={(e) => (e.currentTarget.value = clue.value === null ? '' : String(clue.value))}
           />
         </label>
-        <label class="check" title="Countdown when this clue opens. Blank = game default, 0 = no timer.">
-          ⏱
+        <label class="field" title="Countdown when this clue opens. Blank = game default, 0 = no timer.">
+          ⏱ Countdown (s)
           <!-- Whole seconds, at least 1 (blank: the game's default, 0: none). -->
           <input
             type="number"
@@ -207,9 +213,8 @@
             oninput={(e) => (clue.timerSeconds = clueCountdown(e.currentTarget.value))}
             onchange={(e) => (e.currentTarget.value = clue.timerSeconds === null || clue.timerSeconds === undefined ? '' : String(clue.timerSeconds))}
           />
-          s
         </label>
-        <label class="check" title="Show this on the board tile instead of the value">
+        <label class="field" title="Show this on the board tile instead of the value">
           Tile shows
           <input
             class="face"
@@ -222,10 +227,9 @@
         <div class="pop">
           {#if clue.tileFace?.image}
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
-            <button class="ghost small" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image" aria-label="Remove tile image">−</button>
+            <button class="ghost tiny" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image" aria-label="Remove tile image">✕</button>
           {:else}
             <button
-              class="small"
               onclick={() => (facePicker = true)}
               use:mediaDrop={{ kind: 'image', disabled: clue.empty, onpick: (id) => (clue.tileFace = { ...clue.tileFace, image: id }) }}
               disabled={clue.empty}
@@ -243,7 +247,7 @@
       </div>
 
       {#if !clue.empty && (clue.type === 'wheel' || clue.type === 'dice')}
-        <p class="muted small hint">
+        <p class="hint">
           When this tile is picked, the {clue.type} appears full-screen for the host to {clue.type === 'wheel' ? 'spin' : 'roll'}. The question slide
           below is optional; it shows after the {clue.type} is closed.
         </p>
@@ -303,33 +307,17 @@
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    /* A viewport-sized track so the modal's max-height/height: 100% resolves against the window. */
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr);
-    place-items: center;
-    z-index: 100;
-    padding: 12px;
+  .clue-backdrop {
+    padding-inline: 12px;
+    padding-bottom: 12px;
   }
-  .modal {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+  .clue {
     width: min(1800px, 100%);
     /* A fixed-height column: the slide editor takes whatever height the fields above leave. */
     height: 100%;
-    overflow: auto;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
   }
   /* Only the slide editor shrinks; everything else keeps its height (the modal scrolls if it must). */
-  .modal > * {
+  .clue > * {
     flex-shrink: 0;
   }
   header {
@@ -339,15 +327,20 @@
     flex-wrap: wrap;
   }
   .value {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
     color: var(--value);
   }
-  .small {
-    font-size: 12px;
-  }
   .keys {
     margin-right: 4px;
+  }
+  .opts {
+    align-items: flex-end;
+    gap: 12px;
+  }
+  /* Ticks and buttons line up with the fields (under their labels). */
+  .opts .check {
+    min-height: 31px;
   }
   .opts input[type='number'] {
     width: 100px;
@@ -355,9 +348,6 @@
   /* An empty tile has no type, value, timer or face. */
   .opts :is(input, select):disabled {
     opacity: 0.45;
-  }
-  .hint {
-    margin: 0;
   }
   .empty-note {
     margin: 24px 0;
@@ -376,13 +366,13 @@
     gap: 4px;
   }
   .thumb {
-    height: 30px;
+    height: 31px;
     border-radius: 4px;
   }
   .quick {
     display: grid;
     grid-template-columns: 1.3fr 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
   }
   .quick textarea {
     resize: none;

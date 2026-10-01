@@ -50,7 +50,7 @@ try {
   await page.locator('nav > button.round-tab').first().click();
 
   // ---------- Import clues ----------
-  await page.getByRole('button', { name: 'Import clues…' }).click();
+  await page.getByRole('button', { name: '📥 Import clues…' }).click();
   await page.getByLabel('Clues to import').fill('category\tvalue\tquestion\tanswer\nScience\t200\tH2O is this\tWater\nScience\t600\tCO2 is this\tCarbon dioxide');
   assert((await page.getByRole('dialog', { name: 'Import clues' }).innerText()).includes('2 clues found'), 'a pasted block shows how many clues it has');
   await page.getByLabel('Replace the board').check();
@@ -148,9 +148,9 @@ try {
   await page.getByRole('button', { name: /Brainrot Neon/ }).click();
   await page.getByRole('button', { name: '💾 Save as my theme' }).click();
   await page.getByRole('button', { name: /Classic/ }).click();
-  await page.getByRole('button', { name: '⭐ Use my theme' }).click();
+  await page.getByRole('button', { name: '🎨 Use my theme' }).click();
   assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use my theme puts the saved theme back');
-  await page.getByRole('button', { name: '⭐ Use my theme' }).click();
+  await page.getByRole('button', { name: '🎨 Use my theme' }).click();
   await page.getByText('This game already looks like my theme').waitFor({ timeout: 3000 });
   assert(true, 'Use my theme again says nothing changed');
   // Values the colour of the tiles can't be read: a warning says so (and goes once they're apart again).
@@ -160,11 +160,11 @@ try {
   assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 1, 'values the colour of the tiles warn that they are hard to read');
   await values.fill(ownValue);
   assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 0, '…and the warning goes once they’re apart');
-  assert((await page.getByLabel('Tile glow colour').count()) === 1, 'the tile glow colour box has a name');
+  assert((await page.getByLabel('Tile glow color').count()) === 1, 'the tile glow colour box has a name');
 
   // ---------- Wheels & Dice: what the number boxes keep ----------
   await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
-  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const spin = page.getByLabel('Spin (s)');
   for (const [typed, kept] of [['999', '30'], ['0.2', '1'], ['7', '7']]) {
     await spin.fill(typed);
@@ -174,7 +174,7 @@ try {
   await page.locator('.seg input.label').first().fill('');
   assert((await page.getByText('No label on slice 1: it lands as “Slice 1”.').count()) === 1, 'a slice left without a label is pointed out');
   await page.keyboard.press('Control+z');
-  await page.getByRole('button', { name: '＋ New dice' }).click();
+  await page.getByRole('button', { name: '＋ Add dice' }).click();
   const count = page.getByLabel('Count');
   await count.fill('500');
   await count.press('Tab');

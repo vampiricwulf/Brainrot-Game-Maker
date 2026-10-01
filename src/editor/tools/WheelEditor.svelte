@@ -271,12 +271,6 @@
     font-size: 12px;
     padding-top: 6px;
   }
-  .small {
-    font-size: 12px;
-  }
-  .warn {
-    color: var(--warn);
-  }
   p {
     margin: 0;
   }

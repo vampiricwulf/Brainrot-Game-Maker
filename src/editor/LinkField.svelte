@@ -86,14 +86,14 @@
         onprogress: (loaded, total) => (busy = { loaded, total }),
         confirmBig: (bytes, known) =>
           ask(
-            `This file is ${known ? '' : 'over '}${formatBytes(bytes)}. Save a copy in the game?\n\n` +
+            `This file is ${known ? '' : 'over '}${formatBytes(bytes)}. Store it in the game?\n\n` +
               'Big files make big game packs. Playing it from the link needs internet during the show.',
-            { ok: 'Save a copy', cancel: 'Play from the link' },
+            { ok: '💾 Store in game', cancel: 'Play from the link' },
           ),
       });
       text = '';
       drive = null;
-      toast(`${added.warn ? '⚠' : added.saved ? '✓' : '🌐'} ${added.message}`, added.saved ? 4000 : 9000);
+      toast(`${added.warn ? '⚠' : added.saved ? '✓' : '🌐'} ${added.message}`);
       const r = added.ref;
       if (added.saved) warnIfUnplayable(r);
       onmedia(r, added);
@@ -149,7 +149,7 @@
       text = '';
       onmedia(ref, null);
     } catch (e) {
-      toast((e as Error).message, 5000);
+      toast((e as Error).message);
     }
   }
 </script>
@@ -166,7 +166,7 @@
       oninput={() => ((drive = null), (error = ''), (fetched = false))}
       onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), go())}
     />
-    <button class="small" onclick={() => go()} disabled={!!busy || !text.trim()}>Add</button>
+    <button onclick={() => go()} disabled={!!busy || !text.trim()}>＋ Add</button>
   </div>
   {#if busy}
     <div class="busy" role="status">
@@ -197,19 +197,19 @@
             <button class="small primary" onclick={() => drive && onembed(drive.link.source, 'drive')}>▶ Use Google Drive's player</button>
           {/if}
           {#if !desktop}<button class="small" onclick={downloadFromDrive}>⬇ Download from Drive</button>{/if}
-          {#if fetched}<button class="small" onclick={addDownloaded}>⬆ Add the downloaded file…</button>{/if}
+          {#if fetched}<button class="small" onclick={addDownloaded}>＋ Add the downloaded file…</button>{/if}
         </div>
         {#if onembed}
-          <p class="muted small">Drive's player shows on the audience screen; click ▶ inside it there. The host can restart or stop it, but not pause or seek it.</p>
+          <p class="hint">Drive's player shows on the audience screen; click ▶ inside it there. The host can restart or stop it, but not pause or seek it.</p>
         {/if}
-        {#if fetched}<p class="muted small">When the download has finished, add the file here.</p>{/if}
+        {#if fetched}<p class="hint">When the download has finished, add the file here.</p>{/if}
       {/if}
-      <p class="muted small">{DRIVE_SHARE_HINT}</p>
+      <p class="hint">{DRIVE_SHARE_HINT}</p>
     </div>
   {:else if error}
     <p class="error small" role="alert">⚠ {error}</p>
   {:else}
-    <p class="muted small">{hint}</p>
+    <p class="hint">{hint}</p>
   {/if}
 </div>
 
@@ -221,7 +221,6 @@
   }
   .row {
     flex-wrap: nowrap;
-    gap: 6px;
   }
   .drive .row {
     flex-wrap: wrap;
@@ -233,7 +232,7 @@
   .busy {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   progress {
     flex: 1;
@@ -243,17 +242,14 @@
     margin: 0;
     white-space: normal;
   }
-  .small {
-    font-size: 12px;
-  }
   .error {
     color: var(--warn);
   }
   .drive {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 6px;
+    gap: 8px;
+    padding: 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--panel-2);

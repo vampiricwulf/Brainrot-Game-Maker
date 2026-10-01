@@ -49,7 +49,7 @@ try {
   // ---------- 🔊 Sounds points to ▶ Play ----------
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
   const elsewhere = page.locator('.elsewhere');
-  assert((await elsewhere.innerText()).includes('⚖ Game rules') && (await elsewhere.getByRole('button', { name: 'Open the Play screen ›' }).count()) === 1, '🔊 Sounds says, at the top, where the players and rules are, with a ▶ Play button');
+  assert((await elsewhere.innerText()).includes('⚖ Game rules') && (await elsewhere.getByRole('button', { name: 'Open the Play screen' }).count()) === 1, '🔊 Sounds says, at the top, where the players and rules are, with a ▶ Play button');
   assert((await page.getByRole('button', { name: /^Back to the built-in .* sound$/ }).count()) === 0, '(no ↺ until a sound has a file of its own)');
 
   // ---------- Enter adds the next player: each one named is one step, called by their name ----------

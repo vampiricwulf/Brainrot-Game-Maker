@@ -4,7 +4,7 @@
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { finalName, setSlideText, slideText, type FinalRound, type TextEl } from '../lib/model';
+  import { setSlideText, slideText, type FinalRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   let { round }: { round: FinalRound } = $props();
@@ -21,7 +21,6 @@
   const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));
 </script>
 
-<h2>{finalName(round)}</h2>
 <div class="grid">
   <label class="field">
     Round name
@@ -33,7 +32,7 @@
     <input type="checkbox" checked={round.allowNonPositive ?? true} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
     Players with a score of 0 or less can play it
   </label>
-  <span class="muted hint">Wagers are entered privately by the host during the game, then revealed player by player.</span>
+  <span class="hint">Wagers are entered privately by the host during the game, then revealed player by player.</span>
 </div>
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
 <div class="quick">
@@ -64,13 +63,10 @@
 {/key}
 
 <style>
-  h2 {
-    margin: 0 0 8px;
-  }
   .quick {
     display: grid;
     grid-template-columns: 1.3fr 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
     margin-bottom: 12px;
   }
   .quick textarea {
@@ -87,12 +83,11 @@
   .grid {
     display: flex;
     gap: 12px;
-    margin: 16px 0;
+    margin: 0 0 16px;
     flex-wrap: wrap;
   }
   .hint {
     align-self: end;
-    font-size: 12px;
   }
   .grid input:not([type='checkbox']) {
     width: 280px;
@@ -104,7 +99,7 @@
     display: flex;
     gap: 4px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
   .tabs button {
     border-radius: 6px 6px 0 0;

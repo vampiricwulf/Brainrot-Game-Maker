@@ -1,6 +1,6 @@
 <!-- Open…: the games New and Open… replaced lately (kept in this browser, with their undo history), and Browse… for a
-     game file (an exported .html too; in the desktop app, a .bak backup). In the desktop app, BrainrotSaves… lists the
-     saves and exported games (OpenSaves). -->
+     game file (an exported .html too; in the desktop app, a .bak backup) in its footer. In the desktop app,
+     BrainrotSaves… lists the saves and exported games (OpenSaves). -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { modal } from '../lib/modal';
@@ -31,21 +31,18 @@
   const earlier = (e: RecentEntry) => recent.some((x) => x !== e && x.gameId === e.gameId && x.closedAt > e.closedAt);
 </script>
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <!-- Esc closes it when it's the window on top (Forget's question over it takes Esc first). -->
+<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+  <!-- Esc closes it when it's the window on top (Delete's question over it takes Esc first). -->
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" use:modal={{ esc: onclose }} data-undo="off">
-    <div class="row">
-      <b class="modal-title" id="open-heading">📂 Open a game</b>
-      <span class="spacer"></span>
-      {#if saves}<button onclick={onsaves}>BrainrotSaves…</button>{/if}
-      <button onclick={onbrowse}>Browse…</button>
+    <div class="modal-head">
+      <h2 class="modal-title" id="open-heading">📂 Open a game</h2>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
-    <p class="muted small">
+    <p class="hint">
       Recent games: the last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo
       history. They're kept in this browser only, so use Save for a copy that lasts.
     </p>
-    <p class="muted small">
+    <p class="hint">
       Browse… opens a game file: a .brainrot, a .json, an exported .html game, or an older version the desktop app's Save
       kept (Game.brainrot.bak).{saves ? ' BrainrotSaves… lists your saves and exported games.' : ''}
     </p>
@@ -54,42 +51,29 @@
         <div class="game">
           <button class="pick" onclick={() => onreopen(e)}>
             <b>{e.title}</b>
-            <span class="muted small"
+            <span class="hint"
               >{earlier(e) ? 'earlier version · ' : ''}{e.rounds} round{e.rounds === 1 ? '' : 's'} · kept {when(e.closedAt)}</span
             >
           </button>
-          <button class="ghost small" onclick={() => onforget(e)} title="Stop keeping this game (asks first: its files are cleaned up)">Forget</button>
+          <button
+            class="ghost small danger"
+            onclick={() => onforget(e)}
+            aria-label="Delete “{e.title}” from Recent games"
+            title="Stop keeping this game in this browser (asks first: its files are cleaned up)">🗑 Delete</button
+          >
         </div>
       {/each}
     </div>
-    <div class="modal-foot"><button onclick={onclose}>Cancel</button></div>
+    <div class="modal-foot">
+      <button class="ghost" onclick={onclose}>Cancel</button>
+      <span class="spacer"></span>
+      {#if saves}<button onclick={onsaves}>BrainrotSaves…</button>{/if}
+      <button onclick={onbrowse}>Browse…</button>
+    </div>
   </div>
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
-    width: min(620px, 100%);
-    max-height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 14px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  p {
-    margin: 0;
-  }
   .list {
     display: flex;
     flex-direction: column;
@@ -99,17 +83,14 @@
   }
   .game {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     align-items: center;
   }
   .pick {
     flex: 1;
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
     text-align: left;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

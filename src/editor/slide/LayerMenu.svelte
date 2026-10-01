@@ -122,7 +122,7 @@
     {#if anyLocked}<button role="menuitem" onclick={() => act('unlock')}>🔓 Unlock</button>{/if}
     <button role="menuitem" onclick={() => act('hide')}>Hide while editing</button>
     <hr />
-    <button role="menuitem" class="bad" onclick={() => act('delete')} disabled={!anyUnlocked}>Delete<kbd>Del</kbd></button>
+    <button role="menuitem" class="danger" onclick={() => act('delete')} disabled={!anyUnlocked}>🗑 Delete<kbd>Del</kbd></button>
   {:else}
     <button role="menuitem" onclick={() => act('paste')} disabled={!canPaste}>Paste here<kbd>{mod}V</kbd></button>
     {#if slideExtras}<button role="menuitem" onclick={() => act('paste-slide')} disabled={!slideExtras.canPasteSlide}>Paste slide</button>{/if}
@@ -139,11 +139,11 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    z-index: 290;
+    z-index: calc(var(--z-menu) - 1);
   }
   .menu {
     position: fixed;
-    z-index: 300;
+    z-index: var(--z-menu);
     min-width: 220px;
     max-width: 320px;
     max-height: calc(100vh - 8px);
@@ -181,7 +181,7 @@
     color: var(--accent);
     font-weight: 600;
   }
-  button.bad {
+  button.danger {
     color: var(--bad);
   }
   kbd {

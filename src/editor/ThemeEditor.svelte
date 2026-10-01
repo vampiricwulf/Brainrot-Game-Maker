@@ -1,5 +1,6 @@
 <!-- Theme presets + full override (spec §5.7), with a live board preview. -->
 <script lang="ts">
+  import PageHeader from './PageHeader.svelte';
   import { app } from '../lib/app.svelte';
   import { contrast, parseHex } from '../lib/colors';
   import { step } from '../lib/history.svelte';
@@ -55,9 +56,9 @@
     return s;
   });
 
-  /** The game's clue text: a font or colour for the main text of every question and answer (the note offers Undo). */
+  /** The game's clue text: a font or color for the main text of every question and answer (the note offers Undo). */
   function clueText(key: 'font' | 'color', to: string | undefined): void {
-    const what = key === 'font' ? 'font' : 'colour';
+    const what = key === 'font' ? 'font' : 'color';
     step(`Clue text ${what}: ${to ? (key === 'font' ? to.split(',')[0].replace(/'/g, '') : to) : 'each clue’s own'}`, () => setClueText(game, key, to), { notify: true });
   }
   const live = newLive();
@@ -71,7 +72,7 @@
     });
   }
 
-  /** Values on tiles too close in colour to read (under 3:1), or null. */
+  /** Values on tiles too close in color to read (under 3:1), or null. */
   const valueContrast = $derived(parseHex(t.value) && parseHex(t.tile) ? contrast(t.value, t.tile) : null);
 
   const COLORS: [keyof typeof t, string][] = [
@@ -85,7 +86,7 @@
   ];
 </script>
 
-<h2>Theme</h2>
+<PageHeader title="Theme" sub="How the board, the slides and the scores look on stream, in every round." />
 <div class="layout">
   <div class="controls">
     <div class="presets">
@@ -109,11 +110,11 @@
       <label class="check">
         <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => (t.glow = e.currentTarget.checked ? '#ff00e6' : 'none')} />
         Tile glow
-        {#if t.glow !== 'none'}<input type="color" bind:value={t.glow} aria-label="Tile glow colour" />{/if}
+        {#if t.glow !== 'none'}<input type="color" bind:value={t.glow} aria-label="Tile glow color" />{/if}
       </label>
     </div>
     {#if valueContrast !== null && valueContrast < 3}
-      <p class="warn small" role="status">⚠ The values are hard to read on the tiles ({valueContrast.toFixed(1)}:1): pick colours further apart.</p>
+      <p class="warn small" role="status">⚠ The values are hard to read on the tiles ({valueContrast.toFixed(1)}:1): pick colors further apart.</p>
     {/if}
 
     <h3>Fonts</h3>
@@ -149,10 +150,10 @@
           type="color"
           value={t.clueColor ?? FACTORY_COLOR}
           onchange={(e) => clueText('color', e.currentTarget.value)}
-          aria-label="Clue text colour"
+          aria-label="Clue text color"
         />
-        Colour
-        {#if t.clueColor}<button class="small ghost" onclick={() => clueText('color', undefined)} title="Back to each clue's own colour" aria-label="Back to each clue's own colour">↺</button>{/if}
+        Color
+        {#if t.clueColor}<button class="small ghost" onclick={() => clueText('color', undefined)} title="Back to each clue's own color" aria-label="Back to each clue's own color">↺</button>{/if}
       </label>
     </div>
     <p class="muted small">
@@ -166,7 +167,7 @@
         <span>Background image</span>
         {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} />{/if}
         <button class="small" onclick={() => (picking = 'bg')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.boardImage = id) }}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
-        {#if t.boardImage}<button class="small ghost" onclick={() => (t.boardImage = undefined)} title="Remove" aria-label="Remove background image">−</button>{/if}
+        {#if t.boardImage}<button class="ghost tiny" onclick={() => (t.boardImage = undefined)} title="Remove the background image" aria-label="Remove background image">✕</button>{/if}
         {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
       <div class="row pop">
@@ -237,9 +238,6 @@
 </div>
 
 <style>
-  h2 {
-    margin: 0 0 10px;
-  }
   h3 {
     margin: 16px 0 6px;
     font-size: 12px;
@@ -287,8 +285,7 @@
     max-width: 100%;
   }
   .warn {
-    color: var(--warn);
-    margin: 6px 0 0;
+    margin: 8px 0 0;
   }
   .pop {
     position: relative;
@@ -297,9 +294,6 @@
   img {
     height: 30px;
     border-radius: 4px;
-  }
-  .small {
-    font-size: 12px;
   }
   .side {
     position: sticky;

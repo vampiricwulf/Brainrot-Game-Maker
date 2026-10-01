@@ -36,7 +36,7 @@
       }
     });
     const copies = copiesMessage([...copied, ...copiedFiles(source, [...media.values()])], 'the file');
-    toast(`Imported ${rounds.length} round${rounds.length === 1 ? '' : 's'} from “${source.title}”${copies ? `. ${copies}` : ''}`, copies ? 7000 : undefined);
+    toast(`Imported ${rounds.length} round${rounds.length === 1 ? '' : 's'} from “${source.title}”${copies ? `. ${copies}` : ''}`);
     onclose();
     onadded(first);
   }
@@ -51,78 +51,44 @@
   }}
 />
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Import rounds" use:modal data-undo="off">
-    <div class="row">
+    <div class="modal-head">
       <h2 class="modal-title">📂 Import rounds from “{source.title}”</h2>
-      <span class="spacer"></span>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     {#if !source.rounds.length}
       <p class="muted">That game has no rounds.</p>
     {:else}
-      <p class="muted small">Tick the rounds to bring in. Their RPG worlds, wheels, dice, stats, items, shops and files come along.</p>
+      <p class="hint">Tick the rounds to bring in. Their RPG worlds, wheels, dice, stats, items, shops and files come along.</p>
       <div class="list">
         {#each source.rounds as r, i (r.id)}
           <label class="check">
             <input type="checkbox" bind:group={picked} value={r.id} />
             <span aria-hidden="true">{ROUND_MODES[r.mode].icon}</span>
             {roundName(r, i)}
-            <span class="muted small">{ROUND_MODES[r.mode].label}</span>
+            <span class="hint">{ROUND_MODES[r.mode].label}</span>
           </label>
         {/each}
       </div>
     {/if}
-    <div class="row">
+    <div class="modal-foot">
+      <button class="ghost" onclick={onclose}>Cancel</button>
       {#if source.rounds.length > 1}
-        <button class="ghost small" onclick={() => (picked = picked.length === source.rounds.length ? [] : source.rounds.map((r) => r.id))}>
-          {picked.length === source.rounds.length ? 'None' : 'All'}
+        <button class="ghost" onclick={() => (picked = picked.length === source.rounds.length ? [] : source.rounds.map((r) => r.id))}>
+          {picked.length === source.rounds.length ? 'Tick none' : 'Tick all'}
         </button>
       {/if}
       <span class="spacer"></span>
-      <button class="ghost" onclick={onclose}>Cancel</button>
       <button class="primary" onclick={bring} disabled={!picked.length}>Import {picked.length || ''} round{picked.length === 1 ? '' : 's'}</button>
     </div>
   </div>
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
-    width: min(520px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  h2,
-  p {
-    margin: 0;
-  }
-  .row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
   .list {
     display: flex;
     flex-direction: column;
     gap: 4px;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

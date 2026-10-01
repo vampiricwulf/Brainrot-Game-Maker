@@ -14,6 +14,10 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **💡 Tips**: the long help on the board, a slide, Board images, the RPG map and the board game page folds into a
+  Tips line under one short hint. Open it once and it stays open (on this computer) until you close it.
+- **An empty Tiebreaker page explains itself**: with no tiebreaker, the page says what one is for, with the switch to
+  add it.
 - **Version numbers and updates**: the app has a version (1.0.0 to start; every push to `main` is released as the
   next one, `MAJOR.MINOR.PATCH`), shown in ℹ About. When a newer version is out, the editor says so: the desktop app
   updates itself in place (⬆ Update: it downloads the new `.exe`, checks it's signed with the project's key, saves your
@@ -142,6 +146,46 @@ in plain words for the people who make and host games. Anything committed but no
 - **The end screen**: on a tie, settling it (❓ Tiebreaker clue, or 🎲 Tiebreaker roll-off when there's no tiebreaker
   clue) is the main button; ◀ Back is quiet on the left and 🔁 Rematch at the far right, away from 📋 Copy standings.
 - **Show controls** (with the controls hidden) waits in the top-right corner, off the score plates.
+- **The editor and its windows look and work the same everywhere**:
+  - Every window's buttons go the same way: **Cancel** on the left, the main answer on the right (💾 Name your game:
+    Cancel · Save; Start a new game?: Cancel · Discard · Save first; Import clues, Import rounds, Edit image, Drawpad
+    too). Questions the app asks now have a title (the question itself), with the details under it.
+  - Windows share one look: the same title, padding and corners; **Browse…** in Open… moved to the bottom, by Cancel.
+  - Every page starts the same way: its title, one line about it, and its buttons on the right. A round's page is
+    titled with the round's name, its mode beside it ("🟦 Jeopardy board"), and Move up / Move down / ⧉ Duplicate round /
+    🗑 Delete round at the same size as other page buttons. Pages of settings and lists stop at a readable width on a
+    wide screen; boards and maps still fill it.
+  - Deleting looks the same everywhere: a red **🗑 Delete …** button (undoable, or it asks). A filled red button is
+    only ever the answer that confirms a delete.
+  - Buttons in a row are one size, and a button next to a field is as tall as the field (＋ Add next to Paste a link…,
+    ⚙ Settings › Test, ＋ Add world, ×2 / ÷2, 🔀 Randomize, ▶ Start countdown).
+  - A focus ring shows only when you use the keyboard, the same accent ring everywhere (fields too). Buttons change
+    their background under the mouse (filled ones darken), which never looks like a selected one. Fields and outline
+    buttons have edges you can see.
+  - Labels sit above their fields: the clue editor's Type, Value, ⏱ Countdown and Tile shows; a board's Row values
+    and ⭐ Daily Doubles; a stat's Start / Min / Max; a shop's Charges and Buys back at (%). A shop's stock has column
+    headings, and the pre-game player list has one **Start score** heading instead of one per player.
+  - The slide toolbar is one height, and the slide's background is one **Background ▾** button (color, 🖼 Picture…,
+    ↺ Reset background) instead of BG / 🖼 BG / ↺ BG.
+- **Toasts never cover a window's buttons**: while a window is open they show on one line at the top, above it. How
+  long a toast stays depends on how long it is (2.5 s, up to 8 s for a long one). The "Deleted … · Undo" note looks
+  like a toast, and stays under open windows: an undo or redo made in a window says so in a toast instead. Only its
+  buttons take the mouse, so a drag or a click just beside them reaches the page underneath.
+- **Icons mean one thing each**: Final Jeopardy rounds are 🏆 (⭐ is a Daily Double), board game rounds are ♟ (🎲 is
+  dice), ⭐ Daily Doubles' **🔀 Randomize**, **📥 Import clues…**, **✎ Edit image…**, the board game's
+  **🖼 Board backdrop** tab, **🎨 Use my theme**, ⚖ for Game rules in 🕘 History.
+- **Same words for the same things**: "＋ Add …" for everything that adds to a list (＋ Add wheel, ＋ Add dice,
+  ＋ Add item, ＋ Add shop, ＋ Add map, ＋ Add world, ＋ Add zone, ＋ Add look (a copy)…); **Delete** for what's
+  gone (a 🖼 Media file, unused files, a kept game in Open… › Recent games), **Remove** for taking something out of a
+  slot; **Discard** for dropping unsaved edits (the drawpad's "Throw away" too); 🕘 History's **🗑 Clear history…**;
+  **💾 Store in game** for keeping a copy of a linked file (was "Save a copy"); "Color" spelled the same everywhere;
+  every host notes box is **Host notes (never shown on stream)**; the Tiebreaker's tabs are **Question slide /
+  Answer slide**; **▶ Move right** like ◀ Move left; ⌫ Clear its clues like ⌫ Clear clue; 🔊 Sounds' link to the Play
+  screen is **▶ Play**.
+- **The pre-game screen's parts look alike**: 👥 Players, 📱 Phone buzzers, ⚖ Game rules, 🖥 Display and 📺 On stream
+  are cards with the same heading. A player's picture has its ✕ on its corner (no gap in rows without one).
+- **The sidebar's checklist is grey** when it only has notes (orange when something needs fixing), and a new game
+  shows 🤝 Tiebreaker only once it has a round.
 - **A points symbol that's a word goes after the number**: "200 pts" and "−300 pts" instead of "pts200", with a
   space; $, €, £, R$ or an emoji still go in front ("$200"). The same everywhere, the phones too.
 - **Scores too long for their plate are shortened** on the score bar ("$999.9M", "−1.2B pts"), never cut off in the
@@ -395,6 +439,8 @@ in plain words for the people who make and host games. Anything committed but no
   after the screen changes.
 - **Score chips keep their width** when a player is marked ✔ / ✘ on a clue, so the buttons beside them don't move.
 - **The Daily Double's splash names the player you pick** at once (it kept showing the picker until Show question).
+- Links in the editor (ℹ About) are a readable blue, and 15 px / 18 px text is gone from the editor (one type
+  scale).
 - **A game with a category short of clues opens**: a hand-edited game where a category had fewer clues than rows
   (or none) broke the editor after half-opening. The missing tiles are added empty (a longer category gets rows added),
   and a game the app still can't show is refused before it replaces yours.
@@ -720,6 +766,9 @@ in plain words for the people who make and host games. Anything committed but no
 - **Phone page for screen readers**: the sound button is "Sound" (on or off as a toggle) instead of a label that also
   changed, the room code is read as "Room code …", the buzzer's words no longer end in "….", and the early-buzz
   countdown is said once instead of every second.
+
+### Removed
+- The "Recommended" tag on the pre-game screen's 📺 Separate audience window (Single window is the default).
 
 ## 2026-09-30
 

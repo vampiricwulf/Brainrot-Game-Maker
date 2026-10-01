@@ -3,7 +3,7 @@ import { fitAspect, resizeAround } from './editing';
 import { angleToOutput, angleToSource, defaultEdits, itemAt, migrateEdits, outputSize, placedOverlays, toOutput, toSource, turnCrop } from './imageedit';
 import type { ImageEdits } from './model';
 
-describe('🎨 Edit image › Apply: the picture box', () => {
+describe('✎ Edit image › Apply: the picture box', () => {
   it('a square crop of a wide picture keeps about the same size, centred where it was', () => {
     expect(fitAspect({ x: 480, y: 270, w: 960, h: 540 }, 1)).toEqual({ x: 600, y: 180, w: 720, h: 720 });
   });
@@ -33,7 +33,7 @@ describe('🎨 Edit image › Apply: the picture box', () => {
   });
 });
 
-describe('🎨 Edit image: captions, stickers and strokes stay on the picture', () => {
+describe('✎ Edit image: captions, stickers and strokes stay on the picture', () => {
   const e = (over: Partial<ImageEdits>): ImageEdits => ({ ...defaultEdits(), v: 2, ...over });
   const close = (a: { x: number; y: number }, b: { x: number; y: number }) => {
     expect(a.x).toBeCloseTo(b.x, 6);

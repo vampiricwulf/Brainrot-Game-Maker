@@ -360,7 +360,7 @@
       toast('Image edited (original kept)');
       onclose();
     } catch (e) {
-      toast('Could not save the edit: ' + (e as Error).message, 5000);
+      toast('Could not save the edit: ' + (e as Error).message);
     } finally {
       saving = false;
     }
@@ -414,24 +414,24 @@
 
 <svelte:window onkeydowncapture={onkey} />
 
-<div class="backdrop" role="presentation">
+<div class="modal-backdrop image-backdrop" role="presentation">
   <!-- (data-undo: Ctrl+Z in its boxes and sliders never reaches the game's undo underneath.) -->
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit image" use:modal data-undo="off">
+  <div class="modal image-modal" role="dialog" aria-modal="true" aria-label="Edit image" use:modal data-undo="off">
     {#if linked}
       <div class="gate">
         <p>🌐 This picture plays from {linkHost(source?.url)}. The image editor works on a copy saved in your game.</p>
         <div class="row">
-          <SaveCopyButton id={el.media} label="💾 Save a copy first" onsaved={load} />
-          <button onclick={onclose}>Cancel</button>
+          <button class="ghost" onclick={onclose}>Cancel</button>
+          <SaveCopyButton id={el.media} label="💾 Store in game first" onsaved={load} />
         </div>
       </div>
     {/if}
     <header class="row">
-      <b class="modal-title">🎨 Edit image</b>
+      <h2 class="modal-title">✎ Edit image</h2>
       {#if discarding}
-        <InlineAsk text="Discard your image edits?" ok="Discard" cancel="Keep editing" danger onok={onclose} oncancel={() => (discarding = false)} />
+        <InlineAsk text="Discard your image edits?" ok="Discard" cancel="Cancel" danger onok={onclose} oncancel={() => (discarding = false)} />
       {:else}
-        <span class="muted small">{source?.name} · output {out.w}×{out.h}px</span>
+        <span class="hint">{source?.name} · output {out.w}×{out.h}px</span>
       {/if}
       {#if tool === 'crop' && edits.crop && img}
         <span class="small crop-size">crop {Math.round(edits.crop.w * oriented.w)}×{Math.round(edits.crop.h * oriented.h)}px</span>
@@ -442,7 +442,7 @@
       <button class="ghost" onclick={redo} disabled={!future.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
       <button class="ghost" onclick={resetAll}>Reset all</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
-      <button onclick={cancel} title="Esc">Cancel</button>
+      <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? 'Saving…' : 'Apply'}</button>
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
@@ -546,13 +546,13 @@
           <label class="field">Outline width<input type="range" min="0" max="0.3" step="0.01" bind:value={selText.strokeWidth} /></label>
           {@const turn = Math.round(angleToOutput(selText.rotation, edits))}
           <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selText!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
-          <button class="small bad" onclick={removeSelected}>Delete text</button>
+          <button class="small danger" onclick={removeSelected}>🗑 Delete text</button>
         {:else if selSticker}
           <h4>Sticker {selSticker.emoji}</h4>
           <label class="field">Size<input type="range" min="0.03" max="0.6" step="0.01" value={selSticker.size * sizeK} oninput={(e) => (selSticker!.size = +e.currentTarget.value / sizeK)} /></label>
           {@const turn = Math.round(angleToOutput(selSticker.rotation, edits))}
           <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selSticker!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
-          <button class="small bad" onclick={removeSelected}>Delete sticker</button>
+          <button class="small danger" onclick={removeSelected}>🗑 Delete sticker</button>
         {/if}
 
         <h4>Rotate & flip</h4>
@@ -584,17 +584,11 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 300;
-    display: grid;
-    /* A viewport-sized track so the modal's max-height/height: 100% resolves against the window. */
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr);
-    place-items: center;
-    padding: 12px;
+  /* Over the clue editor, Board images or a slide's window it was opened from. */
+  .image-backdrop {
+    z-index: calc(var(--z-modal) + 20);
+    padding-inline: 12px;
+    padding-bottom: 12px;
   }
   .gate {
     position: absolute;
@@ -610,23 +604,11 @@
     background: var(--panel);
     border-radius: 10px;
   }
-  .modal {
+  .image-modal {
     position: relative;
     width: min(1300px, 100%);
     height: min(900px, 100%);
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-  }
-  .small {
-    font-size: 12px;
-  }
-  .warn {
-    color: var(--warn);
+    overflow: visible;
   }
   .crop-size {
     color: var(--accent);
@@ -733,10 +715,6 @@
     display: flex;
     gap: 6px;
     align-items: center;
-  }
-  .tiny {
-    padding: 0 4px;
-    font-size: 12px;
   }
   .stickers {
     display: grid;

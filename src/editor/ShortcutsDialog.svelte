@@ -186,15 +186,14 @@
   }}
 />
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Editor keyboard shortcuts" use:modal data-undo="off">
-    <div class="row">
+<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+  <div class="modal lg" role="dialog" aria-modal="true" aria-label="Editor keyboard shortcuts" use:modal data-undo="off">
+    <div class="modal-head">
       <h2 class="modal-title">⌨ Keyboard shortcuts</h2>
-      <span class="spacer"></span>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="row">
-      <p class="muted small">Keys and mouse moves in the editor. The host’s keys during a game are listed there (press ? while playing).</p>
+      <p class="hint">Keys and mouse moves in the editor. The host’s keys during a game are listed there (press ? while playing).</p>
       <span class="spacer"></span>
       <input
         class="filter"
@@ -225,42 +224,12 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr);
-    place-items: center;
-    padding: 16px;
-  }
-  .modal {
-    width: min(1100px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
   h3 {
     margin: 4px 0;
     font-size: 14px;
   }
   .row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
+    flex-wrap: nowrap;
   }
   .areas {
     columns: 2 460px;
@@ -288,9 +257,6 @@
     border-radius: 4px;
     padding: 1px 6px;
     font-family: inherit;
-    font-size: 12px;
-  }
-  .small {
     font-size: 12px;
   }
   .filter {

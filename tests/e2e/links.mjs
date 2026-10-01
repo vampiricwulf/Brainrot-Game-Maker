@@ -163,7 +163,7 @@ await page.locator('.picker').getByLabel('Paste a link').fill('https://litter.ca
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas img').waitFor();
 assert(
-  (await toast()).includes('Saved a copy in your game. It works offline now (the link itself expires within 3 days).'),
+  (await toast()).includes('Stored in your game: it works offline now (the link itself expires within 3 days).'),
   'a litter.catbox.moe picture is downloaded into the game, with a note that the link expires',
 );
 assert((await page.locator('.canvas img').getAttribute('src')).startsWith('blob:'), 'the slide shows the saved copy, not the link');
@@ -214,9 +214,9 @@ await page.locator('.picker').getByLabel('Paste a link').fill('https://files.cat
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas img').waitFor();
 assert((await page.locator('.canvas img').getAttribute('src')) === 'https://files.catbox.moe/pic3.png', 'a live-link picture shows on the slide from its link');
-await page.getByRole('button', { name: '🎨 Edit image…' }).click();
+await page.getByRole('button', { name: '✎ Edit image…' }).click();
 await page.locator('.gate').getByText('🌐 This picture plays from files.catbox.moe. The image editor works on a copy saved in your game.').waitFor();
-assert(await page.locator('.gate').getByRole('button', { name: '💾 Save a copy first' }).isVisible(), 'the image editor offers to save a copy first');
+assert(await page.locator('.gate').getByRole('button', { name: '💾 Store in game first' }).isVisible(), 'the image editor offers to save a copy first');
 await page.locator('.gate').getByRole('button', { name: 'Cancel' }).click();
 await page.getByRole('button', { name: 'Done' }).click();
 
@@ -245,7 +245,7 @@ assert(
   '"Download from Drive" opens Google\'s download in a new tab (a visit, which Google allows)',
 );
 await dl.close();
-assert(await page.locator('.picker').getByRole('button', { name: '⬆ Add the downloaded file…' }).isVisible(), 'then offers to add the downloaded file');
+assert(await page.locator('.picker').getByRole('button', { name: '＋ Add the downloaded file…' }).isVisible(), 'then offers to add the downloaded file');
 await page.keyboard.press('Escape');
 assert(usercontent.fromPage === 0, 'the page never loads the Drive file itself (Google refuses it with 403)');
 
@@ -260,7 +260,7 @@ assert((await page.getByText(/Files stored with this game: 1 ·/).count()) === 1
 await card('beep1.wav').getByRole('button', { name: 'Check link' }).click();
 await card('beep1.wav').getByText('✓ The link works').waitFor();
 assert(true, 'Check link plays the link to see that it works');
-await card('beep1.wav').getByRole('button', { name: '💾 Save a copy' }).click();
+await card('beep1.wav').getByRole('button', { name: '💾 Store in game' }).click();
 await page.locator('.toast', { hasText: "files.catbox.moe doesn't let the game save a copy." }).waitFor();
 assert((await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1, "Save a copy explains when the site refuses, and the link keeps working");
 assert((await page.locator('.problems').getByText('4 items play from the internet').count()) === 1, 'the checklist counts what plays from the internet (3 links + 1 Drive player)');
@@ -269,14 +269,14 @@ await shot('links-2-media');
 await context.route('https://files.catbox.moe/pic3.png', (r) =>
   r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: png(200, 120) }),
 );
-await card('pic3.png').getByRole('button', { name: '💾 Save a copy' }).click();
+await card('pic3.png').getByRole('button', { name: '💾 Store in game' }).click();
 await card('pic3.png').getByText('Saved from files.catbox.moe').waitFor();
 assert(/\d+(\.\d+)? KB/.test(await card('pic3.png').locator('.meta').first().innerText()) && (await card('pic3.png').locator('.badge').count()) === 0, 'Save a copy downloads a live link into the game (same file, now stored)');
 assert((await page.getByText(/Files stored with this game: 2 ·/).count()) === 1, 'and it counts as stored');
 // One step of its own: Undo makes it the link again (its picture plays from the link, not the copy), Redo the copy.
 const undoButton = page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' });
-await page.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes('Saved a copy of “pic3.png”'));
-assert(true, 'Save a copy is a step named "Saved a copy of “pic3.png”"');
+await page.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes('Stored “pic3.png” in the game'));
+assert(true, 'Save a copy is a step named "Stored “pic3.png” in the game"');
 await page.evaluate(() => document.activeElement?.blur?.());
 await page.keyboard.press('Control+z');
 await card('pic3.png').getByText('🌐 files.catbox.moe').waitFor();
@@ -295,7 +295,7 @@ for (const [row, name] of [['Winner', 'isom-voice.m4a'], ['Final round think mus
   await page.locator('.picker').getByLabel('Paste a link').fill(`https://litter.catbox.moe/${name}`);
   await page.locator('.picker').getByLabel('Paste a link').press('Enter');
   await page.locator('.sound', { hasText: row }).locator('.file', { hasText: name }).waitFor();
-  assert((await page.locator('.toast', { hasText: 'Saved a copy in your game.' }).count()) >= 1, `a sound picker takes ${name} (sent as ${name.endsWith('.m4a') ? 'audio/mp4' : 'audio/webm'}) as a sound`);
+  assert((await page.locator('.toast', { hasText: 'Stored in your game:' }).count()) >= 1, `a sound picker takes ${name} (sent as ${name.endsWith('.m4a') ? 'audio/mp4' : 'audio/webm'}) as a sound`);
 }
 
 // ---------- A clue whose host will go down during the show, and a player link that isn't valid ----------

@@ -57,7 +57,7 @@
         await onpick(ref.id);
       });
     } catch (e) {
-      toast((e as Error).message, 5000);
+      toast((e as Error).message);
     }
   }
 
@@ -133,11 +133,11 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: calc(var(--z-menu) - 1);
   }
   .picker {
     position: fixed;
-    z-index: 201;
+    z-index: var(--z-menu);
     width: min(320px, calc(100vw - 16px));
     max-height: 420px;
     overflow: auto;
@@ -188,8 +188,5 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

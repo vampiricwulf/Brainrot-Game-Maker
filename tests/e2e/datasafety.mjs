@@ -64,7 +64,7 @@ try {
   await page.locator('.cat textarea').first().fill('While full');
   await page.locator('.cat textarea').nth(1).click();
   await page.getByRole('button', { name: /🖼 Media/ }).click();
-  const [add] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Add files…' }).click()]);
+  const [add] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await add.setFiles([{ name: 'red.png', mimeType: 'image/png', buffer: png(255, 0, 0) }]);
   await page.locator('.card img').waitFor();
   await header.getByText('⚠ Autosave unavailable here: use Save').waitFor();
@@ -143,25 +143,25 @@ try {
   await page.getByRole('button', { name: 'Open…' }).click();
   const openDialog = page.getByRole('dialog', { name: 'Open a game' });
   await openDialog.waitFor();
-  assert((await openDialog.getByRole('button', { name: /Safe Game/ }).count()) === 1, 'Open… lists the recent games');
+  assert((await openDialog.getByRole('button', { name: /^Safe Game/ }).count()) === 1, 'Open… lists the recent games');
   await shot('datasafety-open');
-  await openDialog.getByRole('button', { name: /Safe Game/ }).click();
+  await openDialog.getByRole('button', { name: /^Safe Game/ }).click();
   await answerReplace(page, 'Discard');
   await page.getByText('Reopened “Safe Game”').waitFor();
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Unsaved', 'a recent game reopens from Open…');
   await page.getByRole('button', { name: 'Open…' }).click();
   await openDialog.waitFor();
-  assert((await openDialog.getByRole('button', { name: /Untitled Game/ }).count()) === 1, 'and the game it replaced (Discard) is kept there in turn');
-  // Forget deletes the game and its files for good: it asks first.
-  await openDialog.getByRole('button', { name: 'Forget' }).click();
-  const forgetAsk = page.getByRole('alertdialog').filter({ hasText: 'Forget “Untitled Game”?' });
+  assert((await openDialog.getByRole('button', { name: /^Untitled Game/ }).count()) === 1, 'and the game it replaced (Discard) is kept there in turn');
+  // 🗑 Delete deletes the kept game and its files for good: it asks first.
+  await openDialog.getByRole('button', { name: /^Delete “Untitled Game”/ }).click();
+  const forgetAsk = page.getByRole('alertdialog').filter({ hasText: 'Delete “Untitled Game” from Recent games?' });
   await forgetAsk.waitFor();
-  await forgetAsk.getByRole('button', { name: 'Keep it' }).click();
-  assert((await openDialog.getByRole('button', { name: /Untitled Game/ }).count()) === 1, 'Forget asks first: Keep it keeps the game listed');
-  await openDialog.getByRole('button', { name: 'Forget' }).click();
-  await forgetAsk.getByRole('button', { name: 'Forget' }).click();
+  await forgetAsk.getByRole('button', { name: 'Cancel' }).click();
+  assert((await openDialog.getByRole('button', { name: /^Untitled Game/ }).count()) === 1, '🗑 Delete asks first: Cancel keeps the game listed');
+  await openDialog.getByRole('button', { name: /^Delete “Untitled Game”/ }).click();
+  await forgetAsk.getByRole('button', { name: 'Delete', exact: true }).click();
   await openDialog.waitFor({ state: 'detached' });
-  assert(true, 'Forget takes a game off the list');
+  assert(true, '🗑 Delete takes a game off the list');
 
   // ---------- Open… checks the file before asking about this game ----------
   await page.locator('.cat textarea').first().fill('Not saved yet');

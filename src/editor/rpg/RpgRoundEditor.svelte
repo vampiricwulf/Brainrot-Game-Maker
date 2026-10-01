@@ -54,10 +54,10 @@
           {#each game.worlds ?? [] as w (w.id)}<option value={w.id}>{w.name}</option>{:else}<option value="">— none yet —</option>{/each}
         </select>
       </label>
-      <button class="small" onclick={createWorld}>＋ New world</button>
+      <button onclick={createWorld}>＋ Add world</button>
       {#if world}
         <button
-          class="ghost small"
+          class="ghost"
           aria-haspopup="menu"
           aria-label="More for this world"
           title="More for this world"
@@ -98,14 +98,14 @@
       </p>
     {/if}
     <label class="field notes">
-      Host notes
+      Host notes (never shown on stream)
       <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
     </label>
   {/if}
   {#if world}
     {#key world.id}<WorldEditor {world} bind:editing start={startRef(world, round)} onstart={(ref) => (round.start = ref)} />{/key}
   {:else}
-    <p class="warn">This round's world is gone. Make a new one (＋ New world){game.worlds?.length ? ' or pick another above' : ''}.</p>
+    <p class="warn">This round's world is gone. Add a new one (＋ Add world){game.worlds?.length ? ' or pick another above' : ''}.</p>
   {/if}
 </div>
 
@@ -128,8 +128,5 @@
   }
   .notes textarea {
     width: min(640px, 100%);
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

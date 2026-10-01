@@ -268,7 +268,7 @@
         <button class="ghost tiny" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
         <button class="ghost tiny" onclick={() => move(i, i + 1)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
         <button class="ghost tiny" onclick={() => duplicate(a)} aria-label="Duplicate button" title="Duplicate (Ctrl+D)">⧉</button>
-        <button class="ghost tiny" onclick={() => remove(a)} aria-label="Delete button" title="Delete button">🗑</button>
+        <button class="ghost tiny danger" onclick={() => remove(a)} aria-label="Delete button" title="Delete button">🗑</button>
       </div>
       <div class="fields">
         {#if a.do === 'stat'}
@@ -318,9 +318,9 @@
               <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
               {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
             </select>
-            {#if wi > 0}<button class="ghost tiny" onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))} aria-label="Remove wheel {wi + 1}" title="Remove">−</button>{/if}
+            {#if wi > 0}<button class="ghost tiny" onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))} aria-label="Remove wheel {wi + 1}" title="Remove">✕</button>{/if}
           {/each}
-          <button class="small" onclick={() => (a.also = [...(a.also ?? []), game.wheels[0]?.id ?? PLAYER_WHEEL])} title="Spin several wheels at once">＋ Wheel</button>
+          <button class="small" onclick={() => (a.also = [...(a.also ?? []), game.wheels[0]?.id ?? PLAYER_WHEEL])} title="Spin several wheels at once">＋ Add wheel</button>
         {:else if a.do === 'dice'}
           <input bind:value={a.dice} aria-label="Dice" placeholder="d20, 2d6…" list="dice-presets" />
           <datalist id="dice-presets">{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist>
@@ -428,10 +428,10 @@
     <button class="small" onclick={openMenu} aria-haspopup="menu">＋ Add button</button>
     <span class="spacer"></span>
     {#if actions?.length}
-      <button class="ghost tiny" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>
+      <button class="ghost small" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>
     {/if}
     {#if clipboard.actions.length}
-      <button class="ghost tiny" onclick={paste} title="Add the copied buttons here">📋 Paste {clipboard.actions.length} button{clipboard.actions.length === 1 ? '' : 's'}</button>
+      <button class="ghost small" onclick={paste} title="Add the copied buttons here">📋 Paste {clipboard.actions.length} button{clipboard.actions.length === 1 ? '' : 's'}</button>
     {/if}
   </div>
 </div>
@@ -479,13 +479,6 @@
   }
   .n {
     width: 70px;
-  }
-  .small {
-    font-size: 12px;
-  }
-  .tiny {
-    font-size: 12px;
-    padding: 1px 5px;
   }
   .pop {
     position: relative;

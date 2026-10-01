@@ -5,6 +5,7 @@
   the RPG map's (Alt+arrows move the selected spaces, Ctrl+C / Ctrl+V, Ctrl+D, F2, Delete).
 -->
 <script lang="ts">
+  import Tips from '../Tips.svelte';
   import { onDestroy, tick, untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { take } from '../../lib/nav.svelte';
@@ -51,7 +52,7 @@
   let tool = $state<{ kind: 'wheel' | 'dice'; id: string } | null>(null);
   const NEW_WHEEL = 'new-wheel';
   const NEW_DICE = 'new-dice';
-  /** ＋ New wheel… / ＋ New dice… in Move by: make one, move by it (one step), and open it. */
+  /** ＋ Add wheel… / ＋ Add dice… in Move by: make one, move by it (one step), and open it. */
   function newMover(kind: 'wheel' | 'dice'): void {
     if (kind === 'wheel') {
       const w = newTool('wheel');
@@ -642,7 +643,7 @@
           const v = e.currentTarget.value;
           if (v === NEW_WHEEL || v === NEW_DICE) {
             newMover(v === NEW_WHEEL ? 'wheel' : 'dice');
-            // (Moving by dice already, the box wouldn't change by itself: it would go on saying "＋ New dice…".)
+            // (Moving by dice already, the box wouldn't change by itself: it would go on saying "＋ Add dice…".)
             e.currentTarget.value = moverValue();
             return;
           }
@@ -655,8 +656,8 @@
         <option value="dice">🎲 Dice</option>
         <option value="step">👣 One space a turn (pick the way)</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>🎡 {w.name}</option>{/each}
-        <option value={NEW_WHEEL}>＋ New wheel…</option>
-        <option value={NEW_DICE}>＋ New dice…</option>
+        <option value={NEW_WHEEL}>＋ Add wheel…</option>
+        <option value={NEW_DICE}>＋ Add dice…</option>
       </select>
     </label>
     {#if moverWheel && game.wheels.some((w) => w.id === moverWheel)}
@@ -691,22 +692,23 @@
   <div class="row settings">
     <label class="field grow">How to win<input bind:value={round.winNotes} placeholder="e.g. Own 3 Flamingos and get back to Start" /></label>
     <label class="check small"><input type="checkbox" bind:checked={round.winPublic} /> Show it on the board</label>
-    <label class="field grow">Host notes<input bind:value={round.hostNotes} data-field="round-notes" placeholder="Only you see these" /></label>
+    <label class="field grow">Host notes (never shown on stream)<input bind:value={round.hostNotes} data-field="round-notes" /></label>
   </div>
 
   <div class="tabs" role="tablist">
     <button role="tab" aria-selected={view === 'spaces'} class:on={view === 'spaces'} onclick={() => (view = 'spaces')}>⬤ Spaces ({round.spaces.length})</button>
-    <button role="tab" aria-selected={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🎨 Board backdrop</button>
+    <button role="tab" aria-selected={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🖼 Board backdrop</button>
     <button role="tab" aria-selected={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
   </div>
 
 
   {#if view === 'spaces'}
     <div class="row tools">
-      <span class="muted small">Ctrl+click adds a space (after the selected one) · Alt+drag or ⊕ links · Shift+click or a box selects several · right-click for more</span>
-      {#if linking}<span class="warn small" role="status">Click the space {sel?.name} should lead to (again to unlink), or go to it with the arrow keys and press Enter…</span>{/if}
-      <span class="spacer"></span>
-      <span class="muted small">Drag spaces (or Alt+arrows) to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</span>
+      {#if linking}
+        <span class="warn small" role="status">Click the space {sel?.name} should lead to (again to unlink), or go to it with the arrow keys and press Enter…</span>
+      {:else}
+        <span class="hint">Ctrl+click adds a space (after the selected one) · Alt+drag or ⊕ links · Shift+click or a box selects several · right-click for more</span>
+      {/if}
     </div>
     <div class="main">
       <div class="canvas-box" class:media-drop={fileOver === 'board'} bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
@@ -845,23 +847,25 @@
           <h5>When landed on</h5>
           <ActionListEditor bind:actions={sel.onLand} board={round} />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
-          <label class="field">Host notes<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
+          <label class="field">Host notes (never shown on stream)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">
             <button class="small" onclick={() => (round.start = sel.id)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
             <button class="small" onclick={() => duplicateSpace(sel)} title="A copy after it on the path (Ctrl+D)">⧉ Duplicate space</button>
             <span class="spacer"></span>
-            <button class="ghost small" onclick={() => removeSpace(sel)}>🗑 Delete space</button>
+            <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Undo brings it back)">🗑 Delete space</button>
           </div>
         {:else}
-          <p class="muted small">
-            Click a space to set it up. Ctrl+click (⌘+click) the board to add one, or right-click → Add a space here. New spaces go
-            after the selected space, so you can draw the path in order.
-          </p>
-          <p class="muted small">
-            Keys: Tab to the board, then the arrows go from space to space, Enter opens its settings, Alt+arrows move it, F2
-            renames, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste, Delete deletes, Esc deselects. Shift+arrows, Shift+click or a
-            box picks several.
-          </p>
+          <Tips id="board-game" hint="Click a space to set it up. Ctrl+click (⌘+click) the board to add one, or right-click → Add a space here.">
+            <ul>
+              <li>New spaces go after the selected space, so you can draw the path in order.</li>
+              <li>Drag spaces (or Alt+arrows) to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</li>
+              <li>
+                Keys: Tab to the board, then the arrows go from space to space, Enter opens its settings, Alt+arrows move it, F2 renames,
+                Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste, Delete deletes, Esc deselects. Shift+arrows, Shift+click or a box
+                picks several.
+              </li>
+            </ul>
+          </Tips>
         {/if}
       </aside>
     </div>
@@ -909,7 +913,7 @@
           </div>
         {/each}
       </div>
-      <div class="row"><button onclick={addZone}>＋ Zone</button></div>
+      <div class="row"><button onclick={addZone}>＋ Add zone</button></div>
     </div>
   {/if}
 </div>
@@ -1069,15 +1073,5 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-  }
-  .small {
-    font-size: 12px;
-  }
-  .tiny {
-    font-size: 12px;
-    padding: 0 4px;
-  }
-  .warn {
-    color: var(--warn);
   }
 </style>

@@ -130,24 +130,24 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
 
   // ---------- Import clues keeps what was pasted ----------
-  await page.getByRole('button', { name: 'Import clues…' }).click();
+  await page.getByRole('button', { name: '📥 Import clues…' }).click();
   const imp = page.getByRole('dialog', { name: 'Import clues' });
   await imp.getByLabel('Clues to import').fill('Science\t200\tH2O is this\tWater\nScience\t400\tCO2 is this\tCarbon dioxide');
   await page.mouse.click(4, 4);
   assert(await imp.isVisible(), 'a click outside Import clues doesn’t close it (nor lose what was pasted)');
   await page.keyboard.press('Escape');
   await imp.waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: 'Import clues…' }).click();
+  await page.getByRole('button', { name: '📥 Import clues…' }).click();
   assert((await imp.getByLabel('Clues to import').inputValue()).startsWith('Science\t200'), 'closed with Esc and opened again, what was pasted is still there');
   await imp.getByRole('button', { name: 'Cancel' }).click();
-  await page.getByRole('button', { name: 'Import clues…' }).click();
+  await page.getByRole('button', { name: '📥 Import clues…' }).click();
   assert((await imp.getByLabel('Clues to import').inputValue()).startsWith('Science\t200'), 'and after Cancel');
   await imp.getByRole('button', { name: /^Import \d+ clue/ }).click();
   await note.waitFor();
   const imported = await note.innerText();
   assert(/Imported \d+ clues? into Jeopardy!/.test(imported) && !imported.includes('Row values') && !(await toastText()).includes('Imported'), `importing says so once, at the board (${imported.replace(/\n/g, ' ')})`);
   await page.keyboard.press('Control+z');
-  await page.getByRole('button', { name: 'Import clues…' }).click();
+  await page.getByRole('button', { name: '📥 Import clues…' }).click();
   assert((await imp.getByLabel('Clues to import').inputValue()) === '', 'once imported, the box starts empty');
   await page.keyboard.press('Escape');
 
@@ -168,7 +168,7 @@ try {
   await row1.press('Tab');
   const dd = page.getByLabel('How many Daily Doubles');
   await dd.fill('50');
-  await page.getByRole('button', { name: '🎲 Randomize' }).click();
+  await page.getByRole('button', { name: '🔀 Randomize' }).click();
   const placed = await page.locator('.tile .dd', { hasText: 'DD' }).count();
   assert(placed === 6 && (await dd.inputValue()) === '6', `Daily Doubles are clamped and the box says how many were placed (${placed}, ${await dd.inputValue()})`);
 
@@ -176,10 +176,10 @@ try {
   await page.locator('.tile').nth(2).click();
   await page.getByLabel('Type').selectOption('dice');
   const diceOpts = await page.getByLabel('Which dice').locator('option').allInnerTexts();
-  assert(diceOpts.some((o) => o.includes('2d6')) && diceOpts.some((o) => o.includes('New dice')), `a dice tile can use standard dice (${diceOpts.join(', ')})`);
+  assert(diceOpts.some((o) => o.includes('2d6')) && diceOpts.some((o) => o.includes('Add dice')), `a dice tile can use standard dice (${diceOpts.join(', ')})`);
   await page.getByLabel('Which dice').selectOption({ label: '🎲 2d6' });
   await page.getByLabel('Type').selectOption('wheel');
-  await page.getByLabel('Which wheel').selectOption({ label: '＋ New wheel…' });
+  await page.getByLabel('Which wheel').selectOption({ label: '＋ Add wheel…' });
   const pop = page.getByRole('dialog', { name: 'Wheel' });
   await pop.waitFor();
   await pop.getByLabel('Wheel name').fill('Spicy Wheel');
@@ -213,11 +213,11 @@ try {
 
   // ---------- Board game: Move by a new dice ----------
   await addRound(/Board game/);
-  await page.getByLabel('Move by').selectOption({ label: '＋ New dice…' });
+  await page.getByLabel('Move by').selectOption({ label: '＋ Add dice…' });
   const dpop = page.getByRole('dialog', { name: 'Dice' });
   await dpop.waitFor();
   await dpop.getByRole('button', { name: 'Done' }).click();
-  assert((await page.getByLabel('Dice', { exact: true }).inputValue()) === 'Dice 1', 'Move by ＋ New dice… makes dice and moves by them');
+  assert((await page.getByLabel('Dice', { exact: true }).inputValue()) === 'Dice 1', 'Move by ＋ Add dice… makes dice and moves by them');
   assert((await page.locator('.bge').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, 'the board game has no ↶ of its own (the header has it)');
   await page.getByRole('tab', { name: /Board backdrop/ }).click();
   assert((await page.locator('.se').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, 'nor its backdrop editor');
@@ -244,8 +244,8 @@ try {
   // 📦 Item ▾ with no items yet: make one here, or go to 📊 Stats & Items.
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   const itemMenu = await page.getByRole('menu').getByRole('menuitem').allInnerTexts();
-  assert(itemMenu.some((t) => t.includes('New item here')) && itemMenu.some((t) => t.includes('Stats & Items')), `📦 Item ▾ with no items offers to make one (${itemMenu.join(', ')})`);
-  await page.getByRole('menu').getByRole('menuitem', { name: /New item here/ }).click();
+  assert(itemMenu.some((t) => t.includes('Add new item here')) && itemMenu.some((t) => t.includes('Stats & Items')), `📦 Item ▾ with no items offers to make one (${itemMenu.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: /Add new item here/ }).click();
   assert(
     (await page.getByLabel('Object class').inputValue()) === 'item' && (await page.getByLabel('Item', { exact: true }).evaluate((s) => s.selectedOptions[0].text)) === 'Item 1',
     'which puts a new catalog item on the screen',
@@ -254,12 +254,12 @@ try {
   assert((await page.getByLabel('Object class').inputValue()) === 'npc', 'the 🧙 Character button places a character');
   const npcName = await typingIn();
   assert(npcName.value === 'Character' && npcName.all, `with its name ready to type over (${JSON.stringify(npcName)})`);
-  await page.getByRole('button', { name: '＋ Stat (power, HP…)' }).click();
+  await page.getByRole('button', { name: '＋ Add stat (power, HP…)' }).click();
   const npcStat = await typingIn();
   assert(npcStat.label === 'Stat name' && npcStat.all, 'its ＋ Stat puts the typing in the stat’s name');
   await page.getByRole('button', { name: 'Delete stat', exact: true }).click();
   assert((await note.innerText()).includes('Deleted stat “Power” of “Character”'), 'deleting its stat says so, with Undo');
-  await page.getByRole('button', { name: '＋ Dialogue slide' }).click();
+  await page.getByRole('button', { name: '＋ Add dialogue slide' }).click();
   await page.getByRole('dialog', { name: /Dialogue slide/ }).getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'Delete dialogue' }).click();
   assert((await note.innerText()).includes('Deleted the dialogue slide of “Character”'), 'and so does deleting its dialogue slide');
@@ -267,14 +267,14 @@ try {
   assert((await page.getByRole('button', { name: 'Edit dialogue slide…' }).count()) === 1, 'whose Undo brings it back');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
-  // ---------- ＋ Item and ＋ Shop put the typing in the new one's name ----------
+  // ---------- ＋ Add item and ＋ Add shop put the typing in the new one's name ----------
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
-  await page.getByRole('button', { name: '＋ Item' }).click();
+  await page.getByRole('button', { name: '＋ Add item' }).click();
   const item = await typingIn();
-  assert(item.label === 'Item name' && item.value === 'Item 2' && item.all, `＋ Item puts the typing in its name (${JSON.stringify(item)})`);
-  await page.getByRole('button', { name: '＋ Shop' }).click();
+  assert(item.label === 'Item name' && item.value === 'Item 2' && item.all, `＋ Add item puts the typing in its name (${JSON.stringify(item)})`);
+  await page.getByRole('button', { name: '＋ Add shop' }).click();
   const shop = await typingIn();
-  assert(shop.label === 'Shop name' && shop.value === 'Shop 1' && shop.all, `＋ Shop too (${JSON.stringify(shop)})`);
+  assert(shop.label === 'Shop name' && shop.value === 'Shop 1' && shop.all, `＋ Add shop too (${JSON.stringify(shop)})`);
 
   // ---------- Pre-game: 📋 Game rules ----------
   await page.getByRole('button', { name: '▶ Play' }).click();

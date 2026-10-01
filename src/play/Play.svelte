@@ -2177,7 +2177,7 @@
       <div class="col">
         <section class="part" data-place="play:players" aria-labelledby="pregame-players">
           <h2 id="pregame-players">👥 Players</h2>
-          <p class="muted">
+          <p class="hint">
             Who's playing: add, rename, recolor and reorder them here{app.playerOnly ? '' : ' (they’re kept with the game for next time)'}.
             Names and colors can still change during the game.
           </p>
@@ -2223,7 +2223,7 @@
         <GameRules s={game.settings} players={session.players.length} />
 
         <section class="part" aria-labelledby="pregame-display">
-          <h2 id="pregame-display">Display</h2>
+          <h2 id="pregame-display">🖥 Display</h2>
           <ModeCards dual={!!dual} onsingle={() => dual && closeAudienceWindow()} onaudience={() => !dual && openAudience()} />
           {#if !dual}
             <p class="warn small exposed">
@@ -2235,39 +2235,41 @@
         </section>
 
         <section class="part" data-place="play:stream" aria-labelledby="pregame-stream">
-          <h2 id="pregame-stream">On stream</h2>
+          <h2 id="pregame-stream">📺 On stream</h2>
           <div class="stream-opts">
-            <label>
-              <span>“Starting soon” card</span>
+            <label class="field">
+              “Starting soon” card
               <input
                 value={stream.soonText ?? ''}
                 placeholder="Starting soon…"
                 onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, cardLabel('Starting soon', e.currentTarget.value))}
               />
             </label>
-            <div class="row">
-              <span class="muted small">Countdown on it:</span>
+            <div class="field" role="group" aria-labelledby="pregame-soon">
+              <span id="pregame-soon">Countdown on the “Starting soon” card</span>
+              <div class="row">
               {#if app.live.soonAt}
                 <span class="small soon-left" role="timer">{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span>
-                <button class="small" onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
+                <button onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
               {:else}
                 <label class="check small">
                   <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
                 </label>
-                <button class="small" disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
+                <button disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
                   ▶ Start countdown
                 </button>
               {/if}
+              </div>
             </div>
-            <label>
-              <span>Cover card (K)</span>
+            <label class="field">
+              Cover card (K)
               <input
                 value={stream.coverText ?? ''}
                 placeholder="Be right back"
                 onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, cardLabel('Cover', e.currentTarget.value))}
               />
             </label>
-            <span class="muted small">The theme's banner picture shows on both cards, when there is one.</span>
+            <span class="hint">The theme's banner picture shows on both cards, when there is one.</span>
             <label class="check small">
               <input
                 type="checkbox"
@@ -2635,8 +2637,24 @@
     outline: none;
   }
   .pregame h2 {
-    margin: 8px 0 0;
-    font-size: 15px;
+    margin: 0;
+    font-size: 16px;
+  }
+  /* One look for every part of the page: a card with its heading (Players, 📱 Phone buzzers, ⚖ Game rules, Display, On
+     stream). */
+  .pregame section.part,
+  .pregame .part > :global(.card),
+  .pregame :global(details.rules) {
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .pregame section.part {
+    gap: 12px;
+  }
+  .pregame :global(:is(.card, details.rules) h2) {
+    font-size: 16px;
   }
   .pregame p {
     margin: 0;
@@ -2663,20 +2681,19 @@
   .stream-opts {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-  }
-  .stream-opts > label:not(.check) {
-    display: flex;
-    align-items: center;
     gap: 8px;
   }
-  .stream-opts > label:not(.check) > span {
-    width: 150px;
-    flex: none;
-  }
-  .stream-opts > label:not(.check) > input {
-    flex: 1;
+  .stream-opts > .field > input {
     max-width: 360px;
+  }
+  .stream-opts > div.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stream-opts > div.field > span {
+    color: var(--muted);
+    font-size: 12px;
   }
   .mins {
     width: 70px;

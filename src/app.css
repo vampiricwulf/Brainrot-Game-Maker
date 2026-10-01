@@ -12,7 +12,12 @@
   --bg: #12131a;
   --panel: #1c1e28;
   --panel-2: #262937;
+  /* Lines between things (dividers, panels). */
   --border: #353849;
+  /* The edge of something to click or type in (fields, ghost buttons): 3:1 or more on --bg, --panel and --panel-2. */
+  --control-border: #636780;
+  /* A default or ghost button under the mouse. */
+  --hover: #33374a;
   --text: #e8e9ef;
   --muted: #9a9db0;
   /* Text, outlines and lines in a color: 4.5:1 or more on --bg, --panel and --panel-2 (--accent: 4.5 on --panel). */
@@ -25,6 +30,18 @@
   --good-fill: #2fbf71;
   --good-ink: #06210f;
   --bad-fill: #d13a40;
+  /* …and under the mouse: a darker fill. */
+  --accent-fill-hover: #2c55cf;
+  --good-fill-hover: #27a462;
+  --bad-fill-hover: #b52f35;
+
+  /* What sits on top of what, lowest first: the "Deleted … · Undo" note and banners, windows (a window opened from
+     another adds 1–20), menus and pickers (they open from windows too), questions (AskDialog), then toasts. */
+  --z-notice: 100;
+  --z-modal: 200;
+  --z-menu: 300;
+  --z-ask: 400;
+  --z-toast: 500;
   color-scheme: dark;
 }
 
@@ -43,35 +60,60 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 button {
   background: var(--panel-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
   white-space: nowrap;
 }
-button:hover:not(:disabled) { border-color: var(--accent); }
+/* Under the mouse the background changes (selected things show the accent instead, so the two never look alike). */
+button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { opacity: 0.45; cursor: default; }
+/* One per view: the main thing to do there. */
 button.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+button.primary:hover:not(:disabled) { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); }
 button.good { background: var(--good-fill); border-color: var(--good-fill); color: var(--good-ink); }
+button.good:hover:not(:disabled) { background: var(--good-fill-hover); border-color: var(--good-fill-hover); }
+/* Only the answer that confirms a delete (never the first button). */
 button.bad { background: var(--bad-fill); border-color: var(--bad-fill); color: #fff; }
+button.bad:hover:not(:disabled) { background: var(--bad-fill-hover); border-color: var(--bad-fill-hover); }
+/* Low emphasis: icons, Cancel, the ✕. */
 button.ghost { background: transparent; }
+button.ghost:hover:not(:disabled) { background: var(--hover); }
+/* What deletes something (🗑 Delete round): red words, asked or undoable. */
+button.danger { color: var(--bad); }
+/* Sizes: normal for a page's or window's actions, .small in dense rows, .tiny for the icons in a row. */
 button.small { padding: 2px 8px; font-size: 12px; }
+button.tiny { padding: 1px 5px; font-size: 12px; line-height: 1.25; min-width: 22px; }
 
 input, select, textarea {
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: 6px;
   padding: 6px 8px;
 }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 input[type='color'] { padding: 0; width: 36px; height: 30px; cursor: pointer; }
 input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--accent); }
+input[type='radio'] { accent-color: var(--accent); }
+
+/* One focus ring, for the keyboard (a click on a button shows none; a text field shows it, as browsers do). */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: -1px; }
+/* A window or a region the app moves the focus to (not something to press). */
+[role='dialog']:focus-visible, [role='alertdialog']:focus-visible, [tabindex='-1']:focus-visible { outline: none; }
+
+a { color: #8fb0ff; }
+a:hover { color: #b5cbff; }
 
 label.field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
 label.field > input, label.field > textarea, label.field > select { color: var(--text); font-size: 14px; }
 label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 
 .muted { color: var(--muted); }
+/* Help and status lines: 12px, muted for a hint, orange for a warning. */
+.small { font-size: 12px; }
+.hint { font-size: 12px; color: var(--muted); }
+.warn { color: var(--warn); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
 
@@ -92,41 +134,136 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .drag-row.drop-after::after { bottom: -3px; }
 .drag-grip { cursor: grab; color: var(--muted); font-size: 12px; letter-spacing: -2px; user-select: none; }
 
-.toast {
+/* A short message (toast) and the editor's "Deleted … · Undo" note (HistoryNotice): one pill at the bottom middle. */
+.note-pill {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  padding: 10px 18px;
-  border-radius: 8px;
-  z-index: 1000;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  gap: 8px;
+  align-items: center;
   max-width: min(760px, calc(100vw - 32px));
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--panel-2);
+  border: 1px solid var(--control-border);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+.toast {
+  z-index: var(--z-toast);
   /* Messages only: clicks go through to what's underneath (in play, the host's nav row). */
   pointer-events: none;
 }
 /* Above the editor's "Deleted … · Undo" note (HistoryNotice), not over it. */
 body:has(.history-notice) .toast { bottom: 72px; }
+/* A window is open: one line at the top, in the room every window leaves there (.modal-backdrop), clear of its
+   buttons. */
+body:has([aria-modal='true']) .toast {
+  top: 8px;
+  bottom: auto;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-/* Every window (role="dialog"): its title top left, a ✕ top right (named "Close"), and one action: Done (or Cancel /
-   Apply) in its footer, or for the big editors at the top right, beside the ✕. */
-[role='dialog'] .modal-title {
+/* Every window (role="dialog"): a .modal box in a .modal-backdrop. Its title (h2.modal-title) top left, a ✕ top right
+   (named "Close"), and its buttons in the footer: Cancel (ghost) on the left of them, the main one rightmost. The big
+   editors keep their main action at the top right, beside the ✕. Widths: .sm 440, (default) 560, .lg 1100. */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: rgba(0, 0, 0, 0.6);
+  display: grid;
+  /* A window-sized track, so the box's max-height: 100% is the window's. */
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  /* (The top 48px: room for a toast over the window.) */
+  padding: 48px 16px 16px;
+}
+:where(.modal-backdrop) > :where(.modal) {
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+:where(.modal-backdrop) > :where(.modal.sm) { width: min(440px, 100%); }
+:where(.modal-backdrop) > :where(.modal.lg) { width: min(1100px, 100%); }
+:where(.modal) p { margin: 0; }
+.modal-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.modal-head > .modal-title { flex: 1; min-width: 0; }
+[role='dialog'] .modal-title,
+[role='alertdialog'] .modal-title {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
 }
-[role='dialog'] .modal-x {
-  padding: 2px 9px;
+[role='dialog'] .modal-x,
+[role='alertdialog'] .modal-x {
+  padding: 2px 8px;
   flex-shrink: 0;
 }
 .modal-foot {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
-  margin-top: 8px;
 }
+
+/* A page in the editor: its title (20px) and one muted line, its actions on the right (PageHeader). Forms stay
+   readable on a wide screen; boards and maps fill it. */
+.page { max-width: 1200px; }
+.page-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.page-header .titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.page-header h2 {
+  margin: 0;
+  font-size: 20px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.page-header .sub { margin: 0; font-size: 13px; color: var(--muted); }
+.page-header .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+/* The round's mode beside its name. */
+.mode-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--control-border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Long help, folded away (Tips): the summary is one line; open or closed is remembered (tips.ts). */
+details.tips { font-size: 13px; color: var(--muted); }
+details.tips > summary { cursor: pointer; width: fit-content; }
+details.tips > :not(summary) { margin: 8px 0 0; }
+details.tips ul { padding-left: 20px; }
+details.tips li + li { margin-top: 4px; }
 
 /* Where an undo or redo changed something, for a moment (nav.svelte.ts). */
 .flash { animation: flash 1.2s ease-out; }

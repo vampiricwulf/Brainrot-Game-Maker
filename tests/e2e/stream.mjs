@@ -170,7 +170,7 @@ try {
   // Pre-game: single window says what viewers see, and the audience window is recommended.
   const warn = await page.locator('.pregame .exposed').innerText();
   assert(warn.includes('viewers see everything on screen') && warn.includes('wagers as you type them'), 'single-window mode warns that viewers see everything');
-  assert((await page.locator('.mode', { hasText: 'Separate audience window' }).innerText()).includes('Recommended'), 'the audience window is the recommended mode');
+  assert(!(await page.locator('.modes').innerText()).includes('Recommended'), 'neither display mode is tagged “Recommended” (single window is the default)');
 
   // The stream cards' words, the caption, and a countdown on the Starting soon card (in the audience window).
   await page.getByPlaceholder('Starting soon…').fill('Back in a sec, chat');

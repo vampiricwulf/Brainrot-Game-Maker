@@ -33,7 +33,7 @@
       await installUpdate(exe, sig);
     } catch (err) {
       update.status = 'available';
-      toast(typeof err === 'string' ? err : err instanceof Error ? err.message : "The update didn't install.", 8000);
+      toast(typeof err === 'string' ? err : err instanceof Error ? err.message : "The update didn't install.");
     }
   }
 </script>

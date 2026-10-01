@@ -3,6 +3,7 @@
   RPG rounds, and shown on the stats strip in any mode.
 -->
 <script lang="ts">
+  import PageHeader from './PageHeader.svelte';
   import { tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { tell } from '../lib/ask.svelte';
@@ -110,7 +111,7 @@
     const left = (game.items ?? []).filter((it) => !s.stock.some((x) => x.item === it.id));
     dropMenu(e, [
       ...left.map((it) => ({ label: it.name, onclick: () => stock(s, [it]) })),
-      ...(left.length > 1 ? [{ sep: true as const }, { label: '＋ Everything', onclick: () => stock(s, left), hint: `${left.length} items` }] : []),
+      ...(left.length > 1 ? [{ sep: true as const }, { label: '＋ Add everything', onclick: () => stock(s, left), hint: `${left.length} items` }] : []),
     ]);
   }
 
@@ -214,7 +215,7 @@
     const rows = [['name', 'price', 'stackable', 'wearable', 'description'], ...(game.items ?? []).map((i) => [i.name, i.price ?? '', i.stackable ? 'yes' : 'no', i.wearable?.slot ?? '', i.description ?? ''])];
     const name = `${safeFilename(game.title)}-items.csv`;
     try {
-      toast(savedWhere(await saveFile(name, new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })), name), 5000);
+      toast(savedWhere(await saveFile(name, new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })), name));
     } catch (e) {
       void tell('Export failed: ' + (e as Error).message);
     }
@@ -288,16 +289,15 @@
   >
 {/snippet}
 
-<h2>📊 Stats & Items</h2>
-<p class="muted">
-  Player stats, the item catalog and shops, used by RPG rounds (and shown on the stats strip in any round). Nothing is
-  enforced: every number can be changed in play.
-</p>
+<PageHeader
+  title="Stats & Items"
+  sub="Player stats, the item catalog and shops, for RPG rounds (the stats strip shows in any round). Nothing is enforced: every number can be changed in play."
+/>
 
 <section>
   <h3>Player stats</h3>
   {#if !game.statFields?.length}
-    <p class="muted small">No stats yet. Start with a preset or make your own:</p>
+    <p class="hint">No stats yet. Start with a preset or make your own:</p>
   {/if}
   <div class="presets">
     {#each STAT_PRESETS as p (p.label)}
@@ -305,7 +305,7 @@
       {@const added = game.statFields?.some((f) => f.name.trim().toLowerCase() === name.toLowerCase())}
       <button class="small" onclick={() => addField(p.make())} disabled={added} title={added ? `This game has a stat called ${name}` : undefined}>＋ {p.label}</button>
     {/each}
-    <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Custom stat</button>
+    <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Add custom stat</button>
   </div>
   <!-- A list only with rows in it (one that's empty, or holds only "No items yet", misleads a screen reader). -->
   <div class="list" role={game.statFields?.length ? 'list' : undefined} aria-label={game.statFields?.length ? 'Stats' : undefined}>
@@ -334,12 +334,12 @@
           <option value="checkbox">Yes/no</option>
           <option value="tags">Tags</option>
         </select>
-        <!-- What the type needs wraps inside its own column, so every row's audience, color and ✕ line up. -->
+        <!-- What the type needs goes on a line of its own (see .field-row), so every row's audience, color and 🗑 line up. -->
         <div class="by-type">
           {#if f.type === 'number'}
-            <label class="small">Start<input type="number" class="n" value={Number(f.start ?? 0)} oninput={(e) => (f.start = +e.currentTarget.value)} /></label>
-            <label class="small">Min<input type="number" class="n" value={f.min ?? ''} oninput={(e) => (f.min = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
-            <label class="small">Max<input type="number" class="n" value={f.max ?? ''} oninput={(e) => (f.max = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+            <label class="field">Start<input type="number" class="n" value={Number(f.start ?? 0)} oninput={(e) => (f.start = +e.currentTarget.value)} /></label>
+            <label class="field">Min<input type="number" class="n" value={f.min ?? ''} oninput={(e) => (f.min = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+            <label class="field">Max<input type="number" class="n" value={f.max ?? ''} oninput={(e) => (f.max = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
             <!-- (A stat without a display shows as a number: showing the field doesn't fill it in.) -->
             <select bind:value={() => f.display ?? 'counter', (v) => (f.display = v)} aria-label="{f.name} shown as">
               <option value="counter">Number</option>
@@ -350,11 +350,11 @@
             <input class="sym" bind:value={f.symbol} placeholder={f.currency ? '🪙' : 'Symbol'} aria-label="{f.name} symbol" title="Shown before the number, e.g. 🪙 or $" />
             {#if statRangeProblem(f)}<span class="warn small" data-warn="range">⚠ {statRangeProblem(f)}</span>{/if}
           {:else if f.type === 'text'}
-            <label class="small">Start<input value={String(f.start ?? '')} oninput={(e) => (f.start = e.currentTarget.value)} /></label>
+            <label class="field">Start<input value={String(f.start ?? '')} oninput={(e) => (f.start = e.currentTarget.value)} /></label>
           {:else if f.type === 'checkbox'}
             <label class="check small"><input type="checkbox" checked={f.start === true} onchange={(e) => (f.start = e.currentTarget.checked)} /> Starts as yes</label>
           {:else}
-            <label class="small">
+            <label class="field">
               Start
               <input value={Array.isArray(f.start) ? f.start.join(', ') : ''} onchange={(e) => (f.start = tagList(e.currentTarget.value))} placeholder="e.g. poisoned, cursed" />
             </label>
@@ -366,8 +366,8 @@
           <option value="hidden">Host only</option>
         </select>
         <input type="color" value={f.color ?? '#ffcc00'} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
-        <button class="ghost small" onclick={() => duplicate('stat', f)} aria-label="Duplicate {f.name}" title="Duplicate (Ctrl+D)">⧉</button>
-        <button class="ghost small" onclick={() => removeField(f)} aria-label="Delete {f.name}" title="Delete">🗑</button>
+        <button class="ghost tiny" onclick={() => duplicate('stat', f)} aria-label="Duplicate {f.name}" title="Duplicate (Ctrl+D)">⧉</button>
+        <button class="ghost tiny danger" onclick={() => removeField(f)} aria-label="Delete {f.name}" title="Delete (Undo brings it back)">🗑</button>
       </div>
     {/each}
   </div>
@@ -446,9 +446,9 @@
 <section>
   <h3>Items</h3>
   <div class="row">
-    <button onclick={addItem}>＋ Item</button>
-    <button class="ghost small" onclick={importCsv} title="Columns: name, price, stackable, wearable, description">Import CSV…</button>
-    <button class="ghost small" onclick={exportCsv} disabled={!game.items?.length}>Export CSV</button>
+    <button onclick={addItem}>＋ Add item</button>
+    <button class="ghost" onclick={importCsv} title="Columns: name, price, stackable, wearable, description">📂 Import CSV…</button>
+    <button class="ghost" onclick={exportCsv} disabled={!game.items?.length}>⬇ Export CSV</button>
   </div>
   <div class="list" role={game.items?.length ? 'list' : undefined} aria-label={game.items?.length ? 'Items' : undefined}>
     {#each game.items ?? [] as it, i (it.id)}
@@ -490,7 +490,7 @@
             {#if iconFor === it.id}<MediaPicker kind="image" onpick={(id) => ((it.icon = id), (iconFor = null))} onclose={() => (iconFor = null)} />{/if}
           </div>
           <input class="name" bind:value={it.name} aria-label="Item name" />
-          <label class="small">Price<input type="number" class="n" value={it.price ?? ''} oninput={(e) => (it.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+          <label class="field">Price<input type="number" class="n" value={it.price ?? ''} oninput={(e) => (it.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
           <label class="check small"><input type="checkbox" bind:checked={it.stackable} /> Stacks</label>
           <select
             value={it.wearable?.slot ?? ''}
@@ -511,31 +511,31 @@
           <label class="check small" title="Only the host sees it in inventories"><input type="checkbox" bind:checked={it.secret} /> Secret</label>
           <button class="ghost small" onclick={() => (openItem = openItem === it.id ? null : it.id)} aria-expanded={openItem === it.id}>More</button>
           <button class="ghost small" onclick={() => duplicate('item', it)} aria-label="Duplicate {it.name}" title="Duplicate, with its buttons and look (Ctrl+D)">⧉</button>
-          <button class="ghost small" onclick={() => removeItem(it)} aria-label="Delete {it.name}" title="Delete">🗑</button>
+          <button class="ghost small danger" onclick={() => removeItem(it)} aria-label="Delete {it.name}" title="Delete (Undo brings it back)">🗑</button>
         </div>
         {#if openItem === it.id}
           <div class="more">
             <label class="field">Description (on its card)<textarea rows="2" bind:value={it.description}></textarea></label>
-            <label class="field">Host notes (what it really does)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
-            <div class="muted small">"Use" in play runs:</div>
+            <label class="field">Host notes (never shown on stream)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
+            <div class="hint">"Use" in play runs:</div>
             <ActionListEditor bind:actions={it.onUse} world={game.worlds?.[0]} />
             {#if it.wearable}
               {@const worn = it as ItemDef & { wearable: Wearable }}
-              <div class="muted small">Worn look (how it shows on the avatar when equipped):</div>
+              <div class="hint">Worn look (how it shows on the avatar when equipped):</div>
               <WornLookEditor item={worn} />
             {/if}
           </div>
         {/if}
       </div>
     {:else}
-      <p class="muted small">No items yet.</p>
+      <p class="hint">No items yet.</p>
     {/each}
   </div>
 </section>
 
 <section>
   <h3>Shops</h3>
-  <div class="row"><button onclick={addShop}>＋ Shop</button></div>
+  <div class="row"><button onclick={addShop}>＋ Add shop</button></div>
   <div class="list" role={game.shops?.length ? 'list' : undefined} aria-label={game.shops?.length ? 'Shops' : undefined}>
     {#each game.shops ?? [] as s, si (s.id)}
       <!-- What the shop charges: with its currency stat deleted, that's the first currency (or points). -->
@@ -568,7 +568,7 @@
         <div class="row">
           {@render grip('shop', s.id, 'shops')}
           <input class="name" bind:value={s.name} aria-label="Shop name" />
-          <label class="small">
+          <label class="field">
             Charges
             <select
               value={shopCurrencyGone(game, s) ? s.currency : cur === 'score' ? SCORE_CURRENCY : cur.id}
@@ -583,9 +583,9 @@
               {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
             </select>
           </label>
-          <label class="small" title="Shops with the same pool name share their stock">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>
-          <label class="small" title="Players can sell items here for this share of the price (blank: it doesn't buy things back)">
-            Buys back at
+          <label class="field" title="Shops with the same pool name share their stock">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>
+          <label class="field" title="Players can sell items here for this share of the price (blank: it doesn't buy things back)">
+            Buys back at (%)
             <input
               type="number"
               class="n"
@@ -594,13 +594,16 @@
               value={s.buysBack ? Math.round(s.buysBack.rate * 100) : ''}
               placeholder="—"
               oninput={(e) => (s.buysBack = e.currentTarget.value === '' ? undefined : { rate: Math.max(0, +e.currentTarget.value) / 100 })}
-            />%
+            />
           </label>
           <span class="spacer"></span>
           <button class="ghost small" onclick={() => duplicate('shop', s)} aria-label="Duplicate {s.name}" title="Duplicate, with its stock (Ctrl+D)">⧉</button>
-          <button class="ghost small" onclick={() => removeShop(s)}>Delete shop</button>
+          <button class="ghost small danger" onclick={() => removeShop(s)} title="Delete this shop (Undo brings it back)">🗑 Delete shop</button>
         </div>
         <table>
+          {#if s.stock.length}
+            <thead><tr><th></th><th>Item</th><th>Price</th><th>In stock</th><th></th></tr></thead>
+          {/if}
           <tbody>
             {#each s.stock as st, i (wareId(st))}
               {@const wid = wareId(st)}
@@ -639,14 +642,12 @@
                     {#each game.items ?? [] as it (it.id)}<option value={it.id} disabled={it.id !== st.item && s.stock.some((x) => x.item === it.id)}>{it.name}</option>{/each}
                   </select>
                 </td>
-                <td><label class="small">Price<input type="number" class="n" value={st.price ?? ''} placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)} oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label></td>
+                <td><input type="number" class="n" value={st.price ?? ''} placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)} oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} aria-label="Price" /></td>
                 <td>
-                  <label class="small">
-                    In stock<input type="number" class="n" min="0" value={st.qty ?? ''} placeholder="∞" oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : +e.currentTarget.value)} />
-                  </label>
+                  <input type="number" class="n" min="0" value={st.qty ?? ''} placeholder="∞" oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : +e.currentTarget.value)} aria-label="In stock" />
                 </td>
                 <td>
-                  <button class="ghost small" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">−</button>
+                  <button class="ghost tiny" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">✕</button>
                 </td>
               </tr>
             {/each}
@@ -658,7 +659,7 @@
             disabled={!unstocked(s)}
             onclick={(e) => stockMenu(e, s)}
             aria-haspopup="menu"
-            title={unstocked(s) ? 'Pick an item to sell here (or drag an item’s 📦 icon onto the shop)' : game.items?.length ? 'It sells every item already' : 'Add items first'}>＋ Something to sell ▾</button
+            title={unstocked(s) ? 'Pick an item to sell here (or drag an item’s 📦 icon onto the shop)' : game.items?.length ? 'It sells every item already' : 'Add items first'}>＋ Add item to sell ▾</button
           >
         </div>
       </div>
@@ -667,41 +668,52 @@
 </section>
 
 <style>
-  .warn {
-    color: var(--warn);
-  }
-  h2 {
-    margin: 0 0 6px;
-  }
   section {
-    margin: 18px 0;
+    max-width: 1200px;
+    margin: 0 0 24px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
   h3 {
     margin: 0;
+    font-size: 16px;
   }
   .presets,
   .row {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
   }
   .field-row,
   .item-row {
     display: flex;
-    gap: 6px;
-    align-items: center;
+    gap: 8px;
+    align-items: flex-end;
     flex-wrap: wrap;
-    padding: 4px 0;
+    padding: 4px 0 8px;
     border-bottom: 1px solid var(--border);
   }
-  /* Name, type, what the type needs, audience, color, ✕: the same columns on every row. */
+  /* Ticks, grips and small buttons sit on the fields' line (under the labels above them). */
+  .field-row :is(.check, .drag-grip, button.small, button.tiny),
+  .item-row :is(.check, .drag-grip, button.small, button.tiny),
+  .shop .row :is(.drag-grip, button.small) {
+    margin-bottom: 5px;
+  }
+  /* Name, type, audience, color, ⧉ 🗑 on the first line, in the same columns on every row; what the type needs (its
+     fields labelled above) on a line of its own under them. */
   .field-row {
     display: grid;
-    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto auto;
+    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto;
+    row-gap: 8px;
+  }
+  .field-row > .by-type {
+    grid-row: 2;
+    grid-column: 2 / -1;
+  }
+  .field-row > select:last-of-type {
+    justify-self: start;
   }
   .list {
     display: flex;
@@ -710,8 +722,8 @@
   }
   .by-type {
     display: flex;
-    gap: 6px;
-    align-items: center;
+    gap: 8px;
+    align-items: flex-end;
     flex-wrap: wrap;
   }
   .name {
@@ -725,9 +737,6 @@
   }
   .pool {
     width: 110px;
-  }
-  .small {
-    font-size: 12px;
   }
   .icon {
     width: 36px;
@@ -763,6 +772,13 @@
   .shop.drop-on {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .shop th {
+    padding: 0 4px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
   }
   .starts table td,
   .starts table th {

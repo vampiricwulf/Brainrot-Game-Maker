@@ -51,11 +51,11 @@ try {
   await page.getByRole('button', { name: '▲ Move up' }).click();
   await page.getByRole('button', { name: '▲ Move up' }).click();
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'rounds can be moved (a Final in the middle of the game)');
-  assert((await page.locator('.ra .mode').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'), 'the round bar shows the mode and position');
+  assert((await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'), 'the round bar shows the mode and position');
   await page.locator('.se .canvas .hit').first().click();
   await page.locator('.se .insp textarea').fill('Best chip flavor?');
   // Duplicate and delete.
-  await page.getByRole('button', { name: '⧉ Duplicate' }).click();
+  await page.getByRole('button', { name: '⧉ Duplicate round' }).click();
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Midgame Wager (copy)|Double Jeopardy!|Final Jeopardy!', 'Duplicate puts a copy right after the round');
   await page.getByRole('button', { name: 'Delete round' }).click();
   assert((await roundNames()).length === 4, 'Delete round removes it (after asking)');
@@ -117,7 +117,7 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
   const picker = page.getByRole('combobox', { name: 'Go to round' });
   // With clues left on this board it asks first, like Next round; Cancel puts the list back on this round.
-  await picker.selectOption({ label: '⭐ Final Jeopardy!' });
+  await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   const goTo = page.getByText(/clues? left · go to Final Jeopardy!\?/);
   await goTo.waitFor();
   await page.waitForTimeout(450);
@@ -127,7 +127,7 @@ try {
     (await goTo.count()) === 0 && (await picker.locator('option:checked').innerText()).includes('Double Jeopardy!'),
     'Cancel on “N clues left · go to …?” stays on this round, and the round list shows it again',
   );
-  await picker.selectOption({ label: '⭐ Final Jeopardy!' });
+  await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);
   await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
   await page.getByRole('button', { name: 'Start the round ▶' }).click();

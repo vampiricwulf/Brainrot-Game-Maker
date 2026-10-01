@@ -39,7 +39,7 @@ try {
   // Copy A: a game with a picture and a 3 MB sound.
   const a = await open('A');
   await a.getByRole('button', { name: /Media \(/ }).click();
-  const [chooser] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Add files…' }).click()]);
+  const [chooser] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([
     { name: 'pic.png', mimeType: 'image/png', buffer: PNG },
     { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(3 * 1024 * 1024, 1) },
@@ -66,7 +66,7 @@ try {
   assert(true, 'a paused tab says when the other tab has closed');
   await a.getByRole('button', { name: 'Edit here', exact: true }).click();
   await a.getByRole('button', { name: 'Open…' }).click();
-  await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /Untitled Game/ }).click();
+  await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /^Untitled Game/ }).click();
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert(true, 'Open… → Recent games reopens the game the other tab replaced');
   await a.locator('input.title').fill('Two tabs');
@@ -154,7 +154,7 @@ try {
   await a.getByRole('button', { name: 'Media (0)' }).waitFor();
   await a.getByRole('button', { name: 'Open…' }).click();
   const recentList = a.getByRole('dialog', { name: 'Open a game' });
-  const versions = recentList.getByRole('button', { name: /Two tabs/ });
+  const versions = recentList.locator('button.pick', { hasText: 'Two tabs' });
   await versions.first().waitFor();
   const labels = await versions.allInnerTexts();
   assert(labels.length >= 2 && labels.slice(1).every((t) => t.includes('earlier version')), `both versions are kept, the older ones marked (${labels.length})`);

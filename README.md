@@ -35,7 +35,7 @@ Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
    clue.
 3. Press **▶ Play**, then add the players (and set the game rules) on the pre-game screen.
 
-New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **Import clues…**
+New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **📥 Import clues…**
 on a board takes a sheet pasted from Google Sheets or Excel, and **Find** (`Ctrl+F`) searches the whole game.
 
 ![The editor](docs/screenshots/editor.png)
@@ -50,9 +50,9 @@ those from another copy of the same game but it differs, the other version comes
 | Mode | What it is |
 |---|---|
 | 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, and images on categories and tiles. |
-| ⭐ **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
+| 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
-| 🎲 **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
+| ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
 
 Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube, arranged freely.
 
@@ -78,7 +78,7 @@ Center / Right / Top / Middle / Bottom line them up with each other, and **Space
 **Layers** list shows whenever the slide has an item, so every item can be reached from the keyboard. Text outlines,
 shadows and glows get room inside their box, so they're never cut off at its edge, and **Typewriter (letter by
 letter)** types the text out (all at once with reduced motion). The same file added twice is stored once (a toast says
-it's already in 🖼 Media). Replacing a file in 🖼 Media redoes the 🎨 edits of pictures made from it on the new file.
+it's already in 🖼 Media). Replacing a file in 🖼 Media redoes the ✎ edits of pictures made from it on the new file.
 
 **RPG map editor:** drag a screen to move it or swap it with another (dropping past the edge grows the map, dropping
 on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /
@@ -190,7 +190,7 @@ scores-only window for a lower-third capture. The "Starting soon" and cover card
 end in "…" instead of being cut off, a board's values share one size that fits its columns, category names never get
 smaller than about 30 stage pixels (very long words are hyphenated; the editor's checklist says when a name is too long
 for the board), the countdown and "🔔 Ann is answering" move the question down instead of covering its first line,
-and score pops stay on screen. New players get colors that stay apart for colour-blind viewers (the first 8); a game
+and score pops stay on screen. New players get colors that stay apart for color-blind viewers (the first 8); a game
 keeps the colors it was saved with. The winner's confetti is a short burst beside the standings (none with Reduce
 motion on stream).
 
@@ -284,16 +284,16 @@ The main ones (press `?` during the game for all of them):
   editor opens it, and the desktop app opens a game file you open it with.
   - **Recent games** keeps the last 8 games New or Open… replaced (about 1 GB of files at most), with their undo
     history. When one has to go to make room, the app says which. Two versions of one game are both kept. A game with
-    only a title isn't kept. **Forget** asks first: it deletes the game and its files.
+    only a title isn't kept. **🗑 Delete** asks first: it deletes the kept copy and its files.
   - Opening an older copy of a game never changes the pictures and sounds of the game you have open: a file that
     differs is opened as a file of its own.
-- New and Open… ask **Save first / Discard / Cancel** when the game has unsaved changes (Open… checks the file is a
+- New and Open… ask **Cancel / Discard / Save first** when the game has unsaved changes (Open… checks the file is a
   game first). Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
   editing tab closes.
 - **⬇ Export HTML** makes a single file to host the game from, with everything inside. It shows the answers, so keep
   it to yourself. A game over about 375 MB is too big for one HTML file (browsers can't read it back): save a
   `.brainrot` instead.
-- Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **⬆ Add files…**.
+- Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**.
 - **⚙ Settings** (in the header's ⋯ menu, with Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).

@@ -4,6 +4,7 @@
   pass through them to the tiles. Ctrl+C / Ctrl+X / Ctrl+V share the slide editor's clipboard.
 -->
 <script lang="ts">
+  import Tips from './Tips.svelte';
   import { modal } from '../lib/modal';
   import { onDestroy, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
@@ -175,7 +176,7 @@
           await add(ref.id, at && { x: at.x + i * 40, y: at.y + i * 40 });
           i++;
         } catch (e) {
-          toast((e as Error).message, 5000);
+          toast((e as Error).message);
         }
       }
     });
@@ -275,7 +276,7 @@
     const all = clipboard.elements;
     const pics = all.filter((x): x is ImageEl => x.kind === 'image');
     const skipped = all.length - pics.length;
-    if (skipped) toast(`Skipped ${skipped} item${skipped === 1 ? '' : 's'}: board images are pictures only`, 4000);
+    if (skipped) toast(`Skipped ${skipped} item${skipped === 1 ? '' : 's'}: board images are pictures only`);
     if (!pics.length) return;
     const copies: BoardDecor[] = pics.map((x) => ({ ...clone(x), id: newId(), clickThrough: true }));
     adoptMedia(game, elementMediaIds(copies));
@@ -398,23 +399,23 @@
   />
 {/if}
 
-<div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Board images" use:modal>
+<div class="modal-backdrop decor-backdrop" role="presentation">
+  <div class="modal decor" role="dialog" aria-modal="true" aria-label="Board images" use:modal>
     <header>
       <div>
-        <div class="muted small">{round.name}</div>
-        <h3 class="modal-title">🖼 Board images</h3>
+        <div class="hint">{round.name}</div>
+        <h2 class="modal-title">🖼 Board images</h2>
       </div>
       <div class="pop">
-        <button class="primary" onclick={() => (picking = 'add')}>＋ Add image</button>
+        <button onclick={() => (picking = 'add')}>＋ Add image</button>
         {#if picking === 'add'}<MediaPicker kind="image" onpick={picked} onclose={() => (picking = null)} />{/if}
       </div>
       <button onclick={copyToRounds} disabled={!decor.length || !others.length} title="Put a copy of the selected images (or all of them) on every other round's board">
         Copy {selected.length ? 'selected' : 'all'} to other rounds
       </button>
       <span class="spacer"></span>
-      <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} aria-label="Undo (Ctrl+Z)" title={history.undoTitle}>↶</button>
-      <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} aria-label="Redo (Ctrl+Y)" title={history.redoTitle}>↷</button>
+      <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} aria-label="Undo (Ctrl+Z)" title={history.undoTitle}>↶ Undo</button>
+      <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} aria-label="Redo (Ctrl+Y)" title={history.redoTitle}>↷ Redo</button>
       <button class="primary" onclick={onclose}>Done</button>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
@@ -457,7 +458,7 @@
                   const fn = notice?.undo;
                   notice = null;
                   fn?.();
-                }}>Undo</button>
+                }}>↶ Undo</button>
             {/if}
           </div>
         {/if}
@@ -517,16 +518,17 @@
         {:else if selected.length > 1}
           <p class="muted">{selected.length} images selected.</p>
           <div class="row">
-            <button class="small" onclick={duplicate}>Duplicate</button>
-            <button class="small bad" onclick={() => remove()}>Delete</button>
+            <button class="small" onclick={duplicate} title="Ctrl+D">⧉ Duplicate</button>
+            <button class="ghost small danger" onclick={() => remove()} title="Delete them (Del)">🗑 Delete</button>
           </div>
         {:else}
-          <p class="muted small">
-            Add logos, stickers or GIFs anywhere on this round's board. Drop image files onto the preview or paste them. Drag to
-            move, pull the handles to resize, and use the round handle to rotate. Double-click an image to edit it. Right-click,
-            Alt+click or the Layers list picks an image hidden under another. Ctrl+C / Ctrl+X / Ctrl+V copy pictures between
-            boards and slides.
-          </p>
+          <Tips id="board-images" hint="Add logos, stickers or GIFs anywhere on this round's board: drop image files onto the preview, or paste them.">
+            <ul>
+              <li>Drag to move, pull the handles to resize, and use the round handle to rotate. Double-click an image to edit it.</li>
+              <li>Right-click, Alt+click or the Layers list picks an image hidden under another.</li>
+              <li>Ctrl+C / Ctrl+X / Ctrl+V copy pictures between boards and slides.</li>
+            </ul>
+          </Tips>
         {/if}
       </aside>
     </div>
@@ -534,37 +536,18 @@
 </div>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr);
-    place-items: center;
-    z-index: 100;
-    padding: 12px;
+  .decor-backdrop {
+    padding-inline: 12px;
+    padding-bottom: 12px;
   }
-  .modal {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+  .decor {
     width: min(1400px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
   }
   header {
     display: flex;
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-  }
-  h3 {
-    margin: 0;
   }
   h4 {
     margin: 0 0 6px;
@@ -581,6 +564,8 @@
   }
   .canvas {
     position: relative;
+    /* (Its layers and note stack inside it.) */
+    isolation: isolate;
     aspect-ratio: 16 / 9;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -614,22 +599,21 @@
     left: 50%;
     bottom: 10px;
     translate: -50% 0;
+    /* The same pill as the editor's "Deleted … · Undo" note (app.css .note-pill). */
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    padding: 6px 8px 6px 14px;
-    border-radius: 8px;
+    padding: 4px 6px 4px 16px;
+    border-radius: 20px;
     background: var(--panel-2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--control-border);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    font-size: 13px;
     white-space: nowrap;
     z-index: 2000;
   }
   .pop {
     position: relative;
-  }
-  .small {
-    font-size: 12px;
   }
   .warn {
     margin: 6px 0 0;

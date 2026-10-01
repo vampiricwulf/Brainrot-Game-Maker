@@ -79,11 +79,11 @@
         ? [
             ...items.map((it) => ({ label: it.name, onclick: () => add(itemObject(it.id)) })),
             { sep: true as const },
-            { label: '＋ New item…', hint: 'Into the catalog (📊 Stats & Items) and onto this screen', onclick: () => newItemHere(add) },
+            { label: '＋ Add new item…', hint: 'Into the catalog (📊 Stats & Items) and onto this screen', onclick: () => newItemHere(add) },
           ]
         : [
             { heading: 'No items yet' },
-            { label: '＋ New item here', hint: 'Into the catalog (📊 Stats & Items) and onto this screen', onclick: () => newItemHere(add) },
+            { label: '＋ Add new item here', hint: 'Into the catalog (📊 Stats & Items) and onto this screen', onclick: () => newItemHere(add) },
             ...(app.editGame ? [] : [{ label: '📊 Go to Stats & Items', onclick: () => void goTo({ tab: 'stats' }) }]),
           ],
     );

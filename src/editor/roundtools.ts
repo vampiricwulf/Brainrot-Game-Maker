@@ -28,14 +28,14 @@ export function addTemplate(game: Game, t: Template): number {
 
 export function addSample(game: Game): number {
   const at = step('Added the sample game', () => addSampleGame(game));
-  toast('Added a sample game: press ▶ Play to try it, or change anything', 5000);
+  toast('Added a sample game: press ▶ Play to try it, or change anything');
   return at;
 }
 
 /** Copy round (from a round tab's menu). */
 export function copyRoundOf(game: Game, i: number): void {
   copyRound(game, game.rounds[i]);
-  toast(`Copied “${roundName(game.rounds[i], i)}”: paste it from ＋ Add round or a round’s menu (in this game or another)`, 4000);
+  toast(`Copied “${roundName(game.rounds[i], i)}”: paste it from ＋ Add round or a round’s menu (in this game or another)`);
 }
 
 /** Paste round: after round `after`, or where a new round goes. Returns its place, or null with nothing copied. */
@@ -48,7 +48,7 @@ export function pasteRound(game: Game, after?: number): number | null {
     const r = addBundledRound(game, b, at, copied);
     return game.rounds.indexOf(r);
   });
-  if (copied.length) toast(copiesMessage(copied, 'the copied round'), 6000);
+  if (copied.length) toast(copiesMessage(copied, 'the copied round'));
   return at;
 }
 

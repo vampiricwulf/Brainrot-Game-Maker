@@ -187,14 +187,14 @@
 
 <svelte:window onkeydowncapture={key} />
 
-<div class="backdrop-modal" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label={title} use:modal>
+<div class="modal-backdrop draw-backdrop" role="presentation">
+  <div class="modal draw" role="dialog" aria-modal="true" aria-label={title} use:modal>
     <div class="row head">
-      <b class="modal-title">🖌 {title}</b>
+      <h2 class="modal-title">🖌 {title}</h2>
       {#if discarding}
-        <InlineAsk text="Throw away this drawing?" ok="Throw away" cancel="Keep drawing" danger onok={oncancel} oncancel={() => (discarding = false)} />
+        <InlineAsk text="Discard this drawing?" ok="Discard" cancel="Cancel" danger onok={oncancel} oncancel={() => (discarding = false)} />
       {:else}
-        <span class="muted small">Draw the whole thing, as many strokes as it takes, then Insert.</span>
+        <span class="hint">Draw the whole thing, as many strokes as it takes, then Insert.</span>
       {/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
@@ -213,8 +213,8 @@
       <span class="sep"></span>
       <label class="small">Size <input type="range" min="2" max="80" bind:value={size} aria-label="Brush size" /> {size}</label>
       <span class="sep"></span>
-      <button onclick={undo} disabled={!strokes.length} title="Ctrl+Z">↶ Undo</button>
-      <button onclick={redo} disabled={!redoList.length} title="Ctrl+Shift+Z">↷ Redo</button>
+      <button class="ghost" onclick={undo} disabled={!strokes.length} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
+      <button class="ghost" onclick={redo} disabled={!redoList.length} aria-label="Redo (Ctrl+Shift+Z)" title="Redo (Ctrl+Shift+Z)">↷</button>
       <button class="ghost" onclick={() => ((redoList = []), (strokes = []))} disabled={!strokes.length}>Clear</button>
     </div>
     <div class="pad-wrap">
@@ -237,38 +237,18 @@
 </div>
 
 <style>
-  .backdrop-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 160;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    /* A viewport-sized track so the modal's max-height: 100% resolves against the window. */
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr);
-    place-items: center;
-    padding: 16px;
+  /* Over a slide's window it was opened from. */
+  .draw-backdrop {
+    z-index: calc(var(--z-modal) + 10);
   }
-  .modal {
+  .draw {
     width: min(1400px, 100%);
-    max-height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  .row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-wrap: wrap;
+    overflow: hidden;
   }
   .tools .on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.25);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
+    color: #fff;
   }
   .swatch {
     width: 22px;
@@ -317,8 +297,5 @@
   }
   canvas.erasing {
     cursor: cell;
-  }
-  .small {
-    font-size: 12px;
   }
 </style>

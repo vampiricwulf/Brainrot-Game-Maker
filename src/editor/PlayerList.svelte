@@ -157,6 +157,21 @@
 </script>
 
 <div class="players" bind:this={list}>
+  {#if showScores && players.length}
+    <!-- Column headings: a row like the others with only its headings showing, so they line up (and wrap) the same. -->
+    <div class="cols" aria-hidden="true" inert>
+      <span class="grip">⋮⋮</span>
+      <span class="num"></span>
+      <input type="color" tabindex="-1" />
+      {#if avatars}<span class="av-btn"><Avatar player={players[0]} size={30} /></span>{/if}
+      <span class="name"></span>
+      <span class="chip"></span>
+      <span class="score">Start score</span>
+      <span class="btn">▲</span>
+      <span class="btn">▼</span>
+      <span class="btn">🗑</span>
+    </div>
+  {/if}
   <div class="rows" role="list" aria-label="Players">
   {#each players as p, i (p.id)}
     {@const line = rows.lineAt(p.id)}
@@ -202,22 +217,23 @@
           >
             <Avatar player={p} size={30} />
           </button>
+          <!-- (On the picture's corner: the row keeps its shape with or without one.) -->
+          {#if p.avatar}<button class="tiny unpic" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">✕</button>{/if}
           {#if picking === p.id}
             <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
           {/if}
         </div>
-        <!-- (Its room is kept when there's no picture, so every row lines up and wraps alike.) -->
-        {#if p.avatar}<button class="ghost small unpic" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">−🖼</button>{:else}<span class="unpic" aria-hidden="true"></span>{/if}
       {/if}
       <input class="name" dir="auto" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
       <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
-        <label class="field score">Start score<input type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" /></label>
+        <input class="score" type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" />
       {/if}
-      <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
-      <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
+      <button class="ghost tiny" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
+      <button class="ghost tiny" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
       <button
-        class="ghost small del"
+        class="ghost tiny del"
+        class:danger={!inGame}
         onclick={() => remove(p)}
         disabled={lastOne}
         aria-label="{removeWord} {p.name}"
@@ -261,7 +277,8 @@
     flex-direction: column;
     gap: 8px;
   }
-  .player {
+  .player,
+  .cols {
     position: relative;
     display: flex;
     gap: 8px;
@@ -321,16 +338,58 @@
     white-space: nowrap;
   }
   .unpic {
-    flex: none;
-    min-width: 36px;
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    min-width: 0;
+    padding: 0 4px;
+    border-radius: 999px;
+    line-height: 1.3;
   }
   .score {
-    flex-direction: row;
-    align-items: center;
-  }
-  .score input {
     /* Room for 7 digits and the spinner (12400 reads whole). */
     width: calc(8ch + 24px);
+    flex: none;
+  }
+  /* The headings row: only its headings show (the rest keeps their room). */
+  .cols {
+    margin-bottom: -4px;
+  }
+  .cols > :not(.score) {
+    visibility: hidden;
+  }
+  .cols input {
+    height: 0;
+    padding-block: 0;
+    border-block-width: 0;
+  }
+  .cols .name {
+    border: 1px solid transparent;
+    border-left-width: 6px;
+  }
+  .cols .av-btn,
+  .cols .chip,
+  .cols .btn {
+    height: 0;
+    padding-block: 0;
+    overflow: hidden;
+  }
+  /* As wide as the row's ▲ ▼ 🗑 (button.tiny). */
+  .cols .btn {
+    display: inline-block;
+    min-width: 22px;
+    padding-inline: 5px;
+    border: 1px solid transparent;
+    font-size: 12px;
+  }
+  .cols .av-btn {
+    display: inline-block;
+    border: 1px solid transparent;
+  }
+  .cols .score {
+    color: var(--muted);
+    font-size: 12px;
+    padding-left: 2px;
   }
   .pop {
     position: relative;

@@ -18,7 +18,7 @@
     <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
   </button>
   <button class="mode" class:on={dual === true} aria-pressed={dual === null ? undefined : dual} onclick={onaudience}>
-    <b>📺 Separate audience window <span class="tag">Recommended</span></b>
+    <b>📺 Separate audience window</b>
     <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
   </button>
 </div>
@@ -27,7 +27,7 @@
   .modes {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
   }
   .mode {
     display: flex;
@@ -40,14 +40,6 @@
   .mode.on {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
-  }
-  .tag {
-    margin-left: 4px;
-    padding: 1px 6px;
-    border-radius: 6px;
-    background: var(--panel-2);
-    font-size: 12px;
-    font-weight: 600;
   }
   @media (max-width: 640px) {
     .modes {

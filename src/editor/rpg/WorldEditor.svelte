@@ -5,6 +5,7 @@
   another map's tab, or past the map's edge (it grows); the grid keys like a spreadsheet.
 -->
 <script lang="ts">
+  import Tips from '../Tips.svelte';
   import { tick, untrack } from 'svelte';
   import { showMenu, type MenuEntry } from '../../lib/menustate.svelte';
   import { take } from '../../lib/nav.svelte';
@@ -128,7 +129,7 @@
       list.splice(to, 0, m);
       world.maps = list;
     });
-    if (world.maps[0] !== main) toast(`${world.maps[0].name} is now the main map (the party starts on its first screen unless a start is set)`, 5000);
+    if (world.maps[0] !== main) toast(`${world.maps[0].name} is now the main map (the party starts on its first screen unless a start is set)`);
   }
 
   /** The map view (tabs, grid and the selected screen's panel): its keys work while the focus is in it. */
@@ -152,7 +153,7 @@
       { label: '✎ Rename', onclick: () => (renaming = m.id), keys: 'F2 or double-click' },
       { label: '⧉ Duplicate map', onclick: () => copyMap(m), keys: 'Ctrl+D' },
       { label: '◀ Move earlier', onclick: () => moveMap(i, i - 1), disabled: i === 0, keys: 'Alt+←' },
-      { label: 'Move later ▶', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1, keys: 'Alt+→' },
+      { label: '▶ Move later', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1, keys: 'Alt+→' },
       { sep: true },
       { label: '🗑 Delete map', danger: true, onclick: () => removeMap(m), disabled: world.maps.length <= 1, keys: 'Delete' },
     ]);
@@ -389,7 +390,7 @@
             { label: '⧉ Duplicate', onclick: () => duplicateScreens([s]), keys: 'Ctrl+D' },
             { label: '📋 Copy screen', onclick: () => copyToClipboard(s), keys: 'Ctrl+C' },
             ...(onstart ? [{ label: '🏁 Make it the start', onclick: () => onstart({ map: map.id, screen: s.id }), disabled: isStart(s) }] : []),
-            { label: '＋ Look (a copy)', onclick: () => addLook(s) },
+            { label: '＋ Add look (a copy)', onclick: () => addLook(s) },
           ]),
       ...(others.length ? [{ sep: true } as const] : []),
       ...others.map((m) => ({ label: `→ Move to ${m.name}`, onclick: () => moveAcross(several ?? [s], map, m) })),
@@ -477,7 +478,7 @@
       { label: '⧉ Duplicate this look', onclick: () => step(`Duplicated look “${v.name}” of ${s.name}`, () => duplicateLook(s, v)) },
       { label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v)), hint: 'Its own picture takes its place' },
       { label: '◀ Move earlier', onclick: () => step(`Moved look “${v.name}” earlier`, () => moveLook(s, i, i - 1)), disabled: i === 0 },
-      { label: 'Move later ▶', onclick: () => step(`Moved look “${v.name}” later`, () => moveLook(s, i, i + 1)), disabled: i === n - 1 },
+      { label: '▶ Move later', onclick: () => step(`Moved look “${v.name}” later`, () => moveLook(s, i, i + 1)), disabled: i === n - 1 },
       { sep: true },
       { label: '🗑 Delete', danger: true, onclick: () => removeLook(s, v) },
     ]);
@@ -562,7 +563,7 @@
           if (ref.kind === 'image') pics.push({ id: ref.id, name: file.name.replace(/\.[^.]+$/, '') || 'Screen' });
           else toast(`"${ref.name}" isn't an image`);
         } catch (err) {
-          toast((err as Error).message, 5000);
+          toast((err as Error).message);
         }
       }
       const there = screenAt(m, c, r);
@@ -914,7 +915,7 @@
         >
           <option value="">Own look</option>
           {#each sel.variants ?? [] as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
-          <option value="+">＋ New look (a copy of this one)</option>
+          <option value="+">＋ Add look (a copy)</option>
         </select>
       </label>
       <span class="spacer"></span>
@@ -932,7 +933,7 @@
   </div>
 {:else}
   <div class="we" bind:this={mapView}>
-    <!-- (＋ Map is beside the tab list, not in it: only tabs belong there.) -->
+    <!-- (＋ Add map is beside the tab list, not in it: only tabs belong there.) -->
     <div class="tabs">
       <div class="tablist" role="tablist" aria-label="Maps">
       {#each world.maps as m, i (m.id)}
@@ -978,7 +979,7 @@
         {/if}
       {/each}
       </div>
-      <button class="ghost" onclick={addMap} title="A dungeon, a shop, an interior, the Shadow Realm… joined to the rest by doorways">＋ Map</button>
+      <button class="ghost" onclick={addMap} title="A dungeon, a shop, an interior, the Shadow Realm… joined to the rest by doorways">＋ Add map</button>
     </div>
 
     {#if map}
@@ -1028,14 +1029,14 @@
           </div>
           {#if map.music}<button class="ghost small" onclick={() => (map.music = undefined)}>No music</button>{/if}
           <span class="spacer"></span>
-          {#if world.maps.length > 1}<button class="ghost small" onclick={() => removeMap(map)}>Delete map</button>{/if}
+          {#if world.maps.length > 1}<button class="ghost small danger" onclick={() => removeMap(map)} title="Delete this map and its screens (Undo brings them back)">🗑 Delete map</button>{/if}
         </div>
       </details>
 
       {#if picking && pickFrom}
         <div class="picking-note" role="status">
           <span>🎯 Click the screen {DIR_NAME[picking.dir].toLowerCase()} of <b>{pickFrom.name}</b> leads to (any map) · Esc cancels</span>
-          <button class="small" onclick={() => (picking = null)}>Cancel</button>
+          <button class="ghost small" onclick={() => (picking = null)}>Cancel</button>
         </div>
       {/if}
 
@@ -1165,9 +1166,9 @@
             <h4>Screen</h4>
             <label class="field">Name<input bind:value={sel.name} bind:this={nameField} /></label>
             <div class="row">
-              <button class="primary" onclick={() => ((lookId = null), (editing = true))} title="Enter">✎ Edit screen</button>
+              <button class="small primary" onclick={() => ((lookId = null), (editing = true))} title="Enter">✎ Edit screen</button>
               <button class="small" onclick={() => duplicateScreens([sel])} title="Ctrl+D">⧉ Duplicate</button>
-              <button class="ghost small" onclick={() => removeScreens([sel])} title="Delete">Delete</button>
+              <button class="ghost small danger" onclick={() => removeScreens([sel])} title="Delete key; Undo brings it back">🗑 Delete</button>
             </div>
             {#if onstart}
               <div class="row">
@@ -1205,7 +1206,7 @@
                   <button class="ghost small" onclick={(e) => lookMenu(e, sel, v, i)} aria-label="More for look {v.name}" aria-haspopup="menu" title="Duplicate, make it the main look, move, delete">⋯</button>
                 </span>
               {/each}
-              <button class="small" onclick={() => addLook(sel)}>＋ Look (a copy)</button>
+              <button class="small" onclick={() => addLook(sel)}>＋ Add look (a copy)</button>
             </div>
             <div class="row nudge">
               <span class="muted small" title="Alt+arrows, or drag the screen">Move:</span>
@@ -1260,7 +1261,7 @@
               {#if sel.music}<button class="ghost small" onclick={() => (sel.music = undefined)}>No music</button>{/if}
             </div>
             <label class="field">
-              Host notes
+              Host notes (never shown on stream)
               <textarea rows="3" value={sel.hostNotes ?? ''} oninput={(e) => (sel.hostNotes = e.currentTarget.value || undefined)}></textarea>
             </label>
           {:else if picked.length > 1}
@@ -1268,20 +1269,23 @@
             <p class="muted small">Drag one of them to move them all (Alt+arrows too). Shift/Ctrl+click adds or takes one away; Alt+drag draws a box.</p>
             <div class="row">
               <button class="small" onclick={() => duplicateScreens(picked)} title="Ctrl+D">⧉ Duplicate</button>
-              <button class="ghost small" onclick={() => removeScreens(picked)} title="Delete">Delete</button>
+              <button class="ghost small danger" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete</button>
             </div>
           {:else}
-            <p class="muted">
-              Click an empty cell (＋) to add a screen, click a screen for its settings, double-click it to edit its picture and
-              objects. Drag a screen to move it (onto another to swap them, onto a map's tab to move it there). Screens next to each
-              other are connected: click ⛔ between two to block the way, or send sides elsewhere in <b>Ways out</b>. Add dungeons,
-              shops and interiors as more maps (＋ Map) and join them with doorways (<b>🚪 Doorway</b> on a screen).
-            </p>
-            <p class="muted small">
-              Drop pictures on the map to make screens. Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the
-              screen, Delete deletes it, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste it, F2 renames, Esc deselects.
-              Shift/Ctrl+click or draw a box to pick several (from an empty cell, or Alt+drag from anywhere).
-            </p>
+            <Tips id="rpg-map" hint="Click an empty cell (＋) to add a screen, click a screen for its settings, double-click it to edit its picture and objects.">
+              <ul>
+                <li>Drag a screen to move it (onto another to swap them, onto a map's tab to move it there). Drop pictures on the map to make screens.</li>
+                <li>
+                  Screens next to each other are connected: click ⛔ between two to block the way, or send sides elsewhere in <b>Ways out</b>.
+                  Add dungeons, shops and interiors as more maps (＋ Add map) and join them with doorways (<b>🚪 Doorway</b> on a screen).
+                </li>
+                <li>
+                  Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the screen, Delete deletes it, Ctrl+D
+                  duplicates, Ctrl+C / Ctrl+V copy and paste it, F2 renames, Esc deselects.
+                </li>
+                <li>Shift/Ctrl+click or draw a box to pick several (from an empty cell, or Alt+drag from anywhere).</li>
+              </ul>
+            </Tips>
           {/if}
         </aside>
       </div>
@@ -1601,7 +1605,7 @@
   }
   .drag-ghost {
     position: fixed;
-    z-index: 300;
+    z-index: var(--z-menu);
     width: 160px;
     aspect-ratio: 16 / 9;
     border: 2px solid var(--accent);
@@ -1630,7 +1634,7 @@
   }
   .box {
     position: fixed;
-    z-index: 300;
+    z-index: var(--z-menu);
     border: 1px dashed var(--accent);
     background: rgba(79, 124, 255, 0.12);
     pointer-events: none;
@@ -1656,9 +1660,6 @@
   }
   .on {
     border-color: var(--accent);
-  }
-  .small {
-    font-size: 12px;
   }
   .pop {
     position: relative;

@@ -58,7 +58,7 @@ try {
   assert((await values(statNames))[0] === 'Power', 'Undo brings it back in its place');
 
   // ---------- Items and shops ----------
-  await page.getByRole('button', { name: '＋ Item', exact: true }).click();
+  await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
   const items = page.locator('.item');
   // Its Use buttons: a note and a score change.
@@ -79,7 +79,7 @@ try {
   await use.getByRole('button', { name: '📋 Copy buttons' }).click();
   await page.getByRole('button', { name: 'Duplicate Potion' }).click();
   assert((await values(page.getByLabel('Item name'))).join() === 'Potion,Potion (copy)', 'an item duplicates, right after it');
-  await page.getByRole('button', { name: '＋ Item', exact: true }).click();
+  await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').nth(2).fill('Hat');
   const hatUse = items.nth(2).locator('.actions');
   await hatUse.getByRole('button', { name: '📋 Paste 3 buttons' }).click();
@@ -88,11 +88,11 @@ try {
   assert((await hatUse.locator('.act').count()) === 0, 'the paste is one undo step');
   await page.keyboard.press('Control+y');
 
-  await page.getByRole('button', { name: '＋ Shop' }).click();
+  await page.getByRole('button', { name: '＋ Add shop' }).click();
   const shop = page.locator('.shop').first();
-  await shop.getByRole('button', { name: '＋ Something to sell ▾' }).click();
-  assert((await texts(page.getByRole('menu').getByRole('menuitem'))).join('|') === 'Potion|Potion (copy)|Hat|＋ Everything', 'Something to sell lists the items, and Everything');
-  await page.getByRole('menu').getByRole('menuitem', { name: '＋ Everything' }).click();
+  await shop.getByRole('button', { name: '＋ Add item to sell ▾' }).click();
+  assert((await texts(page.getByRole('menu').getByRole('menuitem'))).join('|') === 'Potion|Potion (copy)|Hat|＋ Add everything', 'Something to sell lists the items, and Everything');
+  await page.getByRole('menu').getByRole('menuitem', { name: '＋ Add everything' }).click();
   const sold = async () => (await shop.getByLabel('Item for sale').evaluateAll((els) => els.map((e) => e.selectedOptions[0].text))).join();
   assert((await sold()) === 'Potion,Potion (copy),Hat', 'Everything stocks all of them');
   await shop.getByLabel('Item for sale').nth(2).focus();
@@ -100,15 +100,15 @@ try {
   assert((await sold()) === 'Potion,Hat,Potion (copy)', 'Alt+↑ moves what a shop sells');
   // (Dropped on a text box: headless Chromium only drops a drag on one.)
   await shop.scrollIntoViewIfNeeded();
-  await dragBy(page, shop.locator('tr .drag-grip').nth(2), shop.locator('tr').first().locator('input').first());
+  await dragBy(page, shop.locator('tbody tr .drag-grip').nth(2), shop.locator('tbody tr').first().locator('input').first());
   assert((await sold()) === 'Potion (copy),Potion,Hat', 'and so does a drag');
   // What a shop sells has a right-click menu: move it, or take it out of the shop.
-  await shop.locator('tr .drag-grip').nth(1).click({ button: 'right' });
+  await shop.locator('tbody tr .drag-grip').nth(1).click({ button: 'right' });
   const wareMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
   assert(wareMenu.join('|').startsWith('▲ Move up') && wareMenu.some((t) => t.startsWith('− Remove from shop')), `right-click a row a shop sells: move it, remove it (${wareMenu.join(', ')})`);
   await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
   assert((await sold()) === 'Potion (copy),Hat,Potion', 'its ▼ Move down moves it');
-  await shop.locator('tr .drag-grip').nth(2).click({ button: 'right' });
+  await shop.locator('tbody tr .drag-grip').nth(2).click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '− Remove from shop' }).click();
   assert((await sold()) === 'Potion (copy),Hat' && (await notice.innerText()).startsWith('Stopped selling “Potion”'), 'its − Remove from shop stops selling it, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
@@ -130,7 +130,7 @@ try {
 
   // ---------- Wheels ----------
   await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
-  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const labels = page.locator('.seg input.label');
   await labels.nth(3).focus();
   await page.keyboard.press('Enter');
@@ -161,7 +161,7 @@ try {
   assert(await labels.nth(3).evaluate((e) => e === document.activeElement), 'clicking a slice on the preview goes to its row');
 
   // The list: right-click, rename in place, move, duplicate, delete.
-  await page.getByRole('button', { name: '＋ New wheel' }).click();
+  await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const wheelList = page.getByRole('list', { name: 'Wheels' }).getByRole('button');
   assert((await texts(wheelList)).join() === 'Wheel 1,Wheel 2', 'two wheels');
   await wheelList.nth(1).click({ button: 'right' });
@@ -182,7 +182,7 @@ try {
   assert((await texts(wheelList)).join() === 'Wheel 1,Dares' && (await notice.innerText()).startsWith('Deleted wheel “Dares (copy)”'), 'Delete removes it, with a note');
 
   // Dice faces from a list.
-  await page.getByRole('button', { name: '＋ New dice' }).click();
+  await page.getByRole('button', { name: '＋ Add dice' }).click();
   await page.getByLabel(/Custom faces/).first().check();
   await page.locator('details.fill summary').click();
   await page.getByLabel('Face labels, one per line').fill('Sip\nDare\n\nSing\nDance');
@@ -303,8 +303,8 @@ try {
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   // Zones reorder (the header's ↶ ↷ undo it).
   await page.getByRole('tab', { name: /Off-board zones/ }).click();
-  await page.getByRole('button', { name: '＋ Zone' }).click();
-  await page.getByRole('button', { name: '＋ Zone' }).click();
+  await page.getByRole('button', { name: '＋ Add zone' }).click();
+  await page.getByRole('button', { name: '＋ Add zone' }).click();
   const zones = page.getByLabel('Zone name');
   await zones.nth(1).focus();
   await page.keyboard.press('Alt+ArrowUp');

@@ -1,7 +1,9 @@
-<!-- Move, duplicate or delete the round being edited (any mode). -->
+<!-- The top of a round's page (any mode): its name, its mode as a chip and where it plays, with move, duplicate and
+     delete on the right. -->
 <script lang="ts">
   import { ROUND_MODES } from '../lib/modes';
-  import type { Round } from '../lib/model';
+  import { roundName, type Round } from '../lib/model';
+  import PageHeader from './PageHeader.svelte';
 
   let {
     round,
@@ -16,32 +18,19 @@
 </script>
 
 <div class="ra">
-  <span class="mode" title={mode.hint}>{mode.icon} {mode.label}</span>
-  <span class="muted small">Round {index + 1} of {count}</span>
-  <span class="spacer"></span>
-  <button class="ghost small" disabled={index === 0} onclick={() => onmove(-1)} title="Play this round earlier (Alt+↑ on its tab)">▲ Move up</button>
-  <button class="ghost small" disabled={index >= count - 1} onclick={() => onmove(1)} title="Play this round later (Alt+↓ on its tab)">▼ Move down</button>
-  <button class="ghost small" onclick={onduplicate} title="A copy of this round, right after it">⧉ Duplicate</button>
-  <button class="ghost small danger" onclick={ondelete} title="Delete this round (Undo brings it back)">🗑 Delete round</button>
+  <PageHeader title={roundName(round, index)} chip="{mode.icon} {mode.label}" chipTitle={mode.hint} sub="Round {index + 1} of {count}">
+    {#snippet actions()}
+      <button class="ghost" disabled={index === 0} onclick={() => onmove(-1)} title="Play this round earlier (Alt+↑ on its tab)">▲ Move up</button>
+      <button class="ghost" disabled={index >= count - 1} onclick={() => onmove(1)} title="Play this round later (Alt+↓ on its tab)">▼ Move down</button>
+      <button class="ghost" onclick={onduplicate} title="A copy of this round, right after it">⧉ Duplicate round</button>
+      <button class="ghost danger" onclick={ondelete} title="Delete this round (Undo brings it back)">🗑 Delete round</button>
+    {/snippet}
+  </PageHeader>
 </div>
 
 <style>
-  .ra {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding-bottom: 8px;
-    margin-bottom: 10px;
+  .ra :global(.page-header) {
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
-  }
-  .mode {
-    font-weight: 600;
-    font-size: 13px;
-  }
-  .small {
-    font-size: 12px;
-  }
-  .danger {
-    color: var(--bad);
   }
 </style>

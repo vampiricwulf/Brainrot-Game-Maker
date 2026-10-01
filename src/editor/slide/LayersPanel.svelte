@@ -336,7 +336,4 @@
   .empty {
     margin: 4px 0;
   }
-  .small {
-    font-size: 12px;
-  }
 </style>

@@ -27,7 +27,7 @@ export type LinkKind = 'image' | 'video' | 'audio';
 
 /** A usable link to a picture, video or sound file, after undoing each host's share-page wrapping. */
 export interface MediaLink {
-  /** The link as pasted (tidied): kept on the media for credit and "Save a copy". */
+  /** The link as pasted (tidied): kept on the media for credit and "Store in game". */
   source: string;
   /** Where to download the file from, in order (e.g. Discord's other CDN host second). */
   fetchUrls: string[];
@@ -257,7 +257,7 @@ export const linkMessages = {
           : status >= 500
             ? `${host} is having trouble right now (${status}). Try again later.`
             : `${host} says the file doesn't exist or isn't shared publicly (${status}).`,
-  saved: (link: MediaLink) => `Saved a copy in your game. It works offline now${link.temporary ? ` (the link itself expires ${link.temporary.when})` : ''}.`,
+  saved: (link: MediaLink) => `Stored in your game: it works offline now${link.temporary ? ` (the link itself expires ${link.temporary.when})` : ''}.`,
   /** Added as a live link: the site didn't allow a copy, or (`notSaved`) the user said no to a big file, or it's over 1 GB. */
   live: (link: MediaLink, desktop: boolean, notSaved?: 'declined' | 'too-big') =>
     (notSaved
