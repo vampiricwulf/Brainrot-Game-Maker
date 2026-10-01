@@ -7,6 +7,7 @@ import { createServer } from 'node:net';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { tap, tieThem } from './helpers.mjs';
 
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
@@ -79,53 +80,6 @@ async function connectHost(code, token) {
     },
     close: () => ws.close(),
   };
-}
-
-/**
- * A phone's WebSocket, passed through Playwright: `delay` ms each way (a slow network), when each buzz reached the
- * server (`sent`), when each armed view reached the page (`armedAt`), and `rewrite` to change a buzz on its way.
- */
-async function tap(page) {
-  const t = { delay: 0, sent: [], armedAt: {}, rewrite: null };
-  await page.routeWebSocket(/\/ws\//, (ws) => {
-    const server = ws.connectToServer();
-    const later = (fn) => (t.delay ? setTimeout(fn, t.delay) : fn());
-    const toServer = (m) =>
-      later(() => {
-        const j = JSON.parse(m);
-        if (j.t === 'buzz') t.sent.push({ ...j, at: Date.now() });
-        server.send(m);
-      });
-    ws.onMessage((m) => {
-      const j = JSON.parse(String(m));
-      if (j.t === 'buzz' && t.rewrite) t.rewrite(j, (k) => toServer(JSON.stringify(k)));
-      else toServer(String(m));
-    });
-    server.onMessage((m) =>
-      later(() => {
-        const j = JSON.parse(String(m));
-        if (j.t === 'view' && j.view.phase === 'armed') t.armedAt[j.view.armId] ??= Date.now();
-        ws.send(m);
-      }),
-    );
-  });
-  return t;
-}
-
-/** Holds the next buzz from each of these phones, then lets them all go with the same reaction time: a tie. */
-function tieThem(taps) {
-  const held = [];
-  for (const t of taps)
-    t.rewrite = (j, send) => {
-      held.push({ t, j, send });
-      if (held.length < taps.length) return;
-      // As long as both really took (a little less than the time since each saw BUZZ!), so the room believes it.
-      const reactMs = Math.min(...held.map((h) => Date.now() - h.t.armedAt[h.j.armId])) - 20;
-      for (const h of held) {
-        h.t.rewrite = null;
-        h.send({ ...h.j, reactMs });
-      }
-    };
 }
 
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
