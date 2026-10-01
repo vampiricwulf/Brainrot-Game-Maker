@@ -251,8 +251,8 @@
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.4);
   }
   .tab.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .roll {

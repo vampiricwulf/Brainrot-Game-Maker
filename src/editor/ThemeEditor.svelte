@@ -7,7 +7,7 @@
   import { newLive } from '../lib/live';
   import { isBoard, newId, newRound } from '../lib/model';
   import { newSession } from '../lib/session';
-  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, type ThemePreset } from '../lib/theme';
+  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, stageText, type ThemePreset } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -48,6 +48,7 @@
     ['boardGap', 'Lines around tiles'],
     ['value', 'Values'],
     ['boardText', 'Category names'],
+    ['stageText', 'Text on slides & scores'],
     ['scoreBarBg', 'Score bar'],
   ];
 </script>
@@ -68,7 +69,7 @@
     <div class="grid">
       {#each COLORS as [key, label]}
         <label class="check">
-          <input type="color" value={t[key] as string} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
+          <input type="color" value={key === 'stageText' ? stageText(t) : (t[key] as string)} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
           {label}
         </label>
       {/each}

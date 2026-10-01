@@ -537,8 +537,8 @@
   }
   .tools button.on,
   button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .body {

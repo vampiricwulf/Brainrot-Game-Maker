@@ -4,11 +4,14 @@
 
   let {
     el,
+    onTile = false,
     edit = false,
     placeholder,
     onfit,
   }: {
     el: TextEl;
+    /** Drawn straight on the tile color: plain white text follows the theme's stage text color (dark on Pastel). */
+    onTile?: boolean;
     /** In the slide editor: show the placeholder when empty and warn when the text doesn't fit. */
     edit?: boolean;
     placeholder?: string;
@@ -18,6 +21,7 @@
   let fitted = $state<FitResult>({ size: 0, overflow: false });
   const ghost = $derived(edit && !el.text && !!placeholder);
 
+  const color = $derived(onTile && !el.background && /^#?(fff|ffffff)$/i.test(el.color.trim()) ? 'var(--stage-text, #fff)' : el.color);
   const justify = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
   const shadow = $derived.by(() => {
     const parts: string[] = [];
@@ -50,7 +54,7 @@
   style:font-style={el.italic ? 'italic' : 'normal'}
   style:text-decoration={el.underline ? 'underline' : 'none'}
   style:text-transform={el.uppercase ? 'uppercase' : 'none'}
-  style:color={el.color}
+  style:color={color}
   style:text-align={el.align}
   style:line-height={el.lineHeight}
   style:letter-spacing="{el.letterSpacing}px"
@@ -89,7 +93,7 @@
     bottom: 0;
     padding: 6px 16px;
     border-radius: 10px;
-    background: var(--bad, #e5484d);
+    background: var(--bad-fill, #d13a40);
     color: #fff;
     font: 700 30px system-ui, sans-serif;
     pointer-events: none;

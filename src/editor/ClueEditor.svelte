@@ -327,8 +327,8 @@
     border-radius: 6px 6px 0 0;
   }
   .tabs button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   @media (max-width: 900px) {

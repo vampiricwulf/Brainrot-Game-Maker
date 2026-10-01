@@ -1311,8 +1311,8 @@
     border-radius: 6px 6px 0 0;
   }
   .tabs button.on {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .tabs button.drop-on {
@@ -1542,7 +1542,7 @@
     white-space: nowrap;
     padding: 1px 6px;
     border-radius: 4px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
     font-size: 12px;
   }

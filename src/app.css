@@ -15,10 +15,16 @@
   --border: #353849;
   --text: #e8e9ef;
   --muted: #9a9db0;
+  /* Text, outlines and lines in a color: 4.5:1 or more on --bg, --panel and --panel-2 (--accent: 4.5 on --panel). */
   --accent: #4f7cff;
   --good: #2fbf71;
-  --bad: #e5484d;
+  --bad: #ff6b6b;
   --warn: #f5a524;
+  /* Filled buttons, active tabs and badges: their text reads at 4.5:1 or more (white, or dark on --good). */
+  --accent-fill: #3d68ea;
+  --good-fill: #2fbf71;
+  --good-ink: #06210f;
+  --bad-fill: #d13a40;
   color-scheme: dark;
 }
 
@@ -45,9 +51,9 @@ button {
 }
 button:hover:not(:disabled) { border-color: var(--accent); }
 button:disabled { opacity: 0.45; cursor: default; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.good { background: var(--good); border-color: var(--good); color: #fff; }
-button.bad { background: var(--bad); border-color: var(--bad); color: #fff; }
+button.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+button.good { background: var(--good-fill); border-color: var(--good-fill); color: var(--good-ink); }
+button.bad { background: var(--bad-fill); border-color: var(--bad-fill); color: #fff; }
 button.ghost { background: transparent; }
 button.small { padding: 2px 8px; font-size: 12px; }
 

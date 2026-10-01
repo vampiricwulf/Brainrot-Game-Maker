@@ -706,8 +706,8 @@
     text-overflow: ellipsis;
   }
   nav > button.active {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
     color: #fff;
   }
   .round-tab.lifted {

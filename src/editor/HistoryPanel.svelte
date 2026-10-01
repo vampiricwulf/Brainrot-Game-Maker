@@ -339,7 +339,7 @@
   .pill {
     padding: 0 8px;
     border-radius: 10px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
     font-size: 11px;
   }

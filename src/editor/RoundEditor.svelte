@@ -732,7 +732,7 @@
     inset: auto 6px 6px auto;
     padding: 1px 6px;
     border-radius: 4px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
     font-size: 12px;
     font-weight: 700;

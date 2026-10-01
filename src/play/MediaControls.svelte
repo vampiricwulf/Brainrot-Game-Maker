@@ -116,7 +116,8 @@
     color: var(--muted);
   }
   .on {
-    background: var(--accent) !important;
+    background: var(--accent-fill) !important;
+    color: #fff;
   }
   .msg,
   .blocked {

@@ -61,7 +61,7 @@
 />
 
 {#if contextMenu.open}
-  <div class="cm" role="menu" tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" oncontextmenu={(e) => e.preventDefault()}>
+  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" oncontextmenu={(e) => e.preventDefault()}>
     {#each contextMenu.open.items as item, i (i)}
       {#if 'sep' in item}
         <div class="sep" role="separator"></div>
@@ -112,10 +112,14 @@
     font-size: 11px;
     color: var(--muted);
   }
-  button:hover:not(:disabled),
+  button:hover:not(:disabled) {
+    background: rgba(79, 124, 255, 0.25);
+  }
+  /* The item in focus: a clear ring, not only a tint (keyboard users follow it). */
   button:focus-visible {
     background: rgba(79, 124, 255, 0.25);
-    outline: none;
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
   .danger {
     color: var(--bad);

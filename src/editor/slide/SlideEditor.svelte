@@ -1195,7 +1195,7 @@
   }
   .ribbon.preview,
   .ribbon.drawing {
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
   }
   .notice {

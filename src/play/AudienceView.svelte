@@ -417,7 +417,7 @@
     font-family: var(--board-font);
     font-size: 70px;
     font-weight: 800;
-    color: #fff;
+    color: var(--stage-text, #fff);
     text-shadow: 5px 5px 0 #000;
   }
   .dd {
@@ -488,9 +488,8 @@
     width: 100%;
     text-align: center;
     font-size: 60px;
-    color: #fff;
+    color: var(--stage-text, #fff);
     font-family: var(--board-font);
-    opacity: 0.85;
   }
   .reveal {
     position: absolute;
