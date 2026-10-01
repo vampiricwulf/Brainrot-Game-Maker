@@ -25,13 +25,36 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   tie: the room picks nobody and the host decides, by hand or by a roll (`rollOrder` in its state sets the tied
   players' order). To open the buzzers again (after a wrong answer too) the host sends a new `armId`; the host's own
   pick (`answering`) always wins over the room's.
-- **Phones only see their own view**: phase, clue text, who is answering, their own name, colour and score. Never
-  answers, notes, media or anyone's token.
+- **Phones only see their own view**: phase, clue text, who is answering, their own name, colour and score, and (added
+  later, all optional) who got the clue right (`done`), a status line from the host (`status`, with other words for
+  some seats: the Daily Double's player), the points symbol and whether the host is connected. Never answers, notes,
+  media or anyone's token.
 - **Seats**: tapping a free name gives the phone a token (kept in its localStorage), so a reload or a dropped
-  connection gets the same seat back. Only the host frees a held seat (kick, or removing the player). A buzz before
-  the buzzers open locks that seat out for the host's `earlyLockMs`.
+  connection gets the same seat back. Only the host frees a held seat (kick, or removing the player), or the phone
+  itself ("Not you? Change player"). A buzz before the buzzers open locks that seat out for the host's `earlyLockMs`.
+- **Kicks and 🔒 locked seats**: a kick revokes the seat's token, and the kicked phone (its socket and the random
+  `device` id its browser sends with a join) can't take that seat again for 2 minutes; it can take another free seat.
+  With `locked` in the host's state, only a seat's token gets a seat and nobody can ask to join.
+- **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`), but phones without a seat that have done nothing for
+  10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
+  with 4001; the phone page tries again after a few seconds, then less often) to let a newcomer in. With nobody idle,
+  a newcomer still gets in (up to 40 sockets) but only to come back to its seat with its token. The host is told
+  (`full`) and its 📱 list says "Room full".
+- **The host comes back**: a buzz the room decided while the host was away is sent again when it reconnects, so the
+  host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped").
+- Phone-typed names lose control and invisible formatting characters (a zero-width joiner inside an emoji stays), and a
+  new player can't ask to join under an existing player's name (`name-taken`). Names are at most 40 characters and end
+  in "…" when cut. A host state too big to take (32 KB) is answered with an `error`, not dropped in silence.
 - Rooms end when the host closes them, 6 hours after the host's last message, or 30 minutes after being made if the
-  host never connects.
+  host never connects. The app keeps a room open while the host is back in the editor from the pre-game screen (phones
+  are told "The host is setting up — hang on"), and gets back into it after a reload there.
+
+## Protocol changes
+
+The protocol is still version 1: everything added since is optional, so a deployed room and an older copy of the app
+(or an older room and a newer app) still work together; the older side ignores or leaves out the new fields. Added:
+`HostState.done/status/currency/locked`, `PhoneView.done/status/currency/hostHere`, `seats.locked/note`, the deny
+reasons `locked`, `blocked`, `name-taken`, `join/new.device`, and the room → host message `full`.
 
 ## Fair timing
 
@@ -69,7 +92,9 @@ So nobody can use up the Free plan's daily quotas for everyone:
   Object (`RoomCounter`): then 503 `{"error":"The buzzer server is busy today — try again tomorrow"}`.
 
 The app shows these words where Start the room failed. Inside a room, phones are limited too (messages a second, join
-attempts a minute: see `room.ts`).
+attempts a minute: see `room.ts`). Looking a room up (`GET /api/rooms/:code`) and phones connecting are limited per
+address too (`LOOKUP_LIMIT` 60 a minute, `PHONE_LIMIT` 120 a minute; 429 "Too many tries — wait a minute"), so a script
+can't try every code to find live games.
 
 ## Local development
 
@@ -84,8 +109,10 @@ Use `http://localhost:8787` as the buzzer server address in the app, or make a r
 network use `npx wrangler dev --ip 0.0.0.0` and your computer's address).
 
 Tests: the room's unit tests run with the root `npm test`; `npm run test:buzzer` at the root runs the end-to-end tests
-(`tests/e2e/buzzerroom.mjs`: wrangler dev, a fake host and four phones in Chromium, one on a slowed-down connection,
-and the limit on new rooms; `tests/e2e/buzzerlive.mjs`: the built app hosting two phones). `npm run check` here
+(`tests/e2e/buzzerroom.mjs`: wrangler dev, a fake host and phones in Chromium, one on a slowed-down connection, the
+host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets, a phone held sideways, and the limit on new
+rooms; `tests/e2e/buzzerlive.mjs`: the built app hosting two phones, through a reload and ◀ Back to editor on the
+pre-game screen, and a dropped host connection). `npm run check` here
 type-checks the Worker and the phone page.
 
 ## Deploying
