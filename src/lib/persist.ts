@@ -33,15 +33,60 @@ export function watchWrites(fn: (err: unknown) => void): void {
   onWrite = fn;
 }
 
-/** A write to storage (the draft, the game in progress, media): a failure is reported, never thrown. */
-export async function write(fn: () => Promise<void>): Promise<void> {
+/**
+ * Writes that failed (storage full…), by what they write: each is tried again once writes work again (the newest write
+ * of a thing replaces an older one that failed). Autosave counts as working again only once they've all gone through.
+ */
+const failed = new Map<string, () => Promise<void>>();
+let retrying: Promise<boolean> | null = null;
+
+/** A write of this failed and waits to be tried again (what's in memory is the only copy). */
+export const unstored = (key: string): boolean => failed.has(key);
+
+/**
+ * A write to storage (the draft, the game in progress, a file), named by what it writes (`key`): a failure is
+ * reported, never thrown, and the write is tried again later. True when it (and every earlier failed write) went
+ * through.
+ */
+export async function write(key: string, fn: () => Promise<void>): Promise<boolean> {
   try {
     await fn();
-    onWrite(null);
+    failed.delete(key);
   } catch (err) {
     console.warn('Autosave failed:', err);
+    failed.set(key, fn);
     onWrite(err);
+    return false;
   }
+  if (failed.size) return retryWrites();
+  onWrite(null);
+  return true;
+}
+
+/** Try the failed writes again, oldest first. True when none are left; watchWrites hears how it went. */
+export function retryWrites(): Promise<boolean> {
+  if (!failed.size) return Promise.resolve(true);
+  retrying ??= (async () => {
+    try {
+      for (const [key, fn] of [...failed]) {
+        // (Replaced by a newer write of the same thing meanwhile.)
+        if (failed.get(key) !== fn) continue;
+        try {
+          await fn();
+          if (failed.get(key) === fn) failed.delete(key);
+        } catch (err) {
+          onWrite(err);
+          return false;
+        }
+      }
+      if (failed.size) return false;
+      onWrite(null);
+      return true;
+    } finally {
+      retrying = null;
+    }
+  })();
+  return retrying;
 }
 
 /** The draft and its undo history: which steps, where it is, and the steps new or changed since the last write. */
@@ -53,12 +98,23 @@ export interface EditorSave {
   dropped: string[];
 }
 
-/** The draft and its history are written together (one transaction), so they always match. */
-export const saveEditor = (s: EditorSave) =>
-  write(async () => {
-    const steps = s.steps.map((e): [string, StoredStep] => [stepKey(e.id), e]);
-    await setMany([[DRAFT_KEY, s.draft], [DRAFT_REV_KEY, s.history.rev], [HISTORY_KEY, s.history], ...steps]);
-    if (s.dropped.length) await delMany(s.dropped.map(stepKey));
+/**
+ * The draft and its history are written together (one transaction), so they always match. `make` is called for each
+ * try, so one tried again after a failure writes the game as it is by then; `failed` hands back the steps it held, to
+ * be written next time.
+ */
+export const saveEditor = (make: () => (EditorSave & { failed?: () => void }) | null) =>
+  write('editor', async () => {
+    const s = make();
+    if (!s) return;
+    try {
+      const steps = s.steps.map((e): [string, StoredStep] => [stepKey(e.id), e]);
+      await setMany([[DRAFT_KEY, s.draft], [DRAFT_REV_KEY, s.history.rev], [HISTORY_KEY, s.history], ...steps]);
+      if (s.dropped.length) await delMany(s.dropped.map(stepKey));
+    } catch (err) {
+      s.failed?.();
+      throw err;
+    }
   });
 
 /**
@@ -85,15 +141,16 @@ export async function dropStraySteps(keep: readonly string[]): Promise<void> {
   });
 }
 
-// Exported player-only files keep their own saved game (keyed per game) so they never touch the builder's.
+// Exported player-only files keep their own saved game (keyed per game, and per export when the file says when it was
+// exported) so they never touch the builder's, and a newer export of the game doesn't pick up an older one's game.
 let playKey = PLAY_KEY;
-export function usePlayerStorage(gameId: string): void {
-  playKey = `${PLAY_KEY}:player:${gameId}`;
+export function usePlayerStorage(gameId: string, exported?: string | null): void {
+  playKey = `${PLAY_KEY}:player:${gameId}${exported ? `:${exported}` : ''}`;
 }
 
 export const loadPlay = () => safe(() => get<SavedPlay>(playKey));
 export const savePlay = (game: Game, session: Session) =>
-  write(() => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
+  write('play', () => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
 export const clearPlay = () => safe(() => del(playKey));
 
 /** Runs `fn` with the latest arguments once calls stop for `ms`. `flush()` runs a pending call now. */
@@ -121,6 +178,27 @@ export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number)
 export async function testStorage(): Promise<boolean> {
   return (await safe(async () => {
     await set('__probe', Date.now());
+    await del('__probe');
     return true;
   })) ?? false;
+}
+
+let keepAsked = false;
+/**
+ * Ask the browser to keep this file's storage even when the disk runs low (otherwise it may clear it): once, when the
+ * game gets its first file or is saved. ℹ About shows the answer.
+ */
+export function askToKeepStorage(): void {
+  if (keepAsked) return;
+  keepAsked = true;
+  void navigator.storage?.persist?.().catch(() => false);
+}
+
+/** Whether the browser keeps this file's storage for good (null: it can't say). */
+export async function storageKept(): Promise<boolean | null> {
+  try {
+    return (await navigator.storage?.persisted?.()) ?? null;
+  } catch {
+    return null;
+  }
 }

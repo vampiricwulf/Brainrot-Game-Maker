@@ -3,7 +3,7 @@
   import { app, toast } from './lib/app.svelte';
   import { savePack } from './lib/pack';
   import type { SavedPlay } from './lib/persist';
-  import { finalName, isFinal, playableClues } from './lib/model';
+  import { finalName, isBoard, isBoardGame, isFinal, isRpg, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
   import { onlineCount } from './lib/usage';
@@ -16,8 +16,31 @@
   }: { onplay: () => void; resumable: SavedPlay | null; onresume: () => void; ondiscard: () => void } = $props();
 
   const game = $derived(app.game);
-  const finals = $derived(game.rounds.filter(isFinal));
-  const clues = $derived(game.rounds.reduce((n, r) => n + playableClues(r).length, 0));
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  /** "2 boards · 50 clues · 1 RPG adventure · Final Jeopardy!" */
+  const summary = $derived.by(() => {
+    const boards = game.rounds.filter(isBoard);
+    const rpgs = game.rounds.filter(isRpg).length;
+    const boardGames = game.rounds.filter(isBoardGame).length;
+    const clues = boards.reduce((n, r) => n + playableClues(r).length, 0);
+    return [
+      boards.length && `${plural(boards.length, 'board')} · ${plural(clues, 'clue')}`,
+      rpgs && plural(rpgs, 'RPG adventure'),
+      boardGames && plural(boardGames, 'board game'),
+      ...game.rounds.filter(isFinal).map((f) => finalName(f)),
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  });
+
+  async function download(): Promise<void> {
+    try {
+      await savePack($state.snapshot(game));
+      toast('Downloaded the .brainrot game pack: open it in the Brainrot Games Maker to edit', 5000);
+    } catch (e) {
+      toast(`Couldn't download the game pack: ${(e as Error).message}`, 6000);
+    }
+  }
   const style = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
   const online = $derived(onlineCount(game));
 </script>
@@ -26,9 +49,7 @@
   <div class="card">
     <div class="logo">BRAINROT GAMES</div>
     <h1>{game.title}</h1>
-    <p class="muted">
-      {game.rounds.length} round{game.rounds.length === 1 ? '' : 's'} · {clues} clues{finals.length ? ` · ${finals.map((f) => finalName(f)).join(', ')}` : ''}
-    </p>
+    <p class="muted">{summary}</p>
     {#if resumable}
       {@const ended = resumable.session.phase === 'end'}
       <div class="resume">
@@ -42,18 +63,18 @@
     {:else}
       <button class="primary big" onclick={onplay}>▶ Play</button>
     {/if}
+    <ul class="notes small">
+      <li class="warn">This is the host's copy: it shows every answer and note. Don't share it with players.</li>
+      <li>On stream, use <b>📺 Separate audience window</b> (picked before the game starts) and capture that window.</li>
+      <li>Press <b>?</b> during the game for the keys.</li>
+    </ul>
     {#if online}
       <p class="muted small">🌐 {online} item{online === 1 ? '' : 's'} in this game play{online === 1 ? 's' : ''} from the internet, so stay online while you play.</p>
     {/if}
     {#if !app.storageOk}
       <p class="warn small">This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game.</p>
     {/if}
-    <button
-      class="ghost small"
-      onclick={async () => {
-        await savePack($state.snapshot(game));
-        toast('Downloaded the .brainrot game pack: open it in the Brainrot Games Maker to edit');
-      }}>⬇ Download as .brainrot (to edit in the builder)</button>
+    <button class="ghost small" onclick={download}>⬇ Download as .brainrot (to edit in the builder)</button>
   </div>
 </div>
 
@@ -105,5 +126,13 @@
   }
   .warn {
     color: var(--warn);
+  }
+  .notes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 </style>

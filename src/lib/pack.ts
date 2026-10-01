@@ -46,18 +46,25 @@ export async function savePack(game: Game, onProgress?: PackProgress): Promise<{
   return { missing, where: savedWhere(await saveFile(name, blob), name) };
 }
 
-export async function openPack(file: Blob): Promise<Game> {
+/** Said when a game file (or an exported one) didn't arrive whole. */
+export const CUT_OFF = "This file is incomplete: it probably didn't finish downloading or uploading. Ask for it again.";
+
+/** Open a .brainrot pack; `onProgress` hears how many of its files are unpacked so far (a big game has hundreds). */
+export async function openPack(file: Blob, onProgress?: (done: number, total: number) => void): Promise<Game> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(file);
   } catch {
-    throw new Error('This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
+    // A zip starts with "PK": one that won't open is cut off (or damaged), not some other kind of file.
+    const zipStart = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
+    throw new Error(zipStart ? CUT_OFF : 'This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
   }
   const json = zip.file('game.json');
   if (!json) throw new Error('This pack has no game.json inside.');
   const game = migrateGame(parseGame(await json.async('text')));
-  for (const ref of game.media) {
-    if (ref.url) continue;
+  const files = game.media.filter((ref) => !ref.url);
+  for (const [i, ref] of files.entries()) {
+    onProgress?.(i, files.length);
     const entry = zip.file(mediaPath(ref));
     if (!entry) continue;
     const data = await entry.async('blob');

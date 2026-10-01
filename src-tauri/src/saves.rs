@@ -9,8 +9,8 @@ use std::time::UNIX_EPOCH;
 
 pub const FOLDER: &str = "BrainrotSaves";
 
-/// What can be saved: game packs, plain JSON games, playable HTML files.
-const EXTENSIONS: [&str; 4] = ["brainrot", "jbr", "json", "html"];
+/// What can be saved: game packs, plain JSON games, playable HTML files, item lists (CSV).
+const EXTENSIONS: [&str; 5] = ["brainrot", "jbr", "json", "html", "csv"];
 
 /// What Open lists: games. An exported .html only plays; it can't be opened for editing.
 const GAMES: [&str; 3] = ["brainrot", "jbr", "json"];
@@ -123,6 +123,7 @@ mod tests {
     fn only_plain_file_names_with_known_extensions() {
         assert_eq!(clean_name("My Game.brainrot").as_deref(), Some("My Game.brainrot"));
         assert_eq!(clean_name(" Quiz.HTML ").as_deref(), Some("Quiz.HTML"));
+        assert_eq!(clean_name("Quiz-items.csv").as_deref(), Some("Quiz-items.csv"));
         // 60 letters of any language fit, with " (autosave 12).brainrot" after them.
         let long = format!("{} (autosave 12).brainrot", "𝒜".repeat(60));
         assert_eq!(clean_name(&long).as_deref(), Some(long.as_str()));

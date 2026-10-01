@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, dragBy } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -279,8 +279,8 @@ try {
   const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON' }).click()]);
   const saved = resolve('test-results/history-save.json');
   await json.saveAs(saved);
-  const [open] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
-  await open.setFiles(saved);
+  await openGameFile(page, saved);
+  await answerReplace(page, 'Discard');
   await page.getByText(/^Opened "/).waitFor();
   await historyTab.click();
   assert((await rows.count()) === 1 && (await rows.first().innerText()).includes('📂 Opened “Untitled Game”'), 'a game opened has only where it was opened in its history');
@@ -322,7 +322,7 @@ try {
   const names = await page.locator('.card .nm').allInnerTexts();
   assert(images === 1 && !names.some((n) => /red|blue/.test(n)), `and one Ctrl+Z takes the images and their files back (${names})`);
 
-  assert(dialogs.length === 1 && dialogs[0].includes('It replaces this game'), `the only browser dialog was Open's (${dialogs.join(' | ')})`);
+  assert(dialogs.length === 0, `no browser dialogs (Open… asks in the page) (${dialogs.join(' | ')})`);
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('History E2E passed.');
 } catch (e) {

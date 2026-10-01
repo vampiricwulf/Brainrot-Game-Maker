@@ -24,7 +24,7 @@ describe('adding files', () => {
     const ref = await addMediaFile(game, new File(['png'], 'pic.png', { type: 'image/png' }));
     expect(game.media).toEqual([ref]);
     const history: SavedHistory = { v: 1, gameId: game.id, rev: 'r', origin: { kind: 'new', label: 'New game', ts: 0 }, ids: [], index: 0, trimmed: 0, marks: [] };
-    await saveEditor({ draft: game, history, steps: [], dropped: [] });
+    await saveEditor(() => ({ draft: game, history, steps: [], dropped: [] }));
     expect(failed).toHaveLength(2);
     watchWrites(() => {});
   });

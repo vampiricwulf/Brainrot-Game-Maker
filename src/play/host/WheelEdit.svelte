@@ -70,7 +70,8 @@
     o.players = undefined;
     rows = JSON.parse(JSON.stringify(wheel.segments));
     editWheel(o, rows);
-    toast(`Saved "${name}" with the game's wheels`);
+    // (An exported player-only file keeps it with this game in progress only.)
+    toast(app.playerOnly ? `Saved "${name}" for the rest of this game` : `Saved "${name}" with the game's wheels`);
   }
 
   function overwrite(): void {

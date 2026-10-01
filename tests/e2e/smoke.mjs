@@ -82,7 +82,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, dragBy } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, nameGame, openGameFile } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -1305,10 +1305,13 @@ await exitGame();
 
 // Pack round trip: save the pack, start a new game, open it again (named .jbr, the old extension, which still opens).
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
-const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);
+// (Its first Save asks for a name: kept as "Untitled Game".)
+const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click().then(() => nameGame(page))]);
 assert(dl.suggestedFilename().endsWith('.brainrot'), 'Save downloads a .brainrot pack');
 const packPath = await dl.path();
+// Just saved, so New asks nothing; the game it replaces can be reopened.
 await page.getByRole('button', { name: 'New' }).click();
+await page.getByRole('button', { name: '↶ Reopen previous game' }).waitFor();
 assert(
   (await page.locator('nav > button.round-tab').count()) === 0 && (await page.getByRole('button', { name: '▶ Play' }).isDisabled()),
   'a new game starts with no rounds, and Play waits for one',
@@ -1344,8 +1347,9 @@ assert((await page.locator('.full .missing').count()) === 0, 'New keeps the medi
 await page.keyboard.press('Escape');
 await exitGame();
 
-const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
-await chooser.setFiles({ name: 'game.jbr', mimeType: 'application/zip', buffer: (await import('node:fs')).readFileSync(packPath) });
+await openGameFile(page, { name: 'game.jbr', mimeType: 'application/zip', buffer: (await import('node:fs')).readFileSync(packPath) });
+// (The new game has rounds no file has: it asks first.)
+await answerReplace(page, 'Discard');
 await page.locator('.cat textarea').first().waitFor();
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Memes');
 assert(true, 'reopened .jbr restores the game');

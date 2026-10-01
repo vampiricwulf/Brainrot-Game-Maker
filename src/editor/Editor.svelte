@@ -5,15 +5,34 @@
   import { listSaves, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { isBoard, isBoardGame, isFinal, isRpg, newFinalRound, newGame, newRound, roundName, type Round, type RoundMode } from '../lib/model';
+  import {
+    gameProblem,
+    isBoard,
+    isBoardGame,
+    isFinal,
+    isRpg,
+    migrateGame,
+    newFinalRound,
+    newGame,
+    newRound,
+    roundName,
+    type Game,
+    type Round,
+    type RoundMode,
+  } from '../lib/model';
+  import { forgetRecent, hasWork, keepRecent, listRecent, readRecent, type RecentEntry, type RecentGame, type ReplaceChoice } from '../lib/recent';
+  import { newSession } from '../lib/session';
+  import ReplaceDialog from './ReplaceDialog.svelte';
+  import NameDialog from './NameDialog.svelte';
+  import OpenGame from './OpenGame.svelte';
   import { clone, reidRound } from '../lib/ops';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
   import { pickFile, safeFilename, saveGameJson } from '../lib/fileio';
   import { openGameFile, savePack } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
-  import { formatBytes } from '../lib/media.svelte';
-  import { pruneMedia } from '../lib/media.svelte';
+  import { formatBytes, loadGameMedia, pruneMedia } from '../lib/media.svelte';
+  import { askToKeepStorage } from '../lib/persist';
   import SetupPanel from './SetupPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
@@ -32,7 +51,7 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate, type Problem } from '../lib/validate';
-  import { arriving, history, mark, onApplied, onApplying, redo, step, undo } from '../lib/history.svelte';
+  import { arriving, history, mark, onApplied, onApplying, redo, savedSinceChange, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
@@ -221,31 +240,96 @@
     roundDrop = null;
   }
 
-  function newFile(): void {
-    if (!confirm('Start a new game? Save this one first if you want to keep it.')) return;
-    arriving({ kind: 'new', label: 'New game' });
-    app.game = newGame();
-    // A new game has no rounds: start on the screen that adds the first one.
+  // ---------- New, Open… and recent games ----------
+  // The browser keeps one game at a time, so a game that New, Open… or a recent game replaces is kept in Recent games
+  // (recent.ts) with its undo history: Open… lists them, and a note offers to reopen it at once. A game with changes
+  // that aren't saved to a file asks first: Save first, Discard or Cancel. A game with nothing in it asks nothing.
+
+  /** The question being asked before this game is replaced (null: none). */
+  let asking = $state<{ heading: string; title: string; answer: (c: ReplaceChoice) => void } | null>(null);
+  /** The game just replaced, which "↶ Reopen previous game" brings back (null: no note). */
+  let previous = $state<{ key: string; title: string } | null>(null);
+
+  /** May this game be replaced? Asks when it has changes not saved to a file (and saves it first if told to). */
+  async function mayReplace(heading: string): Promise<boolean> {
+    if (!hasWork(game) || savedSinceChange()) return true;
+    const choice = await new Promise<ReplaceChoice>((answer) => (asking = { heading, title: game.title.trim() || 'Untitled Game', answer }));
+    asking = null;
+    if (choice === 'save') return save();
+    return choice === 'discard';
+  }
+
+  /**
+   * Put `next` in place of this game, keeping this one in Recent games when it has anything in it. `history`: the
+   * undo history it comes with (a recent game's); `spare`: the recent game being reopened. False when it didn't happen.
+   */
+  async function replaceGame(next: Game, origin: Omit<Origin, 'ts'>, history?: RecentGame['history'], spare?: string): Promise<boolean> {
+    const old = game;
+    let kept: string | null = null;
+    if (hasWork(old)) {
+      kept = await keepRecent($state.snapshot(old) as Game, wholeHistory(), spare);
+      const title = old.title.trim() || 'Untitled Game';
+      if (!kept && !confirm(`“${title}” couldn't be kept in Recent games (this browser's storage is full or blocked), so it would be lost. Replace it anyway?`))
+        return false;
+    }
+    arriving(origin, history, !!history);
+    app.game = next;
+    // A new game has no rounds: tab 0 is the screen that adds the first one.
     tab = 0;
+    previous = kept ? { key: kept, title: old.title.trim() || 'Untitled Game' } : null;
     pruneMedia([app.game, app.playGame, app.resumable?.game]);
+    return true;
+  }
+
+  async function newFile(): Promise<void> {
+    if (await mayReplace('Start a new game?')) await replaceGame(newGame(), { kind: 'new', label: 'New game' });
+  }
+
+  /** Bring back a game from Recent games, with its undo history (this game takes its place there). */
+  async function reopen(entry: { key: string; title: string }): Promise<void> {
+    recentList = null;
+    const kept = await readRecent(entry.key);
+    if (!kept) {
+      previous = null;
+      await forgetRecent(entry.key);
+      return void alert(`“${entry.title}” is no longer kept in this browser.`);
+    }
+    if (!(await mayReplace(`Reopen “${entry.title}”?`))) return;
+    // Brought up to date if an older version kept it; its history goes on only if that changed nothing.
+    const plain = JSON.stringify(kept.draft);
+    const g = migrateGame(kept.draft);
+    const history = JSON.stringify(g) === plain ? kept.history : undefined;
+    if (!(await replaceGame(g, { kind: 'reopened', label: `Reopened “${g.title}”` }, history, entry.key))) return;
+    await forgetRecent(entry.key);
+    await loadGameMedia(g);
+    toast(`Reopened “${g.title}”`);
   }
 
   /** Desktop app: the saves in BrainrotSaves, listed by Open… (null: the list is closed). */
   let saveList = $state<SaveEntry[] | null>(null);
+  /** Open…'s Recent games (null: closed), and how many saves BrainrotSaves holds (desktop app). */
+  let recentList = $state<RecentEntry[] | null>(null);
+  let desktopSaves = $state<SaveEntry[]>([]);
 
   async function open(): Promise<void> {
-    if (inTauri()) {
-      const saves = await listSaves();
-      if (saves.length) {
-        saveList = saves;
-        return;
-      }
-    }
-    await browse();
+    const recent = await listRecent();
+    desktopSaves = inTauri() ? await listSaves() : [];
+    if (recent.length) recentList = recent;
+    else if (desktopSaves.length) saveList = desktopSaves;
+    else await browse();
+  }
+
+  async function forget(e: RecentEntry): Promise<void> {
+    await forgetRecent(e.key);
+    if (previous?.key === e.key) previous = null;
+    const left = await listRecent();
+    recentList = left.length ? left : null;
+    pruneMedia([app.game, app.playGame, app.resumable?.game]);
   }
 
   async function browse(): Promise<void> {
     saveList = null;
+    recentList = null;
     const file = await pickFile('.brainrot,.jbr,.zip,.json,application/json,application/zip');
     if (file) await openFile(file);
   }
@@ -260,27 +344,25 @@
   }
 
   async function openFile(file: File): Promise<void> {
-    // Like New: asked once the file is chosen (a cancelled picker asks nothing), and not for a game with nothing in it
-    // yet (wheels, players or the Stats & Items catalog made before any round count).
-    const work = game.rounds.length || game.players.length || game.media.length || game.wheels.length || game.dice.length;
-    const kit = game.statFields?.length || game.items?.length || game.shops?.length || game.worlds?.length;
-    if ((work || kit) && !confirm(`Open "${file.name}"? It replaces this game. Save this one first if you want to keep it.`)) return;
+    // Asked once the file is chosen (a cancelled picker asks nothing).
+    if (!(await mayReplace(`Open “${file.name}”?`))) return;
+    let opened: Game;
     try {
-      const opened = await openGameFile(file);
-      // A hand-edited file missing parts the editor needs would break the page: check it before it replaces this game.
+      opened = await openGameFile(file);
+      // A hand-edited file missing parts the editor needs would break the page: check it before it replaces this game
+      // (what can be filled in was, see migrateGame).
+      const problem = gameProblem(opened);
+      if (problem) throw new Error(`“${file.name}” has a part the app can't use (was it edited by hand?), so it wasn't opened.\n\n${problem}`);
       try {
         validate(opened);
-      } catch {
-        throw new Error(`"${file.name}" is missing parts a game needs (was it edited by hand?), so it wasn't opened.`);
+        newSession(opened);
+      } catch (e) {
+        throw new Error(`“${file.name}” is missing parts a game needs (was it edited by hand?), so it wasn't opened.\n\n${(e as Error).message}`);
       }
-      arriving({ kind: 'opened', label: `Opened “${opened.title}”` });
-      app.game = opened;
-      tab = 0;
-      toast(`Opened "${app.game.title}"`);
-      pruneMedia([app.game, app.playGame, app.resumable?.game]);
     } catch (e) {
-      alert((e as Error).message);
+      return void alert((e as Error).message);
     }
+    if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` })) toast(`Opened "${opened.title}"`);
   }
 
   /** A game file dropped anywhere no other part of the editor takes the drop opens, like Open…. */
@@ -336,16 +418,32 @@
     fields.afterGlobal();
   }
 
-  async function save(): Promise<void> {
+  /** The name asked for on the first Save of an untitled game (null: not asking). */
+  let naming = $state<((name: string | null) => void) | null>(null);
+  /** Games already asked for a name (asked once: "Untitled Game" is a fine name if the host says so). */
+  const named = new Set<string>();
+
+  /** Save the game as a .brainrot pack. True when it was saved. */
+  async function save(): Promise<boolean> {
+    if ((!game.title.trim() || game.title.trim() === 'Untitled Game') && !named.has(game.id)) {
+      const name = await new Promise<string | null>((answer) => (naming = answer));
+      naming = null;
+      if (name === null) return false;
+      named.add(game.id);
+      if (name !== game.title) step(`Named the game “${name}”`, () => (game.title = name));
+    }
     saving = true;
     packPct = null;
+    askToKeepStorage();
     try {
       const { missing, where } = await savePack($state.snapshot(game), packProgress);
       mark('saved', `Saved “${safeFilename(game.title)}.brainrot”`);
       if (missing.length) alert(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast(where, 5000);
+      return true;
     } catch (e) {
       alert('Save failed: ' + (e as Error).message);
+      return false;
     } finally {
       saving = false;
     }
@@ -471,6 +569,27 @@
   {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
   {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
+  {#if recentList}
+    <OpenGame
+      recent={recentList}
+      saves={desktopSaves.length}
+      onreopen={reopen}
+      onforget={forget}
+      onbrowse={browse}
+      onsaves={() => ((recentList = null), (saveList = desktopSaves))}
+      onclose={() => (recentList = null)}
+    />
+  {/if}
+  {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} onchoice={asking.answer} />{/if}
+  {#if naming}<NameDialog onname={naming} />{/if}
+  {#if previous}
+    {@const prev = previous}
+    <div class="data-notice" role="status">
+      <span>“{prev.title}” was replaced. It's kept in Open… → Recent games.</span>
+      <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
+      <button class="small ghost" onclick={() => (previous = null)} aria-label="Dismiss">✕</button>
+    </div>
+  {/if}
 
   <div class="body">
     <nav>

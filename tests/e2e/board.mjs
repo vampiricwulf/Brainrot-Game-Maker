@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -239,6 +239,7 @@ try {
   await key('Escape');
   await key('Control+c');
   await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
   await addRound(/Jeopardy board/);
   await tile(0, 0).focus();
   await key('Control+v');

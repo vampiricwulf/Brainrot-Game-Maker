@@ -26,6 +26,8 @@ export const app = $state<{
   editGame: Game | null;
   /** Desktop app: the last autosave file written (⚙ Settings → Autosave). */
   fileAutosave: { path: string; at: number } | null;
+  /** An exported, player-only game file: no editor, and nothing it keeps outlasts a refresh but the game in progress. */
+  playerOnly: boolean;
 }>({
   screen: 'editor',
   game: newGame(),
@@ -39,6 +41,7 @@ export const app = $state<{
   storageOk: true,
   editGame: null,
   fileAutosave: null,
+  playerOnly: false,
 });
 
 /** The game the editing components change: the one being played while it's edited live, else the editor's. */

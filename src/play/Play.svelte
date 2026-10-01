@@ -878,7 +878,7 @@
     // A game without a saved roster keeps these players for next time: only if the editor holds this same game
     // (after resuming an older save it may not), and not the sample players unless they were renamed.
     const roster = session.players.filter((p) => samples.get(p.id) !== p.name);
-    if (app.game.id === game.id && !app.game.players.length && roster.length)
+    if (!app.playerOnly && app.game.id === game.id && !app.game.players.length && roster.length)
       step('Saved the players from the show', () => (app.game.players = roster.map(({ id, name, color }) => ({ id, name, color }))), { during: 'play' });
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;

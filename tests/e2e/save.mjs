@@ -1,11 +1,12 @@
 // Saving: Save / Export HTML keep working and keep every file, and a second copy of the app (another
-// tab or window, which shares the browser's storage) never deletes this copy's media.
+// tab or window, which shares the browser's storage) never overwrites this copy's game or deletes its media.
 import { chromium } from 'playwright-core';
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
+import { answerReplace, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -19,7 +20,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
 }
-async function open(name) {
+async function open(name, editing = true) {
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
   page.on('dialog', (d) => {
@@ -27,7 +28,7 @@ async function open(name) {
     d.accept();
   });
   await page.goto(url);
-  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await page.getByRole('button', { name: editing ? 'Open…' : 'Edit here instead' }).waitFor();
   await page.waitForTimeout(800); // startup, including its storage cleanup
   return page;
 }
@@ -46,12 +47,25 @@ try {
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   await a.waitForTimeout(800); // autosave
 
-  // Copy B opens alongside and starts a new game: A's media must stay in the shared storage.
-  const b = await open('B');
+  // Copy B opens alongside: one tab edits at a time, so B waits, paused, until told to take over.
+  const b = await open('B', false);
+  assert((await b.getByRole('heading', { name: 'This game is open in another tab' }).count()) === 1, 'a second tab opens paused (it never overwrites the first one’s draft)');
+  await b.getByRole('button', { name: 'Edit here instead' }).click();
+  await b.getByRole('button', { name: 'Media (2)' }).waitFor();
+  await a.getByRole('button', { name: 'Edit here instead' }).waitFor();
+  assert(true, 'Edit here instead: the first tab saves and pauses, the second one opens the game with its files');
+  // B starts a new game: A's game is kept in Recent games, and its media stays in the shared storage.
   await b.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(b, 'Discard');
+  await b.getByRole('button', { name: 'Media (0)' }).waitFor();
   await b.waitForTimeout(800);
   await b.close();
-  // A keeps working (its draft is saved again), then reloads: its files must still be there.
+  // A takes over again and reopens its game from Open… → Recent games: its files must still be there.
+  await a.getByRole('button', { name: 'Edit here instead' }).click();
+  await a.getByRole('button', { name: 'Open…' }).click();
+  await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /Untitled Game/ }).click();
+  await a.getByRole('button', { name: 'Media (2)' }).waitFor();
+  assert(true, 'Open… → Recent games reopens the game the other tab replaced');
   await a.locator('input.title').fill('Two tabs');
   await a.waitForTimeout(1000);
   await a.reload();
@@ -89,10 +103,10 @@ try {
   await a.getByRole('button', { name: '＋ Add round' }).click();
   await a.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   dialogs.length = 0;
-  const [chooser2] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: 'Open…' }).click()]);
-  await chooser2.setFiles(await pack.path());
+  await openGameFile(a, await pack.path());
+  await answerReplace(a, 'Discard');
   await a.locator('nav > button.round-tab').waitFor({ state: 'detached' });
-  assert(dialogs.length === 1 && dialogs[0].includes('It replaces this game'), 'Open… asks before replacing a game with rounds');
+  assert(dialogs.length === 0, 'Open… asks before replacing a game with unsaved changes (in the page, not a browser dialog)');
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert((await a.locator('input.title').inputValue()) === 'Two tabs', 'the saved pack opens again with its files');
 

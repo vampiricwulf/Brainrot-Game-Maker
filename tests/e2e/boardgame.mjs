@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -208,6 +208,7 @@ try {
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Leave', exact: true }).click();
   await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
   await page.getByRole('button', { name: /Board game/ }).click();
   const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON' }).click()]);
   const saved = resolve('test-results/boardgame-save.json');
@@ -215,8 +216,8 @@ try {
   await page.getByRole('button', { name: 'Space Space 5' }).click();
   await page.keyboard.press('Delete');
   await page.waitForTimeout(500);
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
-  await chooser.setFiles(saved);
+  await openGameFile(page, saved);
+  await answerReplace(page, 'Discard');
   await page.getByText(/^Opened "/).waitFor();
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);

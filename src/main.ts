@@ -7,6 +7,8 @@ import { AUDIENCE_HASH } from './lib/sync.svelte';
 import { embeddedPack } from './lib/export';
 
 const target = document.getElementById('app')!;
+// (It says "Loading…" until the app starts.)
+target.replaceChildren();
 export default location.hash === AUDIENCE_HASH
   ? mount(AudienceApp, { target })
   : mount(App, { target, props: { embedded: embeddedPack() } });

@@ -5,6 +5,7 @@
   import { toast } from '../lib/app.svelte';
   import { dataFolders, openDataFolder, openLink, type DataFolders, type FolderName } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
+  import { storageKept } from '../lib/persist';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -16,9 +17,12 @@
   );
   let modal = $state<HTMLElement>();
 
+  /** Browser: whether it keeps this file's storage for good (null: it can't say). */
+  let kept = $state<boolean | null>(null);
   onMount(() => {
     modal?.focus();
     if (desktopApp) dataFolders().then((f) => (folders = f));
+    else storageKept().then((k) => (kept = k));
   });
 
   /** In the desktop app, the project's pages open in the default browser instead of an app window. */
@@ -129,6 +133,13 @@
         browser, or this file in another folder, starts empty. Clearing this browser's site data deletes them, so use
         <b>Save</b> (.brainrot) to keep a copy.
       </p>
+      {#if kept !== null}
+        <p class="muted small">
+          {kept
+            ? 'Storage: kept. This browser has agreed not to clear it when the disk runs low.'
+            : 'Storage: may be cleared. This browser can clear it when the disk runs low, so Save often.'}
+        </p>
+      {/if}
     {/if}
     <div class="end"><button class="primary" onclick={onclose}>Close</button></div>
   </div>

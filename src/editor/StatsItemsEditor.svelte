@@ -10,7 +10,7 @@
   import { copyItem, copyShop, copyStat, moveTo } from '../lib/listedit';
   import { dropMenu, showMenu } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
-  import { downloadText, pickFile } from '../lib/fileio';
+  import { pickFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allActions, worldObjects } from '../lib/refs';
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, SCORE_CURRENCY } from '../lib/toolset';
@@ -192,9 +192,15 @@
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
 
-  function exportCsv(): void {
+  /** Saved like the game's own files (BrainrotSaves in the desktop app, a download in a browser). */
+  async function exportCsv(): Promise<void> {
     const rows = [['name', 'price', 'stackable', 'wearable', 'description'], ...(game.items ?? []).map((i) => [i.name, i.price ?? '', i.stackable ? 'yes' : 'no', i.wearable?.slot ?? '', i.description ?? ''])];
-    downloadText(`${game.title || 'game'}-items.csv`, rows.map((r) => r.map(csvCell).join(',')).join('\n'), 'text/csv');
+    const name = `${safeFilename(game.title)}-items.csv`;
+    try {
+      toast(savedWhere(await saveFile(name, new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })), name), 5000);
+    } catch (e) {
+      alert('Export failed: ' + (e as Error).message);
+    }
   }
 
   /** Split CSV text into rows (quoted fields may hold commas, quotes and line breaks). */
