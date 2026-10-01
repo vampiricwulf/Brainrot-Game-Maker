@@ -48,7 +48,11 @@ export function getBlob(id: string): Blob | undefined {
 export async function storedBlob(id: string): Promise<Blob | undefined> {
   const b = blobs.get(id);
   if (b || memoryOnly) return b;
-  return get<Blob>(KEY(id)).catch(() => undefined);
+  try {
+    return await get<Blob>(KEY(id));
+  } catch {
+    return undefined;
+  }
 }
 
 /** An exported player-only file: its files stay in memory and never touch the stored ones (see keepInMemory). */
