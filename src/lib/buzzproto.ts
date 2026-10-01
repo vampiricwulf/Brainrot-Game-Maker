@@ -119,21 +119,45 @@ function doneView(s: HostState, seatId: string | null): Pick<PhoneView, 'done'> 
 
 /**
  * A name typed on a phone made safe to show: no control or invisible formatting characters (bidi overrides,
- * zero-width spaces…; a zero-width joiner inside an emoji stays), spaces squeezed, at most `max` characters (whole
- * characters, with "…" when cut).
+ * zero-width spaces…; a zero-width joiner inside an emoji stays, and so do the tag characters of a flag like
+ * England's), spaces squeezed, at most `max` characters (whole characters, with "…" when cut).
  */
 export function cleanName(raw: string, max: number): string {
   const chars = Array.from(raw);
   const pic = /\p{Extended_Pictographic}/u;
   const invisible = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
-  const kept = chars.filter((c, i) => !invisible.test(c) || (c === '\u200d' && pic.test(chars[i - 1] ?? '') && pic.test(chars[i + 1] ?? '')));
+  const isTag = (c: string) => c >= '\u{E0020}' && c <= '\u{E007F}';
+  const kept: string[] = [];
+  /** Right after a 🏴 (and its tags so far): tag characters spell the flag. */
+  let flag = false;
+  chars.forEach((c, i) => {
+    if (isTag(c)) {
+      if (flag) kept.push(c);
+      return;
+    }
+    flag = c === '\u{1F3F4}';
+    if (!invisible.test(c) || (c === '\u200d' && pic.test(chars[i - 1] ?? '') && pic.test(chars[i + 1] ?? ''))) kept.push(c);
+  });
   return clip(kept.join('').replace(/\s+/g, ' ').trim(), max);
 }
 
-/** At most `max` characters (whole ones: an emoji isn't cut in half), ending in "…" when cut. */
+const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+/** The characters as people see them: a family emoji or a flag is one (code points where Intl.Segmenter is missing). */
+const graphemes = (s: string): string[] => (segmenter ? Array.from(segmenter.segment(s), (x) => x.segment) : Array.from(s));
+
+/**
+ * At most `max` characters (whole ones as people see them: an emoji, a family or a flag isn't cut apart), ending in
+ * "…" when cut. Also at most 16 × max UTF-16 units, so piled-up accents can't make one "character" huge.
+ */
 export function clip(s: string, max: number): string {
-  const chars = Array.from(s);
-  return chars.length <= max ? s : `${chars.slice(0, Math.max(0, max - 1)).join('').trimEnd()}…`;
+  const g = graphemes(s);
+  if (g.length <= max && s.length <= max * 16) return s;
+  let out = '';
+  for (const x of g.slice(0, Math.max(0, max - 1))) {
+    if (out.length + x.length >= max * 16) break;
+    out += x;
+  }
+  return `${out.trimEnd()}…`;
 }
 
 /** A phone as the host sees it in its list. */
@@ -163,6 +187,8 @@ export interface QueuedBuzz {
   seatId: string;
   afterMs: number;
   rolled?: number;
+  /** Added later: it reacted faster than the first, but got to the room after the race was decided. */
+  arrivedLate?: boolean;
 }
 
 /** Buzzes this close (ms) are a tie: below that it's touch sampling and screen timing, not who reacted first. */
@@ -201,8 +227,8 @@ export type PhoneMsg =
   | { t: 'buzz'; armId: number; reactMs?: number }
   | { t: 'leave' }
   | { t: 'ping'; at: number }
-  /** Sent straight back on every pong, echoing its serverNow, so the room can time the round trip itself. */
-  | { t: 'sync'; serverNow: number };
+  /** Sent straight back on every probe, so the room can time the round trip itself (replaced pong → sync). */
+  | { t: 'echo'; id: number };
 
 /** Added later: 'locked' (🔒 the host locked the seats), 'blocked' (kicked from that seat a moment ago), 'name-taken'. */
 export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken';
@@ -221,9 +247,10 @@ export type RoomToPhone =
   | { t: 'view'; view: PhoneView }
   /**
    * This phone's own buzz, sent again whenever its place in the queue changes. 'pending' = counted, the room is still
-   * collecting buzzes (a quarter second); 'first' = you're answering (byMs: how much faster than the next one, once
-   * there is one); 'late' = in the queue at rank, afterMs behind the first (no rank: it didn't count); 'tie' = tied for
-   * first, the host is deciding; 'early' = before the buzzers opened (locked until lockedUntil); 'locked' = can't buzz.
+   * collecting buzzes (a quarter second or so); 'first' = you're answering (byMs: how much faster than the next one,
+   * once there is one); 'late' = in the queue at rank, afterMs behind the first (no rank: it didn't count;
+   * arrivedLate: it reacted faster, but got there after the race was decided); 'tie' = tied for first, the host is
+   * deciding; 'early' = before the buzzers opened (locked until lockedUntil); 'locked' = can't buzz.
    */
   | {
       t: 'result';
@@ -237,11 +264,14 @@ export type RoomToPhone =
       /** In a tie the host rolled for: this phone's place in the roll (1 = rolled highest). */
       rolled?: number;
       lockedUntil?: number;
+      arrivedLate?: boolean;
     }
   | { t: 'kicked' }
   /** The host closed the room (or it expired). */
   | { t: 'closed' }
-  | { t: 'pong'; at: number; serverNow: number };
+  | { t: 'pong'; at: number; serverNow: number }
+  /** Added later: echo this id at once (the room times this phone's round trip). */
+  | { t: 'probe'; id: number };
 
 /** POST {base}/api/rooms → this. Then the host connects to {wss base}/ws/{code}?host={hostToken}; phones to /ws/{code}. */
 export interface NewRoom {

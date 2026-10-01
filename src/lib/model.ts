@@ -5,6 +5,7 @@ import { isWebUrl } from './links';
 import { nextFreeColor } from './colors';
 import { dedupeMediaNames } from './medianame';
 import { presetTheme, type Theme } from './theme';
+import type { BuzzState } from './buzz';
 
 export type Id = string;
 
@@ -621,9 +622,10 @@ export interface Session {
   /**
    * Phone buzzers: the buzzer room this game uses, so a reload (or a crash) gets back into the same room. Never sent to the
    * audience window. `armId`: the last time the buzzers opened there (it only goes up). `locked`: 🔒 seats locked (no
-   * new phones take a seat; players already in come back).
+   * new phones take a seat; players already in come back). `buzz`: the buzzers during the open clue (`clue`: its
+   * round.cat.row; `floor`: the last opening before it), so a reload mid-clue keeps who's answering and who missed.
    */
-  remote?: { code: string; hostToken: string; base: string; armId?: number; locked?: boolean } | null;
+  remote?: { code: string; hostToken: string; base: string; armId?: number; locked?: boolean; buzz?: BuzzState & { clue: string; floor: number } } | null;
 }
 
 // ---------- Toolset: stats, items, shops, actions (games-maker spec §5.1, §7.7–7.10) ----------

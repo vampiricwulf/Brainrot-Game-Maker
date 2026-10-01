@@ -9,10 +9,12 @@
  * Fair timing: each phone sends how long after its own BUZZ! light it pressed (reactMs), so a phone on a slow network
  * isn't behind. The room trusts that only as far as it can check it: the time from arming to the buzz arriving, minus
  * reactMs, is the network's share, and it can't be more than that phone's round trip (which the room times itself:
- * pong → sync) plus NET_TOLERANCE_MS. So a phone lying about reactMs gains at most about one round trip. A missing or
- * impossible reactMs falls back to the arrival time minus the round trip (see rankKey). The first buzz opens a grace
- * window (GRACE_MS) to collect buzzes still on their way; then the lowest key wins. Keys within TIE_MS of the fastest
- * are a tie: the room picks nobody and the host decides (picks one, or rolls and sends rollOrder).
+ * probe → echo, see rtt()) plus NET_TOLERANCE_MS. A reactMs that leaves more than that is raised until it fits (see
+ * rankKey). A phone can make its round trip look longer by holding its echoes, so it counts as MAX_RTT_MS at most: a
+ * phone lying about reactMs gains at most MAX_RTT_MS + NET_TOLERANCE_MS over its real network. The first buzz opens a
+ * grace window to collect buzzes still on their way, as long as a phone that reacted as fast would need to get here
+ * (GRACE_MS to MAX_GRACE_MS, see graceEnd); then the lowest key wins. Keys within TIE_MS of the fastest are a tie: the
+ * room picks nobody and the host decides (picks one, or rolls and sends rollOrder).
  *
  * Re-arming: the host always bumps armId to open the buzzers again (after a wrong answer, a new clue…). A state that
  * says 'armed' with the armId of a race the room already decided is the host not having seen the buzz yet: the
@@ -25,13 +27,17 @@
  *
  * An early buzz (while 'closed') locks the seat, not the socket, so a reload doesn't clear it.
  *
- * Kicks: the kicked phone (its socket and its browser's device id) can't take that seat again for KICK_BLOCK_MS (it can
- * take another free one). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
+ * Kicks: the kicked phone (its socket, its browser's device id and its address) can't take that seat again for
+ * KICK_BLOCK_MS (it can take another free one). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
  *
  * Full rooms: phones without a seat that have done nothing for IDLE_MS (viewers who opened the link, extra tabs) don't
  * hold a place: when MAX_PHONES are connected, the oldest of them is turned away ('denied full', closed; it tries again
  * later) to make room. With none to turn away a newcomer still gets in, up to MAX_SOCKETS, but only to come back to its
  * seat with a token; anything else turns it away. The host is told ('full').
+ *
+ * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
+ * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and its address can't
+ * connect again for FLOOD_BLOCK_MS.
  */
 import {
   BUZZ_PROTOCOL,
@@ -68,21 +74,33 @@ export const STATUS_MAX = 120;
 export const PHONE_MSG_MAX = 1024;
 /** A new player's name (phones type it). */
 export const NAME_MAX = 24;
-/** Messages per socket per second; more are dropped. */
+/** Messages per socket per second; more are dropped (and a phone that keeps it up is closed: see Floods). */
 export const PHONE_RATE = 20;
 export const HOST_RATE = 50;
+/** Seconds in a row over PHONE_RATE that close a phone's socket… */
+export const FLOOD_STRIKES = 3;
+/** …or this many messages in one second (no phone page sends anything like it). */
+export const FLOOD_BURST = 3 * PHONE_RATE;
+/** Bytes a phone may send in one second (a buzz is ~40); more closes its socket at once. */
+export const PHONE_BYTES = 16 * 1024;
+/** A phone closed for flooding: its address can't connect again for this long. */
+export const FLOOD_BLOCK_MS = 30_000;
 /** join / new attempts per phone per minute. */
 export const JOIN_RATE = 10;
-/** After the first buzz of an arm, how long the room waits for buzzes still on their way before deciding. */
+/** After the first buzz of an arm, the room waits at least this long for buzzes still on their way before deciding… */
 export const GRACE_MS = 250;
-/** Round-trip samples kept per phone; the median is used (one slow or lucky sample doesn't swing it). */
+/** …and at most this long, however slow the network of a phone that could still beat it (see graceEnd). */
+export const MAX_GRACE_MS = 800;
+/** The room sends a phone a probe at most this often (see probe). */
+export const PROBE_GAP_MS = 250;
+/** Round-trip samples kept per phone; a low one is used (see rtt). */
 export const RTT_SAMPLES = 5;
 /** The round trip assumed when checking reactMs from a phone the room hasn't timed yet. */
-export const DEFAULT_RTT_MS = 300;
-/** A round trip longer than this counts as this (a phone stalling its sync can't buy itself much more slack). */
-export const MAX_RTT_MS = 1000;
+export const DEFAULT_RTT_MS = 250;
+/** A round trip longer than this counts as this (a phone holding its echoes can't buy itself more slack). */
+export const MAX_RTT_MS = 350;
 /** Slack on top of the round trip for the phone drawing the screen and network jitter. */
-export const NET_TOLERANCE_MS = 150;
+export const NET_TOLERANCE_MS = 70;
 /** No ranking key is lower than this: nobody reacts faster, so anything below is a tie. */
 export const MIN_REACT_MS = 50;
 
@@ -91,6 +109,8 @@ export interface Buzz {
   seatId: string;
   key: number;
   n: number;
+  /** It came after the grace window (it can't pass the settled head, even with a lower key). */
+  late?: boolean;
 }
 
 /** The current arm's race. */
@@ -123,8 +143,8 @@ export interface RoomSaved {
   race: Race | null;
   /** Seat id → when its early-buzz lock ends. */
   earlyLocks: Record<string, number>;
-  /** Seat id → the phones kicked from it (sockets, device ids) and until when they can't take it again. */
-  blocks?: Record<string, { until: number; conns: string[]; devices: string[] }>;
+  /** Seat id → the phones kicked from it (sockets, device ids, addresses) and until when they can't take it again. */
+  blocks?: Record<string, { until: number; conns: string[]; devices: string[]; ips?: string[] }>;
 }
 
 /** What each phone socket keeps (stored on the socket, so it survives hibernation). */
@@ -136,6 +156,8 @@ export interface PhoneSaved {
   rtts?: number[];
   /** The id its browser sent with a join or a request to join (kept for kicks). */
   device?: string;
+  /** Its address (CF-Connecting-IP; kept for kicks and floods). */
+  ip?: string;
 }
 
 export interface RoomDeps {
@@ -159,8 +181,12 @@ interface Phone extends PhoneSaved {
   lastSeats?: string;
   rate: Window;
   joins: Window;
-  /** serverNow of pongs sent and not yet echoed (only those count as a sync). */
-  pongs: number[];
+  /** Probes sent and not yet echoed (only those count as a round trip). */
+  probes: { id: number; at: number }[];
+  /** When the last probe went. */
+  probedAt?: number;
+  /** Seconds in a row it went over PHONE_RATE (see Floods). */
+  strikes: number;
   /** When it last joined, asked, buzzed or left (or connected). */
   active: number;
   /** Let in over MAX_PHONES: only a seat's token keeps it (see Full rooms). */
@@ -170,30 +196,33 @@ interface Phone extends PhoneSaved {
 interface Window {
   start: number;
   count: number;
+  bytes?: number;
 }
 
 export const emptyRoom = (): RoomSaved => ({ state: null, tokens: {}, holders: {}, race: null, earlyLocks: {} });
 
+/** How much of a buzz's time from arming may be the network's: the round trip (rttMs null: not timed yet) + tolerance. */
+export const slackFor = (rttMs: number | null): number => (rttMs ?? DEFAULT_RTT_MS) + NET_TOLERANCE_MS;
+
 /**
- * A buzz's ranking key (lower wins): the phone's own reaction time when it is plausible (not negative, not more than
- * the time since arming, and leaving no more than the round trip + NET_TOLERANCE_MS for the network), else the time
- * since arming minus the round trip. rttMs null: not timed yet. Never below MIN_REACT_MS.
+ * A buzz's ranking key (lower wins): the phone's own reaction time, raised (if need be) so that it leaves no more than
+ * slackFor(rttMs) of the time since arming to the network. A missing or impossible one (negative, more than the time
+ * since arming) falls back to the time since arming minus the round trip. Never below MIN_REACT_MS.
  */
 export function rankKey(elapsedMs: number, reactMs: number | undefined, rttMs: number | null): number {
-  const plausible =
-    reactMs !== undefined &&
-    Number.isFinite(reactMs) &&
-    reactMs >= 0 &&
-    reactMs <= elapsedMs &&
-    elapsedMs - reactMs <= (rttMs ?? DEFAULT_RTT_MS) + NET_TOLERANCE_MS;
-  const key = plausible ? reactMs : Math.max(0, elapsedMs - (rttMs ?? 0));
+  const ok = reactMs !== undefined && Number.isFinite(reactMs) && reactMs >= 0 && reactMs <= elapsedMs;
+  const key = ok ? Math.max(reactMs, elapsedMs - slackFor(rttMs)) : Math.max(0, elapsedMs - (rttMs ?? 0));
   return Math.max(MIN_REACT_MS, Math.round(key));
 }
 
-/** The median of a few numbers (the lower middle one for an even count). */
-export function median(xs: number[]): number {
+/**
+ * The round trip to count from a phone's last few samples: the second lowest (the lowest with fewer than 3). A low one
+ * is the phone's real network time; not the very lowest, so one lucky sample doesn't leave an honest phone on jittery
+ * Wi-Fi without slack.
+ */
+export function lowRtt(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
-  return s[(s.length - 1) >> 1];
+  return s[s.length >= 3 ? 1 : 0];
 }
 
 const newRace = (armId: number, armedAt: number): Race => ({ armId, armedAt, queue: [], decided: false, head: 0, winner: null });
@@ -212,6 +241,10 @@ export class Room {
   private lastResults = new Map<string, string>();
   /** When the host was last told the room is full. */
   private lastFull = -Infinity;
+  /** The last probe id (see rtt). */
+  private probeN = 0;
+  /** Addresses closed for flooding → until when they can't connect (kept in memory only: it's brief). */
+  private floodBlocks = new Map<string, number>();
 
   constructor(
     private code: string,
@@ -225,7 +258,7 @@ export class Room {
     if (this.s.race && !Array.isArray(this.s.race.queue)) this.s.race = null;
     this.hostHere = hostHere;
     const now = this.deps.now();
-    for (const p of phones) this.phones.set(p.conn, { ...p, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, pongs: [], active: now });
+    for (const p of phones) this.phones.set(p.conn, { ...p, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, probes: [], strikes: 0, active: now });
     // Woken (or restarted) in the middle of a grace window: finish it on time, or at once if that's past.
     const race = this.s.race;
     if (race && race.graceUntil !== undefined && !race.decided)
@@ -404,7 +437,9 @@ export class Room {
     const conns = new Set(holders.map((p) => p.conn));
     if (this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
     const devices = new Set(holders.flatMap((p) => (p.device ? [p.device] : [])));
-    (this.s.blocks ??= {})[seatId] = { until: this.deps.now() + KICK_BLOCK_MS, conns: [...conns], devices: [...devices] };
+    // Its address too: a new device id is one cleared localStorage away.
+    const ips = new Set(holders.flatMap((p) => (p.ip ? [p.ip] : [])));
+    (this.s.blocks ??= {})[seatId] = { until: this.deps.now() + KICK_BLOCK_MS, conns: [...conns], devices: [...devices], ips: [...ips] };
     this.freeSeat(seatId, true);
     this.save();
   }
@@ -425,15 +460,15 @@ export class Room {
 
   // ---- phones ----
 
-  /** A phone connected. false when the room is full (the caller tells it and closes it). */
-  phoneOpen(conn: string): boolean {
+  /** A phone connected (from address ip, if known). false when the room is full (the caller tells it and closes it). */
+  phoneOpen(conn: string, ip?: string): boolean {
     const now = this.deps.now();
     if (this.countedPhones() >= MAX_PHONES || this.phones.size >= MAX_SOCKETS) this.turnAwayIdle(now);
     if (this.phones.size >= MAX_SOCKETS) {
       this.tellFull();
       return false;
     }
-    const p: Phone = { conn, seatId: null, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, pongs: [], active: now };
+    const p: Phone = { conn, seatId: null, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, probes: [], strikes: 0, active: now, ...(ip ? { ip } : {}) };
     if (this.countedPhones() >= MAX_PHONES) p.hold = true;
     this.phones.set(conn, p);
     this.deps.savePhone(strip(p));
@@ -495,10 +530,28 @@ export class Room {
     this.sync();
   }
 
-  phoneMessage(conn: string, raw: unknown): void {
-    this.settle();
+  /** An address closed for flooding a moment ago: the caller turns it away (4008) before it is a phone here. */
+  floodBlocked(ip: string | null | undefined): boolean {
+    const until = ip ? this.floodBlocks.get(ip) : undefined;
+    if (until === undefined) return false;
+    if (until > this.deps.now()) return true;
+    this.floodBlocks.delete(ip!);
+    return false;
+  }
+
+  /** Returns 'close' when the phone is flooding: it is forgotten here, and the caller closes its socket (4008). */
+  phoneMessage(conn: string, raw: unknown): 'close' | void {
     const p = this.phones.get(conn);
-    if (!p || !this.allow(p.rate, PHONE_RATE, 1000)) return;
+    if (!p) return;
+    // Counted and checked before anything else (no parsing, no deciding a race), so a flood costs the room little.
+    if (this.flooding(p, raw)) {
+      this.phones.delete(conn);
+      if (p.ip) this.floodBlocks.set(p.ip, this.deps.now() + FLOOD_BLOCK_MS);
+      this.sync();
+      return 'close';
+    }
+    if (typeof raw !== 'string' || raw.length > PHONE_MSG_MAX || p.rate.count > PHONE_RATE) return;
+    this.settle();
     const m = parse(raw, PHONE_MSG_MAX);
     if (!m) return;
     if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave') p.active = this.deps.now();
@@ -530,18 +583,16 @@ export class Room {
         break;
       case 'ping':
         if (typeof m.at === 'number') {
-          const serverNow = this.deps.now();
-          p.pongs = [...p.pongs.slice(-3), serverNow];
-          this.deps.toPhone(conn, { t: 'pong', at: m.at, serverNow });
+          this.deps.toPhone(conn, { t: 'pong', at: m.at, serverNow: this.deps.now() });
+          this.probe(p);
         }
         break;
-      case 'sync': {
-        // The phone echoing a pong: the room's own round trip for it (only for a pong it really sent, once).
-        const i = typeof m.serverNow === 'number' ? p.pongs.indexOf(m.serverNow) : -1;
+      case 'echo': {
+        // The phone echoing a probe: the room's own round trip for it (only for a probe it really sent, once).
+        const i = p.probes.findIndex((x) => x.id === m.id);
         if (i < 0) return;
-        p.pongs.splice(i, 1);
-        const rtt = this.deps.now() - (m.serverNow as number);
-        if (rtt < 0) return;
+        const rtt = this.deps.now() - p.probes[i].at;
+        p.probes.splice(i, 1);
         p.rtts = [...(p.rtts ?? []).slice(1 - RTT_SAMPLES), rtt];
         this.deps.savePhone(strip(p));
         break;
@@ -549,10 +600,43 @@ export class Room {
     }
   }
 
-  /** A phone's round trip as the room timed it (the median of the last few), or null before the first. */
+  /**
+   * Counts a phone's message (before reading it): true when it is flooding (see Floods). Over PHONE_RATE this second:
+   * the caller drops it.
+   */
+  private flooding(p: Phone, raw: unknown): boolean {
+    const now = this.deps.now();
+    const w = p.rate;
+    if (now - w.start >= 1000) {
+      // A second within the limit (or a quiet gap) in between: the strikes start over.
+      if (w.count <= PHONE_RATE || now - w.start >= 2000) p.strikes = 0;
+      w.start = now;
+      w.count = 0;
+      w.bytes = 0;
+    }
+    w.bytes = (w.bytes ?? 0) + (typeof raw === 'string' ? raw.length : raw instanceof ArrayBuffer ? raw.byteLength : 0);
+    if (++w.count === PHONE_RATE + 1) p.strikes++;
+    return p.strikes >= FLOOD_STRIKES || w.count > FLOOD_BURST || w.bytes > PHONE_BYTES;
+  }
+
+  /**
+   * The room times the phone's round trip itself: it sends a probe the phone echoes at once (after each of the
+   * phone's pings, and when it takes a seat). Only an echo of a probe it sent counts, once.
+   */
+  private probe(p: Phone): void {
+    // At most one every PROBE_GAP_MS (a phone pinging fast mustn't double its own messages).
+    const now = this.deps.now();
+    if (now - (p.probedAt ?? -Infinity) < PROBE_GAP_MS) return;
+    p.probedAt = now;
+    const id = ++this.probeN;
+    p.probes = [...p.probes.slice(-3), { id, at: now }];
+    this.deps.toPhone(p.conn, { t: 'probe', id });
+  }
+
+  /** A phone's round trip as the room timed it (a low one of the last few, at most MAX_RTT_MS), or null before the first. */
   rtt(conn: string): number | null {
     const r = this.phones.get(conn)?.rtts;
-    return r?.length ? Math.min(MAX_RTT_MS, median(r)) : null;
+    return r?.length ? Math.min(MAX_RTT_MS, lowRtt(r)) : null;
   }
 
   private join(p: Phone, seatId: string, token?: string): void {
@@ -578,12 +662,14 @@ export class Room {
       this.deps.savePhone(strip(p));
       this.deps.toPhone(p.conn, { t: 'joined', seatId, token });
       this.save();
+      this.seated(p, seatId);
       return;
     }
     if (held) return deny('taken');
     if (this.s.state.locked) return deny('locked');
     const block = this.s.blocks?.[seatId];
-    if (block && block.until > this.deps.now() && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)))) return deny('blocked');
+    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip)));
+    if (kicked && block.until > this.deps.now()) return deny('blocked');
     if (this.turnedAway(p)) return;
     if (p.seatId) this.freeSeat(p.seatId);
     delete p.pendingName;
@@ -600,6 +686,20 @@ export class Room {
     this.deps.savePhone(strip(p));
     this.deps.toPhone(p.conn, { t: 'joined', seatId, token });
     this.save();
+    this.seated(p, seatId);
+  }
+
+  /**
+   * A phone took a seat (or came back to it): it hears where this arm's buzz from that seat stands ("You're 2nd…"), as
+   * the phone that had it did, and the room times its round trip at once.
+   */
+  private seated(p: Phone, seatId: string): void {
+    this.probe(p);
+    this.lastResults.delete(seatId);
+    const race = this.s.race;
+    if (!race || race.armId !== this.s.state?.armId || !race.queue.some((b) => b.seatId === seatId)) return;
+    if (race.decided) this.announce();
+    else this.deps.toPhone(p.conn, { t: 'result', armId: race.armId, outcome: 'pending' });
   }
 
   private askNew(p: Phone, raw: string): void {
@@ -644,10 +744,16 @@ export class Room {
       this.newRace(st.armId, now);
       race = this.s.race!;
     }
-    if (race.queue.some((b) => b.seatId === seatId)) return; // one counted buzz per seat per arm
+    if (race.queue.some((b) => b.seatId === seatId)) {
+      // One counted buzz per seat per arm. The same press sent again (its phone lost the connection) hears where it stands.
+      if (!race.decided) return result('pending');
+      this.lastResults.delete(seatId);
+      return this.announce();
+    }
     const buzz: Buzz = { seatId, key: rankKey(now - race.armedAt, reactMs, this.rtt(p.conn)), n: race.queue.length };
     if (race.decided) {
       // After the grace window: into the queue by its key, behind the settled head.
+      buzz.late = true;
       let i = race.head;
       while (i < race.queue.length && byKey(race.queue[i], buzz) <= 0) i++;
       race.queue.splice(i, 0, buzz);
@@ -655,9 +761,9 @@ export class Room {
     } else if (st.phase === 'armed') {
       race.queue.push(buzz);
       if (race.graceUntil === undefined) {
-        race.graceUntil = now + GRACE_MS;
+        race.graceUntil = this.graceEnd(race, buzz.key, now);
         this.stopGrace();
-        this.grace = this.deps.schedule(GRACE_MS, () => this.resolve());
+        this.grace = this.deps.schedule(race.graceUntil - now, () => this.resolve());
       }
       result('pending');
     } else {
@@ -665,6 +771,19 @@ export class Room {
     }
     this.save();
     this.announce();
+  }
+
+  /**
+   * When the grace window the first buzz (ranking key `key`) opens ends: once a phone that reacted as fast, on the
+   * slowest network of the seated phones that could still buzz, has had time to get its buzz here. At least GRACE_MS
+   * from now, at most MAX_GRACE_MS.
+   */
+  private graceEnd(race: Race, key: number, now: number): number {
+    const out = this.s.state?.lockedOut ?? [];
+    let slack = 0;
+    for (const p of this.phones.values())
+      if (p.seatId && !out.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId)) slack = Math.max(slack, slackFor(this.rtt(p.conn)));
+    return Math.min(now + MAX_GRACE_MS, Math.max(now + GRACE_MS, race.armedAt + key + slack));
   }
 
   /** A grace window whose time is up but whose timer hasn't run (the room slept or restarted): decide it now. */
@@ -728,7 +847,9 @@ export class Room {
     const name = (id: string) => st.seats.find((x) => x.id === id)?.name ?? '';
     const queue: QueuedBuzz[] = race.queue.map((b) => {
       const r = race.rolled?.indexOf(b.seatId) ?? -1;
-      return { seatId: b.seatId, afterMs: Math.max(0, b.key - lead.key), ...(r >= 0 ? { rolled: r + 1 } : {}) };
+      // Reacted faster than the first, but got here after the window: it says so rather than "0.00 s behind".
+      const late = b.late && b.key < lead.key ? { arrivedLate: true as const } : {};
+      return { seatId: b.seatId, afterMs: Math.max(0, b.key - lead.key), ...(r >= 0 ? { rolled: r + 1 } : {}), ...late };
     });
     const msg: RoomToHost = { t: 'queue', armId: race.armId, queue, ...(race.tie ? { tie: race.tie } : {}) };
     const key = JSON.stringify(msg);
@@ -747,7 +868,7 @@ export class Room {
         const next = queue[i + 1];
         r = { t: 'result', armId: race.armId, outcome: 'first', rank, afterMs: 0, ...(i === 0 && next ? { byMs: next.afterMs } : {}), ...rolled };
       } else if (shift) r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner!), ...rolled };
-      else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: q.afterMs, behind: name(lead.seatId), ...rolled };
+      else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: q.afterMs, behind: name(lead.seatId), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
       const k = JSON.stringify(r);
       if (this.lastResults.get(q.seatId) === k) return;
       this.lastResults.set(q.seatId, k);
@@ -821,6 +942,7 @@ const strip = (p: Phone): PhoneSaved => ({
   ...(p.pendingName !== undefined ? { pendingName: p.pendingName } : {}),
   ...(p.rtts?.length ? { rtts: p.rtts } : {}),
   ...(p.device ? { device: p.device } : {}),
+  ...(p.ip ? { ip: p.ip } : {}),
 });
 
 // ---- checking untrusted messages ----

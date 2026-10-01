@@ -388,6 +388,19 @@ try {
   await small(cat).getByText('Sending…').waitFor();
   for (let i = 0; i < 40 && catTap2.routes.length === routes; i++) await sleep(250);
   assert(catTap2.routes.length > routes, 'a buzz the room never answered shows "Sending…", and the phone reconnects');
+  const resent = await host.wait((m) => m.t === 'buzz' && m.armId === 7 && m.rank === 1, 'the press sent again', 10_000);
+  await big(cat).getByText("You're answering!").waitFor();
+  assert(resent.seatId === 'c', 'and sends the press again once back in its seat (the buzzers still open): it counts');
+  // Back from the background mid-clue: "Checking connection…"; a press then is kept and goes once reconnected.
+  setState({ phase: 'armed', armId: 8, clue: { text: 'Q8' }, answering: null, lockedOut: [] });
+  await big(cat).getByText('BUZZ!').waitFor();
+  routes = catTap2.routes.length;
+  catTap2.stall();
+  await cat.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await small(cat).getByText('Checking connection…').waitFor();
+  await press(cat);
+  const kept = await host.wait((m) => m.t === 'buzz' && m.armId === 8 && m.rank === 1, 'the press made while checking', 15_000);
+  assert(kept.seatId === 'c' && catTap2.routes.length > routes, 'a press while "Checking connection…" on a dead socket still counts, sent once reconnected');
   setState({ phase: 'lobby', clue: null });
 
   // 24 open pages that do nothing (viewers, extra tabs) don't lock a real player out: the longest idle one makes way.
@@ -419,7 +432,7 @@ try {
   await gus.goto(`${base}/${room.code}`);
   await gus.getByRole('button', { name: 'Gus' }).click();
   await big(gus).getByText('Gus').waitFor();
-  setState({ phase: 'answering', armId: 8, clue: { text: 'A clue long enough to wrap onto a second line on a phone held sideways' }, answering: 'g' });
+  setState({ phase: 'answering', armId: 9, clue: { text: 'A clue long enough to wrap onto a second line on a phone held sideways' }, answering: 'g' });
   await big(gus).getByText("You're answering!").waitFor();
   const fits = await gus.evaluate(() => {
     const inside = (el) => {
@@ -446,6 +459,49 @@ try {
   assert(fits.buzz && fits.me && !fits.wide && png.length > 1000, 'held sideways (740×360): the button and the score fit on screen, nothing overflows');
   assert(!fits.broken.length, `held sideways: no word is broken in the middle (${fits.broken.join(', ') || 'none'})`);
   setState({ phase: 'lobby', clue: null, answering: null });
+
+  // A long name with no spaces breaks rather than push the page sideways, on small phones, upright and sideways.
+  const longName = 'Bartholomew_Maximilian_Fitzgerald';
+  setState({ seats: [...hs.seats, { id: 'h', name: longName, color: '#884400' }] });
+  const hal = await phone('hal', 320, 568);
+  await hal.goto(`${base}/${room.code}`);
+  await hal.getByRole('button', { name: longName }).click();
+  await big(hal).getByText(longName).waitFor();
+  const sideways = async () => hal.evaluate(() => document.documentElement.scrollWidth > innerWidth || document.getElementById('buzz-big').scrollWidth > document.getElementById('buzz').clientWidth);
+  const wide = [await sideways()];
+  setState({ phase: 'armed', armId: 10, clue: { text: 'Q10' } });
+  await big(hal).getByText('BUZZ!').waitFor();
+  wide.push(await sideways());
+  for (const [w, h] of [[375, 667], [568, 320]]) {
+    await hal.setViewportSize({ width: w, height: h });
+    wide.push(await sideways());
+  }
+  assert(!wide.some(Boolean), `a long name with no spaces fits the button and the page (320×568, 375×667, 568×320: ${wide.join()})`);
+  const live = await hal.locator('#live').innerText();
+  assert(live === `BUZZ! ${longName}.`, `what a screen reader hears reads as sentences ("${live}")`);
+  setState({ phase: 'closed', clue: { text: 'Q10' }, armId: 10 });
+  await big(hal).getByText('Get ready…').waitFor();
+  assert((await hal.locator('#live').innerText()) === "Get ready… Don't buzz yet.", 'no "Get ready…." doubled stop');
+  setState({ phase: 'lobby', clue: null });
+
+  // A socket that floods the room is closed (4008), and its address can't come straight back.
+  const flood = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}`);
+  const floodClosed = new Promise((ok) => flood.addEventListener('close', (e) => ok(e.code)));
+  await new Promise((ok) => flood.addEventListener('open', ok, { once: true }));
+  const spam = setInterval(() => {
+    for (let i = 0; i < 10 && flood.readyState === 1; i++) flood.send('{"t":"ping","at":1}');
+  }, 20);
+  const floodCode = await Promise.race([floodClosed, sleep(8000).then(() => 'still open')]);
+  clearInterval(spam);
+  assert(floodCode === 4008, `a phone socket flooding the room is closed with 4008 (${floodCode})`);
+  const again = await new Promise((ok) => {
+    const w = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}`);
+    w.addEventListener('close', (e) => ok(e.code));
+    setTimeout(() => ok('open'), 3000);
+  });
+  assert(again === 4008, `and its address is turned away for a while (${again})`);
+  await small(ann).getByText('Wait for the next clue').waitFor();
+  assert(true, 'the room carries on for everyone else');
 
   // The host closes the room.
   host.send({ t: 'close' });

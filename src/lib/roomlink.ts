@@ -59,7 +59,7 @@ function parsePhone(x: unknown): PhoneInfo | null {
 function parseQueued(x: unknown): QueuedBuzz | null {
   if (!isObj(x) || !isStr(x.seatId) || !isNum(x.afterMs)) return null;
   if (x.rolled !== undefined && !(isNum(x.rolled) && x.rolled >= 1)) return null;
-  return { seatId: x.seatId, afterMs: x.afterMs, ...(x.rolled !== undefined ? { rolled: x.rolled } : {}) };
+  return { seatId: x.seatId, afterMs: x.afterMs, ...(x.rolled !== undefined ? { rolled: x.rolled } : {}), ...(x.arrivedLate === true ? { arrivedLate: true } : {}) };
 }
 
 /** A message from the room, checked field by field (anything else is dropped). Takes the raw WebSocket data. */

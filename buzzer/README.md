@@ -32,8 +32,10 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **Seats**: tapping a free name gives the phone a token (kept in its localStorage), so a reload or a dropped
   connection gets the same seat back. Only the host frees a held seat (kick, or removing the player), or the phone
   itself ("Not you? Change player"). A buzz before the buzzers open locks that seat out for the host's `earlyLockMs`.
-- **Kicks and 🔒 locked seats**: a kick revokes the seat's token, and the kicked phone (its socket and the random
-  `device` id its browser sends with a join) can't take that seat again for 2 minutes; it can take another free seat.
+- **Kicks and 🔒 locked seats**: a kick revokes the seat's token, and the kicked phone (its socket, the random
+  `device` id its browser sends with a join, and its address, `CF-Connecting-IP`) can't take that seat again for 2
+  minutes; it can take another free seat. (So another phone on the same Wi-Fi can't take that one seat for those 2
+  minutes either.)
   With `locked` in the host's state, only a seat's token gets a seat and nobody can ask to join.
 - **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`), but phones without a seat that have done nothing for
   10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
@@ -41,10 +43,19 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   a newcomer still gets in (up to 40 sockets) but only to come back to its seat with its token. The host is told
   (`full`) and its 📱 list says "Room full".
 - **The host comes back**: a buzz the room decided while the host was away is sent again when it reconnects, so the
-  host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped").
-- Phone-typed names lose control and invisible formatting characters (a zero-width joiner inside an emoji stays), and a
-  new player can't ask to join under an existing player's name (`name-taken`). A name typed on a phone is at most 24
-  characters, and a seat's name (sent by the host) at most 40; both end in "…" when cut. A host state too big to take (32 KB) is answered with an `error`, not dropped in silence.
+  host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped"). The app saves the
+  buzzers' state with the game, so a host reload mid-clue keeps who is answering and who already missed it.
+- **Phones come back**: a phone that gets its seat back (a reload, a new connection) is told where its buzz of the
+  current opening stands ("You're 2nd…"). A press the room hasn't answered is kept by the phone page and sent again
+  once it is back in its seat, if that opening is still on (the room counts one buzz per seat per opening and answers
+  a repeat with where it stands); otherwise the phone says "Your buzz didn't get through — press again".
+- **Floods**: a phone socket sending more than 20 messages a second for 3 seconds in a row, more than 60 in one
+  second, or more than 16 KB in one second is closed (4008) before its messages are read, and its address can't
+  connect again for 30 seconds. The phone page never sends anything like that (one buzz per 150 ms at most).
+- Phone-typed names lose control and invisible formatting characters (a zero-width joiner inside an emoji stays, and so
+  do the tag characters of a flag like England's), and a new player can't ask to join under an existing player's name
+  (`name-taken`). A name typed on a phone is at most 24 characters, and a seat's name (sent by the host) at most 40,
+  counted as people see them (a family emoji is one); both end in "…" when cut, never in the middle of a character. A host state too big to take (32 KB) is answered with an `error`, not dropped in silence.
 - Rooms end when the host closes them, 6 hours after the host's last message, or 30 minutes after being made if the
   host never connects. The app keeps a room open while the host is back in the editor from the pre-game screen (phones
   are told "The host is setting up — hang on"), and gets back into it after a reload there.
@@ -54,7 +65,9 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 The protocol is still version 1: everything added since is optional, so a deployed room and an older copy of the app
 (or an older room and a newer app) still work together; the older side ignores or leaves out the new fields. Added:
 `HostState.done/status/currency/locked`, `PhoneView.done/status/currency/hostHere`, `seats.locked/note`, the deny
-reasons `locked`, `blocked`, `name-taken`, `join/new.device`, and the room → host message `full`.
+reasons `locked`, `blocked`, `name-taken`, `join/new.device`, the room → host message `full`, `arrivedLate` on a
+queued buzz and a phone's `result`, and the round-trip probe (room → phone `probe`, phone → room `echo`). The old
+phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
 
 ## Fair timing
 
@@ -62,23 +75,33 @@ Whoever reacts first to the BUZZ! light on their own phone wins, whatever their 
 
 - **The phone times the reaction**: it notes when it first shows BUZZ! for an opening and sends the time from then to
   the press with the buzz (`reactMs`). Phones that don't send it (an old page) are ranked by arrival.
-- **The room times each phone's round trip itself**: every `pong` it sends a phone is echoed straight back (`sync`),
-  and only for a pong it really sent, so a phone can't choose its own round trip. It keeps the last 5 and uses the
-  **median**: the minimum would be the truest network time, but one lucky sample would make every honest buzz on a
-  jittery Wi-Fi look impossible; the median follows the phone's usual delay and ignores one slow or fast sample.
-  Phones ping 3 times in their first second, then every 10 s. The samples live on the socket (its attachment), so a
-  room woken from hibernation still has them. A round trip above 1 s counts as 1 s.
+- **The room times each phone's round trip itself**: it sends the phone a `probe` (after each of the phone's pings, at
+  most every 250 ms, and when it takes a seat) that the phone echoes straight back (`echo`); only an echo of a probe it
+  really sent counts, once. It keeps the last 5 and uses a **low** one (the second lowest; the lowest with fewer than
+  3): a low sample is the phone's real network time, and not the very lowest, so one lucky sample doesn't leave an
+  honest phone on jittery Wi-Fi without slack. Phones ping 3 times in their first second, then every 10 s. The
+  samples live on the socket (its attachment), so a room woken from hibernation still has them.
+- **A phone can still make its round trip look longer** by holding its echoes back (it can't make it shorter), so a
+  round trip above 350 ms counts as 350 ms (`MAX_RTT_MS`).
 - **The room checks the reaction time**: the time from arming to the buzz arriving, minus `reactMs`, is the network's
-  share. It must not be negative or more than the phone's round trip + 150 ms (`NET_TOLERANCE_MS`: drawing the screen
-  and jitter; 300 ms is assumed for a phone not timed yet). Then `reactMs` is the buzz's ranking key; otherwise (or
-  with none) the key is the arrival time minus the round trip. So a phone that lies about `reactMs` gains at most about
-  one round trip plus 150 ms. No key is below 50 ms (`MIN_REACT_MS`): nobody reacts faster, so anything below is a tie.
-- **A grace window**: the first buzz of an opening starts a 250 ms window (`GRACE_MS`) for buzzes still on their way;
-  then the lowest key wins (equal keys: arrival order). Phones that buzzed see "…" meanwhile. A buzz after the window
-  joins the queue by its key but can't pass whoever is already answering. If the host moves on during the window
-  (picks someone, closes the clue, opens again) the host wins: the window ends at once. The Durable Object stays awake
-  while the window's timer runs; the window's buzzes are saved, so a room restarted in the middle (a deploy) finishes
-  the window when it wakes, or on its next message if that is past.
+  share. It may be at most the phone's round trip + 70 ms (`NET_TOLERANCE_MS`: drawing the screen and jitter; 250 ms
+  is assumed for a phone not timed yet). If it is more, the key is raised just enough to fit (the arrival time minus
+  round trip and tolerance), so a few ms more delay is a few ms more key, never a jump. A missing or impossible
+  `reactMs` (negative, or more than the time since arming) gives the arrival time minus the round trip. No key is
+  below 50 ms (`MIN_REACT_MS`): nobody reacts faster, so anything below is a tie.
+- **What a cheat can gain**: a phone that lies about `reactMs` and holds its echoes back gains at most 350 + 70 =
+  **420 ms** over its real network: it still beats an honest player who pressed less than that much earlier. That is
+  the price of letting players on slow networks win: a phone whose real round trip is over 350 ms loses the part
+  beyond 420 ms of its network time (on a 600 ms round trip, about 180 ms).
+- **A grace window**: the first buzz of an opening starts a window for buzzes still on their way, which ends once a
+  phone that reacted as fast, on the slowest network of the seated phones that could still buzz (connected, not locked
+  out, not in yet), has had time to get here: arming + first key + that phone's round trip + 70 ms. At least 250 ms
+  (`GRACE_MS`), at most 800 ms (`MAX_GRACE_MS`). Then the lowest key wins (equal keys: arrival order). Phones that
+  buzzed see "…" meanwhile. A buzz after the window joins the queue by its key but can't pass whoever is already
+  answering; if it reacted faster it says so ("faster, but arrived late"), not "0.00 s behind". If the host moves on
+  during the window (picks someone, closes the clue, opens again) the host wins: the window ends at once. The Durable
+  Object stays awake while the window's timer runs; the window's buzzes are saved, so a room restarted in the middle
+  (a deploy) finishes the window when it wakes, or on its next message if that is past.
 
 ## Limits on new rooms
 
@@ -110,9 +133,10 @@ network use `npx wrangler dev --ip 0.0.0.0` and your computer's address).
 
 Tests: the room's unit tests run with the root `npm test`; `npm run test:buzzer` at the root runs the end-to-end tests
 (`tests/e2e/buzzerroom.mjs`: wrangler dev, a fake host and phones in Chromium, one on a slowed-down connection, the
-host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets, a phone held sideways, and the limit on new
-rooms; `tests/e2e/buzzerlive.mjs`: the built app hosting two phones, through a reload and ◀ Back to editor on the
-pre-game screen, and a dropped host connection). `npm run check` here
+host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets and presses sent again, a phone held
+sideways, a long name on small screens, a flooding socket, and the limit on new rooms; `tests/e2e/buzzerlive.mjs`: the
+built app hosting two phones, through a reload and ◀ Back to editor on the pre-game screen, a host reload mid-clue,
+and a dropped host connection). `npm run check` here
 type-checks the Worker and the phone page.
 
 ## Deploying
