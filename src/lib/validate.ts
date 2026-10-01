@@ -9,11 +9,12 @@ import { mediaUsage, onlineCount, slideHasContent } from './usage';
 import { tileDice } from './tools';
 import type { Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
+import { statsProblems } from './toolset';
 
 export interface Problem {
   text: string;
-  /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'tools' | round index), or 'play' (the pre-game screen). */
-  tab: 'play' | 'tiebreaker' | 'media' | 'tools' | number;
+  /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'tools' | 'stats' | round index), or 'play' (the pre-game screen). */
+  tab: 'play' | 'tiebreaker' | 'media' | 'tools' | 'stats' | number;
   level: 'warn' | 'info';
   /** Where in the round it is (the screen, the space…), for the checklist to go to. */
   place?: Place;
@@ -83,6 +84,7 @@ export function validate(game: Game): Problem[] {
     if (dds) out.push({ text: `${r.name}: ${dds.want} Daily Double${dds.want === 1 ? '' : 's'} wanted, ${dds.placed} placed`, tab: i, level: 'warn' });
   });
 
+  out.push(...statsProblems(game));
 
   const known = new Set(game.media.map((m) => m.id));
   const missingRefs = [...mediaUsage(game).keys()].filter((id) => !known.has(id)).length;

@@ -10,8 +10,9 @@ export interface ModalOptions {
 
 const stack: HTMLElement[] = [];
 
+// (A details box's summary is a Tab stop too: Shift+Tab from one mustn't jump to the window's last control.)
 const TABBABLE =
-  'a[href], button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+  'a[href], details > summary:first-of-type, button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 
 /** What Tab can reach inside a box, in order (skips hidden and inert parts). */
 export function tabbables(box: HTMLElement): HTMLElement[] {

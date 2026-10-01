@@ -78,6 +78,8 @@ in plain words for the people who make and host games. Anything committed but no
   Doubles than it asks for (as the ▶ Play screen did), and when a board game's movement dice were deleted. (8e0766c)
 - **📦 Item ▾ with no items yet** offers ＋ New item here (made in the catalog and put on the screen) and 📊 Go to Stats &
   Items, instead of a dead end. (ad6b92d)
+- **Board game: any space's card from the keyboard**: a **🗂 Spaces…** list in the host panel opens a space's card
+  (its landing actions, 📍 Put … here, 👁 Reveal), as a click on the space does, with the focus in it.
 
 ### Changed
 - **Smaller game files, quicker to open**: Save and Export HTML pack the game's text compressed (pictures and sounds as
@@ -216,6 +218,13 @@ in plain words for the people who make and host games. Anything committed but no
   (blank is 1): a slice no longer silently drops off the wheel. (8e0766c)
 - **Big RPG maps show screen names**: a narrow cell shows a default name as its cell ("B3") and wraps other names onto
   two lines, instead of "Scr…". (ad6b92d)
+- **A crowd on one board space stands in rows**: more than 8 players on a space stand in rows of smaller tokens over
+  it, and tokens at the board's edges move in, so none goes off the side, onto the next space or under the turn
+  banner.
+- **Score → currency converts only what fits** under the currency's Max: the rest stays as score, and a note says so.
+  Before, the points over the Max were taken and lost.
+- **The last player can't be removed mid-game**: its − in 👥 Players is greyed out (a board game showed "?"'s turn
+  with nobody left). Before the game, the list still needs one to start.
 
 ### Fixed
 - **Steal points shares fairly**: the points go to the players it's for, never back to the one robbed (their chip
@@ -426,6 +435,25 @@ in plain words for the people who make and host games. Anything committed but no
 - **`Ctrl+Enter` on the last clue** says it's the last one (Esc when done) instead of doing nothing. (d61f2e5)
 - **Moving several RPG screens** names the step after the screens moved ("Moved 11 screens", not 22 counting the ones
   swapped out of the way). (ad6b92d)
+- **A typo in a board game's Steps** no longer freezes the app: 100000 locked it up, and 500 took minutes to walk.
+  Steps are whole numbers up to 99 either way (2.5 moves 3), and a move longer than 20 spaces jumps straight to where
+  it ends on screen. Spaces passed more than once in a move offer their buttons once.
+- **Enter in Steps at a fork** says to pick the way first, instead of replacing the steps the move has left.
+- **Resume with my edits after deleting a board space (or zone)**: players who were on it go back to Start, instead of
+  vanishing from the board with "Nowhere to go from here".
+- **No keyboard trap in the slide and screen editors**: Tab picks the slide's items only with the focus on the canvas
+  (a Tab stop now; clicking an item puts the focus there too), and past the last item it moves on to the next
+  control. Enter on an RPG screen opens it with the focus on its canvas, and adding an object from a menu leaves the
+  focus there, not on the page.
+- **Shift+Tab from a section heading in a window** (the slide editor's Layers) goes back one control, no longer to the
+  window's last one.
+- **Items that don’t stack** are given 99 at most at once (their "How many" boxes stop at 99 too): 20000 swords took
+  10 s to show.
+- **Clearing a map's Columns or Rows** to type a new number no longer shrinks the map to 1 and deletes its screens:
+  the box shows the size again.
+- **Deleting a currency stat** names the shops that charged it; their Charges box says "⚠ Deleted stat — pick
+  another" and the checklist lists them. They used to switch to points without a word.
+- **A stat's Min above its Max, or a Start outside them**, is flagged next to the stat and on the checklist.
 
 ## 2026-09-30
 

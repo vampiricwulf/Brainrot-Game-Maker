@@ -76,13 +76,18 @@
    * Every press on the canvas: no text selection and no native drag-and-drop. Without this a drag
    * could leave a text selection on the page, and the next press started the browser's own drag of it
    * (a 'no' cursor, and the move or resize stopped after a few pixels). Blocking the default also
-   * stops the press from taking focus, so move it off any text field by hand as a click would.
+   * stops the press from taking focus, so move it off any text field by hand as a click would: onto the canvas, when
+   * it's a Tab stop (`data-keys-home`), so Tab goes on through the items from there.
    */
   function claim(e: PointerEvent): void {
     e.preventDefault();
     getSelection()?.removeAllRanges();
     const a = document.activeElement;
-    if (a instanceof HTMLElement && a !== document.body && !layerEl.contains(a)) a.blur();
+    if (a instanceof HTMLElement && layerEl.contains(a)) return;
+    const home = layerEl.closest<HTMLElement>('[data-keys-home]');
+    if (home) {
+      if (a !== home) home.focus({ preventScroll: true });
+    } else if (a instanceof HTMLElement && a !== document.body) a.blur();
   }
 
   function begin(d: Drag, e: PointerEvent): void {

@@ -30,6 +30,12 @@ import {
   takeItem,
   transferEntry,
   undoAction,
+  itemQty,
+  MAX_UNSTACKED,
+  shopCurrencyGone,
+  statRangeProblem,
+  statRoom,
+  statsProblems,
 } from './toolset';
 
 /** How many of catalog item `item` a player holds (all stacks). */
@@ -521,5 +527,55 @@ describe('selling', () => {
     expect(sellPrice(game, s, 'potion')).toBe(2);
     giveItem(game, session, 'a', 'key', 1);
     expect(sell(game, session, s, 'a', inventory(session, 'a')[0].id)).toEqual({ ok: false, error: 'Village doesn’t buy Secret Key' });
+  });
+});
+
+describe('limits the editor and the host can trip over', () => {
+  it('gives at most MAX_UNSTACKED of an item that doesn’t stack at once (each is its own entry), as many as asked of one that does', () => {
+    const { game, session } = setup();
+    giveItem(game, session, 'a', 'sword', 20000);
+    expect(countItem(session, 'a', 'sword')).toBe(MAX_UNSTACKED);
+    giveItem(game, session, 'a', 'potion', 20000);
+    expect(countItem(session, 'a', 'potion')).toBe(20000);
+    expect([itemQty(game, 'sword', 500), itemQty(game, 'sword', 2.4), itemQty(game, 'potion', 500), itemQty(game, 'potion', 0)]).toEqual([MAX_UNSTACKED, 2, 500, 1]);
+  });
+
+  it('knows how much a stat can still go up (converting score to a currency only converts that much)', () => {
+    const { game, session } = setup();
+    const [hp, gold] = game.statFields!;
+    addStat(game, session, 'b', hp, -4);
+    expect([statRoom(game, session, 'b', hp), statRoom(game, session, 'b', gold)]).toEqual([4, Infinity]);
+    setStat(session, 'b', hp, 10);
+    expect(statRoom(game, session, 'b', hp)).toBe(0);
+  });
+
+  it('says when a stat’s Start, Min and Max don’t add up, on the checklist too', () => {
+    const { game } = setup();
+    const [hp, gold] = game.statFields!;
+    expect(statRangeProblem(hp)).toBeNull();
+    hp.min = 12;
+    expect(statRangeProblem(hp)).toBe('Min (12) is more than Max (10)');
+    hp.min = 0;
+    hp.start = 15;
+    expect(statRangeProblem(hp)).toMatch(/^Start \(15\) is above Max \(10\)/);
+    gold.start = -1;
+    expect(statRangeProblem(gold)).toMatch(/^Start \(-1\) is below Min \(0\)/);
+    expect(statsProblems(game).map((p) => [p.text.split(':')[0], p.tab, p.level])).toEqual([
+      ['Stat “HP”', 'stats', 'warn'],
+      ['Stat “Gold”', 'stats', 'warn'],
+    ]);
+  });
+
+  it('says when a shop charges a stat that was deleted (it charges points, or the first other currency, until one is picked)', () => {
+    const { game } = setup();
+    const shop: Shop = { id: 's', name: 'Village', currency: 'gold', stock: [] };
+    game.shops = [shop];
+    expect(shopCurrencyGone(game, shop)).toBe(false);
+    game.statFields = game.statFields!.filter((f) => f.id !== 'gold');
+    expect(shopCurrencyGone(game, shop)).toBe(true);
+    expect(shopCurrency(game, shop)).toBe('score');
+    expect(statsProblems(game).map((p) => p.text)).toEqual(['Shop “Village” charged a deleted stat (it charges points now): pick what it charges']);
+    shop.currency = SCORE_CURRENCY;
+    expect(shopCurrencyGone(game, shop)).toBe(false);
   });
 });

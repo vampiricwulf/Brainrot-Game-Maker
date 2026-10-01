@@ -93,9 +93,12 @@
 
   // In a running game a player is removed (their points can be restored); otherwise the roster's entry is deleted.
   const removeWord = $derived(inGame ? 'Remove' : 'Delete');
+  /** A running game keeps at least one player (its turns, parties and scoreboard need someone). */
+  const lastOne = $derived(inGame && players.length <= 1);
   /** Before the game (no undo history there): the player just deleted, for the note's Undo. */
   let undone = $state<{ p: P; at: number } | null>(null);
   function remove(p: P): void {
+    if (lastOne) return void toast('The game needs at least one player: add another first');
     const at = players.indexOf(p);
     if (onremove) onremove(p.id);
     else {
@@ -213,7 +216,13 @@
       {/if}
       <button class="ghost small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
       <button class="ghost small" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
-      <button class="ghost small del" onclick={() => remove(p)} aria-label="{removeWord} {p.name}" title="{removeWord} {p.name}">{inGame ? '−' : '🗑'}</button>
+      <button
+        class="ghost small del"
+        onclick={() => remove(p)}
+        disabled={lastOne}
+        aria-label="{removeWord} {p.name}"
+        title={lastOne ? 'The game needs at least one player: add another first' : `${removeWord} ${p.name}`}
+      >{inGame ? '−' : '🗑'}</button>
     </div>
   {/each}
   </div>

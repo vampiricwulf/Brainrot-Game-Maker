@@ -54,7 +54,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
   for (const p of problems) {
     const round = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
     if (!round) {
-      lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text] });
+      lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place });
       continue;
     }
     const line = byRound.get(p.tab as number);

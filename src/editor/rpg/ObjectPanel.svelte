@@ -5,7 +5,7 @@
   import { step } from '../../lib/history.svelte';
   import { textSlide, type ObjectClass, type Slide, type SlideElement, type World } from '../../lib/model';
   import { findIn, OBJECT_CLASSES } from '../../lib/rpg';
-  import { currencyFields } from '../../lib/toolset';
+  import { currencyFields, itemDef, itemQty, MAX_UNSTACKED } from '../../lib/toolset';
   import ActionListEditor from './ActionListEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
   import SlideModal from './SlideModal.svelte';
@@ -93,8 +93,16 @@
       <label class="check"><input type="checkbox" bind:checked={r.locked} /> Locked (you can still open it in play)</label>
     {:else if r.class === 'item'}
       <div class="row">
-        <input type="number" min="1" bind:value={r.qty} class="n" aria-label="How many" />
-        <select bind:value={r.item} aria-label="Item">
+        <input
+          type="number"
+          min="1"
+          max={itemDef(game, r.item)?.stackable ? undefined : MAX_UNSTACKED}
+          bind:value={r.qty}
+          onchange={() => (r.qty = itemQty(game, r.item, r.qty ?? 1))}
+          class="n"
+          aria-label="How many"
+        />
+        <select bind:value={r.item} onchange={(e) => (r.qty = itemQty(game, e.currentTarget.value, r.qty ?? 1))} aria-label="Item">
           {#if !game.items?.some((it) => it.id === r.item)}
             <option value={r.item}>{r.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>
           {/if}

@@ -243,6 +243,11 @@
       slide.elements.push(el);
       selected = [el.id];
     });
+    // Added from a menu (which has closed) or a button that's gone: the keyboard carries on from the canvas, not the page.
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body) canvasEl?.focus({ preventScroll: true });
+    });
   }
 
   /** 🅣 Text, or ＋ Text here from the right-click menu (`at`: where it goes). */
@@ -487,12 +492,18 @@
     selected = slide.elements.filter((x) => !x.locked && !hidden.includes(x.id)).map((x) => x.id);
   }
 
-  /** Tab / Shift+Tab: select the next item down (or up) the stack. */
-  function cycle(dir: 1 | -1): void {
+  /**
+   * Tab on the canvas: the next item down the stack (Shift: up). Past the last one, Tab goes on to the next control as
+   * anywhere else (false: the key isn't taken); Shift+Tab before the first leaves nothing selected, then goes back too.
+   */
+  function cycle(dir: 1 | -1): boolean {
     const list = slide.elements.filter((e) => !hidden.includes(e.id)).sort((a, b) => b.zIndex - a.zIndex);
-    if (!list.length) return;
+    if (!list.length) return false;
     const i = selected.length ? list.findIndex((e) => e.id === selected[selected.length - 1]) : -1;
-    selected = [list[(i + dir + list.length) % list.length].id];
+    const j = i < 0 && dir < 0 ? -1 : i + dir;
+    if (j >= list.length || (j < 0 && !selected.length)) return false;
+    selected = j < 0 ? [] : [list[j].id];
+    return true;
   }
 
   function align(how: Align): void {
@@ -590,10 +601,10 @@
       return;
     }
     const texts = slide.elements.filter((x): x is TextEl => x.kind === 'text' && selected.includes(x.id));
-    const onCanvas = document.activeElement === document.body || !!canvasEl?.contains(document.activeElement);
+    // Only with the focus on the canvas (a Tab stop of its own): elsewhere, and past the last item, Tab moves on.
+    const onCanvas = !!canvasEl?.contains(document.activeElement);
     if (k === 'tab' && !mod && !e.altKey && onCanvas && slide.elements.length) {
-      e.preventDefault();
-      cycle(e.shiftKey ? -1 : 1);
+      if (cycle(e.shiftKey ? -1 : 1)) e.preventDefault();
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       e.preventDefault();
       const up = e.code === 'BracketRight';
@@ -888,18 +899,21 @@
     <div class="cell">
       <!-- The padding is a pasteboard, so handles on items at the slide's edges stay visible and grabbable.
            A click on it stops a preview (from the keyboard: Esc, or ■ Stop preview in the toolbar). -->
-      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+      <!-- A Tab stop (a click on an item puts the focus here too): Tab and Shift+Tab then go through the items. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -->
       <div
         class="canvas"
         class:previewing
         style={themeStyle(game.theme)}
         bind:this={canvasEl}
+        tabindex="0"
+        data-keys-home
         ondragover={(e) => e.preventDefault()}
         {ondrop}
         onpointerdown={(e) => e.target === canvasEl && (selected = [])}
         onclick={() => previewing && togglePreview()}
         role="region"
-        aria-label="Slide canvas. Drop files or links here."
+        aria-label="Slide canvas. Tab and Shift+Tab pick the items on it. Drop files or links here."
       >
         <Stage>
           {#if previewing}
@@ -1178,6 +1192,10 @@
   }
   .canvas.previewing {
     cursor: pointer;
+  }
+  .canvas:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
   .side {
     position: relative;

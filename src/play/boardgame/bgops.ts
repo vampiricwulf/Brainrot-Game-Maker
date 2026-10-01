@@ -1,7 +1,7 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
+import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
 import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -33,6 +33,8 @@ export function moveNow(game: Game, session: Session, steps: number, choose?: st
   if (!round || !bs) return 'No board';
   const who = playerId ?? bs.fork?.playerId ?? currentPlayer(bs);
   if (!who) return 'No players';
+  steps = clampSteps(steps);
+  if (!steps) return 'How many spaces? Roll first, or type a number';
   let msg = '';
   logged(session, `${playerName(session, who)} moves ${steps}`, () => (msg = movePlayer(round, bs, who, steps, choose)));
   return `${playerName(session, who)}: ${msg}`;

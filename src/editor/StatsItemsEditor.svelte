@@ -15,7 +15,7 @@
   import { pickFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allActions, worldObjects } from '../lib/refs';
-  import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, SCORE_CURRENCY } from '../lib/toolset';
+  import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, shopCurrencyGone, SCORE_CURRENCY, statRangeProblem } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -48,7 +48,10 @@
 
   // Deleting is done at once: the note at the bottom offers Undo.
   function removeField(f: StatField): void {
-    step(`Deleted stat “${f.name}”`, () => (game.statFields = (game.statFields ?? []).filter((x) => x.id !== f.id)), { notify: true });
+    // Shops that charged it say so (and charge the first other currency, or points, until one is picked).
+    const shops = (game.shops ?? []).filter((s) => s.currency === f.id).map((s) => `“${s.name}”`);
+    const also = shops.length ? ` · shop${shops.length === 1 ? '' : 's'} ${shops.join(', ')} charged it: pick what ${shops.length === 1 ? 'it charges' : 'they charge'}` : '';
+    step(`Deleted stat “${f.name}”${also}`, () => (game.statFields = (game.statFields ?? []).filter((x) => x.id !== f.id)), { notify: true });
   }
 
   function addItem(): ItemDef {
@@ -344,6 +347,7 @@
             </select>
             <label class="check small"><input type="checkbox" bind:checked={f.currency} /> Currency</label>
             <input class="sym" bind:value={f.symbol} placeholder={f.currency ? '🪙' : 'Symbol'} aria-label="{f.name} symbol" title="Shown before the number, e.g. 🪙 or $" />
+            {#if statRangeProblem(f)}<span class="warn small" data-warn="range">⚠ {statRangeProblem(f)}</span>{/if}
           {:else if f.type === 'text'}
             <label class="small">Start<input value={String(f.start ?? '')} oninput={(e) => (f.start = e.currentTarget.value)} /></label>
           {:else if f.type === 'checkbox'}
@@ -566,10 +570,12 @@
           <label class="small">
             Charges
             <select
-              value={cur === 'score' ? SCORE_CURRENCY : cur.id}
+              value={shopCurrencyGone(game, s) ? s.currency : cur === 'score' ? SCORE_CURRENCY : cur.id}
               onchange={(e) => (s.currency = e.currentTarget.value)}
               aria-label="{s.name} currency"
             >
+              <!-- Its stat was deleted: say so, rather than seem to charge points (or another currency) by choice. -->
+              {#if shopCurrencyGone(game, s)}<option value={s.currency}>⚠ Deleted stat — pick another</option>{/if}
               <option value={SCORE_CURRENCY}>Points (the score)</option>
               <!-- A stat no longer ticked as a currency is still what it charges. -->
               {#if cur !== 'score' && !currencyFields(game).includes(cur)}<option value={cur.id}>{cur.name}</option>{/if}
@@ -660,6 +666,9 @@
 </section>
 
 <style>
+  .warn {
+    color: var(--warn);
+  }
   h2 {
     margin: 0 0 6px;
   }

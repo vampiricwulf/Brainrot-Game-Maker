@@ -1,6 +1,7 @@
 // Board game mode (games-maker spec §7.13): spaces linked in a loop or a path on a board, players taking turns to
 // spin or roll and step along them. Pure functions over Game + Session; the host's UI wraps changes in logged().
 import {
+  isBoardGame,
   newId,
   SLIDE_H,
   SLIDE_W,
@@ -86,6 +87,37 @@ function syncPlayers(session: Session, round: BoardGameRound, bs: BoardGameState
   bs.turn = keep ? bs.order.indexOf(keep) : 0;
   // A way to pick for someone who left isn't asked any more.
   if (bs.fork && !ids.includes(bs.fork.playerId)) bs.fork = undefined;
+  rehome(round, bs);
+}
+
+/**
+ * Spaces or zones deleted in the editor since ("Resume with my edits"): players on them go back to the start space,
+ * and a fork, the last move's buttons, the move being shown and the way each player came forget them.
+ */
+export function rehome(round: BoardGameRound, bs: BoardGameState): void {
+  const has = (id: Id | undefined) => !!spaceById(round, id);
+  const start = startSpace(round)?.id;
+  for (const [id, p] of Object.entries(bs.positions)) {
+    const ok = p.zone ? round.zones.some((z) => z.id === p.zone) : has(p.space);
+    if (!ok && start) bs.positions[id] = { space: start };
+  }
+  if (bs.fork && !has(bs.fork.at)) bs.fork = undefined;
+  if (bs.last && (!bs.last.passed.every(has) || (bs.last.landed && !has(bs.last.landed)))) {
+    const passed = bs.last.passed.filter(has);
+    bs.last = { ...bs.last, passed, landed: has(bs.last.landed) ? bs.last.landed : undefined };
+  }
+  if (bs.hop && !bs.hop.path.every(has)) bs.hop = undefined;
+  if (bs.prev) for (const [id, s] of Object.entries(bs.prev)) if (!has(s)) delete bs.prev[id];
+  if (bs.revealed?.some((s) => !has(s))) bs.revealed = bs.revealed.filter(has);
+  if (bs.zoneShown && !round.zones.some((z) => z.id === bs.zoneShown)) bs.zoneShown = null;
+}
+
+/** After the game was edited ("Resume with my edits"): every board-game round's state forgets deleted spaces. */
+export function refindSpaces(session: Session, game: Game): void {
+  for (const [id, bs] of Object.entries(session.boardgames ?? {})) {
+    const round = game.rounds.find((r) => r.id === id);
+    if (isBoardGame(round)) rehome(round, bs);
+  }
 }
 
 export function currentPlayer(bs: BoardGameState): Id | undefined {
@@ -206,6 +238,16 @@ export function moveInOrder(bs: BoardGameState, from: number, to: number): void 
 
 /** How long each step of a move takes on screen. */
 export const HOP_MS = 380;
+/** The most spaces one move goes, either way (a typed 100000 would take ages to walk, and to show). */
+export const MAX_STEPS = 99;
+/** A longer move than this many spaces jumps straight to where it ends on screen, rather than stepping for a minute. */
+export const MAX_HOPS = 20;
+
+/** A count of steps as a move takes it: a whole number, at most MAX_STEPS either way (0 for nonsense). */
+export function clampSteps(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-MAX_STEPS, Math.min(MAX_STEPS, Math.round(n)));
+}
 
 /**
  * Move a player: step along the spaces, then remember which spaces were passed and where they landed (their
@@ -214,20 +256,23 @@ export const HOP_MS = 380;
 export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: Id, steps: number, choose?: Id): string {
   const from = bs.positions[playerId]?.space;
   if (!from) return 'They aren’t on the board (send them to a space first)';
+  steps = clampSteps(steps);
+  if (!steps) return 'No steps to move';
   const w = walk(round, from, steps, choose, bs.prev?.[playerId]);
   const prevPassed = bs.fork?.playerId === playerId && bs.last?.playerId === playerId ? bs.last.passed : [];
   bs.fork = w.fork ? { playerId, at: w.fork.at, stepsLeft: w.fork.stepsLeft } : undefined;
   if (w.path.length) {
     bs.positions[playerId] = { space: w.path[w.path.length - 1] };
-    bs.hop = { playerId, path: [from, ...w.path], at: Date.now() };
     const full = [from, ...w.path];
+    bs.hop = { playerId, path: w.path.length > MAX_HOPS ? [from, full[full.length - 1]] : full, at: Date.now() };
     bs.prev ??= {};
     // Where a move forward came from. After a move back that's unknown: any way on is open again (a fork asks).
     if (steps > 0) bs.prev[playerId] = full[full.length - 2];
     else delete bs.prev[playerId];
   }
-  // A fork's space counts as passed, since the walk goes on from it.
-  const passed = [...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))];
+  // A fork's space counts as passed, since the walk goes on from it. A space passed twice (round a small loop) gets
+  // its buttons once.
+  const passed = [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])];
   bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1) };
   const name = (id?: Id) => spaceById(round, id)?.name ?? '?';
   if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;
@@ -259,11 +304,30 @@ export function shownSpace(bs: BoardGameState, playerId: Id, now: number): Id | 
 const SPACE_R = 58;
 const TUCK = 12;
 
+/** How big a token is (its radius) with `n` on one space: smaller as the crowd grows. */
+export function tokenRadius(n: number): number {
+  return n > 8 ? 24 : n > 3 ? 32 : 42;
+}
+
+/** Above this many tokens on one space, they stand in rows over it instead of along its rim. */
+const RIM_MAX = 8;
+
 /**
  * Where `n` tokens of radius `r` sit on a space: side by side along the top of its rim, never over its number or its
  * name below it. A crowd moves out a little so the tokens don't cover each other, and goes no lower than the sides.
+ * More than RIM_MAX stand in rows, centered a little above the space, about as wide as the gap to the next space.
  */
 export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
+  if (n > RIM_MAX) {
+    const gap = 2 * r + 4;
+    const cols = Math.min(n, Math.ceil(Math.sqrt(n * 1.6)));
+    const rows = Math.ceil(n / cols);
+    return Array.from({ length: n }, (_, i) => {
+      const row = Math.floor(i / cols);
+      const inRow = row === rows - 1 ? n - row * cols : cols;
+      return { dx: Math.round((i - row * cols - (inRow - 1) / 2) * gap), dy: Math.round((row - (rows - 1) / 2) * gap - r) };
+    });
+  }
   let ring = SPACE_R + r - TUCK;
   // The angle between two neighbours' centers at that distance; together they reach a little past the sides at most.
   const stepAt = (d: number) => 2 * Math.asin(Math.min(1, (r + 3) / d));
@@ -273,6 +337,25 @@ export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
     const a = -Math.PI / 2 + (i - (n - 1) / 2) * step;
     return { dx: Math.round(Math.cos(a) * ring), dy: Math.round(Math.sin(a) * ring) };
   });
+}
+
+/**
+ * Where to draw `n` tokens on a space at (x, y), on the board, with `top` and `bottom` the room the labels and the
+ * stats strip leave: rows of a crowd move together (so they stay rows); along the rim, a token that would slip under
+ * the turn banner or the strip comes down (or up) just enough. Nothing goes off the sides.
+ */
+export function placeTokens(x: number, y: number, n: number, top: number, bottom: number): { r: number; spots: { x: number; y: number }[] } {
+  const r = tokenRadius(n);
+  const spots = rimSpots(n, r).map((s) => ({ x: x + s.dx, y: y + s.dy }));
+  // (Too big for the room, the group keeps to the left, or the top.)
+  const shift = (lo: number, hi: number, min: number, max: number) => (min < lo ? lo - min : max > hi ? Math.max(hi - max, lo - min) : 0);
+  const xs = spots.map((s) => s.x);
+  const dx = shift(8 + r, SLIDE_W - 8 - r, Math.min(...xs), Math.max(...xs));
+  const lowest = top + r;
+  const highest = Math.max(lowest, bottom - r);
+  const ys = spots.map((s) => s.y);
+  const dy = n > RIM_MAX ? shift(lowest, highest, Math.min(...ys), Math.max(...ys)) : 0;
+  return { r, spots: spots.map((s) => ({ x: s.x + dx, y: Math.min(highest, Math.max(lowest, s.y + dy)) })) };
 }
 
 /**

@@ -94,11 +94,21 @@ try {
   await clickAt(960, 540, true);
   assert((await inspectorKind()) === 'image', 'Alt+click again wraps back to the top');
 
-  // Tab steps through items.
-  await page.locator('body').focus();
-  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+  // Tab steps through items, with the focus on the canvas (a click on an item puts it there).
+  const canvasFocused = () => page.evaluate(() => !!document.activeElement?.classList.contains('canvas'));
+  assert(await canvasFocused(), 'a click on an item puts the focus on the canvas');
   await page.keyboard.press('Tab');
   assert((await inspectorKind()) === 'text', 'Tab selects the next item down');
+  // No keyboard trap: past the last item, Tab goes on to the next control (and Shift+Tab comes back).
+  await page.keyboard.press('Tab');
+  assert(!(await canvasFocused()) && (await inspectorKind()) === 'text', 'Tab past the last item leaves the canvas, the item still selected');
+  await page.keyboard.press('Shift+Tab');
+  assert(await canvasFocused(), 'Shift+Tab comes back to the canvas');
+  // With the focus on the page, Tab is the browser's own again.
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+  await page.keyboard.press('Tab');
+  assert((await inspectorKind()) === 'text' && !(await canvasFocused()), 'with the focus on the page, Tab doesn’t pick items');
+  await page.locator('.canvas').focus();
 
   // Restack from the keyboard: Ctrl+Shift+] brings the text to the front.
   await page.keyboard.press('Control+Shift+BracketRight');

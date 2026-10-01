@@ -5,6 +5,7 @@ import {
   formatPoints, newId, type ActionEvent, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
   type StatValue, type Wearable, type WorldMap,
 } from './model';
+import type { Problem } from './validate';
 
 // ---------- Stats ----------
 
@@ -69,6 +70,11 @@ export function addStat(game: Game, session: Session, playerId: string, field: S
   return statNumber(game, session, playerId, field) - before;
 }
 
+/** How much a player's number stat can still go up before its max (Infinity with no max). */
+export function statRoom(game: Game, session: Session, playerId: string, field: StatField): number {
+  return field.max === undefined ? Infinity : Math.max(0, field.max - statNumber(game, session, playerId, field));
+}
+
 /** The currency stats (shops charge them). */
 export function currencyFields(game: Game): StatField[] {
   return statFields(game).filter((f) => f.type === 'number' && f.currency);
@@ -102,8 +108,19 @@ function inv(session: Session, playerId: string): InventoryEntry[] {
 }
 
 /** Give a player `qty` of a catalog item (or a made-up one by name). Stackable items share one entry. */
+/** The most of an item that doesn't stack given at once (each is its own entry: 20000 would take ages to show). */
+export const MAX_UNSTACKED = 99;
+
+/** A "How many" for an item as given: a whole number, at least 1, and at most MAX_UNSTACKED of one that doesn't stack. */
+export function itemQty(game: Game, item: string | null | undefined, qty: number): number {
+  const n = Math.max(1, Math.round(Number(qty) || 1));
+  const def = itemDef(game, item);
+  return def && !def.stackable ? Math.min(MAX_UNSTACKED, n) : n;
+}
+
 export function giveItem(game: Game, session: Session, playerId: string, item: string | null, qty = 1, name?: string): void {
-  if (qty <= 0) return;
+  if (!(qty > 0)) return;
+  qty = itemQty(game, item, qty);
   const list = inv(session, playerId);
   const def = itemDef(game, item);
   if (def?.stackable || (!def && !item)) {
@@ -188,6 +205,37 @@ export const SCORE_CURRENCY = 'score';
 export function shopCurrency(game: Game, shop: Shop): StatField | 'score' {
   if (shop.currency === SCORE_CURRENCY) return 'score';
   return statFields(game).find((f) => f.id === shop.currency) ?? currencyFields(game)[0] ?? 'score';
+}
+
+/** The shop charges a stat that was deleted since (it then charges the first currency, or points, until one is picked). */
+export function shopCurrencyGone(game: Game, shop: Shop): boolean {
+  return !!shop.currency && shop.currency !== SCORE_CURRENCY && !statFields(game).some((f) => f.id === shop.currency);
+}
+
+/** What's wrong with a number stat's Start, Min and Max ("Min is more than Max"), or null. */
+export function statRangeProblem(f: StatField): string | null {
+  if (f.type !== 'number') return null;
+  if (f.min !== undefined && f.max !== undefined && f.min > f.max) return `Min (${f.min}) is more than Max (${f.max})`;
+  const start = Number(f.start ?? 0);
+  if (f.min !== undefined && start < f.min) return `Start (${start}) is below Min (${f.min}): players start at ${f.min}`;
+  if (f.max !== undefined && start > f.max) return `Start (${start}) is above Max (${f.max}): players start at ${f.max}`;
+  return null;
+}
+
+/** Checklist items for 📊 Stats & Items: stats whose range doesn't add up, shops that charge a deleted stat. */
+export function statsProblems(game: Game): Problem[] {
+  const out: Problem[] = [];
+  for (const f of statFields(game)) {
+    const why = statRangeProblem(f);
+    if (why) out.push({ text: `Stat “${f.name}”: ${why}`, tab: 'stats', level: 'warn', place: { tab: 'stats', stat: f.id } });
+  }
+  for (const s of game.shops ?? [])
+    if (shopCurrencyGone(game, s)) {
+      const cur = shopCurrency(game, s);
+      const now = cur === 'score' ? 'points' : cur.name;
+      out.push({ text: `Shop “${s.name}” charged a deleted stat (it charges ${now} now): pick what it charges`, tab: 'stats', level: 'warn', place: { tab: 'stats', shop: s.id } });
+    }
+  return out;
 }
 
 /** A price or a balance in a shop's currency ("🪙12", "$300"). */

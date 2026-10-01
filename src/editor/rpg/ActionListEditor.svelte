@@ -14,7 +14,7 @@
   import { isTextField } from '../../lib/undokeys';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
-  import { statFields } from '../../lib/toolset';
+  import { itemDef, itemQty, MAX_UNSTACKED, statFields } from '../../lib/toolset';
   import { typedSteps } from '../../lib/actions';
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { mediaDrop } from '../../lib/mediadrop';
@@ -283,8 +283,16 @@
           {@render who(a)}
         {:else if a.do === 'item'}
           <select bind:value={a.op} aria-label="Give or take"><option value="give">Give</option><option value="take">Take</option></select>
-          <input type="number" min="1" bind:value={a.qty} aria-label="How many" class="n" />
-          <select bind:value={a.item} aria-label="Item">
+          <input
+            type="number"
+            min="1"
+            max={itemDef(game, a.item)?.stackable ? undefined : MAX_UNSTACKED}
+            bind:value={a.qty}
+            onchange={() => (a.qty = itemQty(game, a.item, a.qty))}
+            aria-label="How many"
+            class="n"
+          />
+          <select bind:value={a.item} onchange={(e) => (a.qty = itemQty(game, e.currentTarget.value, a.qty))} aria-label="Item">
             {#if !game.items?.some((it) => it.id === a.item)}
               <option value={a.item}>{a.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>
             {/if}
