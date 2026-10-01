@@ -36,10 +36,10 @@ export function closeMenu(): void {
 }
 
 /**
- * `use:dropdown={close}` on a menu that drops from a button (Shape ▾), so it keys like a
- * right-click menu: its first item takes focus, ↑/↓ move between items, and Esc closes it (focus goes
- * back to the button). A click outside is the menu's own backdrop, which covers the button too, so a
- * second click on the button closes the menu.
+ * `use:dropdown={close}` on a menu that drops from a button (Shape ▾) or the slide's right-click menu, so it keys like
+ * a menu: its first item takes focus, ↑/↓ move between items (Home/End: the first and last), and Esc or Tab closes it
+ * (focus goes back to the button, or wherever it was when the menu opened). A click outside is the menu's own
+ * backdrop, which covers the button too, so a second click on the button closes the menu.
  */
 export function dropdown(box: HTMLElement, close: () => void): { destroy: () => void } {
   const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -47,7 +47,7 @@ export function dropdown(box: HTMLElement, close: () => void): { destroy: () => 
   // On the window, as the right-click menu does: Esc closes just the menu wherever the focus is (and never
   // also the dialog it's in).
   function key(e: KeyboardEvent): void {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' || e.key === 'Tab') {
       e.preventDefault();
       e.stopImmediatePropagation();
       close();
@@ -57,6 +57,10 @@ export function dropdown(box: HTMLElement, close: () => void): { destroy: () => 
       const list = items();
       const at = list.indexOf(document.activeElement as HTMLButtonElement);
       list[(at + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length]?.focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      const list = items();
+      list[e.key === 'Home' ? 0 : list.length - 1]?.focus();
     }
   }
   items()[0]?.focus();

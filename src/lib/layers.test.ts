@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { align, bounds, centreOn, clampOnto, contains, elementsAt, nearestSnap, nextBelow, restack, touchedBy } from './layers';
+import { align, bounds, centreOn, clampOnto, contains, elementsAt, keepOnStage, nearestSnap, nextBelow, offStage, restack, touchedBy } from './layers';
 
 const box = (id: string, x: number, y: number, w: number, h: number, zIndex: number, rotation = 0) => ({ id, x, y, w, h, zIndex, rotation });
 
@@ -166,5 +166,33 @@ describe('centreOn', () => {
     const b = { x: 200, y: 100, w: 100, h: 100 };
     centreOn([a, b], { x: 1000, y: 500 });
     expect([a.x, a.y, b.x, b.y]).toEqual([850, 400, 1050, 500]);
+  });
+});
+
+describe('drag-to-select and items off the slide', () => {
+  const box = (id: string, x: number, y: number, w: number, h: number) => ({ id, x, y, w, h, rotation: 0 });
+  it("a box drawn on the full-slide question text picks what's on it, not the text", () => {
+    const els = [box('text', 0, 0, 1920, 1080), box('rect', 1400, 700, 300, 200)];
+    expect(touchedBy(els, { x: 200, y: 150 }, { x: 1500, y: 800 }).map((e) => e.id)).toEqual(['rect']);
+    // A box that reaches past the text's edge still takes it.
+    expect(touchedBy(els, { x: -20, y: 150 }, { x: 1500, y: 800 }).map((e) => e.id)).toEqual(['text', 'rect']);
+  });
+  it('knows an item that is wholly off the slide', () => {
+    expect(offStage({ x: 1920, y: 0, w: 100, h: 100 })).toBe(true);
+    expect(offStage({ x: -100, y: 500, w: 100, h: 100 })).toBe(true);
+    expect(offStage({ x: 1900, y: 1000, w: 100, h: 100 })).toBe(false);
+    // Turned, its corner reaches back onto the slide.
+    expect(offStage({ x: -110, y: 500, w: 100, h: 100, rotation: 45 })).toBe(false);
+  });
+  it('a nudge or a copy keeps some of the item on the slide', () => {
+    const e = { x: 1915, y: -500, w: 200, h: 100 };
+    keepOnStage(e);
+    expect(e).toEqual({ x: 1880, y: -60, w: 200, h: 100 });
+    const small = { x: -50, y: 1100, w: 20, h: 20 };
+    keepOnStage(small);
+    expect(small).toEqual({ x: 0, y: 1060, w: 20, h: 20 });
+    const fine = { x: 100, y: 100, w: 50, h: 50 };
+    keepOnStage(fine);
+    expect(fine).toEqual({ x: 100, y: 100, w: 50, h: 50 });
   });
 });

@@ -7,6 +7,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
   import { LAYER_ICON, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
+  import { dropdown } from '../../lib/menustate.svelte';
 
   let {
     x,
@@ -57,15 +58,10 @@
     onclose();
   }
 
-  function onkey(e: KeyboardEvent): void {
-    if (e.key !== 'Escape') return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    onclose();
-  }
 </script>
 
-<svelte:window onkeydowncapture={onkey} onblur={onclose} />
+<!-- (The keys are dropdown's: the first item takes focus, arrows, Home/End, and Esc or Tab closes it.) -->
+<svelte:window onblur={onclose} />
 
 <div
   class="backdrop"
@@ -76,7 +72,7 @@
   }}
   role="presentation"
 ></div>
-<div class="menu" style:left="{left}px" style:top="{top}px" bind:clientWidth={w} bind:clientHeight={h} role="menu" aria-label="Slide item menu">
+<div class="menu" style:left="{left}px" style:top="{top}px" bind:clientWidth={w} bind:clientHeight={h} role="menu" aria-label="Slide item menu" use:dropdown={onclose}>
   {#if stack.length > 1}
     <div class="head">Select an item here</div>
     {#each stack as el (el.id)}

@@ -7,6 +7,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { EmbedEl } from '../model';
+  import { playRange } from '../editing';
   import {
     openMediaPopup, registerMedia, unregisterMedia, updateMedia, youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl,
     type MediaRole,
@@ -15,7 +16,9 @@
   let { el, mode, role, label }: { el: EmbedEl; mode: 'edit' | 'play'; role: MediaRole; label: string } = $props();
 
   const vid = $derived(youtubeId(el.url) ?? '');
-  const startAt = $derived(el.startAt ?? youtubeStart(el.url) ?? 0);
+  // (A Stop at that isn't after the start is no stop: it plays to the end.)
+  const range = $derived(playRange(el.startAt ?? youtubeStart(el.url), el.endAt));
+  const startAt = $derived(range.start);
   const watchUrl = $derived(youtubeWatchUrl(vid, startAt));
 
   let iframe = $state<HTMLIFrameElement>();
@@ -43,7 +46,7 @@
       mute: role === 'mirror' || el.muted ? '1' : '0',
     });
     if (startAt) p.set('start', String(Math.floor(startAt)));
-    if (el.endAt) p.set('end', String(Math.floor(el.endAt)));
+    if (range.end) p.set('end', String(Math.floor(range.end)));
     return `${ORIGIN}/embed/${vid}?${p}`;
   });
 
@@ -115,7 +118,7 @@
             cmd('playVideo');
           }
         }
-        const end = el.endAt ?? duration;
+        const end = range.end ?? duration;
         if (loop && end && lastTime >= end - 0.3) {
           cmd('seekTo', [startAt, true]);
         }

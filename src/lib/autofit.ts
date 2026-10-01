@@ -74,8 +74,13 @@ function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: Autofi
   if (!enabled) return { size, overflow: yield { size, wrap: '' } };
   if (!(yield { size, wrap: 'normal' })) return { size, overflow: false };
   const lo = Math.min(min, size);
-  let s = yield* largest(lo, size, 'normal');
-  const left = yield { size: s, wrap: 'normal' };
+  // Too much text even at the smallest size (pages pasted in) needs no search: every try is a layout of all of it.
+  let s = lo;
+  let left = true;
+  if (lo >= size || !(yield { size: lo, wrap: 'normal' })) {
+    s = yield* largest(lo, size, 'normal');
+    left = yield { size: s, wrap: 'normal' };
+  }
   if (!left || noBreak) return { size: s, overflow: left };
   if (hyphenate) {
     s = yield* largest(lo, size, 'hyphen');
@@ -86,6 +91,8 @@ function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: Autofi
       if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
     }
   }
+  // Not even breaking words anywhere makes it fit: the smallest size it is.
+  if (yield { size: lo, wrap: 'anywhere' }) return { size: lo, overflow: true };
   s = yield* largest(lo, size, 'anywhere');
   return { size: s, overflow: yield { size: s, wrap: 'anywhere' } };
 }

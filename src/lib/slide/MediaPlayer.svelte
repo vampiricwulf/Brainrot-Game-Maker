@@ -5,6 +5,7 @@
   import { localMedia, openMediaPopup, registerMedia, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
   import { mediaCommand } from '../sync.svelte';
   import { applySink } from '../audioout.svelte';
+  import { playRange } from '../editing';
 
   let {
     el,
@@ -38,8 +39,11 @@
   /** Routed to the chosen audio output (Game audio output) before it first plays. */
   let sinkReady: Promise<void> = Promise.resolve();
 
+  // Never before 0, and a Stop at that isn't after the start is no stop (it plays to the end): a loop seeking back
+  // to the start forever froze the video.
+  const range = $derived(playRange(el.startAt, el.endAt));
   function start(): number {
-    return el.startAt ?? 0;
+    return range.start;
   }
 
   function tryPlay(): void {
@@ -118,7 +122,7 @@
 
   function ontime(): void {
     if (!node || mode !== 'play') return;
-    const end = el.endAt;
+    const end = range.end;
     if (end && node.currentTime >= end) {
       if (loop) node.currentTime = start();
       else node.pause();

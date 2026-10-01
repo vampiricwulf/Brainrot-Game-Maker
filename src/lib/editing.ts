@@ -1,4 +1,4 @@
-// Pure helpers behind the slide and image editors: undo history, placement and crop geometry.
+// Pure helpers behind the slide and image editors: undo history, placement, crop geometry, pastes and playback.
 // (Hit testing and restacking live in layers.ts.) No DOM or Svelte state here, so all of it is
 // unit-tested (editing.test.ts).
 import { SLIDE_H, SLIDE_W } from './model';
@@ -142,17 +142,17 @@ export function aspectCrop(mode: string, o: Box, dx: number, dy: number, ratio: 
 
 /**
  * The box for a picture whose shape changed (🎨 Edit image › Apply after a crop or a turn): the new shape (`aspect`,
- * width ÷ height) as big as fits inside the old box, centred where it was, and kept on the slide (W × H).
+ * width ÷ height) with the same area as the old box, centred where it was, and kept on the slide (W × H). So applying
+ * again never shrinks it, and a quarter turn just swaps its width and height.
  */
 export function fitAspect(o: Box, aspect: number, W = 1920, H = 1080): Box {
-  if (!(aspect > 0) || !Number.isFinite(aspect)) return { ...o };
-  let w = o.w;
-  let h = o.w / aspect;
-  if (h > o.h) {
-    h = o.h;
-    w = o.h * aspect;
-  }
-  // Never bigger than the slide either.
+  if (!(aspect > 0) || !Number.isFinite(aspect) || !(o.w > 0) || !(o.h > 0)) return { ...o };
+  const w = Math.sqrt(o.w * o.h * aspect);
+  return resizeAround(o, w, w / aspect, W, H);
+}
+
+/** A box of size w × h centred where `o` is, no bigger than the slide (W × H, keeping its shape) and on it. */
+export function resizeAround(o: Box, w: number, h: number, W = 1920, H = 1080): Box {
   const k = Math.min(1, W / w, H / h);
   w *= k;
   h *= k;
@@ -161,4 +161,26 @@ export function fitAspect(o: Box, aspect: number, W = 1920, H = 1080): Box {
   const x = Math.min(W - w, Math.max(0, cx - w / 2));
   const y = Math.min(H - h, Math.max(0, cy - h / 2));
   return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+}
+
+// ---------- Pasting ----------
+
+/**
+ * A paste from Word, PowerPoint, Excel or OneNote: besides the text (and its HTML) they put a picture of it on the
+ * clipboard, which isn't what was meant. Pasted with text and one picture, Office-made HTML (Mso styles, Office's XML
+ * namespaces, a table) goes in as the text.
+ */
+export function officeTextPaste(html: string, text: string, files: number): boolean {
+  return files === 1 && !!text.trim() && /class=["']?Mso|urn:schemas-microsoft-com|<table[\s>]/i.test(html);
+}
+
+// ---------- Playback ----------
+
+/**
+ * Where a clip plays from and to (the Inspector's Start at / Stop at, in seconds): never before the start, and a stop
+ * at or before the start is no stop at all (it plays to the end, rather than seeking back forever on a loop).
+ */
+export function playRange(startAt: number | undefined, endAt: number | undefined): { start: number; end?: number } {
+  const start = Number.isFinite(startAt) && startAt! > 0 ? startAt! : 0;
+  return { start, end: Number.isFinite(endAt) && endAt! > start ? endAt : undefined };
 }

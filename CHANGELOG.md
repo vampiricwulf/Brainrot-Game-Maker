@@ -82,6 +82,12 @@ in plain words for the people who make and host games. Anything committed but no
   Items, instead of a dead end. (ad6b92d)
 - **Board game: any space's card from the keyboard**: a **🗂 Spaces…** list in the host panel opens a space's card
   (its landing actions, 📍 Put … here, 👁 Reveal), as a click on the space does, with the focus in it.
+- **The slide's right-click menu from the keyboard**: Shift+F10 (or the menu key) on the slide opens it for the
+  selected items; ↑/↓, Home and End move through it, and Esc or Tab closes it. Tab through the items on the slide
+  now tells screen readers which one it picked ("Rectangle, 2 of 5, locked").
+- **🎨 Edit image without the mouse**: **＋ Add text in the middle** (🅣 Text) and **＋ Put 😂 in the middle**
+  (😂 Sticker). The caption box, its font and the brush colour have names for screen readers.
+- **The Layers list flags an item that's off the slide** ("⚠ off the slide"), where players can't see it.
 
 ### Changed
 - **The sound preview in 🔊 Sounds can be stopped**: ▶ turns into ■ while it plays.
@@ -247,6 +253,22 @@ in plain words for the people who make and host games. Anything committed but no
   Before, the points over the Max were taken and lost.
 - **The last player can't be removed mid-game**: its − in 👥 Players is greyed out (a board game showed "?"'s turn
   with nobody left). Before the game, the list still needs one to start.
+- **🎨 Edit image › Apply keeps the picture about the same size**: the new shape with the same area, centred where it
+  was (a quarter turn just swaps its width and height). It used to shrink into the old box, a little more with every
+  Apply. **Use original** goes back to the size it had before it was first edited.
+- **🎨 Edit image: captions, stickers and drawing stay on the picture** through a crop, ⟲ / ⟳ 90° or a flip (they
+  used to stay put on the frame, over another part of the picture), and show while cropping. Pictures edited before
+  look just as they did.
+- **🎨 Edit image: ⟲ / ⟳ 90° turns the crop with the picture** instead of dropping it.
+- **🎨 Edit image: the chosen tool's options come first** in the side panel (🖌 Draw's brush and the stickers were
+  out of sight on a 720p screen), and Adjust's eight sliders are folded until opened.
+- **A box dragged on the question text selects what's on it**, not the full-slide text box as well (a box reaching
+  past the text's edge still takes it).
+- **Delete and Backspace remove the selected items only from the slide, the page or the Layers list**: with the focus
+  on a side-panel button they do nothing.
+- **Nudging with the arrow keys and Duplicate keep some of the item on the slide.**
+- **Right-to-left text** (Arabic, Hebrew) lines up the right way in text boxes, the slide text field and the clue's
+  Question and Answer boxes.
 
 ### Fixed
 - **Two tabs no longer both play the same game**: when another tab takes over ("Edit here instead") while a game
@@ -502,6 +524,17 @@ in plain words for the people who make and host games. Anything committed but no
 - **Deleting a currency stat** names the shops that charged it; their Charges box says "⚠ Deleted stat — pick
   another" and the checklist lists them. They used to switch to points without a word.
 - **A stat's Min above its Max, or a Start outside them**, is flagged next to the stat and on the checklist.
+- **🎨 Edit image on a huge picture turned at an angle** (12000×12000 at 45°) saved a blank picture and said it had
+  worked. It's now drawn at the size it's saved at, and if a browser still can't draw it, it says so and saves nothing.
+- **Pasting from Word, PowerPoint or Excel** put a picture of the text on the slide: it pastes the text.
+- **Ctrl+V of slide items copied in another tab or before a reload** put the words "1 slide item" on the slide: it now
+  asks to copy them again.
+- **A looping video with Stop at not after Start at** froze at its start: that Stop at is ignored (the Inspector says
+  so), and Start at can't go below 0.
+- **🎨 Edit image undo**: slider changes made with the keyboard, and a caption's text, font, size, colours and turn,
+  can be undone (one step per burst of changes), and placing a sticker and resizing it are separate steps.
+- **Typing into a slide with pages of text** is quicker: shrink-to-fit gives up at once when even the smallest size
+  can't fit.
 
 ## 2026-09-30
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adoptUsedBy, clipboard, copyElements, holdUsedBy, toolHere } from './clipboard.svelte';
+import { adoptUsedBy, clipboard, copyElements, holdUsedBy, pastingGone, toolHere } from './clipboard.svelte';
 import { newClue, newGame, newTextEl, type Game } from './model';
 import { newDice, newWheel } from './tools';
 
@@ -51,5 +51,26 @@ describe('copying a wheel or dice clue into another game', () => {
     adoptUsedBy(b, newClue());
     expect(b.wheels).toEqual([]);
     expect(toolHere(b, 'nope')).toBe(false);
+  });
+});
+
+describe('pasting items copied in another tab or before a reload', () => {
+  /** A stand-in for the paste's clipboard data. */
+  const data = (types: Record<string, string>) => ({ getData: (t: string) => types[t] ?? '' }) as unknown as DataTransfer;
+  it('is caught (instead of pasting "2 slide items" as text) when this page has nothing copied', () => {
+    clipboard.elements = [];
+    clipboard.token = '';
+    expect(pastingGone(data({ 'text/plain': '2 slide items', 'application/x-brainrot-slide-items': 'old-token' }))).toBe(true);
+    expect(pastingGone(data({ 'text/plain': '1 slide item' }))).toBe(true);
+  });
+  it('is caught when this page copied something else since', () => {
+    copyElements(newGame(), [newTextEl('hello')], null);
+    expect(pastingGone(data({ 'text/plain': '1 slide item', 'application/x-brainrot-slide-items': 'from-another-tab' }))).toBe(true);
+  });
+  it('leaves our own copies, and real words, alone', () => {
+    copyElements(newGame(), [newTextEl('')], null);
+    expect(pastingGone(data({ 'text/plain': clipboard.text, 'application/x-brainrot-slide-items': clipboard.token }))).toBe(false);
+    expect(pastingGone(data({ 'text/plain': 'WHEN THE FROG', 'application/x-brainrot-slide-items': 'from-another-tab' }))).toBe(false);
+    expect(pastingGone(null)).toBe(false);
   });
 });

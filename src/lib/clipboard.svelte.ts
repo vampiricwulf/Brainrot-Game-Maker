@@ -150,6 +150,18 @@ export function pastingOurs(data: DataTransfer | null): boolean {
 }
 
 /**
+ * A paste of items copied in another tab, or before the page was reloaded: the system clipboard is marked as ours but
+ * this page doesn't have them (only their words, or "2 slide items" for items with none). Pasting asks to copy them
+ * again rather than putting that placeholder on the slide.
+ */
+export function pastingGone(data: DataTransfer | null): boolean {
+  if (!data || pastingOurs(data)) return false;
+  const text = data.getData('text/plain') ?? '';
+  const marked = !!(data.getData(CLIP_TYPE) || data.getData(OLD_CLIP_TYPE));
+  return /^\d+ slide items?$/.test(text.trim()) && (marked || !clipboard.elements.length);
+}
+
+/**
  * Copy from a right-click menu: `copy` runs inside a copy event when the browser allows one (so the system clipboard
  * is marked as ours, and Ctrl+V pastes it back), else with no clipboard data.
  */
