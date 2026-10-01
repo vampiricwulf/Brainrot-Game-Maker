@@ -29,14 +29,16 @@
       return false;
     }
   }
-  function toggled(e: Event): void {
-    open = (e.currentTarget as HTMLDetailsElement).open;
+  // The fold's own state, bound both ways (a handler that copies it after the toggle event could lag a redraw and
+  // close it again); remembered on this computer.
+  $effect(() => {
+    const v = open ? '1' : '0';
     try {
-      localStorage.setItem(OPEN_KEY, open ? '1' : '0');
+      if (localStorage.getItem(OPEN_KEY) !== v) localStorage.setItem(OPEN_KEY, v);
     } catch {
       // Storage may be off (private mode): it opens closed next time.
     }
-  }
+  });
 
   /** The rules at a glance, on the closed fold. */
   const gist = $derived(
@@ -123,7 +125,7 @@
 {/snippet}
 
 {#if folded}
-  <details class="rules" {open} ontoggle={toggled} data-place="play:rules">
+  <details class="rules" bind:open data-place="play:rules">
     <!-- A heading of its own, so the rules' sections aren't read as part of the card above. -->
     <summary><h2>📋 Game rules</h2> <span class="muted small">{gist}</span></summary>
     {@render body()}

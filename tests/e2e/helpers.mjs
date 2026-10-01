@@ -71,6 +71,7 @@ export async function openRules(page) {
   const rules = page.locator('details.rules');
   await rules.waitFor();
   if (!(await rules.evaluate((d) => d.open))) await rules.locator('summary').click();
+  await rules.evaluate((d) => new Promise((ok) => (d.open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
   return rules;
 }
 
