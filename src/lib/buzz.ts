@@ -13,6 +13,8 @@ export interface BuzzState {
   answering: Id | null;
   /** Players who already missed this clue: they can't buzz again until 0 opens the buzzers for everyone. */
   lockedOut: Id[];
+  /** Phone buzzers: a tie the host rolled for, in roll order (answering first). Dropped by any other change. */
+  rollOrder?: Id[];
 }
 
 export function newBuzz(armId = 0): BuzzState {
@@ -87,6 +89,7 @@ export function hostState(game: Game, session: Session, b: BuzzState, earlyLockM
     armId: b.armId,
     clue: info ? { text: questionText(info.clue.questionSlide), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` } : null,
     answering: b.phase === 'answering' ? b.answering : null,
+    ...(b.phase === 'answering' && b.rollOrder?.length ? { rollOrder: b.rollOrder.filter((id) => seats.some((s) => s.id === id)) } : {}),
     lockedOut: b.phase === 'lobby' ? [] : b.lockedOut.filter((id) => seats.some((s) => s.id === id)),
     earlyLockMs,
     scores: Object.fromEntries(session.players.map((p) => [p.id, score(session, p.id)])),

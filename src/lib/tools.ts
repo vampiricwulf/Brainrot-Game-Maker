@@ -183,9 +183,10 @@ export interface RollOffRound {
 
 /**
  * Everyone rolls; if several players tie for the top, only they re-roll, until one winner remains.
- * Returns every round (for the animation) plus the final ranking.
+ * Returns every round (for the animation) plus the final ranking. `full`: players level further down re-roll among
+ * themselves too, so every place is settled (an answering order, not just a winner).
  */
-export function planRollOff(players: Id[], sides: number, rand = random): { rounds: RollOffRound[]; ranking: Id[]; winner: Id } {
+export function planRollOff(players: Id[], sides: number, rand = random, full = false): { rounds: RollOffRound[]; ranking: Id[]; winner: Id } {
   const rounds: RollOffRound[] = [];
   let contenders = [...players];
   // Tiebreak keys: each player's rolls, round by round.
@@ -211,7 +212,19 @@ export function planRollOff(players: Id[], sides: number, rand = random): { roun
     }
     return 0;
   };
-  const ranking = [...players].sort(cmp);
+  let ranking = [...players].sort(cmp);
+  for (let guard = 0; full && guard < 50; guard++) {
+    const level = ranking.find((p, i) => i > 0 && cmp(ranking[i - 1], p) === 0);
+    if (!level) break;
+    const group = ranking.filter((p) => cmp(p, level) === 0);
+    const rolls: Record<Id, number> = {};
+    for (const p of group) {
+      rolls[p] = rollDie(sides, rand);
+      keys[p].push(rolls[p]);
+    }
+    rounds.push({ players: group, rolls });
+    ranking = [...players].sort(cmp);
+  }
   return { rounds, ranking, winner: ranking[0] };
 }
 

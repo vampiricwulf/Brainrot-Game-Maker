@@ -133,8 +133,10 @@
         <b>🎲 {o.name}</b>
         <button class="primary" disabled={busy} onclick={() => rollDice(app.live, session, o.preset)} title="D">{o.roll ? 'Roll again' : 'Roll!'}</button>
       {:else if o.kind === 'rolloff'}
-        <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : '🏁 Who goes first'}</b>
-        {#if !busy}
+        <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
+        {#if !busy && o.purpose === 'buzz'}
+          <span>Answering order: {o.ranking.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(' → ')}</span>
+        {:else if !busy}
           <span>{session.players.find((p) => p.id === o.winner)?.name} {o.purpose === 'tiebreak' ? 'wins the game.' : 'picks first.'}</span>
         {:else}<span class="muted">Rolling…</span>{/if}
       {:else if o.kind === 'popup'}

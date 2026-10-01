@@ -73,6 +73,19 @@ describe('roll-off', () => {
     expect(plan.winner).toBe('B');
     expect(plan.ranking).toEqual(['B', 'A', 'C']);
   });
+
+  it('full: players level further down roll again among themselves, so every place is settled', () => {
+    // Round 1 → A=6, B=3, C=3, D=1; B and C roll again for 2nd → B=2, C=5.
+    const seq = [6, 3, 3, 1, 2, 5].map((v) => (v - 1) / 6 + 0.01);
+    let i = 0;
+    const plan = planRollOff(['A', 'B', 'C', 'D'], 6, () => seq[i++], true);
+    expect(plan.rounds.map((r) => r.players)).toEqual([['A', 'B', 'C', 'D'], ['B', 'C']]);
+    expect(plan.ranking).toEqual(['A', 'C', 'B', 'D']);
+    expect(plan.winner).toBe('A');
+    // Without full, B and C stay level (in the order given).
+    i = 0;
+    expect(planRollOff(['A', 'B', 'C', 'D'], 6, () => seq[i++]).ranking).toEqual(['A', 'B', 'C', 'D']);
+  });
 });
 
 describe('score actions', () => {

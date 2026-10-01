@@ -19,6 +19,15 @@ done, the Unreleased lines move under that day's heading.
 - **Phone buzzers are fair on a slow connection**: each phone times how fast its player reacted to the BUZZ! light,
   and the fastest reaction wins, not the first buzz to reach the server. The server checks each phone's timing
   against that phone's own connection speed, so a phone can't fake much of a head start.
+- **Every phone buzz counts, fastest first**: the host panel lists everyone who buzzed on the clue in order ("2. Bo
+  +0.12 s"), and phones show their place ("You're 2nd — 0.12 s behind Ann"). After a wrong answer the buzzers still
+  open again for the rest (as before), and **→ Next in line: Bo** gives the answer straight to the next one who buzzed.
+- **Ties**: buzzes within 0.01 s of each other are a tie and nobody is picked. The host panel says "Tie: Ann & Bo" with
+  **🎲 Roll for it**: the tied players roll, and the roll sets who answers first, second… ("🎲 1st"). The host can
+  also just pick one. Tied phones say "Tie! The host is rolling for it", then "Tie — you rolled 2nd".
+- **↺ Reset buzzers** in the host panel (or `0`): nobody is locked out of the clue any more and the buzzers open for
+  everyone.
+- If the buzzer server turns down a new room, the pre-game card shows its reason in plain words.
 - **The buzzer server limits new rooms**: 6 a minute from one address ("Too many new rooms — wait a minute") and 1000
   a day in all ("The buzzer server is busy today — try again tomorrow"), so nobody can use up its free daily quota.
 

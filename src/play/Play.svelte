@@ -5,16 +5,17 @@
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalBack, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, newSession, openClue, playerName,
+    finalAdvance, finalBack, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
     blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, type BuzzState } from '../lib/buzz';
   import {
-    acceptPhone, buzzerBase, closeRoom, kickSeat, onRoomBuzz, rejectPhone, rejoinRoom, remote, resendHostState, roomLink, sendHostState, startRoom,
+    acceptPhone, buzzerBase, closeRoom, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState, roomLink, sendHostState,
+    startRoom,
   } from '../lib/remote.svelte';
-  import type { RoomBuzz } from '../lib/roomlink';
+  import type { RoomBuzz, RoomQueue } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
@@ -266,6 +267,7 @@
     const offKeys = onAudienceKey((k) => onkey(new KeyboardEvent('keydown', k)));
     // Phone buzzers: a resumed game (after a reload or a crash) gets back into its room.
     const offBuzz = onRoomBuzz(roomBuzz);
+    const offQueue = onRoomQueue(roomQueueIn);
     if (session.remote && phonesOn) rejoinRoom(session.remote);
     // Time's up watcher (the host is the single source of truth for expiry).
     const id = setInterval(() => {
@@ -282,6 +284,7 @@
       offSinks();
       offKeys();
       offBuzz();
+      offQueue();
       // Leaving the game (Exit, or back from the pre-game screen): the phones are told it's over.
       closeRoom();
       // The scores window belongs to this game (the audience window is closed by leaving it).
@@ -396,6 +399,9 @@
       if (key === buzzClue && app.live.buzz) return;
       buzzClue = key;
       setBuzz(key ? buzzClueOpened(buzz, game.settings.buzzArm !== 'host') : buzzIdle(buzz));
+      // The phones' queue starts afresh: only openings after this one belong to this clue.
+      roomQueue = null;
+      clueArmFloor = buzz.phase === 'armed' ? buzz.armId - 1 : buzz.armId;
     });
   });
   // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
@@ -445,6 +451,7 @@
       if (selected.length || buzz.lockedOut.length) toast('Buzzers open for everyone');
       selected = [];
       setBuzz(buzzReset(buzz));
+      roomQueue = null;
       return;
     }
     if (buzz.phase === 'armed') return;
@@ -458,20 +465,67 @@
   /** Setup › Rules: players buzz from their phones too. */
   const phonesOn = $derived(!!game.settings.buzzer && game.settings.buzzFrom === 'phones');
   const earlyMs = $derived(Math.round((game.settings.earlyBuzzLock ?? 1) * 1000));
-  /** The room's later buzzes on this opening (the host panel shows "Bo +0.12 s" for a moment). */
-  let ranks = $state<RoomBuzz[]>([]);
-  const laterBuzzes = $derived.by(() => {
-    const here = ranks.filter((r) => r.armId === buzz.armId);
-    const first = here.find((r) => r.rank === 1);
-    return here
-      .filter((r) => r.rank > 1)
-      .sort((a, b) => a.rank - b.rank)
-      .map((r) => ({
-        key: `${r.armId}.${r.seatId}`,
-        name: session.players.find((p) => p.id === r.seatId)?.name ?? '?',
-        after: ((first ? r.afterMs - first.afterMs : r.afterMs) / 1000).toFixed(2),
-      }));
-  });
+  /**
+   * The room's queue for this clue: every phone buzz of the latest opening, fastest reaction first (the host panel
+   * lists it). It stays through a rebound until the new opening has buzzes of its own, for "→ Next in line".
+   */
+  let roomQueue = $state<RoomQueue | null>(null);
+  /** Openings at or below this belong to earlier clues. */
+  let clueArmFloor = 0;
+  const queueRows = $derived(
+    (roomQueue?.queue ?? []).map((q, i) => ({
+      id: q.seatId,
+      rank: i + 1,
+      name: session.players.find((p) => p.id === q.seatId)?.name ?? '?',
+      after: q.afterMs ? `+${(q.afterMs / 1000).toFixed(2)} s` : '',
+      rolled: q.rolled,
+      out: buzz.lockedOut.includes(q.seatId),
+    })),
+  );
+  /** A tie the room left to the host: nobody answers until the host picks or rolls. */
+  const tie = $derived(
+    roomQueue?.tie && roomQueue.armId === buzz.armId && buzz.phase === 'armed' && !selected.length
+      ? roomQueue.tie.filter((id) => session.players.some((p) => p.id === id))
+      : [],
+  );
+  /** After a wrong answer: the next player in the queue who hasn't missed this clue (the default stays the rebound). */
+  const nextInLine = $derived(
+    buzzing && buzz.phase !== 'answering' && !selected.length && buzz.lockedOut.length && !tie.length
+      ? queueRows.find((r) => !r.out && r.id !== buzz.answering)
+      : undefined,
+  );
+  const ordinal = (n: number) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'));
+
+  function roomQueueIn(q: RoomQueue): void {
+    if (!phonesOn || !buzzing || q.armId <= clueArmFloor || q.armId > buzz.armId) return;
+    // An older opening's queue doesn't replace a newer one's.
+    if (roomQueue && q.armId < roomQueue.armId) return;
+    roomQueue = q;
+  }
+
+  /** → Next in line: they answer now, no new opening. Not an undo step (like a buzz). */
+  function takeNext(id: string): void {
+    const b = app.live.buzz;
+    if (!buzzing || !b) return;
+    setBuzz(buzzTake(b, id, true)!);
+    selected = [id];
+    playCue(app.live, game, 'buzz');
+  }
+
+  /** 🎲 Roll for it: the tied players roll; the order they roll in is the order they answer in. */
+  function rollTie(): void {
+    if (tie.length < 2) return;
+    startRollOff(app.live, session, tie, game.settings.rollOffDie || 20, 'buzz', buzz.armId);
+    const o = app.live.overlay;
+    if (o?.kind !== 'rolloff') return;
+    const nonce = o.nonce;
+    const s = session;
+    later(() => {
+      if (app.session !== s) return;
+      const now = app.live.overlay;
+      if (now?.kind !== 'rolloff' || now.nonce === nonce) rollOffResult(s, o);
+    }, overlayDoneAt(o) - Date.now() + 200);
+  }
 
   async function startPhoneRoom(): Promise<void> {
     if (!buzzerBase()) return toast("Phone buzzers aren't set up in this copy", 4000);
@@ -486,11 +540,6 @@
   /** A buzz the room let through: the first one answers (unless the host picked someone already). */
   function roomBuzz(b: RoomBuzz): void {
     if (!phonesOn) return;
-    if (b.armId === buzz.armId) {
-      const r = b;
-      ranks = [...ranks.filter((x) => x.armId === b.armId && x.seatId !== b.seatId), r];
-      later(() => (ranks = ranks.filter((x) => x !== r)), 6000);
-    }
     // The room moved on to "answering" by itself: if that's not what happened here, it hears the host's state again.
     if (b.rank === 1 && (b.armId !== buzz.armId || !buzzPlayer(b.seatId, 'phone'))) resendHostState();
   }
@@ -570,9 +619,17 @@
   const rollOffsApplied = new Set<string>();
 
   /** The roll-off's result: who picks first, or (a tiebreaker for tied winners) who wins the game. */
-  function rollOffResult(s: typeof session, o: { nonce: string; winner: string; purpose?: 'first' | 'tiebreak' }): void {
+  function rollOffResult(s: typeof session, o: { nonce: string; winner: string; ranking: string[]; purpose?: 'first' | 'tiebreak' | 'buzz'; armId?: number }): void {
     if (rollOffsApplied.has(o.nonce)) return;
     rollOffsApplied.add(o.nonce);
+    if (o.purpose === 'buzz') {
+      // A buzzer tie: the first in the roll answers, the rest follow in roll order. Only if the host hasn't moved on.
+      const b = app.live.buzz;
+      if (app.session !== s || !buzzing || !b || b.armId !== o.armId || b.phase !== 'armed' || selected.length) return;
+      setBuzz({ ...buzzTake(b, o.winner, true)!, rollOrder: [...o.ranking] });
+      selected = [o.winner];
+      return;
+    }
     if (o.purpose === 'tiebreak') logged(s, `${playerName(s, o.winner)} won the roll-off`, () => (s.rollOffWinner = o.winner));
     else setPicker(s, o.winner, ' (roll-off)');
   }
@@ -582,7 +639,7 @@
     const o = app.live.overlay;
     if (o?.kind !== 'rolloff') return;
     const nonce = o.nonce;
-    const result = { nonce: o.nonce, winner: o.winner, purpose };
+    const result = { nonce: o.nonce, winner: o.winner, ranking: o.ranking, purpose };
     const s = session;
     later(() => {
       // Only in this game, and only if that roll-off is still the one on screen (or was closed after finishing).
@@ -1762,7 +1819,23 @@
         onexit={exitGame}
       >
         {#snippet buzzExtra()}
-          {#each laterBuzzes as r (r.key)}<span class="later-buzz">{r.name} +{r.after} s</span>{/each}
+          {#if tie.length}
+            <span class="tie" role="status">Tie: {nameList(tie.map((id) => playerName(session, id)))}</span>
+            <button class="primary" onclick={rollTie}>🎲 Roll for it</button>
+            <span class="muted later-buzz">or pick one (click or 1–9)</span>
+          {/if}
+          {#if nextInLine}
+            <button onclick={() => takeNext(nextInLine.id)} title="They answer now (the buzzers stay open for the others until then)">→ Next in line: {nextInLine.name}</button>
+          {/if}
+          {#if queueRows.length}
+            <ol class="buzz-queue" aria-label="Buzz order">
+              {#each queueRows as r (r.id)}
+                <li class:out={r.out}>
+                  {r.rank}. {r.name}{#if r.rolled}&nbsp;🎲 {ordinal(r.rolled)}{/if}{#if r.after}&nbsp;<span class="muted">{r.after}</span>{/if}
+                </li>
+              {/each}
+            </ol>
+          {/if}
         {/snippet}
         {#snippet phoneChip()}
           {#if phonesOn}
@@ -1862,6 +1935,22 @@
   }
   .later-buzz {
     font-size: 12px;
+    color: var(--muted);
+  }
+  .tie {
+    font-weight: 700;
+  }
+  .buzz-queue {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+  }
+  .buzz-queue .out {
+    text-decoration: line-through;
     color: var(--muted);
   }
   .small {

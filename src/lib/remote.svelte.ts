@@ -2,7 +2,7 @@
 // said). Reactive, for the pre-game card and the host panel.
 import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
 import { prefs } from './prefs.svelte';
-import { RoomLink, type LinkDeps, type RoomBuzz, type RoomStatus } from './roomlink';
+import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
@@ -29,6 +29,7 @@ export const remote = $state<{
 
 let link: RoomLink | null = null;
 const buzzWatchers = new Set<(b: RoomBuzz) => void>();
+const queueWatchers = new Set<(q: RoomQueue) => void>();
 /** For tests: the WebSocket, fetch and timers the link uses. */
 let deps: LinkDeps | undefined;
 export function setRemoteDeps(d: LinkDeps | undefined): void {
@@ -47,7 +48,11 @@ function sync(): void {
 
 function newLink(base: string): RoomLink {
   link?.stop();
-  link = new RoomLink(base, { onChange: sync, onBuzz: (b) => buzzWatchers.forEach((fn) => fn(b)) }, deps);
+  link = new RoomLink(
+    base,
+    { onChange: sync, onBuzz: (b) => buzzWatchers.forEach((fn) => fn(b)), onQueue: (q) => queueWatchers.forEach((fn) => fn(q)) },
+    deps,
+  );
   remote.base = base;
   return link;
 }
@@ -56,6 +61,12 @@ function newLink(base: string): RoomLink {
 export function onRoomBuzz(fn: (b: RoomBuzz) => void): () => void {
   buzzWatchers.add(fn);
   return () => buzzWatchers.delete(fn);
+}
+
+/** The room's queue of buzzes (fastest first) changed. Returns the unsubscribe. */
+export function onRoomQueue(fn: (q: RoomQueue) => void): () => void {
+  queueWatchers.add(fn);
+  return () => queueWatchers.delete(fn);
 }
 
 /** Make a room on the buzzer server. Null (remote.error says why) when it couldn't. */

@@ -96,6 +96,15 @@ describe('parseRoomMsg', () => {
     });
     expect(parseRoomMsg('{"t":"pong","at":1,"serverNow":2}')).toEqual({ t: 'pong', at: 1, serverNow: 2 });
     expect(parseRoomMsg('{"t":"error","message":"nope"}')).toEqual({ t: 'error', message: 'nope' });
+    expect(parseRoomMsg('{"t":"queue","armId":2,"queue":[{"seatId":"a","afterMs":0,"rolled":1},{"seatId":"b","afterMs":0,"rolled":2}],"tie":["a","b"]}')).toEqual({
+      t: 'queue',
+      armId: 2,
+      queue: [
+        { seatId: 'a', afterMs: 0, rolled: 1 },
+        { seatId: 'b', afterMs: 0, rolled: 2 },
+      ],
+      tie: ['a', 'b'],
+    });
   });
 
   it('drops anything else, and strips unknown fields', () => {
@@ -110,6 +119,9 @@ describe('parseRoomMsg', () => {
       '{"t":"phones","phones":[{"conn":"c1","seatId":5,"connected":true}]}',
       '{"t":"phones","phones":"x"}',
       '{"t":"error"}',
+      '{"t":"queue","armId":2,"queue":[{"seatId":"a"}]}',
+      '{"t":"queue","armId":2,"queue":[],"tie":"a"}',
+      '{"t":"queue","armId":2,"queue":[{"seatId":"a","afterMs":0,"rolled":0}]}',
     ])
       expect(parseRoomMsg(bad), bad).toBeNull();
     expect(parseRoomMsg({ t: 'pong', at: 1, serverNow: 2 })).toBeNull();
@@ -263,6 +275,10 @@ describe('RoomLink', () => {
     await expect(link.create()).rejects.toThrow();
     expect(link.status).toBe('error');
     expect(link.error).toMatch(/said no/);
+    // A limit the server explains: its words, as they are.
+    const busy = new RoomLink('https://buzz.test', {}, fakeDeps({ error: 'Too many new rooms — wait a minute' }, false).deps);
+    await expect(busy.create()).rejects.toThrow();
+    expect(busy.error).toBe('Too many new rooms — wait a minute');
     const t = fakeDeps();
     const l2 = new RoomLink('https://buzz.test', {}, t.deps);
     await l2.create();
