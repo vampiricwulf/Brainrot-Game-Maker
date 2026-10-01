@@ -16,7 +16,10 @@ done, the Unreleased lines move under that day's heading.
 - A Final round has its own **"Players with a score of 0 or less can play it"** option (on for a new Final). It used to
   be one game-wide setting in ⚙ Setup; older games keep their choice on each of their Finals. (288972f)
 - A **Daily Double's wager stays off the stream** until the host presses **Show wager**, as a Final's wagers do.
-  (288972f)
+  (288972f) In single-window mode viewers still see the wager box while the host types in it.
+- The play history says who bought or sold in a shop ("Ann buys Potion") and which party moved once there are several
+  ("Party 2 west"). ＋ Text in an RPG round opens the new text's card. The in-play keys list mentions `R` hiding the
+  answer again, `Ctrl+Y`, and `Esc` closing a card. (1d763ac)
 
 ### Added
 - This changelog.
@@ -48,6 +51,12 @@ done, the Unreleased lines move under that day's heading.
   a menu for each look (duplicate, make main, reorder). (4eef0fe)
 - ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
   never a redo.
+
+### Fixed
+- The Daily Double badge on stream read "Daily Double· $500". Picking who found a Daily Double puts the cursor back in
+  the wager box, so typed numbers no longer select players. Redo names a multi-player award's players in the same order
+  as Undo. A shop, a player's sheet or an object's pop-up no longer stays on stream into the next round, and a card left
+  open no longer swallows the first `Esc` in a later clue. `P` then `0` no longer leaves `P` waiting. (cca172e, 8318135)
 
 ## 2026-09-30
 
