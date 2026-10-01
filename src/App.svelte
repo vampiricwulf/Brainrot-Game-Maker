@@ -39,17 +39,20 @@
   import { ask } from './lib/ask.svelte';
   import { autosave } from './lib/autosave';
   import { inTauri } from './lib/platform';
-  import { flushOnClose } from './lib/desktop.svelte';
+  import { flushOnClose, whileWriting } from './lib/desktop.svelte';
   import { prefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
-  import { arriving, commit, heldMedia, history, listen, mark, savedSinceChange, startHistory, toSave } from './lib/history.svelte';
+  import { arriving, commit, heldMedia, history, listen, mark, savedSinceChange, savePoint, startHistory, toSave } from './lib/history.svelte';
   import type { Game, Session } from './lib/model';
   import Play from './play/Play.svelte';
 
-  /** Base64 game pack when this file is an exported, player-only game. */
-  let { embedded = null }: { embedded?: string | null } = $props();
+  /**
+   * Base64 game pack when this file is an exported, player-only game. `packError`: it's one, but its pack can't be read
+   * (too big for the browser): what to say instead (never the editor, which would show another game, answers and all).
+   */
+  let { embedded = null, packError = null }: { embedded?: string | null; packError?: string | null } = $props();
   // Fixed for the page's lifetime (set once at mount).
-  const playerOnly = untrack(() => !!embedded);
+  const playerOnly = untrack(() => !!embedded || !!packError);
 
   let loaded = $state(false);
   let loadError = $state('');
@@ -76,6 +79,11 @@
 
   onMount(async () => {
     app.playerOnly = playerOnly;
+    if (packError) {
+      loadError = packError;
+      loaded = true;
+      return;
+    }
     if (embedded) {
       try {
         const info = packInfo();
@@ -284,15 +292,17 @@
     const id = setInterval(async () => {
       if (autosaving || !watch || !prefs.autosaveMinutes || Date.now() - lastAutosaveAt < prefs.autosaveMinutes * 60_000) return;
       lastAutosaveAt = Date.now();
+      // Where the game stands as it's written (changes made meanwhile aren't in the file): its mark goes there.
+      const point = savePoint();
       const game = watch.value();
       const rev = watch.rev;
       if (rev === autosavedRev || !game.rounds.length) return;
       autosaving = true;
       try {
-        const path = await autosave(game, prefs.autosaveKeep);
+        const path = await whileWriting(() => autosave(game, prefs.autosaveKeep));
         autosavedRev = rev;
         app.fileAutosave = { path, at: Date.now() };
-        mark('autosaved', `Autosaved to ${path.split(/[\\/]/).pop()}`);
+        mark('autosaved', `Autosaved to ${path.split(/[\\/]/).pop()}`, point);
       } catch (err) {
         console.warn('Autosave failed', err);
         toast(`Autosave failed: ${err instanceof Error ? err.message : err}`, 5000);

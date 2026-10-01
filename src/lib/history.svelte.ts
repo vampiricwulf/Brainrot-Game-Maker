@@ -477,13 +477,42 @@ export function joinTyping(el: Element): void {
   pendingSession = session;
 }
 
-/** Saved, played, exported…: shown in the timeline between the steps, and the step before it stays as it is. */
-export function mark(kind: Mark['kind'], label: string): void {
-  if (!watch) return;
+/** Where the game stands in its history: the step it's at (null: before every step). See savePoint. */
+export interface SavePoint {
+  step: string | null;
+  /** Steps forgotten from the start by then. */
+  trimmed: number;
+}
+
+/**
+ * Where the game stands now, taken just before a save starts building its file: typing not yet a step becomes one, and the
+ * step it's at is sealed, so a change made while the file is written is a step of its own after it. `mark(…, point)` puts
+ * the save's mark there, not where the game is once the file is written (changes made meanwhile aren't in it).
+ */
+export function savePoint(): SavePoint {
   commit();
   const top = h.entries[h.index - 1];
   if (top) top.sealed = true;
-  h.marks = [...h.marks, { kind, ts: Date.now(), label, at: h.index }].slice(-MAX_MARKS);
+  return { step: top?.id ?? null, trimmed: h.trimmed };
+}
+
+/** Where a save point is in the timeline now (null: gone, its step was undone and replaced, or forgotten). */
+export function pointAt(point: SavePoint): number | null {
+  if (!point.step) return h.trimmed === point.trimmed ? 0 : null;
+  const i = h.entries.findIndex((e) => e.id === point.step);
+  return i < 0 ? null : i + 1;
+}
+
+/**
+ * Saved, played, exported…: shown in the timeline between the steps, and the step before it stays as it is. At `point`
+ * (taken before the file was built, see savePoint), else where the game is now.
+ */
+export function mark(kind: Mark['kind'], label: string, point?: SavePoint): void {
+  if (!watch) return;
+  if (!point) point = savePoint();
+  const at = pointAt(point);
+  if (at === null) return;
+  h.marks = [...h.marks, { kind, ts: Date.now(), label, at }].slice(-MAX_MARKS);
 }
 
 /** A file's bytes were swapped under the same id (Replace file…): the step being made swaps them back when undone. */

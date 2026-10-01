@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import { isGameFile, parseGame, safeFilename, saveTarget } from './fileio';
+import { BIG_FILE, isGameFile, parseGame, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
+import { base64Length, MAX_HTML_CHARS, MAX_PACK_CHARS, TOO_BIG, tooBigForHtml } from './export';
 import { openGameFile } from './pack';
 import { jeopardyGame } from './testgame';
 
@@ -15,7 +16,12 @@ describe('file names from titles', () => {
 
   it('drop what a file name can’t hold, and dashes left at the ends', () => {
     expect(safeFilename('💀 Brainrot Night')).toBe('Brainrot-Night');
-    expect(safeFilename('a/b\\c:d*e?f"g<h>i|j')).toBe('abcdefghij');
+    expect(safeFilename('a/b\\c:d*e?f"g<h>i|j')).toBe('a-b-c-d-e-fg-h-i-j');
+    // Words and numbers stay apart; quotes just go.
+    expect(safeFilename('Part 1/2')).toBe('Part-1-2');
+    expect(safeFilename('Round 1:2')).toBe('Round-1-2');
+    expect(safeFilename('Bob’s Quiz')).toBe('Bobs-Quiz');
+    expect(safeFilename('"Best" of 2024')).toBe('Best-of-2024');
     expect(safeFilename(' - Quiz - ')).toBe('Quiz');
     expect(safeFilename('💀💀')).toBe('game');
     expect(safeFilename('')).toBe('game');
@@ -51,6 +57,19 @@ describe('Save in the desktop app (replacing the last save)', () => {
     });
     // The same game's export is another file.
     expect(saveTarget('Quiz.html', 'g2', { 'Quiz (2).brainrot': 'g2' }, [])).toEqual({ name: 'Quiz.html', mode: 'backup' });
+  });
+
+  it('knows which folder each save is in', () => {
+    const app = 'C:\\Games\\BrainrotSaves';
+    const docs = 'C:\\Users\\Ann\\Documents\\BrainrotSaves';
+    const owners = { [`${docs}\\Quiz (2).brainrot`]: 'g1', [`${app}\\Quiz.brainrot`]: 'g2' };
+    // g1's save in Documents is "Quiz (2)"; next to the app, "Quiz.brainrot" is another game's.
+    expect(saveTarget('Quiz.brainrot', 'g1', owners, ['Quiz.brainrot'], app, true)).toEqual({ name: 'Quiz.brainrot', mode: 'new' });
+    expect(saveTarget('Quiz.brainrot', 'g1', owners, ['Quiz (2).brainrot'], docs)).toEqual({ name: 'Quiz (2).brainrot', mode: 'backup' });
+    expect(saveTarget('Quiz.brainrot', 'g2', owners, ['Quiz.brainrot'], app.toLowerCase(), true)).toEqual({ name: 'Quiz.brainrot', mode: 'backup' });
+    // Saves recorded by name only (before folders) count for the app's own folder.
+    expect(saveTarget('Quiz.brainrot', 'g3', { 'Quiz.brainrot': 'g3' }, ['Quiz.brainrot'], app, true)).toEqual({ name: 'Quiz.brainrot', mode: 'backup' });
+    expect(saveTarget('Quiz.brainrot', 'g3', { 'Quiz.brainrot': 'g3' }, ['Quiz.brainrot'], docs)).toEqual({ name: 'Quiz.brainrot', mode: 'new' });
   });
 });
 
@@ -98,5 +117,39 @@ describe('opening game files', () => {
     expect((await openGameFile(file)).title).toBe('Older');
     expect(isGameFile('Older.json.bak2') && isGameFile('Quiz.HTML') && isGameFile('Quiz.brainrot.bak')).toBe(true);
     expect(isGameFile('notes.txt') || isGameFile('photo.png.bak')).toBe(false);
+    // A pack zipped by hand opens when dropped, as through Browse….
+    expect(isGameFile('Quiz.zip')).toBe(true);
+  });
+
+  it('says an exported game too long to read is too big, instead of failing to read it', async () => {
+    const huge = { name: 'Huge.html', size: MAX_HTML_CHARS + 1, type: 'text/html', slice: () => new Blob(['<!']) } as unknown as File;
+    Object.setPrototypeOf(huge, File.prototype);
+    await expect(openGameFile(huge)).rejects.toThrow(TOO_BIG);
+  });
+});
+
+describe('exported HTML size', () => {
+  it('refuses a pack the browser could not read back out of the page', () => {
+    expect(base64Length(3)).toBe(4);
+    expect(base64Length(4)).toBe(8);
+    const limit = (MAX_PACK_CHARS / 4) * 3;
+    expect(tooBigForHtml(limit)).toBe(false);
+    expect(tooBigForHtml(limit + 3)).toBe(true);
+    // About 375 MB of game.
+    expect(Math.round(limit / 1e6)).toBe(375);
+  });
+});
+
+describe('saving in a browser', () => {
+  it('asks where to save only a big file, and only where the browser can', () => {
+    expect(usePicker(BIG_FILE, true)).toBe(true);
+    expect(usePicker(BIG_FILE - 1, true)).toBe(false);
+    expect(usePicker(BIG_FILE * 3, false)).toBe(false);
+  });
+
+  it('says a download started, not that it is done', () => {
+    expect(savedWhere(null, 'Quiz.brainrot')).toBe('Download started: Quiz.brainrot');
+    expect(savedWhere({ path: 'Quiz.brainrot', fallback: false, picked: true }, 'Quiz.brainrot')).toBe('Saved Quiz.brainrot');
+    expect(savedWhere({ path: 'C:\\Games\\BrainrotSaves\\Quiz.brainrot', fallback: false }, 'Quiz.brainrot')).toBe('Saved to C:\\Games\\BrainrotSaves\\Quiz.brainrot');
   });
 });

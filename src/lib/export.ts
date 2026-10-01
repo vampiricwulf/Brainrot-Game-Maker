@@ -2,16 +2,49 @@
 // as base64. When opened it detects the pack and starts in player mode.
 import { buildPack, CUT_OFF, type PackProgress } from './pack';
 import { safeFilename, saveFile, savedWhere } from './fileio';
-import { ask } from './ask.svelte';
+import { ask, tell } from './ask.svelte';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
 import { onlineCount } from './usage';
 
 export const PACK_ELEMENT_ID = 'jb-pack';
 
+/**
+ * The longest game pack (base64) an exported HTML file may carry. A browser can't read a longer one out of the page
+ * (Chromium's longest text is about 537 million characters): the file would open as an empty editor.
+ */
+export const MAX_PACK_CHARS = 500_000_000;
+/** The longest file Open… can read as text (an exported .html): a longer one can't be read at all. */
+export const MAX_HTML_CHARS = 2 ** 29 - 24;
+
+/** Said when a game is too big to go in (or come out of) one HTML file. */
+export const TOO_BIG = 'Too big for one HTML file — Save a .brainrot instead (it opens in the desktop app or this page).';
+
+/** How long a pack of `bytes` is in base64. */
+export const base64Length = (bytes: number): number => Math.ceil(bytes / 3) * 4;
+
+/** A pack of `bytes` is too big for an exported HTML file (see MAX_PACK_CHARS). */
+export const tooBigForHtml = (bytes: number): boolean => base64Length(bytes) > MAX_PACK_CHARS;
+
 /** The embedded pack (base64 zip) if this page is an exported game. */
 export function embeddedPack(): string | null {
-  return document.getElementById(PACK_ELEMENT_ID)?.textContent?.trim() || null;
+  try {
+    return document.getElementById(PACK_ELEMENT_ID)?.textContent?.trim() || null;
+  } catch {
+    // Too long to read.
+    return null;
+  }
+}
+
+/**
+ * This page is an exported game whose pack can't be read (too big for the browser, or not there at all): what to say
+ * in place of the game. Null: it isn't one (embeddedPack has its pack, or it's the app itself).
+ */
+export function unreadablePack(): string | null {
+  const el = document.getElementById(PACK_ELEMENT_ID);
+  if (!el || embeddedPack()) return null;
+  const size = Number(el.dataset.size);
+  return !size || size > MAX_PACK_CHARS ? TOO_BIG : CUT_OFF;
 }
 
 /**
@@ -98,6 +131,10 @@ export async function exportStandaloneHtml(
   onProgress?: PackProgress,
 ): Promise<{ size: number; missing: string[]; online: number; where: string } | null> {
   const { blob: pack, missing } = await buildPack(game, onProgress);
+  if (tooBigForHtml(pack.size)) {
+    await tell(`${TOO_BIG}\n\nThis game's HTML file would be about ${formatBytes(base64Length(pack.size))}.`);
+    return null;
+  }
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
   const anyway = { ok: 'Export anyway', cancel: 'Cancel' };

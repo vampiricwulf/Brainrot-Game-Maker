@@ -129,7 +129,7 @@ describe('rounds between games', () => {
     other.rounds.push(r);
     const held = new Map([['f1', new Blob(['new'])], ['f2', new Blob(['old'])], ['f3', new Blob(['xyz'])]]);
     const mine = (id: string): Blob | undefined => (id === 'f1' || id === 'f2' ? new Blob(['old']) : undefined);
-    const { game, store, copies } = await settleFiles(into, other, held, mine);
+    const { game, store, copies } = await settleFiles(other, held, mine);
     const f1 = game.media[0].id;
     expect(f1).not.toBe('f1');
     expect([...copies]).toEqual([f1]);

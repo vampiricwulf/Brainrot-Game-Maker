@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { answerReplace, openGameFile } from './helpers.mjs';
+import { answerReplace, exportHtml, openGameFile, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -91,7 +91,7 @@ try {
   assert(again.suggestedFilename() === 'Two-tabs.brainrot', 'Ctrl+S saves the game pack');
 
   // Export HTML: a playable file that includes the pack.
-  const [html] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export HTML' }).click()]);
+  const html = await exportHtml(a);
   assert(statSync(await html.path()).size > 3 * 1024 * 1024, 'the exported HTML includes the media');
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
@@ -112,6 +112,57 @@ try {
   assert(dialogs.length === 0, 'Open… asks before replacing a game with unsaved changes (in the page, not a browser dialog)');
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert((await a.locator('input.title').inputValue()) === 'Two tabs', 'the saved pack opens again with its files');
+
+  // ---------- Opening an older copy of the game never changes this one's files ----------
+  // The picture is replaced by a bigger one after the save; then the saved (older) copy is opened.
+  const picWidth = async (page = a) => {
+    await page.getByRole('button', { name: /Media \(/ }).click();
+    return page.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
+  };
+  await a.getByRole('button', { name: /Media \(/ }).click();
+  const [swap] = await Promise.all([a.waitForEvent('filechooser'), a.locator('.card', { has: a.locator('img') }).getByRole('button', { name: 'Replace…' }).click()]);
+  await swap.setFiles([{ name: 'pic.png', mimeType: 'image/png', buffer: png(0, 0, 255, 8, 8) }]);
+  await a.waitForTimeout(800);
+  assert((await picWidth()) === 8, 'the picture is replaced after the save');
+  // Cancel at the question: nothing changes, then or after a reload.
+  await openGameFile(a, await pack.path());
+  await answerReplace(a, 'Cancel');
+  await a.waitForTimeout(500);
+  await a.reload();
+  assert((await picWidth()) === 8, 'opening an older copy and cancelling leaves the picture alone (after a reload too)');
+  // Discard: the older copy shows its own picture…
+  await openGameFile(a, await pack.path());
+  await answerReplace(a, 'Discard');
+  await a.getByText('Opened “Two tabs”').waitFor();
+  assert((await picWidth()) === 4, 'the older copy opens with its own picture');
+  // …and the newer game, reopened from Recent games, still has its own.
+  await a.getByRole('button', { name: 'Open…' }).click();
+  await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /Two tabs/ }).first().click();
+  await a.getByText('Reopened “Two tabs”').waitFor();
+  assert((await picWidth()) === 8, 'the newer game reopened from Recent games keeps its replaced picture');
+  await a.waitForTimeout(800);
+  await a.reload();
+  assert((await picWidth()) === 8, 'and after a reload');
+
+  // ---------- Recent games keeps both versions of a game ----------
+  // The newer version (unsaved: its picture changed after the save) is replaced by the saved copy, which New replaces in
+  // turn without asking (it's saved): both are kept.
+  await openGameFile(a, await pack.path());
+  await answerReplace(a, 'Discard');
+  await a.getByText('Opened “Two tabs”').waitFor();
+  await a.getByRole('button', { name: 'New', exact: true }).click();
+  await a.getByRole('button', { name: 'Media (0)' }).waitFor();
+  await a.getByRole('button', { name: 'Open…' }).click();
+  const recentList = a.getByRole('dialog', { name: 'Open a game' });
+  const versions = recentList.getByRole('button', { name: /Two tabs/ });
+  await versions.first().waitFor();
+  const labels = await versions.allInnerTexts();
+  assert(labels.length >= 2 && labels.slice(1).every((t) => t.includes('earlier version')), `both versions are kept, the older ones marked (${labels.length})`);
+  // The second one is the newer version replaced by the saved copy: its picture is the replaced one.
+  await versions.nth(1).click();
+  await a.getByText('Reopened “Two tabs”').waitFor();
+  assert((await picWidth()) === 8, 'the version with unsaved changes reopens with them');
+  await a.locator('nav > button.round-tab').first().waitFor({ state: 'detached' }).catch(() => {});
 
   // A .json export has no media: opened in another browser, the Media tab offers to put the files back.
   const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);

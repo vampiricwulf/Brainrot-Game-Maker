@@ -35,10 +35,9 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
-
 <div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Open a game" use:modal data-undo="off">
+  <!-- Esc closes it when it's the window on top (a question over it takes Esc first). -->
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Open a game" use:modal={{ esc: onclose }} data-undo="off">
     <div class="row">
       <b class="modal-title">📂 Open a game</b>
       <span class="spacer"></span>
@@ -48,8 +47,8 @@
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <p class="muted small">
-      Your saves and exported games in BrainrotSaves ({where}). Browse… opens a game from anywhere else, or an older version
-      Save kept (Game.brainrot.bak).
+      Your saves and exported games in BrainrotSaves ({where}). Browse… opens a game file from anywhere else (.brainrot, .json
+      or an exported .html), or an older version Save kept (Game.brainrot.bak).
     </p>
     <div class="list">
       {#each saves as s (s.place + s.name)}

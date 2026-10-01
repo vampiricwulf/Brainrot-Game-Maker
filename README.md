@@ -217,15 +217,26 @@ left with the screen covered comes back covered.
 ## Saving
 
 - **Save** (`Ctrl+S`) writes a `.brainrot` pack: the game plus all its media.
-  - In the desktop app, saves go in a **BrainrotSaves** folder next to the `.exe`.
-  - In a browser, they're downloads.
-- **Open…** lists your **Recent games** (a game replaced by New or Open… can be reopened, with its undo history) and,
-  in the desktop app, BrainrotSaves. It also opens exported HTML files. Dropping a `.brainrot` on the editor opens it,
-  and the desktop app opens a game file you open it with.
-- New and Open… ask **Save first / Discard / Cancel** when the game has unsaved changes. Only one browser tab edits at a
-  time: another tab waits, paused, and offers **Edit here** once the editing tab closes.
+  - In the desktop app, saves go in a **BrainrotSaves** folder next to the `.exe` (in Documents\BrainrotSaves when the
+    app may not write there, e.g. in Program Files). Closing the window while a save is being written asks whether to
+    wait for it.
+  - In a browser, they're downloads. A file over 100 MB asks where to save it instead (Chrome, Edge), so a big download
+    can't fail unnoticed.
+  - Changes made while a save is being written aren't in it, so they still count as unsaved.
+- **Open…** lists your **Recent games** and, in the desktop app, BrainrotSaves. It also opens `.json` games, exported
+  HTML files and the desktop app's `.bak` backups. Dropping a game file (`.brainrot`, `.zip`, `.json`, `.html`) on the
+  editor opens it, and the desktop app opens a game file you open it with.
+  - **Recent games** keeps the last 8 games New or Open… replaced (about 1 GB of files at most), with their undo
+    history. When one has to go to make room, the app says which. Two versions of one game are both kept. A game with
+    only a title isn't kept. **Forget** asks first: it deletes the game and its files.
+  - Opening an older copy of a game never changes the pictures and sounds of the game you have open: a file that
+    differs is opened as a file of its own.
+- New and Open… ask **Save first / Discard / Cancel** when the game has unsaved changes (Open… checks the file is a
+  game first). Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
+  editing tab closes.
 - **⬇ Export HTML** makes a single file to host the game from, with everything inside. It shows the answers, so keep
-  it to yourself.
+  it to yourself. A game over about 375 MB is too big for one HTML file (browsers can't read it back): save a
+  `.brainrot` instead.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **⬆ Add files…**.
 - **⚙ Settings** (in the header's ⋯ menu, with Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).

@@ -45,6 +45,8 @@ function fakeDesktop() {
           (listeners[args.event] ??= []).push(args.handler);
           return args.handler;
         case 'save_file': {
+          // A big save takes a while (window.__saveDelay ms).
+          if (window.__saveDelay) await new Promise((r) => setTimeout(r, window.__saveDelay));
           let name = decodeURIComponent(options.headers['x-name']);
           const mode = options.headers['x-mode'];
           if (mode === 'new' && saves.has(name)) {
@@ -110,7 +112,7 @@ try {
   await w.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse…' }).click();
   assert((await (await chooser).element().getAttribute('accept')).includes('.html'), 'Open… offers .html files');
   await (await chooser).setFiles(htmlPath);
-  await answerReplace(w, 'Discard');
+  // (A game with nothing but a title is a scratch game: replaced without a question, and not kept in Recent games.)
   await w.locator('nav > button.round-tab').first().waitFor();
   assert((await w.locator('input.title').inputValue()) === 'Exported Quiz', 'an exported .html opens in the editor');
   await web.close();
@@ -189,6 +191,47 @@ try {
   await d.waitForFunction(() => document.querySelector('input.title')?.value === 'From a second launch');
   assert(await d.evaluate(() => window.__saves.has('Before.brainrot')), 'a file given to the app asks first about unsaved changes (Save first saves them)');
   assert(await d.evaluate(() => window.__opened === null), 'a game file given to a second launch opens in the running app');
+
+  // A change made while Save is still writing the file isn't in it: it counts as unsaved.
+  await d.evaluate(() => (window.__saveDelay = 1500));
+  await d.getByRole('button', { name: 'Save', exact: true }).click();
+  await d.getByRole('button', { name: /Saving…/ }).waitFor();
+  await d.locator('input.title').fill('Typed while saving');
+  await d.getByRole('button', { name: 'Save', exact: true }).waitFor();
+  await d.waitForTimeout(800);
+  await d.getByRole('button', { name: 'New', exact: true }).click();
+  const unsavedAsk = d.getByRole('dialog', { name: 'Start a new game?' });
+  await unsavedAsk.waitFor();
+  assert(true, 'a change typed while Save was writing the file is unsaved: New asks about it');
+  await unsavedAsk.getByRole('button', { name: 'Cancel' }).click();
+  await d.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
+  await d.locator('.list > .mark').first().waitFor();
+  // (Newest first.)
+  const rows = await d.locator('.list > .mark, .list > .hr').allInnerTexts();
+  const savedAt = rows.findIndex((t) => t.includes('Saved “From-a-second-launch.brainrot”'));
+  const typedAt = rows.findIndex((t) => t.includes('Typed while saving'));
+  assert(typedAt >= 0 && savedAt === typedAt + 1, 'the history shows the save where the game was when it started, with the change typed meanwhile after it');
+  await d.locator('nav > button.round-tab').first().click();
+
+  // Closing the window while a save is being written asks first: Wait closes once it's done.
+  await d.evaluate(() => (window.__saveDelay = 2500));
+  await d.getByRole('button', { name: 'Save', exact: true }).click();
+  await d.getByRole('button', { name: /Saving…/ }).waitFor();
+  await calls(d);
+  await d.evaluate(() => window.__emit('close-requested'));
+  const closeAsk = d.getByRole('alertdialog').filter({ hasText: 'A save is in progress' });
+  await closeAsk.waitFor();
+  assert((await calls(d)).includes('hold_close'), 'closing while a save is being written keeps the window open and asks: Wait / Close anyway');
+  // ✕ again while it asks: the window is still held open.
+  await d.evaluate(() => window.__emit('close-requested'));
+  assert(!(await d.evaluate(() => window.__closed)), 'it doesn’t close while the save is written');
+  await closeAsk.getByRole('button', { name: 'Wait' }).click();
+  await d.waitForFunction(() => window.__closed === true, null, { timeout: 8000 });
+  assert(await d.evaluate(() => window.__saves.has('Typed-while-saving.brainrot')), 'Wait: the app closes by itself once the save is written');
+  await d.evaluate(() => {
+    window.__closed = false;
+    window.__saveDelay = 0;
+  });
 
   // Closing the window: the last edits are written before it closes.
   await d.locator('input.title').fill('Typed just before closing');

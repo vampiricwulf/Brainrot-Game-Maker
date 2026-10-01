@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openRules } from './helpers.mjs';
+import { exportHtml, openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -195,7 +195,7 @@ try {
   await page.getByRole('button', { name: 'Export HTML' }).waitFor();
 
   // ---------- An exported player-only file: no pointer to the editor's settings ----------
-  const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
+  const html = await exportHtml(page);
   mkdirSync('test-results', { recursive: true });
   const exported = resolve('test-results/pregame-player.html');
   await html.saveAs(exported);

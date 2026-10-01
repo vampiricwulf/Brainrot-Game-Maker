@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, dragBy, nameGame, openGameFile } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, nameGame, openGameFile, exportHtml } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -1400,7 +1400,7 @@ assert(discardMsg.includes('Discard the saved game'), 'Discard asks before delet
 await page.getByRole('button', { name: 'Resume game' }).waitFor({ state: 'detached' });
 
 // Standalone player-only HTML export: opens straight into a Play screen with everything embedded.
-const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
+const html = await exportHtml(page);
 assert(html.suggestedFilename().endsWith('.html'), 'Export HTML downloads a .html file');
 mkdirSync('test-results', { recursive: true });
 const exported = resolve('test-results/exported-game.html');

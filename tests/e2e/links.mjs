@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
-import { addClassicRounds, nameGame } from './helpers.mjs';
+import { addClassicRounds, nameGame, exportHtml } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -422,7 +422,7 @@ assert(
 );
 
 // ---------- The exported HTML plays live links too ----------
-const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export HTML' }).click()]);
+const html = await exportHtml(page);
 mkdirSync('test-results', { recursive: true });
 const exported = resolve('test-results/links-exported.html');
 await html.saveAs(exported);

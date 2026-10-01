@@ -67,54 +67,91 @@ pub fn backup_name(name: &str, n: usize) -> String {
     }
 }
 
-/// Keep the save that's about to be replaced as `.bak`, moving the older backups along (the oldest is
-/// dropped). The save itself stays in place until the new one replaces it.
-fn keep_backup(dir: &Path, name: &str, backups: usize) -> io::Result<()> {
-    let path = dir.join(name);
-    if backups == 0 || !path.is_file() {
-        return Ok(());
+/// Whether a save that failed next to the exe goes to Documents instead: only when the app may not write
+/// there (Program Files, a read-only drive). A full disk or a file another program has open is an error to show.
+pub fn may_fall_back(err: &io::Error) -> bool {
+    matches!(err.kind(), io::ErrorKind::PermissionDenied | io::ErrorKind::ReadOnlyFilesystem)
+}
+
+/// Where the save about to be replaced waits (a second name for it) until the new one is in place.
+fn held_name(name: &str) -> String {
+    format!(".{name}.prev")
+}
+
+/// Keep a second name for the save that's about to be replaced (`held`), so it can become the `.bak` once the
+/// new one is in place. A drive that can't do that (FAT USB sticks) gets a copy. False: there's none to keep.
+fn hold_previous(path: &Path, held: &Path) -> io::Result<bool> {
+    if !path.is_file() {
+        return Ok(false);
     }
+    match fs::remove_file(held) {
+        Err(err) if err.kind() != io::ErrorKind::NotFound => return Err(err),
+        _ => {}
+    }
+    fs::hard_link(path, held).or_else(|_| fs::copy(path, held).map(|_| ()))?;
+    Ok(true)
+}
+
+/// The save was replaced: the one before it (held) becomes `.bak`, moving the older backups along (the oldest
+/// is dropped).
+fn rotate_backups(dir: &Path, name: &str, held: &Path, backups: usize) -> io::Result<()> {
     for n in (1..backups).rev() {
         let from = dir.join(backup_name(name, n));
         if from.exists() {
             fs::rename(&from, dir.join(backup_name(name, n + 1)))?;
         }
     }
-    let first = dir.join(backup_name(name, 1));
-    match fs::remove_file(&first) {
-        Err(err) if err.kind() != io::ErrorKind::NotFound => return Err(err),
-        _ => {}
-    }
-    // A second name for the same file is instant; a drive that can't do that (FAT USB sticks) gets a copy.
-    fs::hard_link(&path, &first).or_else(|_| fs::copy(&path, &first).map(|_| ()))
+    fs::rename(held, dir.join(backup_name(name, 1)))
 }
 
 /// Write a save into `dir` (made if needed). An older save with the same name is replaced only once the
 /// new one is fully written and on disk, so a failed save (or a power cut) never loses the last good one;
-/// with `backups`, it's kept as `.bak` too (see BACKUPS).
+/// with `backups`, it's kept as `.bak` too (see BACKUPS), and the backups move along only once the new save
+/// is in place (a save that fails leaves them as they were).
 pub fn write_save(dir: &Path, name: &str, data: &[u8], backups: usize) -> io::Result<PathBuf> {
+    write_save_with(dir, name, data, backups, |from, to| fs::rename(from, to))
+}
+
+/// write_save, with the last step (putting the new file in place) given, so tests can make it fail.
+fn write_save_with(
+    dir: &Path,
+    name: &str,
+    data: &[u8],
+    backups: usize,
+    replace: impl Fn(&Path, &Path) -> io::Result<()>,
+) -> io::Result<PathBuf> {
     fs::create_dir_all(dir)?;
     let path = dir.join(name);
     let part = dir.join(format!(".{name}.part"));
+    let held = dir.join(held_name(name));
     let written = fs::File::create(&part).and_then(|mut file| {
         file.write_all(data)?;
         file.sync_all()
     });
+    if let Err(err) = written {
+        let _ = fs::remove_file(&part);
+        return Err(err);
+    }
     // A failed backup never stops the save itself.
-    let kept = written.map(|()| keep_backup(dir, name, backups));
+    let holding = backups > 0
+        && hold_previous(&path, &held).unwrap_or_else(|err| {
+            eprintln!("couldn't keep a backup of {name}: {err}");
+            false
+        });
     // On Windows, rename replaces an existing file (MOVEFILE_REPLACE_EXISTING).
-    match kept.and_then(|backup| fs::rename(&part, &path).map(|()| backup)) {
-        Ok(backup) => {
-            if let Err(err) = backup {
-                eprintln!("couldn't keep a backup of {name}: {err}");
-            }
-            Ok(path)
+    if let Err(err) = replace(&part, &path) {
+        let _ = fs::remove_file(&part);
+        if holding {
+            let _ = fs::remove_file(&held);
         }
-        Err(err) => {
-            let _ = fs::remove_file(&part);
-            Err(err)
+        return Err(err);
+    }
+    if holding {
+        if let Err(err) = rotate_backups(dir, name, &held, backups) {
+            eprintln!("couldn't keep a backup of {name}: {err}");
         }
     }
+    Ok(path)
 }
 
 /// A name for a new save that doesn't replace one already there: `Game.brainrot`, else `Game (2).brainrot`,
@@ -166,7 +203,7 @@ fn drop_stale_parts(dir: &Path, now: SystemTime) {
     for entry in entries.flatten() {
         let name = entry.file_name();
         let Some(name) = name.to_str() else { continue };
-        if !(name.starts_with('.') && name.ends_with(".part")) {
+        if !(name.starts_with('.') && (name.ends_with(".part") || name.ends_with(".prev"))) {
             continue;
         }
         let modified = entry.metadata().and_then(|m| m.modified());
@@ -276,6 +313,38 @@ mod tests {
     }
 
     #[test]
+    fn a_save_that_fails_leaves_the_save_and_its_backups_as_they_were() {
+        let dir = temp("failed-rename");
+        let read = |name: &str| fs::read_to_string(dir.join(name)).ok();
+        for v in ["1", "2", "3"] {
+            write_save(&dir, "Game.brainrot", v.as_bytes(), BACKUPS).unwrap();
+        }
+        let fail = |_: &Path, _: &Path| Err(io::Error::new(io::ErrorKind::Other, "the file is in use"));
+        assert!(write_save_with(&dir, "Game.brainrot", b"4", BACKUPS, fail).is_err());
+        assert_eq!(read("Game.brainrot").as_deref(), Some("3"));
+        assert_eq!(read("Game.brainrot.bak").as_deref(), Some("2"));
+        assert_eq!(read("Game.brainrot.bak2").as_deref(), Some("1"));
+        // Nothing left behind.
+        let mut names: Vec<String> = fs::read_dir(&dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        assert_eq!(names, ["Game.brainrot", "Game.brainrot.bak", "Game.brainrot.bak2"]);
+        // The next save that works moves them along in order.
+        write_save(&dir, "Game.brainrot", b"5", BACKUPS).unwrap();
+        assert_eq!(read("Game.brainrot").as_deref(), Some("5"));
+        assert_eq!(read("Game.brainrot.bak").as_deref(), Some("3"));
+        assert_eq!(read("Game.brainrot.bak2").as_deref(), Some("2"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn only_a_folder_the_app_may_not_write_in_sends_saves_to_documents() {
+        assert!(may_fall_back(&io::Error::from(io::ErrorKind::PermissionDenied)));
+        assert!(may_fall_back(&io::Error::from(io::ErrorKind::ReadOnlyFilesystem)));
+        assert!(!may_fall_back(&io::Error::from(io::ErrorKind::StorageFull)));
+        assert!(!may_fall_back(&io::Error::new(io::ErrorKind::Other, "sharing violation")));
+    }
+
+    #[test]
     fn new_saves_get_the_next_free_number() {
         let dir = temp("unused");
         assert_eq!(unused_name(&dir, "Game.brainrot"), "Game.brainrot");
@@ -308,12 +377,14 @@ mod tests {
         let dir = temp("parts");
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join(".Game.brainrot.part"), b"half").unwrap();
+        fs::write(dir.join(".Game.brainrot.prev"), b"old").unwrap();
         fs::write(dir.join("Keep.brainrot"), b"zip").unwrap();
         // Just written: it may still be being saved.
         drop_stale_parts(&dir, SystemTime::now());
         assert!(dir.join(".Game.brainrot.part").exists());
         drop_stale_parts(&dir, SystemTime::now() + STALE_PART);
         assert!(!dir.join(".Game.brainrot.part").exists());
+        assert!(!dir.join(".Game.brainrot.prev").exists());
         assert!(dir.join("Keep.brainrot").exists());
         let _ = fs::remove_dir_all(&dir);
     }

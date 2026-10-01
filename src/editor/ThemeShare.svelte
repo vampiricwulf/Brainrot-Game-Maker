@@ -31,7 +31,7 @@
   }
 
   async function fromGame(): Promise<void> {
-    const other = await pickOtherGame(app.game);
+    const other = await pickOtherGame();
     if (!other) return;
     const game = app.game;
     step(`Theme from “${other.title}”`, () => {

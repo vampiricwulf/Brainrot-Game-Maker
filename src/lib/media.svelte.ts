@@ -44,6 +44,17 @@ export function getBlob(id: string): Blob | undefined {
   return blobs.get(id);
 }
 
+/** A file's bytes as this browser holds them (in memory, else in storage), or undefined: none under that id. */
+export async function storedBlob(id: string): Promise<Blob | undefined> {
+  const b = blobs.get(id);
+  if (b || memoryOnly) return b;
+  try {
+    return await get<Blob>(KEY(id));
+  } catch {
+    return undefined;
+  }
+}
+
 /** An exported player-only file: its files stay in memory and never touch the stored ones (see keepInMemory). */
 let memoryOnly = false;
 /**

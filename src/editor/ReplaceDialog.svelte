@@ -26,7 +26,7 @@
     {#if full}
       <p class="warn small">This browser's storage is full, so Discard loses it: Save first to keep it.</p>
     {:else}
-      <p class="muted small">Discard keeps it in this browser for a while: Open… → Recent games brings it back.</p>
+      <p class="muted small">Discard keeps it in this browser with the last few games replaced: Open… → Recent games brings it back.</p>
     {/if}
     <div class="row end">
       <button class="primary" data-autofocus onclick={() => onchoice('save')}>Save first</button>

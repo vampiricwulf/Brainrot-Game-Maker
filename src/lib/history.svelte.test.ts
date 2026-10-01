@@ -19,6 +19,7 @@ import {
   onNotify,
   redo,
   savedSinceChange,
+  savePoint,
   startHistory,
   step,
   stepAsync,
@@ -487,6 +488,37 @@ describe('undo history: limits and marks', () => {
     undo();
     step(null, () => (g.title = 'Other'));
     expect(history.marks).toEqual([]);
+  });
+
+  it('marks a save where the game was when it started: changes made while it was written stay unsaved', async () => {
+    const box = field('title');
+    focus(win, box);
+    g.title = 'A';
+    await seen();
+    // Typing not yet a step when Save starts becomes one, and the save point is after it.
+    const point = savePoint();
+    expect(history.entries).toHaveLength(1);
+    // Typed on while the file is written: a step of its own (not joined to the saved one).
+    g.title = 'AB';
+    await seen();
+    vi.advanceTimersByTime(700);
+    mark('saved', 'Saved “A.brainrot”', point);
+    expect(history.entries).toHaveLength(2);
+    expect(history.marks).toEqual([expect.objectContaining({ kind: 'saved', at: 1 })]);
+    expect(savedSinceChange()).toBe(false);
+    // Back to what was saved: saved.
+    undo();
+    expect(savedSinceChange()).toBe(true);
+  });
+
+  it('a save whose step was undone and replaced while it was written leaves no mark', () => {
+    step(null, () => (g.title = 'A'));
+    const point = savePoint();
+    undo();
+    step(null, () => (g.title = 'B'));
+    mark('saved', 'Saved', point);
+    expect(history.marks).toEqual([]);
+    expect(savedSinceChange()).toBe(false);
   });
 
   it('forgets everything on clear() and on a new game', () => {
