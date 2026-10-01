@@ -164,7 +164,7 @@
   /** Import round from a .brainrot…: the other game, while its rounds are picked. */
   let importFrom = $state<Game | null>(null);
   async function importRounds(): Promise<void> {
-    importFrom = await pickOtherGame();
+    importFrom = await pickOtherGame(game);
   }
 
   // Moving, copying or deleting a round keeps the same tab on screen (a round's right-click menu can act on

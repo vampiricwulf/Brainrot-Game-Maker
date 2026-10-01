@@ -187,6 +187,13 @@ done, the Unreleased lines move under that day's heading.
   incomplete. (64eba3f, 13b208f)
 - Desktop saves are synced to disk before they replace the old file, and closing the window keeps the last edits.
   (769dbf8)
+- **Import round / Paste round from another copy of the same game** no longer silently uses this game's own world,
+  wheels, dice, stats, items, shops or files where the other copy's differ: the other version comes in as a copy (the
+  toast says "Brought the file's “Adventure” world as a copy"), and this game's stays as it was. The same thing with the
+  same content is still shared. Opening another game to take rounds or a theme from no longer overwrites this game's
+  file of the same id in the browser's storage.
+- Pasting a round twice names them "Adventure (copy)" and "Adventure (copy 2)", and a template added twice is
+  "Jeopardy! (2)".
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz
