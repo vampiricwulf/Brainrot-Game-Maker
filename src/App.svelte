@@ -28,7 +28,8 @@
   import { hasWork } from './lib/recent';
   import { validate, type Problem } from './lib/validate';
   import { migrateGame, newId } from './lib/model';
-  import { closeAudienceWindow } from './lib/sync.svelte';
+  import { audienceTitle, closeAudienceWindow, openAudienceWindow } from './lib/sync.svelte';
+  import ModeCards from './play/ModeCards.svelte';
   import { migrateSession, newSession, rebaseSession } from './lib/session';
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
@@ -240,7 +241,7 @@
   const saveEditorNow = () => saveEditor(() => (watch && editing ? { draft: watch.value(), ...toSave(newId()) } : null));
   const saveEditorSoon = debounce(saveEditorNow, 500);
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
-  const savePlaySoon = debounce((session: Session) => playWatch && savePlay(playWatch.value(), session), 300);
+  const savePlaySoon = debounce((session: Session, cover?: boolean) => playWatch && savePlay(playWatch.value(), session, cover), 300);
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
   let lastAutosaveAt = Date.now();
@@ -361,8 +362,10 @@
   $effect(() => {
     void playRev;
     const session = $state.snapshot(app.session);
+    // (The cover too: a game picked up after a reload comes back covered if it was.)
+    const cover = !!app.live.cover;
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
-    if (loaded && !app.pregame && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session);
+    if (loaded && !app.pregame && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
@@ -399,6 +402,35 @@
     app.screen = 'play';
   }
 
+  /**
+   * Resume game was pressed: a game in progress asks how it's shown first (one window, or the audience window to
+   * capture), as before the game. A finished one shows its results at once.
+   */
+  let resuming = $state<{ withEdits: boolean } | null>(null);
+  function askResume(withEdits = false): void {
+    if (app.resumable?.session.phase === 'end') void resume(withEdits);
+    else resuming = { withEdits };
+  }
+
+  /** Resume in the mode picked: the audience window opens now (from the click, or the browser blocks it). */
+  function resumeIn(audienceWindow: boolean): void {
+    const saved = app.resumable;
+    const withEdits = !!resuming?.withEdits;
+    resuming = null;
+    if (!saved) return;
+    if (audienceWindow)
+      void openAudienceWindow(audienceTitle(saved.game)).then((ok) => {
+        if (!ok)
+          toast(
+            inTauri()
+              ? "Couldn't open the audience window: press A in the game to try again."
+              : 'The browser blocked the audience window: allow popups for this file, then press A in the game.',
+            6000,
+          );
+      });
+    void resume(withEdits);
+  }
+
   /** Resume the saved game, optionally switching it to the editor's current version of the game. */
   async function resume(withEdits = false): Promise<void> {
     const saved = app.resumable;
@@ -412,6 +444,8 @@
     app.playGame = game;
     app.session = saved.session;
     app.live = newLive();
+    // Left with the screen covered: it comes back covered (viewers never see the host's screen meanwhile).
+    if (saved.cover) app.live.cover = true;
     app.pregame = false;
     app.toast = '';
     app.screen = 'play';
@@ -445,7 +479,13 @@
       if (session.phase === 'end') {
         app.resumable = null;
         clearPlay();
-      } else app.resumable = { game: $state.snapshot(playGame), session: $state.snapshot(session), savedAt: Date.now() };
+      } else
+        app.resumable = {
+          game: $state.snapshot(playGame),
+          session: $state.snapshot(session),
+          savedAt: Date.now(),
+          ...(app.live.cover ? { cover: true } : {}),
+        };
     }
     leavePlay();
   }
@@ -488,7 +528,7 @@
   </div>
 {:else if playerOnly && app.screen === 'editor'}
   {@render roomBar()}
-  <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => resume()} ondiscard={discardResume} />
+  <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
 {:else if app.screen === 'editor'}
   {@render roomBar()}
   {#if app.resumable}
@@ -502,19 +542,31 @@
           <span class="muted small">Edits you make here don't change it unless you resume with them.</span>
         {/if}
       </span>
-      <button class="primary" onclick={() => resume()}>{ended ? 'View results' : 'Resume game'}</button>
-      {#if !ended && saved.game.id === app.game.id}
-        <button onclick={() => resume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
-          Resume with my edits
-        </button>
+      {#if resuming}
+        {@render modeAsk()}
+      {:else}
+        <button class="primary" onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
+        {#if !ended && saved.game.id === app.game.id}
+          <button onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+            Resume with my edits
+          </button>
+        {/if}
+        <button class="ghost" onclick={discardResume}>Discard</button>
       {/if}
-      <button class="ghost" onclick={discardResume}>Discard</button>
     </div>
   {/if}
   <Editor onplay={startPlay} {problems} />
 {:else}
   <Play onexit={exitPlay} oncancel={leavePlay} />
 {/if}
+
+{#snippet modeAsk()}
+  <div class="mode-ask" role="group" aria-label="How is the game shown?">
+    <span><b>How is it shown?</b>{#if app.resumable?.cover} <span class="muted small">It comes back with the screen covered (⏸ Cover).</span>{/if}</span>
+    <ModeCards onsingle={() => resumeIn(false)} onaudience={() => resumeIn(true)} />
+    <button class="ghost" onclick={() => (resuming = null)}>Cancel</button>
+  </div>
+{/snippet}
 
 {#snippet roomBar()}
   {#if kept.room}
@@ -571,5 +623,15 @@
   }
   .small {
     font-size: 12px;
+  }
+  .mode-ask {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: min(760px, 100%);
+  }
+  .mode-ask :global(.modes) {
+    align-self: stretch;
   }
 </style>

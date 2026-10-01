@@ -33,7 +33,7 @@
 
 <div class="wrap">
   <div class="title">
-    {roundIdx === 0 ? (o.purpose === 'tiebreak' ? 'Tiebreaker roll-off!' : o.purpose === 'buzz' ? 'Tie! Roll for it' : 'Who goes first?') : 'Tiebreak roll!'}
+    {roundIdx === 0 ? (o.purpose === 'tiebreak' ? 'Tiebreaker roll-off!' : o.purpose === 'buzz' ? 'Tie! Roll for it' : 'Who goes first?') : 'Re-roll!'}
   </div>
   <div class="row">
     {#each round.players as pid, i (pid)}

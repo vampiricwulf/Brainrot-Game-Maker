@@ -1,6 +1,6 @@
 <!-- The game board in stage coordinates (fills its parent). -->
 <script lang="ts">
-  import { categoryLabel, clueValue, isBoard, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueValue, formatPoints, isBoard, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit } from '../lib/autofit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
 
@@ -28,6 +28,23 @@
     return Array.from({ length: 200 }, () => Math.random() * 1.4);
   });
   const catShown = (ci: number) => !intro || (intro.stage === 'categories' && ci < intro.revealed);
+
+  /**
+   * The arrow keys move across the board, tile to tile (played ones too: their menu is still there). Only in the host's
+   * board, where tiles can be picked.
+   */
+  function arrows(e: KeyboardEvent, row: number, ci: number): void {
+    if (!round || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const d = ({ ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] } as Record<string, [number, number]>)[e.key];
+    if (!d) return;
+    // The arrow keys are the board's here (not the media's ← → seek).
+    e.preventDefault();
+    e.stopPropagation();
+    const r = Math.max(0, Math.min(round.values.length - 1, row + d[0]));
+    const c = Math.max(0, Math.min(round.categories.length - 1, ci + d[1]));
+    const board = (e.currentTarget as HTMLElement).closest('.board');
+    board?.querySelector<HTMLElement>(`.tile[data-row="${r}"][data-cat="${c}"]`)?.focus();
+  }
 </script>
 
 {#if round}
@@ -59,16 +76,23 @@
       {#each round.categories as cat, ci (cat.id)}
         {@const clue = cat.clues[row]}
         {@const used = clue.empty || !!session.used[clue.id]}
+        {@const value = formatPoints(clueValue(round, row, clue), sym)}
+        <!-- Played tiles are out of the Tab order (the arrow keys still reach them, for their menu). -->
         <button
           class="cell tile"
           class:used
+          data-clue={clue.id}
+          data-row={row}
+          data-cat={ci}
+          tabindex={used ? -1 : undefined}
+          onkeydown={onpick ? (e) => arrows(e, row, ci) : undefined}
           class:fill={intro?.stage === 'fill'}
           style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
           disabled={(used && !ontilemenu) || !onpick || !!intro}
           aria-disabled={used || undefined}
           onclick={() => !used && onpick?.({ round: session.currentRound, cat: ci, row })}
           oncontextmenu={ontilemenu && !clue.empty ? (e) => ontilemenu(e, { round: session.currentRound, cat: ci, row }) : undefined}
-          aria-label="{categoryLabel(cat)} for {clueValue(round, row, clue)}"
+          aria-label="{categoryLabel(cat)} for {value}{clue.empty ? ', empty' : used ? ', played' : ''}"
         >
           {#if !used}
             {#if clue.tileFace?.image && mediaUrls[clue.tileFace.image]}
@@ -77,7 +101,7 @@
             {#if clue.tileFace?.text}
               <span class="face" use:autofit={{ size: 84, enabled: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>
             {:else if !clue.tileFace?.image}
-              <span>{sym}{clueValue(round, row, clue)}</span>
+              <span>{value}</span>
             {/if}
           {/if}
         </button>

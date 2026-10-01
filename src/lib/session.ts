@@ -285,10 +285,30 @@ export function toggleReveal(session: Session): void {
   else reveal(session);
 }
 
-/** The host panel's award row is up: not on a Daily Double splash, the final reveals or the end screen. */
+/**
+ * The host panel's award row is up: not on a Daily Double splash, in a Final (its wagers and reveals score it) or on the
+ * end screen.
+ */
 export function awardOpen(session: Session): boolean {
   if (session.phase === 'clue') return session.dd?.stage !== 'splash';
-  return session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'tiebreaker' || (session.phase === 'final' && session.finalStep !== 'reveal');
+  return session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'tiebreaker';
+}
+
+/**
+ * A 0 result for these players, logged all the same (a Daily Double wagered at 0, like a Final's 0 wager), so the log
+ * says what happened and Undo takes it back. Returns the events.
+ */
+export function logZero(session: Session, playerIds: string[], reason: string, clueId: string | undefined, right: boolean): ScoreEvent[] {
+  const batchId = newId();
+  const events: ScoreEvent[] = [];
+  for (const playerId of playerIds) {
+    if (!session.players.some((p) => p.id === playerId)) continue;
+    const e: ScoreEvent = { id: newId(), ts: Date.now(), playerId, delta: 0, reason, clueId, batchId, round: session.currentRound, right };
+    session.scoreLog.push(e);
+    events.push(e);
+  }
+  if (events.length) clearRedo(session);
+  return events;
 }
 
 /** Nothing on the slide but empty text. */
@@ -660,11 +680,19 @@ export function finalShow(session: Session, playerId: string): void {
   session.final.shown[playerId] = true;
 }
 
-/** Mark a Final response right/wrong and apply ± their wager. Re-judging replaces the earlier result. */
-export function finalJudge(session: Session, game: Game, playerId: string, right: boolean): void {
+/** The player's Final wager is in (0 counts; nothing typed doesn't: it's never taken as 0). */
+export function hasWager(f: FinalState | null | undefined, playerId: string): boolean {
+  return typeof f?.wagers[playerId] === 'number' && f.wagers[playerId] >= 0;
+}
+
+/**
+ * Mark a Final response right/wrong and apply ± their wager. Re-judging replaces the earlier result. A player with no
+ * wager isn't judged (false): the host enters it first.
+ */
+export function finalJudge(session: Session, game: Game, playerId: string, right: boolean): boolean {
   const f = session.final;
   const round = currentFinal(session, game);
-  if (!f || !round) return;
+  if (!f || !round || !hasWager(f, playerId)) return false;
   const tag = finalTag(round.id);
   // Undo the earlier judgment's score change (Undo brings it back).
   const earlier = f.results[playerId] ? [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === tag && !x.undone) : undefined;
@@ -681,6 +709,7 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
   }
   e.right = right;
   if (earlier) e.replaces = earlier.id;
+  return true;
 }
 
 // ---------- End of game ----------
@@ -690,8 +719,16 @@ export function tiedLeaders(session: Session): Player[] {
   const ranked = standings(session);
   if (ranked.length < 2 || ranked[0].score !== ranked[1].score) return [];
   const tied = ranked.filter((r) => r.score === ranked[0].score).map((r) => r.player);
-  // Settled by the tiebreaker roll-off (only while its winner is still one of the tied leaders).
+  // Settled by the tiebreaker roll-off or clue (only while its winner is still one of the tied leaders).
   return tied.some((p) => p.id === session.rollOffWinner) ? [] : tied;
+}
+
+/**
+ * The end screen has its winner (or winners): nobody is tied for first, or the tie was settled (a roll-off, the
+ * tiebreaker clue, co-winners). The winner fanfare plays only then.
+ */
+export function winnerKnown(session: Session): boolean {
+  return !tiedLeaders(session).length || !!session.coWinners;
 }
 
 export function startTiebreaker(session: Session): void {

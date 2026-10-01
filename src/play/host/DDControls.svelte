@@ -21,19 +21,30 @@
     oncancel: () => void;
   } = $props();
 
-  // Initial choice only: whoever is picking (the host can change it).
-  let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? session.players[0]?.id ?? ''));
+  // Initial choice only: whoever is picking (the host can change it). With no picker, nobody: the host picks (never a
+  // silent Player 1).
+  let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? ''));
   let wager = $state<number | null>(null);
   let override = $state(false);
   let wagerBox = $state<HTMLInputElement>();
   const sym = $derived(game.settings.currencySymbol);
   const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
-  const valid = $derived(wager !== null && wager >= 0 && (override || wager <= cap));
+  const valid = $derived(!!playerId && wager !== null && wager >= 0 && (override || wager <= cap));
+
+  /**
+   * Enter in the wager box (or on "Ignore the limit"): show the question. The key goes no further: the 👁 Reveal answer
+   * button that takes the focus next must not get this same Enter (the answer would be on stream at once).
+   */
+  function enter(e: KeyboardEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    if (valid) onshow(playerId, wager!);
+  }
 </script>
 
 <div class="dd">
   <b>Daily Double!</b>
-  <span class="muted">Who found it?</span>
+  <span class="muted">Who found it?{#if !playerId}<span class="warn"> Pick a player.</span>{/if}</span>
   <div class="row">
     {#each session.players as p (p.id)}
       <button
@@ -62,7 +73,7 @@
         bind:this={wagerBox}
         autofocus
         onkeydown={(e) => {
-          if (e.key === 'Enter' && valid) onshow(playerId, wager!);
+          if (e.key === 'Enter') enter(e);
           else if (e.key === 'Escape') oncancel();
         }}
       />
@@ -70,7 +81,7 @@
     <button class="small ghost" onclick={() => (wager = cap)}>True Daily Double ({formatPoints(cap, sym)})</button>
     <span class="muted small">Max {formatPoints(cap, sym)} (their score or the round's top value)</span>
     <label class="check small">
-      <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && valid && onshow(playerId, wager!)} /> Ignore the limit
+      <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>
     <span class="spacer"></span>
     <button class="primary" disabled={!playerId || !valid} onclick={() => onshow(playerId, wager!)}>Show question ▶</button>
@@ -95,6 +106,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .warn {
+    color: var(--warn);
   }
   .exposed {
     color: var(--warn);

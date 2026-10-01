@@ -28,13 +28,15 @@
 {/snippet}
 
 {#snippet standingsList()}
-  <div class="label">Standings</div>
-  <ol>
-    <!-- Equal scores share a place, as on stream. -->
-    {#each places(session) as { player, score, place } (player.id)}
-      <li value={place}><span class="dot" style:background={player.color}></span>{player.name} <b>{formatPoints(score, sym)}</b></li>
-    {/each}
-  </ol>
+  <div class="group">
+    <div class="label">Standings</div>
+    <ol>
+      <!-- Equal scores share a place, as on stream. -->
+      {#each places(session) as { player, score, place } (player.id)}
+        <li value={place}><span class="dot" style:background={player.color}></span>{player.name} <b>{formatPoints(score, sym)}</b></li>
+      {/each}
+    </ol>
+  </div>
 {/snippet}
 
 <div class="info">
@@ -69,17 +71,20 @@
       <div class="notes">{finalRound.hostNotes}</div>
     {/if}
     {#if session.final}
-      <div class="label">Wagers</div>
-      <ol>
-        {#each session.final.order as id (id)}
-          {@const p = session.players.find((x) => x.id === id)}
-          <li>
-            <span class="dot" style:background={p?.color}></span>{p?.name}
-            <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : '—'}</b>
-            {session.final.results[id] === 'right' ? '✔' : session.final.results[id] === 'wrong' ? '✘' : ''}
-          </li>
-        {/each}
-      </ol>
+      <!-- The heading and its list together (in columns, the heading never ends a column alone). -->
+      <div class="group">
+        <div class="label">Wagers</div>
+        <ol>
+          {#each session.final.order as id (id)}
+            {@const p = session.players.find((x) => x.id === id)}
+            <li>
+              <span class="dot" style:background={p?.color}></span>{p?.name}
+              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : '—'}</b>
+              {session.final.results[id] === 'right' ? '✔' : session.final.results[id] === 'wrong' ? '✘' : ''}
+            </li>
+          {/each}
+        </ol>
+      </div>
     {/if}
   {:else if session.phase === 'tiebreaker' && game.tiebreaker}
     <div class="meta"><span class="cat">Tiebreaker</span></div>
@@ -136,6 +141,11 @@
     padding: 12px 14px;
     background: var(--panel);
     border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .group {
     display: flex;
     flex-direction: column;
     gap: 4px;

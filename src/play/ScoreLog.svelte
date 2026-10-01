@@ -18,6 +18,7 @@
     onback,
     onredoto,
     onclose,
+    area = null,
   }: {
     game: Game;
     session: Session;
@@ -30,6 +31,8 @@
     /** 🕘 History: redo up to this (undone) row. */
     onredoto: (row: TimelineRow) => void;
     onclose: () => void;
+    /** Single window: the host panel's box. The log shows in there, never over the stage viewers see. */
+    area?: { top: number; left: number; width: number; height: number } | null;
   } = $props();
   const byId = $derived(Object.fromEntries([...(session.removedPlayers ?? []), ...session.players].map((p) => [p.id, p])));
   const removed = $derived(new Set((session.removedPlayers ?? []).map((p) => p.id)));
@@ -96,7 +99,14 @@
   }
 </script>
 
-<aside>
+<aside
+  class:in-panel={!!area}
+  style:top={area ? `${area.top}px` : undefined}
+  style:left={area ? `${area.left}px` : undefined}
+  style:width={area ? `${area.width}px` : undefined}
+  style:height={area ? `${area.height}px` : undefined}
+  aria-label="Log"
+>
   <header class="row">
     <button class="tab" class:on={tab === 'history'} aria-pressed={tab === 'history'} onclick={() => (tab = 'history')}>🕘 History</button>
     <button class="tab" class:on={tab === 'scores'} aria-pressed={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({steps.length})</button>
@@ -249,6 +259,13 @@
     display: flex;
     flex-direction: column;
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.4);
+  }
+  aside.in-panel {
+    right: auto;
+    bottom: auto;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    box-shadow: none;
   }
   .tab.on {
     background: var(--accent-fill);

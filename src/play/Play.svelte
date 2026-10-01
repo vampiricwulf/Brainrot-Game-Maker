@@ -7,11 +7,11 @@
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalBack, finalJudge, finalNext, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
+    finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
-    blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, roundMaxValue, stepOf,
+    blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
   } from '../lib/session';
-  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SETTING_UP, type BuzzState,
   } from '../lib/buzz';
@@ -38,13 +38,15 @@
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
   import HostPanel from './HostPanel.svelte';
+  import ModeCards from './ModeCards.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { playCue } from './cues';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { logged, redoAction, redoFrom, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, redoAction, redoFrom, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
+  import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
     addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, stepParty, toggleMap,
@@ -61,6 +63,7 @@
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
+  import type { Pop } from '../lib/live';
   import {
     audience,
     audienceTitle,
@@ -194,7 +197,7 @@
     finishArmed = false;
   });
   $effect(() => {
-    if (dual || !(showKeys || showPlayers || showRules)) return void (panelBox = null);
+    if (dual || !(showKeys || showPlayers || showRules || showLog)) return void (panelBox = null);
     // The list needs the controls (H hid them).
     hideControls = false;
     let ro: ResizeObserver | undefined;
@@ -213,6 +216,42 @@
       ro?.disconnect();
       window.removeEventListener('resize', read);
     };
+  });
+  // Undo took the Final back from its question to the wagers: its countdown and think music stop.
+  let finalStepWas = untrack(() => session.finalStep);
+  $effect(() => {
+    const now = session.phase === 'final' ? session.finalStep : undefined;
+    untrack(() => {
+      if ((finalStepWas === 'question' || finalStepWas === 'answer') && (now === 'wagers' || now === 'category')) {
+        app.live.timer = null;
+        app.live.sound = null;
+      }
+      finalStepWas = now;
+    });
+  });
+  // ⏸ Cover: what's going on waits under it (the countdown, a clue's video or sound), and goes on after it.
+  let coverHeld: { timer: TimerState | null; media: string[] } | null = null;
+  $effect(() => {
+    const on = !!app.live.cover;
+    untrack(() => {
+      if (on && !coverHeld) {
+        const t = app.live.timer;
+        const running = t && !t.expired && t.startedAt !== null ? t : null;
+        if (running) toggleTimer(app.live);
+        const media = Object.entries(dual ? remoteMedia : localMedia)
+          .filter(([, m]) => !m.paused && m.kind !== 'external' && (dual || (m as { role?: string }).role !== 'mirror'))
+          .map(([id]) => id);
+        for (const id of media) mediaCommand({ el: id, op: 'pause' });
+        coverHeld = { timer: running, media };
+      } else if (!on && coverHeld) {
+        const held = coverHeld;
+        coverHeld = null;
+        const t = app.live.timer;
+        // The same countdown, still paused (not one started or stopped meanwhile).
+        if (held.timer && t === held.timer && t.startedAt === null && !t.expired) toggleTimer(app.live);
+        for (const id of held.media) if ((dual ? remoteMedia : localMedia)[id]) mediaCommand({ el: id, op: 'play' });
+      }
+    });
   });
   // "Ignore the limits" is for the wagers being entered now, not the next Final's.
   $effect(() => {
@@ -357,11 +396,22 @@
     else closeAudienceWindow();
   }
 
-  function pop(text: string, color: string): void {
-    const p = { id: newId(), text, color };
-    app.live.pops.push(p);
+  /** A score pop on stream for a moment. */
+  function pop(p: Omit<Pop, 'id'>): void {
+    const id = newId();
     const live = app.live;
-    later(() => (live.pops = live.pops.filter((x) => x.id !== p.id)), 2200);
+    live.pops.push({ id, ...p });
+    later(() => (live.pops = live.pops.filter((x) => x.id !== id)), 2200);
+  }
+
+  /** The countdown stops (a right answer, the answer going up): no "Time's up" over the answer. */
+  function stopTimer(what: 'right' | 'reveal'): void {
+    if (app.live.timer && stopsTimer(session.phase, what)) app.live.timer = null;
+  }
+
+  /** The winner fanfare, once the end screen has its winner (not while a tie for first is still to settle). */
+  function winnerCue(): void {
+    if (session.phase === 'end' && winnerKnown(session)) playCue(app.live, game, 'winner');
   }
 
   function reasonNow(): string {
@@ -377,19 +427,41 @@
 
   function award(sign: 1 | -1, ids = selected, amt = amount): void {
     if (!ids.length) return toast(`Select a player first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
-    if (!amt) return toast('Enter an amount first');
-    const events = applyScore(session, game, ids, sign * Math.abs(amt), reasonNow(), info?.clue.id);
+    // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
+    if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);
+    // A Daily Double wagered at 0 is still right or wrong: a 0 result is logged.
+    const zeroDD = amt === 0 && session.phase === 'clue' && session.dd?.stage === 'question';
+    if (!amt && !zeroDD) return toast('Enter an amount first');
+    const events = zeroDD
+      ? logZero(session, ids, reasonNow(), info?.clue.id, sign > 0)
+      : applyScore(session, game, ids, sign * Math.abs(amt!), reasonNow(), info?.clue.id);
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
+    if (events.length && sign > 0) stopTimer('right');
     // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out and opens them for the rest.
     const b = app.live.buzz;
     if (buzzing && b?.answering && events.length && ids.includes(b.answering))
       setBuzz(sign > 0 ? buzzDone(b) : buzzMissed(b, b.answering, session.players.map((p) => p.id)));
-    for (const e of events) {
-      const p = session.players.find((x) => x.id === e.playerId);
-      if (p) pop(`${p.name} ${e.delta > 0 ? '+' : '−'}${sym}${Math.abs(e.delta).toLocaleString()}`, p.color);
-    }
+    // One pop per player, or one for a group ("Everyone +$200").
+    for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
     // Awarding control of the board follows TV rules: the last correct player picks next.
     if (game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1) session.currentPickerId = ids[0];
+    selected = [];
+  }
+
+  /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
+  function tiebreakWin(sign: 1 | -1, ids: string[]): void {
+    const id = ids[0];
+    if (sign < 0) return toast('Nothing to deduct: type an amount, or select the winner and ＋ Award');
+    if (ids.length > 1) return toast('Select the one player who won the tiebreaker');
+    if (!tiedLeaders(session).some((p) => p.id === id)) return toast(`${playerName(session, id)} isn’t tied for first`);
+    logged(session, `${playerName(session, id)} won the tiebreaker clue`, () => {
+      session.rollOffWinner = id;
+      session.tiebreakClue = true;
+    });
+    playCue(app.live, game, 'right');
+    stopTimer('right');
+    const p = session.players.find((x) => x.id === id);
+    if (p) pop({ text: `${p.name} wins the tiebreaker!`, color: p.color });
     selected = [];
   }
 
@@ -729,8 +801,14 @@
       selected = [o.winner];
       return;
     }
-    if (o.purpose === 'tiebreak') logged(s, `${playerName(s, o.winner)} won the roll-off`, () => (s.rollOffWinner = o.winner));
-    else setPicker(s, o.winner, ' (roll-off)');
+    if (o.purpose === 'tiebreak') {
+      logged(s, `${playerName(s, o.winner)} won the roll-off`, () => {
+        s.rollOffWinner = o.winner;
+        s.tiebreakClue = undefined;
+      });
+      // Settled: now there's a winner to cheer.
+      if (app.session === s) winnerCue();
+    } else setPicker(s, o.winner, ' (roll-off)');
   }
 
   function rolloff(ids: string[], sides: number, purpose: 'first' | 'tiebreak' = 'first'): void {
@@ -759,13 +837,11 @@
     const wasFinalQuestion = session.phase === 'final' && session.finalStep === 'question';
     toggleReveal(session);
     if (answerShowing(session)) {
-      // A finished countdown has done its job once the answer is up.
+      // The countdown has done its job once the answer is up (no "Time's up" over it).
+      stopTimer('reveal');
       if (app.live.timer?.expired) app.live.timer = null;
-      if (wasFinalQuestion) {
-        app.live.timer = null;
-        app.live.sound = null;
-      }
-      playCue(app.live, game, 'reveal');
+      // The Final's think music stops for the reveal's sound.
+      playCue(app.live, game, 'reveal', wasFinalQuestion);
     }
   }
 
@@ -786,7 +862,7 @@
         if (session.phase === 'clue') back();
         break;
       case 'final-next':
-        finalNext(session, game);
+        finalNextStep(session, game);
         finalStep();
         break;
       case 'overlay':
@@ -837,11 +913,14 @@
    * question never showed.
    */
   function back(keep = false): void {
+    const clueId = info?.clue.id;
     // The host panel's status row then offers "↶ Reopen <tile>" (no toast: it would cover the round buttons).
     backToBoard(session, game, { markUsed: !keep && session.dd?.stage !== 'splash' });
     selected = [];
     amount = null;
     app.live.timer = null;
+    // The keys go on from the tile that was open (the arrow keys move from it), not from the top of the page.
+    if (clueId) void tick().then(() => document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${clueId}"]`)?.focus({ preventScroll: true }));
   }
 
   /** Back to the board without using up the tile (a misclick), unless points were already given for it. */
@@ -889,7 +968,7 @@
     selected = [];
     amount = null;
     if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
-    if (session.phase === 'end') playCue(app.live, game, 'winner');
+    winnerCue();
   }
 
   /** Final round started by mistake (or a tile was skipped): back to the round before it, wagers kept. */
@@ -906,11 +985,22 @@
     backToLastRound(session, game);
   }
 
-  /** The tiebreaker clue, with the Amount ready (the last board's top value): select the winner and ＋ Award. */
+  /**
+   * The tiebreaker clue: select the winner and ＋ Award. Its Amount starts at 0 (settling the tie adds no points; the
+   * host can still type some).
+   */
   function tiebreaker(): void {
     startTiebreaker(session);
     selected = [];
-    amount = game.rounds.map((_, i) => roundMaxValue(game, i)).filter(Boolean).at(-1) ?? null;
+    amount = 0;
+    app.live.timer = null;
+  }
+
+  /** 🏁 Back to results from the tiebreaker clue: the fanfare if it settled the tie. */
+  function tiebreakerDone(): void {
+    session.phase = 'end';
+    app.live.timer = null;
+    winnerCue();
   }
 
   /** Same players (names, colors and pictures) at 0 and a fresh board, via the pre-game screen. */
@@ -952,7 +1042,7 @@
       playCue(app.live, game, 'finalThink');
     }
     if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
-    if (session.phase === 'end') playCue(app.live, game, 'winner');
+    winnerCue();
     // A Final in the middle of the game went on to the next round.
     if (session.phase !== 'final' && session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
   }
@@ -963,7 +1053,7 @@
     if (r === 'done') {
       // The final controls show "press N again to finish" while armed.
       if (finishArmed) {
-        finalNext(session, game);
+        finalNextStep(session, game);
         finalStep();
       } else finishArmed = true;
     } else if (r === 'waiting' && session.final?.current)
@@ -972,8 +1062,9 @@
 
   /** Judge a player in the final reveal (their wager goes up with it). */
   function judge(id: string, right: boolean): void {
+    // No wager typed for them: it's asked for (never taken as 0).
+    if (!finalJudge(session, game, id, right)) return toast(`Enter ${playerName(session, id)}’s wager first (in their row)`, 4000);
     finalShow(session, id);
-    finalJudge(session, game, id, right);
     playCue(app.live, game, right ? 'right' : 'wrong');
   }
 
@@ -1651,7 +1742,7 @@
     if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
     // Enter or Space on a button reached with Tab presses it (a tile opens). On a button clicked with the mouse, Enter
     // still awards.
-    if ((e.key === ' ' || e.key === 'Enter') && t && t === tabbedTo && t.matches('button, [role="button"]')) return;
+    if ((e.key === ' ' || e.key === 'Enter') && t && t.matches('button, [role="button"]') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
     if (e.key === '?') {
       showKeys = true;
       return;
@@ -1771,9 +1862,13 @@
         else toast('No saved wheels: use the 🎡 Wheel button for a quick one');
         break;
       }
-      case 'o':
-        rolloff(session.players.map((p) => p.id), game.settings.rollOffDie || 20);
+      case 'o': {
+        // On a tie for first at the end: the tied leaders roll for the win (not "Who goes first?").
+        const ties = session.phase === 'end' && !session.coWinners ? tiedLeaders(session) : [];
+        if (ties.length) rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak');
+        else rolloff(session.players.map((p) => p.id), game.settings.rollOffDie || 20);
         break;
+      }
       case 's':
         toggleScoreboard(app.live);
         break;
@@ -1788,7 +1883,7 @@
           else finalRevealNext();
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && (session.finalStep !== 'wagers' || finalWagersOk(session, wagerLimitsOff))) {
-          finalNext(session, game);
+          finalNextStep(session, game);
           finalStep();
         }
         break;
@@ -1933,16 +2028,7 @@
 
         <section class="part" aria-labelledby="pregame-display">
           <h2 id="pregame-display">Display</h2>
-          <div class="modes">
-            <button class="mode" class:on={!dual} aria-pressed={!dual} onclick={() => dual && closeAudienceWindow()}>
-              <b>Single window</b>
-              <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
-            </button>
-            <button class="mode" class:on={dual} aria-pressed={!!dual} onclick={() => !dual && openAudience()}>
-              <b>📺 Separate audience window <span class="tag">Recommended</span></b>
-              <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
-            </button>
-          </div>
+          <ModeCards dual={!!dual} onsingle={() => dual && closeAudienceWindow()} onaudience={() => !dual && openAudience()} />
           {#if !dual}
             <p class="warn small exposed">
               ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
@@ -2059,7 +2145,7 @@
   </div>
 {:else}
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. -->
-  <div class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers || showRules)} oncontextmenu={playerMenuAt} role="presentation">
+  <div class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt} role="presentation">
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
       <div
@@ -2143,7 +2229,9 @@
         onddshow={ddShow}
         onfinalstep={finalStep}
         ontiebreaker={tiebreaker}
-        ontiebreakerdone={() => ((session.phase = 'end'), (app.live.timer = null))}
+        ontiebreakerdone={tiebreakerDone}
+        oncowinners={winnerCue}
+        onjudge={judge}
         onlog={(tab) => {
           if (tab) logTab = tab;
           showLog = !!tab || !showLog;
@@ -2206,8 +2294,9 @@
   {#if showKeys}
     <KeysHelp area={panelBox} onclose={() => (showKeys = false)} />
   {/if}
-  {#if showLog}
-    <ScoreLog {game} {session} {sym} bind:tab={logTab} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
+  {#if showLog && (dual || panelBox)}
+    <!-- Single window: in the host panel (it grows for it), never over the stage viewers see. -->
+    <ScoreLog {game} {session} {sym} bind:tab={logTab} area={panelBox} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
     <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster). -->
@@ -2473,36 +2562,6 @@
   .side > .stage-area.dual > :global(.info > *) {
     break-inside: avoid;
   }
-  .modes {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .mode {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: left;
-    white-space: normal;
-    padding: 12px;
-  }
-  .mode.on {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-  .tag {
-    margin-left: 4px;
-    padding: 1px 6px;
-    border-radius: 6px;
-    background: var(--panel-2);
-    font-size: 12px;
-    font-weight: 600;
-  }
-  @media (max-width: 640px) {
-    .modes {
-      grid-template-columns: 1fr;
-    }
-  }
   /* Beside the pointer, like a dragged file: what's under the pointer stays in sight. */
   .drag-ghost {
     position: fixed;
@@ -2528,10 +2587,13 @@
   .show-controls:focus-visible {
     opacity: 1;
   }
-  /* The host panel beside the stage: messages show at its foot, not over the stage. */
+  /* The host panel beside the stage: messages show over it, not over the stage, at its top (at its foot they'd cover
+     the nav buttons: 👥 Players, Exit). */
   :global(body:has(.play.side) .toast) {
     left: auto;
     right: 12px;
+    top: 12px;
+    bottom: auto;
     transform: none;
     max-width: 400px;
   }

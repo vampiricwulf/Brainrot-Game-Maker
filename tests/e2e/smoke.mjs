@@ -910,6 +910,9 @@ await page.waitForTimeout(300);
 await page.reload();
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 await page.getByRole('button', { name: 'Resume game' }).click();
+// Resume asks how the game is shown, with the same cards as before the game.
+assert((await page.locator('.mode-ask .mode').count()) === 2, 'Resume asks: single window or the audience window');
+await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
 await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$350', 'scores survive a reload');
 assert(await isUsed(0), 'used tiles survive a reload');
@@ -1330,6 +1333,7 @@ assert(keepMsg.includes('can still be resumed') && (await page.getByRole('button
 await page.waitForTimeout(300);
 await page.reload();
 await page.getByRole('button', { name: 'Resume game' }).click();
+await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
 await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$200' && (await isUsed(0)), 'Exit, reload, Resume: scores and used tiles are kept');
 await exitGame();
@@ -1370,6 +1374,7 @@ await page.getByRole('button', { name: '◀ Back to editor' }).click();
 
 // The saved game kept its media through "New": resume it and the image still shows.
 await page.getByRole('button', { name: 'Resume game' }).click();
+await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
 await tile(0).click({ button: 'right', force: true });
 await page.getByRole('menuitem', { name: '↶ Put it back on the board' }).click();
 await tile(0).click();

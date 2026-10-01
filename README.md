@@ -181,11 +181,15 @@ hidden objects. Use the separate audience window when that matters.
 
 **Ties** for first aren't called a win on stream until they're settled, in one of three ways:
 
-- A roll-off, whose winner wins the game.
-- A tiebreaker clue.
+- A roll-off, whose winner wins the game (`O` on the results screen).
+- A tiebreaker clue: select the winner and ＋ Award. Its Amount starts at 0, so settling the tie adds no points.
 - Co-winners.
 
-**Exit** keeps the game in progress, and **Resume game** picks it up later, even after a crash.
+The winner fanfare plays once the tie is settled.
+
+**Exit** keeps the game in progress, and **Resume game** picks it up later, even after a crash. Resume asks how the
+game is shown, **Single window** or **📺 Separate audience window** (the same choice as before the game), and a game
+left with the screen covered comes back covered.
 
 ### Keyboard shortcuts
 
@@ -193,13 +197,14 @@ hidden objects. Use the separate audience window when that matters.
 |---|---|
 | `1`–`9` | Select player N |
 | `Enter` / `Shift+Enter` | Award / deduct |
-| `R` | Reveal / hide the answer |
+| `R` | Reveal / hide the answer (the countdown stops) |
+| `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
 | `N` | Next step (intro, Final, next turn) |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` | Start/pause the timer |
-| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off / scoreboard |
-| `K` or `B` | "Be right back" cover (every round) |
+| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players) / scoreboard |
+| `K` or `B` | "Be right back" cover (every round): the countdown and the clue's video wait under it |
 | `0` | Select everyone or no one (in buzzer mode: reset the buzzers) |
 | `U` | Buzzer mode: open the buzzers (when they open on your key) |
 | `Shift+A` | Scores-only window |

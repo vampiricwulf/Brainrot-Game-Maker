@@ -67,10 +67,61 @@ export function onLocalMediaChange(fn: Listener): () => void {
   return () => listeners.delete(fn);
 }
 
+// ---------- Where a media element was, when its slide comes back ----------
+// Hiding the answer again puts the question's slide back: its video goes on from where it was, muted if it was, not
+// from the start. Only within one clue (the scope): another clue, or the same one opened again later, starts afresh.
+
+interface Kept {
+  time: number;
+  muted: boolean;
+  paused: boolean;
+}
+const kept = new Map<string, Kept>();
+const restoring = new Map<string, { k: Kept; until: number; seeked: boolean }>();
+let scope = '';
+
+/** What's on screen now (a clue, a Final): media kept from anything else is forgotten. */
+export function mediaScope(s: string): void {
+  if (s === scope) return;
+  scope = s;
+  kept.clear();
+  restoring.clear();
+}
+
 export function registerMedia(id: string, role: MediaRole, handle: MediaHandle, state: MediaState, start = 0): void {
   entries.set(id, { role, handle, start });
-  localMedia[id] = { ...state, role };
-  listeners.forEach((l) => l(id, state));
+  const k = kept.get(`${role}:${id}`);
+  kept.delete(`${role}:${id}`);
+  // Muted as it was (the host's copy always stays muted); its place once it knows its length (see updateMedia).
+  const muted = role === 'mirror' || (k ? k.muted : state.muted);
+  if (k) {
+    handle.setMuted(muted);
+    restoring.set(id, { k, until: Date.now() + 8000, seeked: false });
+  }
+  localMedia[id] = { ...state, muted, role };
+  listeners.forEach((l) => l(id, { ...state, muted }));
+}
+
+/** A media element coming back: its place (once its length is known), and paused if it was (autoplay or not). */
+function restore(id: string, patch: Partial<MediaState>): void {
+  const r = restoring.get(id);
+  const e = entries.get(id);
+  if (!r || !e) return;
+  if (Date.now() > r.until) return void restoring.delete(id);
+  if (!r.seeked && patch.duration) {
+    r.seeked = true;
+    // (Again: the element's own muted attribute may have been applied after it registered.)
+    e.handle.setMuted(e.role === 'mirror' || r.k.muted);
+    e.handle.seek(r.k.time);
+    if (r.k.paused) e.handle.pause();
+    else e.handle.play();
+    // Paused: an autoplay starting it in a moment is stopped again.
+    if (r.k.paused) r.until = Date.now() + 1500;
+    else restoring.delete(id);
+  } else if (r.seeked && r.k.paused && patch.paused === false) {
+    restoring.delete(id);
+    e.handle.pause();
+  }
 }
 
 export function updateMedia(id: string, patch: Partial<MediaState>): void {
@@ -78,9 +129,14 @@ export function updateMedia(id: string, patch: Partial<MediaState>): void {
   if (!cur) return;
   Object.assign(cur, patch);
   listeners.forEach((l) => l(id, cur));
+  if (restoring.size) restore(id, patch);
 }
 
 export function unregisterMedia(id: string): void {
+  const e = entries.get(id);
+  const st = localMedia[id];
+  if (e && st && scope && st.kind !== 'external') kept.set(`${e.role}:${id}`, { time: st.time, muted: st.muted, paused: st.paused });
+  restoring.delete(id);
   entries.delete(id);
   delete localMedia[id];
   listeners.forEach((l) => l(id, null));

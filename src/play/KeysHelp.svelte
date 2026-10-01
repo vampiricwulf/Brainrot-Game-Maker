@@ -20,7 +20,7 @@
         ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
         ['P then 1 – 9', 'Make player N the current picker'],
         ['Esc', 'Close the log, a tool or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
-        ['K or B', 'Cover: viewers see only a “Be right back” card (again: uncover)'],
+        ['K or B', 'Cover: viewers see only a “Be right back” card, and the countdown and the clue’s video wait (again: uncover)'],
         ['T', 'Start / pause the countdown (the seconds typed in the ⏱ box, if any)'],
         ['Shift+T', '10 more seconds on the countdown'],
         ['Ctrl+Z', 'Undo the last change: a score, a move, a stat or item, a tile, the picker, the turn order, Players or the Final'],
@@ -39,7 +39,7 @@
       keys: [
         ['D', 'Roll the last dice again (board games: the round’s own dice)'],
         ['W', 'Spin the wheel (or open the first saved wheel)'],
-        ['O', 'Roll-off: who goes first'],
+        ['O', 'Roll-off: who goes first (on a tie for first at the end: the tied players roll for the win)'],
         ['S', 'Scoreboard on screen'],
         ['Space', 'Play / pause the slide’s video or audio'],
         ['← / →', 'Seek the media back / forward 5 s'],
@@ -51,7 +51,8 @@
       title: 'Jeopardy board',
       keys: [
         ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
-        ['R', 'Reveal the answer (again: hide it)'],
+        ['R', 'Reveal the answer (again: hide it); the countdown stops'],
+        ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
         ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
       ],

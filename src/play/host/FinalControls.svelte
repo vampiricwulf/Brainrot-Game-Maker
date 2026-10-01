@@ -4,8 +4,8 @@
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
-  import { currentFinal, finalJudge, finalNext, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, nameList, score } from '../../lib/session';
-  import { logged, startStep } from '../../lib/toolset';
+  import { currentFinal, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, hasWager, nameList, score } from '../../lib/session';
+  import { finalNextStep, logged, startStep } from '../../lib/toolset';
 
   let {
     game,
@@ -15,6 +15,7 @@
     override = $bindable(false),
     onstep,
     onreveal,
+    onjudge,
     onback,
   }: {
     game: Game;
@@ -27,6 +28,8 @@
     override?: boolean;
     onstep: () => void;
     onreveal: () => void;
+    /** Mark a player right or wrong in the reveals (with its sound, as C / X). */
+    onjudge: (id: string, right: boolean) => void;
     /** Back to the round before this Final (wagers entered so far are kept). */
     onback: () => void;
   } = $props();
@@ -132,9 +135,25 @@
     if (askFinish && Date.now() - askedAt < 400) return;
     askFinish = false;
     wagerDone();
-    finalNext(session, game);
+    // From the wagers to the question is a step: Ctrl+Z goes back to the wagers, as they were.
+    finalNextStep(session, game);
     onstep();
   }
+
+  /** The reveals: a player with no wager (never taken as 0) gets one typed in their row, as a step. */
+  function setWager(id: string, value: string): void {
+    const fs = f;
+    const v = Number(value);
+    if (!fs || value.trim() === '' || !Number.isFinite(v) || v < 0) return;
+    logged(session, `${byId[id]?.name ?? '?'}’s wager: ${formatPoints(v, sym)}`, () => (fs.wagers[id] = v));
+  }
+
+  // The spotlit row stays in sight in a long list (8 players in a short window).
+  $effect(() => {
+    const id = f?.current;
+    if (!id || session.finalStep !== 'reveal') return;
+    void tick().then(() => orderEl?.querySelector(`[data-row="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
+  });
 
   const after = $derived(game.rounds[session.currentRound + 1]);
   const labels = $derived({
@@ -246,10 +265,25 @@
               }}
               title="Spotlight on screen · drag the row (or Alt+↑/↓) to change the order"
             >{p?.name}</button>
-            <span class="muted small">{formatPoints(score(session, id), sym)} · wager {formatPoints(f.wagers[id] ?? 0, sym)}</span>
-            <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
-            <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, true))}>✔ Right</button>
-            <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} onclick={() => (finalShow(session, id), finalJudge(session, game, id, false))}>✘ Wrong</button>
+            {#if hasWager(f, id)}
+              <span class="muted small">{formatPoints(score(session, id), sym)} · wager {formatPoints(f.wagers[id], sym)}</span>
+              <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
+            {:else}
+              <!-- No wager in (it's never taken as 0): asked for here before they can be judged. -->
+              <label class="check small no-wager">
+                {formatPoints(score(session, id), sym)} · no wager:
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="wager"
+                  aria-label="{p?.name}’s wager"
+                  onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget.value)}
+                  onchange={(e) => setWager(id, e.currentTarget.value)}
+                />
+              </label>
+            {/if}
+            <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)}>✔ Right</button>
+            <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)}>✘ Wrong</button>
           </div>
         {/each}
       </div>
@@ -292,6 +326,20 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  /* The step's button (Finish…) stays in sight while a long list of players scrolls. */
+  .fj > .row:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: 4px 0;
+    background: var(--panel);
+  }
+  .no-wager {
+    color: var(--warn);
+  }
+  .no-wager input {
+    width: 80px;
   }
   .chip {
     border: 2px solid;

@@ -1,6 +1,6 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
-import { applyScore, score, stepOf } from './session';
+import { applyScore, finalNext, score, stepOf } from './session';
 import {
   formatPoints, newId, type ActionEvent, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
   type StatValue, type Wearable, type WorldMap,
@@ -276,7 +276,7 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
 const PARTS = ['stats', 'inventories', 'worlds', 'boardgames', 'stock'] as const;
 
 /** The host's own choices a step can put back as they were: the picker, how a tie for first was settled, the players. */
-const HOST = ['currentPickerId', 'coWinners', 'rollOffWinner', 'players', 'removedPlayers'] as const;
+const HOST = ['currentPickerId', 'coWinners', 'rollOffWinner', 'tiebreakClue', 'players', 'removedPlayers'] as const;
 
 /** Every Final round's state (the one being played, and the ones put away), one per round. */
 function finalStates(session: Session): FinalState[] {
@@ -296,6 +296,8 @@ function capture(session: Session, game?: Game): Record<string, string> {
   for (const k of HOST) out[k] = JSON.stringify(session[k] ?? null);
   for (const id in session.used) out[`used:${id}`] = 'true';
   for (const f of finalStates(session)) out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers });
+  // The Final being played: its step (going on from the wagers to the question is a step, so Undo goes back to them).
+  if (session.phase === 'final' && session.final?.roundId) out[`step:${session.final.roundId}`] = JSON.stringify(session.finalStep ?? null);
   for (const w of game?.worlds ?? [])
     for (const m of w.maps) {
       out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
@@ -322,6 +324,7 @@ function restore(session: Session, json: string, game?: Game): void {
     } else if ((HOST as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? undefined });
     else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);
     else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers'> | null);
+    else if (k.startsWith('step:')) putStep(session, k.slice(5), v as Session['finalStep'] | null);
     else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
   }
   // Viewers keep following the party they were (switched outside any step) while it's still there, and with one party
@@ -349,6 +352,13 @@ function putFinal(session: Session, roundId: string, v: Pick<FinalState, 'player
     Object.assign(f, { players: v.players, order: v.order, wagers: v.wagers });
     if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
   }
+}
+
+/** Put a Final's step back: the one being played at once, one put away for when it's played again. */
+function putStep(session: Session, roundId: string, step: Session['finalStep'] | null): void {
+  if (!step) return;
+  if (session.phase === 'final' && session.final?.roundId === roundId) session.finalStep = step;
+  else if (session.finals?.[roundId]) session.finals[roundId].step = step;
 }
 
 /** Put a map's size or a screen back into the game being played (a screen that wasn't there is taken out). */
@@ -457,6 +467,15 @@ export function redoFrom(session: Session, undone: Undone[]): 'score' | 'action'
     if (u.log === 'action' ? session.actionRedo?.at(-1)?.id === u.id : !!top && stepOf(top) === u.id) return u.log;
   }
   return session.actionRedo?.length ? 'action' : session.redoStack.length ? 'score' : undefined;
+}
+
+/**
+ * The Final's next step. Going on from the wagers to the question is an undoable step: Ctrl+Z goes back to the wagers
+ * (as they were), not into them, so a wager is never lost once the question is up.
+ */
+export function finalNextStep(session: Session, game: Game): void {
+  if (session.phase === 'final' && session.finalStep === 'wagers') logged(session, 'Wagers locked, question shown', () => finalNext(session, game));
+  else finalNext(session, game);
 }
 
 /** Make a player the one who picks the next clue (undefined: nobody), as a step. `how` goes after it: " (roll-off)". */

@@ -85,7 +85,12 @@ try {
   await page.waitForTimeout(300);
   const pop = await page.locator('.stage .pop').boundingBox();
   const bar = await page.locator('.stage .board-screen .score-area').boundingBox();
-  assert(pop && pop.y + pop.height / 2 > bar.y && pop.y + pop.height / 2 < bar.y + bar.height, 'back on the board, the score pop sits over the score bar');
+  const plate = await page.locator('.stage .plate').first().boundingBox();
+  const num = await page.locator('.stage .plate').first().locator('.score').boundingBox();
+  assert(
+    pop && pop.x + pop.width / 2 > plate.x && pop.x + pop.width / 2 < plate.x + plate.width && pop.y + pop.height > bar.y && pop.y + pop.height <= num.y + 1,
+    'back on the board, the score pop sits on its player’s plate, above the score',
+  );
   await page.locator('.stage-box .board .tile').nth(1).click();
   // (Well before the pop's own 2.2 s, after its fade-out.)
   await page.waitForTimeout(700);

@@ -94,6 +94,27 @@ done, the Unreleased lines move under that day's heading.
   outline, drop shadow and glow ("Added an outline to text box …", "Changed outline width of …"), and theme colours and
   fonts by their names ("Theme: tile color, category name color"). Changing one field and then another (a colour
   picker, say) are two steps, not "2 changes". (1461bb1)
+- **Hosting a Jeopardy game, smoother on stream** (0c822f7, 35ed3c9):
+  - **A group award shows one pop**: "Everyone +$200" or "Ann, Bo & Cy +$200" instead of a pop per player over the
+    clue. On the board, one player's pop sits over their own score plate, above the score, on one line.
+  - **⏸ Cover pauses what's under it**: the countdown, the clue's video or sound and the sound cues wait while viewers
+    see "Be right back", and go on when you uncover.
+  - **Resume game asks how the game is shown**: Single window or 📺 Separate audience window, the same choice as
+    before the game. A game left with the screen covered comes back covered.
+  - **Short sounds overlap**: a right-answer sound isn't cut off by the reveal's (three at most at once).
+  - **The board works from the keyboard**: after a clue the focus goes back to its tile, the arrow keys move across the
+    board, and played tiles are out of the Tab order (their right-click menu still works). Tiles say "$1,000" and
+    screen readers hear "Category 1 for $200, played".
+  - **`O` on a tie for first** at the end rolls off the tied players for the win (not "Who goes first?"), and a
+    re-roll in a roll-off says "Re-roll!".
+  - **The tiebreaker clue's Amount starts at 0**: select the winner and ＋ Award settles the tie without adding
+    points (you can still type an amount).
+  - **A Daily Double wagered at $0 can be scored**: right or wrong is logged as a 0 result. With no picker set,
+    "Who found it?" starts with nobody selected (it no longer quietly picks Player 1).
+  - **Single window: 📜 Log (`L`) opens inside the host panel**, never over the stage viewers see (it brings hidden
+    controls back).
+  - The award row is gone during a Final (its wagers and reveals do the scoring there), and the Final's wagers step can
+    be undone: `Ctrl+Z` after the question is up goes back to the wagers, all of them kept.
 - **The pre-game screen's Start game ▶ and ◀ Back to editor stay at the foot of the window** however long the page
   gets (an open 📋 Game rules fold put Start game far below the fold). On wide screens (1400 px and up) the page is two
   columns: players and 📱 buzzers on the left; rules, display and on stream on the right. (1d355db, 0ab9a9f)
@@ -271,6 +292,20 @@ done, the Unreleased lines move under that day's heading.
   slides and board images. (1461bb1)
 - **🖼 Board images**: a file that isn't a picture is refused before it's added to 🖼 Media (it used to be stored
   unused). (0fae6a2)
+- **Jeopardy hosting fixes** (0c822f7, 35ed3c9):
+  - `Enter` in the Daily Double wager box no longer reveals the answer on stream straight away.
+  - The countdown stops after a right answer and when the answer is revealed: no more "TIME'S UP!" and buzzer over the
+    answer.
+  - The winner fanfare no longer plays on a tied end ("Tie for first"); it plays once the tie is settled by a
+    roll-off, the tiebreaker clue or co-winners.
+  - The Final's ✔ Right / ✘ Wrong buttons play their sounds, like `C` / `X`.
+  - `Ctrl+Z` after the Final question was up no longer erases a locked-in wager, and a missing wager is never counted
+    as $0: the reveal asks for it in that player's row before they can be judged.
+  - Hiding the answer again no longer restarts the question's video from the start and unmuted: it goes on where it
+    was. A video muted with `M` also stays muted when it's paused or played.
+  - Wide windows: the Final's Finish button stays in sight with 8 players, messages show at the top of the side panel
+    (not over 👥 Players and Exit), the host info's "Wagers" heading stays with its list, and the scores window no
+    longer lights the last picker's plate through a Final.
 - **A rematch keeps the players' pictures**, and changing the players before it no longer deletes their pictures from
   the saved game (a picture now only goes when you take it off with −🖼). (1d355db)
 - **A game saved with Buzzer mode on plays without it in a copy that has no buzzer server**: no more "📱 Phones off",

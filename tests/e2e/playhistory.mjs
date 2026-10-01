@@ -27,7 +27,8 @@ const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used'));
 const scores = async () => (await page.locator('.panel .p .score').allInnerTexts()).join(' ');
 const names = async () => (await page.locator('.panel .p .sel').allInnerTexts()).map((t) => t.replace(/^\d+\s*/, '')).join(', ');
 const selected = () => page.locator('.panel .p .sel[aria-pressed="true"]').count();
-const history = () => page.locator('aside .item .text').allInnerTexts();
+// (Single window: the log opens in the host panel, once it has measured it.)
+const history = async () => (await page.locator('aside .item .text').first().waitFor(), page.locator('aside .item .text').allInnerTexts());
 const nextRound = async () => {
   await page.waitForTimeout(450);
   await page.locator('.rn button').last().click();

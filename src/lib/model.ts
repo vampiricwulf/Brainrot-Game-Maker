@@ -576,8 +576,10 @@ export interface Session {
   tiebreakerRevealed?: boolean;
   /** The host declared the tied leaders co-winners. */
   coWinners?: boolean;
-  /** Won the tiebreaker roll-off for first place: ranked above the players tied with them. */
+  /** Won the tiebreaker roll-off (or the tiebreaker clue) for first place: ranked above the players tied with them. */
   rollOffWinner?: Id;
+  /** rollOffWinner won the tiebreaker clue (not a roll-off). */
+  tiebreakClue?: boolean;
   /** Every spin / roll (no score impact). */
   rollLog?: RollEvent[];
   /** Wheel slices already used when "remove after landing" is on: wheelId → segment ids. */

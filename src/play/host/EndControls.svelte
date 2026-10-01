@@ -10,6 +10,7 @@
     session,
     onrolloff,
     ontiebreaker,
+    oncowinners,
     onback,
     onrematch,
   }: {
@@ -18,6 +19,8 @@
     onrolloff?: (ids: string[]) => void;
     /** Play the tiebreaker clue. */
     ontiebreaker: () => void;
+    /** The tie was settled by declaring co-winners (the winner fanfare plays). */
+    oncowinners?: () => void;
     /** Back to the last round (a final round goes back to its reveals). */
     onback: () => void;
     /** New game with the same players, via the pre-game screen. */
@@ -38,12 +41,20 @@
       <button onclick={ontiebreaker} disabled={!game.tiebreaker} title={game.tiebreaker ? '' : "Write one on the editor's Tiebreaker tab"}>
         ❓ Tiebreaker clue
       </button>
-      <button onclick={() => logged(session, 'Co-winners declared', () => (session.coWinners = true))}>🤝 Declare co-winners</button>
+      <button
+        onclick={() => {
+          logged(session, 'Co-winners declared', () => (session.coWinners = true));
+          oncowinners?.();
+        }}>🤝 Declare co-winners</button
+      >
     </div>
   </div>
 {:else if session.rollOffWinner && session.players.some((p) => p.id === session.rollOffWinner)}
   <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
-  <div class="muted">🎲 {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker roll-off.</div>
+  <div class="muted">
+    {session.tiebreakClue ? '❓' : '🎲'}
+    {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker {session.tiebreakClue ? 'clue' : 'roll-off'}.
+  </div>
 {:else if session.coWinners}
   <div class="muted">🤝 Co-winners declared.</div>
 {/if}
