@@ -11,6 +11,11 @@ done, the Unreleased lines move under that day's heading.
 ## Unreleased
 
 ### Changed
+- Editor wording: action lists say **button** throughout ("＋ Add button"); **Delete** means it's gone and **Remove**
+  means it's taken off but stays in the game (a file, a wheel from a button, an item from a shop). Wheels & Dice use ⧉
+  and 🗑 like the round bar, and round moves say ▲ / ▼. (62c8851)
+- **＋ Add player** puts the cursor in the new name. Undoing a round's duplicate shows the original round, with focus
+  on its tab. The RPG editor's help sits beside the map on wide screens. (5b23a55, 12ee23c)
 - Keep in game and Resume with my edits follow screens moved in the editor; a party on a screen that no longer exists
   goes to the start. (4eef0fe)
 - A Final round has its own **"Players with a score of 0 or less can play it"** option (on for a new Final). It used to
@@ -32,8 +37,7 @@ done, the Unreleased lines move under that day's heading.
   arrow keys nudge, `Tab` steps through spaces, `Ctrl+D` duplicates; `Alt`-drag (or ⊕) links two spaces, and a link's
   right-click menu makes it two-way, reverses or removes it; zones reorder and have ↶ ↷. (83427b3)
 - **Lists everywhere** (wheel slices, wheels & dice, stats, items, shops and their stock, action buttons, players):
-  drag ⋮⋮ or `Alt`+`↑`/`↓` to reorder, ⧉ / `Ctrl+D` to duplicate, a right-click menu (not yet on shop stock, zones
-  or players), and deletes with Undo. `Enter`
+  drag ⋮⋮ or `Alt`+`↑`/`↓` to reorder, ⧉ / `Ctrl+D` to duplicate, a right-click menu, and deletes with Undo. `Enter`
   in a slice or player name adds the next one; dice faces fill from a list; "＋ Something to sell ▾" lists your items
   (or drag an item's 📦 onto a shop); action buttons copy and paste between objects and games. (83427b3)
 - **Drop files where they go**: item icons, avatars, space icons, worn looks, theme background and banner, music,
@@ -50,6 +54,8 @@ done, the Unreleased lines move under that day's heading.
   insert or delete rows and columns; rename, reorder and duplicate maps from their tabs; switch looks and neighbouring
   screens from the screen editor; click ⛔ between screens to block a way; drop pictures on the map to make screens;
   a menu for each look (duplicate, make main, reorder). (4eef0fe)
+- Right-click menus on what a shop sells, on zones (also ⧉ / `Ctrl+D` to duplicate a zone) and on players in ⚙ Setup.
+  (5b23a55)
 - Map tabs take `Alt`+`←`/`→`, `Ctrl+D`, `Delete` and `F2`, like round tabs. Wheel slices and action buttons have a
   right-click menu. Right-click menus show their keyboard shortcuts, and the shortcuts sheet lists the board, round
   tab and map tab keys. (84ad8f2, 7180280, 86f9f05, f3405d5)
