@@ -35,8 +35,8 @@ export function saveMyTheme(theme: Theme): boolean {
  * text on slides & scores and the stage background are the saved theme's too, even when it has none (they'd otherwise
  * linger from the game's).
  */
-export function withMyTheme(current: Theme, mine: SavedTheme): Theme {
-  return {
+export function withMyTheme(current: Theme, mine: SavedTheme, media?: readonly MediaRef[]): Theme {
+  const t: Theme = {
     ...current,
     ...mine,
     clueFont: mine.clueFont,
@@ -46,6 +46,23 @@ export function withMyTheme(current: Theme, mine: SavedTheme): Theme {
     boardImage: current.boardImage,
     banner: current.banner,
   };
+  // A font uploaded to another game isn't in this one: that text keeps this game's font (it would show a fallback).
+  if (media) for (const k of missingFonts(mine, media)) (t as unknown as Record<string, unknown>)[k] = current[k];
+  return t;
+}
+
+const FONT_KEYS = ['boardFont', 'valueFont', 'clueFont'] as const;
+/** Is `font` (a CSS font list) one uploaded to a game? */
+const isUploaded = (font: string | undefined) => !!font && /(^|[\s,'"])jb-[0-9a-z]{1,8}\b/i.test(font);
+
+/** The fonts of a saved theme that were uploaded to a game and aren't among `media` (this game's files). */
+export function missingFonts(mine: SavedTheme, media: readonly MediaRef[]): (typeof FONT_KEYS)[number][] {
+  return FONT_KEYS.filter((k) => isUploaded(mine[k]) && !media.some((m) => m.kind === 'font' && mine[k]!.includes(uploadedFamily(m.id))));
+}
+
+/** Does `theme` use fonts uploaded to its game (which "my theme" can't take to other games)? */
+export function usesUploadedFonts(theme: Theme): boolean {
+  return FONT_KEYS.some((k) => isUploaded(theme[k]));
 }
 
 /** The files a theme uses in its game: its board picture and banner, and uploaded fonts it uses (the clue text's too). */

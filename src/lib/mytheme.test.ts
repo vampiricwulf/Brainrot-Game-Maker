@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadMyTheme, saveMyTheme, themeMedia, withMyTheme } from './mytheme';
+import { loadMyTheme, missingFonts, saveMyTheme, themeMedia, usesUploadedFonts, withMyTheme } from './mytheme';
 import { uploadedFamily } from './fonts';
 import { newGame } from './model';
 import { presetTheme } from './theme';
@@ -70,5 +70,21 @@ describe('my theme', () => {
     g.theme.boardFont = 'serif';
     g.theme.clueFont = `'${uploadedFamily('font12345678')}', sans-serif`;
     expect(themeMedia(g).map((m) => m.id)).toEqual(['bg', 'font12345678']);
+  });
+
+  it('a font uploaded to another game: this game keeps its own font for that text', () => {
+    const font = { id: 'font12345678', name: 'f.ttf', mime: 'font/ttf', size: 1, kind: 'font' as const };
+    const t = { ...presetTheme('neon'), boardFont: `'${uploadedFamily(font.id)}', sans-serif` };
+    expect(usesUploadedFonts(t)).toBe(true);
+    expect(usesUploadedFonts(presetTheme('neon'))).toBe(false);
+    saveMyTheme(t);
+    const mine = loadMyTheme()!;
+    const here = presetTheme('classic');
+    expect(missingFonts(mine, [])).toEqual(['boardFont']);
+    expect(withMyTheme(here, mine, []).boardFont).toBe(here.boardFont);
+    expect(withMyTheme(here, mine, []).tile).toBe(t.tile);
+    // In a game that has that font, it's used.
+    expect(missingFonts(mine, [font])).toEqual([]);
+    expect(withMyTheme(here, mine, [font]).boardFont).toBe(t.boardFont);
   });
 });

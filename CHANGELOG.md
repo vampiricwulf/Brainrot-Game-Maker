@@ -220,6 +220,10 @@ done, the Unreleased lines move under that day's heading.
   placed at its rounds, not at Play › Players (its Undo / Redo note too).
 - A Final's title card no longer shows the host "Category is on screen" and Lock category under "Title card…"; RPG
   and board-game rounds say "Title card · press N to start the round" too.
+- 🎨 **Save as my theme** says when the theme's uploaded fonts stay with this game, and **Use my theme** in a game
+  without those fonts keeps that game's font for that text (instead of a fallback font) and says so. Use my theme
+  says "This game already looks like my theme" when nothing changes.
+- **Import clues** reads CSV files that use semicolons (as Excel saves them where the decimal mark is a comma).
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

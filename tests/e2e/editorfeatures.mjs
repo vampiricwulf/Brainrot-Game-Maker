@@ -134,6 +134,9 @@ try {
   await page.getByRole('button', { name: /Classic/ }).click();
   await page.getByRole('button', { name: '⭐ Use my theme' }).click();
   assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use my theme puts the saved theme back');
+  await page.getByRole('button', { name: '⭐ Use my theme' }).click();
+  await page.getByText('This game already looks like my theme').waitFor({ timeout: 3000 });
+  assert(true, 'Use my theme again says nothing changed');
 
   // ---------- Shortcuts filter ----------
   await page.getByRole('button', { name: /^More:/ }).click();
