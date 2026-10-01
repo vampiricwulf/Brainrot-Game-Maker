@@ -8,8 +8,16 @@
     saves,
     onpick,
     onbrowse,
+    onrecent,
     onclose,
-  }: { saves: SaveEntry[]; onpick: (s: SaveEntry) => void; onbrowse: () => void; onclose: () => void } = $props();
+  }: {
+    saves: SaveEntry[];
+    onpick: (s: SaveEntry) => void;
+    onbrowse: () => void;
+    /** Back to Open…'s Recent games (only when there are some). */
+    onrecent?: () => void;
+    onclose: () => void;
+  } = $props();
   const when = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
   /** An exported .html: Open… edits the game inside it. */
   const exported = (s: SaveEntry) => /\.html?$/i.test(s.name);
@@ -34,6 +42,7 @@
       <b>Open a game</b>
       <span class="spacer"></span>
       <button class="ghost small" onclick={showFolder} title="Show the BrainrotSaves folder">📂 Saves folder</button>
+      {#if onrecent}<button onclick={onrecent}>Recent games…</button>{/if}
       <button onclick={onbrowse}>Browse…</button>
       <button class="ghost" onclick={onclose} aria-label="Close">✕</button>
     </div>

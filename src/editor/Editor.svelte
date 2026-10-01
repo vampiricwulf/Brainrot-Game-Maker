@@ -53,7 +53,7 @@
   import { validate, type Problem } from '../lib/validate';
   import { checklistLines, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
-  import { arriving, history, mark, onApplied, onApplying, redo, savedSinceChange, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import { arriving, commit, history, mark, onApplied, onApplying, redo, savedSinceChange, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
@@ -291,11 +291,19 @@
   /** The game just replaced, which "↶ Reopen previous game" brings back (null: no note). */
   let previous = $state<{ key: string; title: string } | null>(null);
 
+  /** Counts the questions asked, so an older one answered late doesn't close a newer one. */
+  let asked = 0;
+
   /** May this game be replaced? Asks when it has changes not saved to a file (and saves it first if told to). */
   async function mayReplace(heading: string): Promise<boolean> {
+    // Typing not yet made a step (it becomes one after a pause) counts as a change too.
+    commit();
     if (!hasWork(game) || savedSinceChange()) return true;
+    // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
+    asking?.answer('cancel');
+    const ask = ++asked;
     const choice = await new Promise<ReplaceChoice>((answer) => (asking = { heading, title: game.title.trim() || 'Untitled Game', answer }));
-    asking = null;
+    if (ask === asked) asking = null;
     if (choice === 'save') return save();
     return choice === 'discard';
   }
@@ -352,8 +360,11 @@
   let recentList = $state<RecentEntry[] | null>(null);
   let desktopSaves = $state<SaveEntry[]>([]);
 
+  /** The recent games Open… found, for OpenSaves' way back to them. */
+  let recentKept = $state<RecentEntry[]>([]);
+
   async function open(): Promise<void> {
-    const recent = await listRecent();
+    const recent = (recentKept = await listRecent());
     desktopSaves = inTauri() ? await listSaves() : [];
     if (recent.length) recentList = recent;
     else if (desktopSaves.length) saveList = desktopSaves;
@@ -363,7 +374,7 @@
   async function forget(e: RecentEntry): Promise<void> {
     await forgetRecent(e.key);
     if (previous?.key === e.key) previous = null;
-    const left = await listRecent();
+    const left = (recentKept = await listRecent());
     recentList = left.length ? left : null;
     pruneMedia([app.game, app.playGame, app.resumable?.game]);
   }
@@ -487,8 +498,9 @@
     packPct = null;
     askToKeepStorage();
     try {
-      const { missing, where } = await savePack($state.snapshot(game), packProgress);
-      mark('saved', `Saved “${safeFilename(game.title)}.brainrot”`);
+      const { missing, where, file } = await savePack($state.snapshot(game), packProgress);
+      // The file it was written as: the desktop app may have picked another name ("Game (2).brainrot").
+      mark('saved', `Saved “${file}”`);
       if (missing.length) alert(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
       else toast(where, 5000);
       return true;
@@ -623,7 +635,15 @@
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
   {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={(at) => (tab = at)} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
-  {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
+  {#if saveList}
+    <OpenSaves
+      saves={saveList}
+      onpick={openSave}
+      onbrowse={browse}
+      onrecent={recentKept.length ? () => ((saveList = null), (recentList = recentKept)) : undefined}
+      onclose={() => (saveList = null)}
+    />
+  {/if}
   {#if recentList}
     <OpenGame
       recent={recentList}

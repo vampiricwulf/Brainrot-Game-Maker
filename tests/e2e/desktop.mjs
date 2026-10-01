@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, answerReplace } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -99,11 +99,18 @@ try {
   const [download] = await Promise.all([w.waitForEvent('download'), w.getByRole('button', { name: '⬇ Export HTML' }).click()]);
   const htmlPath = resolve('test-results/desktop-export.html');
   await download.saveAs(htmlPath);
+  // (An export isn't a Save: New asks first.)
   await w.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(w, 'Discard');
+  await w.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
   await w.locator('input.title').fill('Something else');
-  const [chooser] = await Promise.all([w.waitForEvent('filechooser'), w.getByRole('button', { name: 'Open…' }).click()]);
-  assert((await chooser.element().getAttribute('accept')).includes('.html'), 'Open… offers .html files');
-  await chooser.setFiles(htmlPath);
+  // Open… lists Recent games first (New kept the exported game there); Browse… picks a file.
+  const chooser = w.waitForEvent('filechooser');
+  await w.getByRole('button', { name: 'Open…' }).click();
+  await w.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse…' }).click();
+  assert((await (await chooser).element().getAttribute('accept')).includes('.html'), 'Open… offers .html files');
+  await (await chooser).setFiles(htmlPath);
+  await answerReplace(w, 'Discard');
   await w.locator('nav > button.round-tab').first().waitFor();
   assert((await w.locator('input.title').inputValue()) === 'Exported Quiz', 'an exported .html opens in the editor');
   await web.close();
@@ -144,6 +151,8 @@ try {
   await d.waitForFunction(() => window.__saves.has('Quiz (2).brainrot'));
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await d.waitForFunction(() => window.__saves.has('Quiz (2).brainrot.bak'));
+  await d.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
+  assert((await d.locator('.mark', { hasText: 'Saved “Quiz (2).brainrot”' }).count()) > 0, 'the history says the file the save was written as');
   assert(
     JSON.stringify(await saveNames(d)) === JSON.stringify(['Quiz (2).brainrot', 'Quiz (2).brainrot.bak', 'Quiz.brainrot', 'Quiz.brainrot.bak']),
     'another game with the same title never replaces it: it saves as "Quiz (2)" and keeps saving there',
@@ -151,9 +160,11 @@ try {
 
   // Open… lists the saves and the exported game, but not the backups.
   await d.evaluate((text) => window.__saves.set('Exported Quiz.html', { bytes: new TextEncoder().encode(text), modified: 1 }), readFileSync(htmlPath, 'utf8'));
+  // Open… shows Recent games first (New kept the first Quiz there): BrainrotSaves… lists the saves.
   await d.getByRole('button', { name: 'Open…' }).click();
   const list = d.getByRole('dialog', { name: 'Open a game' });
-  await list.waitFor();
+  await list.getByRole('button', { name: 'BrainrotSaves…' }).click();
+  await list.locator('button.save').first().waitFor();
   const listed = await list.locator('button.save b').allInnerTexts();
   assert(listed.includes('Exported Quiz.html') && !listed.some((n) => n.endsWith('.bak')), `Open… lists the exported game, not the backups (${listed.join(', ')})`);
   await d.screenshot({ path: 'test-results/desktop-open.png' });
@@ -170,7 +181,10 @@ try {
     window.__opened = { name: 'From-a-second-launch.json', bytes: window.__saves.get('From-a-second-launch.json').bytes };
     window.__emit('open-file');
   });
+  // "Before" isn't saved: it asks first, and Save first saves it, then opens the file.
+  await answerReplace(d, 'Save first');
   await d.waitForFunction(() => document.querySelector('input.title')?.value === 'From a second launch');
+  assert(await d.evaluate(() => window.__saves.has('Before.brainrot')), 'a file given to the app asks first about unsaved changes (Save first saves them)');
   assert(await d.evaluate(() => window.__opened === null), 'a game file given to a second launch opens in the running app');
 
   // Closing the window: the last edits are written before it closes.

@@ -1,8 +1,10 @@
 <!-- Open…: the games New and Open… replaced lately (kept in this browser, with their undo history), and Browse… for a
-     game file. In the desktop app, BrainrotSaves… lists the saves. -->
+     game file (an exported .html too; in the desktop app, a .bak backup). In the desktop app, BrainrotSaves… lists the
+     saves and exported games (OpenSaves). -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { RecentEntry } from '../lib/recent';
+  import { inTauri } from '../lib/platform';
 
   let {
     recent,
@@ -47,6 +49,11 @@
     <p class="muted small">
       Recent games: the last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo
       history. They're kept in this browser only, so use Save for a copy that lasts.
+    </p>
+    <p class="muted small">
+      Browse… opens a game file: a .brainrot, or an exported .html game{inTauri() ? ', or an older version Save kept (Game.brainrot.bak)' : ''}.{saves
+        ? ' BrainrotSaves… lists your saves and exported games.'
+        : ''}
     </p>
     <div class="list" bind:this={list}>
       {#each recent as e (e.key)}
