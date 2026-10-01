@@ -8,6 +8,7 @@
     dropStraySteps,
     loadEditor,
     loadPlay,
+    applyRoomSettings,
     loadRoom,
     retryWrites,
     saveEditor,
@@ -156,8 +157,8 @@
       return;
     }
     if (r.screen === 'pregame' && app.screen === 'editor') {
+      applyRoomSettings(app.game.settings, r);
       app.playGame = clone(app.game);
-      app.playGame.settings.buzzer = true;
       const s = newSession(app.playGame);
       s.players = r.players;
       s.remote = r.remote;

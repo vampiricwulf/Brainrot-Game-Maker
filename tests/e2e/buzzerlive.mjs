@@ -51,28 +51,6 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 
-/** What the editor's saved draft says about buzzers and players (CI-only failures: what a reload came back to). */
-const draftInfo = (page) =>
-  page.evaluate(
-    () =>
-      new Promise((ok) => {
-        const req = indexedDB.open('keyval-store');
-        req.onerror = () => ok('no db');
-        req.onsuccess = () => {
-          try {
-            const get = req.result.transaction('keyval').objectStore('keyval').get('editorDraft');
-            get.onsuccess = () => {
-              const g = get.result;
-              ok(g ? JSON.stringify({ buzzer: g.settings?.buzzer, arm: g.settings?.buzzArm, neg: g.settings?.allowNegativeScores, players: (g.players ?? []).map((p) => p.name) }) : 'no draft');
-            };
-            get.onerror = () => ok('read failed');
-          } catch (e) {
-            ok('error ' + e.message);
-          }
-        };
-      }),
-  );
-
 let browser;
 const errors = [];
 const watch = (p, name) => {
@@ -104,30 +82,17 @@ try {
     } catch {}
   }, base);
   const host = watch(await hostCtx.newPage(), 'host');
-  // (CI-only failure: the editor's draft never saved Play-screen changes there. Its console says why, if anything.)
-  host.on('console', (m) => ['error', 'warning'].includes(m.type()) && console.log(`DEBUG host console ${m.type()}: ${m.text().slice(0, 300)}`));
   // The host's line to the room, passed through Playwright so the test can cut it.
   const hostTap = await tap(host);
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
   await playWithPlayers(host, 2);
-  await host.waitForTimeout(1500);
-  console.log('DEBUG draft after players (1.5 s):', await draftInfo(host), '| storage line:', JSON.stringify(await host.evaluate(() => document.querySelector('.autosave, [data-autosave], header .save-state')?.textContent ?? '(none)')));
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel('Open the buzzers').selectOption('host');
-  console.log('DEBUG draft right after the buzzer settings:', await draftInfo(host));
-  await host.waitForTimeout(2000);
-  console.log('DEBUG draft 2 s after the buzzer settings:', await draftInfo(host));
-  {
-    // (Diagnostic: does a 📋 Game rules change reach the saved draft here?)
-    const rules = await openRules(host);
-    const neg = rules.getByLabel('Allow negative scores');
-    await neg.setChecked(!(await neg.isChecked()));
-    await host.waitForTimeout(2000);
-    console.log('DEBUG draft 2 s after a rules change:', await draftInfo(host));
-    await neg.setChecked(!(await neg.isChecked()));
-  }
+  // No negative scores: a wrong answer from a player on $0 takes nothing, but still locks them out (below).
+  const neg = (await openRules(host)).getByLabel('Allow negative scores');
+  await neg.uncheck();
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = card.locator('[aria-label^="Room code "]');
   await codeEl.waitFor();
@@ -159,12 +124,15 @@ try {
 
   // ---------- The pre-game screen's room survives a reload, and going back to the editor ----------
   await small(p1).getByText('The game starts soon').waitFor();
-  console.log('DEBUG draft before reload:', await draftInfo(host));
   await host.reload();
   await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await card.locator(`[aria-label="Room code ${code}"]`).waitFor();
   await card.getByText('2 of 2 players joined').waitFor();
   assert(true, 'a reload on the pre-game screen comes back to it, in the same room, the phones still joined');
+  assert(
+    (await card.getByLabel('Open the buzzers').inputValue()) === 'host' && !(await (await openRules(host)).getByLabel('Allow negative scores').isChecked()),
+    'with the settings changed just before it (the buzzers open when the host says, no negative scores)',
+  );
   await host.getByRole('button', { name: '◀ Back to editor' }).click();
   const bar = host.locator('.room-bar');
   await bar.waitFor();
@@ -173,12 +141,7 @@ try {
   assert((await big(p1).innerText()) === 'Player 1', 'the phones stay in their seats: "The host is setting up — hang on"');
   await host.getByRole('button', { name: '▶ Play' }).click();
   await card.locator(`[aria-label="Room code ${code}"]`).waitFor();
-  await card.getByText('2 of 2 players joined').waitFor({ timeout: 15_000 }).catch(async (e) => {
-    // What the Play screen holds when the phones don't show as joined (CI only ever saw this).
-    console.log('DEBUG card:', JSON.stringify(await card.innerText()));
-    console.log('DEBUG players:', JSON.stringify(await host.locator('.pregame input.name').evaluateAll((els) => els.map((i) => i.value))));
-    throw e;
-  });
+  await card.getByText('2 of 2 players joined').waitFor();
   await small(p2).getByText('The game starts soon').waitFor();
   assert(true, '▶ Play goes back into the same room: same code, both phones still joined');
 
@@ -203,12 +166,7 @@ try {
   await host.keyboard.press('k');
   assert(true, 'and on the cover card (K)');
   await host.locator('.stage-box .board .tile').first().click();
-  await big(p1).getByText('Get ready…').waitFor({ timeout: 15_000 }).catch(async (e) => {
-    console.log('DEBUG draft now:', await draftInfo(host));
-    console.log('DEBUG phone:', await big(p1).innerText(), '|', await small(p1).innerText());
-    console.log('DEBUG host:', JSON.stringify((await host.locator('.panel').innerText()).slice(0, 500)));
-    throw e;
-  });
+  await big(p1).getByText('Get ready…').waitFor();
   assert(true, 'opening a clue tells the phones to get ready (buzzers still closed)');
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -229,16 +187,10 @@ try {
   assert((await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1', 'the host panel lists both, fastest first');
 
   // Wrong: Player 2 is locked out, the buzzers open again for the rest (the rebound), and Player 1 is next in line.
-  console.log('DEBUG focus before Shift+Enter:', await host.evaluate(() => { const a = document.activeElement; return a ? `${a.tagName}.${a.className} ${a.getAttribute('aria-label') ?? ''} ${(a.textContent ?? '').slice(0, 40)}` : '(none)'; }));
   await host.keyboard.press('Shift+Enter');
-  await small(p2).getByText('You already answered this one').waitFor({ timeout: 10_000 }).catch(async (e) => {
-    for (const [n, p] of [['p1', p1], ['p2', p2]]) console.log(`DEBUG ${n}:`, await big(p).innerText(), '|', await small(p).innerText());
-    console.log('DEBUG host panel:', JSON.stringify((await host.locator('.panel').innerText()).slice(0, 800)));
-    console.log('DEBUG selected:', JSON.stringify(await selected()));
-    throw e;
-  });
+  await small(p2).getByText('You already answered this one').waitFor();
   await big(p1).getByText('BUZZ!').waitFor();
-  assert(true, 'a wrong answer locks Player 2 out and reopens the buzzers for Player 1');
+  assert(true, 'a wrong answer (on $0, nothing to take) locks Player 2 out and reopens the buzzers for Player 1');
   await host.getByRole('button', { name: '→ Next in line: Player 1' }).click();
   await big(p1).getByText("You're answering!").waitFor();
   assert(true, '→ Next in line: Player 1 answers without buzzing again');
@@ -253,7 +205,7 @@ try {
   await big(p2).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   await host.keyboard.press('Enter');
-  await p2.locator('#me').getByText('Player 2 · $0').waitFor();
+  await p2.locator('#me').getByText(/^Player 2 · \$[1-9]/).waitFor();
   assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');
   await big(p2).getByText('You got it!').waitFor();
   await big(p1).getByText('Player 2 got it').waitFor();

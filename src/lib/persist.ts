@@ -1,7 +1,7 @@
 // Autosave to IndexedDB (spec §5.8, §6.5): the editor draft with its undo history, and the in-progress play session.
 import { del, delMany, get, getMany, keys, set, setMany } from 'idb-keyval';
 import type { SavedHistory, StoredStep } from './history.svelte';
-import type { Game, Session } from './model';
+import type { Game, GameSettings, Session } from './model';
 
 const DRAFT_KEY = 'editorDraft';
 /** New with every draft written: the undo history written with it says which draft it goes with. */
@@ -168,6 +168,17 @@ export interface SavedRoom {
   /** Where the host was: on the pre-game screen, or back in the editor with the room left open. */
   screen: 'pregame' | 'editor';
   savedAt: number;
+  /**
+   * The pre-game screen's settings (buzzers, 📋 Game rules): a reload right after changing one can come back before the
+   * editor's copy of it is written. (Only a reload back onto the pre-game screen uses them: in the editor, its own copy
+   * is the one to keep.)
+   */
+  settings?: GameSettings;
+}
+/** Back onto the pre-game screen after a reload: its settings, with Buzzer mode on (the room says so). */
+export function applyRoomSettings(s: GameSettings, r: SavedRoom): void {
+  if (r.settings && typeof r.settings === 'object') Object.assign(s, r.settings);
+  s.buzzer = true;
 }
 const roomKey = () => `${playKey}:room`;
 export const loadRoom = () => safe(() => get<SavedRoom>(roomKey()));

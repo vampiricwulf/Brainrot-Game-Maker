@@ -434,9 +434,16 @@
     // A Daily Double wagered at 0 is still right or wrong: a 0 result is logged.
     const zeroDD = amt === 0 && session.phase === 'clue' && session.dd?.stage === 'question';
     if (!amt && !zeroDD) return toast('Enter an amount first');
+    const batch = newId();
     const events = zeroDD
-      ? logZero(session, ids, reasonNow(), info?.clue.id, sign > 0)
-      : applyScore(session, game, ids, sign * Math.abs(amt!), reasonNow(), info?.clue.id);
+      ? logZero(session, ids, reasonNow(), info?.clue.id, sign > 0, batch)
+      : applyScore(session, game, ids, sign * Math.abs(amt!), reasonNow(), info?.clue.id, false, batch);
+    // Wrong with no negative scores, from a player on 0 (or less): nothing to take, but it's still a wrong answer (the
+    // log says so, the cue plays, and in Buzzer mode that player is locked out).
+    if (!zeroDD && sign < 0) {
+      const missed = ids.filter((id) => !events.some((e) => e.playerId === id));
+      if (missed.length) events.push(...logZero(session, missed, reasonNow(), info?.clue.id, false, batch));
+    }
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
     if (events.length && sign > 0) stopTimer('right');
     // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out and opens them for the rest.
@@ -704,7 +711,7 @@
   // The pre-game screen's room is saved on its own (nothing else is before Start game): a reload gets back into it.
   $effect(() => {
     if (!app.pregame || !session.remote || !phonesOn) return;
-    const r: SavedRoom = { gameId: game.id, remote: $state.snapshot(session.remote), players: $state.snapshot(session.players), screen: 'pregame', savedAt: Date.now() };
+    const r: SavedRoom = { gameId: game.id, remote: $state.snapshot(session.remote), players: $state.snapshot(session.players), screen: 'pregame', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
     untrack(() => !keepRoomOpen && void saveRoom(r));
   });
 
@@ -717,7 +724,7 @@
   function backToEditor(): void {
     const r = session.remote;
     if (app.pregame && phonesOn && r && inRoom(r.code)) {
-      const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players: $state.snapshot(session.players), screen: 'editor', savedAt: Date.now() };
+      const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players: $state.snapshot(session.players), screen: 'editor', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
       sendHostState(hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked }), true);
       keepRoomOpen = true;
       kept.room = saved;

@@ -359,6 +359,12 @@ done, the Unreleased lines move under that day's heading.
   duplicating or deleting rounds and categories; icon buttons, board tiles, sidebar tabs and toggles have names. (4729d75)
 
 ### Fixed
+- **A wrong answer with negative scores off counts even from a player on $0**: nothing is taken, but it's logged as
+  wrong (✘), the wrong sound plays, and with phone buzzers that player is locked out of the clue and the buzzers open
+  for the rest. Before, it did nothing at all, so the player could keep buzzing.
+- **A reload right after changing a setting on the pre-game screen keeps it** (with a buzzer room open): the room
+  remembers the screen's settings (the buzzers, 📋 Game rules), so the editor's copy not being written yet loses
+  nothing.
 - **Phone buzzers**: reloading on the ▶ Play screen right after turning Buzzer mode on no longer closes the room (the
   reload could come back before the setting was written, and the room was closed for it), and ◀ Back to editor then
   ▶ Play still goes back into that room.

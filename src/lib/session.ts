@@ -298,8 +298,7 @@ export function awardOpen(session: Session): boolean {
  * A 0 result for these players, logged all the same (a Daily Double wagered at 0, like a Final's 0 wager), so the log
  * says what happened and Undo takes it back. Returns the events.
  */
-export function logZero(session: Session, playerIds: string[], reason: string, clueId: string | undefined, right: boolean): ScoreEvent[] {
-  const batchId = newId();
+export function logZero(session: Session, playerIds: string[], reason: string, clueId: string | undefined, right: boolean, batchId = newId()): ScoreEvent[] {
   const events: ScoreEvent[] = [];
   for (const playerId of playerIds) {
     if (!session.players.some((p) => p.id === playerId)) continue;
