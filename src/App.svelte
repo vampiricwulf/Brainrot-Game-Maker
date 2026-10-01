@@ -45,7 +45,20 @@
   import { flushOnClose, whileWriting } from './lib/desktop.svelte';
   import { prefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
-  import { arriving, commit, heldMedia, history, listen, mark, savedSinceChange, savePoint, startHistory, toSave } from './lib/history.svelte';
+  import {
+    arriving,
+    commit,
+    heldMedia,
+    history,
+    listen,
+    mark,
+    rescueHistory,
+    savedSinceChange,
+    savePoint,
+    settledGame,
+    startHistory,
+    toSave,
+  } from './lib/history.svelte';
   import type { Game, Session } from './lib/model';
   import Play from './play/Play.svelte';
 
@@ -130,10 +143,11 @@
       const game = migrateGame(editor.draft);
       const saved = editor.history && JSON.stringify(game) === plain ? editor.history : undefined;
       app.game = game;
-      if (editor.rescued) {
+      if (editor.rescued && !saved) {
         arriving({ kind: 'rescued', label: `“${game.title}” as it was when the page closed` });
         toast('Your last changes before the page closed are back (the undo history starts again here)', 6000);
-      } else arriving({ kind: 'reopened', label: `Reopened “${game.title}”` }, saved);
+        // (Its steps are written again: some were only in the copy.)
+      } else arriving({ kind: 'reopened', label: `Reopened “${game.title}”` }, saved, !!editor.rescued);
       held = heldMedia(saved?.steps ?? []);
       void dropStraySteps(saved?.saved.ids ?? []);
       await loadGameMedia(app.game);
@@ -266,7 +280,8 @@
   let watching: Game | null = null;
   // Autosave (spec §5.8 / §6.5), with the undo history. Only after the initial load so a blank game never overwrites a
   // draft.
-  const saveEditorNow = () => saveEditor(() => (watch && editing ? { draft: watch.value(), ...toSave(newId()) } : null));
+  // (The game as of the last step while a change is still being made: the draft never holds a change its history lacks.)
+  const saveEditorNow = () => saveEditor(() => (watch && editing ? { draft: settledGame() ?? watch.value(), ...toSave(newId()) } : null));
   const saveEditorSoon = debounce(saveEditorNow, 500);
   /** This copy may write the game in play: it edits (holds the lock), or it's a player-only file (which has no other). */
   const mayPlay = () => editing || playerOnly;
@@ -355,7 +370,7 @@
     const flush = () => {
       if (watch && editing) {
         commit();
-        rescueDraft(watch.value());
+        rescueDraft(watch.value(), rescueHistory());
         saveEditorSoon();
       }
       saveEditorSoon.flush();

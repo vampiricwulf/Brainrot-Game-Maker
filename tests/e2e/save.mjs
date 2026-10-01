@@ -219,21 +219,44 @@ try {
   await played.close();
 
   // A reload a moment after a change: the autosave started as the page went away may not finish, so a copy written at
-  // once comes back instead (it lost the change every time before).
+  // once comes back instead (it lost the change every time before), with its undo history.
   const quick = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const q = await open('quick reload', true, quick);
-  await q.getByRole('button', { name: '＋ Add round' }).click();
-  await q.getByRole('menuitem', { name: /Jeopardy board/ }).click();
-  await q.locator('nav > button.round-tab').first().waitFor();
+  const rounds = () => q.locator('nav > button.round-tab').count();
+  for (const mode of [/Jeopardy board/, /Final Jeopardy/]) {
+    await q.getByRole('button', { name: '＋ Add round' }).click();
+    await q.getByRole('menuitem', { name: mode }).click();
+  }
+  await q.waitForTimeout(1500);
+  const cat = (i) => q.locator('.cat textarea').nth(i);
+  await q.locator('nav > button.round-tab').first().click();
+  await cat(0).fill('Alpha');
+  await cat(0).press('Tab');
+  await q.waitForTimeout(1500);
+  await cat(1).fill('Bravo');
+  await cat(1).press('Tab');
+  await q.waitForTimeout(50);
   await q.reload();
   await q.getByRole('button', { name: 'Open…' }).waitFor();
-  await q.locator('nav > button.round-tab').first().waitFor({ timeout: 5000 });
-  assert(await q.getByText('Your last changes before the page closed are back').isVisible(), 'a reload right after adding a round keeps it, and says so');
+  await q.locator('nav > button.round-tab').first().click();
+  await cat(1).waitFor();
+  assert((await cat(1).inputValue()) === 'Bravo' && (await rounds()) === 2, 'a reload right after a change keeps it');
+  await q.locator('body').click({ position: { x: 5, y: 5 } });
+  await q.keyboard.press('Control+z');
+  await q.waitForTimeout(300);
+  const undone = [await cat(0).inputValue(), await cat(1).inputValue()].join();
+  await q.keyboard.press('Control+y');
+  await q.waitForTimeout(300);
+  const redone = await cat(1).inputValue();
+  assert(undone === 'Alpha,Category 2' && redone === 'Bravo', `and its undo history: Ctrl+Z takes back just the last change (${undone}), Ctrl+Y redoes it (${redone})`);
   await q.waitForTimeout(1500); // the autosave catches up
   await q.reload();
   await q.getByRole('button', { name: 'Open…' }).waitFor();
   await q.waitForTimeout(800);
-  assert((await q.locator('nav > button.round-tab').count()) === 1 && !(await q.getByText('Your last changes before').count()), 'and once saved normally, the next reload is an ordinary one');
+  await q.keyboard.press('Control+z');
+  await q.waitForTimeout(300);
+  await q.locator('nav > button.round-tab').first().click();
+  assert((await cat(1).inputValue()) === 'Category 2' && (await cat(0).inputValue()) === 'Alpha', 'and after the next ordinary reload the history is still whole');
   await quick.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

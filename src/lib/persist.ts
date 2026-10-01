@@ -113,7 +113,7 @@ export interface EditorSave {
  * try, so one tried again after a failure writes the game as it is by then; `failed` hands back the steps it held, to
  * be written next time.
  */
-export const saveEditor = (make: () => (EditorSave & { failed?: () => void }) | null) =>
+export const saveEditor = (make: () => (EditorSave & { failed?: () => void; done?: () => void }) | null) =>
   write('editor', async () => {
     const s = make();
     if (!s) return;
@@ -126,6 +126,7 @@ export const saveEditor = (make: () => (EditorSave & { failed?: () => void }) | 
       s.failed?.();
       throw err;
     }
+    s.done?.();
     // Written: a rescue copy from before this write is out of date.
     const r = readRescue();
     if (r && r.at <= at) dropRescue();
@@ -134,6 +135,8 @@ export const saveEditor = (make: () => (EditorSave & { failed?: () => void }) | 
 interface Rescue {
   at: number;
   draft: Game;
+  /** The undo history as it stood, with the steps storage may not have had yet. */
+  history?: { saved: SavedHistory; steps: StoredStep[] };
 }
 function readRescue(): Rescue | null {
   try {
@@ -155,11 +158,16 @@ function dropRescue(): void {
  * write, so that write, if it finishes, is newer and drops it). Too big for localStorage: nothing (the IndexedDB
  * write is all there is).
  */
-export function rescueDraft(draft: Game): void {
+export function rescueDraft(draft: Game, history?: Rescue['history']): void {
   try {
-    localStorage.setItem(RESCUE_KEY, JSON.stringify({ at: Date.now(), draft } satisfies Rescue));
+    localStorage.setItem(RESCUE_KEY, JSON.stringify({ at: Date.now(), draft, history } satisfies Rescue));
   } catch {
-    dropRescue();
+    // Too big with its history: the draft alone (the history starts again from it).
+    try {
+      localStorage.setItem(RESCUE_KEY, JSON.stringify({ at: Date.now(), draft } satisfies Rescue));
+    } catch {
+      dropRescue();
+    }
   }
 }
 
@@ -167,14 +175,27 @@ export function rescueDraft(draft: Game): void {
  * The draft, and its undo history when that was written with this very draft (another copy of the app, or a version
  * from before the history, may have written the draft since) and all its steps are there.
  */
-export async function loadEditor(): Promise<{ draft?: Game; history?: { saved: SavedHistory; steps: StoredStep[] }; rescued?: boolean }> {
+export async function loadEditor(): Promise<{
+  draft?: Game;
+  history?: { saved: SavedHistory; steps: StoredStep[] };
+  /** The copy written as the page went away: with `history`, its steps are to be stored again (some may not be). */
+  rescued?: boolean;
+}> {
   const [draft, rev, saved, at] = (await safe(() => getMany([DRAFT_KEY, DRAFT_REV_KEY, HISTORY_KEY, DRAFT_AT_KEY]))) ?? [];
-  // The last changes before the page went away, when their IndexedDB write didn't finish: the undo history stored is
-  // for an older draft, so it doesn't come with it.
-  // (The same as the stored draft: that write did finish, and the history goes with it.)
+  // The last changes before the page went away, when their IndexedDB write didn't finish (the same as the stored
+  // draft: that write did finish). Its history comes with it when every step is there: in the copy, or stored.
   const rescue = readRescue();
-  if (rescue && !(typeof at === 'number' && at >= rescue.at) && JSON.stringify(rescue.draft) !== JSON.stringify(draft))
-    return { draft: rescue.draft, rescued: true };
+  if (rescue && !(typeof at === 'number' && at >= rescue.at) && JSON.stringify(rescue.draft) !== JSON.stringify(draft)) {
+    const h = rescue.history;
+    if (h?.saved?.v !== 1 || h.saved.gameId !== rescue.draft.id || !Array.isArray(h.steps)) return { draft: rescue.draft, rescued: true };
+    const fresh = new Map(h.steps.map((s) => [s.id, s]));
+    const rest = h.saved.ids.filter((id) => !fresh.has(id));
+    const found = rest.length ? await safe(() => getMany<StoredStep>(rest.map(stepKey))) : [];
+    if (!found || found.some((x) => !x)) return { draft: rescue.draft, rescued: true };
+    const got = new Map(rest.map((id, i) => [id, found[i]]));
+    const steps = h.saved.ids.map((id) => fresh.get(id) ?? got.get(id)!);
+    return { draft: rescue.draft, history: { saved: h.saved, steps }, rescued: true };
+  }
   if (rescue) dropRescue();
   if (!draft) return {};
   const game = draft as Game;

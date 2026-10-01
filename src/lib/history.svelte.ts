@@ -548,17 +548,48 @@ function left(steps: readonly HistoryEntry[]): void {
  * What to store of the history with the draft written now (`rev` marks that draft): the steps new or changed since
  * the last time, and the ones gone since. When that write fails, `failed()` makes them wait for the next one.
  */
-export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[]; dropped: string[]; failed: () => void } {
+export function toSave(rev: string): {
+  history: SavedHistory;
+  steps: StoredStep[];
+  dropped: string[];
+  failed: () => void;
+  done: () => void;
+} {
   const steps = h.entries.filter((e) => unsaved.has(e.id)).map(stored);
   const dropped = [...goneIds];
   unsaved.clear();
   goneIds.clear();
+  for (const s of steps) writing.add(s.id);
   const failed = () => {
     const now = new Set(h.entries.map((e) => e.id));
-    for (const s of steps) if (now.has(s.id)) unsaved.add(s.id);
+    for (const s of steps) {
+      writing.delete(s.id);
+      if (now.has(s.id)) unsaved.add(s.id);
+    }
     for (const id of dropped) if (!now.has(id)) goneIds.add(id);
   };
-  return { history: savedIndex(rev), steps, dropped, failed };
+  const done = () => {
+    for (const s of steps) writing.delete(s.id);
+  };
+  return { history: savedIndex(rev), steps, dropped, failed, done };
+}
+/** Steps handed to a write that hasn't finished yet. */
+const writing = new Set<string>();
+
+/**
+ * The history as it stands, for the copy written at once as the page goes away (persist.ts rescueDraft): its index,
+ * and the steps storage may not have yet (new ones, and ones whose write hasn't finished). Changes nothing.
+ */
+export function rescueHistory(): { saved: SavedHistory; steps: StoredStep[] } {
+  return { saved: savedIndex('rescue'), steps: h.entries.filter((e) => unsaved.has(e.id) || writing.has(e.id)).map(stored) };
+}
+
+/**
+ * The game as of the last step, while a change is still being made (typing, a drag): what an autosave writes, so the
+ * draft never holds a change its history doesn't (after a reload, undo then redo would lose it). Null: no step is open.
+ */
+export function settledGame(): Game | null {
+  return h.pending && base ? base : null;
 }
 
 const stored = ({ target: _t, focusSession: _f, ...e }: HistoryEntry): StoredStep => e;
