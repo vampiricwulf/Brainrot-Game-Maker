@@ -3,10 +3,12 @@
  * src/lib/buzzproto.ts); keeps its seat token in localStorage so a reload or a dropped connection gets the seat back.
  *
  * Fair timing: the page notes when it shows BUZZ! for an arm and sends the time from then to the press (reactMs) with
- * the buzz; it answers every pong with a sync at once, so the room can time this phone's round trip itself.
+ * the buzz; it echoes every probe from the room at once, so the room can time this phone's round trip itself.
  *
  * Dead sockets: a phone back from the background (or a buzz the room doesn't answer) checks the connection with a ping
- * and starts again if no pong comes back in a couple of seconds, so a press is never silently lost.
+ * ("Checking connection…") and starts again if no pong comes back in a couple of seconds. A press the room hasn't
+ * answered is kept and sent again once back in the seat, if the buzzers are still open for that arm; otherwise the
+ * phone says it didn't get through. One socket at a time: a new one replaces the old, whose events are ignored.
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type RoomToPhone } from '../../src/lib/buzzproto';
 
@@ -31,6 +33,8 @@ interface Notice {
 const PROBE_MS = 2500;
 /** No answer to a buzz this long: the connection is dead (the buzz is lost), start again. */
 const BUZZ_ANSWER_MS = 3000;
+/** Buzzes sent this close together at most. */
+const BUZZ_GAP_MS = 150;
 
 let code = '';
 let ws: WebSocket | null = null;
@@ -68,6 +72,12 @@ let sendingArm = -1;
 let sendingTimer = 0;
 /** When the last press buzzed (performance.now()), so a click right after a pointerdown doesn't buzz twice. */
 let lastPress = -1000;
+/** When the last buzz went to the room (performance.now()). */
+let lastSent = -1000;
+/** A press the room hasn't answered yet, and the socket it went out on (null: not sent yet). */
+let held: { armId: number; reactMs?: number; on: WebSocket | null } | null = null;
+/** A held press couldn't be sent again (its arm was over): "didn't get through" shows while the arm is this one. */
+let lostArm = -1;
 /** The last state cue (BUZZ! lit, you won) played, so each plays once. */
 let cued = '';
 
@@ -140,11 +150,24 @@ function noRoom(): void {
   render();
 }
 
+/** Lets go of a socket: none of its events count any more. */
+function detach(s: WebSocket): void {
+  s.onopen = s.onmessage = s.onclose = null;
+  try {
+    s.close();
+  } catch {
+    // already closed
+  }
+}
+
 function connect(): void {
   clearTimeout(retryTimer);
+  // Never two sockets: a second one would find its own seat taken by the first.
+  if (ws) detach(ws);
   const s = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${code}`);
   ws = s;
   s.onopen = () => {
+    if (ws !== s) return;
     connected = everConnected = true;
     attempts = 0;
     lastPong = Date.now();
@@ -165,7 +188,7 @@ function connect(): void {
     render();
   };
   s.onmessage = (e) => {
-    if (typeof e.data !== 'string') return;
+    if (ws !== s || typeof e.data !== 'string') return;
     try {
       onMessage(JSON.parse(e.data) as RoomToPhone);
     } catch {
@@ -190,19 +213,15 @@ function probe(): void {
     if (ws === s && lastPong < asked) {
       attempts = 0;
       dropped(s, 0);
-    }
+    } else render();
   }, PROBE_MS);
+  render();
 }
 
 /** The socket is gone: try again with backoff (unless the game is over). `wait`: try again after this long instead. */
 function dropped(s: WebSocket, wait?: number): void {
   if (ws !== s) return;
-  s.onopen = s.onmessage = s.onclose = null;
-  try {
-    s.close();
-  } catch {
-    // already closed
-  }
+  detach(s);
   ws = null;
   connected = false;
   rejoining = false;
@@ -224,6 +243,8 @@ function dropped(s: WebSocket, wait?: number): void {
       } catch {
         // still offline
       }
+      // Back to the tab meanwhile (it connected), or the game ended.
+      if (ws || notice?.final) return;
     }
     connect();
   }, delay);
@@ -274,6 +295,8 @@ function onMessage(m: RoomToPhone): void {
       view = m.view;
       if (result && result.armId !== view.armId) result = null;
       if (sendingArm >= 0 && (view.armId !== sendingArm || view.phase === 'lobby')) stopSending();
+      if (lostArm >= 0 && view.armId !== lostArm) lostArm = -1;
+      resendHeld(view);
       break;
     case 'waiting':
       newForm = false;
@@ -284,6 +307,7 @@ function onMessage(m: RoomToPhone): void {
     case 'result':
       result = m;
       if (m.armId === sendingArm) stopSending();
+      if (m.armId === held?.armId) held = null;
       if (m.lockedUntil) lockedUntil = m.lockedUntil;
       if (m.outcome === 'first') vibrate([80, 50, 80]);
       else if (m.outcome === 'early') vibrate(250);
@@ -301,12 +325,18 @@ function onMessage(m: RoomToPhone): void {
     case 'closed':
       ended();
       return;
+    case 'probe':
+      // Straight back, before anything else: the room times the round trip from its probe to this.
+      send({ t: 'echo', id: m.id });
+      return;
     case 'pong':
-      // Straight back, before anything else: the room times the round trip from its pong to this.
-      send({ t: 'sync', serverNow: m.serverNow });
       lastPong = Date.now();
       offset = m.serverNow - (m.at + Date.now()) / 2;
-      return;
+      // A connection check answered: it's alive.
+      if (!probeTimer) return;
+      clearTimeout(probeTimer);
+      probeTimer = 0;
+      break;
   }
   render();
 }
@@ -356,26 +386,59 @@ const serverNow = () => Date.now() + offset;
 function buzz(at = performance.now()): void {
   if (!view || view.phase === 'lobby') return;
   lastPress = performance.now();
-  if (!connected) return;
+  lostArm = -1;
   const reactMs = litArm === view.armId && view.phase === 'armed' ? Math.max(0, Math.round(at - litAt)) : undefined;
-  send({ t: 'buzz', armId: view.armId, ...(reactMs !== undefined ? { reactMs } : {}) });
   vibrate(30);
   const b = $('buzz');
   b.classList.add('pressed');
   setTimeout(() => b.classList.remove('pressed'), 120);
-  // Show it's on its way until the room answers; no answer means the connection is dead (start again at once).
-  if (!(result && result.armId === view.armId)) {
-    const s = ws;
-    sendingArm = view.armId;
-    clearTimeout(sendingTimer);
-    sendingTimer = window.setTimeout(() => {
-      if (ws === s && s && sendingArm >= 0) {
-        sendingArm = -1;
-        attempts = 0;
-        dropped(s, 0);
-      }
-    }, BUZZ_ANSWER_MS);
-    render();
+  // Kept until the room answers: a connection that turns out dead sends it again once back (see resendHeld).
+  const answered = !!result && result.armId === view.armId;
+  // (The first press of the arm: the one whose reaction time counts.)
+  if (!answered && held?.armId !== view.armId) held = { armId: view.armId, ...(reactMs !== undefined ? { reactMs } : {}), on: null };
+  if (!connected) return render();
+  // Someone mashing the button: one buzz goes every BUZZ_GAP_MS at most (the room counts one per arm anyway, and a
+  // stream of them would look like a flood).
+  if (performance.now() - lastSent < BUZZ_GAP_MS) return;
+  lastSent = performance.now();
+  sendBuzz(view.armId, reactMs);
+  if (!answered) awaitAnswer(view.armId);
+}
+
+function sendBuzz(armId: number, reactMs?: number): void {
+  send({ t: 'buzz', armId, ...(reactMs !== undefined ? { reactMs } : {}) });
+  if (held?.armId === armId) held.on = ws;
+}
+
+/** Shows the buzz is on its way until the room answers; no answer means the connection is dead (start again at once). */
+function awaitAnswer(armId: number): void {
+  const s = ws;
+  sendingArm = armId;
+  clearTimeout(sendingTimer);
+  sendingTimer = window.setTimeout(() => {
+    if (ws === s && s && sendingArm >= 0) {
+      sendingArm = -1;
+      attempts = 0;
+      dropped(s, 0);
+    }
+  }, BUZZ_ANSWER_MS);
+  render();
+}
+
+/**
+ * Back in the seat on a new connection with a press the room never answered: it goes again if the buzzers are still
+ * open (or someone is answering: it joins the queue) for that arm; otherwise "Your buzz didn't get through".
+ */
+function resendHeld(v: PhoneView): void {
+  if (!held || held.on === ws || !connected) return;
+  const h = held;
+  if (v.armId === h.armId && (v.phase === 'armed' || v.phase === 'answering')) {
+    sendBuzz(h.armId, h.reactMs);
+    awaitAnswer(h.armId);
+  } else {
+    held = null;
+    // Pressing again counts while the buzzers are open (or joins the queue while someone answers); not once closed.
+    if (v.phase === 'armed' || v.phase === 'answering') lostArm = v.armId;
   }
 }
 
@@ -445,8 +508,9 @@ function flash(): void {
 function drawSound(): void {
   const b = $('sound');
   b.textContent = soundOn ? '🔔' : '🔕';
-  b.setAttribute('aria-label', soundOn ? 'Sound on: tap to mute' : 'Sound off: tap to turn it on');
-  b.setAttribute('aria-pressed', String(!soundOn));
+  // One name, and the button's pressed state says whether it's on (a label that changes too would say it twice).
+  b.setAttribute('aria-label', 'Sound');
+  b.setAttribute('aria-pressed', String(soundOn));
 }
 
 let wakeWanted = false;
@@ -470,6 +534,13 @@ function say(text: string): void {
   const live = $('live');
   if (live.textContent !== text) live.textContent = text;
 }
+
+/** Bits of text as sentences: a full stop only where one isn't already ("Get ready…", not "Get ready….""). */
+const sentences = (parts: string[]): string =>
+  parts
+    .filter(Boolean)
+    .map((x) => (/[.!?…]$/.test(x) ? x : `${x}.`))
+    .join(' ');
 
 function render(): void {
   const away = !connected && everConnected && !notice?.final && !!code;
@@ -561,6 +632,8 @@ function renderBuzz(v: PhoneView): void {
   let cls = '';
   let big = '';
   let small = '';
+  /** What a screen reader hears instead of `small` (the early lock's countdown is said once, not every second). */
+  let spoken: string | null = null;
   if (v.phase === 'lobby') {
     big = you.name;
     small = v.status || 'Wait for the next clue';
@@ -583,12 +656,16 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['off', 'Wait', 'You already answered this one'];
   } else if (left > 0) {
     [cls, big, small] = ['locked', 'Too early', `wait ${left}s`];
+    spoken = 'Wait a moment before buzzing again';
   } else if (v.phase === 'armed') {
     [cls, big, small] = ['armed', 'BUZZ!', you.name];
   } else {
     [cls, big, small] = ['ready', 'Get ready…', "Don't buzz yet"];
   }
   if (sendingArm === v.armId && !mine && v.phase !== 'lobby') small = 'Sending…';
+  if (lostArm === v.armId && !mine && cls !== 'first' && cls !== 'locked') small = 'Your buzz didn’t get through — press again';
+  // Back from the background: until the room answers the ping, a press may be on a dead connection (it's kept).
+  if (probeTimer && cls !== 'first') small = 'Checking connection…';
   // The moment BUZZ! first shows for this arm: reaction times count from here.
   if (cls === 'armed' && litArm !== v.armId) {
     litArm = v.armId;
@@ -602,14 +679,18 @@ function renderBuzz(v: PhoneView): void {
   }
   cued = cue || cued;
   b.className = cls;
-  $('buzz-big').textContent = big;
-  $('buzz-small').textContent = small;
-  b.setAttribute('aria-label', `${big} ${small}`);
+  // A name may be one long word: it breaks anywhere rather than push the page sideways (status words stay whole).
+  const names = [you.name, v.answering?.name, v.done?.by?.name, mine?.behind].filter((x): x is string => !!x);
+  for (const [id, text] of [['buzz-big', big], ['buzz-small', small]] as const) {
+    $(id).textContent = text;
+    $(id).classList.toggle('name', names.some((n) => text.includes(n)));
+  }
+  b.setAttribute('aria-label', sentences([big, spoken ?? small]));
   const sym = v.currency ?? '';
   $('me').textContent = `${you.name} · ${you.score < 0 ? '−' : ''}${sym}${Math.abs(you.score).toLocaleString()}`;
   const hostGone = v.hostHere === false;
   $('host-note').hidden = !hostGone;
-  say([connected ? '' : 'Reconnecting…', `${big}. ${small}`, hostGone ? $('host-note').textContent : ''].filter(Boolean).join(' '));
+  say(sentences([connected ? '' : 'Reconnecting…', big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
   // Count the early lock down.
   clearTimeout(tick);
@@ -660,8 +741,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   if (wakeWanted) void wake();
   if (!code || notice?.final) return;
-  // Phones drop sockets in the background: come back at once. One that still looks open may be dead: check it.
-  if (!ws) {
+  // Phones drop sockets in the background: come back at once (connect() replaces any socket still starting). One
+  // that still looks open may be dead: check it.
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
     attempts = 0;
     connect();
   } else probe();

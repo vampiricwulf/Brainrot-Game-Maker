@@ -88,6 +88,12 @@ in plain words for the people who make and host games. Anything committed but no
 - **🎨 Edit image without the mouse**: **＋ Add text in the middle** (🅣 Text) and **＋ Put 😂 in the middle**
   (😂 Sticker). The caption box, its font and the brush colour have names for screen readers.
 - **The Layers list flags an item that's off the slide** ("⚠ off the slide"), where players can't see it.
+- **Phone buzzers: a press on a connection that turned out dead still counts.** Back from the background, the phone
+  says "Checking connection…" until the room answers; a press made then (or one the room never answered) is kept and
+  sent again once the phone is back in its seat, if the buzzers are still open for that clue. If they aren't, it says
+  "Your buzz didn't get through — press again" instead of nothing.
+- **Phone buzzers: a buzz that reacted faster but reached the room after the race was decided** says so ("faster, but
+  arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
 - **Daily Doubles placed by hand raise the ⭐ Daily Doubles count**: making a fourth tile a Daily Double (from the
@@ -287,6 +293,15 @@ in plain words for the people who make and host games. Anything committed but no
 - **Nudging with the arrow keys and Duplicate keep some of the item on the slide.**
 - **Right-to-left text** (Arabic, Hebrew) lines up the right way in text boxes, the slide text field and the clue's
   Question and Answer boxes.
+- **Phone buzzers are harder to cheat**: the room now times each phone's connection itself with its own probes and
+  counts a low sample, a slow connection counts as 350 ms at most (was 1 s) and the slack for jitter is 70 ms (was
+  150 ms). A phone that lies about its reaction time can now gain at most about 0.4 s (it was over 1 s). The price: a
+  player whose connection really takes over 0.4 s there and back loses the part beyond that.
+- **Phone buzzers wait as long as the slowest phone needs**: after the first buzz, the room waits for buzzes still on
+  their way as long as the slowest connected player's connection takes (a quarter second to 0.8 s), instead of always a
+  quarter second, so a faster reaction on a slow network isn't lost.
+- **Phone buzzers: a buzz whose connection was slower than expected** counts a little later by just that much, instead
+  of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
 - **Reopening a recent game keeps the files its undo history needs**: ↶ Reopen previous game (or Open… → Recent
@@ -572,6 +587,24 @@ in plain words for the people who make and host games. Anything committed but no
   can be undone (one step per burst of changes), and placing a sticker and resizing it are separate steps.
 - **Typing into a slide with pages of text** is quicker: shrink-to-fit gives up at once when even the smallest size
   can't fit.
+- **A host reload in the middle of a clue keeps the buzzers as they were**: who is answering and who already missed it
+  (they stay locked out), instead of opening the buzzers afresh for everyone.
+- **A phone coming back to its seat mid-clue** (a reload, a new connection) shows its place again ("You're answering!",
+  "You're 2nd…") instead of losing it.
+- **A phone page could end up with two connections** and see its own seat as "taken" after coming back to the tab
+  while it was reconnecting; it now keeps one connection only.
+- **A long player name with no spaces** no longer runs off the big BUZZ button or makes the phone page scroll sideways
+  (it breaks onto the next line; on 320 px wide phones and sideways too).
+- **A phone that floods the buzzer room with messages** is cut off (and kept out for 30 seconds) instead of slowing the
+  room down for everyone.
+- **A kicked phone can't take its seat straight back by clearing its browser data**: for the 2 minutes the kick lasts,
+  that seat is closed to its address too.
+- **Names with emoji are never cut in half**: a family emoji or a flag counts as one character in the 24 and 40
+  character limits, and flags like England's and Scotland's keep their tag characters instead of turning into a plain
+  black flag. A new player asking to join from their phone gets the same 40-character cut as everywhere else.
+- **Phone page for screen readers**: the sound button is "Sound" (on or off as a toggle) instead of a label that also
+  changed, the room code is read as "Room code …", the buzzer's words no longer end in "….", and the early-buzz
+  countdown is said once instead of every second.
 
 ## 2026-09-30
 

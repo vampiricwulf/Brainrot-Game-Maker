@@ -194,9 +194,24 @@ try {
   await host.getByRole('button', { name: '→ Next in line: Player 1' }).click();
   await big(p1).getByText("You're answering!").waitFor();
   assert(true, '→ Next in line: Player 1 answers without buzzing again');
+  // A reload mid-clue: the game comes back with Player 1 answering and Player 2 still locked out (not opened afresh).
+  await host.waitForTimeout(800); // the game is saved (debounced)
+  await host.reload();
+  await host.getByRole('button', { name: 'Resume game' }).click();
+  await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
+  // (Back in the room: the phones heard the host's state again.)
+  await p1.locator('#host-note').waitFor({ state: 'hidden' });
+  await host.waitForTimeout(1500);
+  assert(
+    (await big(p1).innerText()) === "You're answering!" && (await small(p2).innerText()) === 'Player 1 is answering',
+    'a host reload mid-clue keeps who is answering (the buzzers are not opened afresh)',
+  );
   // Wrong too: everyone has missed it, the buzzers stay closed. ↺ Reset buzzers lets them both buzz again.
   await host.keyboard.press('Shift+Enter');
   await small(p1).getByText('You already answered this one').waitFor();
+  await small(p2).getByText('You already answered this one').waitFor();
+  assert((await big(p2).innerText()) !== 'BUZZ!', 'and who already missed it: Player 2 (wrong before the reload) is still locked out');
   await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
   await big(p2).getByText('BUZZ!').waitFor();
   await big(p1).getByText('BUZZ!').waitFor();

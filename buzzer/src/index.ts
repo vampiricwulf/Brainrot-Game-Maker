@@ -2,7 +2,7 @@
  * The buzzer room server: a Worker that makes rooms and serves the phone page, and one Durable Object (BuzzRoom) per
  * room code that holds the sockets and runs room.ts. Sockets use the hibernation API, and everything the room knows
  * is in DO storage or on the sockets, so an idle room can sleep (and be evicted) without losing a thing. The one timer
- * (a buzz's grace window, a quarter second) keeps the room awake while it runs; a room restarted in the middle of one
+ * (a buzz's grace window, under a second) keeps the room awake while it runs; a room restarted in the middle of one
  * finishes it from storage (see room.ts).
  *
  * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT) and DAILY_ROOMS a day in all
@@ -125,6 +125,11 @@ export class BuzzRoom extends DurableObject<Env> {
   private room: Room | null = null;
   /** lastHostAt as last saved. */
   private savedHostAt = 0;
+  /**
+   * Who each socket is (its role and conn never change while it lives; null: forgotten), kept in memory so a message
+   * doesn't read the socket's attachment: a flood costs the room as little as possible.
+   */
+  private ids = new WeakMap<WebSocket, { role: 'host' } | { role: 'phone'; conn: string } | null>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -144,6 +149,7 @@ export class BuzzRoom extends DurableObject<Env> {
             ...(a.pendingName !== undefined ? { pendingName: a.pendingName } : {}),
             ...(Array.isArray(a.rtts) ? { rtts: a.rtts } : {}),
             ...(typeof a.device === 'string' ? { device: a.device } : {}),
+            ...(typeof a.ip === 'string' ? { ip: a.ip } : {}),
           });
         else if (a?.role === 'host' && s.readyState === OPEN) hostHere = true;
       }
@@ -177,6 +183,7 @@ export class BuzzRoom extends DurableObject<Env> {
             try {
               // Forgotten at once: a room woken from hibernation before the socket is gone mustn't count it again.
               s.serializeAttachment(null);
+              this.ids.set(s, null);
               s.close(4001, 'full');
             } catch {
               // already closing
@@ -229,10 +236,13 @@ export class BuzzRoom extends DurableObject<Env> {
       this.touchHost();
       this.room.hostOpen();
     } else {
+      // Cloudflare sets it (the Worker passes the request on as it came): kicks and floods keep an address out a while.
+      const ip = request.headers.get('CF-Connecting-IP') ?? undefined;
+      if (this.room.floodBlocked(ip)) return refuse(4008, 'too many messages');
       const conn = randomToken(9);
       this.ctx.acceptWebSocket(server, [conn]);
-      server.serializeAttachment({ role: 'phone', conn, seatId: null } satisfies Attachment);
-      if (!this.room.phoneOpen(conn)) {
+      server.serializeAttachment({ role: 'phone', conn, seatId: null, ...(ip ? { ip } : {}) } satisfies Attachment);
+      if (!this.room.phoneOpen(conn, ip)) {
         server.send(JSON.stringify({ t: 'denied', reason: 'full' } satisfies RoomToPhone));
         server.close(4001, 'full');
       }
@@ -240,14 +250,31 @@ export class BuzzRoom extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  private who(ws: WebSocket): { role: 'host' } | { role: 'phone'; conn: string } | null {
+    let id = this.ids.get(ws);
+    if (id === undefined) {
+      const a = ws.deserializeAttachment() as Attachment | null;
+      id = !a ? null : a.role === 'host' ? { role: 'host' } : { role: 'phone', conn: a.conn };
+      this.ids.set(ws, id);
+    }
+    return id;
+  }
+
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    const a = ws.deserializeAttachment() as Attachment | null;
+    const a = this.who(ws);
     if (!a || !this.room) return;
     if (a.role === 'host') {
       this.touchHost();
       if (this.room.hostMessage(message) === 'close') await this.wipe();
-    } else {
-      this.room.phoneMessage(a.conn, message);
+    } else if (this.room.phoneMessage(a.conn, message) === 'close') {
+      // Flooding: forgotten at once (its close event has nothing left to do) and closed.
+      try {
+        ws.serializeAttachment(null);
+        this.ids.set(ws, null);
+        ws.close(4008, 'too many messages');
+      } catch {
+        // already closing
+      }
     }
   }
 
@@ -265,7 +292,7 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   private gone(ws: WebSocket): void {
-    const a = ws.deserializeAttachment() as Attachment | null;
+    const a = this.who(ws);
     if (!a || !this.room) return;
     if (a.role === 'phone') this.room.phoneClose(a.conn);
     else if (!this.ctx.getWebSockets('host').some((s) => s !== ws && s.readyState === OPEN)) this.room.hostClose();

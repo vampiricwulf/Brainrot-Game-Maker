@@ -13,8 +13,9 @@
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SETTING_UP, type BuzzState,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, type BuzzState,
   } from '../lib/buzz';
+  import { clip } from '../lib/buzzproto';
   import {
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState,
     roomLink, sendHostState, startRoom,
@@ -108,7 +109,11 @@
 
   // Resuming into an open clue starts with its Amount (a Daily Double's wager, and who's playing it), as picking it did.
   const ddUp = untrack(() => (session.dd?.stage === 'question' ? session.dd : null));
-  let selected = $state<string[]>(ddUp?.playerId ? [ddUp.playerId] : []);
+  /** The open clue, as the buzzers' saved state names it. */
+  const clueKey = (c: ClueRef | null | undefined) => (c ? `${c.round}.${c.cat}.${c.row}` : null);
+  // Phone buzzers: resuming mid-clue, whoever was answering still is (see the buzzers below).
+  const buzzUp = untrack(() => (session.remote?.buzz && session.remote.buzz.clue === clueKey(session.currentClue) ? session.remote.buzz : null));
+  let selected = $state<string[]>(ddUp?.playerId ? [ddUp.playerId] : buzzUp?.phase === 'answering' && buzzUp.answering ? [buzzUp.answering] : []);
   let amount = $state<number | null>(ddUp ? (ddUp.wager ?? null) : untrack(() => currentClueInfo(session, game)?.value ?? null));
   let showLog = $state(false);
   /** The 📜 Log's tab (L opens the one used last, 🕘 History to begin with). */
@@ -553,21 +558,33 @@
     app.live.buzz = b;
     // The room's openings only go up, also after a reload (see Session.remote).
     if (session.remote && (session.remote.armId ?? 0) < b.armId) session.remote.armId = b.armId;
+    // Saved with the game while a clue is open, so a reload mid-clue doesn't open the buzzers afresh for everyone.
+    if (session.remote) {
+      if (buzzClue) session.remote.buzz = { ...b, clue: buzzClue, floor: clueArmFloor };
+      else delete session.remote.buzz;
+    }
   }
 
   // The buzzers follow the clue: a tile opening (or a resumed game opening on one) starts them afresh, open at once or
   // closed until the host opens them (📱 Phone buzzers); leaving it (back to the board, a Daily Double) puts them away.
   let buzzClue: string | null = null;
   $effect(() => {
-    const c = session.currentClue;
-    const key = buzzing && c ? `${c.round}.${c.cat}.${c.row}` : null;
+    const key = buzzing ? clueKey(session.currentClue) : null;
     untrack(() => {
       if (key === buzzClue && app.live.buzz) return;
       buzzClue = key;
-      setBuzz(key ? buzzClueOpened(buzz, game.settings.buzzArm !== 'host') : buzzIdle(buzz));
       // The phones' queue starts afresh: only openings after this one belong to this clue.
       roomQueue = null;
-      clueArmFloor = buzz.phase === 'armed' ? buzz.armId - 1 : buzz.armId;
+      // Back after a reload on the same clue: the buzzers as they were (who's answering, who already missed it).
+      const saved = key && session.remote?.buzz?.clue === key ? $state.snapshot(session.remote.buzz) : null;
+      if (saved) {
+        const { clue: _clue, floor, ...b } = saved;
+        clueArmFloor = floor;
+        return setBuzz(b);
+      }
+      const next = key ? buzzClueOpened(buzz, game.settings.buzzArm !== 'host') : buzzIdle(buzz);
+      clueArmFloor = next.phase === 'armed' ? next.armId - 1 : next.armId;
+      setBuzz(next);
     });
   });
   // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
@@ -648,7 +665,7 @@
       id: q.seatId,
       rank: i + 1,
       name: session.players.find((p) => p.id === q.seatId)?.name ?? '?',
-      after: q.afterMs ? `+${(q.afterMs / 1000).toFixed(2)} s` : '',
+      after: q.arrivedLate ? 'faster, but arrived late' : q.afterMs ? `+${(q.afterMs / 1000).toFixed(2)} s` : '',
       rolled: q.rolled,
       out: buzz.lockedOut.includes(q.seatId),
     })),
@@ -733,7 +750,7 @@
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
   function addPhonePlayer(conn: string, name: string): void {
     if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (📋 Game rules › Most players)`);
-    let who = name.trim().slice(0, 40) || `Player ${session.players.length + 1}`;
+    let who = clip(name.trim(), SEAT_NAME_MAX) || `Player ${session.players.length + 1}`;
     // Never a second "Ann": the new one is "Ann 2".
     const taken = (n: string) => session.players.some((x) => x.name.trim().toLowerCase() === n.toLowerCase());
     if (taken(who)) {

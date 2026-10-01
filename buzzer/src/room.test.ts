@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import type { HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
+import { clip, cleanName } from '../../src/lib/buzzproto';
 import {
   cleanState,
+  FLOOD_BLOCK_MS,
+  FLOOD_BURST,
   GRACE_MS,
   IDLE_MS,
   KICK_BLOCK_MS,
+  lowRtt,
+  MAX_GRACE_MS,
   MAX_PHONES,
+  MAX_RTT_MS,
   MAX_SOCKETS,
-  median,
   MIN_REACT_MS,
+  NET_TOLERANCE_MS,
+  PHONE_BYTES,
+  PHONE_RATE,
+  PROBE_GAP_MS,
   rankKey,
   Room,
   TOO_BIG,
@@ -69,8 +78,8 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
     phonesSaved,
   );
   const send = (m: unknown) => room.hostMessage(JSON.stringify(m));
-  const phone = (conn: string) => {
-    room.phoneOpen(conn);
+  const phone = (conn: string, ip?: string) => {
+    room.phoneOpen(conn, ip);
     return phoneOf(conn);
   };
   const phoneOf = (conn: string) => ({
@@ -158,6 +167,26 @@ describe('seats', () => {
     expect(g.pa.last('seats')).toBeTruthy(); // back to the seat list
     expect(g.pa.last('kicked')).toBeUndefined();
     expect(g.phoneSaves.get('pa')?.seatId).toBeNull();
+  });
+
+  it('a phone coming back to its seat mid-clue hears where its buzz stands ("You\'re 2nd…")', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 300;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 250 });
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 280 });
+    const token = g.pb.last('joined')!.token;
+    // Bob reloads mid-window: still counted ('pending')…
+    const again = g.phone('pb2');
+    again.send({ t: 'join', seatId: 'b', token });
+    expect(again.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'pending' });
+    g.tick(MAX_GRACE_MS);
+    expect(again.last('result')).toMatchObject({ outcome: 'late', rank: 2, afterMs: 30, behind: 'Ann' });
+    // …and once more after the race: his place again, though it hasn't changed.
+    const third = g.phone('pb3');
+    third.send({ t: 'join', seatId: 'b', token });
+    expect(third.last('result')).toMatchObject({ outcome: 'late', rank: 2, afterMs: 30, behind: 'Ann' });
+    expect(third.last('probe')).toBeDefined(); // and the room times its round trip at once
   });
 
   it('a seat stays taken while its phone is away, shown to the host as not connected', () => {
@@ -323,6 +352,23 @@ describe('seats', () => {
     expect(g.pb.last('joined')?.seatId).toBe('b');
   });
 
+  it('a kick keeps the address off that seat too: a new device id doesn\'t get round it', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    const troll = g.phone('t1', '203.0.113.5');
+    troll.send({ t: 'join', seatId: 'a', device: 'dev-1' });
+    g.send({ t: 'kick', seatId: 'a' });
+    // Cleared storage (a new device id) and reconnected, same address: still blocked.
+    const back = g.phone('t2', '203.0.113.5');
+    back.send({ t: 'join', seatId: 'a', device: 'dev-2' });
+    expect(back.last('denied')?.reason).toBe('blocked');
+    // Ann, elsewhere, takes her seat.
+    const ann = g.phone('ann', '198.51.100.9');
+    ann.send({ t: 'join', seatId: 'a', device: 'dev-ann' });
+    expect(ann.last('joined')?.seatId).toBe('a');
+  });
+
   it('🔒 locked seats: only a seat token gets a seat; nobody new can ask', () => {
     const g = game({ allowNew: true });
     const token = g.pa.last('joined')!.token;
@@ -349,14 +395,30 @@ describe('seats', () => {
     p.send({ t: 'new', name: ' D\u200bee\u0007  \u{1F468}\u200d\u{1F469}\u200d\u{1F467} ' });
     expect(g.hostLast('phones')?.phones.find((x) => x.conn === 'p')?.pendingName).toBe('Dee \u{1F468}\u200d\u{1F469}\u200d\u{1F467}');
   });
+
+  it('names keep whole characters: a family emoji counts as one and is never cut apart, and flags keep their tags', () => {
+    const family = '\u{1F468}\u200d\u{1F469}\u200d\u{1F467}';
+    const england = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}';
+    expect(cleanName(`Go ${england}!`, 24)).toBe(`Go ${england}!`);
+    // Tag characters anywhere else are invisible junk.
+    expect(cleanName('A\u{E0041}nn', 24)).toBe('Ann');
+    expect(clip(family.repeat(5), 5)).toBe(family.repeat(5));
+    expect(clip(`Al${family}${family}`, 3)).toBe(`Al…`);
+    expect(clip(`A${family}${family}`, 3)).toBe(`A${family}${family}`);
+    expect(clip(`A${family}${family}x`, 3)).toBe(`A${family}…`);
+    expect(clip(`${england}${england}${england}`, 2)).toBe(`${england}…`);
+    // Piled-up accents can't make one "character" huge.
+    expect(clip(`a${'\u0301'.repeat(500)}`, 4).length).toBeLessThanOrEqual(64);
+  });
 });
 
-/** The phone pings, then echoes the pong rttMs later: the room times a round trip. */
+/** The phone pings; the room answers with a probe, which the phone echoes rttMs later: the room times a round trip. */
 function timeRtt(g: ReturnType<typeof setup>, p: ReturnType<ReturnType<typeof setup>['phoneOf']>, rttMs: number) {
+  g.t.now += PROBE_GAP_MS; // (at most one probe so often)
   p.send({ t: 'ping', at: 1 });
-  const serverNow = p.last('pong')!.serverNow;
+  const id = p.last('probe')!.id;
   g.t.now += rttMs;
-  p.send({ t: 'sync', serverNow });
+  p.send({ t: 'echo', id });
 }
 
 describe('the race', () => {
@@ -368,7 +430,7 @@ describe('the race', () => {
     expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'pending' });
     expect(g.hostLast('buzz')).toBeUndefined();
     expect(g.room.saved.state?.phase).toBe('armed');
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0 });
     expect(g.hostLast('buzz')).toEqual({ t: 'buzz', armId: 1, seatId: 'b', rank: 1, afterMs: 0 });
     expect(g.hostLast('queue')).toEqual({ t: 'queue', armId: 1, queue: [{ seatId: 'b', afterMs: 0 }] });
@@ -382,7 +444,7 @@ describe('the race', () => {
     timeRtt(g, g.pa, 40);
     timeRtt(g, g.pb, 400);
     expect(g.room.rtt('pa')).toBe(40);
-    expect(g.room.rtt('pb')).toBe(400);
+    expect(g.room.rtt('pb')).toBe(MAX_RTT_MS); // 350: a longer one counts as that
     g.arm(1);
     // Ann's light came on at once and she pressed after 260 ms: here at 300. Bob's came on 200 ms late (slow network),
     // he pressed after 200 ms, and his buzz took another 200 ms: here at 450, after Ann's.
@@ -390,7 +452,7 @@ describe('the race', () => {
     g.pa.send({ t: 'buzz', armId: 1, reactMs: 260 });
     g.t.now += 150;
     g.pb.send({ t: 'buzz', armId: 1, reactMs: 200 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'b' });
     expect(g.hostAll('buzz')).toEqual([
       { t: 'buzz', armId: 1, seatId: 'b', rank: 1, afterMs: 0 },
@@ -400,34 +462,61 @@ describe('the race', () => {
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 60, behind: 'Bob' });
   });
 
-  it('rankKey: plausible reactMs counts; impossible or missing falls back to arrival minus the round trip', () => {
+  it('rankKey: reactMs counts, raised (never more than that) to leave the network at most the round trip + tolerance', () => {
+    expect(NET_TOLERANCE_MS).toBe(70);
     expect(rankKey(300, 250, 100)).toBe(250);
-    expect(rankKey(300, 250, null)).toBe(250); // unknown round trip: 300 ms + tolerance assumed
-    expect(rankKey(300, 10, 40)).toBe(260); // 290 ms "on the network" with a 40 ms round trip: no
+    expect(rankKey(300, 250, null)).toBe(250); // unknown round trip: 250 ms + tolerance assumed
+    // 290 ms "on the network" with a 40 ms round trip: no; it may leave 110 ms, so it counts as 190.
+    expect(rankKey(300, 10, 40)).toBe(190);
+    // No jump at the edge: one ms more claimed reaction is one ms more key.
+    expect(rankKey(300, 189, 40)).toBe(190);
+    expect(rankKey(300, 191, 40)).toBe(191);
+    expect(rankKey(500, 3, 300)).toBe(130);
+    expect(rankKey(200, 3, 300)).toBe(MIN_REACT_MS); // fits, but nobody reacts in 3 ms
+    // Impossible or missing: the time since arming minus the round trip.
     expect(rankKey(300, 400, 40)).toBe(260); // reacted before the buzzers opened
     expect(rankKey(300, -5, 40)).toBe(260);
     expect(rankKey(300, Number.NaN, 40)).toBe(260);
     expect(rankKey(300, undefined, 40)).toBe(260);
     expect(rankKey(300, undefined, null)).toBe(300);
     expect(rankKey(20, undefined, null)).toBe(MIN_REACT_MS);
-    expect(rankKey(500, 3, 300)).toBe(200); // 497 ms on a 300 ms round trip? no: fallback
-    expect(rankKey(200, 3, 300)).toBe(MIN_REACT_MS); // plausible, but nobody reacts in 3 ms
   });
 
-  it('a forged reactMs gains at most about a round trip', () => {
+  it('a forged reactMs gains at most the round trip + tolerance', () => {
     const g = game();
     timeRtt(g, g.pa, 40);
     timeRtt(g, g.pb, 40);
     g.arm(1);
     g.t.now += 250;
     g.pb.send({ t: 'buzz', armId: 1, reactMs: 200 }); // honest
-    g.t.now += 50;
-    g.pa.send({ t: 'buzz', armId: 1, reactMs: 0 }); // "I pressed the moment the light came on"
-    g.tick(GRACE_MS);
+    g.t.now += 130;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 0 }); // "I pressed the moment the light came on" (really ~340 ms)
+    g.tick(MAX_GRACE_MS);
     expect(g.room.saved.state?.answering).toBe('b');
     expect(g.hostLast('queue')?.queue).toEqual([
       { seatId: 'b', afterMs: 0 },
-      { seatId: 'a', afterMs: 60 },
+      { seatId: 'a', afterMs: 70 },
+    ]);
+  });
+
+  it('holding its echoes buys a phone at most MAX_RTT_MS of slack', () => {
+    const g = game();
+    timeRtt(g, g.pa, 20);
+    for (let i = 0; i < 5; i++) timeRtt(g, g.pb, 900); // a cheat holding every echo for 900 ms
+    expect(g.room.rtt('pb')).toBe(MAX_RTT_MS);
+    g.arm(1);
+    // Ann reacts in 300 ms. Bob (a fast network really) presses 760 ms in and claims 50: his buzz counts as
+    // 760 − 350 − 70 = 340, so pressing 440 ms after Ann (more than the 420 ms it can buy him) loses. (With the old
+    // 1 s cap and 150 ms tolerance it could buy 1150 ms.)
+    g.t.now += 320;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 300 });
+    g.t.now += 440;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 50 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('a');
+    expect(g.hostLast('queue')?.queue).toEqual([
+      { seatId: 'a', afterMs: 0 },
+      { seatId: 'b', afterMs: 40 },
     ]);
   });
 
@@ -440,7 +529,7 @@ describe('the race', () => {
     g.pa.send({ t: 'buzz', armId: 1 });
     g.t.now += 25;
     g.pb.send({ t: 'buzz', armId: 1 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.hostAll('buzz').map((m) => [m.seatId, m.rank, m.afterMs])).toEqual([
       ['c', 1, 0],
       ['a', 2, 40],
@@ -459,26 +548,78 @@ describe('the race', () => {
     g.arm(1);
     g.t.now += 200;
     g.pa.send({ t: 'buzz', armId: 1, reactMs: 150 });
-    g.tick(GRACE_MS);
+    // The window waits for Dee: a reaction as fast as Ann's would get here 150 + 350 + 70 ms after arming.
+    expect(g.room.saved.race?.graceUntil).toBe(g.room.saved.race!.armedAt + 570);
+    g.tick(400);
     expect(g.room.saved.state?.answering).toBe('a');
     g.t.now += 300;
     g.pb.send({ t: 'buzz', armId: 1, reactMs: 600 });
     expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 450, behind: 'Ann' });
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 450 });
-    // Cat's buzz came very late with no reaction time (fallback: 950 − 0): behind Bob.
+    // Cat's buzz came very late with no reaction time (fallback: 1100 − 0): behind Bob.
     g.t.now += 200;
     g.pc.send({ t: 'buzz', armId: 1 });
     expect(g.hostLast('queue')?.queue.map((q) => q.seatId)).toEqual(['a', 'b', 'c']);
-    // Dee reacted faster than Ann, but the window is long over: second, never first.
+    // Dee says she reacted in 100 ms, but her buzz took 1.2 s: it counts as 1200 − 420 = 780 (behind Bob, ahead of Cat).
     g.t.now += 100;
     pd.send({ t: 'buzz', armId: 1, reactMs: 100 });
-    expect(g.hostLast('queue')?.queue.map((q) => q.seatId)).toEqual(['a', 'd', 'b', 'c']);
-    expect(g.hostLast('queue')?.queue[1].afterMs).toBe(0);
-    expect(pd.last('result')).toMatchObject({ outcome: 'late', rank: 2 });
-    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 3 });
+    expect(g.hostLast('queue')?.queue.map((q) => q.seatId)).toEqual(['a', 'b', 'd', 'c']);
+    expect(g.hostLast('queue')?.queue[2].afterMs).toBe(630);
+    expect(pd.last('result')).toMatchObject({ outcome: 'late', rank: 3 });
+    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 2 });
     expect(g.pc.last('result')).toMatchObject({ outcome: 'late', rank: 4 });
-    expect(g.hostLast('buzz')).toMatchObject({ seatId: 'd', rank: 2 });
+    expect(g.hostLast('buzz')).toMatchObject({ seatId: 'd', rank: 3 });
     expect(g.room.saved.state?.answering).toBe('a');
+  });
+
+  it('the grace window lasts as long as the slowest seated phone that could still buzz needs (GRACE_MS to MAX_GRACE_MS)', () => {
+    const g = game();
+    for (const p of [g.pa, g.pb, g.pc]) timeRtt(g, p, 10);
+    g.arm(1);
+    g.t.now += 200;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 180 });
+    // Everyone on a fast network: the shortest window.
+    expect(g.room.saved.race?.graceUntil).toBe(g.t.now + GRACE_MS);
+    // Bob on a slow one (300 ms): a reaction as fast as Ann's would get here 180 + 300 + 70 ms after arming.
+    const h = game();
+    timeRtt(h, h.pa, 10);
+    timeRtt(h, h.pb, 300);
+    timeRtt(h, h.pc, 10);
+    h.arm(1);
+    const armed = h.t.now;
+    h.t.now += 200;
+    h.pa.send({ t: 'buzz', armId: 1, reactMs: 180 });
+    expect(h.room.saved.race?.graceUntil).toBe(armed + 550);
+    // Bob reacted faster (150 ms) but his buzz takes 300 ms: it still makes the window and wins.
+    h.t.now = armed + 450;
+    h.pb.send({ t: 'buzz', armId: 1, reactMs: 150 });
+    h.tick(GRACE_MS);
+    expect(h.room.saved.state?.answering).toBe('b');
+    // Locked-out seats don't hold the window open.
+    const k = game();
+    timeRtt(k, k.pa, 10);
+    timeRtt(k, k.pb, 300);
+    timeRtt(k, k.pc, 10);
+    k.arm(1, { lockedOut: ['b'] });
+    k.t.now += 200;
+    k.pa.send({ t: 'buzz', armId: 1, reactMs: 180 });
+    expect(k.room.saved.race?.graceUntil).toBe(k.t.now + GRACE_MS);
+  });
+
+  it('a buzz that reacted faster but got here after the race was decided says so (not "0.00 s behind")', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 350;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 300 });
+    // The host takes Ann's buzz at once (a number key), mid-window.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'a', clue: { text: 'Q?' } }) });
+    g.t.now += 50;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 250 });
+    expect(g.hostLast('queue')?.queue).toEqual([
+      { seatId: 'a', afterMs: 0 },
+      { seatId: 'b', afterMs: 0, arrivedLate: true },
+    ]);
+    expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 0, behind: 'Ann', arrivedLate: true });
   });
 
   it('buzzes within TIE_MS tie: nobody answers until the host picks (by hand: the rest of the tie keep arrival order)', () => {
@@ -490,7 +631,7 @@ describe('the race', () => {
     g.pb.send({ t: 'buzz', armId: 1, reactMs: 200 });
     g.t.now += 10;
     g.pa.send({ t: 'buzz', armId: 1, reactMs: 280 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: null });
     expect(g.hostLast('queue')).toEqual({
       t: 'queue',
@@ -532,7 +673,7 @@ describe('the race', () => {
     g.pa.send({ t: 'buzz', armId: 1, reactMs: 200 });
     g.pb.send({ t: 'buzz', armId: 1, reactMs: 204 });
     g.pc.send({ t: 'buzz', armId: 1, reactMs: 207 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.hostLast('queue')?.tie).toEqual(['a', 'b', 'c']);
     g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', rollOrder: ['c', 'a', 'b'], clue: { text: 'Q?' } }) });
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'c' });
@@ -561,9 +702,11 @@ describe('the race', () => {
     g.t.now += 30;
     g.pb.send({ t: 'buzz', armId: 1 });
     g.pb.send({ t: 'buzz', armId: 1 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     g.pa.send({ t: 'buzz', armId: 1 });
-    expect(g.pa.msgs().filter((m) => m.t === 'result')).toEqual([{ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 30 }]);
+    // Sent again (a phone that lost its connection), it is answered with where it stands, and counted once.
+    const first = { t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 30 };
+    expect(g.pa.msgs().filter((m) => m.t === 'result')).toEqual([{ t: 'result', armId: 1, outcome: 'pending' }, first, first]);
     expect(g.hostAll('buzz')).toHaveLength(2);
   });
 
@@ -575,7 +718,7 @@ describe('the race', () => {
     g.pa.send({ t: 'buzz', armId: 1 });
     g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', clue: { text: 'Q?' } }) });
     expect(g.timers()).toBe(0);
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'c' });
     expect(g.hostLast('buzz')).toBeUndefined();
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, behind: 'Cat' });
@@ -585,7 +728,7 @@ describe('the race', () => {
     h.t.now += 100;
     h.pa.send({ t: 'buzz', armId: 1 });
     h.send({ t: 'state', state: state({ phase: 'closed', armId: 1, clue: { text: 'Q?' } }) });
-    h.tick(GRACE_MS);
+    h.tick(MAX_GRACE_MS);
     expect(h.room.saved.state?.phase).toBe('closed');
     expect(h.hostLast('buzz')).toBeUndefined();
     // Re-arms: the waiting buzz is dropped, Bob wins the new arm.
@@ -597,7 +740,7 @@ describe('the race', () => {
     expect(k.timers()).toBe(0);
     k.t.now += 100;
     k.pb.send({ t: 'buzz', armId: 2 });
-    k.tick(GRACE_MS);
+    k.tick(MAX_GRACE_MS);
     expect(k.hostAll('buzz')).toEqual([{ t: 'buzz', armId: 2, seatId: 'b', rank: 1, afterMs: 0 }]);
   });
 
@@ -629,7 +772,7 @@ describe('the race', () => {
     g.arm(2);
     g.pa.send({ t: 'buzz', armId: 1 });
     expect(g.pa.last('result')?.outcome).toBe('late');
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.hostLast('buzz')).toBeUndefined();
     expect(g.room.saved.state?.phase).toBe('armed');
   });
@@ -655,7 +798,7 @@ describe('the race', () => {
     const g = game();
     g.arm(1);
     g.pa.send({ t: 'buzz', armId: 1 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     g.arm(1, { scores: { a: 5 } }); // the host hadn't seen the buzz yet
     expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'a', scores: { a: 5 } });
     g.pb.send({ t: 'buzz', armId: 1 });
@@ -667,7 +810,7 @@ describe('the race', () => {
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 2, outcome: 'locked' });
     expect(g.pa.last('view')?.view.you?.lockedOut).toBe(true);
     g.pb.send({ t: 'buzz', armId: 2 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.pb.last('result')?.outcome).toBe('first');
     expect(g.hostLast('buzz')).toMatchObject({ armId: 2, seatId: 'b', rank: 1 });
   });
@@ -676,33 +819,45 @@ describe('the race', () => {
     const g = game();
     g.arm(1);
     g.pa.send({ t: 'buzz', armId: 1 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     g.send({ t: 'state', state: state({ phase: 'closed', armId: 1, clue: { text: 'Q?' } }) });
     g.pb.send({ t: 'buzz', armId: 1 });
     expect(g.pb.last('result')?.outcome).toBe('early');
   });
 
-  it('times each phone round trip itself: pong → sync, median of the last five, only for pongs it sent', () => {
+  it('times each phone round trip itself: probe → echo, a low one of the last five, only for probes it sent', () => {
     const g = game();
+    // Taking a seat sent a probe already; a phone that never echoes stays untimed.
+    expect(g.pa.last('probe')).toBeDefined();
     expect(g.room.rtt('pa')).toBeNull();
     for (const ms of [100, 30, 500, 60, 80, 90]) timeRtt(g, g.pa, ms);
-    expect(median([30, 500, 60, 80, 90])).toBe(80);
-    expect(g.room.rtt('pa')).toBe(80);
+    expect(lowRtt([30, 500, 60, 80, 90])).toBe(60);
+    expect(lowRtt([90, 30])).toBe(30);
+    expect(g.room.rtt('pa')).toBe(60);
     expect(g.phoneSaves.get('pa')?.rtts).toEqual([30, 500, 60, 80, 90]);
-    // A made-up or repeated serverNow is ignored (a phone can't pick its own round trip).
-    g.pa.send({ t: 'sync', serverNow: 1 });
+    // A phone pinging fast gets a probe at most every PROBE_GAP_MS.
+    g.pa.clear();
+    for (let i = 0; i < 10; i++) {
+      g.pa.send({ t: 'ping', at: i });
+      g.t.now += 50;
+    }
+    expect(g.pa.msgs().filter((m) => m.t === 'probe')).toHaveLength(2);
+    // A made-up or repeated id is ignored (a phone can't pick its own round trip), and so is the old pong → sync.
+    g.pa.send({ t: 'echo', id: 9999 });
+    g.t.now += PROBE_GAP_MS;
     g.pa.send({ t: 'ping', at: 2 });
-    const pong = g.pa.last('pong')!.serverNow;
+    const id = g.pa.last('probe')!.id;
+    g.pa.send({ t: 'sync', serverNow: g.pa.last('pong')!.serverNow });
     g.t.now += 5;
-    g.pa.send({ t: 'sync', serverNow: pong });
-    g.pa.send({ t: 'sync', serverNow: pong });
+    g.pa.send({ t: 'echo', id });
+    g.pa.send({ t: 'echo', id });
     expect(g.phoneSaves.get('pa')?.rtts).toEqual([500, 60, 80, 90, 5]);
-    // A stalled echo counts as MAX_RTT_MS at most.
+    // Echoes held back count as MAX_RTT_MS at most.
     for (let i = 0; i < 5; i++) timeRtt(g, g.pb, 5000);
-    expect(g.room.rtt('pb')).toBe(1000);
+    expect(g.room.rtt('pb')).toBe(MAX_RTT_MS);
     // The samples live on the socket, so a room woken from hibernation still has them.
     const h = setup(structuredClone(g.room.saved), [...g.phoneSaves.values()]);
-    expect(h.room.rtt('pa')).toBe(80);
+    expect(h.room.rtt('pa')).toBe(60);
   });
 });
 
@@ -720,7 +875,7 @@ describe('early buzzes', () => {
     expect(g.room.saved.state?.phase).toBe('armed');
     g.t.now += 800;
     g.pa.send({ t: 'buzz', armId: 1 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.pa.last('result')?.outcome).toBe('first');
   });
 
@@ -743,7 +898,7 @@ describe('early buzzes', () => {
     expect(g.pa.last('result')?.outcome).toBe('early');
     g.arm(1);
     g.pa.send({ t: 'buzz', armId: 1 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.pa.last('result')?.outcome).toBe('first');
   });
 });
@@ -808,7 +963,7 @@ describe('sending', () => {
     g.arm(1);
     g.room.hostClose();
     g.pb.send({ t: 'buzz', armId: 1, reactMs: 300 });
-    g.tick(GRACE_MS);
+    g.tick(MAX_GRACE_MS);
     expect(g.room.saved.state?.answering).toBe('b');
     const before = g.host.length;
     g.room.hostOpen();
@@ -820,7 +975,7 @@ describe('sending', () => {
     g.arm(2);
     g.room.hostClose();
     g.pc.send({ t: 'buzz', armId: 2, reactMs: 300 });
-    g.t.now += GRACE_MS + 50; // the timer never ran
+    g.t.now += MAX_GRACE_MS + 50; // the timer never ran
     g.room.hostOpen();
     expect(g.hostLast('buzz')).toMatchObject({ armId: 2, seatId: 'c', rank: 1 });
   });
@@ -842,7 +997,7 @@ describe('sending', () => {
     const h = setup(saved, phones);
     h.room.hostOpen();
     h.phoneOf('pc').send({ t: 'buzz', armId: 1 });
-    h.tick(GRACE_MS);
+    h.tick(MAX_GRACE_MS);
     expect(h.hostLast('buzz')).toMatchObject({ seatId: 'c', rank: 1 });
     expect(h.phoneOf('pa').last('view')?.view.answering?.name).toBe('Cat');
   });
@@ -928,6 +1083,55 @@ describe('untrusted input', () => {
     g.t.now += 1000;
     g.pa.send({ t: 'ping', at: 99 });
     expect(g.pa.last('pong')?.at).toBe(99);
+  });
+
+  it('a phone that keeps flooding is closed and its address kept out a while; one burst only drops messages', () => {
+    const g = game();
+    const p = g.phone('flood', '203.0.113.66');
+    // One second over the limit: the extra messages are dropped, the socket stays.
+    g.t.now += 1000;
+    for (let i = 0; i < 30; i++) expect(p.send({ t: 'ping', at: i })).toBeUndefined();
+    expect(p.msgs().filter((m) => m.t === 'pong')).toHaveLength(PHONE_RATE);
+    // A quiet second, then over the limit three seconds in a row: closed.
+    g.t.now += 1000;
+    p.send({ t: 'ping', at: 1 });
+    const answers: unknown[] = [];
+    for (let sec = 0; sec < 3; sec++) {
+      g.t.now += 1000;
+      for (let i = 0; i <= PHONE_RATE; i++) answers.push(p.send({ t: 'ping', at: i }));
+    }
+    expect(answers.at(-1)).toBe('close');
+    expect(answers.filter((x) => x === 'close')).toHaveLength(1);
+    expect(g.room.phoneCount).toBe(4 - 1);
+    expect(g.room.floodBlocked('203.0.113.66')).toBe(true);
+    expect(g.room.floodBlocked('198.51.100.1')).toBe(false);
+    expect(g.room.floodBlocked(undefined)).toBe(false);
+    g.t.now += FLOOD_BLOCK_MS;
+    expect(g.room.floodBlocked('203.0.113.66')).toBe(false);    // A burst far over the limit is closed at once.
+    const burst = g.phone('burst');
+    const got: unknown[] = [];
+    for (let i = 0; i <= FLOOD_BURST; i++) got.push(burst.send({ t: 'ping', at: i }));
+    expect(got.indexOf('close')).toBe(FLOOD_BURST);
+  });
+
+  it('too many bytes in a second closes a phone at once, before any of it is read', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 100;
+    g.pa.send({ t: 'buzz', armId: 1 });
+    const p = g.phone('big');
+    g.t.now += MAX_GRACE_MS; // the window is due, but its timer hasn't run
+    // Oversized messages are dropped unread: they don't even settle the race.
+    expect(g.room.phoneMessage('big', 'x'.repeat(4000))).toBeUndefined();
+    expect(g.room.saved.state?.phase).toBe('armed');
+    let r: unknown;
+    for (let i = 0; i < 10 && !r; i++) r = g.room.phoneMessage('big', 'x'.repeat(4000));
+    expect(r).toBe('close');
+    expect(4000 * 5).toBeGreaterThan(PHONE_BYTES);
+    expect(p.msgs().some((m) => m.t === 'pong')).toBe(false);
+    // The room still works for everyone else.
+    g.pb.send({ t: 'ping', at: 1 });
+    expect(g.room.saved.state?.answering).toBe('a');
   });
 
   it('rate-limits join attempts', () => {
