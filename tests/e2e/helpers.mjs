@@ -77,16 +77,29 @@ export async function openRules(page) {
 // ---------- Phone buzzers ----------
 
 /**
- * A phone's WebSocket, passed through Playwright: `delay` ms each way (a slow network), when each buzz reached the
- * server (`sent`), when each armed view reached the page (`armedAt`), and `rewrite` to change a buzz on its way.
+ * A page's WebSocket (a phone's, or the host's), passed through Playwright: `delay` ms each way (a slow network), when
+ * each buzz reached the server (`sent`), when each armed view reached the page (`armedAt`), and `rewrite` to change a
+ * buzz on its way. `drop()` cuts the connection (both ends see it close), `stall()` makes it go silent without closing
+ * (a phone asleep in the background), and `blocked` turns new connections away (the network is down).
  */
 export async function tap(page) {
-  const t = { delay: 0, sent: [], armedAt: {}, rewrite: null };
+  const t = { delay: 0, sent: [], armedAt: {}, rewrite: null, blocked: false, routes: [] };
+  t.drop = () => {
+    const r = t.routes.at(-1);
+    r.dead = true;
+    r.ws.close({ code: 1011, reason: 'dropped' }).catch(() => {});
+    r.server.close().catch(() => {});
+  };
+  t.stall = () => (t.routes.at(-1).dead = true);
   await page.routeWebSocket(/\/ws\//, (ws) => {
+    if (t.blocked) return void ws.close({ code: 1011, reason: 'offline' }).catch(() => {});
     const server = ws.connectToServer();
+    const route = { ws, server, dead: false };
+    t.routes.push(route);
     const later = (fn) => (t.delay ? setTimeout(fn, t.delay) : fn());
     const toServer = (m) =>
       later(() => {
+        if (route.dead) return;
         const j = JSON.parse(m);
         if (j.t === 'buzz') t.sent.push({ ...j, at: Date.now() });
         server.send(m);
@@ -98,6 +111,7 @@ export async function tap(page) {
     });
     server.onMessage((m) =>
       later(() => {
+        if (route.dead) return;
         const j = JSON.parse(String(m));
         if (j.t === 'view' && j.view.phase === 'armed') t.armedAt[j.view.armId] ??= Date.now();
         ws.send(m);

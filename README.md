@@ -120,7 +120,13 @@ on each player's own phone, so a slow connection doesn't cost anyone the buzz. E
 fastest first: a wrong answer locks that player out and opens the buzzers for the rest, **→ Next in line** gives the
 answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a
 tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
-see "🔔 Ann is answering" whenever one player is picked during a clue. The rooms run on a small buzzer server
+see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
+on (a Daily Double's player sees "you're up"), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
+player change seats. The room stays open through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
+with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream
+during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.
+**🔒 Lock seats** keeps new phones out, and a player whose seat you take back (✕) can't take it again for 2 minutes.
+The rooms run on a small buzzer server
 (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings › Buzzer server can point at your
 own. Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode
 on without it (you pick who answers); the setting stays with the game for a copy that has a server.

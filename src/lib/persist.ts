@@ -153,6 +153,25 @@ export const savePlay = (game: Game, session: Session) =>
   write('play', () => set(playKey, { game, session, savedAt: Date.now() } satisfies SavedPlay));
 export const clearPlay = () => safe(() => del(playKey));
 
+/**
+ * Phone buzzers: the room the pre-game screen opened, kept on its own (nothing else is saved before Start game), so a
+ * reload on the pre-game screen gets back into the same room with the same players, and a room left open while the
+ * host went back to the editor is picked up again by ▶ Play.
+ */
+export interface SavedRoom {
+  gameId: string;
+  remote: NonNullable<Session['remote']>;
+  /** The pre-game screen's players (sample players too) with their start scores. */
+  players: Session['players'];
+  /** Where the host was: on the pre-game screen, or back in the editor with the room left open. */
+  screen: 'pregame' | 'editor';
+  savedAt: number;
+}
+const roomKey = () => `${playKey}:room`;
+export const loadRoom = () => safe(() => get<SavedRoom>(roomKey()));
+export const saveRoom = (r: SavedRoom) => write('room', () => set(roomKey(), r));
+export const clearRoom = () => safe(() => del(roomKey()));
+
 /** Runs `fn` with the latest arguments once calls stop for `ms`. `flush()` runs a pending call now. */
 export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number) {
   let t: ReturnType<typeof setTimeout> | undefined;

@@ -20,6 +20,8 @@
     onadd,
     onreject,
     onkick,
+    onclose,
+    onlock,
   }: {
     session: Session;
     settings: GameSettings;
@@ -29,6 +31,9 @@
     onadd: (conn: string, name: string) => void;
     onreject: (conn: string) => void;
     onkick: (seatId: string) => void;
+    /** ✕ Close the room: the phones are told the game is over. */
+    onclose: () => void;
+    onlock: (on: boolean) => void;
   } = $props();
 
   const base = $derived(buzzerBase());
@@ -77,6 +82,7 @@
         <div class="row">
           <a href={link} target="_blank" rel="noreferrer" class="link">{link}</a>
           <button class="small" onclick={() => copyText(link, 'Join link copied: paste it in the Discord chat')}>📋 Copy link</button>
+          <button class="small ghost" onclick={onclose} title="Phones are told the game is over. (◀ Back to editor keeps the room open.)">✕ Close the room</button>
         </div>
         {#if remote.status === 'online'}
           <span class="muted small" role="status">{joined} of {session.players.length} players joined</span>
@@ -88,7 +94,7 @@
         {/if}
       </div>
     </div>
-    <PhoneList {session} {max} {onadd} {onreject} {onkick} />
+    <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} />
   {/if}
 </section>
 

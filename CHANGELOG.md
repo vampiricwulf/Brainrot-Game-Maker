@@ -26,7 +26,7 @@ done, the Unreleased lines move under that day's heading.
   (bde9ae8, 9920218)
 - **Ties**: buzzes within 0.01 s of each other are a tie and nobody is picked. The host panel says "Tie: Ann & Bo" with
   **🎲 Roll for it**: the tied players roll, and the roll sets who answers first, second… ("🎲 1st"). The host can
-  also just pick one. Tied phones say "Tie! The host is rolling for it", then "Tie — you rolled 2nd".
+  also just pick one. Tied phones say "Tie! The host decides who goes first", then "Tie — you rolled 2nd".
   (bde9ae8, 9920218)
 - **↺ Reset buzzers** in the host panel (or `0`): nobody is locked out of the clue any more and the buzzers open for
   everyone. (9920218)
@@ -43,6 +43,26 @@ done, the Unreleased lines move under that day's heading.
 - **The buzzer server limits new rooms**: 6 a minute from one address ("Too many new rooms — wait a minute") and 1000
   a day in all ("The buzzer server is busy today — try again tomorrow"), so nobody can use up its free daily quota.
   (bde9ae8)
+- **Phone buzzers keep the room through the pre-game screen**: reloading the app on the pre-game screen comes back to
+  it in the same room, with the same players, and the phones stay joined. **◀ Back to editor** keeps the room open too
+  (phones say "The host is setting up — hang on", and the editor shows which room is still open, with ✕ Close the
+  room); ▶ Play goes back into it. The room only closes with Exit / the end of the game, ✕ Close the room on the 📱
+  card, or turning Buzzer mode off. (9c17132, 885fe51, 5272947)
+- **🔒 Lock seats** (📱 card and chip): no new phone can take a seat or ask to join; players already in still come
+  back after a reload. A player whose seat the host takes back (✕) can't tap the same name again for 2 minutes (they
+  can take another free one). (9c17132, 885fe51, 5272947)
+- **The join code on stream during the game**: small, at the end of the score bar on the board and in a corner of clue
+  screens (never over the tiles), and on the cover card (K). On by default while a room is open; the pre-game screen's
+  On stream options can turn it off. (5272947)
+- **Phones say more**: who got the clue right ("Ann got it" / "You got it!") instead of "Get ready", what's going on
+  when there's nothing to buzz ("Daily Double: Ann", and "Daily Double — you're up!" on Ann's phone; who picks next;
+  the Final; an RPG or board game round; "The game starts soon"), the points symbol with the score ("Ann · −$200"),
+  and "The host's connection dropped" while the host is away. (9c17132, 885fe51, 5272947)
+- **Phones**: a short beep and a flash when BUZZ! lights up and when you're answering (iPhones have no vibration;
+  🔔 in the corner mutes it; no flash with reduced motion), and **Not you? Change player** under the buzzer to let go
+  of a seat tapped by mistake. (885fe51)
+- Someone asking to join from their phone pops up a note for the host (and a soft chime when the stream is in the
+  separate audience window), not only a number on the 📱 chip. (5272947)
 
 ### Changed
 - **The pre-game screen's Start game ▶ and ◀ Back to editor stay at the foot of the window** however long the page
@@ -196,6 +216,25 @@ done, the Unreleased lines move under that day's heading.
   none. A game whose Most players was below its player count (an older or hand-edited file: "6/4 players") opens with
   Most players raised to fit. The Round intro row lines up. (1d355db)
 - The players' ▲/▼ buttons say whose they are ("Move Bo up"), and 🔊 Sounds' ↺ says "Back to the built-in … sound". (1d355db)
+- **Phone buzzers**: a buzz won while the host's connection had dropped is picked up as soon as it's back (it used to
+  be lost: the phone said "You're answering!" while the host still showed the buzzers open). While the room can't be
+  reached, the host panel says phones can't buzz instead of "Buzzers open", and the 📱 chip says "Phones not
+  connected" instead of a stale count. (9c17132, 885fe51, 5272947)
+- **Phone buzzers**: open pages that just sit there (viewers, extra tabs) no longer fill the room and lock real
+  players out with "This game is full": the longest idle one makes way, a player coming back to their seat always
+  gets in, a phone turned away tries again by itself, and the host's 📱 list says "Room full". (9c17132, 885fe51, 5272947)
+- **Phones**: a request to join survives a dropped connection (it used to wait forever); asking when the host isn't
+  taking new players says so and leaves the name form; phones held sideways fit the screen without breaking words in
+  the middle; a phone back from the background checks its connection at once, and a buzz shows "Sending…" until the
+  room answers (it reconnects if it doesn't); losing a seat says why (removed, or taken back on another tab or phone);
+  screen readers hear every change and can press the buzzer; a room code with vowels says codes have none.
+  (885fe51)
+- **Phone buzzers**: names typed on phones lose invisible and direction-changing characters, and someone can't ask to
+  join under a player's name (the host also never adds a second "Ann": it's "Ann 2"). Long names end in "…" instead
+  of being cut mid-word. A game too big for the room says so instead of the phones going quiet. The host sees plain
+  reasons when it loses the room ("This buzzer room has ended", "open in another window") instead of "no such room" or
+  "replaced". The buzzer server limits how fast one address can look up rooms or connect, so nobody can try every code
+  to find live games. (9c17132, 885fe51, 5272947)
 - Later boards no longer keep doubling their values; long category names aren't cut off; the Daily Double count is
   capped at the playable tiles; a blank row value keeps its old value and negatives read −$100; a stat preset can't be
   added twice; focus goes to the new round after ＋ Add round; the rules' checkboxes don't shrink. (46f2a13)

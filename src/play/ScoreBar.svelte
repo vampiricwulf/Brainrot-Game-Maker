@@ -12,6 +12,7 @@
     host = false,
     lit,
     ticks = [],
+    reserve = 0,
   }: {
     game: Game;
     session: Session;
@@ -24,6 +25,8 @@
     lit?: string | null;
     /** Players with a ✔ on their plate (their Final wager is in). */
     ticks?: string[];
+    /** Room kept free at the right end (px), for the phone buzzers' join code. */
+    reserve?: number;
   } = $props();
   const sym = $derived(game.settings.currencySymbol);
   const litId = $derived(lit === undefined ? session.currentPickerId : lit);
@@ -32,7 +35,7 @@
   const nameSize = (name: string) => (name.length > 16 ? 28 : name.length > 11 ? 32 : 36);
 </script>
 
-<div class="bar">
+<div class="bar" style:padding-right={reserve ? `${24 + reserve}px` : undefined}>
   {#each session.players as p (p.id)}
     {@const s = score(session, p.id)}
     <button

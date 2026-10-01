@@ -75,6 +75,7 @@
     onsound,
     oncloseoverlay,
     onopenbuzzers,
+    phonesDown = '',
     buzzExtra,
     phoneChip,
   }: {
@@ -156,6 +157,8 @@
     oncloseoverlay: () => void;
     /** Buzzer mode: open the buzzers (U), or for everyone (`all`, 0). */
     onopenbuzzers?: (all?: boolean) => void;
+    /** Buzzer mode with no buzzer room to reach: why phones can't buzz (said instead of "Buzzers open"). */
+    phonesDown?: string;
     /** Buzzer mode: what phones add to the buzzer row (later buzzes, the phones' status). */
     buzzExtra?: Snippet;
     /** Phone buzzers: the "📱 3/4" chip (its list of phones). */
@@ -504,8 +507,13 @@
       </button>
       {#if buzzing}
         <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. -->
+        {#if phonesDown && !selected.length && buzz?.phase !== 'answering'}
+          <span class="phones-down" role="status">{phonesDown}</span>
+        {/if}
         {#if buzz?.phase === 'armed' && !selected.length}
-          <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
+          {#if !phonesDown}
+            <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
+          {/if}
         {:else if !(buzz?.phase === 'answering' || selected.length)}
           <button class="primary" onclick={() => onopenbuzzers?.()} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           <span class="muted hint">Buzzers closed (number keys still pick)</span>
@@ -712,6 +720,10 @@
   }
   .hint {
     font-size: 12px;
+  }
+  .phones-down {
+    font-size: 12px;
+    color: var(--warn);
   }
   .notes {
     background: var(--panel-2);

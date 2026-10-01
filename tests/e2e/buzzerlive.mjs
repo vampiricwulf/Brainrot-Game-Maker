@@ -82,6 +82,8 @@ try {
     } catch {}
   }, base);
   const host = watch(await hostCtx.newPage(), 'host');
+  // The host's line to the room, passed through Playwright so the test can cut it.
+  const hostTap = await tap(host);
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
   await playWithPlayers(host, 2);
@@ -117,9 +119,45 @@ try {
   const press = (p) => p.locator('#buzz').dispatchEvent('pointerdown');
   const selected = () => host.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts();
 
+  // ---------- The pre-game screen's room survives a reload, and going back to the editor ----------
+  await small(p1).getByText('The game starts soon').waitFor();
+  await host.reload();
+  await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  await card.locator(`[aria-label="Room code ${code}"]`).waitFor();
+  await card.getByText('2 of 2 players joined').waitFor();
+  assert(true, 'a reload on the pre-game screen comes back to it, in the same room, the phones still joined');
+  await host.getByRole('button', { name: '◀ Back to editor' }).click();
+  const bar = host.locator('.room-bar');
+  await bar.waitFor();
+  assert((await bar.innerText()).includes(code), `◀ Back to editor keeps the room open (the editor says "The buzzer room ${code} is still open")`);
+  await small(p1).getByText('The host is setting up — hang on').waitFor();
+  assert((await big(p1).innerText()) === 'Player 1', 'the phones stay in their seats: "The host is setting up — hang on"');
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await card.locator(`[aria-label="Room code ${code}"]`).waitFor();
+  await card.getByText('2 of 2 players joined').waitFor();
+  await small(p2).getByText('The game starts soon').waitFor();
+  assert(true, '▶ Play goes back into the same room: same code, both phones still joined');
+
   // ---------- A clue: closed, then opened with U ----------
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
+  // The join code, small, in a corner of the stream: on the board, at the end of the score bar, never over a tile.
+  const badge = host.locator('.stage-box .join-badge');
+  await badge.waitFor();
+  const clash = await host.evaluate(() => {
+    const b = document.querySelector('.stage-box .join-badge').getBoundingClientRect();
+    const hit = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.left < b.right && b.left < r.right && r.top < b.bottom && b.top < r.bottom;
+    };
+    return [...document.querySelectorAll('.stage-box .board .tile, .stage-box .plate')].filter(hit).length;
+  });
+  if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-live-board.png` });
+  assert((await badge.innerText()).includes(code) && clash === 0, 'the join code shows in a corner of the stream during the game, over no tile or score plate');
+  await host.keyboard.press('k');
+  await host.locator('.stage-box .cover-join').getByText(code).waitFor();
+  await host.keyboard.press('k');
+  assert(true, 'and on the cover card (K)');
   await host.locator('.stage-box .board .tile').first().click();
   await big(p1).getByText('Get ready…').waitFor();
   assert(true, 'opening a clue tells the phones to get ready (buzzers still closed)');
@@ -160,8 +198,11 @@ try {
   await big(p2).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   await host.keyboard.press('Enter');
-  await p2.locator('#me').getByText('Player 2 · 0').waitFor();
+  await p2.locator('#me').getByText('Player 2 · $0').waitFor();
   assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');
+  await big(p2).getByText('You got it!').waitFor();
+  await big(p1).getByText('Player 2 got it').waitFor();
+  assert((await small(p1).innerText()) === 'Wait for the next clue', 'right: "Player 2 got it" on the other phone, "You got it!" on theirs (not "Get ready…")');
 
   // ---------- A tie: 🎲 Roll for it sets who answers first ----------
   await host.keyboard.press('Escape');
@@ -175,7 +216,7 @@ try {
   await press(p2);
   await host.getByText('Tie: Player 1 & Player 2').waitFor();
   await big(p1).getByText('Tie!').waitFor();
-  assert((await small(p2).innerText()) === 'The host is rolling for it', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host is rolling for it"');
+  assert((await small(p2).innerText()) === 'The host decides who goes first', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"');
   await host.getByRole('button', { name: '🎲 Roll for it' }).click();
   const won = await Promise.race([p1, p2].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
   const [rollWin, rollSecond] = won === 0 ? [p1, p2] : [p2, p1];
@@ -186,11 +227,37 @@ try {
   assert(true, 'the host panel queue shows the roll order (🎲 1st, 🎲 2nd)');
   await host.keyboard.press('Escape');
 
+  // ---------- The host's connection drops with the buzzers open ----------
+  // (Esc again, back to the board, if the first one only closed the roll.)
+  for (let i = 0; i < 3 && !(await host.locator('.stage-box .board .tile').count()); i++) {
+    await host.keyboard.press('Escape');
+    await host.waitForTimeout(300);
+  }
+  await host.locator('.stage-box .board .tile').nth(2).click();
+  await big(p1).getByText('Get ready…').waitFor();
+  await host.keyboard.press('u');
+  await big(p1).getByText('BUZZ!').waitFor();
+  await big(p2).getByText('BUZZ!').waitFor();
+  hostTap.blocked = true;
+  hostTap.drop();
+  await p1.locator('#host-note').waitFor();
+  await host.locator('.phones-down').getByText('Phones not connected').waitFor();
+  await host.getByRole('button', { name: '📱 ⚠ Phones not connected' }).waitFor();
+  assert(true, "the host's line drops: phones are told, and the host panel says phones can't buzz (no stale \"Buzzers open\" or 2/2)");
+  await press(p1);
+  await big(p1).getByText("You're answering!").waitFor();
+  hostTap.blocked = false;
+  await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')), null, { timeout: 30_000 });
+  await small(p2).getByText('Player 1 is answering').waitFor();
+  await p1.locator('#host-note').waitFor({ state: 'hidden' });
+  assert(true, 'back online, the host picks the player who buzzed while it was away');
+  await host.keyboard.press('Escape');
+
   // ---------- Exit ends the room ----------
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Leave', exact: true }).click();
-  await p1.getByText('The game is over').waitFor();
+  await p1.locator('main').getByText('The game is over').waitFor();
   assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, 'Exit closes the room: phones say the game is over');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);

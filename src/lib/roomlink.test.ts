@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUZZ_PROTOCOL, type HostState } from './buzzproto';
-import { parseNewRoom, parseRoomMsg, retryDelay, RoomLink, PING_MS, SILENT_MS, STATE_MS, type LinkDeps, type SocketLike } from './roomlink';
+import { closedText, parseNewRoom, parseRoomMsg, retryDelay, RoomLink, PING_MS, SILENT_MS, STATE_MS, type LinkDeps, type SocketLike } from './roomlink';
 
 class FakeSocket implements SocketLike {
   readyState = 0;
@@ -250,6 +250,38 @@ describe('RoomLink', () => {
     expect(link.error).toBe('No such room');
     t.advance(60_000);
     expect(sockets.length).toBe(1);
+  });
+
+  it('says why the room turned the host away in plain words, not the server\'s', async () => {
+    expect(closedText(4004, 'no such room')).toMatch(/^This buzzer room has ended/);
+    expect(closedText(4000, 'replaced')).toMatch(/open in another window/);
+    expect(closedText(4003, 'wrong host token')).toMatch(/start a new one$/);
+    expect(closedText(4999, 'weird')).toBe('The buzzer room is closed: start a new one');
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].drop(4004, 'no such room');
+    expect(link.error).toMatch(/^This buzzer room has ended/);
+  });
+
+  it('passes "room full" on; end() closes a room it was never in', async () => {
+    expect(parseRoomMsg(JSON.stringify({ t: 'full', extra: 1 }))).toEqual({ t: 'full' });
+    sockets = [];
+    const t = fakeDeps();
+    let full = 0;
+    const link = new RoomLink('https://buzz.test', { onFull: () => full++ }, t.deps);
+    await link.create();
+    sockets[0].open();
+    sockets[0].say(welcome);
+    sockets[0].say({ t: 'full' });
+    expect(full).toBe(1);
+    const old = new RoomLink('https://buzz.test', {}, t.deps);
+    old.end({ code: 'GHJK', hostToken: 'old' });
+    sockets[1].open();
+    sockets[1].say({ ...welcome, code: 'GHJK' });
+    expect(sockets[1].sent).toEqual([{ t: 'close' }]);
+    expect(old.status).toBe('off');
   });
 
   it('close() tells the room and stops; nothing reconnects after', async () => {

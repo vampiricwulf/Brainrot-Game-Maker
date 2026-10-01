@@ -1,9 +1,9 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import type { BuzzPhase, HostState } from './buzzproto';
-import { categoryLabel, formatPoints, type Game, type Id, type Session, type Slide, type TextEl } from './model';
-import { currentClueInfo, score } from './session';
+import { clip, type BuzzPhase, type HostState } from './buzzproto';
+import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type Session, type Slide, type TextEl } from './model';
+import { currentClueInfo, currentFinal, score } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -15,6 +15,9 @@ export interface BuzzState {
   lockedOut: Id[];
   /** Phone buzzers: a tie the host rolled for, in roll order (answering first). Dropped by any other change. */
   rollOrder?: Id[];
+  /** Answered right: the clue is over (phones say who got it, not "Get ready"). Dropped by any other change. */
+  done?: boolean;
+  doneBy?: Id | null;
 }
 
 export function newBuzz(armId = 0): BuzzState {
@@ -60,7 +63,7 @@ export function buzzMissed(b: BuzzState, id: Id, players: Id[]): BuzzState {
 
 /** Answered right: the buzzers close for this clue (0 opens them again). */
 export function buzzDone(b: BuzzState): BuzzState {
-  return { phase: 'closed', armId: b.armId, answering: null, lockedOut: [...b.lockedOut] };
+  return { phase: 'closed', armId: b.armId, answering: null, lockedOut: [...b.lockedOut], done: true, doneBy: b.answering };
 }
 
 /** The question slide's words, for the phones: text boxes only, top to bottom, none hidden from viewers. */
@@ -74,15 +77,64 @@ export function questionText(s: Slide | undefined): string {
     .slice(0, 500);
 }
 
+/** The phones' status line while the host is back in the editor with the room kept open. */
+export const SETTING_UP = 'The host is setting up — hang on';
+
+/**
+ * A short line for the phones about what's on screen when nobody buzzes: the round starting, who picks, a Daily Double
+ * (its player sees "you're up"), a Final, an RPG or board game round, the end. Null during an ordinary clue.
+ */
+export function phoneStatus(game: Game, session: Session, pregame = false): HostState['status'] {
+  if (pregame) return { text: 'The game starts soon' };
+  const nameOf = (id?: Id | null) => (id ? session.players.find((p) => p.id === id)?.name : undefined);
+  const round = game.rounds[session.currentRound];
+  if (session.phase === 'clue' && session.dd) {
+    const id = session.dd.playerId;
+    const who = nameOf(id);
+    return who && id ? { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' } : { text: 'Daily Double!' };
+  }
+  if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
+  switch (session.phase) {
+    case 'board': {
+      const id = session.currentPickerId;
+      const who = nameOf(id);
+      return who && id ? { text: `${who} picks the next clue`, seats: [id], seatsText: 'Your pick! Tell the host which clue' } : null;
+    }
+    case 'final': {
+      const f = currentFinal(session, game);
+      const n = f ? finalName(f) : 'Final';
+      return { text: session.finalStep === 'wagers' ? `${n}: time to wager` : n };
+    }
+    case 'rpg':
+    case 'boardgame':
+      return round ? { text: roundName(round, session.currentRound) } : null;
+    case 'tiebreaker':
+      return { text: 'Tiebreaker!' };
+    case 'end':
+      return { text: 'Game over: thanks for playing!' };
+  }
+  return null;
+}
+
+/** A player's name as the phones get it (the room takes 40 characters at most). */
+export const SEAT_NAME_MAX = 40;
+
 /**
  * What the buzzer room gets: the players, scores and the buzzers' state, and while a clue is open its question's words
  * and caption. Built here only, from a whitelist: never answers, host notes, media or the game's other content.
+ * `extra`: the phones' status line (phoneStatus) and 🔒 locked seats.
  */
-export function hostState(game: Game, session: Session, b: BuzzState, earlyLockMs: number): HostState {
+export function hostState(
+  game: Game,
+  session: Session,
+  b: BuzzState,
+  earlyLockMs: number,
+  extra: { status?: HostState['status']; locked?: boolean } = {},
+): HostState {
   const info = b.phase !== 'lobby' && session.phase === 'clue' ? currentClueInfo(session, game) : null;
-  const seats = session.players.map((p) => ({ id: p.id, name: p.name, color: p.color }));
+  const seats = session.players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color }));
   return {
-    title: game.title,
+    title: clip(game.title, 200),
     seats,
     allowNew: !!game.settings.phoneJoin,
     phase: b.phase,
@@ -93,5 +145,32 @@ export function hostState(game: Game, session: Session, b: BuzzState, earlyLockM
     lockedOut: b.phase === 'lobby' ? [] : b.lockedOut.filter((id) => seats.some((s) => s.id === id)),
     earlyLockMs,
     scores: Object.fromEntries(session.players.map((p) => [p.id, score(session, p.id)])),
+    // Added later (an older room drops them).
+    ...(b.phase === 'closed' && b.done ? { done: { by: b.doneBy && seats.some((s) => s.id === b.doneBy) ? b.doneBy : null } } : {}),
+    ...(extra.status?.text ? { status: extra.status } : {}),
+    ...(game.settings.currencySymbol ? { currency: game.settings.currencySymbol } : {}),
+    ...(extra.locked ? { locked: true } : {}),
+  };
+}
+
+/**
+ * The room's state while the host is back in the editor with the room left open (after a reload there, when there's no
+ * game on to build it from): the pre-game players in the lobby, and "The host is setting up — hang on".
+ */
+export function setupState(game: Game, players: Session['players'], armId: number, earlyLockMs: number, locked = false): HostState {
+  return {
+    title: clip(game.title, 200),
+    seats: players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color })),
+    allowNew: !!game.settings.phoneJoin,
+    phase: 'lobby',
+    armId,
+    clue: null,
+    answering: null,
+    lockedOut: [],
+    earlyLockMs,
+    scores: Object.fromEntries(players.map((p) => [p.id, p.startScore ?? 0])),
+    status: { text: SETTING_UP },
+    ...(game.settings.currencySymbol ? { currency: game.settings.currencySymbol } : {}),
+    ...(locked ? { locked: true } : {}),
   };
 }

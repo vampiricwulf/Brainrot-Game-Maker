@@ -118,7 +118,7 @@ try {
   });
   assert(gone === 4004, `so is a host for a room that doesn't exist (${gone})`);
 
-  const host = await connectHost(room.code, room.hostToken);
+  let host = await connectHost(room.code, room.hostToken);
   assert((await host.wait((m) => m.t === 'welcome', 'welcome')).code === room.code, 'the host is welcomed');
   const seats = [
     { id: 'a', name: 'Ann', color: '#e5484d' },
@@ -134,8 +134,8 @@ try {
 
   browser = await chromium.launch({ executablePath });
   const taps = new Map();
-  const phone = async (label, width = 360) => {
-    const ctx = await browser.newContext({ viewport: { width, height: 740 }, hasTouch: true, isMobile: true });
+  const phone = async (label, width = 360, height = 740) => {
+    const ctx = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: true });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push(`[${label}] ${e.message}`));
     pages.push([label, page]);
@@ -176,7 +176,7 @@ try {
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
   await dee.getByLabel('Your name').fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
-  await dee.getByText('Waiting for the host to let you in…').waitFor();
+  await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
   await shot(bob, 'lobby');
   const pend = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee waiting');
   const deeConn = pend.phones.find((p) => p.pendingName === 'Dee').conn;
@@ -189,7 +189,7 @@ try {
 
   // A clue opens, buzzers closed: Bob buzzes early and is locked out for a moment.
   setState({ phase: 'closed', clue: { text: 'This planet is red' } });
-  await ann.getByText('This planet is red').waitFor();
+  await ann.locator('main').getByText('This planet is red').waitFor();
   assert((await big(ann).innerText()) === 'Get ready…', 'phones show the clue and "Get ready…"');
   await bob.keyboard.press('Space');
   await big(bob).getByText('Too early').waitFor();
@@ -269,7 +269,7 @@ try {
   const tied = await host.wait((m) => m.t === 'queue' && m.armId === 4 && m.tie, 'the tie');
   assert(tied.tie.slice().sort().join() === 'a,d', 'buzzes with the same reaction time tie: the host is told, nobody is picked');
   await big(ann).getByText('Tie!').waitFor();
-  assert((await small(dee).innerText()) === 'The host is rolling for it', 'tied phones say "Tie! The host is rolling for it"');
+  assert((await small(dee).innerText()) === 'The host decides who goes first', 'tied phones say "Tie! The host decides who goes first"');
   await shot(ann, 'tie');
   setState({ phase: 'answering', armId: 4, answering: 'd', rollOrder: ['d', 'a'] });
   await big(dee).getByText("You're answering!").waitFor();
@@ -291,20 +291,166 @@ try {
   const bobSaved = await bob.evaluate((k) => localStorage.getItem(k), key);
   assert(!!bobSaved && JSON.parse(bobSaved).seatId === 'b', "Bob's phone keeps its seat token");
   host.send({ t: 'kick', seatId: 'b' });
-  await bob.getByText('The host took your seat back').waitFor();
+  await bob.locator('main').getByText('The host took your seat back').waitFor();
   await bob.getByRole('button', { name: 'Pick a seat' }).click();
   await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isEnabled(), "kicked: Bob's seat is free again");
   // Even a phone that missed the kick (offline) can't come back with the old token.
   await bob.evaluate(([k, v]) => localStorage.setItem(k, v), [key, bobSaved]);
   await bob.reload();
-  await bob.getByText('Your seat was given back. Tap your name again.').waitFor();
+  await bob.locator('main').getByText('Your seat was given back. Tap your name again.').waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isEnabled(), 'the revoked token is refused; Bob picks again');
+  // A kicked phone can't just tap the same name again (a troll with the code from the stream), even after a reload.
+  await bob.getByRole('button', { name: 'Bob' }).click();
+  await bob.locator('#seats-note').getByText('The host took you off that seat').waitFor();
+  assert(true, 'kicked: tapping the same name again is refused for a while ("The host took you off that seat…")');
+
+  // 🔒 Lock seats: nobody new gets a seat.
+  setState({ locked: true });
+  await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor();
+  assert(await bob.getByRole('button', { name: 'Bob' }).isDisabled(), '🔒 seats locked: free seats are greyed out');
+  assert(await bob.getByRole('button', { name: "＋ I'm new" }).isHidden(), '🔒 and nobody can ask to join');
+  setState({ locked: false });
+  await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor({ state: 'hidden' });
+
+  // A status line when nobody buzzes: the Daily Double's player sees their own words.
+  setState({ status: { text: 'Daily Double: Ann', seats: ['a'], seatsText: "Daily Double — you're up!" } });
+  await small(ann).getByText("Daily Double — you're up!").waitFor();
+  await small(dee).getByText('Daily Double: Ann').waitFor();
+  assert(true, 'a status line: "Daily Double — you\'re up!" for Ann, "Daily Double: Ann" for the others');
+  setState({ status: null });
+
+  // The host's connection drops with the buzzers open: phones are told, the race goes on, and the host hears who won
+  // once it's back.
+  setState({ phase: 'armed', armId: 6, clue: { text: 'Q6' }, answering: null, lockedOut: [] });
+  await big(dee).getByText('BUZZ!').waitFor();
+  await dee.locator('#flash.on').waitFor({ state: 'attached' });
+  assert(true, 'the screen flashes when BUZZ! lights up');
+  host.close();
+  await dee.locator('#host-note').waitFor();
+  assert(true, "phones see that the host's connection dropped");
+  await press(dee);
+  await big(dee).getByText("You're answering!").waitFor();
+  host = await connectHost(room.code, room.hostToken);
+  await host.wait((m) => m.t === 'welcome', 'welcome again');
+  const missed = await host.wait((m) => m.t === 'buzz' && m.armId === 6 && m.rank === 1, 'the buzz it missed');
+  assert(missed.seatId === 'd', 'back, the host hears the buzz it missed (Dee won while it was away)');
+  setState({});
+  await dee.locator('#host-note').waitFor({ state: 'hidden' });
+  assert((await big(dee).innerText()) === "You're answering!", 'the winner stands, and the note goes once the host is back');
+
+  // Right: the phones say who got it, not "Get ready"; pressing now is no early buzz.
+  setState({ phase: 'closed', answering: null, done: { by: 'd' } });
+  await big(ann).getByText('Dee got it').waitFor();
+  await big(dee).getByText('You got it!').waitFor();
+  await press(ann);
+  await sleep(400);
+  assert((await big(ann).innerText()) === 'Dee got it', 'a right answer: "Dee got it" / "You got it!", and a press then is no early buzz');
+  setState({ phase: 'lobby', clue: null, done: null });
+
+  // "Not you?": Dee lets go of her seat and taps her name again.
+  await dee.getByRole('button', { name: 'Not you? Change player' }).click();
+  await dee.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  assert(await dee.getByRole('button', { name: 'Dee' }).isEnabled(), '"Not you? Change player" frees the seat');
+  await dee.getByRole('button', { name: 'Dee' }).click();
+  await big(dee).getByText('Dee').waitFor();
+
+  // Waiting for the host to let her in, Eve's connection drops: her phone asks again by itself.
+  const eve = await phone('eve');
+  await eve.goto(`${base}/${room.code}`);
+  await eve.getByRole('button', { name: "＋ I'm new" }).click();
+  await eve.getByLabel('Your name').fill('Eve');
+  await eve.getByRole('button', { name: 'Ask to join' }).click();
+  const ask1 = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Eve'), 'Eve asking');
+  const eveConn = ask1.phones.find((p) => p.pendingName === 'Eve').conn;
+  taps.get(eve).drop();
+  const ask2 = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Eve' && p.conn !== eveConn), 'Eve asking again', 15_000);
+  await eve.locator('main').getByText('Waiting for the host to let you in…').waitFor();
+  assert(true, 'a request to join survives a dropped connection (the phone asks again; the host still sees Eve)');
+  host.send({ t: 'reject', conn: ask2.phones.find((p) => p.pendingName === 'Eve').conn });
+  await eve.locator('#seats-note').getByText("The host didn't let you in.").waitFor();
+
+  // A phone back from the background with a socket that looks open but is dead: it checks, and starts again.
+  const catTap2 = taps.get(cat);
+  catTap2.delay = 0;
+  let routes = catTap2.routes.length;
+  catTap2.stall();
+  await cat.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  for (let i = 0; i < 40 && catTap2.routes.length === routes; i++) await sleep(250);
+  assert(catTap2.routes.length > routes, 'back from the background, a dead connection is noticed in seconds and replaced');
+  await big(cat).getByText('Cat').waitFor();
+  // A buzz the room never answers: "Sending…", then it starts again at once.
+  setState({ phase: 'armed', armId: 7, clue: { text: 'Q7' }, answering: null, lockedOut: [] });
+  await big(cat).getByText('BUZZ!').waitFor();
+  routes = catTap2.routes.length;
+  catTap2.stall();
+  await press(cat);
+  await small(cat).getByText('Sending…').waitFor();
+  for (let i = 0; i < 40 && catTap2.routes.length === routes; i++) await sleep(250);
+  assert(catTap2.routes.length > routes, 'a buzz the room never answered shows "Sending…", and the phone reconnects');
+  setState({ phase: 'lobby', clue: null });
+
+  // 24 open pages that do nothing (viewers, extra tabs) don't lock a real player out: the longest idle one makes way.
+  await bob.close();
+  await eve.close();
+  const idle = [];
+  for (let i = 0; i < 24; i++) {
+    const w = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}`);
+    const x = { w, msgs: [], closed: new Promise((ok) => w.addEventListener('close', (e) => ok(e.code))) };
+    w.addEventListener('message', (e) => x.msgs.push(JSON.parse(e.data)));
+    idle.push(x);
+    await new Promise((ok) => w.addEventListener('open', ok, { once: true }));
+  }
+  await sleep(10_500);
+  setState({ seats: [...hs.seats, { id: 'f', name: 'Fay', color: '#aa00aa' }, { id: 'g', name: 'Gus', color: '#00aaaa' }] });
+  const fay = await phone('fay');
+  await fay.goto(`${base}/${room.code}`);
+  await fay.getByRole('button', { name: 'Fay' }).click();
+  await big(fay).getByText('Fay').waitFor();
+  assert(true, "24 idle open pages don't lock out a real player: Fay gets her seat");
+  for (let i = 0; i < 30 && idle[0].w.readyState < 2; i++) await sleep(100);
+  assert(idle[0].w.readyState >= 2 && idle[0].msgs.some((m) => m.t === 'denied' && m.reason === 'full'), 'the longest idle page made way (told "full": it tries again later)');
+  await host.wait((m) => m.t === 'full', 'room full');
+  assert(true, 'the host is told the room is full');
+  for (const x of idle) x.w.close();
+
+  // A phone held sideways: the button fits, the score shows, and words never break in the middle.
+  const gus = await phone('gus', 740, 360);
+  await gus.goto(`${base}/${room.code}`);
+  await gus.getByRole('button', { name: 'Gus' }).click();
+  await big(gus).getByText('Gus').waitFor();
+  setState({ phase: 'answering', armId: 8, clue: { text: 'A clue long enough to wrap onto a second line on a phone held sideways' }, answering: 'g' });
+  await big(gus).getByText("You're answering!").waitFor();
+  const fits = await gus.evaluate(() => {
+    const inside = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5;
+    };
+    // Every word on one line: a word whose text spans two line boxes was broken mid-word.
+    const broken = [];
+    for (const id of ['buzz-big', 'buzz-small']) {
+      const node = document.getElementById(id).firstChild;
+      const text = node?.textContent ?? '';
+      for (const m of text.matchAll(/\S+/g)) {
+        const r = document.createRange();
+        r.setStart(node, m.index);
+        r.setEnd(node, m.index + m[0].length);
+        const tops = new Set([...r.getClientRects()].map((x) => Math.round(x.top)));
+        if (tops.size > 1) broken.push(m[0]);
+      }
+    }
+    return { buzz: inside(document.getElementById('buzz')), me: inside(document.getElementById('me')), broken, wide: document.documentElement.scrollWidth > innerWidth };
+  });
+  await sleep(500); // after the flash
+  const png = await gus.screenshot({ path: process.env.SCREENSHOTS ? `${process.env.SCREENSHOTS}/buzzer-landscape.png` : undefined });
+  assert(fits.buzz && fits.me && !fits.wide && png.length > 1000, 'held sideways (740×360): the button and the score fit on screen, nothing overflows');
+  assert(!fits.broken.length, `held sideways: no word is broken in the middle (${fits.broken.join(', ') || 'none'})`);
+  setState({ phase: 'lobby', clue: null, answering: null });
 
   // The host closes the room.
   host.send({ t: 'close' });
-  await ann.getByText('The game is over').waitFor();
-  await dee.getByText('The game is over').waitFor();
+  await ann.locator('main').getByText('The game is over').waitFor();
+  await dee.locator('main').getByText('The game is over').waitFor();
   assert((await fetch(`${base}/api/rooms/${room.code}`)).status === 404, 'closing ends the room for everyone');
 
   // New rooms are limited: 6 a minute from one address (here a made-up one: wrangler dev takes CF-Connecting-IP as
@@ -321,6 +467,12 @@ try {
   assert(statuses.join() === '200,200,200,200,200,200,429', `the 7th new room in a minute from one address is refused (${statuses.join()})`);
   assert(refused.body.error === 'Too many new rooms — wait a minute' && refused.cors === '*', 'with a 429 the app can read: "Too many new rooms — wait a minute"');
   assert((await fetch(`${base}/api/rooms`, { method: 'POST' })).status === 200, 'another address can still make one');
+  // Looking codes up is limited too (60 a minute), so a script can't try them all to find live rooms.
+  const s2 = new Date().getSeconds();
+  if (s2 > 50) await sleep((61 - s2) * 1000);
+  const looks = [];
+  for (let i = 0; i < 61; i++) looks.push((await fetch(`${base}/api/rooms/BCDF`, { headers: { 'CF-Connecting-IP': '203.0.113.9' } })).status);
+  assert(looks.slice(0, 60).every((s) => s !== 429) && looks[60] === 429, `the 61st room lookup in a minute from one address is refused (${looks.at(-1)})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Buzzer room E2E passed.');

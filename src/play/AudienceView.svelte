@@ -135,6 +135,20 @@
     heard = c.nonce;
     cueNow = !c.at || Date.now() - c.at < 4000 ? c.nonce : null;
   });
+  /**
+   * Phone buzzers: the join code in a corner while the room is open (unless the host turned it off), kept off the board's
+   * tiles: on the board it sits at the end of the score bar (none without one); on clue slides and title cards in the
+   * bottom-right corner (the caption is bottom-left); not over a Final, RPG or board game round, the Daily Double splash
+   * or the results.
+   */
+  const codeSpot = $derived.by((): 'bar' | 'corner' | null => {
+    if (!live.room || stream?.hideJoinCode || live.pregame) return null;
+    if (introName || (session.phase === 'board' && session.intro?.stage === 'title')) return 'corner';
+    if (session.phase === 'board') return layout.score ? 'bar' : null;
+    if (session.phase === 'clue') return session.dd?.stage === 'splash' ? null : 'corner';
+    if (session.phase === 'tiebreaker') return 'corner';
+    return null;
+  });
   const ties = $derived(tiedLeaders(session));
   /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
   const tieOpen = $derived(!!ties.length && !session.coWinners);
@@ -210,7 +224,9 @@
         <Board {game} {session} {onpick} {ontilemenu} />
       </div>
       {#if layout.score}
-        <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px"><ScoreBar {game} {session} {onpicker} host={!!onact} /></div>
+        <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">
+          <ScoreBar {game} {session} {onpicker} host={!!onact} reserve={codeSpot === 'bar' ? 230 : 0} />
+        </div>
       {/if}
       {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
     </div>
@@ -370,12 +386,26 @@
   {/each}
 </div>
 
+{#if codeSpot && live.room}
+  <div
+    class="join-badge"
+    class:on-bar={codeSpot === 'bar'}
+    style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : undefined}
+  >
+    <span class="jb-how">📱 Buzz in</span>
+    <span class="jb-code">{live.room.code}</span>
+  </div>
+{/if}
+
 <!-- Panic button: viewers see only the cover card (the host's copy shows it faded, to keep working underneath). -->
 {#if live.cover}
   <div class="cover" class:host={role === 'mirror'}>
     <div class="cover-in">
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
       <div class="cover-card"><span class="pause" aria-hidden="true"></span>{stream?.coverText?.trim() || 'Be right back'}</div>
+      {#if live.room && !stream?.hideJoinCode}
+        <div class="cover-join">📱 Buzz from your phone: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -404,6 +434,43 @@
     display: grid;
     place-items: center;
     background: radial-gradient(circle, var(--tile-light), #000);
+  }
+  .cover-join {
+    font: 44px 'Inter', sans-serif;
+    color: #fff;
+    text-shadow: 3px 3px 0 #000;
+  }
+  .cover-join b {
+    letter-spacing: 0.12em;
+  }
+  /* The join code, small, in a corner (or at the end of the score bar on the board). */
+  .join-badge {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.1;
+    pointer-events: none;
+  }
+  .join-badge.on-bar {
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+  .jb-how {
+    font-size: 22px;
+  }
+  .jb-code {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
   }
   .cover.host {
     opacity: 0.35;
