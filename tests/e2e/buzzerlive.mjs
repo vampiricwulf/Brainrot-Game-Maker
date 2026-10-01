@@ -152,6 +152,7 @@ try {
     };
     return [...document.querySelectorAll('.stage-box .board .tile, .stage-box .plate')].filter(hit).length;
   });
+  if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-live-board.png` });
   assert((await badge.innerText()).includes(code) && clash === 0, 'the join code shows in a corner of the stream during the game, over no tile or score plate');
   await host.keyboard.press('k');
   await host.locator('.stage-box .cover-join').getByText(code).waitFor();

@@ -441,6 +441,7 @@ try {
     }
     return { buzz: inside(document.getElementById('buzz')), me: inside(document.getElementById('me')), broken, wide: document.documentElement.scrollWidth > innerWidth };
   });
+  await sleep(500); // after the flash
   const png = await gus.screenshot({ path: process.env.SCREENSHOTS ? `${process.env.SCREENSHOTS}/buzzer-landscape.png` : undefined });
   assert(fits.buzz && fits.me && !fits.wide && png.length > 1000, 'held sideways (740×360): the button and the score fit on screen, nothing overflows');
   assert(!fits.broken.length, `held sideways: no word is broken in the middle (${fits.broken.join(', ') || 'none'})`);
