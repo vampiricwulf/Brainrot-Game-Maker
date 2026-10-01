@@ -4,7 +4,9 @@ import { newLive } from '../../lib/live';
 import { newBoardGameRound } from '../../lib/boardgame';
 import { goToRound, newSession } from '../../lib/session';
 import { newWheel } from '../../lib/tools';
-import { undoAction } from '../../lib/toolset';
+import { redoAction, undoAction } from '../../lib/toolset';
+import { runAction } from '../../lib/actions';
+import type { Action } from '../../lib/model';
 import { reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 
 describe('board game: the round’s mover', () => {
@@ -122,5 +124,46 @@ describe('board game: the host’s moves on the stage', () => {
     // One Undo takes the lot back.
     undoAction(session, game);
     expect(session.scoreLog).toEqual([]);
+  });
+
+  it('moves players by some spaces, makes them miss turns and lets them roll again, each undoable', () => {
+    const { game, session, round, bs } = playing();
+    const run = (a: Action, chosen: string[] = []) =>
+      runAction({ game, session, live: newLive(), board: round, bs: bs(), selected: [], chosen }, a);
+    // Ann is on Start; forward 3 then back 1 (unset who: whoever's turn it is).
+    expect(run({ id: '1', do: 'steps', steps: 3 })).toBe('Forward 3 spaces: Ann · Landed on Space 4');
+    expect(bs().positions.a).toEqual({ space: round.spaces[3].id });
+    run({ id: '2', do: 'steps', steps: -1, who: 'party' });
+    expect(bs().positions.a).toEqual({ space: round.spaces[2].id });
+    // Back past Start goes round the loop.
+    run({ id: '3', do: 'steps', steps: -2, who: 'ask' }, ['b']);
+    expect(bs().positions.b).toEqual({ space: round.spaces[10].id });
+    undoAction(session, game);
+    expect(bs().positions.b).toEqual({ space: round.spaces[0].id });
+    redoAction(session, game);
+    expect(bs().positions.b).toEqual({ space: round.spaces[10].id });
+
+    // Bob misses his next turn: Ann's ends, and it's Cat's.
+    expect(run({ id: '4', do: 'skip', who: 'ask' }, ['b'])).toBe('Skip next turn: Bob');
+    turnNow(game, session);
+    expect(bs().order[bs().turn]).toBe('c');
+    expect(session.actionLog?.at(-1)?.text).toBe("Cat's turn (Bob skips a turn)");
+    expect(bs().skips).toBeUndefined();
+    // Undoing the turn puts the skip back.
+    undoAction(session, game);
+    expect([bs().order[bs().turn], bs().skips]).toEqual(['a', { b: 1 }]);
+    turnNow(game, session);
+
+    // Cat rolls again: Next turn stays with her, once.
+    expect(run({ id: '5', do: 'again' })).toBe('Roll again: Cat');
+    turnNow(game, session);
+    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', "Cat's turn again"]);
+    turnNow(game, session);
+    expect(bs().order[bs().turn]).toBe('a');
+  });
+
+  it('only runs the board-game actions in a board-game round', () => {
+    const { game, session } = playing();
+    expect(runAction({ game, session, live: newLive(), selected: ['a'] }, { id: 'x', do: 'skip' })).toBe('This works only in board-game rounds');
   });
 });
