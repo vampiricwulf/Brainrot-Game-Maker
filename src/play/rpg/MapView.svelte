@@ -22,6 +22,7 @@
     big = false,
     fit = false,
     picked = null,
+    near,
     onmenu,
     onmove,
   }: {
@@ -39,6 +40,8 @@
     fit?: boolean;
     /** A screen the host picked (outlined). */
     picked?: ScreenRef | null;
+    /** The host's minimap: a map bigger than this shows only this many cells, around where the party is. */
+    near?: { cols: number; rows: number };
     /** Host: a screen was right-clicked. */
     onmenu?: (e: MouseEvent, ref: ScreenRef, screen: Screen) => void;
     /** Host: the players on a screen were dragged onto another one. */
@@ -52,9 +55,18 @@
   /** Screens by cell, per map (big maps look each cell up once instead of searching the list). */
   const cells = $derived(new Map(maps.map((m) => [m.id, new Map(m.screens.map((s) => [`${s.col},${s.row}`, s]))])));
   /** The cells each map draws: viewers see the part they know (and a cell around it), the host all of it. */
-  const areas = $derived(
-    new Map(maps.map((m) => [m.id, (audience ? mapCrop(st, m) : null) ?? { col: 0, row: 0, cols: m.cols, rows: m.rows }])),
-  );
+  const areas = $derived(new Map(maps.map((m) => [m.id, (audience ? mapCrop(st, m) : nearby(m)) ?? { col: 0, row: 0, cols: m.cols, rows: m.rows }])));
+
+  /** The minimap's window on a big map: `near` cells around the party's screen, kept on the map. */
+  function nearby(m: WorldMap) {
+    const at = focus?.map === m.id ? m.screens.find((s) => s.id === focus.screen) : undefined;
+    if (!near || !at || (m.cols <= near.cols && m.rows <= near.rows)) return null;
+    const cols = Math.min(near.cols, m.cols);
+    const rows = Math.min(near.rows, m.rows);
+    const col = Math.max(0, Math.min(m.cols - cols, at.col - Math.floor(cols / 2)));
+    const row = Math.max(0, Math.min(m.rows - rows, at.row - Math.floor(rows / 2)));
+    return { col, row, cols, rows };
+  }
   const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
   /** Players by screen. */
   const byScreen = $derived.by(() => {
@@ -126,13 +138,17 @@
 
   /** The host's map is one Tab stop: the screen the party is on (else the first), or the one last focused. */
   let roving = $state<Record<string, string>>({});
-  const tabTo = (m: WorldMap) =>
-    roving[m.id] && m.screens.some((s) => s.id === roving[m.id]) ? roving[m.id] : focus?.map === m.id ? focus.screen : m.screens[0]?.id;
+  function tabTo(m: WorldMap, box: { col: number; row: number; cols: number; rows: number }): string | undefined {
+    const shown = (s: Screen) => s.col >= box.col && s.row >= box.row && s.col < box.col + box.cols && s.row < box.row + box.rows;
+    const ok = (id: string | undefined) => !!id && m.screens.some((s) => s.id === id && shown(s));
+    const party = focus?.map === m.id ? focus.screen : undefined;
+    return ok(roving[m.id]) ? roving[m.id] : ok(party) ? party : m.screens.find(shown)?.id;
+  }
 
   const KEY_STEP: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
   /** The arrow keys go to the next screen that way on the host's map (skipping empty cells). */
-  function gridKey(e: KeyboardEvent, m: WorldMap): void {
+  function gridKey(e: KeyboardEvent, m: WorldMap, box: { col: number; row: number; cols: number; rows: number }): void {
     const d = KEY_STEP[e.key];
     const t = e.target as HTMLElement;
     if (!d || !t.dataset.screen || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -142,7 +158,7 @@
     for (;;) {
       c += d[0];
       r += d[1];
-      if (c < 0 || r < 0 || c >= m.cols || r >= m.rows) return;
+      if (c < box.col || r < box.row || c >= box.col + box.cols || r >= box.row + box.rows) return;
       const next = cells.get(m.id)?.get(`${c},${r}`);
       if (next) {
         roving[m.id] = next.id;
@@ -162,7 +178,7 @@
   <!-- (Then none: the other maps would read as "you are here".) -->
   {#each focusHidden ? [] : maps as m (m.id)}
     {@const box = areas.get(m.id) ?? { col: 0, row: 0, cols: m.cols, rows: m.rows }}
-    {@const tab = onpick ? tabTo(m) : undefined}
+    {@const tab = onpick ? tabTo(m, box) : undefined}
     <div class="map">
       <div class="title">{m.name}</div>
       <div class="area">
@@ -173,7 +189,7 @@
           style:--ratio={(box.cols * 16) / (box.rows * 9)}
           style:--rows={box.rows}
           role="presentation"
-          onkeydown={onpick ? (e) => gridKey(e, m) : undefined}
+          onkeydown={onpick ? (e) => gridKey(e, m, box) : undefined}
         >
           {#each range(box.row, box.rows) as r (r)}
             {#each range(box.col, box.cols) as c (c)}

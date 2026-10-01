@@ -460,7 +460,7 @@
           <!-- With a screen picked, just ⤢: its buttons need the room. -->
           <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map">⤢{picked && pickedFound ? '' : ' Full map'}</button>
         </div>
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} />
+        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit near={{ cols: 7, rows: 5 }} {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} />
       </div>
 
       <div class="side">
