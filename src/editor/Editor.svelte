@@ -32,7 +32,7 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate, type Problem } from '../lib/validate';
-  import { arriving, history, mark, onApplied, redo, step, undo } from '../lib/history.svelte';
+  import { arriving, history, mark, onApplied, onApplying, redo, step, undo } from '../lib/history.svelte';
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
@@ -73,21 +73,33 @@
     } else if (place.tab !== 'title') tab = place.tab;
   }
 
-  // The round on screen stays on screen when an undo puts back (or takes away) a round before it; when it takes away
-  // the round itself, its neighbour shows (as when it's deleted).
-  let shownRound: string | undefined;
-  $effect(() => {
-    shownRound = typeof tab === 'number' ? game.rounds[tab]?.id : undefined;
-  });
-  onMount(() =>
-    onApplied((e, dir, via) => {
-      const i = game.rounds.findIndex((r) => r.id === shownRound);
-      if (typeof tab === 'number') tab = i >= 0 ? i : Math.max(0, Math.min(tab, game.rounds.length - 1));
+  // The round on screen stays on screen when an undo puts back (or takes away) a round before it. When an undo takes
+  // away the round itself (one added or duplicated), the round before it shows: for a copy, its original. When a redo
+  // takes it away (deleted again), its neighbour shows, as when it was deleted. A round's tab in focus keeps the focus
+  // on its round, or on the one shown in its place.
+  /** The round shown and the round tab in focus (with their places) just before an undo or redo changes the rounds. */
+  let before: { shown?: string; focused?: string; at: number; focusedAt: number } = { at: -1, focusedAt: -1 };
+  onMount(() => {
+    const offApplying = onApplying(() => {
+      const tabs = [...document.querySelectorAll<HTMLElement>('nav .round-tab')];
+      const focusedAt = tabs.findIndex((t) => t === document.activeElement);
+      const at = typeof tab === 'number' ? tab : -1;
+      before = { shown: game.rounds[at]?.id, focused: game.rounds[focusedAt]?.id, at, focusedAt };
+    });
+    const offApplied = onApplied((e, dir, via) => {
+      const near = (at: number) => Math.max(0, Math.min(dir < 0 ? at - 1 : at, game.rounds.length - 1));
+      const where = (id: string | undefined, at: number) => {
+        const i = game.rounds.findIndex((r) => r.id === id);
+        return i >= 0 ? i : near(at);
+      };
+      if (typeof tab === 'number') tab = where(before.shown, before.at);
+      if (before.focusedAt >= 0) focusRoundTab(game.rounds[where(before.focused, before.focusedAt)]?.id);
       // Then on to where it changed (the History tab shows it in its list).
       const place = dir < 0 ? e.undoPlace : e.place;
       if (via !== 'list' && tab !== 'history' && place) goTo(place, itemIdsIn(e.ops));
-    }),
-  );
+    });
+    return () => (offApplying(), offApplied());
+  });
 
   /** Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last. */
   function addRound(mode: RoundMode): void {
@@ -493,8 +505,8 @@
               showMenu(e, [
                 { heading: roundName(round, i) },
                 { label: '✎ Rename', onclick: () => (renamingRound = round.id), keys: 'F2 or double-click' },
-                { label: '◀ Move earlier', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-                { label: 'Move later ▶', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
+                { label: '▲ Move up', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+                { label: '▼ Move down', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
                 { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
                 { sep: true },
                 { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), keys: 'Delete' },

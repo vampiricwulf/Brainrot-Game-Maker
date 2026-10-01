@@ -165,6 +165,7 @@ let swaps: BlobSwap[] = [];
 let pruning: ReturnType<typeof setTimeout> | undefined;
 const PRUNE_MS = 5000;
 
+const applyingFns = new Set<() => void>();
 const appliedFns = new Set<(e: HistoryEntry, dir: 1 | -1, via: Via) => void>();
 const notifyFns = new Set<(e: HistoryEntry) => void>();
 
@@ -338,6 +339,7 @@ export function keepLimits(): void {
 
 /** Apply steps to the game (backward to undo). False when one couldn't be: the history starts again from here. */
 function apply(list: HistoryEntry[], dir: 1 | -1): boolean {
+  for (const fn of applyingFns) fn();
   let gone = false;
   try {
     for (const e of list) {
@@ -518,6 +520,15 @@ export function toSave(rev: string): { history: SavedHistory; steps: StoredStep[
 export function clear(): void {
   commit();
   restart({ kind: 'cleared', label: 'History cleared' });
+}
+
+/**
+ * Called just before an undo, redo or jump is applied, while the page still shows the game as it was (applying one
+ * updates the page at once). Returns the unsubscribe.
+ */
+export function onApplying(fn: () => void): () => void {
+  applyingFns.add(fn);
+  return () => applyingFns.delete(fn);
 }
 
 /** Called after an undo, redo or jump is applied. Returns the unsubscribe. */

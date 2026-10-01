@@ -47,8 +47,8 @@ try {
   // TV rule for this one: players with $0 sit it out.
   await page.getByLabel('Players with a score of 0 or less can play it').uncheck();
   await page.getByLabel('Category').fill('Snacks');
-  await page.getByRole('button', { name: '◀ Move earlier' }).click();
-  await page.getByRole('button', { name: '◀ Move earlier' }).click();
+  await page.getByRole('button', { name: '▲ Move up' }).click();
+  await page.getByRole('button', { name: '▲ Move up' }).click();
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'rounds can be moved (a Final in the middle of the game)');
   assert((await page.locator('.ra .mode').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'), 'the round bar shows the mode and position');
   await page.locator('.se .canvas .hit').first().click();
@@ -58,6 +58,25 @@ try {
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Midgame Wager (copy)|Double Jeopardy!|Final Jeopardy!', 'Duplicate puts a copy right after the round');
   await page.getByRole('button', { name: 'Delete round' }).click();
   assert((await roundNames()).length === 4, 'Delete round removes it (after asking)');
+  // Undoing a duplicate shows the original again, and its tab keeps the focus (the copy's tab is gone).
+  const roundTab = (name) => page.locator('nav > button.round-tab', { hasText: new RegExp(`${name}$`) });
+  const activeTab = () => page.locator('nav > button.round-tab.active').innerText();
+  const tabFocused = (name) => roundTab(name).evaluate((e) => e === document.activeElement);
+  await roundTab('Midgame Wager').click();
+  await page.keyboard.press('Control+d');
+  assert((await activeTab()).endsWith('Midgame Wager (copy)') && (await tabFocused('Midgame Wager \\(copy\\)')), 'Ctrl+D on a round’s tab shows the copy, its tab in focus');
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(100);
+  assert((await roundNames()).length === 4 && (await activeTab()).endsWith('Midgame Wager') && (await tabFocused('Midgame Wager')), 'undoing it shows the original, its tab in focus');
+  await page.keyboard.press('Control+y');
+  await page.waitForTimeout(100);
+  assert((await activeTab()).endsWith('Midgame Wager (copy)'), 'redoing it shows the copy again');
+  await page.keyboard.press('Control+z');
+  // The tabs are a vertical list: their menu moves a round up or down.
+  await roundTab('Midgame Wager').click({ button: 'right' });
+  const tabMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(['▲ Move up', '▼ Move down'].every((x) => tabMenu.some((t) => t.startsWith(x))), `a round tab’s menu says ▲ Move up / ▼ Move down (${tabMenu.join(', ')})`);
+  await page.keyboard.press('Escape');
 
   // Play: board → Final in the middle → board → Final → end.
   await page.getByRole('button', { name: '⚙ Setup & Players' }).click();
