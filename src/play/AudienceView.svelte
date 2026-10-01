@@ -456,7 +456,7 @@
       in:fly={{ y: barTop ? -60 : 60, duration: 250 }}
       out:fade
     >
-      {#if p.who}<span class="who">{p.who}</span><span class="amt">{p.amount}</span>{:else}<span class="who">{p.text}</span>{/if}
+      {#if p.who}<span class="who">{p.who}</span> <span class="amt">{p.amount}</span>{:else}<span class="who">{p.text}</span>{/if}
     </div>
   {/each}
 </div>
@@ -944,12 +944,14 @@
   }
   /* A long name gives way ("…"); the points always show. */
   .who {
-    min-width: 0;
+    display: inline-block;
+    max-width: 1400px;
     overflow: hidden;
     text-overflow: ellipsis;
+    vertical-align: bottom;
   }
-  .amt {
-    flex: none;
+  .anchored .who {
+    max-width: 280px;
   }
   .on-bar .pop.anchored {
     bottom: 0;
@@ -978,8 +980,6 @@
     white-space: nowrap;
   }
   .pop {
-    display: flex;
-    gap: 0.3em;
     max-width: 100%;
     box-sizing: border-box;
     white-space: nowrap;

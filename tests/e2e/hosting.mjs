@@ -116,7 +116,7 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(150);
   assert((await focused()) === 'Category 2 for $200, played', `after the clue, the keys go on from its tile (${await focused()})`);
-  assert((await tile(1).getAttribute('tabindex')) === '-1', 'a played tile is out of the Tab order');
+  assert((await stage('.board .tile:not([tabindex="-1"])').count()) === 1, 'the board is one Tab stop (a roving tabindex)');
   await page.keyboard.press('ArrowDown');
   assert((await focused()) === 'Category 2 for $400', `↓ moves down the board (${await focused()})`);
   await page.keyboard.press('ArrowLeft');
