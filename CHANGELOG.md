@@ -194,6 +194,14 @@ done, the Unreleased lines move under that day's heading.
   file of the same id in the browser's storage.
 - Pasting a round twice names them "Adventure (copy)" and "Adventure (copy 2)", and a template added twice is
   "Jeopardy! (2)".
+- **↔ Move ±N spaces**: typing a negative number turns the move round ("-4" going forward is back 4) instead of
+  quietly saving 1 while the box kept showing "-4"; the box always shows what's kept. "Miss 1 turn" no longer says
+  "turn(s)".
+- A board game's movement dice (or a wheel) no longer stays on stream over the next round's title card.
+- With this browser's storage full, the Save first / Discard question says Discard loses the game (it can't be kept
+  in Recent games), and doesn't ask a second time.
+- The Export HTML button's tip no longer says to share the file with players: it's the host's copy and shows the
+  answers.
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

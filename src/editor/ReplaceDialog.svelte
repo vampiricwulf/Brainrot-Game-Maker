@@ -3,7 +3,8 @@
   import { modal } from '../lib/modal';
   import type { ReplaceChoice } from '../lib/recent';
 
-  let { heading, title, onchoice }: { heading: string; title: string; onchoice: (c: ReplaceChoice) => void } = $props();
+  /** full: this browser's storage is full or blocked, so a discarded game can't be kept in Recent games. */
+  let { heading, title, full = false, onchoice }: { heading: string; title: string; full?: boolean; onchoice: (c: ReplaceChoice) => void } = $props();
 </script>
 
 <svelte:window
@@ -22,7 +23,11 @@
       <button class="ghost modal-x" onclick={() => onchoice('cancel')} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <p>“{title}” has changes that aren't saved to a file.</p>
-    <p class="muted small">Discard keeps it in this browser for a while: Open… → Recent games brings it back.</p>
+    {#if full}
+      <p class="warn small">This browser's storage is full, so Discard loses it: Save first to keep it.</p>
+    {:else}
+      <p class="muted small">Discard keeps it in this browser for a while: Open… → Recent games brings it back.</p>
+    {/if}
     <div class="row end">
       <button class="primary" data-autofocus onclick={() => onchoice('save')}>Save first</button>
       <button onclick={() => onchoice('discard')}>Discard</button>
@@ -53,6 +58,9 @@
   }
   p {
     margin: 0;
+  }
+  .warn {
+    color: var(--warn, #f5b041);
   }
   .small {
     font-size: 12px;

@@ -304,11 +304,14 @@
 
   /** Counts the questions asked, so an older one answered late doesn't close a newer one. */
   let asked = 0;
+  /** Discard was picked while told that storage is full (so the game is lost): replaceGame doesn't ask again. */
+  let lossAccepted = false;
 
   /** May this game be replaced? Asks when it has changes not saved to a file (and saves it first if told to). */
   async function mayReplace(heading: string): Promise<boolean> {
     // Typing not yet made a step (it becomes one after a pause) counts as a change too.
     commit();
+    lossAccepted = false;
     if (!hasWork(game) || savedSinceChange()) return true;
     // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
     asking?.answer('cancel');
@@ -316,6 +319,7 @@
     const choice = await new Promise<ReplaceChoice>((answer) => (asking = { heading, title: game.title.trim() || 'Untitled Game', answer }));
     if (mine === asked) asking = null;
     if (choice === 'save') return save();
+    lossAccepted = choice === 'discard' && !app.storageOk;
     return choice === 'discard';
   }
 
@@ -331,6 +335,7 @@
       const title = old.title.trim() || 'Untitled Game';
       if (
         !kept &&
+        !lossAccepted &&
         !(await ask(`“${title}” couldn't be kept in Recent games (this browser's storage is full or blocked), so it would be lost. Replace it anyway?`, {
           ok: 'Replace it',
           cancel: 'Keep it',
@@ -619,7 +624,7 @@
     >
       <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}
     </button>
-    <button onclick={exportHtml} disabled={exporting} title="A single player-only HTML file with everything inside. Share it and double-click to play.">
+    <button onclick={exportHtml} disabled={exporting} title="One HTML file to host this game from, with everything inside (it shows the answers: keep it to yourself)">
       <span aria-hidden="true">⬇</span> {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : 'Export HTML'}
     </button>
     <span class="spacer"></span>
@@ -677,7 +682,7 @@
       onclose={() => (recentList = null)}
     />
   {/if}
-  {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} onchoice={asking.answer} />{/if}
+  {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} full={!app.storageOk} onchoice={asking.answer} />{/if}
   {#if naming}<NameDialog onname={naming} />{/if}
   {#if previous}
     {@const prev = previous}

@@ -228,7 +228,7 @@
     return () => (app.onAir = false);
   });
   // An RPG round's question (a new screen's name…), its object card and a board game's space card are for that round
-  // only, and so are a shop, a player's sheet or an object's pop-up on the stage: they don't follow into the next round.
+  // only, and so are a shop, a player's sheet, an object's pop-up, dice or a wheel on the stage: they don't follow into the next round.
   $effect(() => {
     void session.currentRound;
     rpgAsk = null;
@@ -236,7 +236,7 @@
     bgSpace = null;
     untrack(() => {
       const k = app.live.overlay?.kind;
-      if (k === 'shop' || k === 'sheet' || k === 'popup') app.live.overlay = null;
+      if (k === 'shop' || k === 'sheet' || k === 'popup' || k === 'dice' || k === 'wheel') app.live.overlay = null;
     });
   });
   /** The round's party or turn order takes in the players added or removed. */
