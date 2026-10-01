@@ -4,7 +4,7 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
+  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
@@ -1550,6 +1550,8 @@
 
   function start(): void {
     if (!session.players.length) return;
+    // A name left blank (or only spaces, or invisible characters) would be an empty plate on stream.
+    session.players.forEach((p, i) => blankName(p.name) && (p.name = `Player ${i + 1}`));
     // (The players are kept with the game as they're changed here: see keepRoster.)
     // A picture chosen for a player here was stored in the editor's game: the game being played gets it too.
     for (const p of session.players) {
@@ -2324,7 +2326,7 @@
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. The page's main part, named
        by the game's title (for screen readers). -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <main class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt}>
+  <main class="play" class:hidden={hideControls} class:side class:dual class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt}>
     <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
@@ -2603,6 +2605,8 @@
   }
   .pregame h1 {
     margin: 0;
+    /* A title that's one long word breaks rather than push the page sideways. */
+    overflow-wrap: anywhere;
   }
   .pregame h1:focus {
     outline: none;
@@ -2701,6 +2705,15 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+  }
+  /* One window: exactly the window's height, never scrolling (that would take the stage out of sight on a short or
+     scaled-up screen). The stage keeps its floor; the host panel under it scrolls instead. (With an audience window
+     the panel's menus pop up over the stage preview, so it isn't clipped there.) */
+  .play:not(.dual) {
+    overflow: hidden;
+  }
+  .play:not(.dual):not(.side) > :global(.panel) {
+    overflow: auto;
   }
   .stage-area {
     flex: 1;

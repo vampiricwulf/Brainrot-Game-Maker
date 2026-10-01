@@ -10,7 +10,7 @@
 {#key player.id}
   <div class="plate" style:--c={player.color} in:fly={{ y: -60, duration: 250 }} out:fly={{ y: -60, duration: 200 }}>
     <span class="bell" aria-hidden="true">🔔</span>
-    <span class="name" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
+    <span class="name" dir="auto" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
     <span>is answering</span>
   </div>
 {/key}

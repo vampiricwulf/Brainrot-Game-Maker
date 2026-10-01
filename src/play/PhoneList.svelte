@@ -43,7 +43,7 @@
     {@const ph = phoneOf(p.id)}
     <li style:--c={p.color}>
       <span class="dot" aria-hidden="true"></span>
-      <span class="name">{p.name}</span>
+      <span class="name" dir="auto">{p.name}</span>
       {#if ph?.connected}
         <span class="ok">✔ joined</span>
       {:else if ph}

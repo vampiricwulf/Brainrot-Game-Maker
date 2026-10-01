@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { roundName, type Game, type ScoreEvent, type Session } from '../lib/model';
+  import { formatPoints, roundName, type Game, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
   import { nameList, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
@@ -53,7 +53,7 @@
   const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const name = (id: string) => (byId[id] ? byId[id].name + (removed.has(id) ? ' (removed)' : '') : '(removed player)');
   /** "+$200", "−$200", or "$0" (a Final judgment with nothing wagered). */
-  const amount = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${sym}${Math.abs(d).toLocaleString()}`;
+  const amount = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${formatPoints(Math.abs(d), sym)}`;
   /** A Final judgment says which it was. */
   const judged = (e: ScoreEvent) => (e.right === undefined ? '' : e.right ? ' ✔' : ' ✘');
 

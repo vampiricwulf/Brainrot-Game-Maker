@@ -156,10 +156,14 @@ try {
   await row1.fill('');
   await row1.press('Tab');
   assert((await row1.inputValue()) === '200' && (await page.locator('.tile .val').first().innerText()).startsWith('$200'), 'a row value left blank keeps its value');
+  // Whole points, 0 or more (like a clue's own value).
   await row1.fill('-100');
   await row1.press('Tab');
   const neg = await page.locator('.tile .val').first().innerText();
-  assert(neg.startsWith('−$100'), `a negative value reads like the score bar (${neg})`);
+  assert(neg.startsWith('$0') && (await row1.inputValue()) === '0', `a row value can't be negative (${neg})`);
+  await row1.fill('250.6');
+  await row1.press('Tab');
+  assert((await row1.inputValue()) === '251', 'a row value is whole points');
   await row1.fill('200');
   await row1.press('Tab');
   const dd = page.getByLabel('How many Daily Doubles');

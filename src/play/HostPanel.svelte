@@ -3,7 +3,7 @@
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
   import { takeFocus } from '../lib/modal';
-  import { categoryLabel, finalName, formatPoints, isBoard, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -244,8 +244,9 @@
   }
 
   function commitScore(id: string, value: string): void {
-    const n = Number(value);
-    if (value.trim() !== '' && Number.isFinite(n)) {
+    // (Whole points, within what reads on screen.)
+    const n = wholePoints(Number(value));
+    if (value.trim() !== '' && n !== null) {
       setScore(session, id, n);
       announce(`${session.players.find((p) => p.id === id)?.name ?? 'Player'} now ${formatPoints(n, sym)}`);
     }
@@ -453,10 +454,10 @@
               title="Toggle (key {i + 1})"
             >
               <span class="key">{i + 1}</span>
-              {p.name}
+              <span class="who" dir="auto" title={p.name}>{p.name}</span>
             </button>
           {:else}
-            <span class="sel name">{p.name}</span>
+            <span class="sel name"><span class="who" dir="auto" title={p.name}>{p.name}</span></span>
           {/if}
           {#if editingScore === p.id}
             <!-- svelte-ignore a11y_autofocus -->
@@ -505,7 +506,7 @@
         Amount
         <input
           type="number"
-          bind:value={amount}
+          bind:value={() => amount, (v) => (amount = wholePoints(v))}
           onkeydown={(e) => {
             // Give the keys back to the shortcuts afterwards, so the next "2" selects a player instead of typing.
             if (e.key === 'Enter') {
@@ -549,7 +550,7 @@
     {#if session.phase === 'clue' && !ddWager}
       {#if !toolOnly}
         <!-- A clue just opened: the focus is here (not lost on the tile that went away). -->
-        <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)" use:takeFocus>
+        <button class:primary={!session.revealed} onclick={onreveal} title="R (press again to hide)" use:takeFocus={{ preventScroll: true }}>
           {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
         </button>
       {/if}
@@ -759,6 +760,16 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  /* Under the stage on a short window, many players' chips scroll in their own box (a row stays in sight): the buttons
+     under them stay in the window, and the page never scrolls the stage away. */
+  .panel:not(.side) > .players {
+    flex-shrink: 1000;
+    min-height: 48px;
+    overflow: auto;
+    /* (Room for a selected chip's ring.) */
+    padding: 2px;
+    margin: -2px;
+  }
   .p {
     display: flex;
     align-items: center;
@@ -779,6 +790,15 @@
   }
   .sel.name {
     padding: 6px 12px;
+  }
+  /* A very long name ends in "…", so its row never runs past the panel. */
+  .who {
+    display: inline-block;
+    max-width: 14em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
   }
   .key {
     font-size: 12px;

@@ -689,7 +689,9 @@ function renderBuzz(v: PhoneView): void {
   }
   b.setAttribute('aria-label', sentences([big, spoken ?? small]));
   const sym = v.currency ?? '';
-  $('me').textContent = `${you.name} · ${you.score < 0 ? '−' : ''}${sym}${Math.abs(you.score).toLocaleString()}`;
+  // (As the game shows it: a word like "pts" goes after the number, $ or 🧠 in front.)
+  const pts = Math.abs(you.score).toLocaleString();
+  $('me').textContent = `${you.name} · ${you.score < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
   const hostGone = v.hostHere === false;
   $('host-note').hidden = !hostGone;
   say(sentences([connected ? '' : 'Reconnecting…', big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));

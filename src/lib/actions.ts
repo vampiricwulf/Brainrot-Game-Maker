@@ -1,6 +1,6 @@
 // Running actions (games-maker spec §7.10): the host pressed an object's, item's or wheel slice's button. State
 // changes go through toolset.logged() (undoable); show-only effects (wheels, pop-ups, sounds, timers) go to Live.
-import { newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type Game, type Session, type Who, type World, type WorldState } from './model';
+import { formatPoints, newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type Game, type Session, type Who, type World, type WorldState } from './model';
 import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
 import { blip, playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
@@ -84,7 +84,7 @@ export function describeAction(game: Game, a: Action): string {
     case 'item':
       return `${a.op === 'give' ? 'Give' : 'Take'} ${a.qty} ${itemDef(game, a.item)?.name ?? 'item'}`;
     case 'score':
-      return `${a.amount >= 0 ? '+' : '−'}${game.settings.currencySymbol}${Math.abs(a.amount)}`;
+      return `${a.amount >= 0 ? '+' : '−'}${formatPoints(Math.abs(a.amount), game.settings.currencySymbol)}`;
     case 'wheel': {
       const name = (id: string) => (id === PLAYER_WHEEL ? 'Pick a player' : (game.wheels.find((w) => w.id === id)?.name ?? 'wheel'));
       return `Spin ${[a.wheel, ...(a.also ?? [])].map(name).join(' + ')}`;

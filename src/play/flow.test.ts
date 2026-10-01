@@ -6,7 +6,7 @@ import {
 import { cuesAfter, MAX_CUES, type SoundCue } from '../lib/live';
 import { finalNextStep, logged, revealStep, undoAction, redoAction } from '../lib/toolset';
 import { jeopardyGame } from '../lib/testgame';
-import { groupPops, plateCenter, stopsTimer } from './flow';
+import { groupPops, plateCenter, plateScore, stopsTimer } from './flow';
 
 function setup(players = 3) {
   const game = jeopardyGame();
@@ -63,6 +63,13 @@ describe('score pops', () => {
     expect(plateCenter(8, 7)).toBeCloseTo(1920 - 24 - p8 / 2);
     // Room kept for the join code at the right moves them left.
     expect(plateCenter(8, 7, 230)).toBeLessThan(plateCenter(8, 7));
+  });
+
+  it('a plate shows the whole score when it fits, else a short one (never cut in the middle)', () => {
+    expect(plateScore(999_999_999, '$', 3)).toBe('$999,999,999');
+    expect(plateScore(12_400, '$', 12)).toBe('$12,400');
+    expect(plateScore(999_999_999, '$', 12)).toBe('$999.9M');
+    expect(plateScore(-1_234_567_890, 'pts', 12)).toBe('−1.2B pts');
   });
 });
 

@@ -15,7 +15,7 @@
   import { applyPlan, cluesFromTable, parseTable, planImport, previewText } from '../lib/clueimport';
   import { pickFile } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
-  import { categoryLabel, roundName, type BoardRound } from '../lib/model';
+  import { categoryLabel, formatPoints, roundName, type BoardRound } from '../lib/model';
   import { app } from '../lib/app.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
@@ -115,7 +115,7 @@
           {#each r.categories as cat, ci (cat.id)}
             {@const clue = cat.clues[row]}
             <div class="tile" class:new={plan.filled.has(clue.id)} class:empty={clue.empty} title={previewText(r, ci, row)}>
-              {plan.filled.has(clue.id) ? previewText(r, ci, row) : `${sym}${clue.value ?? r.values[row]}`}
+              {plan.filled.has(clue.id) ? previewText(r, ci, row) : formatPoints(clue.value ?? r.values[row], sym)}
             </div>
           {/each}
         {/each}

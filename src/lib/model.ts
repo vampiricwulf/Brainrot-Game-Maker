@@ -458,6 +458,11 @@ export interface FinalRound {
   /** Players with a score of 0 or less can play it too (they can only wager 0 unless the host ignores the limits). */
   allowNonPositive?: boolean;
   hostNotes?: string;
+  /**
+   * Was switched off in a Jeopardy Builder game, and kept (as a round that plays) because something was written in it:
+   * the checklist says so, for the host to delete it if it shouldn't play.
+   */
+  wasOff?: boolean;
 }
 
 export type Round = BoardRound | FinalRound | RpgRound | BoardGameRound;
@@ -978,6 +983,9 @@ export function newClue(): Clue {
   return { id: newId(), value: null, type: 'standard', questionSlide: textSlide(), answerSlide: textSlide() };
 }
 
+/** A name with nothing to see in it: empty, spaces, or only invisible characters (zero-width spaces, direction marks…). */
+export const blankName = (name: string): boolean => !name.replace(/[\s\p{Cf}]/gu, '');
+
 /** A player's initials ("Ann Lee" → "AL", "Player 2" → "P2"): on their avatar token and their dot on a map. */
 export function initials(name: string): string {
   return (
@@ -1069,9 +1077,27 @@ export function boardRounds(game: Game): BoardRound[] {
   return game.rounds.filter(isBoard);
 }
 
+/** A points symbol that's a word ("pts", "coins", "kr") goes after the number, with a space; $, €, R$, 🧠… go in front. */
+const wordSymbol = (sym: string) => /^\p{L}+\.?$/u.test(sym.trim());
+
+/** The digits with the game's points symbol in its place, and "−" in front for less than zero. */
+function withSymbol(n: number, digits: string, sym: string): string {
+  return (n < 0 ? '−' : '') + (wordSymbol(sym) ? `${digits} ${sym.trim()}` : sym + digits);
+}
+
 /** "−$200", "$1,000", "350 pts"-style formatting with the game's points symbol. */
 export function formatPoints(n: number, sym: string): string {
-  return (n < 0 ? '−' : '') + sym + Math.abs(n).toLocaleString();
+  return withSymbol(n, Math.abs(n).toLocaleString(), sym);
+}
+
+/**
+ * Points shortened for a narrow spot ("$1.2M", "−3.4B pts"): cut down, never rounded up, so a score shown is never more
+ * than the real one. Under 10,000 it's the whole number.
+ */
+export function compactPoints(n: number, sym: string): string {
+  if (Math.abs(n) < 10_000) return formatPoints(n, sym);
+  const opts = { notation: 'compact', maximumFractionDigits: 1, roundingMode: 'trunc' } as Intl.NumberFormatOptions;
+  return withSymbol(n, Math.abs(n).toLocaleString(undefined, opts), sym);
 }
 
 /** A version-1 game (Jeopardy Builder): board rounds without a mode, and Final Jeopardy kept apart. */
@@ -1081,11 +1107,16 @@ interface GameV1 extends Omit<Game, 'version' | 'rounds'> {
   final?: Partial<Omit<FinalRound, 'id' | 'mode'>> & { enabled?: boolean };
 }
 
-/** Version 1 → 2: rounds get a mode, and an enabled Final Jeopardy becomes the last round (a disabled one is dropped). */
+/**
+ * Version 1 → 2: rounds get a mode, and an enabled Final Jeopardy becomes the last round. A disabled one is dropped
+ * when there's nothing in it; one with a category, a question or an answer written is kept, so nothing written is lost.
+ */
 function migrateV1(data: GameV1): Game {
   const { final, ...rest } = data;
-  const rounds: Round[] = (data.rounds ?? []).map((r) => ({ ...r, mode: 'board' }) as BoardRound);
-  if (final && final.enabled !== false) {
+  const rounds: Round[] = objects<Omit<BoardRound, 'mode'>>(data.rounds).map((r) => ({ ...r, mode: 'board' }) as BoardRound);
+  const off = !!final && final.enabled === false;
+  const written = !!final && ((typeof final.category === 'string' && !!final.category.trim()) || slideWritten(final.questionSlide) || slideWritten(final.answerSlide));
+  if (final && (!off || written)) {
     rounds.push({
       ...newFinalRound(),
       name: final.name?.trim() || 'Final Jeopardy!',
@@ -1095,9 +1126,17 @@ function migrateV1(data: GameV1): Game {
       timerSeconds: final.timerSeconds || 30,
       // A stable id, so a game in progress saved with this game can find its final round again.
       id: FINAL_V1_ROUND_ID,
+      ...(off ? { wasOff: true } : {}),
     });
   }
   return { ...rest, version: 2, rounds } as Game;
+}
+
+/** Does this (unchecked) slide have anything on it: text, a picture, a video or a sound, or a background picture? */
+function slideWritten(s: unknown): boolean {
+  if (!isObj(s)) return false;
+  const els = Array.isArray(s.elements) ? s.elements.filter(isObj) : [];
+  return els.some((e) => (e.kind === 'text' ? typeof e.text === 'string' && !!e.text.trim() : !!e.kind)) || (isObj(s.background) && !!s.background.image);
 }
 
 /** The id the v1 → v2 conversion gives Final Jeopardy (see migrateSession). */
@@ -1109,7 +1148,8 @@ export function migrateGame(input: Game): Game {
   const d = newGame();
   const g = { ...d, ...data } as Game;
   g.version = GAME_VERSION;
-  g.rounds = (data.rounds ?? []).map((r) => (r.mode ? r : ({ ...(r as object), mode: 'board' } as BoardRound)));
+  // (A round that isn't an object at all, like a null in the list, is dropped.)
+  g.rounds = objects<Round>(data.rounds).map((r) => (r.mode ? r : ({ ...(r as object), mode: 'board' } as BoardRound)));
   g.settings = { ...d.settings, ...(data.settings ?? {}) };
   // "0 or less can play the final round" was a game setting; each Final round has its own now.
   const old = g.settings as GameSettings & { finalAllowNonPositive?: boolean };
@@ -1171,10 +1211,25 @@ export function clueCountdown(text: string): number | null {
   return Math.round(n) === 0 ? 0 : Math.max(1, Math.round(n));
 }
 
-/** A clue's own value typed in: null when blank (the row's value), else a whole number of at least 0. */
+/** Most points the host can give or set at once (either way): past it, numbers lose their last digits. */
+export const MAX_POINTS = 1_000_000_000_000;
+
+/** An amount of points typed by the host: whole, within ±MAX_POINTS; null when it isn't a number. */
+export function wholePoints(n: number | null | undefined): number | null {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+  return Math.min(MAX_POINTS, Math.max(-MAX_POINTS, Math.round(n)));
+}
+
+/** Most a tile (or a row of tiles) can be worth: past it, scores stop reading on screen. */
+export const MAX_TILE_VALUE = 1_000_000_000;
+
+/**
+ * A clue's own value (or a row's) typed in: null when blank (the row's value) or not a number, else a whole number from
+ * 0 to MAX_TILE_VALUE.
+ */
 export function clueValueTyped(text: string): number | null {
   const n = Number(text);
-  return text.trim() === '' || !Number.isFinite(n) ? null : Math.max(0, Math.round(n));
+  return text.trim() === '' || !Number.isFinite(n) ? null : Math.min(MAX_TILE_VALUE, Math.max(0, Math.round(n)));
 }
 
 // ---------- Hand-edited games ----------
@@ -1227,6 +1282,12 @@ function repairNumbers(el: SlideElement): void {
 function repairGame(g: Game): void {
   if (typeof g.title !== 'string') g.title = g.title == null ? 'Untitled Game' : String(g.title);
   if (!isObj(g.settings.roundIntro)) g.settings.roundIntro = newGame().settings.roundIntro;
+  // A countdown is whole seconds, at least 1, or none (a hand-edited -5 would show "Start -5s").
+  const secs = g.settings.defaultTimerSeconds;
+  if (secs !== null) {
+    const fixed = countdownSeconds(String(secs ?? ''));
+    if (fixed !== secs) g.settings.defaultTimerSeconds = fixed;
+  }
   const players = objects<PlayerTemplate>(g.players);
   if (players !== g.players) g.players = players;
   players.forEach((p, i) => {
@@ -1262,11 +1323,19 @@ function repairGame(g: Game): void {
         const rows = Math.max(0, ...cats.map((c) => c.clues.length));
         r.values = Array.from({ length: rows || DEFAULT_VALUES.length }, (_, i) => (typeof r.values?.[i] === 'number' ? r.values[i] : (i + 1) * 200));
       }
+      // A row for every category's clues (a longer category keeps them all: rows are added, going up as the last did),
+      // and an empty tile wherever a shorter category has none, so every row has a tile in every column.
+      const rows = Math.max(r.values.length, ...cats.map((c) => c.clues.length));
+      while (r.values.length < rows) {
+        const [a, b] = [r.values[r.values.length - 2] ?? 0, r.values[r.values.length - 1] ?? 0];
+        r.values.push(b + (b > a ? b - a : 200));
+      }
+      for (const c of cats) while (c.clues.length < rows) c.clues.push(newClue());
     } else if (isFinal(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
-      if (typeof r.timerSeconds !== 'number') r.timerSeconds = 30;
+      if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
     } else if (isBoardGame(r)) {
       r.slide = repairSlide(r.slide);
       if (!Array.isArray(r.spaces)) r.spaces = [];
@@ -1317,6 +1386,12 @@ export function gameProblem(g: Game): string | null {
     const at = `rounds[${i}]`;
     if (!KNOWN_MODES.has(r.mode)) return `${at}.mode: "${r.mode}" isn't a kind of round`;
     if (isRpg(r) && !g.worlds?.some((w) => w.id === r.world)) return `${at}.world: no world "${r.world}" in worlds`;
+    // (The editor and the board show a tile for every row in every column.)
+    if (isBoard(r))
+      for (const [ci, c] of r.categories.entries()) {
+        const short = r.values.findIndex((_, row) => !isObj(c.clues[row]));
+        if (short >= 0) return `${at}.categories[${ci}].clues[${short}]: no clue for row ${short + 1}`;
+      }
   }
   return null;
 }

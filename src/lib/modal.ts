@@ -36,9 +36,12 @@ function inertOutside(box: HTMLElement): HTMLElement[] {
   return changed;
 }
 
-/** `use:takeFocus` on the safe answer of a question that just appeared (Keep, Stay, Cancel). */
-export function takeFocus(node: HTMLElement): void {
-  queueMicrotask(() => node.isConnected && node.focus());
+/**
+ * `use:takeFocus` on the safe answer of a question that just appeared (Keep, Stay, Cancel). `use:takeFocus={{
+ * preventScroll: true }}` where scrolling to it would move the page (the stage out of sight).
+ */
+export function takeFocus(node: HTMLElement, opts?: FocusOptions): void {
+  queueMicrotask(() => node.isConnected && node.focus(opts));
 }
 
 export function modal(node: HTMLElement, opts: ModalOptions = {}) {

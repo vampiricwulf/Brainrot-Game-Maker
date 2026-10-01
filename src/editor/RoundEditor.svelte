@@ -5,7 +5,7 @@
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, dailyDoublesPlaced, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
+  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import {
@@ -526,7 +526,11 @@
     <input
       type="number"
       value={round.values[i]}
-      oninput={(e) => e.currentTarget.value !== '' && (round.values[i] = +e.currentTarget.value)}
+      oninput={(e) => {
+        // Whole points, 0 or more (like a clue's own value).
+        const v = clueValueTyped(e.currentTarget.value);
+        if (v !== null) round.values[i] = v;
+      }}
       onchange={(e) => (e.currentTarget.value = String(round.values[i]))}
       aria-label="Row {i + 1} value"
       oncontextmenu={(e) => rowMenu(e, i)}
@@ -650,7 +654,7 @@
         {@const face = clue.tileFace?.image && !clue.empty ? mediaUrls[clue.tileFace.image] : undefined}
         {@const p = { cat: ci, row }}
         {@const target = dropTarget === `t${ci}-${row}`}
-        {@const value = clue.empty ? `row ${row + 1}` : `${sym}${clueValue(round, row, clue)}`}
+        {@const value = clue.empty ? `row ${row + 1}` : formatPoints(clueValue(round, row, clue), sym)}
         {@const what = clue.empty ? 'empty space' : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}`}
         <button
           class="tile"

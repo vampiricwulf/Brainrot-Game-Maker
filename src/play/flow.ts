@@ -1,7 +1,7 @@
 // Small rules of hosting a board game (Jeopardy-style), kept apart from Play.svelte so they can be tested: when the
 // countdown stops, how score pops are worded and where they go.
 import type { Pop } from '../lib/live';
-import { formatPoints, type Player, type ScoreEvent } from '../lib/model';
+import { compactPoints, formatPoints, type Player, type ScoreEvent } from '../lib/model';
 import { nameList } from '../lib/session';
 
 /**
@@ -46,7 +46,24 @@ export function groupPops(events: ScoreEvent[], players: Player[], sym: string, 
 export function plateCenter(count: number, index: number, reserve = 0, width = 1920): number {
   const gap = 18;
   const inner = width - 48 - reserve;
-  const plate = Math.min(count <= 4 ? 420 : 320, (inner - gap * (count - 1)) / count);
+  const plate = plateWidth(count, reserve, width);
   const total = count * plate + gap * (count - 1);
   return 24 + (inner - total) / 2 + index * (plate + gap) + plate / 2;
+}
+
+/** How wide each plate on the score bar is (see plateCenter). */
+export function plateWidth(count: number, reserve = 0, width = 1920): number {
+  const inner = width - 48 - reserve;
+  return Math.min(count <= 4 ? 420 : 320, (inner - 18 * (count - 1)) / Math.max(1, count));
+}
+
+/**
+ * A score as its plate shows it: the whole number when it fits at the smallest size scores shrink to, else shortened
+ * ("$1.2B": cut down, never rounded up), so the number on stream is never one cut off in the middle ("$999,999,…").
+ */
+export function plateScore(n: number, sym: string, count: number, reserve = 0): string {
+  const full = formatPoints(n, sym);
+  // The score's room (less the plate's border and padding), and a wide digit at the smallest size (22px).
+  const room = plateWidth(count, reserve) - 28;
+  return [...full].length * 22 * 0.62 <= room ? full : compactPoints(n, sym);
 }

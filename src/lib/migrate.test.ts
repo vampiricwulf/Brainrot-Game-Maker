@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { parseGame } from './fileio';
-import { clueCountdown, clueValueTyped, countdownSeconds, FINAL_V1_ROUND_ID, gameProblem, isBoard, isFinal, MAX_PLAYERS, migrateGame, mostPlayers, newGame, textSlide, type Game } from './model';
+import {
+  blankName,
+  clueCountdown,
+  clueValueTyped,
+  compactPoints,
+  countdownSeconds,
+  FINAL_V1_ROUND_ID,
+  formatPoints,
+  gameProblem,
+  isBoard,
+  isFinal,
+  MAX_PLAYERS,
+  MAX_POINTS,
+  MAX_TILE_VALUE,
+  migrateGame,
+  mostPlayers,
+  newGame,
+  textSlide,
+  wholePoints,
+  type Game,
+} from './model';
 import { validate } from './validate';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
 
@@ -27,9 +47,32 @@ describe('games from before round modes (version 1)', () => {
     expect('final' in g).toBe(false);
   });
 
-  it('drops a Final that was switched off', () => {
-    const g = migrateGame(v1Game(false));
+  it('keeps a Final that was switched off but written, as the last round, and the checklist says so', () => {
+    const g = migrateGame(parseGame(JSON.stringify(v1Game(false))));
+    const f = g.rounds[g.rounds.length - 1];
+    expect(isFinal(f) && [f.category, f.wasOff]).toEqual(['Memes', true]);
+    expect(validate(g).some((p) => p.level === 'info' && p.text.includes('was switched off'))).toBe(true);
+  });
+
+  it('drops a Final that was switched off with nothing in it', () => {
+    const old = v1Game(false) as unknown as { final: Record<string, unknown> };
+    old.final = { enabled: false, name: 'Final', category: ' ', questionSlide: textSlide(''), answerSlide: textSlide('') };
+    const g = migrateGame(old as unknown as Game);
     expect(g.rounds.every(isBoard)).toBe(true);
+  });
+
+  it('keeps a switched-off Final that only has a picture', () => {
+    const old = v1Game(false) as unknown as { final: Record<string, unknown> };
+    old.final = { enabled: false, questionSlide: { background: {}, elements: [{ id: 'i', kind: 'image', media: 'm' }] } };
+    expect(migrateGame(old as unknown as Game).rounds.some(isFinal)).toBe(true);
+  });
+
+  it('drops rounds that are not objects (a null in the list)', () => {
+    const old = v1Game() as unknown as { rounds: unknown[] };
+    old.rounds.push(null, 5, 'x');
+    expect(migrateGame(old as unknown as Game).rounds.map((r) => r.mode)).toEqual(['board', 'final']);
+    const g2 = { ...jeopardyGame(), rounds: [...jeopardyGame().rounds, null] } as unknown as Game;
+    expect(migrateGame(g2).rounds.every((r) => !!r?.mode)).toBe(true);
   });
 
   it('leaves version 2 games alone (a second pass changes nothing)', () => {
@@ -121,6 +164,54 @@ describe('hand-edited games', () => {
     g.rounds[1].mode = 'quiz';
     expect(gameProblem(migrateGame(g))).toBe('rounds[1].mode: "quiz" isn\'t a kind of round');
   });
+
+  it('gives every category a tile in every row (a short category, or none at all, gets empty tiles)', () => {
+    const g = plain(jeopardyGame());
+    const board = g.rounds[0];
+    const kept = board.categories[0].clues[0].id;
+    board.categories[0].clues = board.categories[0].clues.slice(0, 2);
+    board.categories[1].clues = null;
+    const r = migrateGame(g).rounds[0];
+    if (!isBoard(r)) throw new Error('not a board');
+    expect(r.categories.map((c) => c.clues.length)).toEqual(r.categories.map(() => r.values.length));
+    expect(r.categories[0].clues[0].id).toBe(kept);
+    expect(r.categories[1].clues.every((c) => c.questionSlide && c.answerSlide)).toBe(true);
+    expect(gameProblem(migrateGame(g))).toBeNull();
+    expect(() => validate(migrateGame(g))).not.toThrow();
+  });
+
+  it('adds rows for a category longer than the row values, going up as they did (no clue is lost)', () => {
+    const g = plain(jeopardyGame());
+    const board = g.rounds[0];
+    board.values = [100, 200];
+    const r = migrateGame(g).rounds[0];
+    if (!isBoard(r)) throw new Error('not a board');
+    expect(r.values).toEqual([100, 200, 300, 400, 500]);
+    board.values = [];
+    const r2 = migrateGame(g).rounds[0];
+    expect(isBoard(r2) && r2.values).toEqual([200, 400, 600, 800, 1000]);
+  });
+
+  it('a game the repairs missed is still caught before it opens (a category short of rows)', () => {
+    const g = migrateGame(plain(jeopardyGame()));
+    const r = g.rounds[0];
+    if (!isBoard(r)) throw new Error('not a board');
+    r.categories[2].clues.length = 3;
+    expect(gameProblem(g)).toBe('rounds[0].categories[2].clues[3]: no clue for row 4');
+  });
+
+  it('a countdown saved below 1 second is made whole (none stays none)', () => {
+    const g = plain(jeopardyGame());
+    g.settings.defaultTimerSeconds = -5;
+    g.rounds[1].timerSeconds = -10;
+    const m = migrateGame(g);
+    expect(m.settings.defaultTimerSeconds).toBe(1);
+    expect(isFinal(m.rounds[1]) && m.rounds[1].timerSeconds).toBe(30);
+    g.settings.defaultTimerSeconds = 'x';
+    expect(migrateGame(g).settings.defaultTimerSeconds).toBeNull();
+    g.settings.defaultTimerSeconds = null;
+    expect(migrateGame(g).settings.defaultTimerSeconds).toBeNull();
+  });
 });
 
 
@@ -172,6 +263,24 @@ describe('📋 Game rules: what can be typed', () => {
     expect(clueValueTyped('-300')).toBe(0);
     expect(clueValueTyped('750')).toBe(750);
     expect(clueValueTyped('99.6')).toBe(100);
+    expect(clueValueTyped('1e15')).toBe(MAX_TILE_VALUE);
+  });
+
+  it('an amount the host types: whole points, within ±MAX_POINTS', () => {
+    expect(wholePoints(2.5)).toBe(3);
+    expect(wholePoints(-199.4)).toBe(-199);
+    expect(wholePoints(1e20)).toBe(MAX_POINTS);
+    expect(wholePoints(-1e20)).toBe(-MAX_POINTS);
+    expect(wholePoints(null)).toBeNull();
+    expect(wholePoints(NaN)).toBeNull();
+  });
+
+  it('a name with nothing to see in it is blank', () => {
+    expect(blankName('')).toBe(true);
+    expect(blankName('   ')).toBe(true);
+    expect(blankName('\u200b\u200e\u2060 ')).toBe(true);
+    expect(blankName(' Ann ')).toBe(false);
+    expect(blankName('🎉')).toBe(false);
   });
 
   it('Most players: 1 to 20, never below the players listed', () => {
@@ -181,5 +290,25 @@ describe('📋 Game rules: what can be typed', () => {
     expect(mostPlayers(7.4)).toBe(7);
     expect(mostPlayers(undefined)).toBe(8);
     expect(mostPlayers(4, 30)).toBe(MAX_PLAYERS);
+  });
+});
+
+describe('points with the game’s symbol', () => {
+  it('a symbol that is a word goes after the number; $, €, R$ or an emoji goes in front', () => {
+    expect(formatPoints(200, 'pts')).toBe('200 pts');
+    expect(formatPoints(-300, 'pts')).toBe('−300 pts');
+    expect(formatPoints(1000, ' coins ')).toBe('1,000 coins');
+    expect(formatPoints(-300, '$')).toBe('−$300');
+    expect(formatPoints(1000, '€')).toBe('€1,000');
+    expect(formatPoints(50, 'R$')).toBe('R$50');
+    expect(formatPoints(7, '🧠')).toBe('🧠7');
+    expect(formatPoints(7, '')).toBe('7');
+  });
+
+  it('shortened for a narrow spot: cut down, never rounded up', () => {
+    expect(compactPoints(9_999, '$')).toBe('$9,999');
+    expect(compactPoints(1_250_000, '$')).toBe('$1.2M');
+    expect(compactPoints(999_999_999, '$')).toBe('$999.9M');
+    expect(compactPoints(-3_480_000_000, 'pts')).toBe('−3.4B pts');
   });
 });
