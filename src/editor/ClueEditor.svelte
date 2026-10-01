@@ -29,6 +29,7 @@
   let side = $state<'q' | 'a'>('q');
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
+  let answerField = $state<HTMLTextAreaElement>();
   let emptyBox = $state<HTMLInputElement>();
 
   /** The wheel or dice open over the clue (one made from the list, or ✎ Edit). */
@@ -61,7 +62,8 @@
 
   // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next (on an
   // empty tile, the Empty tile box that brings it back).
-  const focusQuestion = () => tick().then(() => (questionField ?? emptyBox)?.focus());
+  // (Opened at its answer, by Find or an undo: the Answer field.)
+  const focusQuestion = () => tick().then(() => ((side === 'a' ? answerField : questionField) ?? emptyBox)?.focus());
   onMount(() => void focusQuestion());
 
   // Prev / Next walk clues column by column (down a category, then on to the next one), past empty tiles.
@@ -230,6 +232,7 @@
             Question
             <textarea
               bind:this={questionField}
+              data-field="q"
               rows="2"
               placeholder="Type the question…"
               value={slideText(clue.questionSlide)}
@@ -239,6 +242,8 @@
           <label class="field">
             Answer (hidden until revealed)
             <textarea
+              bind:this={answerField}
+              data-field="a"
               rows="2"
               placeholder="Type the answer…"
               value={slideText(clue.answerSlide)}
@@ -247,7 +252,7 @@
           </label>
           <label class="field">
             Host notes (never shown on stream)
-            <textarea rows="2" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
+            <textarea rows="2" data-field="notes" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
           </label>
         </div>
         <div class="tabs" role="tablist">

@@ -44,8 +44,9 @@
     e.stopImmediatePropagation();
     if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') return;
     e.preventDefault();
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const buttons = [...(box?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
+    if (e.key === 'Home' || e.key === 'End') return void buttons[e.key === 'Home' ? 0 : buttons.length - 1]?.focus();
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
     buttons[(at + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus();
   }

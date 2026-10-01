@@ -27,7 +27,7 @@
     Name (shown on screen)
     <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" data-round-name />
   </label>
-  <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" /></label>
+  <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" data-field="final-category" /></label>
   <label class="field">Think time (seconds)<input type="number" min="5" bind:value={round.timerSeconds} /></label>
   <label class="check">
     <input type="checkbox" checked={round.allowNonPositive ?? true} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
@@ -39,15 +39,15 @@
 <div class="quick">
   <label class="field">
     Question
-    <textarea rows="2" placeholder="Type the final question…" value={slideText(round.questionSlide)} oninput={(e) => setSlideText(round.questionSlide, e.currentTarget.value)}></textarea>
+    <textarea rows="2" data-field="q" placeholder="Type the final question…" value={slideText(round.questionSlide)} oninput={(e) => setSlideText(round.questionSlide, e.currentTarget.value)}></textarea>
   </label>
   <label class="field">
     Answer (hidden until revealed)
-    <textarea rows="2" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value)}></textarea>
+    <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value)}></textarea>
   </label>
   <label class="field">
     Host notes (never shown on stream)
-    <textarea rows="2" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
+    <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
   </label>
 </div>
 <div class="tabs" role="tablist">

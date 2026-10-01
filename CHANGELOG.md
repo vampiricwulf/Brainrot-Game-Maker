@@ -208,6 +208,12 @@ done, the Unreleased lines move under that day's heading.
 - A toast from the editor ("Added a sample game…") no longer follows into ▶ Play over the Start game button.
 - A tab paused because the game was open in another tab notices when that tab closes: it says "The other tab was
   closed" and offers **Edit here**.
+- Keyboard and screen reader: Try a sample game, a template, a pasted or an imported round put the focus on the new
+  round's name; Find's Go there puts it in the field that has the words (a category's name, a Final's category,
+  question or answer, a space's name, a round's name) instead of losing it, and an Answer found opens with the focus
+  in the Answer field. Find's results are one Tab stop (↑/↓ pick, and the box says which). Menus take `Home` and `End`.
+  In-app questions are marked as modal.
+- Find says "› Category" for board categories as for Finals, and board spaces have their own ⬤ icon (dice keep 🎲).
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

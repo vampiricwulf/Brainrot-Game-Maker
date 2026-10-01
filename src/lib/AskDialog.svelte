@@ -10,7 +10,7 @@
   {#key a}
     <!-- Its keys are its own: none reach the editor's or the host's shortcuts underneath. -->
     <div class="backdrop" role="presentation" onkeydown={(e) => e.stopPropagation()}>
-      <div class="modal" role="alertdialog" aria-labelledby="ask-text" data-undo="off" use:modal={{ esc: () => answer(false) }}>
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="ask-text" data-undo="off" use:modal={{ esc: () => answer(false) }}>
         <div class="row">
           <p id="ask-text">{a.text}</p>
           <button class="ghost close" onclick={() => answer(false)} aria-label="Close" title="Close (Esc)">✕</button>

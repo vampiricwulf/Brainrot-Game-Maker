@@ -158,7 +158,14 @@
 
   /** The round modes, templates and rounds from elsewhere, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
   function addRoundMenu(e: MouseEvent): void {
-    dropMenu(e, addRoundItems(game, addRound, (at) => (tab = at), importRounds));
+    dropMenu(e, addRoundItems(game, addRound, showNew, importRounds));
+  }
+
+  /** A round just added (a template, a pasted or imported round, the sample game): shown, with its name ready to type over. */
+  function showNew(at: number): void {
+    tab = at;
+    const id = game.rounds[at]?.id;
+    if (id) focusRoundName(id);
   }
 
   /** Import round from a .brainrot…: the other game, while its rounds are picked. */
@@ -660,7 +667,7 @@
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
   {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
-  {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={(at) => (tab = at)} />{/if}
+  {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={showNew} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
   {#if saveList}
     <OpenSaves
@@ -828,7 +835,7 @@
           <div class="first-round">
             <h2>Add your first round</h2>
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
-            <button class="sample" onclick={() => (tab = addSample(game))}>
+            <button class="sample" onclick={() => showNew(addSample(game))}>
               <span class="icon" aria-hidden="true">✨</span>
               <b>Try a sample game</b>
               <span class="muted small">A small board, an adventure, a board game and a Final, all filled in and ready to play</span>
