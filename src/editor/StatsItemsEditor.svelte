@@ -277,7 +277,11 @@
     <p class="muted small">No stats yet. Start with a preset or make your own:</p>
   {/if}
   <div class="presets">
-    {#each STAT_PRESETS as p (p.label)}<button class="small" onclick={() => addField(p.make())}>＋ {p.label}</button>{/each}
+    {#each STAT_PRESETS as p (p.label)}
+      {@const name = p.make().name}
+      {@const added = game.statFields?.some((f) => f.name.trim().toLowerCase() === name.toLowerCase())}
+      <button class="small" onclick={() => addField(p.make())} disabled={added} title={added ? `This game has a stat called ${name}` : undefined}>＋ {p.label}</button>
+    {/each}
     <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Custom stat</button>
   </div>
   <div class="list" role="list" aria-label="Stats">

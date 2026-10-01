@@ -6,6 +6,7 @@ import { isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, ty
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
+import { tileDice } from './tools';
 
 export interface Problem {
   text: string;
@@ -52,7 +53,7 @@ export function validate(game: Game): Problem[] {
     if (noQ) out.push({ text: `${r.name}: ${plural(noQ, 'clue')} with no question`, tab: i, level: 'warn' });
     if (noA) out.push({ text: `${r.name}: ${plural(noA, 'clue')} with no answer`, tab: i, level: 'warn' });
     const broken = tools.filter((c) =>
-      c.type === 'wheel' ? c.wheelId !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === c.wheelId) : !game.dice.some((d) => d.id === c.diceId),
+      c.type === 'wheel' ? c.wheelId !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === c.wheelId) : !tileDice(game, c.diceId),
     ).length;
     if (broken) out.push({ text: `${r.name}: ${plural(broken, 'wheel/dice tile')} with nothing chosen`, tab: i, level: 'warn' });
   });

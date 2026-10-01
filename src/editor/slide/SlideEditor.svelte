@@ -202,6 +202,14 @@
   // The game's undo history (a discrete action is a step of its own, a drag is one step, and Ctrl+Z / Ctrl+Y are the
   // editor's); while a screen is edited live during play, a history of the slide's own (slideundo.svelte.ts).
   const undoApi = untrack(() => (app.editGame ? slideHistory(slide) : gameUndo));
+  /**
+   * ↶ ↷ of its own: in a window over the editor (the clue editor, a screen's window), which covers the header's, and
+   * for a slide's own history during play. Elsewhere the header's are the ones.
+   */
+  let ownUndo = $state(untrack(() => !!app.editGame));
+  onMount(() => {
+    if (root?.closest('[aria-modal="true"]')) ownUndo = true;
+  });
   /** Record a discrete edit as its own undo step. */
   const edit = (fn: () => void) => undoApi.step(null, fn);
   /** The drag going on (one step until it ends). */
@@ -867,8 +875,10 @@
         aria-label={previewMuted ? 'Preview sound is off' : 'Preview sound is on'}
         title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}
       >{previewMuted ? '🔇' : '🔈'}</button>
-      <button class="ghost small" onclick={undoApi.undo} disabled={previewing || !undoApi.canUndo} aria-label="Undo (Ctrl+Z)" title={undoApi.undoTitle}>↶</button>
-      <button class="ghost small" onclick={undoApi.redo} disabled={previewing || !undoApi.canRedo} aria-label="Redo (Ctrl+Y)" title={undoApi.redoTitle}>↷</button>
+      {#if ownUndo}
+        <button class="ghost small" onclick={undoApi.undo} disabled={previewing || !undoApi.canUndo} aria-label="Undo (Ctrl+Z)" title={undoApi.undoTitle}>↶</button>
+        <button class="ghost small" onclick={undoApi.redo} disabled={previewing || !undoApi.canRedo} aria-label="Redo (Ctrl+Y)" title={undoApi.redoTitle}>↷</button>
+      {/if}
     </div>
   </div>
 

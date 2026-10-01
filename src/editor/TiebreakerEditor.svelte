@@ -6,6 +6,7 @@
   import { textStyleTargets } from '../lib/ops';
   import { setSlideText, slideText, textSlide, type TextEl } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
+  import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
 
   let tbSide = $state<'q' | 'a'>('q');
@@ -29,7 +30,16 @@
       const on = e.currentTarget.checked;
       // Unticking throws the tiebreaker away at once: when it had something in it, the note at the bottom offers Undo.
       const lost = !on && !!tb && (slideHasContent(tb.questionSlide) || slideHasContent(tb.answerSlide));
-      step(on ? 'Tiebreaker on' : 'Tiebreaker off', () => (app.game.tiebreaker = on ? { questionSlide: textSlide(), answerSlide: textSlide() } : undefined), { notify: lost });
+      step(
+        on ? 'Tiebreaker on' : 'Tiebreaker off',
+        () => {
+          const slides = { questionSlide: textSlide(), answerSlide: textSlide() };
+          // (Its text takes the theme's clue text.)
+          if (on) followClueText(app.game, [slides.questionSlide, slides.answerSlide]);
+          app.game.tiebreaker = on ? slides : undefined;
+        },
+        { notify: lost },
+      );
     }}
   /> Include a tiebreaker clue
 </label>

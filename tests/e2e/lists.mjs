@@ -289,7 +289,7 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '✕ Unlink' }).click();
   assert((await notice.innerText()).startsWith('Unlinked'), 'and → Unlink, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
-  // Zones reorder, with ↶ ↷ in their view.
+  // Zones reorder (the header's ↶ ↷ undo it).
   await page.getByRole('tab', { name: /Off-board zones/ }).click();
   await page.getByRole('button', { name: '＋ Zone' }).click();
   await page.getByRole('button', { name: '＋ Zone' }).click();
@@ -299,8 +299,9 @@ try {
   assert((await values(zones)).join() === 'Zone 2,Shadow Realm', 'Alt+↑ reorders zones');
   await dragBy(page, page.locator('.zone .drag-grip').nth(1), zones.first());
   assert((await values(zones)).join() === 'Shadow Realm,Zone 2', 'and so does a drag');
-  await page.locator('.zones').getByRole('button', { name: 'Undo' }).click();
-  assert((await values(zones)).join() === 'Zone 2,Shadow Realm', '↶ in the zones view undoes');
+  assert(!(await page.locator('.zones').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()), 'the zones view has no ↶ of its own (the header has it)');
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  assert((await values(zones)).join() === 'Zone 2,Shadow Realm', "the header's ↶ undoes");
   await page.getByRole('button', { name: 'Delete zone Zone 2' }).click();
   assert((await zones.count()) === 1 && (await notice.innerText()).startsWith('Deleted zone “Zone 2”') && !dialogs.length, 'deleting a zone asks nothing and offers Undo');
   // A zone's right-click menu: duplicate, move, delete (and Ctrl+D in it).

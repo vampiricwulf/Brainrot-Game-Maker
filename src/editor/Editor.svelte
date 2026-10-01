@@ -32,6 +32,8 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate, type Problem } from '../lib/validate';
+  import { checklistLines, type ChecklistLine } from '../lib/checklist';
+  import { followClueText } from '../lib/cluetext';
   import { arriving, history, mark, onApplied, onApplying, redo, step, undo } from '../lib/history.svelte';
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
@@ -46,6 +48,11 @@
   // 'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
   let tab = $state<'setup' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
   const game = $derived(app.game);
+  /** The round tab last open (🎨 Theme previews it). */
+  let lastRound = $state(0);
+  $effect(() => {
+    if (typeof tab === 'number') lastRound = tab;
+  });
   $effect(() => {
     registerGameFonts(game);
   });
@@ -113,10 +120,16 @@
       const boards = game.rounds.slice(0, at).filter(isBoard);
       const prev = boards[boards.length - 1];
       const name = boards.length === 1 ? 'Double Jeopardy!' : boards.length ? `Round ${boards.length + 1}` : 'Jeopardy!';
-      round = newRound(name, prev?.categories.length ?? 6, prev ? prev.values.map((v) => v * 2) : undefined);
+      // The second board doubles the first (Double Jeopardy!); later ones keep the values of the one before.
+      round = newRound(name, prev?.categories.length ?? 6, prev ? prev.values.map((v) => (boards.length === 1 ? v * 2 : v)) : undefined);
     }
+    // Its clues take the theme's clue text.
+    if (isBoard(round)) followClueText(game, round.categories.flatMap((c) => c.clues.flatMap((cl) => [cl.questionSlide, cl.answerSlide])));
+    else if (isFinal(round)) followClueText(game, [round.questionSlide, round.answerSlide]);
     game.rounds.splice(at, 0, round);
     tab = at;
+    // The menu (or the card) that added it is gone: the focus goes on to the new round's tab.
+    focusRoundTab(round.id);
   }
 
   /** The round modes, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
@@ -219,6 +232,27 @@
     }
     roundDrag = null;
     roundDrop = null;
+  }
+
+  // ---------- Checklist ----------
+
+  /** The checklist, one line a round. */
+  const checklist = $derived(checklistLines(game, problems));
+
+  /** A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile has the focus). */
+  function goFix(line: ChecklistLine): void {
+    tab = line.tab;
+    if (!line.place?.tab || line.place.tab !== 'round' || !line.place.part) return;
+    goTo(line.place);
+    const part = line.place.part;
+    const key = part.kind === 'clue' ? `clue:${part.clue}` : part.kind === 'category' ? `category:${part.category}` : null;
+    if (!key) return;
+    void tick()
+      .then(tick)
+      .then(() => {
+        const el = document.querySelector<HTMLElement>(`[data-place="${key}"]`);
+        (el?.matches('button') ? el : el?.querySelector<HTMLElement>('textarea'))?.focus();
+      });
   }
 
   function newFile(): void {
@@ -473,8 +507,7 @@
   {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
 
   <div class="body">
-    <nav>
-      <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
+    <nav aria-label="Editor">
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
         {#if renamingRound === round.id}
@@ -525,7 +558,13 @@
           </button>
         {/if}
       {/each}
+      <!-- Played after the rounds, when the game ends in a tie. -->
+      <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')} title="Played after the last round when players tie for the win">
+        <span aria-hidden="true">🤝</span> Tiebreaker{game.tiebreaker ? '' : ' (off)'}
+      </button>
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
+      <div class="navlabel muted">Game</div>
+      <button class:active={tab === 'setup'} onclick={() => (tab = 'setup')}>⚙ Setup & Players</button>
       <button class:active={tab === 'theme'} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
       <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
@@ -533,16 +572,14 @@
       <button class:active={tab === 'history'} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
       </button>
-      <div class="navlabel muted">End</div>
-      <button class:active={tab === 'tiebreaker'} onclick={() => (tab = 'tiebreaker')}>
-        Tiebreaker {game.tiebreaker ? '' : '(off)'}
-      </button>
 
-      {#if problems.length}
+      {#if checklist.length}
         <div class="problems">
           <div class="navlabel">Checklist</div>
-          {#each problems as p}
-            <button class="problem {p.level}" onclick={() => (tab = p.tab)}>{p.level === 'warn' ? '⚠' : 'ℹ'} {p.text}</button>
+          {#each checklist as line}
+            <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+              {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
+            </button>
           {/each}
         </div>
       {:else}
@@ -565,7 +602,7 @@
         {:else if tab === 'tools'}
           <ToolsEditor />
         {:else if tab === 'theme'}
-          <ThemeEditor />
+          <ThemeEditor round={lastRound} />
         {:else if tab === 'history'}
           <HistoryPanel />
         {:else if game.rounds[tab]}
@@ -625,7 +662,8 @@
   }
   .first-round .modes {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    /* Two by two: the four modes never leave one alone on a row. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
   .first-round .mode {
@@ -759,6 +797,9 @@
     min-width: 0;
   }
   @media (max-width: 700px) {
+    .first-round .modes {
+      grid-template-columns: 1fr;
+    }
     .body {
       flex-direction: column;
     }

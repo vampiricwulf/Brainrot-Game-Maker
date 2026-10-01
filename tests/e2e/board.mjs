@@ -127,7 +127,7 @@ try {
     await page.waitForTimeout(250);
   }
   assert((await tileText(4, 4)).includes('What is skibidi?') && (await tileText(1, 0)).includes('What is skibidi?'), 'Ctrl-dragging copies instead');
-  assert((await undoTitle()).startsWith('Undo: Copied Category 2 $200 to Category 5 $1000'), `copying is a named step too (${await undoTitle()})`);
+  assert((await undoTitle()).startsWith('Undo: Copied Category 2 $200 to Category 5 $1,000'), `copying is a named step too (${await undoTitle()})`);
 
   // ---------- ED-17: categories ----------
   await page.locator('.cat').nth(1).locator('.grip').click({ button: 'right' });

@@ -144,6 +144,10 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     align-items: end;
   }
+  /* A label that wraps keeps its checkbox full size. */
+  .check input[type='checkbox'] {
+    flex: none;
+  }
   .sounds {
     display: flex;
     flex-direction: column;

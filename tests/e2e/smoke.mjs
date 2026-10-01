@@ -702,6 +702,10 @@ assert((await page.getByRole('button', { name: 'Tiebreaker (off)' }).count()) ==
 await page.getByRole('button', { name: '🎨 Theme' }).click();
 await page.getByRole('button', { name: /Brainrot Neon/ }).click();
 await page.getByRole('combobox', { name: 'Score bar' }).selectOption('top');
+// The preview starts on the round last open (the Final), and shows any round.
+const previewing = await page.getByLabel('Preview', { exact: true }).evaluate((e) => e.selectedOptions[0].text);
+assert(previewing.includes('Final'), `the theme preview starts on the round last open (${previewing})`);
+await page.getByLabel('Preview', { exact: true }).selectOption({ index: 0 });
 await page.locator('.preview .board').waitFor();
 const previewTile = await page.locator('.preview .board .tile').nth(1).evaluate((e) => getComputedStyle(e).backgroundColor);
 assert(previewTile === 'rgb(22, 0, 46)', `theme preview uses the neon tile color (${previewTile})`);
