@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { align, bounds, centreOn, contains, elementsAt, nextBelow, restack, touchedBy } from './layers';
+import { align, bounds, centreOn, clampOnto, contains, elementsAt, nearestSnap, nextBelow, restack, touchedBy } from './layers';
 
 const box = (id: string, x: number, y: number, w: number, h: number, zIndex: number, rotation = 0) => ({ id, x, y, w, h, zIndex, rotation });
 
@@ -96,6 +96,67 @@ describe('align', () => {
     align([e], 'left');
     align([e], 'top');
     expect([e.x, e.y]).toEqual([0, 0]);
+  });
+});
+
+describe('align several items', () => {
+  const three = () => [
+    { x: 100, y: 100, w: 200, h: 100 },
+    { x: 500, y: 300, w: 100, h: 300 },
+    { x: 1000, y: 50, w: 300, h: 50 },
+  ];
+  it('lines them up with each other, within the box around them, not the slide', () => {
+    const els = three();
+    align(els, 'left');
+    expect(els.map((e) => e.x)).toEqual([100, 100, 100]);
+    align(els, 'bottom');
+    expect(els.map((e) => e.y + e.h)).toEqual([600, 600, 600]);
+    const c = three();
+    align(c, 'hcenter');
+    // The box around them: 100..1300, middle 700.
+    expect(c.map((e) => e.x + e.w / 2)).toEqual([700, 700, 700]);
+    const r = three();
+    align(r, 'right');
+    expect(r.map((e) => e.x + e.w)).toEqual([1300, 1300, 1300]);
+  });
+  it('uses a turned item as drawn', () => {
+    const turned = { x: 0, y: 400, w: 200, h: 100, rotation: 90 };
+    const other = { x: 500, y: 100, w: 100, h: 100, rotation: 0 };
+    align([turned, other], 'top');
+    // Turned a quarter, it reaches 50 above its box.
+    expect(bounds(turned).y).toBe(100);
+    expect(other.y).toBe(100);
+  });
+  it('spaces three or more evenly between the outermost two', () => {
+    const els = three();
+    align(els, 'hdistribute');
+    // 100..1300 holds 600 of items: two gaps of 300.
+    expect(els.map((e) => e.x)).toEqual([100, 600, 1000]);
+    const down = three();
+    align(down, 'vdistribute');
+    // In order down the slide (by middle): 50..100, 100..200, 300..600 → 50..600 holds 450, gaps of 50.
+    expect([down[2].y, down[0].y, down[1].y]).toEqual([50, 150, 300]);
+  });
+  it('a lone item still goes to the slide', () => {
+    const e = { x: 100, y: 100, w: 200, h: 100 };
+    align([e], 'right');
+    expect(e.x).toBe(1720);
+  });
+});
+
+describe('snapping and dropping', () => {
+  it('snaps the nearest edge within reach, with every guide at that distance', () => {
+    expect(nearestSnap([100, 150, 200], [0, 205, 960], 6)).toEqual({ off: 5, at: [205] });
+    expect(nearestSnap([100], [0, 960], 6)).toEqual({ off: 0, at: [] });
+    expect(nearestSnap([100, 200], [97, 203], 6)).toEqual({ off: -3, at: [97, 203] });
+  });
+  it('keeps an item dropped near an edge on the slide, and centres one bigger than it', () => {
+    const e = { x: 1800, y: -50, w: 400, h: 300 };
+    clampOnto(e);
+    expect([e.x, e.y]).toEqual([1520, 0]);
+    const big = { x: 10, y: 10, w: 2000, h: 200 };
+    clampOnto(big);
+    expect(big.x).toBe(-40);
   });
 });
 

@@ -153,6 +153,24 @@ try {
   await shot('bi-2-decor-editor');
   await page.keyboard.press('Escape');
 
+  // The preview has as many players as the game can have (📋 Most players, 8), and says when an image covers a score.
+  const playersSel = modal.getByLabel('Players in the preview');
+  assert((await playersSel.inputValue()) === '8' && (await modal.locator('.canvas .bar > *').count()) === 8, 'the preview shows the score bar with the game’s Most players (8)');
+  await modal.locator('p.warn', { hasText: 'blocker.png' }).waitFor();
+  assert(true, 'a warning says the full-height blocker.png covers a player’s score');
+  await playersSel.selectOption('3');
+  assert((await modal.locator('.canvas .bar > *').count()) === 3, 'another number of players can be picked for the preview');
+  // A file that isn't a picture is refused before it's stored.
+  const mediaBefore = await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText();
+  const sound = await page.evaluateHandle(() => {
+    const d = new DataTransfer();
+    d.items.add(new File(['RIFF....WAVEfmt '], 'boing.wav', { type: 'audio/wav' }));
+    return d;
+  });
+  await modal.locator('.canvas').dispatchEvent('drop', { dataTransfer: sound });
+  await page.locator('.toast', { hasText: 'isn\'t an image' }).waitFor();
+  assert((await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText()) === mediaBefore, 'a sound dropped on the board images is refused and not added to 🖼 Media');
+
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();
   await modal.getByRole('button', { name: 'Done' }).click();
   assert((await page.getByRole('button', { name: /Board images \(3\)/ }).count()) === 1, 'the Board images button counts them');

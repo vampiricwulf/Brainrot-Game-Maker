@@ -107,7 +107,7 @@ try {
       (await clue.getByRole('tab', { name: 'Question slide' }).getAttribute('aria-selected')) === 'true',
     'the right clue, on its question side',
   );
-  assert((await clue.locator('.layers-box').count()) === 0, 'with the text box gone');
+  assert((await clue.locator('.layers .row').count()) === 1, 'with the text box gone (only the question is left)');
   assert((await notice.innerText()).includes('Added text box'), 'and the note names it');
   await key('Control+z');
   assert((await page.getByPlaceholder('Type the question…').inputValue()) === '', 'the next Ctrl+Z takes the question back');

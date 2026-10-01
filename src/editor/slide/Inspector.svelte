@@ -3,10 +3,11 @@
   import type { Snippet } from 'svelte';
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
-  import type { EntranceType, Game, SlideElement, TextEl } from '../../lib/model';
+  import type { EntranceType, Fit, Game, SlideElement, TextEl } from '../../lib/model';
   import { openMediaPopup } from '../../lib/mediactl.svelte';
   import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, formatWhen, linkHost } from '../../lib/links';
   import SaveCopyButton from '../SaveCopyButton.svelte';
+  import NumField from './NumField.svelte';
 
   let {
     el,
@@ -57,7 +58,7 @@
   const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
 
   const fonts = $derived(fontChoices(game));
-  const ENTRANCES: [EntranceType | '', string][] = [
+  const ENTRANCES: [EntranceType | '', string][] = $derived([
     ['', 'None'],
     ['fade', 'Fade in'],
     ['pop', 'Pop'],
@@ -65,18 +66,21 @@
     ['slide-right', 'Slide from right'],
     ['slide-up', 'Slide from bottom'],
     ['slide-down', 'Slide from top'],
-    ['typewriter', 'Typewriter reveal'],
+    // A text box types its letters one by one; anything else wipes in from the left (the same saved setting).
+    ['typewriter', el.kind === 'text' ? 'Typewriter (letter by letter)' : 'Wipe in'],
     ['shake', 'Shake'],
     ['spin', 'Spin in'],
-  ];
+  ]);
 
   function setEntrance(type: string): void {
-    el.entrance = type ? { type: type as EntranceType, delay: el.entrance?.delay ?? 0, duration: el.entrance?.duration ?? 0.6 } : undefined;
+    // Typing out a text takes about as long as reading it (20 letters a second, 1 to 5 seconds), unless a time was set.
+    const typing = type === 'typewriter' && el.kind === 'text' && !el.entrance;
+    const duration = typing ? Math.min(5, Math.max(1, Math.round((el as TextEl).text.length / 2) / 10)) : (el.entrance?.duration ?? 0.6);
+    el.entrance = type ? { type: type as EntranceType, delay: el.entrance?.delay ?? 0, duration } : undefined;
   }
 
   // svelte-ignore state_referenced_locally
   let applyScope = $state(stylecategory ? 'cat-q' : 'round-q');
-  const num = (v: string, fallback = 0) => (v === '' || isNaN(+v) ? fallback : +v);
 </script>
 
 <!-- A file that plays from its link: say so, and offer to save a copy. -->
@@ -114,7 +118,7 @@
       <div class="grid2">
         <label class="field">
           <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted"> · showing {fit.size}</span>{/if}</span>
-          <input type="number" min="8" max="600" bind:value={el.size} />
+          <NumField min={8} max={600} bind:value={el.size} fallback={110} />
         </label>
         <label class="field">Color<input type="color" bind:value={el.color} /></label>
       </div>
@@ -139,8 +143,8 @@
       </div>
       <label class="check"><input type="checkbox" bind:checked={el.autoFit} /> Shrink text to fit the box</label>
       <div class="grid2">
-        <label class="field">Line height<input type="number" step="0.05" min="0.6" max="3" bind:value={el.lineHeight} /></label>
-        <label class="field">Letter spacing<input type="number" min="-20" max="60" bind:value={el.letterSpacing} /></label>
+        <label class="field">Line height<NumField step={0.05} min={0.6} max={3} bind:value={el.lineHeight} fallback={1.2} /></label>
+        <label class="field">Letter spacing<NumField min={-20} max={60} bind:value={el.letterSpacing} /></label>
       </div>
     </section>
 
@@ -152,7 +156,7 @@
       {#if el.stroke}
         <div class="grid2 sub">
           <label class="field">Color<input type="color" bind:value={el.stroke.color} /></label>
-          <label class="field">Width<input type="number" min="0" max="60" bind:value={el.stroke.width} /></label>
+          <label class="field">Width<NumField min={0} max={60} bind:value={el.stroke.width} fallback={6} /></label>
         </div>
       {/if}
       <label class="check">
@@ -161,9 +165,9 @@
       {#if el.shadow}
         <div class="grid4 sub">
           <label class="field">Color<input type="color" bind:value={el.shadow.color} /></label>
-          <label class="field">X<input type="number" bind:value={el.shadow.x} /></label>
-          <label class="field">Y<input type="number" bind:value={el.shadow.y} /></label>
-          <label class="field">Blur<input type="number" min="0" bind:value={el.shadow.blur} /></label>
+          <label class="field">X<NumField bind:value={el.shadow.x} /></label>
+          <label class="field">Y<NumField bind:value={el.shadow.y} /></label>
+          <label class="field">Blur<NumField min={0} bind:value={el.shadow.blur} /></label>
         </div>
       {/if}
       <label class="check">
@@ -172,7 +176,7 @@
       {#if el.glow}
         <div class="grid2 sub">
           <label class="field">Color<input type="color" bind:value={el.glow.color} /></label>
-          <label class="field">Size<input type="number" min="0" max="200" bind:value={el.glow.blur} /></label>
+          <label class="field">Size<NumField min={0} max={200} bind:value={el.glow.blur} fallback={20} /></label>
         </div>
       {/if}
       <label class="check">
@@ -185,8 +189,8 @@
       {#if el.background}
         <div class="grid3 sub">
           <label class="field">Color<input type="color" bind:value={el.background.color} /></label>
-          <label class="field">Padding<input type="number" min="0" bind:value={el.background.padding} /></label>
-          <label class="field">Corners<input type="number" min="0" bind:value={el.background.radius} /></label>
+          <label class="field">Padding<NumField min={0} bind:value={el.background.padding} fallback={24} /></label>
+          <label class="field">Corners<NumField min={0} bind:value={el.background.radius} fallback={16} /></label>
         </div>
       {/if}
     </section>
@@ -224,7 +228,7 @@
           <option value="fill">Stretch</option>
         </select>
       </label>
-      <label class="field">Rounded corners<input type="number" min="0" value={el.radius ?? 0} oninput={(e) => (el.radius = num(e.currentTarget.value))} /></label>
+      <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
       <div class="row">
         {#if oneditimage}<button onclick={oneditimage}>🎨 Edit image…</button>{/if}
         <button onclick={(e) => onreplace(e.currentTarget)}>Replace…</button>
@@ -258,13 +262,13 @@
               <label class="check small"><input type="checkbox" checked={el.fill === 'transparent'} onchange={(e) => (el.fill = e.currentTarget.checked ? 'transparent' : '#ffcc00')} />none</label>
             </div>
           </label>
-          {#if el.shape === 'rect'}<label class="field">Corners<input type="number" min="0" bind:value={el.radius} /></label>{/if}
+          {#if el.shape === 'rect'}<label class="field">Corners<NumField min={0} bind:value={el.radius} /></label>{/if}
         </div>
       {/if}
       {#if !el.hotspot}
         <div class="grid2">
           <label class="field">{el.shape === 'line' || el.shape === 'arrow' || el.shape === 'path' ? 'Color' : 'Border'}<input type="color" bind:value={el.stroke} /></label>
-          <label class="field">Thickness<input type="number" min="0" max="100" bind:value={el.strokeWidth} /></label>
+          <label class="field">Thickness<NumField min={0} max={100} bind:value={el.strokeWidth} /></label>
         </div>
       {/if}
     </section>
@@ -286,6 +290,18 @@
           <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
         {/if}
         <button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))}>Test link ↗</button>
+        {#if el.embedKind === 'remoteImage'}
+          <!-- An online picture fits and rounds like a picture of the game's own. -->
+          <label class="field">
+            Fit
+            <select value={el.fit ?? 'contain'} onchange={(e) => (el.fit = e.currentTarget.value as Fit)}>
+              <option value="contain">Fit inside box</option>
+              <option value="cover">Fill box (crop edges)</option>
+              <option value="fill">Stretch</option>
+            </select>
+          </label>
+          <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
+        {/if}
       {:else}
         <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
         {@render liveNote()}
@@ -321,8 +337,8 @@
     </select>
     {#if el.entrance}
       <div class="grid2">
-        <label class="field">Delay (s)<input type="number" min="0" step="0.1" bind:value={el.entrance.delay} /></label>
-        <label class="field">Duration (s)<input type="number" min="0.1" step="0.1" bind:value={el.entrance.duration} /></label>
+        <label class="field">Delay (s)<NumField min={0} step={0.1} bind:value={el.entrance.delay} /></label>
+        <label class="field">Duration (s)<NumField min={0.1} step={0.1} bind:value={el.entrance.duration} fallback={0.6} /></label>
       </div>
     {/if}
   </section>
@@ -330,13 +346,13 @@
   <section>
     <h4>Position</h4>
     <div class="grid4">
-      <label class="field">X<input type="number" bind:value={el.x} /></label>
-      <label class="field">Y<input type="number" bind:value={el.y} /></label>
-      <label class="field">W<input type="number" min="1" bind:value={el.w} /></label>
-      <label class="field">H<input type="number" min="1" bind:value={el.h} /></label>
+      <label class="field">X<NumField bind:value={el.x} /></label>
+      <label class="field">Y<NumField bind:value={el.y} /></label>
+      <label class="field">W<NumField min={1} bind:value={el.w} fallback={100} /></label>
+      <label class="field">H<NumField min={1} bind:value={el.h} fallback={100} /></label>
     </div>
     <div class="grid2">
-      <label class="field">Rotation°<input type="number" min="-180" max="180" bind:value={el.rotation} /></label>
+      <label class="field">Rotation°<NumField min={-180} max={180} bind:value={el.rotation} /></label>
       <label class="field">Opacity {Math.round(el.opacity * 100)}%<input type="range" min="0" max="1" step="0.05" bind:value={el.opacity} /></label>
     </div>
     <div class="row">

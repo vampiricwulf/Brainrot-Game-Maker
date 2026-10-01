@@ -80,8 +80,13 @@
   /** Alt+arrows go like the board: up and down the category, or across to the same row of the next one. */
   const ALT_ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
+  /**
+   * In a field Esc belongs to. A checkbox of the clue's own (Daily Double…) isn't one, but one in the slide editor's
+   * Inspector is: there Esc first leaves the field, as in its other fields (SlideEditor's own keys).
+   */
   function typing(e: Event): boolean {
-    return !!(e.target as HTMLElement)?.closest?.('input:not([type="checkbox"]), textarea, select');
+    const t = e.target as HTMLElement;
+    return !!t?.closest?.('input:not([type="checkbox"]), textarea, select') || !!t?.closest?.('.se input[type="checkbox"]');
   }
 
   function onkey(e: KeyboardEvent): void {

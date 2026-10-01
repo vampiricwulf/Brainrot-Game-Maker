@@ -91,16 +91,82 @@ export function restack<T extends { id: string; zIndex: number }>(els: T[], ids:
   out.forEach((e, i) => (e.zIndex = i));
 }
 
-/** Move each item to the stage's edge, or centre it across or down the stage (Align in the Inspector and the menu). */
-export function align(els: { x: number; y: number; w: number; h: number }[], how: Align, W = 1920, H = 1080): void {
-  for (const e of els) {
-    if (how === 'left') e.x = 0;
-    if (how === 'hcenter') e.x = Math.round((W - e.w) / 2);
-    if (how === 'right') e.x = W - e.w;
-    if (how === 'top') e.y = 0;
-    if (how === 'vcenter') e.y = Math.round((H - e.h) / 2);
-    if (how === 'bottom') e.y = H - e.h;
+type Placed = { x: number; y: number; w: number; h: number; rotation?: number };
+const drawn = (e: Placed) => bounds({ ...e, rotation: e.rotation ?? 0 });
+
+/**
+ * Align (the Inspector's buttons and the right-click menu). One item goes to the stage's edge, or the middle across
+ * or down it; several line up with each other, within the box around them all (left edges together, middles in a
+ * line…), and Distribute spaces three or more evenly between the outermost two. Items are placed as drawn: a turned
+ * one by the box around it.
+ */
+export function align(els: Placed[], how: Align, W = 1920, H = 1080): void {
+  if (!els.length) return;
+  const all = els.map(drawn);
+  const area =
+    els.length === 1
+      ? { x: 0, y: 0, w: W, h: H }
+      : (() => {
+          const x = Math.min(...all.map((b) => b.x));
+          const y = Math.min(...all.map((b) => b.y));
+          return { x, y, w: Math.max(...all.map((b) => b.x + b.w)) - x, h: Math.max(...all.map((b) => b.y + b.h)) - y };
+        })();
+  if (how === 'hdistribute' || how === 'vdistribute') return distribute(els, how === 'hdistribute' ? 'x' : 'y');
+  els.forEach((e, i) => {
+    const b = all[i];
+    let dx = 0;
+    let dy = 0;
+    if (how === 'left') dx = area.x - b.x;
+    if (how === 'hcenter') dx = area.x + (area.w - b.w) / 2 - b.x;
+    if (how === 'right') dx = area.x + area.w - (b.x + b.w);
+    if (how === 'top') dy = area.y - b.y;
+    if (how === 'vcenter') dy = area.y + (area.h - b.h) / 2 - b.y;
+    if (how === 'bottom') dy = area.y + area.h - (b.y + b.h);
+    e.x = Math.round(e.x + dx);
+    e.y = Math.round(e.y + dy);
+  });
+}
+
+/** Space three or more items evenly across (x) or down (y): the outermost stay, the gaps between the rest are equal. */
+function distribute(els: Placed[], axis: 'x' | 'y'): void {
+  if (els.length < 3) return;
+  const size = axis === 'x' ? 'w' : 'h';
+  const items = els.map((e) => ({ e, b: drawn(e) })).sort((a, b) => a.b[axis] + a.b[size] / 2 - (b.b[axis] + b.b[size] / 2));
+  const start = items[0].b[axis];
+  const end = Math.max(...items.map((i) => i.b[axis] + i.b[size]));
+  const gap = (end - start - items.reduce((n, i) => n + i.b[size], 0)) / (items.length - 1);
+  let at = start;
+  for (const { e, b } of items) {
+    e[axis] = Math.round(e[axis] + at - b[axis]);
+    at += b[size] + gap;
   }
+}
+
+/**
+ * Snapping while dragging: of the edges `vals`, the one nearest a target within `reach`, the offset that puts it
+ * there, and every target at that same distance (the guides to draw). Nothing in reach: no offset, no guides.
+ */
+export function nearestSnap(vals: number[], targets: number[], reach: number): { off: number; at: number[] } {
+  let bd = Infinity;
+  let off = 0;
+  let at: number[] = [];
+  for (const v of vals)
+    for (const t of targets) {
+      const d = Math.abs(t - v);
+      if (d < bd - 0.01) {
+        bd = d;
+        off = t - v;
+        at = [t];
+      } else if (Math.abs(d - bd) < 0.01 && !at.includes(t)) at.push(t);
+    }
+  return bd <= reach ? { off, at } : { off: 0, at: [] };
+}
+
+/** Move a box (an item dropped or added at the pointer) onto the stage: wholly, or centred when it's bigger. */
+export function clampOnto(e: { x: number; y: number; w: number; h: number }, W = 1920, H = 1080): void {
+  const fit = (v: number, size: number, room: number) => Math.round(size > room ? (room - size) / 2 : Math.max(0, Math.min(v, room - size)));
+  e.x = fit(e.x, e.w, W);
+  e.y = fit(e.y, e.h, H);
 }
 
 /** Move a group of items together so the middle of the box around them is at `at` (a paste at the pointer). */

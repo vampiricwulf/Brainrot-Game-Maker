@@ -7,6 +7,7 @@
   import { uniqueMediaName } from '../lib/medianame';
   import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
   import { allEmbeds, mediaUsage } from '../lib/usage';
+  import { redoEdits } from '../lib/reedit';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
   import { embedName, embedOpenUrl, formatWhen, linkHost, linkLifetime } from '../lib/links';
@@ -132,12 +133,21 @@
   /** Replace…, or a file dropped on the card. A file of another kind is refused (a toast says why). */
   async function replaceWith(m: MediaRef, f: File): Promise<void> {
     try {
+      let edited = { redone: 0, plain: 0 };
       await stepAsync(`Replaced file “${m.name}” with “${f.name}”`, async () => {
         const before = await stashMedia(m.id);
         await replaceMediaFile(game, m.id, f);
         attachBlobSwap({ id: m.id, before, after: await stashMedia(m.id) });
+        // Pictures showing an edited copy of the old file get their edits again, on the new one.
+        edited = await redoEdits(game, m.id);
       });
-      toast(`"${f.name}" is in place: everything that used this file shows it now`);
+      const n = edited.redone + edited.plain;
+      const note = !n
+        ? ''
+        : edited.plain
+          ? ` (${n} edited picture${n === 1 ? '' : 's'}: ${edited.plain} show${edited.plain === 1 ? 's' : ''} it without the edits)`
+          : ` (with the edits of ${n} edited picture${n === 1 ? '' : 's'} done again)`;
+      toast(`"${f.name}" is in place: everything that used this file shows it now${note}`, n ? 6000 : undefined);
     } catch (e) {
       toast((e as Error).message, 6000);
     }

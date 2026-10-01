@@ -60,6 +60,15 @@ Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube
 right-click menus; `Delete`, `F2`, `Ctrl+D` and `Ctrl+C` / `Ctrl+V` work on what's selected. Files drop onto the slot
 they belong in. Press `?` (or ⌨ next to ℹ About) for every editor shortcut.
 
+**Slide editor:** drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until
+it's selected), so a full-slide question doesn't move when you meant to select; `Alt`+drag always draws a box. Items
+snap to the slide and to each other while moving and resizing (`Alt` turns it off). With several selected, Left /
+Center / Right / Top / Middle / Bottom line them up with each other, and **Space evenly** spreads three or more. The
+**Layers** list shows whenever the slide has an item, so every item can be reached from the keyboard. Text outlines,
+shadows and glows get room inside their box, so they're never cut off at its edge, and **Typewriter (letter by
+letter)** types the text out (all at once with reduced motion). The same file added twice is stored once (a toast says
+it's already in 🖼 Media). Replacing a file in 🖼 Media redoes the 🎨 edits of pictures made from it on the new file.
+
 **RPG map editor:** drag a screen to move it or swap it with another (dropping past the edge grows the map, dropping
 on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /
 `Ctrl+C` `Ctrl+V` / `F2` work on the grid, `Shift`-click or a box selects several, and pictures dropped on the map

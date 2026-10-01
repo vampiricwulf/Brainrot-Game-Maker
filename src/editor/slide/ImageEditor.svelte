@@ -8,14 +8,14 @@
   import { toast, editedGame } from '../../lib/app.svelte';
   import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
   import { step, stepAsync } from '../../lib/history.svelte';
-  import { newId, type ImageEdits, type ImageEl } from '../../lib/model';
-  import { aspectCrop } from '../../lib/editing';
+  import { newId, SLIDE_H, SLIDE_W, type ImageEdits, type ImageEl } from '../../lib/model';
+  import { aspectCrop, fitAspect } from '../../lib/editing';
   import { fontChoices } from '../../lib/fonts';
   import { linkHost } from '../../lib/links';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
-    canvasToBlob, defaultEdits, fitCrop, loadImage, orientedSize, outputSize, renderEdited, renderOriented, STICKERS,
+    canvasToBlob, defaultEdits, fitCrop, itemAt, loadImage, orientedSize, outputSize, renderEdited, renderOriented, STICKERS,
   } from '../../lib/imageedit';
 
   let { el, onclose }: { el: ImageEl; onclose: () => void } = $props();
@@ -115,22 +115,21 @@
     return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
   }
 
-  let drag: { kind: 'stroke' } | { kind: 'item'; id: string; dx: number; dy: number } | { kind: 'crop'; mode: string; sx: number; sy: number; o: { x: number; y: number; w: number; h: number } } | null = null;
+  // `moved`: a caption or sticker only becomes an undo step once it really moves (a click just selects it).
+  let drag: { kind: 'stroke' } | { kind: 'item'; id: string; dx: number; dy: number; moved: boolean } | { kind: 'crop'; mode: string; sx: number; sy: number; o: { x: number; y: number; w: number; h: number } } | null = null;
 
+  let measurer: CanvasRenderingContext2D | null = null;
+  /** A caption's line width as the canvas draws it. */
+  function measure(line: string, size: number, font: string): number {
+    measurer ??= document.createElement('canvas').getContext('2d');
+    if (!measurer) return line.length * size * 0.6;
+    measurer.font = `900 ${size}px ${font}`;
+    return measurer.measureText(line).width;
+  }
+
+  /** The caption or sticker under the point: the box it draws (not a circle). */
   function hit(p: { x: number; y: number }): string | null {
-    const W = out.w || 1;
-    const H = out.h || 1;
-    const items = [...edits.stickers.map((s) => ({ id: s.id, x: s.x, y: s.y, r: s.size * 0.6 })), ...edits.texts.map((t) => ({ id: t.id, x: t.x, y: t.y, r: t.size * Math.max(1.2, t.text.length * 0.3) }))];
-    let best: string | null = null;
-    let bd = Infinity;
-    for (const it of items) {
-      const d = Math.hypot((p.x - it.x) * W, (p.y - it.y) * H) / W;
-      if (d < it.r && d < bd) {
-        bd = d;
-        best = it.id;
-      }
-    }
-    return best;
+    return itemAt(p, out.w || 1, out.h || 1, edits, measure);
   }
 
   function down(e: PointerEvent): void {
@@ -145,10 +144,9 @@
     }
     const id = hit(p);
     if (id) {
-      commit();
       selectedId = id;
       const it = edits.texts.find((t) => t.id === id) ?? edits.stickers.find((s) => s.id === id)!;
-      drag = { kind: 'item', id, dx: it.x - p.x, dy: it.y - p.y };
+      drag = { kind: 'item', id, dx: it.x - p.x, dy: it.y - p.y, moved: false };
       return;
     }
     if (tool === 'text') {
@@ -174,6 +172,12 @@
     } else if (drag.kind === 'item') {
       const d = drag;
       const it = edits.texts.find((t) => t.id === d.id) ?? edits.stickers.find((s) => s.id === d.id);
+      const nx = Math.min(1, Math.max(0, p.x + d.dx));
+      const ny = Math.min(1, Math.max(0, p.y + d.dy));
+      if (it && !d.moved && (nx !== it.x || ny !== it.y)) {
+        commit();
+        d.moved = true;
+      }
       if (it) {
         it.x = Math.min(1, Math.max(0, p.x + d.dx));
         it.y = Math.min(1, Math.max(0, p.y + d.dy));
@@ -261,8 +265,8 @@
         const ref = await addMediaFile(game, blob, `${base}-edited.${alpha ? 'png' : 'jpg'}`);
         el.editedMedia = ref.id;
         el.edits = JSON.parse(JSON.stringify(edits));
-        // Match the box to the new shape so nothing looks squashed.
-        el.h = Math.round(el.w * (canvas.height / canvas.width));
+        // Match the box to the new shape so nothing looks squashed: as big as fits in the old box, where it was, on the slide.
+        Object.assign(el, fitAspect(el, canvas.width / canvas.height, SLIDE_W, SLIDE_H));
       });
       toast('Image edited (original kept)');
       onclose();
@@ -414,7 +418,7 @@
               <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a as 'free' | number)}>{l}</button>
             {/each}
           </div>
-          <button class="small" onclick={() => ((edits.crop = undefined), (tool = 'move'))}>Remove crop</button>
+          <button class="small" onclick={() => (commit(), (edits.crop = undefined), (tool = 'move'))}>Remove crop</button>
           <button class="small primary" onclick={() => (tool = 'move')}>Done cropping</button>
         {/if}
 

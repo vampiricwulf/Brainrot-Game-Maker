@@ -520,6 +520,70 @@ export function describe(all: readonly Op[], before: Game, after: Game, explicit
   return { label, icon: at.icon, where: crumbs.join(' › '), place, undoPlace };
 }
 
+/** Theme settings as the 🎨 Theme tab calls them. */
+const THEME_FIELDS: Record<string, string> = {
+  tile: 'tile color',
+  tileUsed: 'used tile color',
+  boardGap: 'line color',
+  value: 'value color',
+  boardText: 'category name color',
+  stageText: 'slide text color',
+  scoreBarBg: 'score bar color',
+  boardFont: 'category font',
+  valueFont: 'value font',
+  glow: 'tile glow',
+  boardImage: 'background picture',
+  bannerHeight: 'banner height',
+  bannerFit: 'banner fit',
+  clueFont: 'clue text font',
+  clueColor: 'clue text color',
+};
+const themeField = (k: Seg | undefined) => (k === undefined ? 'theme' : (THEME_FIELDS[k] ?? fieldName(k)));
+
+/** Keys that hold a slide. */
+const SLIDE_KEYS = new Set<Seg>(['questionSlide', 'answerSlide', 'slide', 'dialogue']);
+/**
+ * Is the op about a slide's own background (not a text box's background box)? 'whole' when it's set all at once
+ * (↺ BG resets it), else which of its settings.
+ */
+function slideBackground(op: Op): Seg | 'whole' | null {
+  if (op.t !== 'set') return null;
+  const p = op.p;
+  if (op.k === 'background' && SLIDE_KEYS.has(p[p.length - 1])) return 'whole';
+  if (p[p.length - 1] === 'background' && SLIDE_KEYS.has(p[p.length - 2])) return op.k;
+  return null;
+}
+
+/** A text box's settings as the Inspector calls them. */
+const TEXT_FIELDS: Record<string, string> = {
+  stroke: 'outline',
+  shadow: 'drop shadow',
+  glow: 'glow',
+  background: 'background box',
+  autoFit: 'shrink to fit',
+  size: 'text size',
+  weight: 'bold',
+  vAlign: 'vertical position',
+  align: 'alignment',
+};
+const EFFECT_PARTS: Record<string, string> = { width: 'width', color: 'color', blur: 'blur', x: 'X', y: 'Y', padding: 'padding', radius: 'corners' };
+const EFFECTS = new Set(['stroke', 'shadow', 'glow', 'background']);
+
+/** A change to a text box's setting or effect ("Added an outline to text box “Hi”", "Changed outline width of …"). */
+function textBoxChange(op: Op & { t: 'set' }, at: At): string | null {
+  if (at.noun !== 'text box') return null;
+  const sub = opPath(op).slice(at.depth);
+  const field = sub[0];
+  if (typeof field !== 'string' || !TEXT_FIELDS[field]) return null;
+  const name = TEXT_FIELDS[field];
+  if (sub.length === 1 && EFFECTS.has(field)) {
+    if (op.a === undefined) return `Removed the ${name} from ${what(at)}`;
+    if (op.b === undefined) return `Added ${/^[aeiou]/.test(name) ? 'an' : 'a'} ${name} to ${what(at)}`;
+  }
+  const part = sub.length > 1 && typeof sub[1] === 'string' ? ` ${EFFECT_PARTS[sub[1]] ?? fieldName(sub[1])}` : '';
+  return `Changed ${name}${part} of ${what(at)}`;
+}
+
 function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: number, before: Game, after: Game): string {
   if (op.t === 'ins' || op.t === 'del') {
     const verb = op.t === 'ins' ? 'Added' : at.noun === 'file' ? 'Removed' : 'Deleted';
@@ -558,8 +622,17 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (top === 'theme') {
     const preset = sets.find((o) => o.k === 'preset' && o.p.length === 1);
     if (preset) return `Theme preset: ${PRESETS[preset.a as ThemePreset]?.label ?? preset.a}`;
-    return ops.length === 1 && op.p.length === 1 ? `Theme: ${fieldName(k)}${themeValue(k, v)}` : 'Changed the theme';
+    if (ops.length === 1 && op.p.length === 1) return `Theme: ${themeField(k)}${themeValue(k, v)}`;
+    // Several theme settings at once: which ones (the first three).
+    const names = [...new Set(sets.filter((o) => o.p[0] === 'theme').map((o) => themeField(o.p.length === 1 ? o.k : o.p[1])))];
+    return names.length && names.length <= 3 ? `Theme: ${names.join(', ')}` : 'Changed the theme';
   }
+  // A slide's background (not a text box's background box): its colour, its picture, or all of it reset.
+  const bg = slideBackground(op);
+  if (bg === 'whole') return 'Reset the slide background';
+  if (bg === 'color') return v ? `Slide background color ${String(v)}` : 'Removed the slide background color';
+  if (bg === 'image') return v ? 'Slide background picture' : 'Removed the slide background picture';
+  if (bg) return 'Changed the slide background';
   if (!op.p.length && k === 'tiebreaker') return v === undefined ? 'Tiebreaker off' : 'Tiebreaker on';
 
   if (at.noun === 'screen' && only('col', 'row')) {
@@ -602,5 +675,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     const field = k === 'text' ? (at.main ?? 'text') : fieldName(k);
     return typeof v === 'string' && v.trim() ? `Edited ${field}${quoted(v)}` : `Cleared the ${field}`;
   }
+  const textChange = op.t === 'set' ? textBoxChange(op, at) : null;
+  if (textChange) return textChange;
   return `Changed ${fieldName(typeof k === 'number' ? (op.p[op.p.length - 1] ?? k) : k)} of ${what(at)}`;
 }

@@ -57,7 +57,8 @@
       'Slide',
       [
         ['Click / Shift+click / Ctrl+click', 'Select an item / add it or take it away'],
-        ['Drag on an empty spot', 'Select everything the box touches'],
+        ['Drag on an empty spot (or beside a text box’s words)', 'Select everything the box touches'],
+        ['Alt+drag', 'Always draw a selection box, wherever it starts'],
         ['Alt+click', 'The next item down the stack under the pointer'],
         ['Tab / Shift+Tab', 'Select the next item down / up the stack'],
         ['Double-click', 'Edit a text box’s text, or an image in the image editor'],
@@ -65,6 +66,7 @@
         ['Right-click', 'Cut, copy, paste, restack, align, lock, hide or delete; on an empty spot: paste there, select all, add text, background'],
         ['Arrows / Shift+arrows', 'Nudge the selection 1 / 10 pixels'],
         ['Shift while dragging', 'Move along one axis only (while rotating: snap to 15°)'],
+        ['Alt while moving or resizing', 'No snapping to the slide and other items'],
         ['Ctrl+] / Ctrl+[', 'Bring forward / send backward'],
         ['Ctrl+Shift+] / [', 'Bring to front / send to back'],
         ['Ctrl+D', 'Duplicate'],

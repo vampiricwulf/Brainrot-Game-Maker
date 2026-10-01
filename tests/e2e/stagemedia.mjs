@@ -58,6 +58,8 @@ const paused = (p, sel) => p.locator(sel).evaluate((m) => m.paused);
 const waitPaused = (p, sel, v) => p.waitForFunction(([s, want]) => document.querySelector(s)?.paused === want, [sel, v], { timeout: 5000 });
 const answer = (p) => p.getByText('The answer text').count();
 const guard = () => page.waitForTimeout(500); // past the stage's double-click guard
+// 4×4 white PNG.
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEUlEQVR42mP8z8AARLgBAAC0BAP/HpJ+EwAAAABJRU5ErkJggg==';
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -78,7 +80,39 @@ try {
   await page.getByRole('tab', { name: /Answer/ }).click();
   await page.getByRole('button', { name: /Text/ }).first().click();
   await page.keyboard.type('The answer text');
+  // And a picture whose file then goes missing from this computer (gone from the browser's storage, then a reload),
+  // in the slide's corner, away from the video.
+  await page.getByRole('tab', { name: /Question/ }).click();
+  await page.getByRole('button', { name: '🖼 Image' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
+  await fc.setFiles({ name: 'gone.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
+  const position = page.locator('.insp section', { hasText: 'Position' });
+  await position.getByLabel('X', { exact: true }).fill('0');
+  await position.getByLabel('Y', { exact: true }).fill('0');
   await page.getByRole('button', { name: 'Done' }).click();
+  await page.waitForTimeout(900);
+  await page.evaluate(
+    () =>
+      new Promise((done, fail) => {
+        const open = indexedDB.open('keyval-store');
+        open.onsuccess = () => {
+          const tx = open.result.transaction('keyval', 'readwrite');
+          const cursor = tx.objectStore('keyval').openCursor();
+          cursor.onsuccess = () => {
+            const c = cursor.result;
+            if (!c) return;
+            if (String(c.key).startsWith('media:') && c.value?.type === 'image/png') c.delete();
+            c.continue();
+          };
+          tx.oncomplete = done;
+          tx.onerror = fail;
+        };
+        open.onerror = fail;
+      }),
+  );
+  await page.reload();
+  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  await page.waitForTimeout(600);
 
   await playWithPlayers(page, 1);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -89,6 +123,7 @@ try {
   const icon = page.locator('.stage-box .full button.icon');
   await page.locator(video).waitFor();
   assert((await paused(page, video)) && (await paused(page, audio)), 'the clue opens with its video and sound stopped');
+  assert((await page.locator('.stage-box .full .missing').count()) === 0, 'one window (what the stream shows): no "Missing image" box for the missing picture');
 
   // One window.
   await page.locator(video).click();
@@ -113,6 +148,10 @@ try {
   const audVideo = '.full video';
   const audAudio = '.full audio';
   await aud.locator(audVideo).waitFor();
+  assert(
+    (await page.locator('.stage-box .full .missing').count()) === 1 && (await aud.locator('.full .missing').count()) === 0,
+    "dual mode: the host's copy says the picture is missing; viewers just don't see it",
+  );
   await guard();
   await page.locator(video).click();
   await waitPaused(aud, audVideo, false);

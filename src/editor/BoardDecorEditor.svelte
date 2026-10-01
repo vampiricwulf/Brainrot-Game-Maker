@@ -5,16 +5,17 @@
 -->
 <script lang="ts">
   import { modal } from '../lib/modal';
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
+  import { fileKind } from '../lib/mediadrop';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
-  import { align, centreOn, restack, type Pt } from '../lib/layers';
+  import { align, bounds, centreOn, clampOnto, restack, type Pt } from '../lib/layers';
   import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
   import { freeOffset } from '../lib/editing';
-  import { boardRounds, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
+  import { boardRounds, MAX_PLAYERS, mostPlayers, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
@@ -24,7 +25,8 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
-  import { lockedNote, type Align, type LayerAction } from '../lib/layerlabel';
+  import { layerLabel, lockedNote, type Align, type LayerAction } from '../lib/layerlabel';
+  import { nextFreeColor } from '../lib/colors';
   import { itemsFor, placeElement, take } from '../lib/nav.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
@@ -64,12 +66,42 @@
   });
 
   // The board as it looks at the start of this round, minus anything hidden while editing.
+  // The score bar as it'll be on stream: with as many players as the game can have (📋 Most players), or as many as
+  // picked here. The game's own players first, then made-up ones.
+  let previewPlayers = $state(untrack(() => mostPlayers(game.settings.maxPlayers, game.players.length)));
+  const DEMO = ['Alex', 'Sam', 'Jordan', 'Riley', 'Casey', 'Morgan', 'Jamie', 'Taylor', 'Quinn', 'Avery'];
   const session = $derived.by(() => {
     const s = newSession(game);
     s.currentRound = Math.max(0, game.rounds.findIndex((r) => r.id === round.id));
-    if (!s.players.length)
-      s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({ id: `demo-${i}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: 0 }));
+    s.players = s.players.slice(0, previewPlayers);
+    for (let i = s.players.length; i < previewPlayers; i++) {
+      const color = nextFreeColor(s.players.map((p) => p.color));
+      s.players.push({ id: `demo-${i}`, name: DEMO[i] ?? `Player ${i + 1}`, color, startScore: 0 });
+    }
     return s;
+  });
+  /** Board images (in front of the tiles) over a player's name plate on stream. */
+  let overPlates = $state<string[]>([]);
+  $effect(() => {
+    void session;
+    const items = decor.filter((d) => !d.behind && !hidden.includes(d.id));
+    void items.map((d) => [d.x, d.y, d.w, d.h, d.rotation]);
+    tick().then(() => {
+      const stage = canvasEl?.querySelector('.stage') as HTMLElement | null;
+      if (!stage) return;
+      const r = stage.getBoundingClientRect();
+      const k = r.width / SLIDE_W;
+      const plates = [...stage.querySelectorAll('.bar > *')].map((p) => {
+        const b = p.getBoundingClientRect();
+        return { x: (b.left - r.left) / k, y: (b.top - r.top) / k, w: b.width / k, h: b.height / k };
+      });
+      overPlates = items
+        .filter((d) => {
+          const b = bounds(d);
+          return plates.some((p) => b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y);
+        })
+        .map((d) => layerLabel(d, game));
+    });
   });
   const preview = $derived(
     hidden.length
@@ -120,6 +152,7 @@
     if (at) {
       d.x = Math.round(at.x - w / 2);
       d.y = Math.round(at.y - h / 2);
+      clampOnto(d, SLIDE_W, SLIDE_H);
     }
     edit(() => {
       items().push(d);
@@ -133,11 +166,12 @@
       let i = 0;
       for (const file of Array.from(files)) {
         try {
-          const ref = await addMediaFile(game, file);
-          if (ref.kind !== 'image') {
-            toast(`"${ref.name}" isn't an image. Board images can be pictures or GIFs.`);
+          // Checked before it's stored: a video or a sound mustn't end up in 🖼 Media unused.
+          if (fileKind(file) !== 'image') {
+            toast(`"${file.name}" isn't an image. Board images can be pictures or GIFs.`);
             continue;
           }
+          const ref = await addMediaFile(game, file);
           await add(ref.id, at && { x: at.x + i * 40, y: at.y + i * 40 });
           i++;
         } catch (e) {
@@ -431,6 +465,21 @@
 
       <aside class="side">
         <section>
+          <label class="row small">
+            Preview with
+            <select bind:value={previewPlayers} aria-label="Players in the preview">
+              {#each Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1) as n (n)}<option value={n}>{n}</option>{/each}
+            </select>
+            players
+          </label>
+          {#if overPlates.length && game.theme.scoreBar !== 'hidden'}
+            <p class="warn small" role="status">
+              ⚠ {overPlates.length === 1 ? `“${overPlates[0]}” covers` : `${overPlates.slice(0, 3).map((n) => `“${n}”`).join(', ')}${overPlates.length > 3 ? ` and ${overPlates.length - 3} more` : ''} cover`} a player's score with {previewPlayers}
+              player{previewPlayers === 1 ? '' : 's'}. Move {overPlates.length === 1 ? 'it' : 'them'} off the score bar, or put {overPlates.length === 1 ? 'it' : 'them'} behind the tiles.
+            </p>
+          {/if}
+        </section>
+        <section>
           <h4>Layers <span class="muted">(top first)</span></h4>
           <LayersPanel elements={decor} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
         </section>
@@ -581,6 +630,15 @@
   }
   .small {
     font-size: 12px;
+  }
+  .warn {
+    margin: 6px 0 0;
+    color: var(--warn);
+  }
+  label.row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
   @media (max-width: 900px) {
     .body {

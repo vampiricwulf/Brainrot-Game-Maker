@@ -32,7 +32,7 @@
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
-  import { align as alignTo, centreOn, restack, type Pt, type Restack } from '../../lib/layers';
+  import { align as alignTo, centreOn, clampOnto, restack, type Pt, type Restack } from '../../lib/layers';
   import {
     newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
     type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
@@ -235,8 +235,10 @@
     edit(() => {
       el.zIndex = topZ();
       if (at) {
+        // Centred on the pointer, but never partly off the slide (dropped near an edge).
         el.x = Math.round(at.x - el.w / 2);
         el.y = Math.round(at.y - el.h / 2);
+        clampOnto(el, SLIDE_W, SLIDE_H);
       }
       slide.elements.push(el);
       selected = [el.id];
@@ -831,7 +833,7 @@
         <input
           type="color"
           aria-label="Slide background color"
-          value={slide.background.color ?? '#060ce9'}
+          value={slide.background.color ?? game.theme.tile}
           oninput={(e) => (slide.background.color = e.currentTarget.value)}
         />
       </label>
@@ -954,8 +956,8 @@
     </div>
 
     <aside class="side">
-      <!-- Also for a lone locked item: clicks go through it, so the list is the easy way to reach it. -->
-      {#if !previewing && (slide.elements.length > 1 || hidden.length || slide.elements.some((e) => e.locked))}
+      <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
+      {#if !previewing && slide.elements.length}
         <details class="layers-box" open>
           <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
           <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
@@ -1003,7 +1005,8 @@
         <p class="muted">
           Click an item to edit it, or double-click it (text goes straight to its text field). Drag to move (press Shift while
           dragging to keep to one axis), pull the handles to resize, and use the round handle to rotate. Drop or paste images,
-          video, audio and links. Shift-click or drag a box on an empty spot to select several. Ctrl+C / Ctrl+X / Ctrl+V copy
+          video, audio and links. Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws
+          one) to select several. Ctrl+C / Ctrl+X / Ctrl+V copy
           items between slides.
         </p>
         <p class="muted small">
@@ -1013,16 +1016,35 @@
         </p>
       {/if}
       {#if selected.length && !previewing}
+        <!-- One item goes to the slide's edges; several line up with each other (and can be spaced evenly). -->
         <div class="aligns">
-          <span class="muted small">Move to the slide's…</span>
-          <div class="agrid">
-            <button class="small" onclick={() => align('left')} aria-label="Move to the slide's left edge">Left</button>
-            <button class="small" onclick={() => align('hcenter')} aria-label="Center across the slide">Center</button>
-            <button class="small" onclick={() => align('right')} aria-label="Move to the slide's right edge">Right</button>
-            <button class="small" onclick={() => align('top')} aria-label="Move to the slide's top edge">Top</button>
-            <button class="small" onclick={() => align('vcenter')} aria-label="Center down the slide">Middle</button>
-            <button class="small" onclick={() => align('bottom')} aria-label="Move to the slide's bottom edge">Bottom</button>
-          </div>
+          {#if selected.length > 1}
+            <span class="muted small">Line up the selected items…</span>
+            <div class="agrid">
+              <button class="small" onclick={() => align('left')} aria-label="Line up their left edges">Left</button>
+              <button class="small" onclick={() => align('hcenter')} aria-label="Line up their middles across">Center</button>
+              <button class="small" onclick={() => align('right')} aria-label="Line up their right edges">Right</button>
+              <button class="small" onclick={() => align('top')} aria-label="Line up their top edges">Top</button>
+              <button class="small" onclick={() => align('vcenter')} aria-label="Line up their middles down">Middle</button>
+              <button class="small" onclick={() => align('bottom')} aria-label="Line up their bottom edges">Bottom</button>
+            </div>
+            {#if selected.length > 2}
+              <div class="agrid two">
+                <button class="small" onclick={() => align('hdistribute')} title="The outermost two stay; the gaps between them all become equal">↔ Space evenly</button>
+                <button class="small" onclick={() => align('vdistribute')} title="The outermost two stay; the gaps between them all become equal">↕ Space evenly</button>
+              </div>
+            {/if}
+          {:else}
+            <span class="muted small">Move to the slide's…</span>
+            <div class="agrid">
+              <button class="small" onclick={() => align('left')} aria-label="Move to the slide's left edge">Left</button>
+              <button class="small" onclick={() => align('hcenter')} aria-label="Center across the slide">Center</button>
+              <button class="small" onclick={() => align('right')} aria-label="Move to the slide's right edge">Right</button>
+              <button class="small" onclick={() => align('top')} aria-label="Move to the slide's top edge">Top</button>
+              <button class="small" onclick={() => align('vcenter')} aria-label="Center down the slide">Middle</button>
+              <button class="small" onclick={() => align('bottom')} aria-label="Move to the slide's bottom edge">Bottom</button>
+            </div>
+          {/if}
         </div>
       {/if}
       {#if picker === 'font'}
@@ -1174,6 +1196,9 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 4px;
     margin-top: 4px;
+  }
+  .agrid.two {
+    grid-template-columns: 1fr 1fr;
   }
   .layers-box {
     margin-bottom: 12px;

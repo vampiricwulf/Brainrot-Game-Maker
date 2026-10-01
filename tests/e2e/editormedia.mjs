@@ -33,7 +33,8 @@ const files = (list) =>
   page.evaluateHandle(
     ([fs, b64]) => {
       const d = new DataTransfer();
-      for (const [name, type] of fs) d.items.add(new File([type === 'image/png' ? Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) : 'x'], name, { type }));
+      // (Each file's own bytes: the same bytes added twice are one file in the game. A PNG ignores what follows its end.)
+      for (const [name, type] of fs) d.items.add(new File([type === 'image/png' ? Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) : 'x', name], name, { type }));
       return d;
     },
     [list, PNG],
@@ -83,7 +84,7 @@ try {
   await page.evaluate(
     ([b64]) => {
       const d = new DataTransfer();
-      d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'pasted.png', { type: 'image/png' }));
+      d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), 'pasted.png'], 'pasted.png', { type: 'image/png' }));
       window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: d, bubbles: true }));
     },
     [PNG],
@@ -169,7 +170,8 @@ try {
   await page.locator('.insp textarea').fill('Second');
   const x2 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
   const w2 = Number(await pos.getByLabel('W', { exact: true }).inputValue());
-  assert(Math.abs(x2 + w2 / 2 - 200) < 5, 'there, where the menu was opened');
+  // (Centred on that spot as far as the slide allows: a box that would stick out past the edge is moved onto it.)
+  assert(x2 === 0 && x2 + w2 >= 200, 'there, where the menu was opened, kept on the slide');
   await page.keyboard.press('Escape');
 
   // Items: Copy, then Paste on an empty spot puts it there.

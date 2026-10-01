@@ -66,8 +66,11 @@
   style:background-image={[bgImage ? cssUrl(bgImage) : '', slide.background.gradient ?? ''].filter(Boolean).join(', ') || undefined}
   style:background-size={slide.background.fit ?? 'cover'}
 >
+  <!-- The typewriter entrance: a text box types its own letters; any other item wipes in from the left. -->
   {#each sorted as el (el.id)}
-    {@const anim = mode === 'play' ? el.entrance : undefined}
+    {@const entrance = mode === 'play' ? el.entrance : undefined}
+    {@const typed = entrance?.type === 'typewriter' && el.kind === 'text'}
+    {@const anim = typed ? undefined : entrance}
     <div
       class="el {anim ? `anim anim-${anim.type}` : ''}"
       class:secret={el.secret}
@@ -90,6 +93,7 @@
           edit={mode === 'edit'}
           placeholder={el.id === mainText ? placeholder : undefined}
           onfit={mode === 'edit' && onfit ? (r) => onfit(el.id, r) : undefined}
+          typewriter={typed ? entrance : undefined}
         />
       {:else if el.kind === 'image'}
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}
@@ -99,7 +103,8 @@
         {:else if src}
           <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" onerror={(e) => imgError(e, src)} />
         {:else}
-          <div class="missing">Missing image</div>
+          <!-- A file missing from this computer: only the host is told (viewers see an empty spot). -->
+          {#if hostView}<div class="missing">Missing image</div>{/if}
         {/if}
       {:else if el.kind === 'shape'}
         <ShapeView {el} />
@@ -108,7 +113,7 @@
         {#if src || mode === 'edit'}
           <MediaPlayer {el} {src} {mode} {role} label={label(el)} />
         {:else}
-          <div class="missing">Missing {el.kind}</div>
+          {#if hostView}<div class="missing">Missing {el.kind}</div>{/if}
         {/if}
       {:else if el.kind === 'embed'}
         {#if el.embedKind === 'youtube'}
@@ -116,7 +121,7 @@
         {:else if el.embedKind === 'drive' || el.embedKind === 'streamable'}
           <PlayerEmbed {el} {mode} {role} label={label(el)} />
         {:else if el.embedKind === 'remoteImage'}
-          <img src={el.url} alt="" style:object-fit="contain" draggable="false" />
+          <img src={el.url} alt="" style:object-fit={el.fit ?? 'contain'} style:border-radius="{el.radius ?? 0}px" draggable="false" />
         {:else}
           <MediaPlayer {el} src={el.url} {mode} {role} label={label(el)} />
         {/if}

@@ -1,14 +1,14 @@
 <!--
   Interaction layer drawn over a slide in the editor: select, move (with snapping guides),
   resize (rotation-aware) and rotate elements. Works in 1920×1080 stage coordinates.
-  Double-click an element to edit it. Drag on an empty spot to select with a box; Alt+click walks down
-  through stacked items; right-click opens a menu of everything under the pointer. Locked items let
-  clicks through to what's under them.
+  Double-click an element to edit it. Drag on an empty spot to select with a box (a text box's empty area counts,
+  away from its letters, until it's selected; Alt+drag always draws a box); Alt+click walks down through stacked
+  items; right-click opens a menu of everything under the pointer. Locked items let clicks through to what's under them.
 -->
 <script lang="ts">
   import { getContext } from 'svelte';
   import { knobPlacement } from '../../lib/editing';
-  import { elementsAt, nextBelow, touchedBy, type Pt } from '../../lib/layers';
+  import { bounds, elementsAt, nextBelow, nearestSnap, touchedBy, type Pt } from '../../lib/layers';
   import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from '../../lib/model';
 
   let {
@@ -46,14 +46,18 @@
   // the element (the rotate knob inside a full-bleed image, the inner half of a resize handle) can be grabbed.
   const frameZ = $derived(Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1);
 
-  const SNAP = 10;
+  /** Snapping reaches this far on screen (px), however big the slide is drawn. */
+  const SNAP_PX = 6;
+  const snapDist = () => SNAP_PX / (stage.scale || 1);
   let guides = $state<{ x: number[]; y: number[] }>({ x: [], y: [] });
 
   type Drag =
     | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean; shiftAtDown: boolean }
     | { kind: 'resize'; sx: number; sy: number; hx: number; hy: number; o: { x: number; y: number; w: number; h: number }; keep: boolean }
     | { kind: 'rotate'; cx: number; cy: number; a0: number; r0: number }
-    | { kind: 'marquee'; a: Pt; base: string[] };
+    // `click`: what a press that doesn't drag selects (a text box pressed beside its letters); `alt`: where an
+    // Alt+press was, which walks down the stack there when it doesn't drag.
+    | { kind: 'marquee'; a: Pt; base: string[]; moved: boolean; click?: SlideElement; alt?: Pt; add: boolean };
   let drag: Drag | null = null;
   /** The drag-to-select box while it's being drawn. */
   let marquee = $state<{ a: Pt; b: Pt } | null>(null);
@@ -87,31 +91,57 @@
     layerEl.setPointerCapture(e.pointerId);
   }
 
+  /**
+   * Is the pointer on what a text box draws: its letters (or the hint shown while it's empty), with a little room
+   * around them, or its background box? The rest of a big text box is "empty" for pressing and dragging.
+   */
+  function onDrawnText(el: SlideElement, e: PointerEvent): boolean {
+    if (el.kind !== 'text' || el.background) return true;
+    const inner = layerEl.parentElement?.querySelector(`[data-el="${CSS.escape(el.id)}"] .inner`);
+    if (!inner) return true;
+    const range = document.createRange();
+    range.selectNodeContents(inner);
+    const m = 10;
+    return [...range.getClientRects()].some((r) => e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m);
+  }
+
+  /** Start a drag-to-select box at `p` (it's drawn once the pointer has moved a little). */
+  function startMarquee(e: PointerEvent, p: Pt, opts: { click?: SlideElement; alt?: boolean }): void {
+    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    const base = add ? [...selected] : [];
+    // A plain press on an empty spot clears the selection at once; one that may still be a click waits.
+    if (!opts.click && !opts.alt) selected = base;
+    drag = { kind: 'marquee', a: p, base, moved: false, click: opts.click, alt: opts.alt ? p : undefined, add };
+    layerEl.setPointerCapture(e.pointerId);
+  }
+
   function down(e: PointerEvent, el: SlideElement | null): void {
     if (e.button !== 0) return;
     e.stopPropagation();
     claim(e);
     const p = toStage(e, layerEl);
-    // Alt+click: the next item down the stack under the pointer (locked ones too); repeat to keep going.
-    if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-      const next = nextBelow(visible, p, selected.length === 1 ? selected[0] : null);
-      if (next) {
-        selected = [next.id];
-        if (next.locked) {
-          lastDown = null;
-          return;
-        }
-        el = next;
+    // Alt: a drag always draws a selection box; a click picks the next item down the stack (in up()).
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      lastDown = null;
+      startMarquee(e, p, { alt: !e.shiftKey });
+      return;
+    }
+    // A text box pressed away from its letters (and not selected yet) lets the press through to what's under it, or
+    // starts a selection box: a full-slide question mustn't be dragged off when you meant to select.
+    if (el && el.kind === 'text' && !selected.includes(el.id) && !onDrawnText(el, e)) {
+      const empty = (x: SlideElement) => x.kind === 'text' && !selected.includes(x.id) && !onDrawnText(x, e);
+      const under = elementsAt(visible.filter((x) => !x.locked), p).find((x) => !empty(x));
+      if (!under) {
+        lastDown = el;
+        startMarquee(e, p, { click: el });
+        return;
       }
+      el = under;
     }
     lastDown = el;
     if (!el) {
       // An empty spot (or only locked items): drag out a box to select everything it touches.
-      const base = e.shiftKey || e.ctrlKey || e.metaKey ? [...selected] : [];
-      selected = base;
-      drag = { kind: 'marquee', a: p, base };
-      marquee = { a: p, b: p };
-      layerEl.setPointerCapture(e.pointerId);
+      startMarquee(e, p, {});
       return;
     }
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
@@ -151,32 +181,24 @@
     begin({ kind: 'rotate', cx, cy, a0: angle(toStage(e, layerEl), cx, cy), r0: single.rotation }, e);
   }
 
-  /** Snap a box's edges/center to the slide and other elements; returns the offset to apply. */
-  function snap(box: { x: number; y: number; w: number; h: number }, ignore: Set<string>): { dx: number; dy: number } {
+  /** What edges snap to: the slide's edges and middle, and every other item's edges and middle (as drawn, turned). */
+  function targets(ignore: Set<string>): { xs: number[]; ys: number[] } {
     const xs = [0, SLIDE_W / 2, SLIDE_W];
     const ys = [0, SLIDE_H / 2, SLIDE_H];
     for (const o of visible) {
       if (ignore.has(o.id)) continue;
-      xs.push(o.x, o.x + o.w / 2, o.x + o.w);
-      ys.push(o.y, o.y + o.h / 2, o.y + o.h);
+      const b = bounds(o);
+      xs.push(b.x, b.x + b.w / 2, b.x + b.w);
+      ys.push(b.y, b.y + b.h / 2, b.y + b.h);
     }
-    const best = (vals: number[], targets: number[]) => {
-      let bd = SNAP + 1;
-      let off = 0;
-      let at: number[] = [];
-      for (const v of vals)
-        for (const t of targets) {
-          const d = Math.abs(t - v);
-          if (d < bd - 0.01) {
-            bd = d;
-            off = t - v;
-            at = [t];
-          } else if (Math.abs(d - bd) < 0.01 && !at.includes(t)) at.push(t);
-        }
-      return bd <= SNAP ? { off, at } : { off: 0, at: [] };
-    };
-    const bx = best([box.x, box.x + box.w / 2, box.x + box.w], xs);
-    const by = best([box.y, box.y + box.h / 2, box.y + box.h], ys);
+    return { xs, ys };
+  }
+
+  /** Snap a box's edges/center to the slide and other elements; returns the offset to apply. */
+  function snap(box: { x: number; y: number; w: number; h: number }, ignore: Set<string>): { dx: number; dy: number } {
+    const { xs, ys } = targets(ignore);
+    const bx = nearestSnap([box.x, box.x + box.w / 2, box.x + box.w], xs, snapDist());
+    const by = nearestSnap([box.y, box.y + box.h / 2, box.y + box.h], ys, snapDist());
     guides = { x: bx.at, y: by.at };
     return { dx: bx.off, dy: by.off };
   }
@@ -185,6 +207,12 @@
     if (!drag) return;
     const p = toStage(e, layerEl);
     if (drag.kind === 'marquee') {
+      if (!drag.moved && Math.hypot(p.x - drag.a.x, p.y - drag.a.y) < 4 / (stage.scale || 1)) return;
+      if (!drag.moved) {
+        // A box after all (not a click): a double-click can't follow it.
+        drag.moved = true;
+        lastDown = null;
+      }
       marquee = { a: drag.a, b: p };
       const hit = touchedBy(
         visible.filter((x) => !x.locked),
@@ -208,10 +236,12 @@
       const moving = slide.elements.filter((x) => ids.has(x.id));
       if (!e.altKey && moving.length) {
         // Snap the moving group's bounding box (hold Alt to move freely).
-        const minX = Math.min(...moving.map((m) => orig.get(m.id)!.x)) + dx;
-        const minY = Math.min(...moving.map((m) => orig.get(m.id)!.y)) + dy;
-        const maxX = Math.max(...moving.map((m) => orig.get(m.id)!.x + m.w)) + dx;
-        const maxY = Math.max(...moving.map((m) => orig.get(m.id)!.y + m.h)) + dy;
+        // (Each item as drawn: a turned one by the box around it.)
+        const at = moving.map((m) => bounds({ ...m, ...orig.get(m.id)! }));
+        const minX = Math.min(...at.map((b) => b.x)) + dx;
+        const minY = Math.min(...at.map((b) => b.y)) + dy;
+        const maxX = Math.max(...at.map((b) => b.x + b.w)) + dx;
+        const maxY = Math.max(...at.map((b) => b.y + b.h)) + dy;
         const s = snap({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }, ids);
         if (lock !== 'y') dx += s.dx;
         if (lock !== 'x') dy += s.dy;
@@ -238,6 +268,22 @@
         if (w / h > ratio) h = w / ratio;
         else w = h * ratio;
       }
+      // Snap the edges being pulled to the slide and other items (an item that isn't turned; Alt resizes freely).
+      // Keeping the shape, only one edge can snap: the other follows the ratio.
+      guides = { x: [], y: [] };
+      if (single.rotation === 0 && !e.altKey) {
+        const { xs, ys } = targets(new Set([single.id]));
+        const none = { off: 0, at: [] as number[] };
+        const sx = hx ? nearestSnap([hx > 0 ? o.x + w : o.x + o.w - w], xs, snapDist()) : none;
+        const sy = hy ? nearestSnap([hy > 0 ? o.y + h : o.y + o.h - h], ys, snapDist()) : none;
+        const useX = sx.at.length > 0 && (!keep || !sy.at.length || Math.abs(sx.off) <= Math.abs(sy.off));
+        const useY = sy.at.length > 0 && (!keep || !useX);
+        if (useX) w = Math.max(20, w + hx * sx.off);
+        if (useY) h = Math.max(20, h + hy * sy.off);
+        if (keep && useX) h = w / (o.w / o.h);
+        if (keep && useY) w = h * (o.w / o.h);
+        guides = { x: useX ? sx.at : [], y: useY ? sy.at : [] };
+      }
       // Keep the opposite edge fixed: the center moves by half the growth, rotated back to slide axes.
       const gw = (hx * (w - o.w)) / 2;
       const gh = (hy * (h - o.h)) / 2;
@@ -256,6 +302,20 @@
   }
 
   function up(): void {
+    // A selection box that never opened was a click: Alt+click walks down the stack under the pointer (locked items
+    // too; again and again to keep going), and a click beside a text box's letters selects the text box.
+    if (drag?.kind === 'marquee' && !drag.moved) {
+      if (drag.alt) {
+        const next = nextBelow(visible, drag.alt, selected.length === 1 ? selected[0] : null);
+        if (next) {
+          selected = [next.id];
+          lastDown = next.locked ? null : next;
+        }
+      } else if (drag.click) {
+        const id = drag.click.id;
+        selected = drag.add ? (selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]) : [id];
+      }
+    }
     // Every drag that began (and told onstart) ends with onchange, a selection box too (it changes nothing).
     const ended = !!drag;
     drag = null;

@@ -63,8 +63,33 @@ done, the Unreleased lines move under that day's heading.
   of a seat tapped by mistake. (885fe51)
 - Someone asking to join from their phone pops up a note for the host (and a soft chime when the stream is in the
   separate audience window), not only a number on the 📱 chip. (5272947)
+- **Slide editor: line up several items and space them evenly.** With more than one item selected, Left / Center /
+  Right / Top / Middle / Bottom line them up with each other (not all at the slide's edge, on top of each other), and
+  **↔ / ↕ Space evenly** (also in the right-click menu's Align ▸) spreads three or more. Turned items count as drawn.
+  (1461bb1)
+- **Snapping while resizing**: the edges you pull snap to the slide and to other items, with guides, as moving does.
+  Snapping reaches the same few pixels on screen however big the slide is shown, and uses turned items' real outline.
+  `Alt` turns it off. (1461bb1)
+- **🖼 Board images › Preview with N players**: the preview's score bar has as many players as the game can have
+  (📋 Most players), or the number picked, and a warning says when an image covers a player's score. (9748fcf)
+- **Online pictures** (from older games) have Fit and Rounded corners like the game's own pictures. (9748fcf)
 
 ### Changed
+- **Slide editor: dragging beside a text box's words draws a selection box** instead of moving the text box (a
+  full-slide question used to slide off when you meant to select). Pressing its words, or dragging it once it's
+  selected, still moves it; a click beside them still selects it. `Alt`+drag always draws a box (`Alt`+click still
+  walks down the stack). (1461bb1)
+- **Typewriter is a real typewriter**: the text appears letter by letter over the animation's duration (all at once
+  with reduced motion), and picking it suggests a duration that suits the text's length. On a picture or another
+  item it's called **Wipe in** (what it does there). Games keep their setting. (08ffde2)
+- **The same file added again is stored once**: dropping a picture that's already in the game (on another clue, say)
+  uses the one in 🖼 Media, and a toast says so. 25 clues with the same 4 MB picture take 4 MB, not 100. (0fae6a2)
+- **The Layers list shows whenever a slide has an item**, so every item can be reached from the keyboard, and its 👁 🔒
+  ▲ ▼ buttons say which item they're for ("Lock: cover.png"). (48fd21d)
+- **History names**: the slide background's colour and picture ("Slide background color #333333"), a text box's
+  outline, drop shadow and glow ("Added an outline to text box …", "Changed outline width of …"), and theme colours and
+  fonts by their names ("Theme: tile color, category name color"). Changing one field and then another (a colour
+  picker, say) are two steps, not "2 changes". (1461bb1)
 - **The pre-game screen's Start game ▶ and ◀ Back to editor stay at the foot of the window** however long the page
   gets (an open 📋 Game rules fold put Start game far below the fold). On wide screens (1400 px and up) the page is two
   columns: players and 📱 buzzers on the left; rules, display and on stream on the right. (1d355db, 0ab9a9f)
@@ -206,6 +231,29 @@ done, the Unreleased lines move under that day's heading.
   duplicating or deleting rounds and categories; icon buttons, board tiles, sidebar tabs and toggles have names. (4729d75)
 
 ### Fixed
+- **An emptied number field in the slide Inspector** (Size, X/Y/W/H, line height, outline width, shadow, entrance
+  times…) no longer saves "nothing" into the slide (which drew the text at 14 px after a reload): leaving the field
+  keeps the last value, and a number out of range is pulled into it. Games saved that way open with the usual values.
+  (aa4b904)
+- **Text outlines, shadows and glows aren't cut off** with a hard edge at the text box's border: the box keeps room for
+  them inside, and shrink-to-fit allows for it. (08ffde2)
+- **🎨 Edit image › Apply after a crop or a turn** keeps the picture inside its old box (as big as fits, centred where
+  it was, on the slide), instead of keeping the width and pushing it off the slide. In the image editor, Remove crop
+  can be undone, clicking a caption or sticker without moving it is no longer an undo step, and a caption is picked
+  anywhere on its words (not in a circle sized by its length). (f627dca)
+- **🖼 Media › Replace on a picture with edited copies on slides**: the slides show the new file with their edits
+  (crop, captions, stickers) done again on it; before, they kept the old edited copy while the toast said everything
+  showed the new file. (0fae6a2)
+- **Viewers never see the striped "Missing image / video / audio" box** for a file missing on this computer (only the
+  host's view shows it, and the checklist warns about missing files before ▶ Play). (9748fcf)
+- **Esc on a checkbox in the slide Inspector** (Outline, Lock…) leaves the field, as in its other fields, instead of
+  closing the whole clue. (48fd21d)
+- **The slide's BG colour swatch** shows the theme's tile colour when the slide has no colour of its own (it always
+  showed the Classic blue). (1461bb1)
+- **Items dropped near the slide's edge stay on the slide** (they were centred on the pointer, partly off it), on
+  slides and board images. (1461bb1)
+- **🖼 Board images**: a file that isn't a picture is refused before it's added to 🖼 Media (it used to be stored
+  unused). (0fae6a2)
 - **A rematch keeps the players' pictures**, and changing the players before it no longer deletes their pictures from
   the saved game (a picture now only goes when you take it off with −🖼). (1d355db)
 - **A game saved with Buzzer mode on plays without it in a copy that has no buzzer server**: no more "📱 Phones off",

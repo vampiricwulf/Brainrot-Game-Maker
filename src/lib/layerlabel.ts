@@ -2,8 +2,8 @@
 import { embedName } from './links';
 import type { Game, SlideElement } from './model';
 
-/** Where Align puts items: at the slide's edges, or centred across (hcenter) or down (vcenter) it. */
-export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom';
+/** Where Align puts items: at the slide's edges or centred across (hcenter) or down (vcenter) it (several: lined up with each other), or spaced evenly (distribute). */
+export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' | 'hdistribute' | 'vdistribute';
 
 /**
  * What the right-click menu (and its shortcuts) can do: to the selection, or on an empty spot (paste there, select
