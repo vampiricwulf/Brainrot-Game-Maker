@@ -505,6 +505,21 @@
     lookDrop = null;
   }
 
+  /**
+   * A Columns or Rows box changed: a whole number from 1 to 16, or (emptied, or not a number) nothing at all, and the
+   * box shows the size again. Clearing it to type a new one never deletes screens.
+   */
+  function sizeTyped(input: HTMLInputElement, now: number): number | null {
+    const n = Math.round(Number(input.value));
+    if (input.value.trim() === '' || !Number.isFinite(n)) {
+      input.value = String(now);
+      return null;
+    }
+    const v = Math.max(1, Math.min(16, n));
+    input.value = String(v);
+    return v === now ? null : v;
+  }
+
   /** Map resize: screens outside the new size are deleted with it (the note at the bottom offers Undo). */
   function resize(cols: number, rows: number): void {
     const outside = map.screens.filter((s) => s.col >= cols || s.row >= rows).length;
@@ -755,6 +770,17 @@
 
   // ---------- Keys ----------
 
+  let screenEl = $state<HTMLElement>();
+  // A screen's editor opened (Enter on its cell, ✎ Edit screen…): the cell is gone, so the focus would fall to the
+  // page. It goes to the canvas, where Tab picks the screen's objects (unless something there has it already).
+  $effect(() => {
+    if (!screenEl) return;
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body || !a.isConnected) screenEl?.querySelector<HTMLElement>('[data-keys-home]')?.focus({ preventScroll: true });
+    });
+  });
+
   /** Focus a cell's button (`always`: even when the focus isn't on the grid now). */
   function focusCell(c: number, r: number, always = false): void {
     if (!always && !gridEl?.contains(document.activeElement)) return;
@@ -871,7 +897,7 @@
 <svelte:window onkeydown={key} onpointermove={pointerMove} onpointerup={pointerUp} onpointercancel={cancelDrag} />
 
 {#if editing && sel}
-  <div class="screen-edit">
+  <div class="screen-edit" bind:this={screenEl}>
     <div class="row se-head">
       <button onclick={() => (editing = false)} title="Esc">◀ Back to the map</button>
       <span class="muted small">{map.name} ·</span>
@@ -961,10 +987,16 @@
         <div class="grid">
           <label class="field">Name<input bind:value={map.name} /></label>
           <label class="field">
-            Columns<input type="number" min="1" max="16" value={map.cols} onchange={(e) => resize(Math.max(1, Math.min(16, +e.currentTarget.value)), map.rows)} />
+            Columns<input type="number" min="1" max="16" value={map.cols} onchange={(e) => {
+                const n = sizeTyped(e.currentTarget, map.cols);
+                if (n) resize(n, map.rows);
+              }} />
           </label>
           <label class="field">
-            Rows<input type="number" min="1" max="16" value={map.rows} onchange={(e) => resize(map.cols, Math.max(1, Math.min(16, +e.currentTarget.value)))} />
+            Rows<input type="number" min="1" max="16" value={map.rows} onchange={(e) => {
+                const n = sizeTyped(e.currentTarget, map.rows);
+                if (n) resize(map.cols, n);
+              }} />
           </label>
           <label class="field">
             Audience sees

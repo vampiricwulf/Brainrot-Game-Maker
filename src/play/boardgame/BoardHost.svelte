@@ -9,7 +9,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
-  import { currentPlayer, spaceById, waysOn } from '../../lib/boardgame';
+  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
@@ -82,6 +82,8 @@
   }
 
   function move(n: number | null, choose?: string): void {
+    // A whole number, at most MAX_STEPS (a typo of 100000 isn't walked).
+    n = n === null ? null : clampSteps(n);
     if (!n) return void toast('How many spaces? Roll first, or type a number');
     toast(moveNow(game, session, n, choose), 3000);
     app.live.overlay = null;
@@ -131,6 +133,14 @@
       b.order = o;
       b.turn = 0;
     });
+  }
+
+  let cardEl = $state<HTMLElement>();
+
+  /** Open a space's card from the Spaces… list, and go into it (its first button), so the keyboard carries on there. */
+  function openCard(id: string): void {
+    space = id;
+    tick().then(() => cardEl?.querySelector<HTMLElement>('button')?.focus());
   }
 
   function reveal(s: BoardSpace): void {
@@ -219,11 +229,15 @@
           class="n"
           bind:value={steps}
           aria-label="Steps"
+          min={-MAX_STEPS}
+          max={MAX_STEPS}
+          step="1"
           onkeydown={(e) => {
-            if (e.key === 'Enter') {
-              move(steps);
-              e.currentTarget.blur();
-            }
+            if (e.key !== 'Enter') return;
+            // At a fork the move goes on with the steps it has left: these would replace them.
+            if (fork) return void toast(`${playerName(session, fork.playerId)} is at a fork: pick the way first`);
+            move(steps);
+            e.currentTarget.blur();
           }}
         />
       </label>
@@ -245,6 +259,19 @@
         <option value="">📍 Send {selected.length ? `selected (${selected.length})` : turnName} to…</option>
         {#each round.spaces as s (s.id)}<option value="s:{s.id}">{s.name}</option>{/each}
         {#each round.zones as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
+      </select>
+      <!-- A space's card (its actions, Put … here, Reveal) without the mouse: the same as clicking it on the stage. -->
+      <select
+        class="small"
+        aria-label="Open a space's card"
+        onchange={(e) => {
+          const v = e.currentTarget.value;
+          e.currentTarget.value = '';
+          if (v) openCard(v);
+        }}
+      >
+        <option value="">🗂 Spaces…</option>
+        {#each round.spaces as s (s.id)}<option value={s.id}>{s.name}{s.secret && !bs.revealed?.includes(s.id) ? ' (secret)' : ''}</option>{/each}
       </select>
       <select
         class="small"
@@ -277,9 +304,11 @@
     </div>
 
     {#if card}
-      {#key card.id}
-        <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} onclose={() => (space = null)} />
-      {/key}
+      <div bind:this={cardEl}>
+        {#key card.id}
+          <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} onclose={() => (space = null)} />
+        {/key}
+      </div>
     {/if}
 
     {#if fork && forkSpace}

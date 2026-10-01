@@ -25,7 +25,7 @@
   import { applyScore, score } from '../../lib/session';
   import { blip } from '../../lib/live';
   import {
-    addStat, clampStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statValue,
+    addStat, clampStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statRoom, statValue,
   } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
@@ -179,13 +179,19 @@
     if (toCurrency) {
       const have = score(session, p.id);
       if (have < amt) return void toast(`${name} only has ${formatPoints(have, game.settings.currencySymbol)}`);
-      logged(session, `${name}: ${formatPoints(amt, game.settings.currencySymbol)} score → ${formatStat(cf, amt)}`, () => {
-        applyScore(session, game, [p.id], -amt, `Converted to ${cf.name}`);
-        addStat(game, session, p.id, cf, amt);
+      // Only as much as fits under the currency's max: the rest stays as score (it isn't lost).
+      const room = statRoom(game, session, p.id, cf);
+      if (room <= 0) return void toast(`${name}’s ${cf.name} is full (${formatStat(cf, cf.max ?? 0)} at most)`);
+      const n = Math.min(amt, room);
+      logged(session, `${name}: ${formatPoints(n, game.settings.currencySymbol)} score → ${formatStat(cf, n)}`, () => {
+        applyScore(session, game, [p.id], -n, `Converted to ${cf.name}`);
+        addStat(game, session, p.id, cf, n);
       });
+      if (n < amt) toast(`Only ${formatStat(cf, n)} fit (${cf.name} goes up to ${formatStat(cf, cf.max ?? 0)}): the rest stays as score`, 4000);
     } else {
-      const have = statNumber(game, session, p.id, cf);
-      if (have < amt) return void toast(`${name} only has ${formatStat(cf, have)}`);
+      // Never below the currency's min (it would keep the rest, and the score would gain it anyway).
+      const have = statNumber(game, session, p.id, cf) - Math.max(0, cf.min ?? 0);
+      if (have < amt) return void toast(`${name} only has ${formatStat(cf, Math.max(0, have))} to convert`);
       logged(session, `${name}: ${formatStat(cf, amt)} → score`, () => {
         addStat(game, session, p.id, cf, -amt);
         applyScore(session, game, [p.id], amt, `Converted from ${cf.name}`);

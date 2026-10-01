@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { linkMoverDice, newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
-import { newSession } from './session';
+import { goToRound, newSession, rebaseSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, moverPreset, rimSpots, spaceNumber, spaceToward,
+  boardGameProblems, moverPreset, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -383,5 +383,77 @@ describe('board game editor: the arrow keys', () => {
     // Something straight ahead comes before something nearer but well off to the side.
     round.spaces.push(sp('Off to the side', 560, 700));
     expect(go(mid, 1, 0)).toBe('Right');
+  });
+});
+
+describe('board game: a typo in the steps', () => {
+  it('moves a whole number of steps, at most MAX_STEPS either way, and never shows a long move step by step', () => {
+    const { game, round, ids } = setup();
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    expect([clampSteps(2.5), clampSteps(-2.4), clampSteps(1e6), clampSteps(-1e6), clampSteps(NaN)]).toEqual([3, -2, MAX_STEPS, -MAX_STEPS, 0]);
+    // Around the loop from Space 4 (past the fork at Space 3), 2.5 steps are 3.
+    sendTo(bs, ['a'], { space: ids[3] });
+    expect(movePlayer(round, bs, 'a', 2.5)).toBe('Landed on Space 7');
+    // A million steps take no time: 99 of them, round and round the loop of 12 (99 = 8 laps and 3; no shortcut now).
+    round.spaces[2].next = [ids[3]];
+    sendTo(bs, ['a'], { space: ids[3] });
+    const t0 = Date.now();
+    expect(movePlayer(round, bs, 'a', 1e6)).toBe('Landed on Space 7');
+    expect(Date.now() - t0).toBeLessThan(500);
+    // It jumps straight there on screen, and each space passed is listed once.
+    expect(bs.hop?.path).toEqual([ids[3], ids[6]]);
+    expect(new Set(bs.last!.passed).size).toBe(bs.last!.passed.length);
+    expect(shownSpace(bs, 'a', bs.hop!.at + HOP_MS)).toBe(ids[6]);
+    // A short move still steps.
+    expect(movePlayer(round, bs, 'a', 2)).toBe('Landed on Space 9');
+    expect(bs.hop?.path).toHaveLength(3);
+    expect(movePlayer(round, bs, 'a', 0.2)).toBe('No steps to move');
+  });
+});
+
+describe('board game: resuming after spaces were deleted', () => {
+  it('puts players on a deleted space (or zone) back on Start, and forgets the deleted spaces', () => {
+    const { game, round, ids } = setup();
+    const session = newSession(game);
+    goToRound(session, game, 0);
+    const bs = session.boardgames![round.id];
+    sendTo(bs, ['b'], { zone: 'shadow' });
+    movePlayer(round, bs, 'a', 5);
+    expect(bs.fork?.at).toBe(ids[2]);
+    bs.revealed = [ids[2]];
+    const edited = JSON.parse(JSON.stringify(game)) as Game;
+    const r2 = edited.rounds[0] as BoardGameRound;
+    r2.spaces = r2.spaces.filter((s) => s.id !== ids[2] && s.id !== ids[1]);
+    r2.zones = [];
+    rebaseSession(session, game, edited);
+    expect(bs.positions).toEqual({ a: { space: ids[0] }, b: { space: ids[0] } });
+    expect([bs.fork, bs.hop, bs.prev?.a, bs.revealed]).toEqual([undefined, undefined, undefined, []]);
+    expect(bs.last?.passed.includes(ids[1])).toBe(false);
+    // (Moving on from Start needs Space 2, deleted: that's the board's own business, on the editor's checklist.)
+    sendTo(bs, ['a'], { space: ids[3] });
+    expect(movePlayer(r2, bs, 'a', 1)).toBe('Landed on Space 5');
+  });
+});
+
+describe('board game: a crowd on one space', () => {
+  it('stands in rows of small tokens that don’t cover each other, and stays on the board', () => {
+    for (const n of [9, 12, 20, 30]) {
+      const r = tokenRadius(n);
+      expect(r).toBeLessThan(32);
+      const spots = rimSpots(n, r);
+      for (let i = 0; i < n; i++)
+        for (let j = i + 1; j < n; j++) expect(Math.hypot(spots[i].dx - spots[j].dx, spots[i].dy - spots[j].dy)).toBeGreaterThanOrEqual(2 * r);
+      // About as wide as the gap to the next space (300 apart on a new board), not into it.
+      for (const s of spots) expect(Math.abs(s.dx) + r).toBeLessThanOrEqual(185);
+    }
+    // At the left edge, near the top (under the turn banner): moved in and down, all of them.
+    const { r, spots } = placeTokens(40, 60, 20, 100, 1000);
+    for (const s of spots) {
+      expect(s.x - r).toBeGreaterThanOrEqual(8);
+      expect(s.y - r).toBeGreaterThanOrEqual(100);
+    }
+    // A few along the rim, at the right edge.
+    for (const s of placeTokens(1900, 500, 3, 100, 1000).spots) expect(s.x + 42).toBeLessThanOrEqual(1912);
   });
 });

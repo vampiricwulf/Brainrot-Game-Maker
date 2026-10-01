@@ -225,6 +225,19 @@ try {
   assert((await page.locator('.fork').innerText()).includes('at Space 3: which way? (3 to go)'), 'a move stops at the fork and asks');
   await page.locator('.fork').getByRole('button', { name: '→ Space 7' }).click();
   assert((await toast()).includes('Landed on Space 9'), 'taking the shortcut lands on Space 9');
+  // A typo in the steps: whole steps only, and at most 99 (100000 used to freeze the app).
+  await page.getByLabel('Steps').fill('2.5');
+  await page.getByRole('button', { name: /^▶ Move Player 2/ }).click();
+  assert((await toast()).includes('Landed on Space 12'), '2.5 steps are 3');
+  await page.getByLabel('Steps').fill('100000');
+  const typoAt = Date.now();
+  await page.getByRole('button', { name: /^▶ Move Player 2/ }).click();
+  await page.locator('.fork').waitFor();
+  assert((await page.locator('.fork').innerText()).includes('(96 to go)') && Date.now() - typoAt < 3000, `100000 steps are 99, at once (${Date.now() - typoAt} ms)`);
+  // Enter in the steps at a fork doesn't replace the steps left: it says to pick the way.
+  await page.getByLabel('Steps').fill('9');
+  await page.getByLabel('Steps').press('Enter');
+  assert((await toast()).includes('pick the way first') && (await page.locator('.fork').innerText()).includes('(96 to go)'), 'Enter in the steps at a fork says to pick the way, and keeps the steps left');
 
   // Passing Start offers its action.
   await page.getByLabel('Send to').selectOption({ label: 'Space 12' });
@@ -261,6 +274,12 @@ try {
   await card.waitFor();
   await page.keyboard.press('Escape');
   assert(!(await card.count()), 'clicking a space opens its card, and Esc closes it');
+  // …and from the keyboard: the host panel's 🗂 Spaces… list opens it, with the focus in it.
+  await page.getByLabel("Open a space's card").selectOption({ label: 'Space 2' });
+  await card.waitFor();
+  assert(await card.evaluate((c) => c.contains(document.activeElement)), 'the Spaces… list opens a space’s card, focus inside');
+  await page.keyboard.press('Escape');
+  assert(!(await card.count()), 'Esc closes it');
   // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
   await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'clicking a name in the turn order makes it their turn');

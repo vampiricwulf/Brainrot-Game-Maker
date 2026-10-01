@@ -258,6 +258,29 @@ try {
   assert((await focusedLabel()) === 'Screen Screen B2', `Enter on an empty cell adds a screen with the focus on it (${await focusedLabel()})`);
   await page.keyboard.press('Delete');
   assert(!(await page.getByRole('button', { name: 'Screen Screen B2' }).count()), 'Delete takes it away again');
+  // Enter on a screen edits it with the focus on its canvas (not lost to the page), and Tab goes through its items
+  // and then on, out of the canvas: no keyboard trap.
+  await page.getByRole('button', { name: 'Screen Screen B1' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: '◀ Back to the map' }).waitFor();
+  await page.waitForTimeout(100);
+  const onCanvas = () => page.evaluate(() => !!document.activeElement?.closest('.canvas'));
+  assert(await onCanvas(), 'Enter on a screen opens its editor with the focus on the canvas');
+  let tabs = 0;
+  while ((await onCanvas()) && tabs < 10) {
+    await page.keyboard.press('Tab');
+    tabs++;
+  }
+  assert(!(await onCanvas()) && (await page.evaluate(() => document.activeElement !== document.body)), `Tab goes through the screen's items and on to the next control (${tabs} tabs)`);
+  await page.getByRole('button', { name: '◀ Back to the map' }).click();
+  // Clearing Columns (to type another number) deletes nothing: the box shows the size again.
+  await page.locator('summary', { hasText: 'Map settings' }).click();
+  const cols = page.locator('label.field', { hasText: 'Columns' }).locator('input');
+  const colsWas = await cols.inputValue();
+  await cols.fill('');
+  await cols.press('Tab');
+  assert((await cols.inputValue()) === colsWas && (await page.getByRole('button', { name: 'Screen Screen B1' }).count()) === 1, `clearing Columns keeps the map as it is (${await cols.inputValue()})`);
+  await page.locator('summary', { hasText: 'Map settings' }).click();
   // Alt+drag from a screen (the map full where it starts) draws a box: both screens selected, nothing moved.
   const startBox = await page.getByRole('button', { name: 'Screen Start' }).boundingBox();
   const b1Box = await page.getByRole('button', { name: 'Screen Screen B1' }).boundingBox();

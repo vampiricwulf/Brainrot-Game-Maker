@@ -8,7 +8,7 @@
   import { getContext, onDestroy } from 'svelte';
   import { fade } from '../../lib/motion.svelte';
   import { textOn } from '../../lib/colors';
-  import { currentPlayer, HOP_MS, rimSpots, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
+  import { currentPlayer, HOP_MS, placeTokens, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { SLIDE_H, type Game, type Session } from '../../lib/model';
@@ -84,19 +84,15 @@
       const s = shownSpace(bs, p.id, now);
       if (s) groups.set(s, [...(groups.get(s) ?? []), p.id]);
     }
-    const out: { id: string; x: number; y: number; small: boolean }[] = [];
+    const out: { id: string; x: number; y: number; r: number }[] = [];
     for (const [spaceId, ids] of groups) {
       const sp = spaceById(round, spaceId);
       if (!sp) continue;
-      const small = ids.length > 3;
-      const spots = rimSpots(ids.length, small ? 32 : 42);
       // On a space near the top (boards made before spaces started lower), a token that would slip under the turn
       // banner, the win notes or the stats strip comes down just enough to stay in sight; near the bottom, it goes up
-      // above the stats strip. The board itself stays as it is (the editor's checklist warns about such spaces).
-      const r = small ? 32 : 42;
-      const lowest = clearTop + r;
-      const highest = Math.max(lowest, SLIDE_H - clearBottom - r);
-      ids.forEach((id, i) => out.push({ id, x: sp.x + spots[i].dx, y: Math.min(highest, Math.max(lowest, sp.y + spots[i].dy)), small }));
+      // above the stats strip; at a side, a crowd moves in. The board itself stays as it is.
+      const { r, spots } = placeTokens(sp.x, sp.y, ids.length, clearTop, SLIDE_H - clearBottom);
+      ids.forEach((id, i) => out.push({ id, ...spots[i], r }));
     }
     return out;
   });
@@ -197,7 +193,7 @@
               onpointercancel={tokenCancel}
               role="presentation"
             >
-              <AvatarToken player={p} size={t.small ? 64 : 84} worn={wornItems(game, session, p.id)} name={false} />
+              <AvatarToken player={p} size={t.r * 2} worn={wornItems(game, session, p.id)} name={false} />
             </div>
           {/if}
         {/each}
