@@ -507,10 +507,14 @@
     }
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
     if (events.length && sign > 0) stopTimer('right');
-    // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out and opens them for the rest.
+    // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out, and the next in the buzz order
+    // answers (with nobody left in it, the buzzers open for the rest).
     const b = app.live.buzz;
-    if (buzzing && b?.answering && events.length && ids.includes(b.answering))
-      setBuzz(sign > 0 ? buzzDone(b) : buzzMissed(b, b.answering, session.players.map((p) => p.id)));
+    let next: string | null = null;
+    if (buzzing && b?.answering && events.length && ids.includes(b.answering)) {
+      if (sign > 0) setBuzz(buzzDone(b));
+      else next = passOn(b, b.answering);
+    }
     // One pop per player, or one for a group ("Everyone +$200").
     for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
     // Screen readers: what changed, and where that leaves each player.
@@ -520,7 +524,7 @@
     }
     // Awarding control of the board follows TV rules: the last correct player picks next.
     if (game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1) session.currentPickerId = ids[0];
-    selected = [];
+    selected = next ? [next] : [];
   }
 
   /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
@@ -704,6 +708,27 @@
     // The room decided this opening, but its "buzz" never got here (the connection dropped just then): the queue's
     // first answers, as the buzz would have made them.
     if (q.armId === buzz.armId && buzz.phase === 'armed' && !q.tie && q.queue.length && !selected.length) buzzPlayer(q.queue[0].seatId);
+  }
+
+  /**
+   * The one answering is done with this clue (wrong, or skipped): they're locked out, and the next in the buzz order
+   * answers (with nobody left in it, the buzzers open for the rest). Returns who answers now.
+   */
+  function passOn(b: BuzzState, id: string): string | null {
+    const queue = roomQueue && roomQueue.armId > clueArmFloor ? roomQueue.queue.map((q) => q.seatId) : [];
+    const after = buzzMissed(b, id, session.players.map((p) => p.id), queue);
+    setBuzz(after);
+    return after.phase === 'answering' ? after.answering : null;
+  }
+
+  /** ⏭ Skip: the one answering passes, with no points taken (they can't buzz again on this clue). Not an undo step. */
+  function skipAnswering(): void {
+    const b = app.live.buzz;
+    if (!buzzing || !b?.answering) return;
+    const who = playerName(session, b.answering);
+    const next = passOn(b, b.answering);
+    selected = next ? [next] : [];
+    toast(next ? `Skipped ${who}: ${playerName(session, next)} answers` : `Skipped ${who}: the buzzers are open for the rest`);
   }
 
   /** → Next in line: they answer now, no new opening. Not an undo step (like a buzz). */
@@ -2410,6 +2435,11 @@
             <span class="tie">Tie: {nameList(tie.map((id) => playerName(session, id)))}</span>
             <button class="primary" onclick={rollTie}>🎲 Roll for it</button>
             <span class="muted later-buzz">or pick one (click or 1–9)</span>
+          {/if}
+          {#if buzzing && buzz.phase === 'answering' && buzz.answering}
+            <button onclick={skipAnswering} title="No points taken: they can't buzz again on this clue, and the next in the buzz order answers">
+              ⏭ Skip {playerName(session, buzz.answering)}
+            </button>
           {/if}
           {#if nextInLine}
             <button onclick={() => takeNext(nextInLine.id)} title="They answer now (the buzzers stay open for the others until then)">→ Next in line: {nextInLine.name}</button>

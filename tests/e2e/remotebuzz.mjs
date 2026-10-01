@@ -210,31 +210,39 @@ try {
   await stateIs((s, id) => s.phase === 'answering' && s.answering === id, seats[1].id);
   await shot('rb-3-answering');
 
-  // Wrong: Player 2 is locked out, the buzzers open for the rest.
+  // Wrong: Player 2 is locked out, and Player 3, next in the buzz order, answers at once (the same opening: there's no
+  // new one for a later buzz to jump the queue with).
+  const scoresBefore = await page.locator('.panel .p .score').allInnerTexts();
   await page.keyboard.press('Shift+Enter');
-  await stateIs((s, a) => s.phase === 'armed' && s.armId === a.armId + 1 && s.lockedOut.join() === a.id, { armId: armed.armId, id: seats[1].id });
-  assert(true, 'a wrong answer locks Player 2 out and opens the buzzers again for the others');
+  await stateIs((s, a) => s.phase === 'answering' && s.answering === a.next && s.armId === a.armId && s.lockedOut.join() === a.id, {
+    armId: armed.armId,
+    id: seats[1].id,
+    next: seats[2].id,
+  });
+  assert((await pressed())[0].includes('Player 3'), 'a wrong answer locks Player 2 out, and Player 3, next in the buzz order, answers (no re-opening)');
   await page.getByText('Missed: Player 2').waitFor();
+  assert((await queue.locator('li.out', { hasText: 'Player 2' }).count()) === 1, 'the queue stays, Player 2 struck out');
+  // A buzz from a phone meanwhile doesn't take the turn.
+  await say({ t: 'buzz', armId: armed.armId, seatId: seats[0].id, rank: 3, afterMs: 200 });
+  await page.waitForTimeout(150);
+  assert((await pressed())[0].includes('Player 3') && (await pressed()).length === 1, 'a phone buzzing meanwhile doesn’t take Player 3’s turn');
+  // ⏭ Skip: Player 3 passes with no points taken; nobody's left in the order, so the buzzers open for the rest.
+  const p3Before = (await page.locator('.panel .p .score').allInnerTexts())[2];
+  await page.getByRole('button', { name: '⏭ Skip Player 3' }).click();
+  await stateIs((s, a) => s.phase === 'armed' && s.armId === a.armId + 1 && [...s.lockedOut].sort().join() === a.out, {
+    armId: armed.armId,
+    out: [seats[1].id, seats[2].id].sort().join(),
+  });
+  assert((await page.locator('.panel .p .score').allInnerTexts())[2] === p3Before && scoresBefore[2] === p3Before, '⏭ Skip passes Player 3 with no points taken, then opens the buzzers for the rest');
   await aud.locator('.plate').waitFor({ state: 'detached' });
   assert(true, 'the plate goes');
-  assert((await queue.locator('li.out', { hasText: 'Player 2' }).count()) === 1, 'the queue stays, Player 2 struck out');
   // A late buzz for the old opening doesn't count.
   const n = (await sent()).length;
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[0].id, rank: 1, afterMs: 0 });
   await page.waitForTimeout(150);
   assert((await pressed()).length === 0, 'a buzz from an earlier opening is ignored');
   assert((await sent()).slice(n).some((m) => m.t === 'state'), 'and the room hears the host’s state again');
-  // → Next in line: Player 3 answers now, without a new opening.
-  const rearmed = await state();
-  await page.getByRole('button', { name: '→ Next in line: Player 3' }).click();
-  await stateIs((s, a) => s.phase === 'answering' && s.answering === a.id && s.armId === a.armId, { id: seats[2].id, armId: rearmed.armId });
-  assert((await pressed())[0].includes('Player 3'), '→ Next in line gives Player 3 the answer (same opening, no re-arm)');
-  // A phone that buzzed at the same moment doesn't override the host's choice.
-  await say({ t: 'buzz', armId: rearmed.armId, seatId: seats[0].id, rank: 1, afterMs: 10 });
-  await page.waitForTimeout(150);
-  assert((await pressed())[0].includes('Player 3') && (await pressed()).length === 1, 'the host’s pick wins over a phone that buzzed at the same time');
   // The host picks by hand with a number key too.
-  await page.keyboard.press('3');
   await page.keyboard.press('4');
   await stateIs((s, id) => s.answering === id, (await state()).seats[3].id);
   assert(true, 'number keys pick who answers by hand (Zed, 4)');

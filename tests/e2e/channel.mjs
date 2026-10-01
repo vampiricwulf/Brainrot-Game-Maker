@@ -83,6 +83,24 @@ try {
   assert((await notice.count()) === 1, 'audience notices when the host window closes (the mouse over it)');
   await notice.waitFor({ state: 'detached', timeout: 3000 });
   assert(true, 'and the notice goes once the mouse is still, off the stream');
+
+  // A host page that opened its audience window, then reloaded: it no longer holds that window, and Exit still closes it.
+  const host2 = await context.newPage();
+  host2.on('pageerror', (e) => errors.push('[host2] ' + e.message));
+  await host2.goto(base);
+  await host2.getByRole('button', { name: 'Resume game' }).click();
+  const [aud2] = await Promise.all([host2.waitForEvent('popup'), host2.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click()]);
+  await aud2.locator('.board').waitFor();
+  await host2.reload();
+  await host2.getByRole('button', { name: 'Resume game' }).click();
+  await host2.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await host2.locator('.panel').waitFor();
+  assert(!aud2.isClosed(), 'after a host reload the audience window it opened is still up');
+  await host2.getByRole('button', { name: '🚪 Exit' }).click();
+  await host2.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
+  await host2.getByRole('button', { name: 'Leave', exact: true }).click();
+  if (!aud2.isClosed()) await aud2.waitForEvent('close', { timeout: 3000 });
+  assert(aud2.isClosed(), 'and Exit closes it, though the reloaded host page has no handle on it');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Channel sync test passed');
 } finally {

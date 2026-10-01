@@ -12,7 +12,7 @@ import { applyLocal, remoteMedia, type MediaCmd, type MediaState } from './media
 import { newId, type Game, type Session } from './model';
 import type { Live } from './live';
 import { inTauri } from './platform';
-import { browserArgs } from './desktop.svelte';
+import { browserArgs, closeAudienceNative } from './desktop.svelte';
 import { audioOut, onSoundReport, playChime, setAudioOut, type SoundReport } from './audioout.svelte';
 import type { AudioOutput } from './audio';
 
@@ -26,7 +26,9 @@ export type HostMsg =
   | { type: 'test-sound'; nonce: string }
   /** The game audio output the host picked. */
   | { type: 'audio-out'; deviceId: string; label: string }
-  | { type: 'bye' };
+  | { type: 'bye' }
+  /** The host closed it (Exit, Close audience window): it closes itself, even one the host page no longer holds. */
+  | { type: 'close' };
 
 export type AudienceEvent =
   | { kind: 'media'; id: string; state: MediaState | null }
@@ -323,10 +325,21 @@ export function closeScoresWindow(): void {
   scoresClosed();
 }
 
+/**
+ * Close the audience window (and the scores window). After a reload of this page the window it opened isn't held any
+ * more (it came back over the channel, or not at all): it's told to close itself, on every way it may be listening.
+ */
 export function closeAudienceWindow(): void {
+  const msg: HostMsg = { type: 'close' };
+  try {
+    if (win && !win.closed) win.postMessage(msg, '*');
+    channel?.postMessage({ from: 'host', msg } satisfies ChannelMsg);
+  } catch {
+    // Gone already: nothing to tell.
+  }
   win?.close();
   nativeWin?.close().catch(() => {});
-  if (viaChannel) post({ type: 'bye' });
+  closeAudienceNative();
   markClosed();
 }
 

@@ -55,9 +55,14 @@ export function buzzTake(b: BuzzState, id: Id, force = false): BuzzState | null 
   return { phase: 'answering', armId: b.armId, answering: id, lockedOut: [...b.lockedOut] };
 }
 
-/** The one answering got it wrong: they're locked out, and the buzzers open again for the rest (a rebound). */
-export function buzzMissed(b: BuzzState, id: Id, players: Id[]): BuzzState {
+/**
+ * The one answering got it wrong: they're locked out. The next in the clue's buzz order (`queue`, fastest first) who
+ * hasn't missed it answers now; with nobody left in it, the buzzers open again for the rest (a rebound).
+ */
+export function buzzMissed(b: BuzzState, id: Id, players: Id[], queue: Id[] = []): BuzzState {
   const lockedOut = b.lockedOut.includes(id) ? [...b.lockedOut] : [...b.lockedOut, id];
+  const next = queue.find((q) => !lockedOut.includes(q) && players.includes(q));
+  if (next) return { phase: 'answering', armId: b.armId, answering: next, lockedOut };
   return buzzArm({ ...b, answering: null, lockedOut }, players);
 }
 

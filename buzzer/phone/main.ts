@@ -642,7 +642,9 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['first', "You're answering!", how];
   } else if (v.phase === 'answering') {
     const who = v.answering ? `${v.answering.name} is answering` : 'Tie! The host decides';
-    if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host decides who goes first'];
+    // Out of this clue (wrong, or skipped): no place in the order to show any more.
+    if (you.lockedOut) [cls, big, small] = ['off', 'Wait', who];
+    else if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host decides who goes first'];
     else if (mine?.outcome === 'late' && mine.rank) {
       const how = mine.rolled ? `Tie — you rolled ${ordinal(mine.rolled)}` : mine.afterMs !== undefined && mine.behind ? `${secs(mine.afterMs)} behind ${mine.behind}` : who;
       [cls, big, small] = ['off', `You're ${ordinal(mine.rank)}`, how];

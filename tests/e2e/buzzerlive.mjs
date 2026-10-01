@@ -186,14 +186,14 @@ try {
   await queue.locator('li', { hasText: 'Player 1' }).waitFor();
   assert((await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1', 'the host panel lists both, fastest first');
 
-  // Wrong: Player 2 is locked out, the buzzers open again for the rest (the rebound), and Player 1 is next in line.
+  // Wrong: Player 2 is locked out, and Player 1, next in the buzz order, answers at once (no new opening that a later
+  // buzz could jump).
   await host.keyboard.press('Shift+Enter');
-  await small(p2).getByText('You already answered this one').waitFor();
-  await big(p1).getByText('BUZZ!').waitFor();
-  assert(true, 'a wrong answer (on $0, nothing to take) locks Player 2 out and reopens the buzzers for Player 1');
-  await host.getByRole('button', { name: '→ Next in line: Player 1' }).click();
+  await small(p2).getByText('Player 1 is answering').waitFor();
+  await big(p2).getByText('Wait').waitFor();
   await big(p1).getByText("You're answering!").waitFor();
-  assert(true, '→ Next in line: Player 1 answers without buzzing again');
+  await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
+  assert(true, 'a wrong answer (on $0, nothing to take) locks Player 2 out, and Player 1, next in the buzz order, answers without buzzing again');
   // A reload mid-clue: the game comes back with Player 1 answering and Player 2 still locked out (not opened afresh).
   await host.waitForTimeout(800); // the game is saved (debounced)
   await host.reload();
@@ -216,9 +216,16 @@ try {
   await big(p2).getByText('BUZZ!').waitFor();
   await big(p1).getByText('BUZZ!').waitFor();
   assert(true, '↺ Reset buzzers: the locked-out phones can buzz again');
+  // ⏭ Skip: Player 1 (first in) passes with no points taken, and Player 2, next in the order, answers.
+  const p1Score = await p1.locator('#me').innerText();
+  await press(p1);
+  await big(p1).getByText("You're answering!").waitFor();
   await press(p2);
+  await big(p2).getByText("You're 2nd").waitFor();
+  await host.getByRole('button', { name: '⏭ Skip Player 1' }).click();
   await big(p2).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
+  assert((await p1.locator('#me').innerText()) === p1Score && (await small(p1).innerText()) === 'Player 2 is answering', '⏭ Skip: the one answering passes with no points taken, and the next in the buzz order answers');
   await host.keyboard.press('Enter');
   await p2.locator('#me').getByText(/^Player 2 · \$[1-9]/).waitFor();
   assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');

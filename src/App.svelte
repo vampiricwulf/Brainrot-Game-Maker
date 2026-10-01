@@ -31,7 +31,7 @@
   import { validate } from './lib/validate';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
   import { migrateGame, newId } from './lib/model';
-  import { audienceTitle, closeAudienceWindow, openAudienceWindow } from './lib/sync.svelte';
+  import { audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
   import { migrateSession, newSession, rebaseSession } from './lib/session';
   import { newLive } from './lib/live';
@@ -528,7 +528,9 @@
   }
 
   function leavePlay(): void {
+    // The windows on stream close with the game (the audience window even after a reload of this page).
     closeAudienceWindow();
+    closeScoresWindow();
     app.screen = 'editor';
     app.playGame = null;
     app.session = null;

@@ -67,6 +67,11 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
   return core.invoke<T>(cmd, args);
 }
 
+/** Close the audience windows (desktop app): from the page's side, closing one isn't always possible. */
+export function closeAudienceNative(): void {
+  if (inTauri()) invoke('close_audience').catch(() => {});
+}
+
 /** Switch the Discord audio fix on or off (from the next start). Resolves to an error message, or null. */
 export async function setAudioFix(on: boolean): Promise<string | null> {
   try {

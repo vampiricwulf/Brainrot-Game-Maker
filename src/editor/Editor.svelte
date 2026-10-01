@@ -343,7 +343,9 @@
     // Typing not yet made a step (it becomes one after a pause) counts as a change too.
     commit();
     lossAccepted = false;
-    if (!hasWork(game) || savedSinceChange()) return true;
+    // (A game New made has nothing in it: anything in it now is a change, even one made before its history started
+    // a moment after it arrived.)
+    if (!hasWork(game) || (savedSinceChange() && !(history.origin.kind === 'new' && !history.entries.length && !history.marks.length))) return true;
     // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
     asking?.answer('cancel');
     const mine = ++asked;

@@ -688,6 +688,17 @@ fn page_flags(start: Start, fix_saved: bool) -> String {
     js
 }
 
+/// Close the audience windows the page opened (Exit, Close audience window): a window opened through `window.open` may
+/// not close from the page's side, and after a reload of the host page it no longer has a handle on it at all.
+#[tauri::command]
+fn close_audience(app: AppHandle) {
+    for (label, window) in app.webview_windows() {
+        if label.starts_with("popup-") && window.url().is_ok_and(|url| is_audience(&url)) {
+            let _ = window.close();
+        }
+    }
+}
+
 /// Build a real app window for a `window.open` request from the page.
 fn open_popup(
     app: &AppHandle,
@@ -1024,7 +1035,8 @@ fn main() {
             take_opened_file,
             flush_on_close,
             close_app,
-            hold_close
+            hold_close,
+            close_audience
         ])
         .setup(|app| {
             let handle = app.handle();

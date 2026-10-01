@@ -13,6 +13,8 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **⏭ Skip** in the host panel, for the player answering on a phone buzz: they pass with no points taken (they can't
+  buzz again on that clue), and the next in the buzz order answers.
 - **A volume for each sound** in 🔊 Sounds (0–100%, full volume to begin with): the game plays it that loud, and
   its ▶ preview too. Games made before keep every sound at full volume.
 - **An exported HTML file keeps your buzzer server**: the server set in ⚙ Settings › Buzzer server goes into the file,
@@ -96,6 +98,10 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **A wrong answer goes to the next in the buzz order**: with phone buzzers, the next player who buzzed (and hasn't
+  missed the clue) answers at once, instead of the buzzers opening again for a later buzz to jump the queue. The
+  buzzers only open again for the rest once everyone in the order has had their go. A phone that's out of the clue
+  says who's answering instead of its old place in the order.
 - **Daily Doubles placed by hand raise the ⭐ Daily Doubles count**: making a fourth tile a Daily Double (from the
   tile's menu or the clue's Type) sets the box to 4, so it never says fewer than the board has. When it's lowered
   below what's placed, the checklist says so (they all still play).
@@ -304,6 +310,10 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **New, then Open… or New again straight away, asks before replacing the game**: a title typed into a new game in
+  the moment before its undo history started wasn't counted as a change, so it could be replaced without asking.
+- **Exit closes the audience window** (and the scores window), also after the host page was reloaded (it no longer
+  had a handle on the window) and in the desktop app, where closing it from the page doesn't always work.
 - **Reopening a recent game keeps the files its undo history needs**: ↶ Reopen previous game (or Open… → Recent
   games) could delete a file that had been removed, so undoing that Remove brought it back as "missing". Forgetting a
   game in Open… no longer deletes files the open game's own undo history can bring back either.
@@ -881,3 +891,4 @@ Commits whose titles don't say what they contain:
 | ba3aa69 | Merge branch 'worktree-agent-a450ef6c094eea9ef' | Merge of the board game and RPG audit fixes: capped steps, the screen editor's keyboard trap, deleted spaces on resume, crowded spaces, currency and item limits (feff655) |
 | b89ef5e | Merge branch 'worktree-agent-a79a8c7fd1e1f5e45' | Merge of the slide and image editor audit fixes: huge turned pictures, picture box size, overlays through crops and turns, Office pastes, drag-select, the keyboard item menu (68dbd74) |
 | 6ab3b87 | Merge branch 'worktree-agent-a3d1719b6e922652d' | Merge of the editor audit fixes: recent-game files kept for undo, one-step reconnect and Save a copy, clue countdown and value fields, History focus, step labels (5f8ef83) |
+| 2727ec2 | Merge branch 'worktree-agent-aa0013621a7fbcb03' | Merge of the phone buzzer stress fixes: room-measured round trips and a capped cheat window, flood closing, the phone page's one-socket reconnects and kept presses, host reload keeping the buzz state, emoji-safe names (2da8525) |

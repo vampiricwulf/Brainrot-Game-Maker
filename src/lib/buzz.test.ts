@@ -38,6 +38,19 @@ describe('buzzer rules', () => {
     expect(buzzArm(c, P).phase).toBe('closed');
   });
 
+  it('a wrong answer with others in the buzz order: the next one who hasn’t missed answers, no new opening', () => {
+    const a = buzzTake(buzzClueOpened(newBuzz(), true), 'a')!;
+    const r = buzzMissed(a, 'a', P, ['a', 'c', 'b']);
+    expect(r).toEqual({ phase: 'answering', armId: a.armId, answering: 'c', lockedOut: ['a'] });
+    // c misses too: b is next; then the order is used up and the buzzers open for whoever is left.
+    const s = buzzMissed(r, 'c', P, ['a', 'c', 'b']);
+    expect(s).toMatchObject({ phase: 'answering', answering: 'b', lockedOut: ['a', 'c'] });
+    const t = buzzMissed(buzzMissed(a, 'a', [...P, 'd'], ['a']), 'a', [...P, 'd'], ['a']);
+    expect(t).toMatchObject({ phase: 'armed', answering: null, lockedOut: ['a'] });
+    // A player who left the game is skipped.
+    expect(buzzMissed(a, 'a', ['a', 'b'], ['a', 'gone', 'b'])).toMatchObject({ answering: 'b' });
+  });
+
   it('0 opens them for everyone; a right answer closes them; leaving the clue clears it all', () => {
     const r = buzzMissed(buzzTake(buzzClueOpened(newBuzz(), true), 'a')!, 'a', P);
     expect(buzzReset(r)).toEqual({ phase: 'armed', armId: r.armId + 1, answering: null, lockedOut: [] });

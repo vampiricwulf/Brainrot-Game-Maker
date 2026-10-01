@@ -90,6 +90,11 @@
         case 'bye':
           status = 'host-left';
           break;
+        case 'close':
+          // (A window the page didn't open can't close itself: it says the host left instead.)
+          window.close();
+          status = 'host-left';
+          break;
       }
     };
     const onmsg = (e: MessageEvent<HostMsg>) => {
@@ -100,6 +105,17 @@
     };
     if (viaOpener) window.addEventListener('message', onmsg);
     else channel!.addEventListener('message', onchannel);
+    // Linked to its opener, it still hears the host close it on the channel: a reloaded host page no longer has a
+    // handle on this window (Exit closes it all the same).
+    let closer: BroadcastChannel | null = null;
+    if (viaOpener && !scores) {
+      try {
+        closer = new BroadcastChannel(CHANNEL_NAME);
+        closer.onmessage = (e: MessageEvent<ChannelMsg>) => e.data?.from === 'host' && e.data.msg?.type === 'close' && handle(e.data.msg);
+      } catch {
+        closer = null;
+      }
+    }
     // No host answered on the channel: this window wasn't opened by a host.
     const noHost = setTimeout(() => status === 'waiting' && (status = 'no-host'), 4000);
     const onunload = () => send({ type: 'bye' });
@@ -124,6 +140,7 @@
       window.removeEventListener('message', onmsg);
       window.removeEventListener('beforeunload', onunload);
       channel?.close();
+      closer?.close();
       clearTimeout(noHost);
       offMedia();
       offSound();
