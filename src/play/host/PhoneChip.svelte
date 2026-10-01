@@ -1,7 +1,7 @@
 <!-- Host panel: "📱 3/4", the phones joined. Click for the list (kick, people asking to join), the code and the link. -->
 <script lang="ts">
   import type { GameSettings, Session } from '../../lib/model';
-  import { remote, roomLink } from '../../lib/remote.svelte';
+  import { FULL_SHOWN_MS, remote, roomLink } from '../../lib/remote.svelte';
   import BuzzerOptions, { type SetBuzzSetting } from '../BuzzerOptions.svelte';
   import { copyText } from '../standings';
   import PhoneList from '../PhoneList.svelte';
@@ -15,6 +15,7 @@
     onadd,
     onreject,
     onkick,
+    onlock,
   }: {
     session: Session;
     settings: GameSettings;
@@ -24,18 +25,30 @@
     onadd: (conn: string, name: string) => void;
     onreject: (conn: string) => void;
     onkick: (seatId: string) => void;
+    onlock: (on: boolean) => void;
   } = $props();
 
   let open = $state(false);
   const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
   const asking = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)).length);
   const trouble = $derived(remote.status === 'reconnecting' || remote.status === 'error');
+  let now = $state(Date.now());
+  $effect(() => {
+    const id = setInterval(() => (now = Date.now()), 10_000);
+    return () => clearInterval(id);
+  });
+  const full = $derived(!!remote.fullAt && now - remote.fullAt < FULL_SHOWN_MS);
+  // Out of reach: the room's last list of phones is stale, so no count (it would say they're all there).
   const label = $derived(
     remote.status === 'off'
       ? '📱 Phones off'
       : remote.status === 'connecting'
         ? '📱 Starting…'
-        : `📱 ${joined}/${session.players.length}${asking ? ` · ${asking} asking` : ''}${trouble ? ' ⚠' : ''}`,
+        : remote.status === 'reconnecting'
+          ? '📱 ⚠ Phones not connected'
+          : remote.status === 'error'
+            ? '📱 ⚠ Room lost'
+            : `📱 ${joined}/${session.players.length}${asking ? ` · ${asking} asking` : ''}${full ? ' · room full' : ''}`,
   );
 </script>
 
@@ -69,7 +82,7 @@
           <p class="warn small" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</p>
           <button class="small" onclick={onstart}>Start a new room</button>
         {/if}
-        <PhoneList {session} {max} {onadd} {onreject} {onkick} />
+        <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} />
       {/if}
       <BuzzerOptions {settings} {onset} compact />
     </div>

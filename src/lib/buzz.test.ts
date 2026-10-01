@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newTextEl, textSlide, type BoardRound } from './model';
 import { applyScore, newSession, openClue } from './session';
-import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, questionText } from './buzz';
+import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText } from './buzz';
 
 const P = ['a', 'b', 'c'];
 
@@ -42,7 +42,7 @@ describe('buzzer rules', () => {
     const r = buzzMissed(buzzTake(buzzClueOpened(newBuzz(), true), 'a')!, 'a', P);
     expect(buzzReset(r)).toEqual({ phase: 'armed', armId: r.armId + 1, answering: null, lockedOut: [] });
     const done = buzzDone(buzzTake(r, 'b')!);
-    expect(done).toMatchObject({ phase: 'closed', answering: null, lockedOut: ['a'] });
+    expect(done).toMatchObject({ phase: 'closed', answering: null, lockedOut: ['a'], done: true, doneBy: 'b' });
     expect(buzzArm(done, P)).toMatchObject({ phase: 'armed', armId: r.armId + 1, lockedOut: ['a'] });
     expect(buzzIdle(done)).toEqual({ phase: 'lobby', armId: done.armId, answering: null, lockedOut: [] });
   });
@@ -93,7 +93,7 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(s).toMatchObject({ phase: 'armed', lockedOut: ['a'], scores: { a: 0, b: 200 } });
     const json = JSON.stringify(s);
     for (const leak of ['Shiba', 'HOST NOTE', 'LAYER NOTE', 'SECRET', 'img1', 'answerSlide', 'What is', 'hostNotes', 'media']) expect(json).not.toContain(leak);
-    expect(Object.keys(s).sort()).toEqual(['allowNew', 'answering', 'armId', 'clue', 'earlyLockMs', 'lockedOut', 'phase', 'scores', 'seats', 'title']);
+    expect(Object.keys(s).sort()).toEqual(['allowNew', 'answering', 'armId', 'clue', 'currency', 'earlyLockMs', 'lockedOut', 'phase', 'scores', 'seats', 'title']);
   });
 
   it('a phone sees no clue on the board, even if the buzz state says otherwise', () => {
@@ -109,6 +109,42 @@ describe('hostState (what the buzzer room is told)', () => {
     const s = hostState(game, session, { phase: 'armed', armId: 3, answering: null, lockedOut: ['gone', 'b'] }, 1000);
     expect(s.lockedOut).toEqual(['b']);
     expect(JSON.stringify(s.seats)).not.toContain('pic');
+  });
+
+  it('a right answer: the phones are told who got it (only while closed)', () => {
+    const { game, session } = setup();
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    const done = buzzDone(buzzTake(buzzClueOpened(newBuzz(), true), 'b')!);
+    expect(hostState(game, session, done, 0)).toMatchObject({ phase: 'closed', done: { by: 'b' } });
+    expect(hostState(game, session, buzzArm(done, ['a', 'b']), 0).done).toBeUndefined();
+    expect(hostState(game, session, buzzClueOpened(newBuzz(), false), 0).done).toBeUndefined();
+  });
+
+  it('the status line, locked seats, the points symbol and long names cut to fit', () => {
+    const { game, session } = setup();
+    session.players[0].name = 'A'.repeat(60);
+    game.settings.currencySymbol = '€';
+    const s = hostState(game, session, newBuzz(), 0, { status: { text: 'Hi' }, locked: true });
+    expect(s).toMatchObject({ status: { text: 'Hi' }, locked: true, currency: '€' });
+    expect(Array.from(s.seats[0].name)).toHaveLength(40);
+    expect(s.seats[0].name.endsWith('…')).toBe(true);
+    expect('status' in hostState(game, session, newBuzz(), 0, { status: null })).toBe(false);
+  });
+
+  it('phoneStatus: what phones say when nobody buzzes', () => {
+    const { game, session } = setup();
+    expect(phoneStatus(game, session, true)).toEqual({ text: 'The game starts soon' });
+    session.phase = 'board';
+    session.intro = null;
+    session.currentPickerId = 'a';
+    expect(phoneStatus(game, session)).toEqual({ text: 'Ann picks the next clue', seats: ['a'], seatsText: 'Your pick! Tell the host which clue' });
+    session.phase = 'clue';
+    session.dd = { stage: 'splash', playerId: 'b' };
+    expect(phoneStatus(game, session)).toEqual({ text: 'Daily Double: Bo', seats: ['b'], seatsText: 'Daily Double — you’re up!' });
+    session.dd = null;
+    expect(phoneStatus(game, session)).toBeNull();
+    session.phase = 'end';
+    expect(phoneStatus(game, session)?.text).toBe('Game over: thanks for playing!');
   });
 
   it('question text: text boxes top to bottom', () => {

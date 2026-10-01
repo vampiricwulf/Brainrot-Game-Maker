@@ -3,10 +3,12 @@
   import { app, toast } from './lib/app.svelte';
   import {
     clearPlay,
+    clearRoom,
     debounce,
     dropStraySteps,
     loadEditor,
     loadPlay,
+    loadRoom,
     retryWrites,
     saveEditor,
     savePlay,
@@ -14,7 +16,10 @@
     usePlayerStorage,
     watchWrites,
     type SavedPlay,
+    type SavedRoom,
   } from './lib/persist';
+  import { closeRoom, endRoom, inRoom, kept, rejoinRoom, sendHostState } from './lib/remote.svelte';
+  import { setupState } from './lib/buzz';
   import { openPack } from './lib/pack';
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
@@ -79,6 +84,7 @@
         loadError = (e as Error).message;
       }
       loaded = true;
+      if (!loadError) await restoreRoom();
       return;
     }
     holdOpenLock();
@@ -116,7 +122,53 @@
     // Drop stored media that no saved game uses any more.
     await pruneMedia([app.game, app.resumable?.game], held);
     loaded = true;
+    await restoreRoom();
   });
+
+  /**
+   * Phone buzzers: a room the pre-game screen had open before this reload. On the pre-game screen: back to it, in the
+   * same room with the same players. Back in the editor (the room left open): the room waits for ▶ Play. Another game's
+   * room is closed.
+   */
+  async function restoreRoom(): Promise<void> {
+    const r = await loadRoom();
+    if (!r?.remote?.code || !Array.isArray(r.players)) return;
+    if (r.gameId !== app.game.id || !app.game.settings.buzzer) {
+      endRoom(r.remote);
+      await clearRoom();
+      return;
+    }
+    if (r.screen === 'pregame' && app.screen === 'editor') {
+      app.playGame = clone(app.game);
+      const s = newSession(app.playGame);
+      s.players = r.players;
+      s.remote = r.remote;
+      app.session = s;
+      app.live = newLive();
+      app.pregame = true;
+      app.screen = 'play';
+      return;
+    }
+    keepRoom(r);
+  }
+
+  /** The room stays open while the host is in the editor: phones are told the host is setting up. */
+  function keepRoom(r: SavedRoom): void {
+    kept.room = r;
+    rejoinRoom(r.remote);
+    const early = Math.round((app.game.settings.earlyBuzzLock ?? 1) * 1000);
+    sendHostState(setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked));
+  }
+
+  /** ✕ Close the room (the banner in the editor): phones are told the game is over. */
+  async function closeKeptRoom(): Promise<void> {
+    const r = kept.room;
+    kept.room = null;
+    if (r && inRoom(r.remote.code)) closeRoom();
+    else if (r) endRoom(r.remote);
+    await clearRoom();
+    toast('Buzzer room closed');
+  }
 
   /** Another tab takes over editing: write the last changes, then leave the autosave alone. */
   async function stopEditing(): Promise<void> {
@@ -326,6 +378,14 @@
     saveEditorSoon.flush();
     app.playGame = clone(app.game);
     app.session = newSession(app.playGame);
+    // The room left open going back to the editor: the same one again (phones stay joined), if it's this game's.
+    const room = kept.room;
+    kept.room = null;
+    if (room && room.gameId === app.game.id && app.game.settings.buzzer) app.session.remote = room.remote;
+    else if (room) {
+      endRoom(room.remote);
+      void clearRoom();
+    }
     app.live = newLive();
     app.pregame = true;
     app.screen = 'play';
@@ -412,8 +472,10 @@
     </div>
   </div>
 {:else if playerOnly && app.screen === 'editor'}
+  {@render roomBar()}
   <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => resume()} ondiscard={discardResume} />
 {:else if app.screen === 'editor'}
+  {@render roomBar()}
   {#if app.resumable}
     {@const saved = app.resumable}
     {@const ended = saved.session.phase === 'end'}
@@ -438,6 +500,18 @@
 {:else}
   <Play onexit={exitPlay} oncancel={leavePlay} />
 {/if}
+
+{#snippet roomBar()}
+  {#if kept.room}
+    <div class="resume room-bar" role="status">
+      <span>
+        📱 The buzzer room <b>{kept.room.remote.code}</b> is still open: phones are told you're setting up.
+        <span class="muted small">▶ Play goes back into it.</span>
+      </span>
+      <button class="ghost" onclick={closeKeptRoom}>✕ Close the room</button>
+    </div>
+  {/if}
+{/snippet}
 
 <ContextMenu />
 <AskDialog />

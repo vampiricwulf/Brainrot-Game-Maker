@@ -10,11 +10,15 @@
     blankSlide, toolOnlyClue, finalWagersOk, startTiebreaker, roundMaxValue, stepOf,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
-  import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, type BuzzState } from '../lib/buzz';
   import {
-    acceptPhone, buzzerBase, closeRoom, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState, roomLink, sendHostState,
-    startRoom,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SETTING_UP, type BuzzState,
+  } from '../lib/buzz';
+  import {
+    acceptPhone, buzzerBase, closeRoom, endRoom, inRoom, kept, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState,
+    roomLink, sendHostState, startRoom,
   } from '../lib/remote.svelte';
+  import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
+  import { chime } from '../lib/chime';
   import type { RoomBuzz, RoomQueue } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
@@ -271,6 +275,12 @@
     const offBuzz = onRoomBuzz(roomBuzz);
     const offQueue = onRoomQueue(roomQueueIn);
     if (session.remote && phonesOn) rejoinRoom(session.remote);
+    else if (session.remote) {
+      // Buzzer mode was turned off (in the editor) while the room was left open: it's closed now.
+      endRoom(session.remote);
+      session.remote = null;
+      void clearRoom();
+    }
     // Time's up watcher (the host is the single source of truth for expiry).
     const id = setInterval(() => {
       const t = app.live.timer;
@@ -287,8 +297,9 @@
       offKeys();
       offBuzz();
       offQueue();
-      // Leaving the game (Exit, or back from the pre-game screen): the phones are told it's over.
-      closeRoom();
+      // Leaving the game (Exit): the phones are told it's over. Not ◀ Back to editor from the pre-game screen: the room
+      // stays open for ▶ Play (see backToEditor).
+      if (!keepRoomOpen) closeRoom();
       // The scores window belongs to this game (the audience window is closed by leaving it).
       closeScoresWindow();
       for (const t of pending) clearTimeout(t);
@@ -466,7 +477,7 @@
     const apply = (g: Game) => (g.settings[key] = value);
     apply(game);
     if (app.game.id === game.id) step(label, () => apply(app.game), { during: 'play' });
-    if (key === 'buzzer' && !value) closeRoom();
+    if (key === 'buzzer' && !value && session.remote) closePhoneRoom();
   };
   const earlyMs = $derived(Math.round((game.settings.earlyBuzzLock ?? 1) * 1000));
   /**
@@ -505,6 +516,9 @@
     // An older opening's queue doesn't replace a newer one's.
     if (roomQueue && q.armId < roomQueue.armId) return;
     roomQueue = q;
+    // The room decided this opening, but its "buzz" never got here (the connection dropped just then): the queue's
+    // first answers, as the buzz would have made them.
+    if (q.armId === buzz.armId && buzz.phase === 'armed' && !q.tie && q.queue.length && !selected.length) buzzPlayer(q.queue[0].seatId);
   }
 
   /** → Next in line: they answer now, no new opening. Not an undo step (like a buzz). */
@@ -551,12 +565,19 @@
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
   function addPhonePlayer(conn: string, name: string): void {
     if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (⚙ Game rules, before the game)`);
-    const who = name.trim().slice(0, 40) || `Player ${session.players.length + 1}`;
+    let who = name.trim().slice(0, 40) || `Player ${session.players.length + 1}`;
+    // Never a second "Ann": the new one is "Ann 2".
+    const taken = (n: string) => session.players.some((x) => x.name.trim().toLowerCase() === n.toLowerCase());
+    if (taken(who)) {
+      let i = 2;
+      while (taken(`${who} ${i}`)) i++;
+      who = `${who} ${i}`;
+    }
     const p = { id: newId(), name: who, color: nextFreeColor(session.players.map((x) => x.color)), startScore: 0 };
     if (app.pregame) session.players.push(p);
     else logged(session, `Added ${who} (from their phone)`, () => session.players.push(p));
     // The room has to know the seat before the phone takes it.
-    sendHostState(hostState(game, session, buzz, earlyMs), true);
+    sendHostState(hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked }), true);
     acceptPhone(conn, p.id);
     toast(`${who} joined from their phone`);
   }
@@ -569,11 +590,76 @@
   let sentPhase = '';
   $effect(() => {
     if (!phonesOn || remote.status === 'off' || remote.status === 'error') return;
-    const st = hostState(game, session, buzz, earlyMs);
+    const st = hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked });
     // The buzzers opening goes at once (players are racing).
     const now = st.phase !== sentPhase && st.phase === 'armed';
     sentPhase = st.phase;
-    untrack(() => sendHostState(st, now));
+    untrack(() => !keepRoomOpen && sendHostState(st, now));
+  });
+  // The pre-game screen's room is saved on its own (nothing else is before Start game): a reload gets back into it.
+  $effect(() => {
+    if (!app.pregame || !session.remote || !phonesOn) return;
+    const r: SavedRoom = { gameId: game.id, remote: $state.snapshot(session.remote), players: $state.snapshot(session.players), screen: 'pregame', savedAt: Date.now() };
+    untrack(() => !keepRoomOpen && void saveRoom(r));
+  });
+
+  /** Set by ◀ Back to editor: the room stays open while the host is in the editor. */
+  let keepRoomOpen = false;
+  /**
+   * ◀ Back to editor (pre-game): the room stays open, its phones told the host is setting up; ▶ Play goes back into it.
+   * Only Exit / End game, ✕ Close the room or turning Buzzer mode off close it.
+   */
+  function backToEditor(): void {
+    const r = session.remote;
+    if (app.pregame && phonesOn && r && inRoom(r.code)) {
+      const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players: $state.snapshot(session.players), screen: 'editor', savedAt: Date.now() };
+      sendHostState(hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked }), true);
+      keepRoomOpen = true;
+      kept.room = saved;
+      void saveRoom(saved);
+    }
+    oncancel();
+  }
+
+  /** ✕ Close the room (the 📱 card): the phones are told the game is over; Start the room makes a new one. */
+  function closePhoneRoom(): void {
+    closeRoom();
+    session.remote = null;
+    void clearRoom();
+    toast('Buzzer room closed: the phones were told');
+  }
+
+  /** 🔒 Lock seats: no new phone takes a seat or asks to join; players already in come back. */
+  function lockSeats(on: boolean): void {
+    if (!session.remote) return;
+    session.remote.locked = on || undefined;
+    toast(on ? '🔒 Seats locked: only players already in can come back' : 'Seats open again');
+  }
+
+  /** Buzzer mode with the room out of reach: the host panel says the phones can't buzz (not "Buzzers open"). */
+  const phonesDown = $derived(
+    !phonesOn
+      ? ''
+      : remote.status === 'off'
+        ? 'No buzzer room is running: phones can’t buzz (📱 chip › Start the room). 1–9 still pick.'
+        : remote.status === 'online'
+          ? ''
+          : '⚠ Phones not connected: the buzzer room can’t be reached right now, so phones can’t buzz. 1–9 still pick.',
+  );
+
+  // Someone asks to join from their phone: the host hears it (a toast, and a soft chime when the stream is the other
+  // window), not only a number on the 📱 chip.
+  let askSeen = new Set<string>();
+  $effect(() => {
+    const asking = phonesOn ? remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)) : [];
+    untrack(() => {
+      const fresh = asking.filter((p) => !askSeen.has(p.conn));
+      askSeen = new Set(asking.map((p) => p.conn));
+      if (!fresh.length) return;
+      const names = nameList(fresh.map((p) => p.pendingName ?? ''));
+      toast(`📱 ${names} ${fresh.length === 1 ? 'wants' : 'want'} to join: ${app.pregame ? 'see 📱 Phone buzzers below' : 'click the 📱 chip'}`, 5000);
+      if (dual) chime();
+    });
   });
   // Viewers' "Starting soon" card shows the room's code, link and QR code.
   $effect(() => {
@@ -588,6 +674,7 @@
   function exitGame(): void {
     closeRoom();
     session.remote = null;
+    void clearRoom();
     onexit();
   }
 
@@ -1203,8 +1290,9 @@
       const m = p.avatar && !game.media.some((x) => x.id === p.avatar) ? app.game.media.find((x) => x.id === p.avatar) : undefined;
       if (m) game.media.push($state.snapshot(m));
     }
-    // This game now replaces any older saved one (autosave starts once pre-game is over).
+    // This game now replaces any older saved one (autosave starts once pre-game is over), its room too.
     app.resumable = null;
+    void clearRoom();
     app.pregame = false;
     app.live.soonAt = undefined;
     // A game can open with a Final or an RPG round: those start through goToRound (only a title card).
@@ -1686,6 +1774,8 @@
       onadd={addPhonePlayer}
       onreject={rejectPhone}
       onkick={kickPhone}
+      onclose={closePhoneRoom}
+      onlock={lockSeats}
     />
     <GameRules s={game.settings} players={session.players.length} />
 
@@ -1756,6 +1846,16 @@
         />
         Show the screen's name in RPG rounds
       </label>
+      {#if phonesOn}
+        <label class="check small">
+          <input
+            type="checkbox"
+            checked={!stream.hideJoinCode}
+            onchange={(e) => setStream('hideJoinCode', e.currentTarget.checked ? undefined : true, 'Join code in a corner of the stream')}
+          />
+          Show the phone buzzers' join code in a corner during the game (and on the cover card), while the room is open
+        </label>
+      {/if}
     </div>
 
     <div class="row">
@@ -1778,14 +1878,14 @@
           {/each}
         </ul>
         <div class="row">
-          {#if !app.playerOnly}<button class="small" onclick={oncancel}>◀ Fix in editor</button>{/if}
+          {#if !app.playerOnly}<button class="small" onclick={backToEditor}>◀ Fix in editor</button>{/if}
           <span class="muted small">These are only warnings: you can still start.</span>
         </div>
       </details>
     {/if}
 
     <div class="row actions">
-      <button class="ghost" onclick={oncancel}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
+      <button class="ghost" onclick={backToEditor}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
       <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add players to start'}>
         Start game ▶
       </button>
@@ -1890,6 +1990,7 @@
         onsound={() => (showSound = true)}
         oncloseoverlay={closeOverlay}
         onopenbuzzers={openBuzzers}
+        {phonesDown}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={() => (hideControls = true)}
         onexit={exitGame}
@@ -1924,6 +2025,7 @@
               onadd={addPhonePlayer}
               onreject={rejectPhone}
               onkick={kickPhone}
+              onlock={lockSeats}
             />
           {/if}
         {/snippet}

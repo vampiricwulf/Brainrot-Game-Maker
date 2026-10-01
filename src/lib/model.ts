@@ -258,8 +258,11 @@ export interface GameSettings {
   /** Start a clue's countdown automatically when it opens (if it has a timer). */
   timerAutoStart: boolean;
     roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
-  /** What viewers see around the game (set on the pre-game screen): the cards' words and the captions. */
-  stream?: { soonText?: string; coverText?: string; clueCaption?: boolean; placeCaption?: boolean };
+  /**
+   * What viewers see around the game (set on the pre-game screen): the cards' words and the captions. hideJoinCode:
+   * the phone buzzers' join code isn't shown in a corner of the stream during the game (it is by default).
+   */
+  stream?: { soonText?: string; coverText?: string; clueCaption?: boolean; placeCaption?: boolean; hideJoinCode?: boolean };
   /**
    * Buzzer mode (phone buzzers): during a clue players buzz in from their phones (a buzzer room, see remote.svelte.ts);
    * the fastest answers and a wrong answer locks them out of the clue. Set on the pre-game screen.
@@ -582,9 +585,10 @@ export interface Session {
   actionRedo?: ActionEvent[];
   /**
    * Phone buzzers: the buzzer room this game uses, so a reload (or a crash) gets back into the same room. Never sent to the
-   * audience window. `armId`: the last time the buzzers opened there (it only goes up).
+   * audience window. `armId`: the last time the buzzers opened there (it only goes up). `locked`: 🔒 seats locked (no
+   * new phones take a seat; players already in come back).
    */
-  remote?: { code: string; hostToken: string; base: string; armId?: number } | null;
+  remote?: { code: string; hostToken: string; base: string; armId?: number; locked?: boolean } | null;
 }
 
 // ---------- Toolset: stats, items, shops, actions (games-maker spec §5.1, §7.7–7.10) ----------

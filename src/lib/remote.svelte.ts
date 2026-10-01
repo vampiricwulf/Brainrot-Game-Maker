@@ -1,6 +1,7 @@
 // Phone buzzers, the host's side: one buzzer room at a time (see roomlink.ts for the connection, buzzproto.ts for what is
 // said). Reactive, for the pre-game card and the host panel.
 import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
+import type { SavedRoom } from './persist';
 import { prefs } from './prefs.svelte';
 import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus } from './roomlink';
 
@@ -25,7 +26,18 @@ export const remote = $state<{
   attempts: number;
   /** Phones asking to join that the host already answered (until the room's next list leaves them out). */
   answered: string[];
-}>({ status: 'off', code: null, base: '', phones: [], error: '', attempts: 0, answered: [] });
+  /** When the room last turned a phone away because it was full (0: not lately). */
+  fullAt: number;
+}>({ status: 'off', code: null, base: '', phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+
+/** How long "Room full" shows after the room last turned a phone away. */
+export const FULL_SHOWN_MS = 2 * 60_000;
+
+/**
+ * A room left open while the host went back to the editor from the pre-game screen (◀ Back to editor): ▶ Play picks
+ * it up again (same code, phones stay joined). Saved too (persist.ts saveRoom), so a reload keeps it.
+ */
+export const kept = $state<{ room: SavedRoom | null }>({ room: null });
 
 let link: RoomLink | null = null;
 const buzzWatchers = new Set<(b: RoomBuzz) => void>();
@@ -50,10 +62,16 @@ function newLink(base: string): RoomLink {
   link?.stop();
   link = new RoomLink(
     base,
-    { onChange: sync, onBuzz: (b) => buzzWatchers.forEach((fn) => fn(b)), onQueue: (q) => queueWatchers.forEach((fn) => fn(q)) },
+    {
+      onChange: sync,
+      onBuzz: (b) => buzzWatchers.forEach((fn) => fn(b)),
+      onQueue: (q) => queueWatchers.forEach((fn) => fn(q)),
+      onFull: () => (remote.fullAt = Date.now()),
+    },
     deps,
   );
   remote.base = base;
+  remote.fullAt = 0;
   return link;
 }
 
@@ -111,8 +129,17 @@ export const kickSeat = (seatId: string) => !!link?.send({ t: 'kick', seatId });
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [] });
+  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
 }
+
+/** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */
+export function endRoom(room: NewRoom & { base: string }): void {
+  if (link?.room?.code === room.code) return closeRoom();
+  new RoomLink(room.base, {}, deps).end(room);
+}
+
+/** The room this window is in, if it's that one and still there. */
+export const inRoom = (code: string): boolean => link?.room?.code === code && link.status !== 'off' && link.status !== 'error';
 
 /** The link players open on their phone. */
 export function roomLink(code = remote.code): string {

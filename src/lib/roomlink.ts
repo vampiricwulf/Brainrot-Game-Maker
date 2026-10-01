@@ -32,6 +32,8 @@ export interface LinkEvents {
   onBuzz?: (b: RoomBuzz) => void;
   /** The room's queue of buzzes for an arm changed. */
   onQueue?: (q: RoomQueue) => void;
+  /** The room turned a phone away: too many phones are connected. */
+  onFull?: () => void;
 }
 
 const OPEN = 1;
@@ -94,9 +96,19 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return isNum(m.at) && isNum(m.serverNow) ? { t: 'pong', at: m.at, serverNow: m.serverNow } : null;
     case 'error':
       return isStr(m.message, 500) ? { t: 'error', message: m.message } : null;
+    case 'full':
+      return { t: 'full' };
     default:
       return null;
   }
+}
+
+/** Why the room turned the host away (a WebSocket close code 4000–4999), in plain words. */
+export function closedText(code: number, reason = ''): string {
+  if (code === 4004) return 'This buzzer room has ended (it was closed, or nobody used it for hours): start a new one';
+  if (code === 4000) return 'The buzzer room is open in another window or tab of the app: this one let go of it';
+  if (code === 4003) return 'This copy can’t get into that buzzer room any more: start a new one';
+  return reason && !/^[a-z -]+$/.test(reason) ? reason : 'The buzzer room is closed: start a new one';
 }
 
 /** The `error` of a server's JSON error answer, or ''. */
@@ -134,6 +146,8 @@ export class RoomLink {
   private retryTimer: unknown = null;
   private heard = 0;
   private stopped = true;
+  /** end(): close the room as soon as it says welcome. */
+  private ending = false;
 
   constructor(
     readonly base: string,
@@ -190,6 +204,12 @@ export class RoomLink {
     if (this.status !== 'online' || !this.ws || this.ws.readyState !== OPEN) return false;
     this.ws.send(JSON.stringify(msg));
     return true;
+  }
+
+  /** Close a room this link isn't in (one left open by an earlier page): connect, close it, stop. */
+  end(room: NewRoom): void {
+    this.ending = true;
+    this.connect(room);
   }
 
   /** Close the room for good (the phones are told), and stop. */
@@ -259,7 +279,8 @@ export class RoomLink {
       this.pingTimer = null;
       // 4000–4999: the room turned the host away on purpose (closed, expired, a wrong token). No point trying again.
       if (e.code >= 4000 && e.code < 5000) {
-        this.error ||= e.reason || 'The buzzer room is closed';
+        if (this.ending) return this.stop();
+        this.error = closedText(e.code, e.reason);
         this.room = null;
         this.set('error');
         return;
@@ -271,6 +292,8 @@ export class RoomLink {
 
   private retry(): void {
     if (this.stopped || !this.room) return;
+    // Only ending an old room: not worth more than a few tries (it ends by itself after hours anyway).
+    if (this.ending && this.attempts >= 3) return this.stop();
     const wait = retryDelay(this.attempts++);
     this.set('reconnecting');
     this.retryTimer = this.deps.setTimeout(() => {
@@ -311,6 +334,10 @@ export class RoomLink {
           this.set('error');
           return;
         }
+        if (this.ending) {
+          this.status = 'online';
+          return this.close();
+        }
         this.code = m.code;
         this.attempts = 0;
         this.error = '';
@@ -331,6 +358,9 @@ export class RoomLink {
       case 'error':
         this.error = m.message;
         this.ev.onChange?.();
+        return;
+      case 'full':
+        this.ev.onFull?.();
         return;
       case 'pong':
         return;

@@ -1,7 +1,8 @@
 <!-- Phone buzzers: each player and their phone (joined, gone quiet, or not yet), and people asking to join from theirs. -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Session } from '../lib/model';
-  import { remote } from '../lib/remote.svelte';
+  import { FULL_SHOWN_MS, remote } from '../lib/remote.svelte';
 
   let {
     session,
@@ -9,6 +10,7 @@
     onadd,
     onreject,
     onkick,
+    onlock,
   }: {
     session: Session;
     /** Most players the game takes (⚙ Game rules). */
@@ -18,7 +20,18 @@
     onreject: (conn: string) => void;
     /** Take a player's seat back from their phone (they can pick their name again). */
     onkick: (seatId: string) => void;
+    /** 🔒 Lock seats on or off. */
+    onlock?: (on: boolean) => void;
   } = $props();
+
+  // "Room full" shows for a while after the room last turned a phone away.
+  let now = $state(Date.now());
+  onMount(() => {
+    const id = setInterval(() => (now = Date.now()), 10_000);
+    return () => clearInterval(id);
+  });
+  const roomFull = $derived(!!remote.fullAt && now - remote.fullAt < FULL_SHOWN_MS);
+  const locked = $derived(!!session.remote?.locked);
 
   const phoneOf = (id: string) => remote.phones.find((p) => p.seatId === id);
   const waiting = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)));
@@ -39,11 +52,26 @@
         <span class="muted">waiting</span>
       {/if}
       {#if ph}
-        <button class="ghost small x" onclick={() => onkick(p.id)} aria-label="Take {p.name}’s seat back from their phone" title="Take the seat back: their phone can pick a name again">✕</button>
+        <button class="ghost small x" onclick={() => onkick(p.id)} aria-label="Take {p.name}’s seat back from their phone" title="Take the seat back: that phone can't take it again for 2 minutes (it can pick another free name)">✕</button>
       {/if}
     </li>
   {/each}
 </ul>
+{#if roomFull}
+  <p class="warn small" role="status">
+    ⚠ Room full: too many phones are connected, so some were turned away. They try again by themselves; idle ones make
+    room for players.
+  </p>
+{/if}
+{#if remote.status === 'online' && remote.error}
+  <p class="warn small" role="alert">⚠ {remote.error}</p>
+{/if}
+{#if onlock && session.remote}
+  <label class="check small lock">
+    <input type="checkbox" checked={locked} onchange={(e) => onlock(e.currentTarget.checked)} />
+    🔒 Lock seats: no new phones (players already in can come back)
+  </label>
+{/if}
 {#if waiting.length}
   <div class="asks" role="status">
     {#each waiting as w (w.conn)}
@@ -99,6 +127,15 @@
     flex-direction: column;
     gap: 4px;
     margin-top: 6px;
+  }
+  .warn {
+    color: var(--warn);
+    margin: 0;
+  }
+  .lock {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .ask {
     display: flex;
