@@ -136,6 +136,16 @@ export function closeRoom(): void {
   Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
 }
 
+/**
+ * Let go of the room without closing it (the phones stay joined): another tab took over the game, and picks the room
+ * up again when it resumes.
+ */
+export function leaveRoom(): void {
+  link?.stop();
+  link = null;
+  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+}
+
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */
 export function endRoom(room: NewRoom & { base: string }): void {
   if (link?.room?.code === room.code) return closeRoom();

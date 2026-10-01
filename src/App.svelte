@@ -19,7 +19,7 @@
     type SavedPlay,
     type SavedRoom,
   } from './lib/persist';
-  import { closeRoom, endRoom, inRoom, kept, rejoinRoom, sendHostState } from './lib/remote.svelte';
+  import { closeRoom, endRoom, inRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
   import { setupState } from './lib/buzz';
   import { openPack } from './lib/pack';
   import { packInfo, unpackEmbedded } from './lib/export';
@@ -190,13 +190,24 @@
     toast('Buzzer room closed');
   }
 
-  /** Another tab takes over editing: write the last changes, then leave the autosave alone. */
+  /**
+   * Another tab takes over editing: write the last changes, then leave the autosave alone. A game being played here
+   * is written too and left (the other tab resumes it): only one tab plays and saves it.
+   */
   async function stopEditing(): Promise<void> {
     if (!editing) return;
     if (watch) commit();
-    await saveEditorNow();
+    const { playGame, session } = app;
+    const playing = app.screen === 'play' && !app.pregame && playGame && session && playWatch && playWatched === playGame;
+    await Promise.all([saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover)]);
     editing = false;
     paused = true;
+    // The phones stay in the room: the tab taking over picks it up again.
+    if (kept.room || (app.screen === 'play' && app.session?.remote)) leaveRoom();
+    kept.room = null;
+    if (app.screen !== 'play') return;
+    leavePlay();
+    app.resumable = null;
   }
 
   /** "Edit here instead": the tab editing now writes its last changes and lets go, then this one starts afresh. */
@@ -253,8 +264,10 @@
   // draft.
   const saveEditorNow = () => saveEditor(() => (watch && editing ? { draft: watch.value(), ...toSave(newId()) } : null));
   const saveEditorSoon = debounce(saveEditorNow, 500);
+  /** This copy may write the game in play: it edits (holds the lock), or it's a player-only file (which has no other). */
+  const mayPlay = () => editing || playerOnly;
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
-  const savePlaySoon = debounce((session: Session, cover?: boolean) => playWatch && savePlay(playWatch.value(), session, cover), 300);
+  const savePlaySoon = debounce((session: Session, cover?: boolean) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover), 300);
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
   let lastAutosaveAt = Date.now();
@@ -459,10 +472,15 @@
     void resume(withEdits);
   }
 
-  /** Resume the saved game, optionally switching it to the editor's current version of the game. */
+  /**
+   * Resume the saved game, optionally switching it to the editor's current version of the game. It's read again first:
+   * another tab may have played on since this one started (the newer copy wins).
+   */
   async function resume(withEdits = false): Promise<void> {
-    const saved = app.resumable;
-    if (!saved) return;
+    const shown = app.resumable;
+    if (!shown) return;
+    const stored = await loadPlay();
+    const saved = stored && stored.savedAt >= shown.savedAt ? resumed(stored) : shown;
     let game = saved.game;
     if (withEdits) {
       game = clone(app.game);

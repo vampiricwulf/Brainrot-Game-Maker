@@ -177,6 +177,11 @@
     });
   });
   const cueDone = (nonce: string) => (cues = cues.filter((c) => c.nonce !== nonce));
+  /** A cue's sound at its volume (🔊 Sounds). */
+  function loudness(node: HTMLMediaElement, v: number) {
+    node.volume = v;
+    return { update: (n: number) => (node.volume = n) };
+  }
   /** A cue's sound waits under the cover and goes on after it. */
   function holdWhile(node: HTMLMediaElement, held: boolean) {
     let paused = false;
@@ -500,7 +505,7 @@
   {#each cues as c (c.nonce)}
     {@const url = soundUrl(c.media)}
     {#if url}
-      <audio use:autoPlay={url} use:holdWhile={!!live.cover} onended={() => cueDone(c.nonce)}></audio>
+      <audio use:loudness={c.volume ?? 1} use:autoPlay={url} use:holdWhile={!!live.cover} onended={() => cueDone(c.nonce)}></audio>
     {/if}
   {/each}
 {/if}

@@ -473,6 +473,8 @@ export interface Game {
   audio: GameAudio;
   /** Sounds switched off (each keeps the file chosen for it, for when it's switched back on). */
   soundsOff?: Partial<Record<keyof GameAudio, boolean>>;
+  /** How loud each sound plays, 0–1 (left out: full volume). */
+  soundVolume?: Partial<Record<keyof GameAudio, number>>;
   wheels: WheelPreset[];
   dice: DicePreset[];
   theme: Theme;
@@ -496,6 +498,11 @@ export interface FinalState {
   roundId?: Id;
   /** Players taking part (others sat out, e.g. score ≤ 0). */
   players: Id[];
+  /**
+   * The host's own ticks before the wagers: true plays, false sits out, whatever their score. Coming back to the Final
+   * keeps them (the others are checked again).
+   */
+  chosen?: Record<Id, boolean>;
   wagers: Record<Id, number>;
   /** Order for the one-by-one reveal. */
   order: Id[];

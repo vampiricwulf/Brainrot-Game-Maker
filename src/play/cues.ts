@@ -3,7 +3,7 @@
 import { mediaUrls } from '../lib/media.svelte';
 import { playSound, type Live } from '../lib/live';
 import type { Game } from '../lib/model';
-import { BUILTIN, cueMedia, cueWav, hasBuiltin, type CueKey } from '../lib/sounds';
+import { BUILTIN, cueMedia, cueVolume, cueWav, hasBuiltin, type CueKey } from '../lib/sounds';
 
 const builtinUrls = new Map<CueKey, string>();
 
@@ -19,12 +19,18 @@ export function soundUrl(media: string | undefined): string | undefined {
   return url;
 }
 
+/** A game's audio file is loaded here (a cue whose file isn't plays its built-in sound). */
+export const loaded = (id: string): boolean => !!mediaUrls[id];
+
+/** What a cue plays in this window: as cueMedia, with a file that isn't loaded counted as missing. */
+export const cueHere = (game: Game, key: CueKey): string | undefined => cueMedia(game, key, loaded);
+
 /**
- * Play a cue on stream (short cues overlap; `cut` stops what's playing first). A cue switched off in 🔊 Sounds does
- * nothing.
+ * Play a cue on stream (short cues overlap; `cut` stops what's playing first), at its volume. A cue switched off in
+ * 🔊 Sounds does nothing.
  */
 export function playCue(live: Live, game: Game, key: CueKey, cut = false): void {
-  const media = cueMedia(game, key);
-  if (media) playSound(live, media, cut);
+  const media = cueHere(game, key);
+  if (media) playSound(live, media, cut, cueVolume(game, key));
   else if (cut) live.sound = null;
 }

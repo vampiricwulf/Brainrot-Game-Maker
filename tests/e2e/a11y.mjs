@@ -103,10 +103,32 @@ try {
   const plate = page.locator('.preview .plate .score').first();
   assert((await plate.evaluate((e) => getComputedStyle(e).color)) === 'rgb(74, 59, 92)', 'Pastel scores are dark text on the pale tiles');
 
+  // A sound switched off: its name is muted, still readable (on its row's background).
+  await page.getByRole('button', { name: '🔊 Sounds' }).click();
+  await page.getByLabel('Play the Right sound').uncheck();
+  const offName = page.locator('.sound.off .what b').first();
+  const offContrast = await offName.evaluate((el) => {
+    const rgb = (c) => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const lum = (c) => {
+      const [r, g, b] = rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const [a, b] = [lum(getComputedStyle(el).color), lum(getComputedStyle(el.closest('.sound')).backgroundColor)].sort((x, y) => y - x);
+    return (a + 0.05) / (b + 0.05) * (getComputedStyle(el.closest('.what')).opacity === '1' ? 1 : 0);
+  });
+  assert(offContrast >= 4.5, `a switched-off sound’s name reads at ${offContrast.toFixed(2)}:1`);
+  await page.getByLabel('Play the Right sound').check();
+
+  // ---------- Landmarks and headings ----------
+  assert((await page.getByRole('main').getByRole('heading', { level: 1 }).count()) === 1, 'the editor has a main part with a heading naming the game');
+  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, 'Stats & Items has no empty lists (nothing added yet)');
+
   // ---------- In-app questions ----------
   // A game in progress, then ▶ Play again: the app asks in its own window, with the focus on the safe answer.
   await play.click();
   assert(await page.locator('.pregame h1').evaluate((h) => h === document.activeElement), '▶ Play puts the focus at the top of the pre-game page');
+  assert((await page.getByRole('main').locator('h1').count()) === 1, 'the pre-game page is the main part, under the game’s title');
 
   // Pre-game (where players are added): deleting a player offers Undo.
   await page.getByRole('button', { name: '＋ Add player' }).click();
@@ -121,6 +143,7 @@ try {
 
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
+  assert((await page.getByRole('main').getByRole('heading', { level: 1, name: 'Untitled Game' }).count()) === 1, 'the stage and host panel are the main part, under a heading with the game’s title');
   await page.locator('.board .tile').first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
   // Screen readers hear an award from the page's polite live region (on the page all along, not mounted with its words).

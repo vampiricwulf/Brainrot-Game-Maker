@@ -38,6 +38,8 @@ export interface SoundCue {
   at?: number;
   /** Stop the sounds still playing first (the think music when the answer goes up). Otherwise short cues overlap. */
   cut?: boolean;
+  /** How loud, 0–1 (left out: full volume). */
+  volume?: number;
 }
 
 /**
@@ -208,8 +210,8 @@ export function blip(live: Live, key: CueKey): void {
   live.blip = { key, nonce: newId(), at: Date.now() };
 }
 
-export function playSound(live: Live, media: string | undefined, cut = false): void {
-  live.sound = media ? { media, nonce: newId(), at: Date.now(), ...(cut ? { cut } : {}) } : null;
+export function playSound(live: Live, media: string | undefined, cut = false, volume = 1): void {
+  live.sound = media ? { media, nonce: newId(), at: Date.now(), ...(cut ? { cut } : {}), ...(volume < 1 ? { volume } : {}) } : null;
 }
 
 /** At most this many cues play at once (the oldest stops for a new one). */

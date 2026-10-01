@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { answerReplace, exportHtml, openGameFile, png } from './helpers.mjs';
+import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -20,8 +20,8 @@ function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
 }
-async function open(name, editing = true) {
-  const page = await context.newPage();
+async function open(name, editing = true, ctx = context) {
+  const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
   page.on('dialog', (d) => {
     dialogs.push(d.message());
@@ -194,6 +194,29 @@ try {
   await c.locator('.missing-box').waitFor({ state: 'detached' });
   assert((await c.locator('.card img').count()) === 1 && (await c.getByRole('button', { name: '🔗 Replace file…' }).count()) === 0, 'after Replace file… nothing is missing and the picture shows');
   await fresh.close();
+
+  // A game being played in a tab that another tab takes over: it's saved and left there (only one tab plays and saves
+  // it), and Resume in the other tab carries on from where it was.
+  const played = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const p1 = await open('playing', true, played);
+  await addClassicRounds(p1);
+  await playWithPlayers(p1, 2);
+  await p1.getByRole('button', { name: 'Start game ▶' }).click();
+  await p1.getByRole('button', { name: 'Skip intro' }).click();
+  await p1.locator('.panel .p').first().locator('.score').click();
+  await p1.locator('.panel .score-edit').fill('300');
+  await p1.keyboard.press('Enter');
+  const p2 = await open('taking over', false, played);
+  await p2.getByRole('button', { name: 'Edit here instead' }).click();
+  await p2.getByRole('button', { name: 'Open…' }).waitFor();
+  await p1.getByRole('heading', { name: 'This game is open in another tab' }).waitFor();
+  assert((await p1.locator('.panel').count()) === 0, 'a tab playing the game pauses when another tab takes over (it stops playing it)');
+  await p2.getByRole('button', { name: 'Resume game' }).click();
+  await p2.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await p2.locator('.panel .p').first().waitFor();
+  const scores = await p2.locator('.panel .p .score').allInnerTexts();
+  assert(scores[0].includes('300'), `the other tab resumes it as it was left (${scores.join(', ')})`);
+  await played.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSave E2E passed.');

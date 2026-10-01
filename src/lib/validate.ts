@@ -13,8 +13,8 @@ import { statsProblems } from './toolset';
 
 export interface Problem {
   text: string;
-  /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'tools' | 'stats' | round index), or 'play' (the pre-game screen). */
-  tab: 'play' | 'tiebreaker' | 'media' | 'tools' | 'stats' | number;
+  /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'sounds' | 'tools' | 'stats' | round index), or 'play' (the pre-game screen). */
+  tab: 'play' | 'tiebreaker' | 'media' | 'sounds' | 'tools' | 'stats' | number;
   level: 'warn' | 'info';
   /** Where in the round it is (the screen, the space…), for the checklist to go to. */
   place?: Place;
@@ -87,9 +87,12 @@ export function validate(game: Game): Problem[] {
   out.push(...statsProblems(game));
 
   const known = new Set(game.media.map((m) => m.id));
-  const missingRefs = [...mediaUsage(game).keys()].filter((id) => !known.has(id)).length;
-  const missingFiles = game.media.filter((m) => !mediaUrls[m.id]).length;
-  if (missingRefs || missingFiles) out.push({ text: `${plural(missingRefs + missingFiles, 'media file')} missing`, tab: 'media', level: 'warn' });
+  const missing = new Set([...[...mediaUsage(game).keys()].filter((id) => !known.has(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
+  // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
+  const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && missing.has(id)));
+  if (cues.size) out.push({ text: `${plural(cues.size, 'sound file')} missing: see 🔊 Sounds`, tab: 'sounds', level: 'warn' });
+  const others = [...missing].filter((id) => !cues.has(id)).length;
+  if (others) out.push({ text: `${plural(others, 'media file')} missing`, tab: 'media', level: 'warn' });
   // (A live link already played when it was added; its type is often unknown from the address.)
   const unplayable = game.media.filter((m) => !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
   if (unplayable) out.push({ text: `${plural(unplayable, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });

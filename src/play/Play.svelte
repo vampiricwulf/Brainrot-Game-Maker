@@ -8,7 +8,7 @@
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
-    randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleReveal, toggleUsed, undo,
+    randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, finalWagerProblems, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
@@ -47,7 +47,7 @@
   import SoundWarnings from './host/SoundWarnings.svelte';
   import { playCue } from './cues';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, redoAction, redoFrom, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
@@ -923,7 +923,7 @@
       return;
     }
     const wasFinalQuestion = session.phase === 'final' && session.finalStep === 'question';
-    toggleReveal(session);
+    revealStep(session);
     if (answerShowing(session)) {
       // The countdown has done its job once the answer is up (no "Time's up" over it).
       stopTimer('reveal');
@@ -1087,10 +1087,10 @@
 
   /** N in the Final's wagers with some still to type (or over the max): say whose, and go to the first of them. */
   function wagersWaiting(): void {
-    const { missing, over } = finalWagerProblems(session, wagerLimitsOff);
+    const { missing, over, whole } = finalWagerProblems(session, wagerLimitsOff);
     const names = (ids: string[]) => nameList(ids.map((id) => playerName(session, id)));
-    toast(missing.length ? `Waiting on: ${names(missing)}` : `Over the max: ${names(over)}`, 3000);
-    const first = session.final?.players.find((id) => missing.includes(id) || over.includes(id));
+    toast(missing.length ? `Waiting on: ${names(missing)}` : whole.length ? `Not a whole number: ${names(whole)}` : `Over the max: ${names(over)}`, 3000);
+    const first = session.final?.players.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
     if (first) document.querySelector<HTMLElement>(`.play [data-wager="${first}"]`)?.focus();
   }
 
@@ -2100,7 +2100,7 @@
 />
 
 {#if app.pregame}
-  <div class="pregame">
+  <main class="pregame">
     <div class="pregame-top">
       <!-- ▶ Play lands here (keyboard and screen reader users start at the top of the page, not on <body>). -->
       <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
@@ -2277,10 +2277,13 @@
         Start game ▶
       </button>
     </div>
-  </div>
+  </main>
 {:else}
-  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. -->
-  <div class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt} role="presentation">
+  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. The page's main part, named
+       by the game's title (for screen readers). -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <main class="play" class:hidden={hideControls} class:side class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt}>
+    <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
       <div
@@ -2425,7 +2428,7 @@
         {/snippet}
       </HostPanel>
     {/if}
-  </div>
+  </main>
   {#if showKeys}
     <KeysHelp area={panelBox} onclose={() => (showKeys = false)} />
   {/if}

@@ -842,6 +842,7 @@
     </nav>
 
     <main>
+      <h1 class="sr-only">{game.title || 'Untitled game'}</h1>
       <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
            (another save of the same game has the same round ids). -->
       {#key game}

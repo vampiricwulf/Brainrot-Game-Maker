@@ -10,8 +10,8 @@
   import { HOP_MS } from '../lib/boardgame';
   import type { Live } from '../lib/live';
   import type { Game, Session } from '../lib/model';
-  import { cueMedia, tickTimes, type CueKey } from '../lib/sounds';
-  import { soundUrl } from './cues';
+  import { cueVolume, tickTimes, type CueKey } from '../lib/sounds';
+  import { cueHere, soundUrl } from './cues';
 
   let { game, session, live }: { game: Game; session: Session; live: Live } = $props();
 
@@ -21,13 +21,14 @@
   /** A few players per sound, reused: wheel ticks come fast. */
   const pools = new Map<string, { els: HTMLAudioElement[]; next: number }>();
   function play(key: CueKey, report = false): void {
-    const url = soundUrl(cueMedia(game, key));
+    const url = soundUrl(cueHere(game, key));
     if (!url) return;
     let pool = pools.get(url);
     if (!pool) pools.set(url, (pool = { els: [], next: 0 }));
     if (pool.els.length < 4) pool.els.push(new Audio(url));
     const el = pool.els[pool.next++ % pool.els.length];
     el.currentTime = 0;
+    el.volume = cueVolume(game, key);
     // Only the first of a run says whether it played (the host learns a blocked window from it).
     if (report) void playAndReport(el);
     else void applySink(el).then(() => el.play().catch(() => {}));

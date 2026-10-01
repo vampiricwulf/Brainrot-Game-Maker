@@ -1,9 +1,12 @@
-<!-- 🔊 Sounds' cues: each plays the built-in sound, an audio file chosen for it, or nothing (switched off). -->
+<!--
+  🔊 Sounds' cues: each plays the built-in sound, an audio file chosen for it, or nothing (switched off), at its volume.
+  One whose file is missing plays the built-in sound (as in the game), and says so.
+-->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
   import { mediaDrop } from '../lib/mediadrop';
-  import { CUES, cueMedia, hasBuiltin, type CueKey } from '../lib/sounds';
-  import { soundUrl } from '../play/cues';
+  import { CUES, cueFileMissing, cueVolume, hasBuiltin, type CueKey } from '../lib/sounds';
+  import { cueHere, loaded, soundUrl } from '../play/cues';
   import MediaPicker from './slide/MediaPicker.svelte';
 
   const audio = $derived(app.game.audio);
@@ -25,21 +28,45 @@
     audio[key] = id;
     setOn(key, true);
   }
-  let previewEl = $state<HTMLAudioElement>();
-  function preview(key: CueKey): void {
-    const url = soundUrl(cueMedia(app.game, key));
-    if (!previewEl || !url) return;
-    previewEl.src = url;
-    previewEl.play().catch(() => {});
+  /** How loud it plays: full volume is left out of the game (older games play everything at full volume). */
+  function setVolume(key: CueKey, v: number): void {
+    const game = app.game;
+    if (v < 1 && game.soundVolume) return void (game.soundVolume[key] = v);
+    if (v < 1) return void (game.soundVolume = { [key]: v });
+    if (game.soundVolume?.[key] === undefined) return;
+    const { [key]: _, ...rest } = game.soundVolume;
+    game.soundVolume = Object.keys(rest).length ? rest : undefined;
   }
+
+  // ▶ plays what the game would play (a missing file: the built-in sound), at its volume; ■ stops it.
+  let previewEl = $state<HTMLAudioElement>();
+  let previewing = $state<CueKey | null>(null);
+  function preview(key: CueKey): void {
+    const el = previewEl;
+    if (!el) return;
+    el.pause();
+    if (previewing === key) return void (previewing = null);
+    const url = soundUrl(cueHere(app.game, key));
+    if (!url) return;
+    el.src = url;
+    el.volume = cueVolume(app.game, key);
+    previewing = key;
+    el.play().catch(() => (previewing = null));
+  }
+  // Changing its volume while it plays is heard at once.
+  $effect(() => {
+    if (previewing && previewEl) previewEl.volume = cueVolume(app.game, previewing);
+  });
 </script>
 
-<audio bind:this={previewEl}></audio>
+<audio bind:this={previewEl} onended={() => (previewing = null)}></audio>
 <div class="sounds">
   {#each CUES as [key, label, hint] (key)}
     {@const v = audio[key]}
     {@const off = isOff(key)}
     {@const builtin = hasBuiltin(key)}
+    {@const missing = cueFileMissing(app.game, key, loaded)}
+    {@const vol = cueVolume(app.game, key)}
     <div class="sound" class:off>
       {#if builtin}
         <input type="checkbox" checked={!off} onchange={(e) => setOn(key, e.currentTarget.checked)} aria-label="Play the {label} sound" />
@@ -54,13 +81,20 @@
       <span class="spacer"></span>
       {#if off}
         <span class="muted small">Off{#if v} <span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
+      {:else if v && missing}
+        <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : 'plays nothing'}</span>
       {:else if v}
-        <span class="file" title={nameOf(v)}>🔊 {nameOf(v) ?? 'missing file'}</span>
+        <span class="file" title={nameOf(v)}>🔊 {nameOf(v)}</span>
       {:else if builtin}
         <span class="muted small">Built-in</span>
       {/if}
-      {#if cueMedia(app.game, key)}
-        <button class="small ghost" onclick={() => preview(key)} title="Preview" aria-label="Preview {label}">▶</button>
+      {#if cueHere(app.game, key)}
+        <label class="vol small" title="Volume">
+          <input type="range" min="0" max="1" step="0.05" value={vol} oninput={(e) => setVolume(key, +e.currentTarget.value)} aria-label="{label} volume" />
+          <span class="pct">{Math.round(vol * 100)}%</span>
+        </label>
+        <button class="small ghost" onclick={() => preview(key)} title={previewing === key ? 'Stop' : 'Preview'} aria-label="Preview {label}"
+          aria-pressed={previewing === key}>{previewing === key ? '■' : '▶'}</button>
       {/if}
       {#if v && !off}
         <button class="small ghost" onclick={() => (audio[key] = undefined)} title={builtin ? 'Back to the built-in sound' : 'Remove'}
@@ -70,7 +104,8 @@
         </button>
       {/if}
       <div class="pop">
-        <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => choose(key, id) }}>
+        <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => choose(key, id) }}
+          aria-label="{v ? 'Change' : 'Choose'} file for {label}">
           {v ? 'Change…' : 'Choose file…'}
         </button>
         {#if picking === key}
@@ -101,8 +136,26 @@
     margin: 3px 3px 3px 4px;
     flex-shrink: 0;
   }
-  .sound.off .what {
-    opacity: 0.55;
+  /* Switched off: its name in the muted color (still 4.5:1). */
+  .sound.off .what b {
+    color: var(--muted);
+  }
+  .missing {
+    color: var(--warn);
+    max-width: 260px;
+  }
+  .vol {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .vol input {
+    width: 70px;
+  }
+  .pct {
+    min-width: 3.2em;
+    text-align: right;
+    color: var(--muted);
   }
   .small {
     font-size: 12px;

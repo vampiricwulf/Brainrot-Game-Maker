@@ -307,7 +307,8 @@
     {/each}
     <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Custom stat</button>
   </div>
-  <div class="list" role="list" aria-label="Stats">
+  <!-- A list only with rows in it (one that's empty, or holds only "No items yet", misleads a screen reader). -->
+  <div class="list" role={game.statFields?.length ? 'list' : undefined} aria-label={game.statFields?.length ? 'Stats' : undefined}>
     {#each game.statFields ?? [] as f, i (f.id)}
       {@const line = drags.stat.lineAt(f.id)}
       <div
@@ -449,7 +450,7 @@
     <button class="ghost small" onclick={importCsv} title="Columns: name, price, stackable, wearable, description">Import CSV…</button>
     <button class="ghost small" onclick={exportCsv} disabled={!game.items?.length}>Export CSV</button>
   </div>
-  <div class="list" role="list" aria-label="Items">
+  <div class="list" role={game.items?.length ? 'list' : undefined} aria-label={game.items?.length ? 'Items' : undefined}>
     {#each game.items ?? [] as it, i (it.id)}
       {@const line = drags.item.lineAt(it.id)}
       <div
@@ -535,7 +536,7 @@
 <section>
   <h3>Shops</h3>
   <div class="row"><button onclick={addShop}>＋ Shop</button></div>
-  <div class="list" role="list" aria-label="Shops">
+  <div class="list" role={game.shops?.length ? 'list' : undefined} aria-label={game.shops?.length ? 'Shops' : undefined}>
     {#each game.shops ?? [] as s, si (s.id)}
       <!-- What the shop charges: with its currency stat deleted, that's the first currency (or points). -->
       {@const cur = shopCurrency(game, s)}

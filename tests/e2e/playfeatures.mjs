@@ -13,12 +13,14 @@ if (shots) mkdirSync(shots, { recursive: true });
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
-// Every sound a window starts, by its file (a built-in sound's link ends in #its-name).
+// Every sound a window starts, by its file (a built-in sound's link ends in #its-name), and how loud.
 await context.addInitScript(() => {
   window.__plays = [];
+  window.__volumes = [];
   const play = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () {
     window.__plays.push(this.src);
+    window.__volumes.push([this.src, this.volume]);
     return play.call(this);
   };
 });
@@ -57,9 +59,22 @@ try {
   await page.keyboard.press('Control+y');
   assert(!(await tileRow.getByRole('checkbox').isChecked()), 'Ctrl+Y off again');
   assert((await tileRow.getByRole('button', { name: /^Preview/ }).count()) === 0, 'a cue switched off has nothing to preview');
-  await page.getByRole('button', { name: 'Preview Right' }).click();
+  const previewRight = page.getByRole('button', { name: 'Preview Right' });
+  await previewRight.click();
   await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));
-  assert(true, '▶ previews the built-in sound');
+  assert((await previewRight.getAttribute('aria-pressed')) === 'true' && (await previewRight.innerText()) === '■', '▶ previews the built-in sound, and turns into ■ while it plays');
+  await previewRight.click();
+  const previewPaused = () => page.evaluate(() => document.querySelector('.sounds').previousElementSibling.paused);
+  assert((await previewRight.getAttribute('aria-pressed')) === 'false' && (await previewPaused()), '■ stops the preview');
+  // Each sound has its own volume: the preview and the game play it that loud.
+  const wrongRow = rows.filter({ has: page.getByRole('button', { name: 'Preview Wrong' }) });
+  await page.getByLabel('Wrong volume').fill('0.4');
+  assert((await wrongRow.innerText()).includes('40%'), 'a sound’s volume can be turned down (40%)');
+  await page.getByRole('button', { name: 'Preview Wrong' }).click();
+  await page.waitForFunction(() => window.__volumes.some(([s, v]) => s.endsWith('#wrong') && Math.abs(v - 0.4) < 0.01));
+  assert(true, 'its preview plays at that volume');
+  await page.getByRole('button', { name: 'Preview Wrong' }).click();
+  assert((await page.getByRole('button', { name: /^Choose file for Right$/ }).count()) === 1, 'each Choose file… button names its sound');
   await shot('pf-0-setup');
 
   // ---------- Theme: a chroma-key stage background ----------
@@ -90,8 +105,8 @@ try {
   assert((await pressed()).length === 2, 'two picked: nobody in particular is answering, the plate goes');
   await page.keyboard.press('1');
   await page.keyboard.press('Shift+Enter');
-  await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#wrong')));
-  assert((await pressed()).length === 0, 'a wrong answer plays the wrong sound');
+  await page.waitForFunction(() => window.__volumes.filter(([s, v]) => s.endsWith('#wrong') && Math.abs(v - 0.4) < 0.01).length > 1);
+  assert((await pressed()).length === 0, 'a wrong answer plays the wrong sound (at its volume)');
 
   // ---------- The audience window: the plate, sounds there, the chroma background ----------
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience window' }).click()]);

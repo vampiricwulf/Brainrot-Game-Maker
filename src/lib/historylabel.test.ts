@@ -186,6 +186,11 @@ describe('step labels', () => {
     const back = structuredClone(own);
     delete back.audio.dailyDouble;
     expect(describeStep(diff(own, back), own, back).label).toBe('Built-in Daily Double sound');
+    expect(step((g) => (g.soundVolume = { buzz: 0.5 }))).toMatchObject({ label: 'Volume of the buzz in sound: 50%', where: 'Sounds' });
+    const loud = step((g) => (g.soundVolume = { buzz: 0.5, right: 0.3 })).after;
+    const louder = structuredClone(loud);
+    louder.soundVolume!.right = 0.8;
+    expect(describeStep(diff(loud, louder), loud, louder).label).toBe('Volume of the right sound: 80%');
     expect(step((g) => (g.settings.buzzer = true))).toMatchObject({ label: 'Rule: Buzzer mode on', where: 'Play › Phone buzzers' });
     expect(step((g) => (g.theme = { ...g.theme, preset: 'neon', tile: '#000' })).label).toBe('Theme preset: Brainrot Neon');
     expect(step((g) => (g.theme.tile = '#123456')).label).toBe('Theme: tile color #123456');

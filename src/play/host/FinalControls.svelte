@@ -1,10 +1,13 @@
 <!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
 <script lang="ts">
   import { tick } from 'svelte';
+  import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
-  import { currentFinal, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagersOk, hasWager, nameList, score } from '../../lib/session';
+  import {
+    currentFinal, finalChoose, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagerRefused, finalWagersOk, hasWager, nameList, score,
+  } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
 
   let {
@@ -45,13 +48,15 @@
   });
 
   const wagerBoxes: HTMLInputElement[] = $state([]);
+  /** Their wager still has to be typed, or fixed (not a whole number, or over the max). */
+  const needsWager = (id: string) => problems.missing.includes(id) || problems.whole.includes(id) || problems.over.includes(id);
 
   /** Enter in a wager box: show the question once every wager is fine, else go to the next box that needs one. */
   function wagerEnter(i: number): void {
     if (!f) return;
     if (wagersOk) return next();
     const after = [...f.players.slice(i + 1), ...f.players.slice(0, i + 1)];
-    const todo = after.find((id) => problems.missing.includes(id) || problems.over.includes(id));
+    const todo = after.find(needsWager);
     if (todo) wagerBoxes[f.players.indexOf(todo)]?.focus();
   }
 
@@ -62,25 +67,18 @@
     void tick().then(() => {
       const fs = f;
       if (!fs || session.finalStep !== 'wagers') return;
-      const todo = fs.players.findIndex((id) => problems.missing.includes(id) || problems.over.includes(id));
+      const todo = fs.players.findIndex(needsWager);
       if (todo >= 0) wagerBoxes[todo]?.focus();
     });
   });
 
-  // Who plays, the reveal order and each wager are undoable steps (Ctrl+Z, the 📜 Log's history).
+  // Who plays, the reveal order and each wager are undoable steps (Ctrl+Z, the 📜 Log's history). A player ticked
+  // back in goes back to their place in the reveal order (lowest score first).
   function toggleIn(id: string): void {
     const fs = f;
     if (!fs) return;
     const out = fs.players.includes(id);
-    logged(session, `${byId[id]?.name ?? '?'} ${out ? 'sits out' : 'plays'} ${title}`, () => {
-      if (out) {
-        fs.players = fs.players.filter((x) => x !== id);
-        fs.order = fs.order.filter((x) => x !== id);
-      } else {
-        fs.players.push(id);
-        fs.order.push(id);
-      }
-    });
+    logged(session, `${byId[id]?.name ?? '?'} ${out ? 'sits out' : 'plays'} ${title}`, () => finalChoose(session, id, !out));
   }
 
   /** Move a player `d` places up (−) or down the reveal order (the others close up). */
@@ -152,11 +150,17 @@
     onstep();
   }
 
-  /** The reveals: a player with no wager (never taken as 0) gets one typed in their row, as a step. */
+  /**
+   * The reveals: a player with no wager (never taken as 0) gets one typed in their row, as a step. A whole number, up
+   * to their max unless "Ignore the limits" was ticked.
+   */
   function setWager(id: string, value: string): void {
     const fs = f;
     const v = Number(value);
-    if (!fs || value.trim() === '' || !Number.isFinite(v) || v < 0) return;
+    if (!fs || value.trim() === '' || !Number.isFinite(v)) return;
+    const why = finalWagerRefused(session, id, v, override);
+    if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
+    if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, id), sym)}`, 3000);
     logged(session, `${byId[id]?.name ?? '?'}’s wager: ${formatPoints(v, sym)}`, () => (fs.wagers[id] = v));
   }
 
@@ -168,12 +172,14 @@
   });
 
   const after = $derived(game.rounds[session.currentRound + 1]);
+  const goOn = $derived(after ? `Next: ${roundName(after, session.currentRound + 1)} ▶` : 'Finish game ▶');
   const labels = $derived({
-    category: 'Lock category, take wagers ▶',
+    // Everyone sat out: straight on (finalNext skips the wagers and reveals).
+    category: f && !f.players.length ? goOn : 'Lock category, take wagers ▶',
     wagers: 'Show question ▶',
     question: 'Reveal answer ▶',
     answer: 'Start player reveals ▶',
-    reveal: after ? `Next: ${roundName(after, session.currentRound + 1)} ▶` : 'Finish game ▶',
+    reveal: goOn,
   });
 </script>
 
@@ -189,6 +195,10 @@
           </label>
         {/each}
       </div>
+      {#if !f.players.length}
+        <!-- Nobody to wager or reveal: the button goes on to the next round (or the end). -->
+        <span class="nobody" role="status">Nobody is playing this Final: tick a player to play it, or go on.</span>
+      {/if}
     {:else if session.finalStep === 'wagers'}
       {#if dual}
         <span class="muted">Enter each wager (only you see these).</span>
@@ -205,8 +215,9 @@
             <input
               type="number"
               min="0"
+              step="1"
               value={w ?? ''}
-              class:bad={typeof w === 'number' && !override && w > cap}
+              class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
               oninput={(e) => (f.wagers[id] = e.currentTarget.value === '' ? (undefined as unknown as number) : +e.currentTarget.value)}
               onfocus={() => {
                 wagerDone();
@@ -283,16 +294,20 @@
               <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
             {:else}
               <!-- No wager in (it's never taken as 0): asked for here before they can be judged. -->
+              {@const cap = finalWagerCap(session, id)}
               <label class="check small no-wager">
                 {formatPoints(score(session, id), sym)} · no wager:
                 <input
                   type="number"
                   min="0"
+                  step="1"
+                  max={override ? undefined : cap}
                   placeholder="wager"
                   aria-label="{p?.name}’s wager"
                   onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget.value)}
                   onchange={(e) => setWager(id, e.currentTarget.value)}
                 />
+                {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
               </label>
             {/if}
             <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)}>✔ Right</button>
@@ -311,7 +326,11 @@
         <span class="muted small">Tip: click the screen to continue</span>
       {:else if session.finalStep === 'wagers' && !wagersOk}
         <span class="muted small">
-          {problems.missing.length ? `Waiting on: ${names(problems.missing)}` : `Over the max: ${names(problems.over)}`}
+          {problems.missing.length
+            ? `Waiting on: ${names(problems.missing)}`
+            : problems.whole.length
+              ? `Not a whole number: ${names(problems.whole)}`
+              : `Over the max: ${names(problems.over)}`}
         </span>
       {:else if session.finalStep === 'reveal'}
         {#if armed}
@@ -425,9 +444,15 @@
   .small {
     font-size: 12px;
   }
-  button.good:not(.on),
+  /* Not chosen: outlined only (dimming them read too faintly). */
+  button.good:not(.on) {
+    background: transparent;
+    color: var(--good);
+  }
   button.bad:not(.on) {
-    opacity: 0.7;
+    background: transparent;
+    border-color: var(--bad);
+    color: var(--bad);
   }
   button.on {
     box-shadow: 0 0 0 2px #fff;
@@ -435,6 +460,10 @@
   .exposed {
     color: var(--warn);
     font-size: 12px;
+  }
+  .nobody {
+    color: var(--warn);
+    font-weight: 600;
   }
   .armed {
     color: var(--good);

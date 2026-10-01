@@ -39,15 +39,36 @@ export const cueName = (k: string): string | undefined => {
 /** The id a built-in sound plays under (in place of an audio file's). */
 export const BUILTIN = 'builtin:';
 
+type CueGame = Pick<Game, 'audio' | 'soundsOff'> & Partial<Pick<Game, 'media' | 'soundVolume'>>;
+
+/**
+ * The audio file chosen for a cue is missing: not among the game's files (deleted, or never came with it), or (`has`:
+ * whether a file is loaded) not loaded.
+ */
+export function cueFileMissing(game: CueGame, key: CueKey, has?: (id: string) => boolean): boolean {
+  const v = game.audio?.[key];
+  if (!v) return false;
+  return (!!game.media && !game.media.some((m) => m.id === v)) || (!!has && !has(v));
+}
+
 /**
  * What the cue plays in this game: an audio file's id, a built-in sound (`builtin:right`), or nothing (switched off,
- * or the think music, which has no built-in one).
+ * or the think music, which has no built-in one). A cue whose file is missing (see cueFileMissing) plays its built-in
+ * sound instead, or nothing.
  */
-export function cueMedia(game: Pick<Game, 'audio' | 'soundsOff'>, key: CueKey): string | undefined {
+export function cueMedia(game: CueGame, key: CueKey, has?: (id: string) => boolean): string | undefined {
   if (game.soundsOff?.[key]) return undefined;
   const v = game.audio?.[key];
-  if (v === undefined) return hasBuiltin(key) ? BUILTIN + key : undefined;
-  return v || undefined;
+  const builtin = hasBuiltin(key) ? BUILTIN + key : undefined;
+  if (v === undefined) return builtin;
+  if (!v) return undefined;
+  return cueFileMissing(game, key, has) ? builtin : v;
+}
+
+/** How loud a cue plays, 0–1 (🔊 Sounds; full volume unless set). */
+export function cueVolume(game: Partial<Pick<Game, 'soundVolume'>>, key: CueKey): number {
+  const v = game.soundVolume?.[key];
+  return typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
 }
 
 export const hasBuiltin = (key: CueKey): boolean => key in VOICES;

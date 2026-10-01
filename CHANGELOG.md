@@ -13,6 +13,8 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **A volume for each sound** in 🔊 Sounds (0–100%, full volume to begin with): the game plays it that loud, and
+  its ▶ preview too. Games made before keep every sound at full volume.
 - **An exported HTML file keeps your buzzer server**: the server set in ⚙ Settings › Buzzer server goes into the file,
   so phone buzzers work when it's played on another computer (that computer's own setting still comes first, if it
   has one). Before, the file said "Phone buzzers aren't set up in this copy" with no way to fix it there.
@@ -82,6 +84,17 @@ in plain words for the people who make and host games. Anything committed but no
   (its landing actions, 📍 Put … here, 👁 Reveal), as a click on the space does, with the focus in it.
 
 ### Changed
+- **The sound preview in 🔊 Sounds can be stopped**: ▶ turns into ■ while it plays.
+- **A sound whose file is missing plays its built-in sound** instead of nothing, and 🔊 Sounds says so on its row
+  ("… is missing: plays the built-in sound"). The checklist lists it on its own ("1 sound file missing: see 🔊
+  Sounds"), and clicking it opens 🔊 Sounds.
+- **Nobody playing the Final**: when every player is sat out, the host panel says "Nobody is playing this Final"
+  and its button goes straight on to the next round (or finishes the game), skipping the wagers and reveals.
+- **Each Ctrl+Z in the Final goes back one step**: from the player reveals to the answer, then to the question,
+  then to the wagers (it used to jump straight back to the wagers). Showing or hiding the Final's answer (R) is a
+  step too.
+- **The Final's ✔ Right / ✘ Wrong buttons not chosen yet are outlined** instead of dimmed, so they're easier to
+  read.
 - **A countdown on the board sits at the end of the score bar** (the score plates and the phone buzzers' join code
   make room for it), so it no longer covers the right-most category or the last score plate. With the score bar
   hidden, the board moves down under it while it shows.
@@ -236,6 +249,21 @@ in plain words for the people who make and host games. Anything committed but no
   with nobody left). Before the game, the list still needs one to start.
 
 ### Fixed
+- **Two tabs no longer both play the same game**: when another tab takes over ("Edit here instead") while a game
+  is being played, the first tab saves it and stops, showing "This game is open in another tab"; the phones stay in
+  the buzzer room. Resume game in the other tab carries on from where it was left, not from an older copy.
+- **A wager typed in during the Final's reveals keeps to the max** (unless "Ignore the limits" is ticked), and its
+  box shows the max. Final wagers are whole numbers: a fraction is refused, in the reveals and in the wager boxes.
+- **Coming back to a Final keeps the players you sat out** (and any you ticked in at $0): only players you didn't
+  choose are checked again by their score, so someone new to it still joins.
+- **A player ticked back into the Final goes back to their place** in the reveal order (lowest score first), not
+  to the end.
+- **The desktop app keeps the save before a replaced one**: if the app stopped right after a Save, before the
+  older save became the `.bak`, it's now made the `.bak` later instead of being cleaned up as an unfinished save.
+- **Screen readers**: each sound's Choose file… / Change… button names its sound; a switched-off sound's name is
+  muted but still readable (it was too faint); Stats & Items has no empty lists; the editor, the pre-game screen and
+  the game screen each have a main part under a heading with the game's title; the phone buzzer's Buzz and waiting
+  screens have a heading.
 - **Controls hidden with H hide again after a list**: ?, L, 👥 Players or 📋 Rules brings them back and
   closing it hides them again, instead of leaving the host panel on stream. A Daily Double's wager and the Final's
   wagers bring them back too (typed digits used to select players behind the hidden wager box), and they hide again

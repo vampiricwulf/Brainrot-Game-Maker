@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN, CUES, cueMedia, cueName, cueSamples, cueWav, hasBuiltin, tickTimes } from './sounds';
+import { BUILTIN, CUES, cueFileMissing, cueMedia, cueName, cueSamples, cueVolume, cueWav, hasBuiltin, tickTimes } from './sounds';
 import { easeOut, sliceAt } from './tools';
 
 describe('cueMedia', () => {
@@ -10,6 +10,27 @@ describe('cueMedia', () => {
     // Switched off with its own file: nothing plays, and the file is kept for when it's back on.
     expect(cueMedia({ audio: { right: 'm1' }, soundsOff: { right: true } }, 'right')).toBeUndefined();
     expect(cueMedia({ audio: { right: 'm1' }, soundsOff: { wrong: true } }, 'right')).toBe('m1');
+  });
+
+  it('plays the built-in sound in place of a missing file (nothing for the think music)', () => {
+    const media = [{ id: 'm1', name: 'ding.mp3', kind: 'audio' as const }] as never;
+    // Not among the game's files.
+    expect(cueMedia({ audio: { right: 'gone' }, media }, 'right')).toBe(BUILTIN + 'right');
+    expect(cueFileMissing({ audio: { right: 'gone' }, media }, 'right')).toBe(true);
+    expect(cueMedia({ audio: { finalThink: 'gone' }, media }, 'finalThink')).toBeUndefined();
+    // Among them, but not loaded here.
+    expect(cueMedia({ audio: { right: 'm1' }, media }, 'right')).toBe('m1');
+    expect(cueMedia({ audio: { right: 'm1' }, media }, 'right', () => false)).toBe(BUILTIN + 'right');
+    expect(cueFileMissing({ audio: { right: 'm1' }, media }, 'right', () => true)).toBe(false);
+    expect(cueFileMissing({ audio: {}, media }, 'right')).toBe(false);
+  });
+
+  it('plays at full volume unless a volume is set', () => {
+    expect(cueVolume({}, 'right')).toBe(1);
+    expect(cueVolume({ soundVolume: { right: 0.4 } }, 'right')).toBe(0.4);
+    expect(cueVolume({ soundVolume: { right: 0.4 } }, 'wrong')).toBe(1);
+    expect(cueVolume({ soundVolume: { right: 3 } }, 'right')).toBe(1);
+    expect(cueVolume({ soundVolume: { right: 0 } }, 'right')).toBe(0);
   });
 
   it('has no built-in think music', () => {

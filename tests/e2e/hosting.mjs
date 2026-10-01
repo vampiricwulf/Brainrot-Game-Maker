@@ -261,6 +261,17 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await status()).includes('Title card')) await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen'));
+  // Everyone sat out: the panel says so, and its button goes on (no wagers to take). Ticked back in (last first),
+  // the players keep the reveal order lowest score first (checked at the reveals).
+  const ticks = page.locator('.fj input[type="checkbox"]');
+  const playing = [];
+  for (let i = 0; i < (await ticks.count()); i++) if (await ticks.nth(i).isChecked()) playing.push(i);
+  for (const i of playing) await ticks.nth(i).uncheck();
+  await page.locator('.fj .nobody', { hasText: 'Nobody is playing this Final' }).waitFor();
+  assert((await page.locator('.fj button.primary').innerText()).includes('Finish game'), 'nobody playing the Final: it says so, and offers to go on (Finish game)');
+  for (const i of [...playing].reverse()) await ticks.nth(i).check();
+  assert((await page.locator('.fj .nobody').count()) === 0, 'and ticked back in, the Final is played as usual');
+  await page.locator('.panel .status').click();
   await page.keyboard.press('n');
   const boxes = page.locator('.fj .wagers input');
   await boxes.first().waitFor();
@@ -287,6 +298,20 @@ try {
   await page.keyboard.press('r');
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
+  // Each Ctrl+Z goes back one step: to the answer, then the question (not straight back to the wagers).
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer on screen'));
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Question on screen'));
+  assert(true, 'Ctrl+Z in the Final goes back one step at a time (reveals → answer → question)');
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
+  const revealScores = (await page.locator('.fj .pl > .muted.small').allInnerTexts()).map((t) => Number(t.split(' · ')[0].replace('−', '-').replace(/[^\d-]/g, '')));
+  assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
+  // Not chosen yet: outlined at full strength (dimmed, they read too faintly).
+  const unchosen = await page.locator('.fj .pl').first().getByRole('button', { name: '✘ Wrong' }).evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);
+  assert(unchosen[0] === '1' && unchosen[1] === 'rgba(0, 0, 0, 0)', `an unchosen ✘ Wrong is outlined, not dimmed (${unchosen.join(', ')})`);
   const right = await cues(page, 'right');
   const wrong = await cues(page, 'wrong');
   await page.locator('.fj .pl').first().getByRole('button', { name: '✔ Right' }).click();

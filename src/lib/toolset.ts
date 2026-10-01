@@ -1,6 +1,6 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
-import { applyScore, finalNext, score, stepOf } from './session';
+import { answerShowing, applyScore, finalNext, score, stepOf, toggleReveal } from './session';
 import {
   formatPoints, newId, type ActionEvent, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
   type StatValue, type Wearable, type WorldMap,
@@ -343,8 +343,9 @@ function capture(session: Session, game?: Game): Record<string, string> {
   for (const k of PARTS) out[k] = JSON.stringify(session[k] ?? {});
   for (const k of HOST) out[k] = JSON.stringify(session[k] ?? null);
   for (const id in session.used) out[`used:${id}`] = 'true';
-  for (const f of finalStates(session)) out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers });
-  // The Final being played: its step (going on from the wagers to the question is a step, so Undo goes back to them).
+  for (const f of finalStates(session))
+    out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers, chosen: f.chosen ?? {} });
+  // The Final being played: its step (each step on from the wagers is an undoable step, so Undo goes back one).
   if (session.phase === 'final' && session.final?.roundId) out[`step:${session.final.roundId}`] = JSON.stringify(session.finalStep ?? null);
   for (const w of game?.worlds ?? [])
     for (const m of w.maps) {
@@ -393,11 +394,13 @@ function putTile(session: Session, clueId: string, used: boolean): void {
 }
 
 /** Put back who plays a Final, its reveal order and its wagers. The spotlight moves on if its player is out. */
-function putFinal(session: Session, roundId: string, v: Pick<FinalState, 'players' | 'order' | 'wagers'> | null): void {
+function putFinal(session: Session, roundId: string, v: Pick<FinalState, 'players' | 'order' | 'wagers' | 'chosen'> | null): void {
   if (!v) return;
   for (const f of [session.final, ...Object.values(session.finals ?? {}).map((s) => s.state)]) {
     if (f?.roundId !== roundId) continue;
     Object.assign(f, { players: v.players, order: v.order, wagers: v.wagers });
+    // (Steps from before the host's ticks were kept have none.)
+    if (v.chosen) f.chosen = Object.keys(v.chosen).length ? v.chosen : undefined;
     if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
   }
 }
@@ -517,13 +520,28 @@ export function redoFrom(session: Session, undone: Undone[]): 'score' | 'action'
   return session.actionRedo?.length ? 'action' : session.redoStack.length ? 'score' : undefined;
 }
 
+/** What going on from each of the Final's steps is called in the history (the steps that are undoable). */
+const FINAL_STEPS: Partial<Record<NonNullable<Session['finalStep']>, string>> = {
+  wagers: 'Wagers locked, question shown',
+  question: 'Final answer shown',
+  answer: 'Player reveals started',
+};
+
 /**
- * The Final's next step. Going on from the wagers to the question is an undoable step: Ctrl+Z goes back to the wagers
- * (as they were), not into them, so a wager is never lost once the question is up.
+ * The Final's next step. Going on from the wagers to the question, the question to the answer and the answer to the
+ * reveals are undoable steps: each Ctrl+Z goes back one (to the wagers as they were, not into them, so a wager is never
+ * lost once the question is up).
  */
 export function finalNextStep(session: Session, game: Game): void {
-  if (session.phase === 'final' && session.finalStep === 'wagers') logged(session, 'Wagers locked, question shown', () => finalNext(session, game));
+  const text = session.phase === 'final' && session.finalStep ? FINAL_STEPS[session.finalStep] : undefined;
+  if (text) logged(session, text, () => finalNext(session, game));
   else finalNext(session, game);
+}
+
+/** Show or hide the answer (R): in a Final, as a step (Ctrl+Z hides or shows it again). */
+export function revealStep(session: Session): void {
+  if (session.phase !== 'final') return toggleReveal(session);
+  logged(session, answerShowing(session) ? 'Final answer hidden' : 'Final answer shown', () => toggleReveal(session));
 }
 
 /** Make a player the one who picks the next clue (undefined: nobody), as a step. `how` goes after it: " (roll-off)". */

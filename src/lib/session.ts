@@ -572,9 +572,6 @@ export function currentFinal(session: Session, game: Game): FinalRound | undefin
  * is checked again because scores may have changed, keeping what was entered for players who are still in.
  */
 export function startFinal(session: Session, game: Game, round: FinalRound): void {
-  const eligible = session.players.filter((p) => round.allowNonPositive || score(session, p.id) > 0).map((p) => p.id);
-  // Reveal in TV order: lowest score first.
-  const order = [...eligible].sort((a, b) => score(session, a) - score(session, b));
   const saved = session.final?.roundId === round.id ? { state: session.final, step: session.finalStep } : session.finals?.[round.id];
   // A game saved before Final became a round kept its state without a round id.
   const prev = saved?.state ?? (session.final && !session.final.roundId ? session.final : undefined);
@@ -586,28 +583,71 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     session.final = prev;
     return;
   }
+  // Players the host ticked in or sat out stay that way; the others play if their score lets them (newcomers too).
+  const chosen = prev?.chosen;
+  const eligible = session.players
+    .filter((p) => chosen?.[p.id] ?? (round.allowNonPositive || score(session, p.id) > 0))
+    .map((p) => p.id);
+  // Reveal in TV order: lowest score first.
+  const order = [...eligible].sort((a, b) => score(session, a) - score(session, b));
   const keep = <T>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r ?? {}).filter(([id]) => eligible.includes(id)));
   const current = prev?.current && eligible.includes(prev.current) ? prev.current : undefined;
-  session.final = { roundId: round.id, players: eligible, wagers: keep(prev?.wagers), order, shown: keep(prev?.shown), results: keep(prev?.results), current };
+  session.final = {
+    roundId: round.id,
+    players: eligible,
+    wagers: keep(prev?.wagers),
+    order,
+    shown: keep(prev?.shown),
+    results: keep(prev?.results),
+    current,
+    ...(chosen ? { chosen } : {}),
+  };
+}
+
+/** Tick a player in or out of the Final (before the wagers): the reveal order stays lowest score first. */
+export function finalChoose(session: Session, playerId: string, plays: boolean): void {
+  const f = session.final;
+  if (!f) return;
+  f.chosen = { ...f.chosen, [playerId]: plays };
+  if (!plays) {
+    f.players = f.players.filter((x) => x !== playerId);
+    f.order = f.order.filter((x) => x !== playerId);
+  } else if (!f.players.includes(playerId)) {
+    f.players = [...f.players, playerId];
+    f.order = [...f.order, playerId].sort((x, y) => score(session, x) - score(session, y));
+  }
 }
 
 export function finalWagerCap(session: Session, playerId: string): number {
   return Math.max(0, score(session, playerId));
 }
 
-/** Players in the Final still without a wager (0 or more), and those over their cap (unless the limits are ignored). */
-export function finalWagerProblems(session: Session, ignoreLimits = false): { missing: string[]; over: string[] } {
+/**
+ * Players in the Final still without a wager (0 or more), those whose wager isn't a whole number, and those over their
+ * cap (unless the limits are ignored).
+ */
+export function finalWagerProblems(session: Session, ignoreLimits = false): { missing: string[]; over: string[]; whole: string[] } {
   const wagers = session.final?.wagers ?? {};
   const ids = session.final?.players ?? [];
   const missing = ids.filter((id) => !(typeof wagers[id] === 'number' && wagers[id] >= 0));
+  const whole = ids.filter((id) => !missing.includes(id) && !Number.isInteger(wagers[id]));
   const over = ids.filter((id) => !ignoreLimits && !missing.includes(id) && wagers[id] > finalWagerCap(session, id));
-  return { missing, over };
+  return { missing, over, whole };
+}
+
+/**
+ * A wager typed in for a player during the reveals: why it can't be taken ('' when it can). Whole numbers, 0 or more,
+ * up to their cap unless the limits are ignored.
+ */
+export function finalWagerRefused(session: Session, playerId: string, v: number, ignoreLimits = false): '' | 'whole' | 'over' {
+  if (!Number.isInteger(v) || v < 0) return 'whole';
+  return !ignoreLimits && v > finalWagerCap(session, playerId) ? 'over' : '';
 }
 
 /** Every wager is in (and within its cap, unless the limits are ignored): the question can be shown. */
 export function finalWagersOk(session: Session, ignoreLimits = false): boolean {
-  const { missing, over } = finalWagerProblems(session, ignoreLimits);
-  return !!session.final && !missing.length && !over.length;
+  const { missing, over, whole } = finalWagerProblems(session, ignoreLimits);
+  return !!session.final && !missing.length && !over.length && !whole.length;
 }
 
 /** The Final's next step. After the reveals: the next round, or the end screen if this Final was the last round. */
@@ -615,6 +655,8 @@ export function finalNext(session: Session, game: Game): void {
   const f = session.final;
   switch (session.finalStep) {
     case 'category':
+      // Everyone sat out: nothing to wager or reveal, so on to the next round (or the end).
+      if (f && !f.players.length) return goToRound(session, game, session.currentRound + 1);
       session.finalStep = 'wagers';
       // A player with nothing to wager (a score of 0 or less, playing as the round allows) can only wager 0: it's
       // filled in for them (Ignore the limits still lets the host type more).

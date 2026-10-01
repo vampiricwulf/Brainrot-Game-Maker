@@ -207,10 +207,26 @@ fn drop_stale_parts(dir: &Path, now: SystemTime) {
             continue;
         }
         let modified = entry.metadata().and_then(|m| m.modified());
-        if modified.is_ok_and(|t| now.duration_since(t).is_ok_and(|age| age >= STALE_PART)) {
-            if let Err(err) = fs::remove_file(entry.path()) {
-                eprintln!("couldn't remove the unfinished save {name}: {err}");
+        if !modified.is_ok_and(|t| now.duration_since(t).is_ok_and(|age| age >= STALE_PART)) {
+            continue;
+        }
+        // The save before one that was replaced, its backups never moved along (the app stopped right after
+        // the new save went in): it becomes the `.bak`. One that's still the same as the save (the app
+        // stopped before the new one went in) is only a second name for it.
+        if let Some(save) = name.strip_prefix('.').and_then(|n| n.strip_suffix(".prev")).and_then(clean_name) {
+            let same = match (fs::read(entry.path()), fs::read(dir.join(&save))) {
+                (Ok(held), Ok(current)) => held == current,
+                _ => false,
+            };
+            if !same {
+                if let Err(err) = rotate_backups(dir, &save, &entry.path(), BACKUPS) {
+                    eprintln!("couldn't keep a backup of {save}: {err}");
+                }
+                continue;
             }
+        }
+        if let Err(err) = fs::remove_file(entry.path()) {
+            eprintln!("couldn't remove the unfinished save {name}: {err}");
         }
     }
 }
@@ -378,6 +394,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join(".Game.brainrot.part"), b"half").unwrap();
         fs::write(dir.join(".Game.brainrot.prev"), b"old").unwrap();
+        fs::write(dir.join("Game.brainrot"), b"old").unwrap();
         fs::write(dir.join("Keep.brainrot"), b"zip").unwrap();
         // Just written: it may still be being saved.
         drop_stale_parts(&dir, SystemTime::now());
@@ -386,6 +403,24 @@ mod tests {
         assert!(!dir.join(".Game.brainrot.part").exists());
         assert!(!dir.join(".Game.brainrot.prev").exists());
         assert!(dir.join("Keep.brainrot").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_save_whose_backups_never_moved_along_gets_its_bak() {
+        let dir = temp("held");
+        let read = |name: &str| fs::read_to_string(dir.join(name)).ok();
+        for v in ["1", "2"] {
+            write_save(&dir, "Game.brainrot", v.as_bytes(), BACKUPS).unwrap();
+        }
+        // The app stopped after save 3 went in, before the one it replaced became the .bak.
+        fs::write(dir.join(".Game.brainrot.prev"), b"2").unwrap();
+        fs::write(dir.join("Game.brainrot"), b"3").unwrap();
+        drop_stale_parts(&dir, SystemTime::now() + STALE_PART);
+        assert_eq!(read("Game.brainrot").as_deref(), Some("3"));
+        assert_eq!(read("Game.brainrot.bak").as_deref(), Some("2"));
+        assert_eq!(read("Game.brainrot.bak2").as_deref(), Some("1"));
+        assert!(!dir.join(".Game.brainrot.prev").exists());
         let _ = fs::remove_dir_all(&dir);
     }
 

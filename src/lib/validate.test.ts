@@ -18,6 +18,17 @@ describe('the checklist', () => {
     expect(texts().some((t) => t.includes('(s)'))).toBe(false);
   });
 
+  it('sends a sound whose file is missing to 🔊 Sounds, other missing files to Media', () => {
+    const game = jeopardyGame();
+    game.audio.right = 'gone';
+    game.audio.wrong = 'gone';
+    expect(validate(game).filter((p) => p.text.includes('missing'))).toEqual([
+      { text: '1 sound file missing: see 🔊 Sounds', tab: 'sounds', level: 'warn' },
+    ]);
+    game.media.push({ id: 'm2', name: 'pic.png', kind: 'image' } as never);
+    expect(validate(game).find((p) => p.text === '1 media file missing')).toMatchObject({ tab: 'media' });
+  });
+
   it('sends player problems to the Play screen, where players are set', () => {
     const game = jeopardyGame();
     game.players = [];

@@ -54,7 +54,7 @@ async function toPregame(page, url, { introSound = false } = {}) {
   await addClassicRounds(page);
   if (introSound) {
     await page.getByRole('button', { name: '🔊 Sounds' }).click();
-    await page.getByRole('button', { name: 'Choose file…' }).first().click();
+    await page.getByRole('button', { name: /^Choose file for/ }).first().click();
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
     await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(2) });
     await page.getByText('🔊 intro.wav').waitFor();

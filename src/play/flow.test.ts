@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { newId, type Session } from '../lib/model';
 import {
-  applyScore, awardOpen, finalJudge, finalNext, goToRound, hasWager, logZero, newSession, score, tiedLeaders, undo, winnerKnown,
+  applyScore, awardOpen, finalChoose, finalJudge, finalNext, goToRound, hasWager, logZero, newSession, score, tiedLeaders, undo, winnerKnown,
 } from '../lib/session';
 import { cuesAfter, MAX_CUES, type SoundCue } from '../lib/live';
-import { finalNextStep, logged, undoAction, redoAction } from '../lib/toolset';
+import { finalNextStep, logged, revealStep, undoAction, redoAction } from '../lib/toolset';
 import { jeopardyGame } from '../lib/testgame';
 import { groupPops, plateCenter, stopsTimer } from './flow';
 
@@ -109,11 +109,46 @@ describe('Final wagers', () => {
     expect(ids.map((id) => f.wagers[id])).toEqual([100, 200, 300]);
     redoAction(session, game);
     expect(session.finalStep).toBe('question');
-    // From the answer too, Ctrl+Z goes back to the wagers (they're never lost on the way).
-    finalNext(session, game);
+    // Each step on is its own: Ctrl+Z goes back one at a time, the wagers kept all the way.
+    finalNextStep(session, game);
+    finalNextStep(session, game);
+    expect(session.finalStep).toBe('reveal');
+    expect(undoAction(session, game)?.text).toBe('Player reveals started');
     expect(session.finalStep).toBe('answer');
+    expect(undoAction(session, game)?.text).toBe('Final answer shown');
+    expect(session.finalStep).toBe('question');
     undoAction(session, game);
     expect([session.finalStep, f.wagers[ids[2]]]).toEqual(['wagers', 300]);
+  });
+
+  it('shows and hides the answer (R) as steps', () => {
+    const { game, session, ids } = inFinal();
+    for (const id of ids) session.final!.wagers[id] = 0;
+    finalNextStep(session, game);
+    revealStep(session);
+    expect(session.finalStep).toBe('answer');
+    revealStep(session);
+    expect(session.finalStep).toBe('question');
+    expect(undoAction(session, game)?.text).toBe('Final answer hidden');
+    expect(session.finalStep).toBe('answer');
+    expect(undoAction(session, game)?.text).toBe('Final answer shown');
+    expect(session.finalStep).toBe('question');
+  });
+
+  it('undoes a player sitting out, their place in the reveal order and all', () => {
+    const t = setup(3);
+    const { game, session, ids } = t;
+    for (const [i, id] of ids.entries()) applyScore(session, game, [id], 300 - i * 100, 'x');
+    goToRound(session, game, 1);
+    const order = [...session.final!.order];
+    logged(session, 'out', () => finalChoose(session, ids[1], false));
+    logged(session, 'in', () => finalChoose(session, ids[1], true));
+    // Back in its place (lowest score first), not last.
+    expect(session.final!.order).toEqual(order);
+    undoAction(session, game);
+    expect([session.final!.players.includes(ids[1]), session.final!.chosen]).toEqual([false, { [ids[1]]: false }]);
+    undoAction(session, game);
+    expect([session.final!.order, session.final!.chosen]).toEqual([order, undefined]);
   });
 
   it('never takes a missing wager as 0: that player isn’t judged until it’s in', () => {

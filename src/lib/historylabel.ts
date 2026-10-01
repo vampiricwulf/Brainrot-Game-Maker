@@ -238,6 +238,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     }
     case 'audio':
     case 'soundsOff':
+    case 'soundVolume':
       at.crumbs.push('Sounds');
       at.icon = '🔊';
       go({ tab: 'sounds' });
@@ -622,6 +623,12 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     const name = cueName(String(key)) ?? fieldName(key ?? k);
     const on = op.p.length ? !v : !v || !(v as Obj)[key];
     return `Turned ${on ? 'on' : 'off'} the ${name} sound`;
+  }
+  if (top === 'soundVolume') {
+    // (The game's first volume set brings the whole list.)
+    const key = op.p.length ? k : Object.keys((v ?? (op as Op & { t: 'set' }).b ?? {}) as Obj)[0];
+    const n = op.p.length ? v : (v as Obj | undefined)?.[key];
+    return `Volume of the ${cueName(String(key)) ?? fieldName(key ?? k)} sound: ${typeof n === 'number' ? Math.round(n * 100) : 100}%`;
   }
   if (top === 'audio') {
     const name = cueName(String(k)) ?? fieldName(k);

@@ -232,7 +232,7 @@ assert(
 
 // ---------- Drive video for a game sound (not a slide): a clear message and "Download from Drive" ----------
 await page.getByRole('button', { name: '🔊 Sounds' }).click();
-await page.getByRole('button', { name: 'Choose file…' }).first().click();
+await page.getByRole('button', { name: /^Choose file for/ }).first().click();
 await page.locator('.picker').getByLabel('Paste a link').fill(`https://drive.google.com/open?id=${DRIVE_VID}`);
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.picker').getByText("Drive videos and sounds can't play inside the browser version. Download the file and add it, or use the desktop app.").waitFor();
@@ -277,7 +277,7 @@ assert((await page.getByText(/Files stored with this game: 2 ·/).count()) === 1
 // ---------- Sounds in MP4 and WebM files (a container that can also hold video) ----------
 await page.getByRole('button', { name: '🔊 Sounds' }).click();
 for (const [row, name] of [['Winner', 'isom-voice.m4a'], ['Final round think music', 'voice.weba']]) {
-  await page.locator('.sound', { hasText: row }).getByRole('button', { name: 'Choose file…' }).click();
+  await page.locator('.sound', { hasText: row }).getByRole('button', { name: /^Choose file for/ }).click();
   await page.locator('.picker').getByLabel('Paste a link').fill(`https://litter.catbox.moe/${name}`);
   await page.locator('.picker').getByLabel('Paste a link').press('Enter');
   await page.locator('.sound', { hasText: row }).locator('.file', { hasText: name }).waitFor();
