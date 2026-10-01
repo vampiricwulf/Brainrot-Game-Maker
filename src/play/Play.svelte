@@ -2195,7 +2195,8 @@
     }
     .cols {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      /* The player rows (name, start score, ▲▼🗑) want a little more room than the rules. */
+      grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
       gap: 28px;
       align-items: start;
     }

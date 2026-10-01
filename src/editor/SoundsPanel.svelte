@@ -10,7 +10,7 @@
   <div class="elsewhere" role="note">
     <span>Looking for the players, the 📋 Game rules (timers, the round intro) or the phone buzzers? They're set on the ▶ Play screen, before the game starts.</span>
     {#if onplay}
-      <button class="small" onclick={onplay} disabled={!canPlay} title={canPlay ? '' : 'Add a round first'}>▶ Play</button>
+      <button class="small" onclick={onplay} disabled={!canPlay} title={canPlay ? "" : "Add a round first"}>Open the Play screen ›</button>
     {/if}
   </div>
   <p class="muted">Played on stream at key moments: short built-in sounds, or your own audio files. Untick one to switch it off.</p>
