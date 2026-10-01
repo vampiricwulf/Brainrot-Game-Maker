@@ -223,6 +223,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       at.icon = '⚙';
       break;
     case 'audio':
+    case 'soundsOff':
       at.crumbs.push('Sounds');
       at.icon = '🔊';
       go({ tab: 'sounds' });
@@ -525,6 +526,13 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (top === 'settings') {
     const rule = RULES[k] ?? fieldName(k);
     return typeof v === 'boolean' ? `Rule: ${rule} ${v ? 'on' : 'off'}` : `Rule: ${rule} = ${v ?? 'off'}`;
+  }
+  if (top === 'soundsOff') {
+    // (The game's first sound switched off brings the whole list.)
+    const key = op.p.length ? k : Object.keys((v ?? (op as Op & { t: 'set' }).b ?? {}) as Obj)[0];
+    const name = cueName(String(key)) ?? fieldName(key ?? k);
+    const on = op.p.length ? !v : !v || !(v as Obj)[key];
+    return `Turned ${on ? 'on' : 'off'} the ${name} sound`;
   }
   if (top === 'audio') {
     const name = cueName(String(k)) ?? fieldName(k);

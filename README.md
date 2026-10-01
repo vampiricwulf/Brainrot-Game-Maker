@@ -120,7 +120,7 @@ see "🔔 Ann is answering" whenever one player is picked during a clue. The roo
 own. Copies built without one say "Phone buzzers aren't set up in this copy".
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
-off in the editor's 🔊 Sounds tab.
+off in the editor's 🔊 Sounds tab (a sound switched off keeps the file chosen for it).
 
 **For OBS:** Theme › Stage background can be chroma green or magenta for keying, and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown

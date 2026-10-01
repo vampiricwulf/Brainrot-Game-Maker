@@ -144,6 +144,13 @@ describe('step labels', () => {
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
     expect(step((g) => (g.audio.dailyDouble = 'm1')).label).toBe('Changed the Daily Double sound');
     expect(step((g) => (g.audio.wheelTick = '')).label).toBe('Turned off the wheel tick sound');
+    expect(step((g) => (g.soundsOff = { wheelTick: true })).label).toBe('Turned off the wheel tick sound');
+    expect(step((g) => (g.soundsOff = { right: true }), undefined)).toMatchObject({ where: 'Sounds' });
+    const offs = (g: Game) => (g.soundsOff = { right: true, wrong: true });
+    const both = step(offs).after;
+    const on = structuredClone(both);
+    delete on.soundsOff!.wrong;
+    expect(describeStep(diff(both, on), both, on).label).toBe('Turned on the wrong sound');
     const own = sample();
     own.audio.dailyDouble = 'm1';
     const back = structuredClone(own);

@@ -10,6 +10,21 @@
   let picking = $state<CueKey | null>(null);
 
   const nameOf = (id?: string) => app.game.media.find((m) => m.id === id)?.name;
+  /** Switched off ('' in older games): it keeps its file, for when it's switched back on. */
+  const isOff = (key: CueKey) => !!app.game.soundsOff?.[key] || audio[key] === '';
+  function setOn(key: CueKey, on: boolean): void {
+    const game = app.game;
+    if (audio[key] === '') audio[key] = undefined;
+    if (!on) return void (game.soundsOff = { ...game.soundsOff, [key]: true });
+    if (!game.soundsOff?.[key]) return;
+    const { [key]: _, ...rest } = game.soundsOff;
+    game.soundsOff = Object.keys(rest).length ? rest : undefined;
+  }
+  /** A file chosen for it: it plays (switched on). */
+  function choose(key: CueKey, id: string): void {
+    audio[key] = id;
+    setOn(key, true);
+  }
   let previewEl = $state<HTMLAudioElement>();
   function preview(key: CueKey): void {
     const url = soundUrl(cueMedia(app.game, key));
@@ -23,10 +38,11 @@
 <div class="sounds">
   {#each CUES as [key, label, hint] (key)}
     {@const v = audio[key]}
+    {@const off = isOff(key)}
     {@const builtin = hasBuiltin(key)}
-    <div class="sound" class:off={v === ''}>
+    <div class="sound" class:off>
       {#if builtin}
-        <input type="checkbox" checked={v !== ''} onchange={(e) => (audio[key] = e.currentTarget.checked ? undefined : '')} aria-label="Play the {label} sound" />
+        <input type="checkbox" checked={!off} onchange={(e) => setOn(key, e.currentTarget.checked)} aria-label="Play the {label} sound" />
       {:else}
         <!-- Nothing to switch off (it has no built-in sound): lined up with the others. -->
         <span class="nobox"></span>
@@ -36,17 +52,17 @@
         <div class="muted small">{hint}</div>
       </div>
       <span class="spacer"></span>
-      {#if v}
+      {#if off}
+        <span class="muted small">Off{#if v} <span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
+      {:else if v}
         <span class="file" title={nameOf(v)}>🔊 {nameOf(v) ?? 'missing file'}</span>
-      {:else if v === ''}
-        <span class="muted small">Off</span>
       {:else if builtin}
         <span class="muted small">Built-in</span>
       {/if}
       {#if cueMedia(app.game, key)}
         <button class="small ghost" onclick={() => preview(key)} title="Preview" aria-label="Preview {label}">▶</button>
       {/if}
-      {#if v}
+      {#if v && !off}
         <button class="small ghost" onclick={() => (audio[key] = undefined)} title={builtin ? 'Back to the built-in sound' : 'Remove'}
           aria-label={builtin ? `Built-in ${label} sound` : `Remove the ${label} sound`}
         >
@@ -54,11 +70,11 @@
         </button>
       {/if}
       <div class="pop">
-        <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => (audio[key] = id) }}>
+        <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => choose(key, id) }}>
           {v ? 'Change…' : 'Choose file…'}
         </button>
         {#if picking === key}
-          <MediaPicker kind="audio" onpick={(id) => ((audio[key] = id), (picking = null))} onclose={() => (picking = null)} />
+          <MediaPicker kind="audio" onpick={(id) => (choose(key, id), (picking = null))} onclose={() => (picking = null)} />
         {/if}
       </div>
     </div>

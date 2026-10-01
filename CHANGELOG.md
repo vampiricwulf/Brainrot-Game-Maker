@@ -224,6 +224,9 @@ done, the Unreleased lines move under that day's heading.
   without those fonts keeps that game's font for that text (instead of a fallback font) and says so. Use my theme
   says "This game already looks like my theme" when nothing changes.
 - **Import clues** reads CSV files that use semicolons (as Excel saves them where the decimal mark is a comma).
+- 🔊 Sounds: switching off a sound that has your own file no longer forgets the file: it says "Off (keeps
+  intro.wav)", and ticking it again plays that file, not the built-in sound. (Games saved before keep working; a sound
+  they had switched off simply stays off.)
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

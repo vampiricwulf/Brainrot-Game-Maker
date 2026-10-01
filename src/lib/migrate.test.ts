@@ -121,4 +121,13 @@ describe('buzzer settings', () => {
     expect(m.settings).not.toHaveProperty('buzzKeys');
     expect(m.settings).not.toHaveProperty('buzzFrom');
   });
+
+  it('a sound switched off the old way ("") is in soundsOff now', () => {
+    const g = newGame() as Game;
+    g.audio = { right: '', wrong: 'm1' };
+    const m = migrateGame(JSON.parse(JSON.stringify(g)));
+    expect(m.audio).toEqual({ wrong: 'm1' });
+    expect(m.soundsOff).toEqual({ right: true });
+    expect(migrateGame(JSON.parse(JSON.stringify(newGame()))).soundsOff).toBeUndefined();
+  });
 });

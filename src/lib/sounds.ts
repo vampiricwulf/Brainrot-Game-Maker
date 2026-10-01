@@ -37,7 +37,8 @@ export const BUILTIN = 'builtin:';
  * What the cue plays in this game: an audio file's id, a built-in sound (`builtin:right`), or nothing (switched off,
  * or the think music, which has no built-in one).
  */
-export function cueMedia(game: Pick<Game, 'audio'>, key: CueKey): string | undefined {
+export function cueMedia(game: Pick<Game, 'audio' | 'soundsOff'>, key: CueKey): string | undefined {
+  if (game.soundsOff?.[key]) return undefined;
   const v = game.audio?.[key];
   if (v === undefined) return hasBuiltin(key) ? BUILTIN + key : undefined;
   return v || undefined;
