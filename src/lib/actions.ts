@@ -2,7 +2,7 @@
 // changes go through toolset.logged() (undoable); show-only effects (wheels, pop-ups, sounds, timers) go to Live.
 import { newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type Game, type Session, type Who, type World, type WorldState } from './model';
 import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
-import { playSound, startTimer, type Live } from './live';
+import { blip, playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
 import { actionProblem } from './refs';
@@ -141,6 +141,8 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       logged(session, `${text} (${names(ctx, who)})`, () => {
         for (const id of who) a.op === 'set' ? setStat(session, id, f, a.amount) : addStat(game, session, id, f, a.amount);
       });
+      // Damage (HP down…), not money spent.
+      if (a.op === 'add' && a.amount < 0 && !f.currency) blip(live, 'hurt');
       return `${text}: ${names(ctx, who)}`;
     }
     case 'item': {

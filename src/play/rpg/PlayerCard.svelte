@@ -23,6 +23,7 @@
   import { describeAction, runAction } from '../../lib/actions';
   import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
+  import { blip } from '../../lib/live';
   import {
     addStat, clampStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statValue,
   } from '../../lib/toolset';
@@ -80,6 +81,7 @@
     let changed = 0;
     logged(session, `${name}: ${f.name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => (changed = addStat(game, session, p.id, f, delta)));
     if (!changed) toast(`${name}’s ${f.name} is already at its ${delta > 0 ? `max (${f.max})` : `min (${f.min})`}`);
+    else if (delta < 0 && !f.currency) blip(app.live, 'hurt');
   }
 
   /** Set a stat (a number stays within the field's min and max: the log says what it became). */

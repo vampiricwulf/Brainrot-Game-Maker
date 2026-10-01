@@ -104,9 +104,10 @@ export type Exit = { kind: 'open' | 'warp'; to: ScreenRef } | { kind: 'blocked';
 
 /**
  * Where leaving `screen` in direction `dir` goes. Neighbors come from the grid (the screen at col+dx, row+dy);
- * a screen's own exit rules block a side or send it somewhere else (another map included).
+ * a screen's own exit rules block a side or send it somewhere else (another map included). `grid`: the map's cells, for
+ * many lookups at once.
  */
-export function exitOf(map: WorldMap, screen: Screen, dir: Dir8): Exit {
+export function exitOf(map: WorldMap, screen: Screen, dir: Dir8, grid?: ScreenGrid): Exit {
   const rule = screen.exits?.[dir];
   if (rule?.kind === 'blocked') return { kind: 'blocked', note: rule.note };
   if (rule?.kind === 'warp') return { kind: 'warp', to: rule.to };
@@ -118,7 +119,7 @@ export function exitOf(map: WorldMap, screen: Screen, dir: Dir8): Exit {
     col = (col + map.cols) % map.cols;
     row = (row + map.rows) % map.rows;
   }
-  const next = screenAt(map, col, row);
+  const next = screenAt(map, col, row, grid);
   if (!next || next === screen) return { kind: 'none' };
   // A diagonal step needs a way through: not both of the sides it cuts past blocked.
   if (diagonal(dir)) {

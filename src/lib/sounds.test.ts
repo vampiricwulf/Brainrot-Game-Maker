@@ -51,6 +51,15 @@ describe('built-in sounds', () => {
     expect(cueWav('dice')).toEqual(a);
   });
 
+  it.each(['step', 'blocked', 'doorway', 'pickUp', 'coin', 'hurt'] as const)('the RPG’s %s is quiet and short (it plays all session long)', (key) => {
+    const s = cueSamples(key);
+    expect(s.length / 22050).toBeLessThan(0.45);
+    expect(Math.max(...Array.from(s, Math.abs))).toBeLessThan(0.25);
+    // Built in, played unless switched off.
+    expect(cueMedia({ audio: {} }, key)).toBe(BUILTIN + key);
+    expect(cueMedia({ audio: {}, soundsOff: { [key]: true } }, key)).toBeUndefined();
+  });
+
   it('wheel ticks are tiny', () => {
     expect(cueSamples('wheelTick').length / 22050).toBeLessThan(0.03);
   });

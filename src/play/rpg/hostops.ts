@@ -10,6 +10,8 @@ import {
 import { nameList } from '../../lib/session';
 import { addStat, currencyFields, entryName, giveItem, inventory, itemDef, logged, statFields, transferEntry } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
+import { app } from '../../lib/app.svelte';
+import { blip } from '../../lib/live';
 import type { MenuEntry } from '../../lib/menustate.svelte';
 import { newAudioEl, newVideoEl } from '../../lib/model';
 
@@ -41,6 +43,8 @@ export function stepParty(game: Game, session: Session, dir: Dir8): string | nul
   // Which party, once there are several.
   const who = st.parties.length > 1 ? (activeParty(st)?.name ?? 'Party') : 'Party';
   logged(session, `${who} ${DIR_NAME[dir].toLowerCase()}`, () => (why = step(game, st, world, dir)));
+  // A step, through a way that leads somewhere else, or no way at all.
+  blip(app.live, why ? 'blocked' : st.lastMove?.dir === 'warp' ? 'doorway' : 'step');
   return why;
 }
 
@@ -197,6 +201,7 @@ export function pickUp(game: Game, session: Session, st: WorldState, el: SlideEl
     }
     override(st, el.id).taken = true;
   });
+  blip(app.live, 'pickUp');
   return text;
 }
 

@@ -1,10 +1,11 @@
 <!--
   The sounds that go with what's on screen, in the window that plays the game's sound: dice rattling, a wheel ticking
   as its slices pass the pointer and its landing, and a board game's token stepping from space to space. They're timed
-  from the same timestamps as the animations, so they match the picture in every window. Draws nothing.
+  from the same timestamps as the animations, so they match the picture in every window. Also the short cues for what
+  the host does (an RPG step, a pick-up, coins: live.blip), over any other sound. Draws nothing.
 -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { applySink, playAndReport } from '../lib/audioout.svelte';
   import { HOP_MS } from '../lib/boardgame';
   import type { Live } from '../lib/live';
@@ -82,6 +83,15 @@
         list.forEach(clearTimeout);
         waiting.delete(id);
       }
+  });
+
+  // A short cue for something the host did. One already there when this window opened (or long gone) isn't played.
+  let lastBlip = untrack(() => live.blip?.nonce);
+  $effect(() => {
+    const b = live.blip;
+    if (!b || b.nonce === lastBlip) return;
+    lastBlip = b.nonce;
+    if (Date.now() - b.at < 1500) untrack(() => play(b.key));
   });
 
   onDestroy(() => {

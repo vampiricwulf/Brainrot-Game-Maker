@@ -102,6 +102,8 @@ describe('who “the party” is', () => {
     // A trap at the start hurts Ann & Bob, not Cy.
     runAction({ ...ctx, at: map.screens[0].id }, { id: '1', do: 'stat', field: 'hp', op: 'add', amount: -3, who: 'party' });
     expect(['a', 'b', 'c'].map((id) => statValue(game, session, id, hp))).toEqual([7, 7, 10]);
+    // With the Damage sound (on the audience side).
+    expect(ctx.live.blip?.key).toBe('hurt');
     // On a screen nobody stands on (or with no object), it's the followed party.
     expect(targets({ ...ctx, at: cave.id }, 'party')).toEqual(['c']);
     expect(targets(ctx, 'party')).toEqual(['c']);

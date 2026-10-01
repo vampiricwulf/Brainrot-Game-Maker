@@ -2,6 +2,7 @@
 import { newId, type DicePreset, type Id, type Slide, type WheelSegment } from './model';
 import type { DiceRoll, PoolSlice, RollOffRound } from './tools';
 import type { BuzzState } from './buzz';
+import type { CueKey } from './sounds';
 
 /** What a host click on the stage asks for (the host's view decides what it means right now). */
 export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay';
@@ -134,6 +135,11 @@ export interface Live {
   buzz?: BuzzState;
   /** Phone buzzers: the room's code and join link, on the "Starting soon" card so viewers can join. */
   room?: { code: string; link: string } | null;
+  /**
+   * A short sound cue for something the host just did (a step, a pick-up, coins): played over whatever else is playing
+   * (it doesn't stop a sound the host started), unless switched off in 🔊 Sounds.
+   */
+  blip?: { key: CueKey; nonce: string; at: number } | null;
 }
 
 export function newLive(): Live {
@@ -188,6 +194,11 @@ export function addTime(live: Live, seconds: number): void {
     return;
   }
   t.total += Math.max(seconds, -timerRemaining(t));
+}
+
+/** Play a short sound cue (see Live.blip). */
+export function blip(live: Live, key: CueKey): void {
+  live.blip = { key, nonce: newId(), at: Date.now() };
 }
 
 export function playSound(live: Live, media: string | undefined): void {

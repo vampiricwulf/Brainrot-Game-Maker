@@ -1,12 +1,14 @@
 <!--
   A world's maps as grids of screens. The audience's version shows only what its map settings allow (whole map, or
-  discovered screens), with arrows for open ways out that lead somewhere unknown. The host's version shows
-  everything and can be clicked; the players on a screen can be dragged to another one.
+  discovered screens), cut down to the part they know (with a cell around it), with arrows for open ways out that lead
+  somewhere unknown, and says so when the party is on a map hidden from them. The host's version shows everything
+  and can be clicked (one Tab stop: the arrow keys go from screen to screen); the players on a screen can be dragged
+  to another one.
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  import type { Player, Screen, ScreenRef, World, WorldMap, WorldState } from '../../lib/model';
-  import { DIR_ARROW, DIR_VEC, DIRS, exitOf, mapState, mapVisible, sameRef } from '../../lib/rpg';
+  import type { Dir8, Player, Screen, ScreenRef, World, WorldMap, WorldState } from '../../lib/model';
+  import { DIR_ARROW, DIR_VEC, DIRS, exitOf, mapCrop, mapState, mapVisible, sameRef } from '../../lib/rpg';
   import { dropHover, dropTarget } from '../dragdrop.svelte';
 
   let {
@@ -44,9 +46,16 @@
   } = $props();
 
   const maps = $derived((audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps).filter((m) => !only || m.id === only));
+  /** Viewers: the party is on a map they aren't shown. */
+  const focusHidden = $derived(audience && !!focus && !maps.some((m) => m.id === focus.map));
   const stateOf = (m: WorldMap, s: Screen) => (audience ? mapState(st, m, s) : (st?.knowledge[s.id] ?? 'unknown'));
   /** Screens by cell, per map (big maps look each cell up once instead of searching the list). */
   const cells = $derived(new Map(maps.map((m) => [m.id, new Map(m.screens.map((s) => [`${s.col},${s.row}`, s]))])));
+  /** The cells each map draws: viewers see the part they know (and a cell around it), the host all of it. */
+  const areas = $derived(
+    new Map(maps.map((m) => [m.id, (audience ? mapCrop(st, m) : null) ?? { col: 0, row: 0, cols: m.cols, rows: m.rows }])),
+  );
+  const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
   /** Players by screen. */
   const byScreen = $derived.by(() => {
     const out = new Map<string, Player[]>();
@@ -89,35 +98,85 @@
     if (to) onmove?.(d.from, to);
   }
 
-  /** Audience arrows: open ways out of a known screen whose destination is still unknown to viewers. */
-  function arrows(m: WorldMap, s: Screen) {
-    if (!audience || !m.showExits) return [];
-    return DIRS.filter((d) => {
-      const e = exitOf(m, s, d);
-      if (e.kind !== 'open' && e.kind !== 'warp') return false;
-      if (e.kind === 'warp' && e.to.map !== m.id) return true;
-      const dest = m.screens.find((x) => x.id === e.to.screen);
-      return !dest || !mapState(st, m, dest);
-    });
+  /**
+   * Audience arrows, by screen: open ways out of a known screen whose destination is still unknown to viewers. Worked
+   * out once per change (not for every cell each time anything moves): a 20×20 world would slow the audience window.
+   */
+  const arrows = $derived.by(() => {
+    const out = new Map<string, Dir8[]>();
+    if (!audience) return out;
+    for (const m of maps) {
+      if (!m.showExits) continue;
+      const grid = cells.get(m.id);
+      const byId = new Map(m.screens.map((s) => [s.id, s]));
+      for (const s of m.screens) {
+        if (!mapState(st, m, s)) continue;
+        const ds = DIRS.filter((d) => {
+          const e = exitOf(m, s, d, grid);
+          if (e.kind !== 'open' && e.kind !== 'warp') return false;
+          if (e.kind === 'warp' && e.to.map !== m.id) return true;
+          const dest = byId.get(e.to.screen);
+          return !dest || !mapState(st, m, dest);
+        });
+        if (ds.length) out.set(s.id, ds);
+      }
+    }
+    return out;
+  });
+
+  /** The host's map is one Tab stop: the screen the party is on (else the first), or the one last focused. */
+  let roving = $state<Record<string, string>>({});
+  const tabTo = (m: WorldMap) =>
+    roving[m.id] && m.screens.some((s) => s.id === roving[m.id]) ? roving[m.id] : focus?.map === m.id ? focus.screen : m.screens[0]?.id;
+
+  const KEY_STEP: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+  /** The arrow keys go to the next screen that way on the host's map (skipping empty cells). */
+  function gridKey(e: KeyboardEvent, m: WorldMap): void {
+    const d = KEY_STEP[e.key];
+    const t = e.target as HTMLElement;
+    if (!d || !t.dataset.screen || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let [c, r] = [Number(t.dataset.col), Number(t.dataset.row)];
+    for (;;) {
+      c += d[0];
+      r += d[1];
+      if (c < 0 || r < 0 || c >= m.cols || r >= m.rows) return;
+      const next = cells.get(m.id)?.get(`${c},${r}`);
+      if (next) {
+        roving[m.id] = next.id;
+        (e.currentTarget as HTMLElement).querySelector<HTMLElement>(`[data-screen="${next.id}"]`)?.focus();
+        return;
+      }
+    }
   }
 </script>
 
 <svelte:window onpointermove={dotsMove} onpointerup={dotsUp} />
 
 <div class="maps" class:audience class:big class:fit>
-  {#each maps as m (m.id)}
+  {#if focusHidden}
+    <div class="hidden-note">🙈 This map is hidden from viewers</div>
+  {/if}
+  <!-- (Then none: the other maps would read as "you are here".) -->
+  {#each focusHidden ? [] : maps as m (m.id)}
+    {@const box = areas.get(m.id) ?? { col: 0, row: 0, cols: m.cols, rows: m.rows }}
+    {@const tab = onpick ? tabTo(m) : undefined}
     <div class="map">
       <div class="title">{m.name}</div>
       <div class="area">
         <div
           class="grid"
-          style:grid-template-columns="repeat({m.cols}, 1fr)"
-          style:aspect-ratio="{m.cols * 16} / {m.rows * 9}"
-          style:--ratio={(m.cols * 16) / (m.rows * 9)}
-          style:--rows={m.rows}
+          style:grid-template-columns="repeat({box.cols}, minmax(0, 1fr))"
+          style:aspect-ratio="{box.cols * 16} / {box.rows * 9}"
+          style:--ratio={(box.cols * 16) / (box.rows * 9)}
+          style:--rows={box.rows}
+          role="presentation"
+          onkeydown={onpick ? (e) => gridKey(e, m) : undefined}
         >
-          {#each Array.from({ length: m.rows }, (_, r) => r) as r (r)}
-            {#each Array.from({ length: m.cols }, (_, c) => c) as c (c)}
+          {#each range(box.row, box.rows) as r (r)}
+            {#each range(box.col, box.cols) as c (c)}
               {@const s = cells.get(m.id)?.get(`${c},${r}`)}
               {@const k = s ? stateOf(m, s) : null}
               {#if s && k}
@@ -135,19 +194,23 @@
                   style:background={bg}
                   style:color={textOn(bg)}
                   disabled={!onpick}
+                  tabindex={onpick && s.id !== tab ? -1 : undefined}
                   data-map={m.id}
                   data-screen={s.id}
+                  data-col={c}
+                  data-row={r}
+                  onfocus={onpick ? () => (roving[m.id] = s.id) : undefined}
                   onclick={() => onpick?.({ map: m.id, screen: s.id }, s)}
                   onpointerdown={grab ? (e) => dotsDown(e, { map: m.id, screen: s.id }, here) : undefined}
                   oncontextmenu={onmenu ? (e) => onmenu(e, { map: m.id, screen: s.id }, s) : undefined}
-                  title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}${grab ? ' · drag the players to another screen to move them' : ''}`}
+                  title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}${grab ? ' · drag the players to another screen to move them' : ''}${onpick ? ' · arrow keys: the next screen' : ''}`}
                   aria-label={audience ? undefined : `${m.name} · ${s.name}`}
                 >
                   {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
                   <span class="dots">
                     {#each here as p (p.id)}<span class="dot" style:background={p.color} title={p.name}></span>{/each}
                   </span>
-                  {#each arrows(m, s) as d (d)}
+                  {#each arrows.get(s.id) ?? [] as d (d)}
                     <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
                   {/each}
                 </button>
@@ -180,6 +243,19 @@
     gap: 4px;
     min-width: 0;
     flex: 1 1 200px;
+  }
+  .hidden-note {
+    align-self: center;
+    margin: auto;
+    padding: 10px 24px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 40px;
+    font-weight: 700;
+  }
+  .fit .hidden-note {
+    flex: none;
   }
   .title {
     font-weight: 700;

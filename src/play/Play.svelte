@@ -1601,12 +1601,17 @@
   }
 
   /**
-   * Enter in a board-game round with nobody selected: move the steps in the host panel's box, or on a board that moves one
-   * space at a time, take the only way on. False when there's nothing to move (Enter then awards, as anywhere else).
+   * Enter in a board-game round with nobody selected (or no amount typed): move the steps in the host panel's box, or on
+   * a board that moves one space at a time, take the only way on. At a fork it says to pick the way. False when there's
+   * nothing to move (Enter then awards, as anywhere else).
    */
   function boardEnter(): boolean {
     const { round, bs } = boardNow(game, session);
-    if (!round || !bs || bs.fork) return false;
+    if (!round || !bs) return false;
+    if (bs.fork) {
+      toast(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
+      return true;
+    }
     let steps = bgSteps;
     let way: string | undefined;
     if (round.mover.kind === 'step') {
@@ -1732,7 +1737,7 @@
     switch (k) {
       case 'enter':
         // Board games with nobody selected: move (see boardEnter).
-        if (session.phase === 'boardgame' && !selected.length && !e.shiftKey && boardEnter()) break;
+        if (session.phase === 'boardgame' && (!selected.length || !amount) && !e.shiftKey && boardEnter()) break;
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;

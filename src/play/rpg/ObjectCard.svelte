@@ -9,6 +9,7 @@
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
   import { activeParty, audienceSees, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
   import { nameList } from '../../lib/session';
+  import { blip } from '../../lib/live';
   import { formatStat, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
   import { objectName, pickUp as pickUpNow, removeObject } from './hostops';
@@ -125,6 +126,7 @@
     const movers = players ?? (partyHere ? undefined : here);
     const label = players ? whoNames : 'Party';
     logged(session, `${label} through ${title}`, () => moveTo(game, st, world, to, { players: movers, arriveAt: role?.arrive }));
+    blip(ctx.live, 'doorway');
     onclose();
   }
 
