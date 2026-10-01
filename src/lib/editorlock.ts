@@ -64,3 +64,21 @@ export async function claimEditor(take: boolean, onLost: () => Promise<void> | v
   }
   return got;
 }
+
+/**
+ * While this copy is paused: hears whether any copy edits (false once the one editing has closed, so this one can offer to
+ * edit here), checking every second. Returns a function that stops listening.
+ */
+export function watchEditor(onChange: (taken: boolean) => void): () => void {
+  if (!navigator.locks) return () => {};
+  let last: boolean | null = null;
+  const check = async () => {
+    const state = await navigator.locks.query().catch(() => null);
+    if (!state) return;
+    const taken = [...(state.held ?? []), ...(state.pending ?? [])].some((l) => l.name === LOCK);
+    if (taken !== last) onChange((last = taken));
+  };
+  void check();
+  const id = setInterval(check, POLL_MS);
+  return () => clearInterval(id);
+}

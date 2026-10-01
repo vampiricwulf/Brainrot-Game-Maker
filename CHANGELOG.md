@@ -97,6 +97,8 @@ done, the Unreleased lines move under that day's heading.
   and ✕ closes everywhere, and every window has the same ✕ and Done / Cancel. (4729d75)
 - **Readable colours**: text on player colours picks black or white by contrast, the Pastel theme's stage text is
   dark, and filled buttons are darker. (4729d75)
+- **Reduce motion on stream** is also on the pre-game screen's On stream section (the same setting as ⚙ Settings), so
+  an exported game file can use it too.
 
 ### Added
 - **Phone buzzers** (the pre-game screen's 📱 Phone buzzers card): before the game, ▶ Start the room shows a
@@ -202,6 +204,10 @@ done, the Unreleased lines move under that day's heading.
   in Recent games), and doesn't ask a second time.
 - The Export HTML button's tip no longer says to share the file with players: it's the host's copy and shows the
   answers.
+- The "Starting soon" countdown shows the host its time left ("Starting in 4:32 · ■ Stop").
+- A toast from the editor ("Added a sample game…") no longer follows into ▶ Play over the Start game button.
+- A tab paused because the game was open in another tab notices when that tab closes: it says "The other tab was
+  closed" and offers **Edit here**.
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

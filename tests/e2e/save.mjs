@@ -60,8 +60,11 @@ try {
   await b.getByRole('button', { name: 'Media (0)' }).waitFor();
   await b.waitForTimeout(800);
   await b.close();
-  // A takes over again and reopens its game from Open… → Recent games: its files must still be there.
-  await a.getByRole('button', { name: 'Edit here instead' }).click();
+  // A sees by itself that the other tab closed, takes over again and reopens its game from Open… → Recent games: its
+  // files must still be there.
+  await a.getByRole('heading', { name: 'The other tab was closed' }).waitFor({ timeout: 5000 });
+  assert(true, 'a paused tab says when the other tab has closed');
+  await a.getByRole('button', { name: 'Edit here', exact: true }).click();
   await a.getByRole('button', { name: 'Open…' }).click();
   await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /Untitled Game/ }).click();
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();

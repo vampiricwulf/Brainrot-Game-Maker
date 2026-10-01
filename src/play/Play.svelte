@@ -1,6 +1,7 @@
 <script lang="ts">
   import { modal, takeFocus } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
+  import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { step } from '../lib/history.svelte';
   import { finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
   import {
@@ -1326,6 +1327,16 @@
 
   /** Minutes the "Starting soon" card counts down from. */
   let soonMinutes = $state(5);
+  /** Seconds left on the "Starting soon" countdown, for the host (ticks only while there's one). */
+  let soonLeft = $state(0);
+  $effect(() => {
+    const at = app.live.soonAt;
+    if (!at) return;
+    const tick = () => (soonLeft = Math.max(0, Math.ceil((at - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  });
 
   function addSamplePlayers(): void {
     for (const name of ['Alex', 'Sam', 'Jordan']) {
@@ -1721,7 +1732,8 @@
       <div class="row">
         <span class="muted small">Countdown on it:</span>
         {#if app.live.soonAt}
-          <button class="small" onclick={() => (app.live.soonAt = undefined)}>■ Stop countdown</button>
+          <span class="small soon-left" role="timer">{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span>
+          <button class="small" onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
         {:else}
           <label class="check small">
             <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
@@ -1755,6 +1767,10 @@
           onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, 'Screen name caption in RPG rounds')}
         />
         Show the screen's name in RPG rounds
+      </label>
+      <label class="check small" title="The same as ⚙ Settings › Reduce motion on stream (kept on this computer)">
+        <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
+        Reduce motion on stream (no pop-ins, fly-ins or confetti)
       </label>
     </div>
 

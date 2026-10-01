@@ -100,6 +100,12 @@ try {
   await header.getByText('⚠ Autosave unavailable here: use Save').waitFor();
   assert(true, 'a full storage switches the header to "use Save"');
   await shot('datasafety-full');
+  // New while full: the question says Discard loses the game (it can't be kept in Recent games).
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  const fullAsk = page.getByRole('dialog', { name: /^Start a new game/ });
+  await fullAsk.getByText('storage is full, so Discard loses it').waitFor();
+  assert((await fullAsk.getByText('Recent games brings it back').count()) === 0, 'with storage full, Save first / Discard says Discard loses the game');
+  await answerReplace(page, 'Cancel');
   // Closing the tab now would lose the changes: the browser asks first.
   const leave = new Promise((r) => page.once('dialog', (d) => (r(d.type()), d.dismiss())));
   await page.close({ runBeforeUnload: true });
