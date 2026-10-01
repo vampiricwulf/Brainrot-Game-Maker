@@ -32,7 +32,8 @@ done, the Unreleased lines move under that day's heading.
   arrow keys nudge, `Tab` steps through spaces, `Ctrl+D` duplicates; `Alt`-drag (or ⊕) links two spaces, and a link's
   right-click menu makes it two-way, reverses or removes it; zones reorder and have ↶ ↷. (83427b3)
 - **Lists everywhere** (wheel slices, wheels & dice, stats, items, shops and their stock, action buttons, players):
-  drag ⋮⋮ or `Alt`+`↑`/`↓` to reorder, ⧉ / `Ctrl+D` to duplicate, a right-click menu, and deletes with Undo. `Enter`
+  drag ⋮⋮ or `Alt`+`↑`/`↓` to reorder, ⧉ / `Ctrl+D` to duplicate, a right-click menu (not yet on shop stock, zones
+  or players), and deletes with Undo. `Enter`
   in a slice or player name adds the next one; dice faces fill from a list; "＋ Something to sell ▾" lists your items
   (or drag an item's 📦 onto a shop); action buttons copy and paste between objects and games. (83427b3)
 - **Drop files where they go**: item icons, avatars, space icons, worn looks, theme background and banner, music,
@@ -49,10 +50,19 @@ done, the Unreleased lines move under that day's heading.
   insert or delete rows and columns; rename, reorder and duplicate maps from their tabs; switch looks and neighbouring
   screens from the screen editor; click ⛔ between screens to block a way; drop pictures on the map to make screens;
   a menu for each look (duplicate, make main, reorder). (4eef0fe)
+- Map tabs take `Alt`+`←`/`→`, `Ctrl+D`, `Delete` and `F2`, like round tabs. Wheel slices and action buttons have a
+  right-click menu. Right-click menus show their keyboard shortcuts, and the shortcuts sheet lists the board, round
+  tab and map tab keys. (84ad8f2, 7180280, 86f9f05, f3405d5)
 - ⚙ Settings: **how many changes undo remembers** (300 by default, 20–2000). Lowering it forgets the oldest at once,
   never a redo.
 
 ### Fixed
+- A wheel or dice clue, screen, set of buttons, slide item or slide pasted into another game brings its wheels and
+  dice along instead of showing "⚠ Deleted wheel". (84ad8f2, f3405d5)
+- `Delete`, arrows and `Ctrl+D` on a round tab or header button no longer also act on the selected slide items, board
+  spaces, map screens or files. `Esc` leaves a slide's text field, then deselects, then closes the clue (it used to get
+  stuck in the field). A toast no longer covers the "Deleted … · Undo" note; `Backspace` deletes a wheel or dice in
+  the list too. (84ad8f2, f3405d5)
 - The Daily Double badge on stream read "Daily Double· $500". Picking who found a Daily Double puts the cursor back in
   the wager box, so typed numbers no longer select players. Redo names a multi-player award's players in the same order
   as Undo. A shop, a player's sheet or an object's pop-up no longer stays on stream into the next round, and a card left
