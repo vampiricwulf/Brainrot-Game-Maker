@@ -333,6 +333,7 @@ describe('players mid-game', () => {
     for (let i = 0; i < 4; i++) finalNext(session, game);
     const f = session.final!;
     const first = f.order[0];
+    f.wagers[first] = 0;
     finalJudge(session, game, first, true);
     removePlayer(session, first);
     restorePlayer(session, first);
@@ -371,7 +372,7 @@ describe('the Players dialog in the history', () => {
 });
 
 describe('host panel rules', () => {
-  it('opens the award row everywhere but the Daily Double splash, the final reveals and the end screen', () => {
+  it('opens the award row everywhere but the Daily Double splash, a Final and the end screen', () => {
     const { game, session } = setup();
     expect(awardOpen(session)).toBe(true);
     const ref = { round: 0, cat: 0, row: 0 };
@@ -380,9 +381,13 @@ describe('host panel rules', () => {
     expect(awardOpen(session)).toBe(false);
     session.dd!.stage = 'question';
     expect(awardOpen(session)).toBe(true);
+    session.phase = 'tiebreaker';
+    expect(awardOpen(session)).toBe(true);
     session.phase = 'final';
     session.finalStep = 'wagers';
-    expect(awardOpen(session)).toBe(true);
+    expect(awardOpen(session)).toBe(false);
+    session.finalStep = 'question';
+    expect(awardOpen(session)).toBe(false);
     session.finalStep = 'reveal';
     expect(awardOpen(session)).toBe(false);
     session.phase = 'end';
@@ -498,6 +503,7 @@ describe('final reveal with N', () => {
     goToRound(session, game, 1);
     for (let i = 0; i < 4; i++) finalNext(session, game); // category → wagers → question → answer → reveal
     const f = session.final!;
+    for (const id of f.players) f.wagers[id] = 0;
     expect(f.current).toBe(c);
     expect(finalAdvance(session)).toBe('shown');
     expect(f.shown[c]).toBe(true);
@@ -540,6 +546,7 @@ describe('final reveal with N', () => {
     applyScore(session, game, [a], 300, 'x');
     goToRound(session, game, 1);
     for (let i = 0; i < 4; i++) finalNext(session, game);
+    session.final!.wagers[a] = 0;
     finalJudge(session, game, a, true);
     finalNext(session, game);
     expect(session.phase).toBe('end');

@@ -64,6 +64,8 @@
     onfinalstep,
     ontiebreaker,
     ontiebreakerdone,
+    oncowinners,
+    onjudge,
     onrolloff,
     onlog,
     onplayers,
@@ -140,6 +142,10 @@
     /** Play the tiebreaker clue (from the end screen's tie). */
     ontiebreaker: () => void;
     ontiebreakerdone: () => void;
+    /** The tied leaders were declared co-winners (the winner fanfare). */
+    oncowinners?: () => void;
+    /** The Final reveals: a player marked right or wrong (with its sound). */
+    onjudge: (playerId: string, right: boolean) => void;
     onrolloff?: (ids: string[]) => void;
     /** Open or close the 📜 Log (with a tab: open it on that tab). */
     onlog: (tab?: LogTab) => void;
@@ -212,6 +218,9 @@
   /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
   const cancelBlocked = $derived(!ddWager && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
+  /** 0 is an amount too: a Daily Double wagered at 0 (a 0 result), the tiebreaker's winner (no points). */
+  const zeroOk = $derived(amount === 0 && ((session.phase === 'clue' && session.dd?.stage === 'question') || session.phase === 'tiebreaker'));
+  const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   const awardLabel = $derived.by(() => {
     if (selected.length !== 1) return `＋ Award${selected.length ? ` (${selected.length})` : ''}`;
     const p = session.players.find((x) => x.id === selected[0]);
@@ -336,7 +345,7 @@
       </span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
-      <span class="muted">Select the winner and press ＋ Award, then go back to the results.</span>
+      <span class="muted">Select the winner and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
     {:else}
       <b>Game over</b>
       <span class="muted hint">Click a score to fix it.</span>
@@ -384,7 +393,7 @@
   <!-- (Not while its title card is up: the category isn't on screen yet.) -->
   {#if session.phase === 'final' && session.intro?.stage !== 'title'}
     <div class="mode-host">
-      <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} onback={onbackfromfinal} />
+      <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} {onjudge} onback={onbackfromfinal} />
     </div>
   {/if}
 
@@ -411,7 +420,7 @@
   {/if}
 
   {#if session.phase === 'end'}
-    <div class="mode-host"><EndControls {game} {session} {onrolloff} {ontiebreaker} onback={onbackfromend} {onrematch} /></div>
+    <div class="mode-host"><EndControls {game} {session} {onrolloff} {ontiebreaker} {oncowinners} onback={onbackfromend} {onrematch} /></div>
   {/if}
 
   {#if showPlayers}
@@ -499,10 +508,10 @@
           }}
         />
       </label>
-      <button class="good" disabled={!selected.length || !amount} onclick={() => onaward(1)} title="Enter">
+      <button class="good" disabled={!canAward} onclick={() => onaward(1)} title="Enter">
         {awardLabel}
       </button>
-      <button class="bad" disabled={!selected.length || !amount} onclick={() => onaward(-1)} title="Shift+Enter">
+      <button class="bad" disabled={!canAward || (session.phase === 'tiebreaker' && !amount)} onclick={() => onaward(-1)} title="Shift+Enter">
         − Deduct
       </button>
       {#if buzzing}

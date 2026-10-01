@@ -11,6 +11,8 @@ export interface Pop {
   id: string;
   text: string;
   color: string;
+  /** One player's pop: on the board it sits over their plate (a group's pop sits in the middle). */
+  playerId?: string;
 }
 
 /** Countdown clock. Time is computed from timestamps so both windows agree without ticking messages. */
@@ -30,6 +32,8 @@ export interface SoundCue {
   nonce: string;
   /** When the host started it (Date.now()): a window that gets it much later doesn't play it. */
   at?: number;
+  /** Stop the sounds still playing first (the think music when the answer goes up). Otherwise short cues overlap. */
+  cut?: boolean;
 }
 
 /**
@@ -190,6 +194,20 @@ export function addTime(live: Live, seconds: number): void {
   t.total += Math.max(seconds, -timerRemaining(t));
 }
 
-export function playSound(live: Live, media: string | undefined): void {
-  live.sound = media ? { media, nonce: newId(), at: Date.now() } : null;
+export function playSound(live: Live, media: string | undefined, cut = false): void {
+  live.sound = media ? { media, nonce: newId(), at: Date.now(), ...(cut ? { cut } : {}) } : null;
+}
+
+/** At most this many cues play at once (the oldest stops for a new one). */
+export const MAX_CUES = 3;
+
+/**
+ * The cues playing in a window after `cue` arrives (`playing`: the ones still going, oldest first). A cue never cuts
+ * off the one before it unless it says so (`cut`), or more than MAX_CUES would play. null (the host stopped the
+ * sound) stops them all.
+ */
+export function cuesAfter(playing: SoundCue[], cue: SoundCue | null): SoundCue[] {
+  if (!cue) return [];
+  if (playing.some((c) => c.nonce === cue.nonce)) return playing;
+  return [...(cue.cut ? [] : playing), cue].slice(-MAX_CUES);
 }

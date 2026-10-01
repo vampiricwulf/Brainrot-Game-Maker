@@ -8,11 +8,12 @@
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import type { MediaRole } from '../lib/mediactl.svelte';
+  import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
-  import type { Live, StageAction } from '../lib/live';
+  import { cuesAfter, type Live, type SoundCue, type StageAction } from '../lib/live';
+  import { plateCenter } from './flow';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
   import ScoreBar from './ScoreBar.svelte';
@@ -115,6 +116,14 @@
   const layout = $derived(boardLayout(game.theme, !!bannerUrl));
   /** On the board, score pops sit over the score bar. */
   const popsOnBar = $derived(session.phase === 'board' && !session.intro && layout.score ? layout.score : null);
+  /** The score bar is at the top of the board: pops hang below the plates' names instead. */
+  const barTop = $derived(!!popsOnBar && popsOnBar.top === 0);
+  /** A player's pop over their plate (its centre, kept on the stage); null for a group's pop. */
+  function popX(playerId: string | undefined): number | null {
+    const i = playerId ? session.players.findIndex((p) => p.id === playerId) : -1;
+    if (i < 0) return null;
+    return Math.min(1720, Math.max(200, plateCenter(session.players.length, i, codeSpot === 'bar' ? 230 : 0)));
+  }
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
   /** The round's title card, for an RPG, board-game or Final round (a board round has its own, before the tiles fill in). */
@@ -126,14 +135,47 @@
   const answering = $derived(session.phase === 'clue' && !session.dd && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
-  // started) stays quiet: an audience window opened mid-game doesn't replay the round intro.
+  // started) stays quiet: an audience window opened mid-game doesn't replay the round intro. Short cues overlap (a
+  // right-answer sound isn't cut off by the reveal's), a few at most; the host stopping the sound stops them all. Under
+  // the cover nothing new plays, and what's playing waits.
   let heard = '';
-  let cueNow = $state<string | null>(null);
+  let cues = $state<SoundCue[]>([]);
   $effect(() => {
     const c = live.sound;
-    if (!c || c.nonce === heard) return;
-    heard = c.nonce;
-    cueNow = !c.at || Date.now() - c.at < 4000 ? c.nonce : null;
+    untrack(() => {
+      if (!c) return void (cues.length && (cues = []));
+      if (c.nonce === heard) return;
+      heard = c.nonce;
+      if ((c.at && Date.now() - c.at >= 4000) || live.cover) return void (c.cut && (cues = []));
+      cues = cuesAfter(cues, c);
+    });
+  });
+  const cueDone = (nonce: string) => (cues = cues.filter((c) => c.nonce !== nonce));
+  /** A cue's sound waits under the cover and goes on after it. */
+  function holdWhile(node: HTMLMediaElement, held: boolean) {
+    let paused = false;
+    const set = (h: boolean) => {
+      if (h && !node.paused) {
+        paused = true;
+        node.pause();
+      } else if (!h && paused) {
+        paused = false;
+        void node.play().catch(() => {});
+      }
+    };
+    set(held);
+    return { update: set };
+  }
+  // A clue's (or a Final's) media goes on where it was when its slide comes back (the answer hidden again).
+  $effect.pre(() => {
+    const c = session.currentClue;
+    mediaScope(
+      session.phase === 'clue' && c
+        ? `clue:${c.round}.${c.cat}.${c.row}`
+        : session.phase === 'final' || session.phase === 'tiebreaker'
+          ? `${session.phase}:${session.currentRound}`
+          : '',
+    );
   });
   /**
    * Phone buzzers: the join code in a corner while the room is open (unless the host turned it off), kept off the board's
@@ -295,8 +337,9 @@
               <div class="spot" in:fly={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
                 <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
                 <div class="spot-wager">
-                  {#if f.shown[spotlight.id]}
-                    Wagered <b>{formatPoints(f.wagers[spotlight.id] ?? 0, sym)}</b>
+                  <!-- (No wager in yet: it stays ??? until the host types it, never $0.) -->
+                  {#if f.shown[spotlight.id] && typeof f.wagers[spotlight.id] === 'number'}
+                    Wagered <b>{formatPoints(f.wagers[spotlight.id], sym)}</b>
                   {:else}
                     Wager: ???
                   {/if}
@@ -372,15 +415,28 @@
   <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} {onshopbuy} />
 {/if}
 
-<!-- On the board they sit over the score bar (not over the tiles), elsewhere near the foot of the stage. -->
+<!--
+  On the board a player's pop sits on their plate's name, above its score (a group's in the middle of the bar);
+  elsewhere they sit near the foot of the stage.
+-->
 <div
   class="pops"
-  style:top={popsOnBar ? `${popsOnBar.top + popsOnBar.height / 2}px` : undefined}
+  style:top={popsOnBar ? `${barTop ? popsOnBar.top + popsOnBar.height - 30 : popsOnBar.top + 30}px` : undefined}
   style:bottom={popsOnBar ? undefined : '40px'}
   class:on-bar={!!popsOnBar}
+  class:bar-top={barTop}
 >
   {#each live.pops as p (p.id)}
-    <div class="pop" style:background={p.color} style:color={textOn(p.color)} in:fly={{ y: 80, duration: 250 }} out:fade>
+    {@const at = popsOnBar ? popX(p.playerId) : null}
+    <div
+      class="pop"
+      class:anchored={at !== null}
+      style:left={at !== null ? `${at}px` : undefined}
+      style:background={p.color}
+      style:color={textOn(p.color)}
+      in:fly={{ y: barTop ? -60 : 60, duration: 250 }}
+      out:fade
+    >
       {p.text}
     </div>
   {/each}
@@ -410,11 +466,14 @@
   </div>
 {/if}
 
-<!-- Game sound cue: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
-{#if role !== 'mirror' && live.sound && live.sound.nonce === cueNow && soundUrl(live.sound.media)}
-  {#key live.sound.nonce}
-    <audio use:autoPlay={soundUrl(live.sound.media)!}></audio>
-  {/key}
+<!-- Game sound cues: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
+{#if role !== 'mirror'}
+  {#each cues as c (c.nonce)}
+    {@const url = soundUrl(c.media)}
+    {#if url}
+      <audio use:autoPlay={url} use:holdWhile={!!live.cover} onended={() => cueDone(c.nonce)}></audio>
+    {/if}
+  {/each}
 {/if}
 <!-- The dice, wheel and board-move sounds, timed with the animations. -->
 {#if role !== 'mirror'}<CuePlayer {game} {session} {live} />{/if}
@@ -840,7 +899,24 @@
     z-index: 10;
   }
   .pops.on-bar {
-    transform: translateY(-50%);
+    transform: translateY(-100%);
+    align-items: flex-end;
+  }
+  .pops.on-bar.bar-top {
+    transform: none;
+    align-items: flex-start;
+  }
+  /* Over its player's plate. */
+  .pop.anchored {
+    position: absolute;
+    translate: -50% 0;
+  }
+  .on-bar .pop.anchored {
+    bottom: 0;
+  }
+  .on-bar.bar-top .pop.anchored {
+    top: 0;
+    bottom: auto;
   }
   .caption {
     position: absolute;
@@ -858,6 +934,7 @@
     pointer-events: none;
   }
   .pop {
+    white-space: nowrap;
     font-family: var(--value-font);
     font-size: 60px;
     font-weight: 800;
