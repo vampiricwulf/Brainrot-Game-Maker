@@ -239,7 +239,7 @@ export function addSampleGame(game: Game): number {
   const final = newFinalRound('Final Jeopardy!');
   final.category = 'Streaming';
   setSlideText(final.questionSlide, 'This word means talking to the chat while you play');
-  setSlideText(final.answerSlide, 'What is “just chatting”?');
+  setSlideText(final.answerSlide, 'Just chatting');
   const rpg = sampleWorld(game);
   const bg = sampleBoardGame();
   game.rounds.push(board, rpg, bg, final);

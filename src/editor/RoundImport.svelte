@@ -1,5 +1,5 @@
 <!--
-  Import round from a .brainrot…: the rounds of another game, to tick and bring in (with their worlds, wheels, items
+  Import rounds…: the rounds of another game, to tick and bring in (with their worlds, wheels, items
   and files). One step.
 -->
 <script lang="ts">

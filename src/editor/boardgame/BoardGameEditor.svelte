@@ -689,7 +689,7 @@
             <button class="small" onclick={() => (round.start = sel.id)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
             <button class="small" onclick={() => duplicateSpace(sel)} title="A copy after it on the path (Ctrl+D)">⧉ Duplicate space</button>
             <span class="spacer"></span>
-            <button class="ghost small" onclick={() => removeSpace(sel)}>Delete space</button>
+            <button class="ghost small" onclick={() => removeSpace(sel)}>🗑 Delete space</button>
           </div>
         {:else}
           <p class="muted small">

@@ -282,7 +282,7 @@ try {
   await json.saveAs(saved);
   await openGameFile(page, saved);
   await answerReplace(page, 'Discard');
-  await page.getByText(/^Opened "/).waitFor();
+  await page.getByText(/^Opened “/).waitFor();
   await historyTab.click();
   assert((await rows.count()) === 1 && (await rows.first().innerText()).includes('📂 Opened “Untitled Game”'), 'a game opened has only where it was opened in its history');
   await key('Control+z');

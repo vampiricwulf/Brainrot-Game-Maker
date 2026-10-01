@@ -54,6 +54,7 @@ try {
   await page.getByRole('button', { name: '🔗 Link to…' }).click();
   await page.getByRole('button', { name: 'Space Space 7' }).click();
   assert((await page.locator('.side').innerText()).includes('A fork'), 'linking a second way makes a fork');
+  assert((await page.locator('.side').getByRole('button', { name: '🗑 Delete space' }).count()) === 1, 'the space card’s Delete space has its 🗑');
   // Both ways: one line with an arrow at each end.
   const arrowsBefore = await page.locator('.canvas line[marker-start]').count();
   await page.getByRole('button', { name: 'Space Space 2' }).click();
@@ -221,7 +222,7 @@ try {
   await page.waitForTimeout(500);
   await openGameFile(page, saved);
   await answerReplace(page, 'Discard');
-  await page.getByText(/^Opened "/).waitFor();
+  await page.getByText(/^Opened “/).waitFor();
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
   assert(

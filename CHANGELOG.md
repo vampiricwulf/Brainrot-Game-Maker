@@ -227,6 +227,8 @@ done, the Unreleased lines move under that day's heading.
 - 🔊 Sounds: switching off a sound that has your own file no longer forgets the file: it says "Off (keeps
   intro.wav)", and ticking it again plays that file, not the built-in sound. (Games saved before keep working; a sound
   they had switched off simply stays off.)
+- Small wording: ＋ Add round's "📂 Import rounds…" is no longer cut off; the space card's Delete space has its 🗑;
+  the "Opened “…”" toast uses curly quotes; the sample game's Final answer is "Just chatting", like its board answers.
 
 ### Removed
 - **Buzzing in from this computer's keys**: buzzers are phones only, since games are played online. The "Players buzz

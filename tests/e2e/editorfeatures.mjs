@@ -125,7 +125,16 @@ try {
   assert((await page.getByRole('menuitem', { name: '⏭ Skip next turn' }).count()) === 1, 'a space offers ⏭ Skip next turn');
   assert((await page.getByRole('menuitem', { name: '↔ Move ±N spaces' }).count()) === 1, '↔ Move ±N spaces');
   assert((await page.getByRole('menuitem', { name: '🔁 Roll again' }).count()) === 1, 'and 🔁 Roll again');
-  await page.keyboard.press('Escape');
+  // ↔ Move ±N: a negative number turns it round, and the box shows what's kept.
+  await page.getByRole('menuitem', { name: '↔ Move ±N spaces' }).click();
+  const spaces = page.getByLabel('Spaces').last();
+  await spaces.fill('-4');
+  await spaces.press('Tab');
+  const way = await page.getByLabel('Which way').last().inputValue();
+  assert(way === 'on' && (await spaces.inputValue()) === '4', `↔ Move: typing -4 on Back 3 turns it round, Forward 4 (${way} ${await spaces.inputValue()})`);
+  await page.getByRole('button', { name: '＋ Add button' }).last().click();
+  await page.getByRole('menuitem', { name: '⏭ Skip next turn' }).click();
+  assert((await page.getByText('turn(s)').count()) === 0 && (await page.getByText(/^turn$/).count()) >= 1, '“Miss 1 turn”, not “turn(s)”');
 
   // ---------- Theme: my theme ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
@@ -155,7 +164,7 @@ try {
   copyFileSync(await download.path(), other);
   const before = (await tabs()).length;
   await page.getByRole('button', { name: '＋ Add round' }).click();
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: /Import round from a \.brainrot/ }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
   await chooser.setFiles(other);
   const pick = page.getByRole('dialog', { name: 'Import rounds' });
   await pick.getByLabel(/Adventure/).check();
@@ -173,7 +182,7 @@ try {
   const changed = join(tmpdir(), `editorfeatures-changed-${Date.now()}.json`);
   writeFileSync(changed, JSON.stringify(json));
   await page.getByRole('button', { name: '＋ Add round' }).click();
-  const [chooser3] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: /Import round from a \.brainrot/ }).click()]);
+  const [chooser3] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
   await chooser3.setFiles(changed);
   const pick2 = page.getByRole('dialog', { name: 'Import rounds' });
   await pick2.getByLabel(/Adventure/).check();

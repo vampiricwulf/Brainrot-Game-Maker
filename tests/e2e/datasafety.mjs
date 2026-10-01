@@ -195,7 +195,7 @@ try {
   writeFileSync(resolve('test-results/datasafety-hand.json'), JSON.stringify(game));
   // (The game open was saved with Save first, as its history remembers: nothing to ask.)
   await openGameFile(page, resolve('test-results/datasafety-hand.json'));
-  await page.getByText(/^Opened "/).waitFor();
+  await page.getByText(/^Opened “/).waitFor();
   await page.locator('nav button.round-tab').first().click();
   assert((await page.locator('.tile').count()) === 30, 'a hand-edited game missing its row values, a slide and a color opens with them filled in');
   game.rounds[0].mode = 'quiz';

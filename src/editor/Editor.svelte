@@ -168,7 +168,7 @@
     if (id) focusRoundName(id);
   }
 
-  /** Import round from a .brainrot…: the other game, while its rounds are picked. */
+  /** Import rounds…: the other game, while its rounds are picked. */
   let importFrom = $state<Game | null>(null);
   async function importRounds(): Promise<void> {
     importFrom = await pickOtherGame(game);
@@ -444,7 +444,7 @@
     } catch (e) {
       return void tell((e as Error).message);
     }
-    if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` })) toast(`Opened "${opened.title}"`);
+    if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` })) toast(`Opened “${opened.title}”`);
   }
 
   // Desktop app: a game file the app was opened with ("Open with…") opens like Open….

@@ -1,4 +1,4 @@
-// Whole rounds between games: Copy round / Paste round, and Import round from a .brainrot…. A round takes along what
+// Whole rounds between games: Copy round / Paste round, and Import rounds…. A round takes along what
 // it uses from its game (an RPG round its world; any round the wheels, dice, stats, items and shops its tiles,
 // objects and spaces point at, and the files it all shows), and the game it goes into adds the ones it hasn't got.
 import { clipboard, mediaShownBy, type RoundBundle } from './clipboard.svelte';

@@ -91,7 +91,7 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
     { heading: 'Start from a template' },
     ...TEMPLATES.map((t) => ({ label: `${ROUND_MODES[t.mode].icon} ${t.label}`, hint: t.hint, onclick: () => shown(addTemplate(game, t)) })),
     { sep: true },
-    { label: '📂 Import round from a .brainrot…', hint: 'Bring in rounds of another game, with their worlds, wheels, items and files', onclick: importRounds },
+    { label: '📂 Import rounds…', hint: 'From another game’s .brainrot file, with their worlds, wheels, items and files', onclick: importRounds },
     {
       label: b ? `📋 Paste round “${roundName(b.round)}”` : '📋 Paste round',
       hint: b ? undefined : 'Copy a round first (right-click its tab)',
