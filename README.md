@@ -140,7 +140,8 @@ The rooms run on a small buzzer server
 own. Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode
 on without it (you pick who answers); the setting stays with the game for a copy that has a server.
 
-**Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal…): preview, replace or switch each
+**Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal, and an RPG's quiet steps,
+doorways, pick-ups, coins and damage…): preview, replace or switch each
 off in the editor's 🔊 Sounds tab (↺ goes back to the built-in sound; a sound switched off keeps the file chosen for it).
 The players and rules aren't there: the tab says so at the top, with a button to the ▶ Play screen.
 
@@ -155,17 +156,21 @@ hidden objects. Use the separate audience window when that matters.
 
 **RPG rounds** have these controls:
 
-- A movement pad, and a minimap that expands to the full map so you can jump the party anywhere.
-- Split and regroup parties.
+- A movement pad, and a minimap that expands to the full map so you can jump the party anywhere. On a big world the
+  minimap shows the screens around the party; the arrow keys go from screen to screen on it.
+- The map on stream (`V`) shows only what viewers know, with a cell around it, and says when the party is on a map
+  hidden from them.
+- Split and regroup parties. An object's "the party" buttons act on the party standing at that object.
 - Player cards with stats and inventory.
 - Shops.
 - Live improvising: edit the screen, add text, or draw objects on a drawpad.
 
 **Board game rounds** have these controls:
 
-- Roll and move, picking the way at each fork.
+- Roll (or spin the movement wheel) and move, picking the way at each fork. Moving back goes back the way the player
+  came.
 - Send players to any space.
-- Each space's actions.
+- Each space's actions, for the player they're for (the one who landed there, or the ones picked on its card).
 
 <table>
 <tr>

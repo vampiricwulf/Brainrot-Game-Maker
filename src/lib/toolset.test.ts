@@ -22,6 +22,7 @@ import {
   SCORE_CURRENCY,
   shopCurrency,
   sell,
+  sellPrice,
   setPicker,
   setStat,
   statValue,
@@ -496,5 +497,29 @@ describe('the host’s own choices', () => {
     expect(score(session, 'a')).toBe(300);
     redoAction(session);
     expect(session.players[0].name).toBe('Alice');
+  });
+});
+
+describe('selling', () => {
+  it('sells the very entry picked (not another of the same item they wear)', () => {
+    const { game, session } = setup();
+    const s: Shop = { id: 'v', name: 'Village', currency: 'gold', stock: [], buysBack: { rate: 0.5 } };
+    giveItem(game, session, 'a', 'sword', 2);
+    const [first, second] = inventory(session, 'a');
+    second.equipped = true;
+    expect(sell(game, session, s, 'a', first.id)).toEqual({ ok: true, text: 'Ann sold Sword for 🪙6' });
+    expect(inventory(session, 'a')).toEqual([second]);
+    expect(inventory(session, 'a')[0].equipped).toBe(true);
+  });
+
+  it('doesn’t buy secret items or ones with no price', () => {
+    const { game, session } = setup();
+    game.items!.push({ id: 'key', name: 'Secret Key', stackable: false, secret: true, price: 10 }, { id: 'rock', name: 'Rock', stackable: false });
+    const s: Shop = { id: 'v', name: 'Village', currency: 'gold', stock: [], buysBack: { rate: 0.5 } };
+    expect(sellPrice(game, s, 'key')).toBeNull();
+    expect(sellPrice(game, s, 'rock')).toBeNull();
+    expect(sellPrice(game, s, 'potion')).toBe(2);
+    giveItem(game, session, 'a', 'key', 1);
+    expect(sell(game, session, s, 'a', inventory(session, 'a')[0].id)).toEqual({ ok: false, error: 'Village doesn’t buy Secret Key' });
   });
 });

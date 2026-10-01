@@ -8,6 +8,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { Game, Session } from '../../lib/model';
+  import { blip } from '../../lib/live';
   import { balance, entryName, formatPrice, inventory, itemDef, logged, sell, sellPrice, setStock, shopPrice, stockLeft } from '../../lib/toolset';
   import { playerName } from '../../lib/session';
   import { shopBuy, shopBuyer } from './shopops';
@@ -29,6 +30,7 @@
     let result: ReturnType<typeof sell> | undefined;
     logged(session, `${playerName(session, who)} sells ${entry ? entryName(game, entry) : 'an item'}`, () => (result = sell(game, session, s, who, entryId)));
     if (result) toast(result.ok ? result.text : result.error, 3000);
+    if (result?.ok) blip(app.live, 'coin');
   }
 
   /** A price for this sale, or the stock left, being typed in (asked inline: a browser dialog would show on stream). */
@@ -124,7 +126,7 @@
       <span class="muted small">Sell ({Math.round(shop.buysBack.rate * 100)}%):</span>
       {#each sellable as e (e.id)}
         {@const pr = sellPrice(game, shop, e.item) ?? 0}
-        <button class="small" onclick={() => sellEntry(e.id)}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''} → {formatPrice(game, shop, pr)}</button>
+        <button class="small" onclick={() => sellEntry(e.id)} title={e.equipped ? 'The one they wear' : undefined}>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{e.equipped ? ' (worn)' : ''} → {formatPrice(game, shop, pr)}</button>
       {:else}
         <span class="muted small">Nothing to sell.</span>
       {/each}

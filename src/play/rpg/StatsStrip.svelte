@@ -29,6 +29,11 @@
   // would cover the bottom of the screen.
   const compact = $derived(players.length > 6 || players.length * (1 + fields.length) > 12);
   const oneRow = $derived(players.length <= 6);
+  /**
+   * More hearts than this (a few players: 10, more: 5) show as "♥ 7/10": a long row of hearts would push what comes
+   * after it (the gold) under the next card.
+   */
+  const heartsUpTo = $derived(players.length <= 3 ? 10 : 5);
 </script>
 
 <div class="strip" class:compact class:one-row={oneRow} role="list">
@@ -55,6 +60,8 @@
                 <span class="fill" style:width="{Math.max(0, Math.min(100, (Number(v) / f.max) * 100))}%"></span>
                 <span class="lbl">{f.name} {v}</span>
               </span>
+            {:else if f.type === 'number' && f.display === 'hearts' && Math.max(f.max ?? 0, Number(v)) > heartsUpTo}
+              <span class="hearts count" title="{f.name} {v}" style:color={f.color ?? '#e6194b'}>♥ {v}{f.max ? `/${f.max}` : ''}</span>
             {:else if f.type === 'number' && f.display === 'hearts'}
               <span class="hearts" title="{f.name} {v}" style:color={f.color ?? '#e6194b'}>
                 {'♥'.repeat(Math.max(0, Math.min(20, Number(v))))}{f.max ? '♡'.repeat(Math.max(0, Math.min(20, f.max) - Math.max(0, Number(v)))) : ''}
@@ -181,6 +188,10 @@
   }
   .hearts {
     letter-spacing: 1px;
+  }
+  .hearts.count {
+    letter-spacing: 0;
+    white-space: nowrap;
   }
   .tag {
     padding: 1px 8px;

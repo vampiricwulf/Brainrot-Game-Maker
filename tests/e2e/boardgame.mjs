@@ -1,7 +1,7 @@
 // Board game rounds: build a board (a loop with a fork, a Start bonus, an off-board zone), then play it: roll, move,
 // pick the way at the fork, pass Start, take turns, send someone to the Shadow Realm, undo.
 import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, answerReplace, dragBy, openGameFile, playWithPlayers } from './helpers.mjs';
@@ -240,6 +240,95 @@ try {
     (await page.getByRole('button', { name: /^Space / }).count()) === 12 && (await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()),
     'a game opened over the board starts its undo afresh (Ctrl+Z brings back nothing from before)',
   );
+
+  // A board from a file: a fork whose ways meet again, a "Move +3" space, a space that rolls a d20, Finish low down,
+  // and a movement wheel.
+  const sp = (id, name, x, y, next, more = {}) => ({ id, name, x, y, color: '#4363d8', next, ...more });
+  const board = {
+    id: 'r_bg',
+    name: 'Board game',
+    mode: 'boardgame',
+    slide: { background: { color: '#1d5e3a' }, elements: [] },
+    spaces: [
+      sp('b0', 'Start', 300, 300, ['b1']),
+      sp('b1', 'Space 2', 500, 300, ['b2']),
+      sp('b2', 'Fork', 700, 300, ['b3', 'b5']),
+      sp('b3', 'Move +3', 900, 300, ['b4'], { onLand: [{ id: 'a1', do: 'steps', steps: 3, who: 'party' }] }),
+      sp('b4', 'Space 5', 1100, 300, ['b5']),
+      sp('b5', 'Merge', 1300, 450, ['b6']),
+      sp('b6', 'Roll a d20', 1500, 450, ['b7'], { onLand: [{ id: 'a2', do: 'dice', dice: 'd20' }] }),
+      sp('b7', 'Space 8', 1500, 650, ['b8']),
+      sp('b8', 'Finish', 1000, 910, []),
+    ],
+    mover: { kind: 'wheel', wheel: 'w_move' },
+    zones: [],
+  };
+  const g = {
+    id: 'g_board_e2e', version: 2, title: 'Board check',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+    players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }, { id: 'p2', name: 'Bob', color: '#3cb44b' }],
+    rounds: [board], media: [], audio: {}, dice: [], theme: {},
+    wheels: [{ id: 'w_move', name: 'Move wheel', segments: ['1', '2', '3'].map((label, i) => ({ id: `s${i}`, label, color: ['#f00', '#0f0', '#00f'][i], weight: 1 })), spinDurationMs: 800, removeAfterLanding: false }],
+  };
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const boardFile = resolve('test-results/boardgame-check.json');
+  writeFileSync(boardFile, JSON.stringify(g));
+  await openGameFile(page, boardFile);
+  const replace = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
+  if (await replace.isVisible().catch(() => false)) await replace.getByRole('button', { name: 'Discard', exact: true }).click();
+  await page.getByText(/^Opened “/).waitFor();
+  const line = page.locator('nav .problem', { hasText: 'Board game' });
+  assert(((await line.getAttribute('title')) ?? (await line.innerText())).includes('Finish is under the stats strip (move it up)'), 'the checklist warns about a space under the stats strip');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  // (The game left behind earlier is asked about first.)
+  const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
+  await fresh.or(page.getByRole('button', { name: 'Start game ▶' })).first().waitFor();
+  if (await fresh.isVisible()) await fresh.click();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.locator('.bh').waitFor();
+  if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
+  assert(
+    (await page.locator('.stage [data-space="b3"] .n').count()) === 0 && (await page.locator('.stage [data-space="b1"] .n').innerText()) === '2',
+    'only spaces named “Space N” draw a number (not “Move +3”)',
+  );
+  assert((await page.getByRole('button', { name: 'Ann later in the turn order' }).count()) === 1, 'the turn order’s arrows say whose they are');
+  // One press spins the movement wheel, and its slice fills in the steps.
+  await page.getByRole('button', { name: '🎡 Spin to move' }).click();
+  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 5000 });
+  assert(true, 'one press spins the movement wheel, and where it lands fills in the steps');
+  // Another roll (a space's d20) doesn't.
+  await page.keyboard.press('Escape');
+  await page.getByLabel('Steps').fill('');
+  await page.locator('.stage [data-space="b6"]').click();
+  await page.getByRole('dialog', { name: 'Space: Roll a d20' }).getByRole('button', { name: 'Roll d20' }).click();
+  await page.waitForTimeout(1800);
+  assert((await page.locator('.stage-box .ov').count()) === 1 && (await page.getByLabel('Steps').inputValue()) === '', 'a space’s d20 roll doesn’t fill in the steps');
+  // Esc: the dice go, then the card.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  // Ann's turn; Bob selected: the Move +3 space's button moves Bob, not Ann.
+  await page.keyboard.press('2');
+  await page.locator('.stage [data-space="b3"]').click();
+  const plus3 = page.getByRole('dialog', { name: 'Space: Move +3' });
+  assert((await plus3.innerText()).includes('Landing on it (Bob)'), 'the space’s card is for the selected player');
+  await plus3.getByRole('button', { name: 'Forward 3 spaces' }).click();
+  assert((await toast()).includes('Forward 3 spaces: Bob · At Fork'), `its button moves Bob, whoever’s turn it is (${await toast()})`);
+  assert((await tokenOn('Ann')).x < 400, 'and Ann stays at Start');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
+  assert((await toast()).includes('Bob is at a fork: pick the way first'), 'Enter at a fork says to pick the way');
+  await page.locator('.fork').getByRole('button', { name: '→ Merge' }).click();
+  assert((await toast()).includes('Landed on Merge'), 'the fork’s other way leads to where the ways meet');
+  // Back 1 from where the ways meet goes back the way Bob came (the Fork), not along the other way.
+  await page.locator('.bh .ord .nm', { hasText: 'Bob' }).click();
+  await page.keyboard.press('Escape');
+  await page.getByLabel('Steps').fill('1');
+  await page.getByRole('button', { name: /^◀ Back/ }).click();
+  assert((await toast()) === 'Bob: Landed on Fork', `moving back retraces the way (${await toast()})`);
+  await page.getByLabel('Steps').fill('2');
+  await page.keyboard.press('Enter');
+  assert((await toast()).includes('Bob: At Fork: which way?'), `after moving back onto the fork, the next move asks the way again (${await toast()})`);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-file.png` });
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame.png` });

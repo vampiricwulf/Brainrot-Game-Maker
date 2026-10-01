@@ -163,12 +163,16 @@
     z-index: 150;
     background: rgba(0, 0, 0, 0.6);
     display: grid;
+    /* One cell the size of the window (not of what's in it: a big map would push the dialog off screen). */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     padding: 16px;
   }
   .modal {
     width: min(1500px, 100%);
     height: min(900px, 100%);
+    min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;

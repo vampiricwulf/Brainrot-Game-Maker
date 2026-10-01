@@ -11,6 +11,9 @@ import {
   focusRef,
   freshObjectIds,
   joinParty,
+  mapCrop,
+  place,
+  standArea,
   mapState,
   moveTo,
   nameParty,
@@ -413,5 +416,69 @@ describe('RPG: joining a party, and naming one', () => {
     st.active = st.parties[0].id;
     regroup(game, st, world, ['a', 'b', 'c']);
     expect(st.parties.map((p) => p.name)).toEqual(['Heroes']);
+  });
+});
+
+describe('RPG: where arriving players stand', () => {
+  /** Four players on a 3×3 map, all in the middle screen. */
+  function four() {
+    const s = setup();
+    s.game.players.push({ id: 'c', name: 'Cy', color: '#4363d8' }, { id: 'd', name: 'Dee', color: '#f58231' });
+    const over = s.world.maps[0];
+    over.screens = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) over.screens.push(newScreen(c, r, `${c},${r}`));
+    over.cols = over.rows = 3;
+    const session = newSession(s.game);
+    const st = ensureWorld(session, s.game, s.round)!;
+    moveTo(s.game, st, s.world, at(s.world, '1,1'), {});
+    return { ...s, session, st };
+  }
+  const spots = (st: ReturnType<typeof four>['st']) => ['a', 'b', 'c', 'd'].map((id) => ({ x: st.positions[id].x, y: st.positions[id].y }));
+  const apart = (ps: { x: number; y: number }[]) => ps.every((p, i) => ps.every((q, j) => i === j || Math.abs(p.x - q.x) >= 150 || Math.abs(p.y - q.y) >= 150));
+
+  it('walking north, they stand clear of the stats strip along the bottom', () => {
+    const { game, world, st } = four();
+    expect(step(game, st, world, 'n')).toBeNull();
+    const area = standArea(game);
+    expect(spots(st).every((p) => p.y <= area.bottom && p.y <= 1080 - 150 - 80)).toBe(true);
+    expect(apart(spots(st))).toBe(true);
+  });
+
+  it('going into a corner, they stand side by side (not pushed onto each other at the edge)', () => {
+    const { game, world, st } = four();
+    expect(step(game, st, world, 'nw')).toBeNull();
+    const ps = spots(st);
+    expect(new Set(ps.map((p) => p.x)).size).toBe(4);
+    expect(apart(ps)).toBe(true);
+    expect(ps.every((p) => p.x >= 75 && p.x <= 1845 && p.y >= standArea(game).top)).toBe(true);
+  });
+
+  it('a column too long for the screen goes on in a second one, further in', () => {
+    const { game, world, st } = four();
+    const many = Array.from({ length: 6 }, (_, i) => `x${i}`);
+    place(game, st, world, many, at(world, '0,1'), 'e');
+    const ps = many.map((id) => st.positions[id]);
+    expect(new Set(ps.map((p) => p.x)).size).toBe(2);
+    expect(apart(ps)).toBe(true);
+    expect(ps.every((p) => p.y >= standArea(game).top && p.y <= standArea(game).bottom)).toBe(true);
+  });
+});
+
+describe('RPG: the viewers’ map of a big world', () => {
+  it('shows the screens they know, with one cell around them', () => {
+    const { world, game, session, round } = setup();
+    const over = world.maps[0];
+    over.screens = [];
+    for (let r = 0; r < 20; r++) for (let c = 0; c < 20; c++) over.screens.push(newScreen(c, r, `${c},${r}`));
+    over.cols = over.rows = 20;
+    const st = ensureWorld(session, game, round)!;
+    // Only the start (0,0) known.
+    expect(mapCrop(st, over)).toEqual({ col: 0, row: 0, cols: 2, rows: 2 });
+    st.knowledge[over.screens[5 * 20 + 7].id] = 'discovered';
+    expect(mapCrop(st, over)).toEqual({ col: 0, row: 0, cols: 9, rows: 7 });
+    over.visibility = 'full';
+    expect(mapCrop(st, over)).toEqual({ col: 0, row: 0, cols: 20, rows: 20 });
+    over.visibility = 'hidden';
+    expect(mapCrop(st, over)).toBeNull();
   });
 });

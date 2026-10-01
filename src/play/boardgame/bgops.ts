@@ -99,7 +99,28 @@ export function turnNow(game: Game, session: Session, delta = 1): void {
   });
 }
 
-/** Roll the round's dice, or open its wheel (then spin it) for a move. Returns why it couldn't, or null. */
+/** The name the round's movement dice roll under (a saved preset's, else what the round says: "2d6"). */
+function moverDiceName(game: Game, round: BoardGameRound): string | undefined {
+  const m = round.mover;
+  if (m.kind !== 'dice') return undefined;
+  return game.dice.find((d) => d.name === m.dice || d.id === m.dice)?.name ?? (m.dice || 'd6');
+}
+
+/**
+ * The number of spaces the round's own dice or movement wheel just gave (a wheel slice labeled "3" or "Move 3"), or
+ * null. Other dice and wheels on screen (a space's "Roll d20", the Pick-a-player wheel, the 🎲 tool) don't count.
+ */
+export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay']): number | null {
+  const m = round.mover;
+  if (o?.kind === 'dice' && o.roll && m.kind === 'dice' && o.name === moverDiceName(game, round)) return o.roll.total;
+  if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) {
+    const n = parseInt(o.segments[o.result]?.label.match(/-?\d+/)?.[0] ?? '', 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/** Roll the round's dice, or spin its wheel, for a move. Returns why it couldn't, or null. */
 export function rollMover(game: Game, session: Session, live: Live): string | null {
   const { round } = boardNow(game, session);
   if (!round) return 'No board';
@@ -110,9 +131,9 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
   if (m.kind === 'wheel') {
     const w = game.wheels.find((x) => x.id === m.wheel);
     if (!w) return 'The movement wheel no longer exists: pick one in the editor';
-    // D again (or 🎡 Spin to move again) spins the wheel it opened.
-    if (o?.kind === 'wheel' && o.wheelId === w.id && !o.spin) spinWheel(live, session, game);
-    else openWheel(live, session, w);
+    // One press spins it (opened afresh, unless it's on screen waiting for a spin).
+    if (!(o?.kind === 'wheel' && o.wheelId === w.id && !o.spin)) openWheel(live, session, w);
+    spinWheel(live, session, game);
     return null;
   }
   if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
@@ -120,7 +141,7 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
   if (preset) rollDice(live, session, preset);
   else {
     const d = parseDice(m.dice) ?? { sides: 6, count: 1 };
-    rollDice(live, session, quickDice(d.sides, d.count, m.dice || 'd6'));
+    rollDice(live, session, quickDice(d.sides, d.count, moverDiceName(game, round)));
   }
   return null;
 }

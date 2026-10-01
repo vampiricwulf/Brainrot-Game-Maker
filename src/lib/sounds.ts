@@ -20,6 +20,12 @@ export const CUES: [CueKey, string, string][] = [
   ['wheelTick', 'Wheel tick', 'Each slice passing the pointer'],
   ['wheelLand', 'Wheel lands', 'When a wheel stops'],
   ['move', 'Board move', 'A board-game token moving'],
+  ['step', 'Step', 'RPG: the party walks to the next screen'],
+  ['blocked', 'Blocked', 'RPG: there’s no way that way'],
+  ['doorway', 'Doorway', 'RPG: through a doorway, or a way that leads somewhere else'],
+  ['pickUp', 'Pick up', 'RPG: a player picks something up'],
+  ['coin', 'Coins', 'Buying or selling in a shop'],
+  ['hurt', 'Damage', 'A button taking a stat like HP down'],
   ['finalThink', 'Final round think music', 'While the final question is up'],
   ['winner', 'Winner', 'On the winner screen'],
 ];
@@ -112,6 +118,22 @@ const VOICES: Partial<Record<CueKey, Voice[]>> = {
     { at: 0.06, len: 0.65, freq: 1320, wave: 'bell', decay: 4, vol: 0.7 },
   ],
   move: [{ at: 0, len: 0.1, freq: 600, to: 950, vol: 0.55, decay: 12 }],
+  // The RPG's: quiet and short, since they play all through a long session.
+  step: [0, 0.12].flatMap((at) => [
+    { at, len: 0.05, freq: 1, wave: 'noise' as const, vol: 0.25, decay: 70 },
+    { at, len: 0.07, freq: 150, to: 95, vol: 0.5, decay: 40 },
+  ]),
+  blocked: [{ at: 0, len: 0.13, freq: 170, to: 120, wave: 'buzz', vol: 0.45, decay: 22 }],
+  doorway: [
+    { at: 0, len: 0.26, freq: 260, to: 520, vol: 0.4, decay: 7 },
+    { at: 0.16, len: 0.22, freq: 880, wave: 'bell', vol: 0.35, decay: 14 },
+  ],
+  pickUp: notes([C6, G6], 0.07, 0.14, { decay: 18, vol: 0.5 }),
+  coin: [
+    { at: 0, len: 0.07, freq: 988, wave: 'bell', vol: 0.45, decay: 20 },
+    { at: 0.065, len: 0.28, freq: E6, wave: 'bell', vol: 0.45, decay: 10 },
+  ],
+  hurt: [{ at: 0, len: 0.2, freq: 320, to: 150, wave: 'buzz', vol: 0.4, decay: 9 }],
   winner: [
     ...notes([G4, G4, G4], 0.14, 0.12, { decay: 4 }),
     ...chord([C5, E5, G5], 0.42, 1.1, { decay: 1.8, vol: 0.6 }),

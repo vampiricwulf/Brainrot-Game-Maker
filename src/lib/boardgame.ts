@@ -26,6 +26,11 @@ export function nextSpaceName(round: BoardGameRound): string {
   return `Space ${Math.max(round.spaces.length, ...used) + 1}`;
 }
 
+/** The number a space named "Space N" has (drawn in it), else undefined: "Move +3" or "Back 4" aren't numbered. */
+export function spaceNumber(name: string): string | undefined {
+  return /^Space (\d+)$/.exec(name.trim())?.[1];
+}
+
 /** A new board: a loop of 12 spaces around the edge, starting at Start. */
 export function newBoardGameRound(name = 'Board game'): BoardGameRound {
   const slide = textSlide('');
@@ -146,7 +151,8 @@ export function waysOn(round: BoardGameRound, at: Id, came?: Id, back = false): 
 /**
  * Step `steps` spaces from `from` (negative: backwards). At a fork the walk stops and asks, unless `choose` says
  * which way to go first (resuming from that fork). A path's dead end stops the walk there. `came`: the space the
- * player arrived from, so a two-way link isn't walked straight back.
+ * player's last move forward arrived from, so a two-way link isn't walked straight back, and a move back retraces it
+ * (where two ways lead in, back the way they came, not the other one).
  */
 export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id, came?: Id): Walk {
   const path: Id[] = [];
@@ -156,7 +162,8 @@ export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id
   for (let left = Math.abs(steps); left > 0; left--) {
     const here = spaceById(round, at);
     if (!here) break;
-    const options = waysOn(round, at, prev, back);
+    const retrace = back && !path.length && !choose && !!came && !!spaceById(round, came)?.next.includes(at);
+    const options = retrace ? [came!] : waysOn(round, at, prev, back);
     let to: Id | undefined;
     if (choose && options.includes(choose) && path.length === 0) to = choose;
     else if (options.length === 1) to = options[0];
@@ -212,7 +219,9 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
     bs.hop = { playerId, path: [from, ...w.path], at: Date.now() };
     const full = [from, ...w.path];
     bs.prev ??= {};
-    bs.prev[playerId] = full[full.length - 2];
+    // Where a move forward came from. After a move back that's unknown: any way on is open again (a fork asks).
+    if (steps > 0) bs.prev[playerId] = full[full.length - 2];
+    else delete bs.prev[playerId];
   }
   // A fork's space counts as passed, since the walk goes on from it.
   const passed = [...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))];
@@ -243,6 +252,9 @@ export function shownSpace(bs: BoardGameState, playerId: Id, now: number): Id | 
   return bs.positions[playerId]?.space;
 }
 
+/** Below this (above SLIDE_H minus it, with the strip along the top) a space and its name go under the stats strip. */
+export const STRIP_EDGE = 860;
+
 /** A board space's radius (BoardSpaces draws them 116px across), and how far a token may tuck in over its rim. */
 const SPACE_R = 58;
 const TUCK = 12;
@@ -271,6 +283,11 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   if (ends.length && round.spaces.length > 1) out.push({ text: `${name}: ${ends.map((s) => s.name).join(', ')} lead nowhere (the path ends there)`, tab, level: 'info' });
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
     out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn' });
+  // Spaces the stats strip covers in play (it runs along the bottom, or the top), with the players' tokens on them.
+  const bar = game.theme?.scoreBar ?? 'bottom';
+  const under = bar === 'hidden' ? [] : round.spaces.filter((s) => (bar === 'bottom' ? s.y > STRIP_EDGE : s.y < SLIDE_H - STRIP_EDGE));
+  if (under.length)
+    out.push({ text: `${name}: ${under.map((s) => s.name).join(', ')} ${under.length === 1 ? 'is' : 'are'} under the stats strip (move ${under.length === 1 ? 'it' : 'them'} ${bar === 'bottom' ? 'up' : 'down'})`, tab, level: 'warn' });
   // A deleted space, zone, item… (or nothing chosen).
   const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])]).filter((a) => actionProblem(game, a, { board: round })).length;
   if (nowhere) out.push({ text: `${name}: ${nowhere} button(s) on spaces point nowhere`, tab, level: 'warn' });

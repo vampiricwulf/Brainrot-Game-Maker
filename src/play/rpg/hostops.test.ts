@@ -198,3 +198,18 @@ describe('objects and items on the RPG stage', () => {
     expect(score(session, 'p0')).toBe(0);
   });
 });
+
+describe('splitting off', () => {
+  it('won’t make one party of everyone, or of players standing in different places', () => {
+    const { game, session, beach } = withBeach();
+    expect(splitOff(game, session, ['p0', 'p1', 'p2'])).toBe('That’s everyone: select only the ones who split off');
+    sendPlayers(game, session, ['p0'], beach);
+    const st = Object.values(session.worlds!)[0];
+    expect(st.parties).toHaveLength(2);
+    expect(splitOff(game, session, ['p0', 'p1', 'p2'])).toBe('That’s everyone: 🤝 Regroup (G) brings everyone together');
+    expect(splitOff(game, session, ['p0', 'p1'])).toBe('They aren’t all in one place: split off players standing together (or move them together first)');
+    expect(st.parties).toHaveLength(2);
+    expect(splitOff(game, session, ['p1'])).toBeNull();
+    expect(st.parties.map((p) => p.members)).toEqual([['p2'], ['p0'], ['p1']]);
+  });
+});

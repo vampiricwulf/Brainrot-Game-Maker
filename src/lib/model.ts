@@ -300,6 +300,18 @@ export interface GameAudio {
   wheelLand?: Id;
   /** A board-game token moving. */
   move?: Id;
+  /** RPG: the party walking to the next screen. */
+  step?: Id;
+  /** RPG: no way that way. */
+  blocked?: Id;
+  /** RPG: through a doorway (or a way that leads somewhere else). */
+  doorway?: Id;
+  /** RPG: a player picks something up. */
+  pickUp?: Id;
+  /** Buying or selling in a shop. */
+  coin?: Id;
+  /** A button taking a stat (HP…) down. */
+  hurt?: Id;
   finalThink?: Id;
   winner?: Id;
 }

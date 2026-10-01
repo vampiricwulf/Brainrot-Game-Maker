@@ -1,7 +1,7 @@
 // Buying in the shop on screen, from the host panel or by clicking an item on the stage. One undoable step each.
-import { toast } from '../../lib/app.svelte';
+import { app, toast } from '../../lib/app.svelte';
 import type { Game, Session } from '../../lib/model';
-import type { Live } from '../../lib/live';
+import { blip, type Live } from '../../lib/live';
 import { playerName } from '../../lib/session';
 import { buy, itemDef, logged } from '../../lib/toolset';
 
@@ -30,6 +30,7 @@ export function shopBuy(
   if (!result) return;
   if (result.ok) {
     o.short = undefined;
+    blip(app.live, 'coin');
     toast(result.text, 3000);
   } else if (result.error === 'Sold out') toast(`${itemDef(game, item)?.name} is sold out`);
   else {

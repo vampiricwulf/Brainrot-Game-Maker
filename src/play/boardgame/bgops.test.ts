@@ -7,10 +7,11 @@ import { newWheel } from '../../lib/tools';
 import { redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import type { Action } from '../../lib/model';
-import { reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
+import { moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
+import { openPlayerWheel, quickDice, rollDice } from '../../lib/overlay';
 
 describe('board game: the round’s mover', () => {
-  it('opens a movement wheel with D, and spins it with D again', () => {
+  it('spins the movement wheel with one press of D', () => {
     const game = newGame();
     game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
     const wheel = newWheel('Move', ['1', '2', '3']);
@@ -23,9 +24,9 @@ describe('board game: the round’s mover', () => {
     const live = newLive();
     expect(rollMover(game, session, live)).toBeNull();
     const opened = live.overlay;
-    expect(opened?.kind === 'wheel' && !opened.spin).toBe(true);
-    rollMover(game, session, live);
-    expect(live.overlay).toBe(opened);
+    expect(opened?.kind === 'wheel' && !!opened.spin).toBe(true);
+    // Its slice is the count to move.
+    expect(moverResult(game, round, live.overlay)).toBe(opened?.kind === 'wheel' ? Number(opened.segments[opened.result!].label) : null);
     const spin = live.overlay?.kind === 'wheel' ? live.overlay.spin : undefined;
     expect(spin).toBeTruthy();
     // Mid-spin, D again waits for it.
@@ -165,5 +166,28 @@ describe('board game: the host’s moves on the stage', () => {
   it('only runs the board-game actions in a board-game round', () => {
     const { game, session } = playing();
     expect(runAction({ game, session, live: newLive(), selected: ['a'] }, { id: 'x', do: 'skip' })).toBe('This works only in board-game rounds');
+  });
+});
+
+describe('board game: what fills the Steps box', () => {
+  it('only the round’s own dice or movement wheel', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const round = newBoardGameRound('Board');
+    round.mover = { kind: 'dice', dice: '2d6' };
+    game.rounds.push(round);
+    const session = newSession(game);
+    goToRound(session, game, 0);
+    const live = newLive();
+    rollMover(game, session, live);
+    const o = live.overlay;
+    expect(moverResult(game, round, o)).toBe(o?.kind === 'dice' ? o.roll!.total : -1);
+    // A space's "Roll d20", or the Pick-a-player wheel landing on "Player 3": not a move.
+    rollDice(live, session, quickDice(20, 1, 'd20'));
+    expect(moverResult(game, round, live.overlay)).toBeNull();
+    game.players.push({ id: 'b', name: 'Player 3', color: '#000' });
+    openPlayerWheel(live, session);
+    if (live.overlay?.kind === 'wheel') Object.assign(live.overlay, { spin: { from: 0, to: 1, startedAt: 0, duration: 1 }, result: 1 });
+    expect(moverResult(game, round, live.overlay)).toBeNull();
   });
 });

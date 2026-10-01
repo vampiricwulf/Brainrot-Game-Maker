@@ -14,7 +14,7 @@
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, moveNow, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
 
   let {
@@ -67,16 +67,8 @@
   });
   const card = $derived(round && space ? spaceById(round, space) : undefined);
 
-  /** The number the dice or wheel just gave (a wheel slice labeled "3" or "Move 3"), to fill in the steps. */
-  const rolled = $derived.by(() => {
-    const o = app.live.overlay;
-    if (o?.kind === 'dice' && o.roll) return o.roll.total;
-    if (o?.kind === 'wheel' && o.spin && o.result !== null) {
-      const n = parseInt(o.segments[o.result]?.label.match(/-?\d+/)?.[0] ?? '', 10);
-      return Number.isFinite(n) ? n : null;
-    }
-    return null;
-  });
+  /** The number the round's dice or movement wheel just gave, to fill in the steps (no other dice or wheel). */
+  const rolled = $derived(round ? moverResult(game, round, app.live.overlay) : null);
   $effect(() => {
     // Every roll or spin, even one that comes up the same as the last (a new turn has emptied the box since).
     const o = app.live.overlay;
@@ -176,7 +168,7 @@
               ondragend={() => turnDrag.end()}
             >
               <span class="grip" aria-hidden="true">⋮⋮</span>
-              <button class="ghost tiny earlier" onclick={() => reorder(i, -1, '.earlier')} disabled={i === 0} aria-label="Earlier">◀</button>
+              <button class="ghost tiny earlier" onclick={() => reorder(i, -1, '.earlier')} disabled={i === 0} aria-label="{p.name} earlier in the turn order">◀</button>
               <button
                 class="nm"
                 style:background={id === turnId ? p.color : undefined}
@@ -193,7 +185,7 @@
               >{p.name}</button>
               {#if bs.skips?.[id]}<span class="mark" title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span>{/if}
               {#if bs.again === id}<span class="mark" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
-              <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="Later">▶</button>
+              <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="{p.name} later in the turn order">▶</button>
             </span>
           {/if}
         {/each}
