@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers, tap, tieThem } from './helpers.mjs';
+import { addClassicRounds, openRules, playWithPlayers, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -63,7 +63,7 @@ const draftInfo = (page) =>
             const get = req.result.transaction('keyval').objectStore('keyval').get('editorDraft');
             get.onsuccess = () => {
               const g = get.result;
-              ok(g ? JSON.stringify({ buzzer: g.settings?.buzzer, arm: g.settings?.buzzArm, players: (g.players ?? []).map((p) => p.name) }) : 'no draft');
+              ok(g ? JSON.stringify({ buzzer: g.settings?.buzzer, arm: g.settings?.buzzArm, neg: g.settings?.allowNegativeScores, players: (g.players ?? []).map((p) => p.name) }) : 'no draft');
             };
             get.onerror = () => ok('read failed');
           } catch (e) {
@@ -116,6 +116,18 @@ try {
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel('Open the buzzers').selectOption('host');
+  console.log('DEBUG draft right after the buzzer settings:', await draftInfo(host));
+  await host.waitForTimeout(2000);
+  console.log('DEBUG draft 2 s after the buzzer settings:', await draftInfo(host));
+  {
+    // (Diagnostic: does a 📋 Game rules change reach the saved draft here?)
+    const rules = await openRules(host);
+    const neg = rules.getByLabel('Allow negative scores');
+    await neg.setChecked(!(await neg.isChecked()));
+    await host.waitForTimeout(2000);
+    console.log('DEBUG draft 2 s after a rules change:', await draftInfo(host));
+    await neg.setChecked(!(await neg.isChecked()));
+  }
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = card.locator('[aria-label^="Room code "]');
   await codeEl.waitFor();
