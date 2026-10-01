@@ -25,7 +25,7 @@
 <div class="grid">
   <label class="field">
     Name (shown on screen)
-    <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" />
+    <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" data-round-name />
   </label>
   <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" /></label>
   <label class="field">Think time (seconds)<input type="number" min="5" bind:value={round.timerSeconds} /></label>

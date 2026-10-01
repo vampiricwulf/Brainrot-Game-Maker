@@ -449,7 +449,7 @@
 </script>
 
 <div class="head">
-  <label class="field name">Round name<input bind:value={round.name} /></label>
+  <label class="field name">Round name<input bind:value={round.name} data-round-name /></label>
   <label class="field">
     Categories
     <input

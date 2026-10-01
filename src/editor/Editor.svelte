@@ -152,8 +152,8 @@
     else if (isFinal(round)) followClueText(game, [round.questionSlide, round.answerSlide]);
     game.rounds.splice(at, 0, round);
     tab = at;
-    // The menu (or the card) that added it is gone: the focus goes on to the new round's tab.
-    focusRoundTab(round.id);
+    // The menu (or the card) that added it is gone: the focus goes to the new round's name, ready to type over.
+    focusRoundName(round.id);
   }
 
   /** The round modes, templates and rounds from elsewhere, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
@@ -199,6 +199,13 @@
 
   // ---------- Round tabs: drag to reorder, keys, rename in place ----------
 
+  /** The shown round's name field, selected; its tab when the round has none. */
+  const focusRoundName = (id: string) =>
+    void tick().then(() => {
+      const field = document.querySelector<HTMLInputElement>('main [data-round-name]');
+      if (field) field.select();
+      else focusRoundTab(id);
+    });
   const focusRoundTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`nav [data-place="round:${id}"]`)?.focus());
 
   /**

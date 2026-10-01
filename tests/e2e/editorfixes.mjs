@@ -45,7 +45,10 @@ try {
   // ---------- Board values and focus ----------
   await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).click();
   await addRound(/Jeopardy board/);
-  assert((await focused()) === (await tabs.nth(1).getAttribute('data-place')), "＋ Add round puts the focus on the new round's tab");
+  assert(
+    await page.evaluate(() => { const a = document.activeElement; return a?.hasAttribute('data-round-name') && a.value === 'Double Jeopardy!' && a.selectionEnd - a.selectionStart === a.value.length; }),
+    "＋ Add round puts the focus in the new round's name, selected",
+  );
   await addRound(/Jeopardy board/);
   const vals = () => values(page.locator('.values input[aria-label^="Row"]'));
   assert((await vals()).join() === '400,800,1200,1600,2000', `a third board keeps the second's values (${await vals()})`);

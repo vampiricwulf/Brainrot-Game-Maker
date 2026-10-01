@@ -489,7 +489,7 @@
 
 <div class="bge" bind:this={root}>
   <div class="row settings">
-    <label class="field">Round name<input bind:value={round.name} /></label>
+    <label class="field">Round name<input bind:value={round.name} data-round-name /></label>
     <label class="field">
       Move by
       <select

@@ -40,7 +40,7 @@
 <div class="rr">
   {#if !editing}
     <div class="top">
-      <label class="field">Round name<input bind:value={round.name} /></label>
+      <label class="field">Round name<input bind:value={round.name} data-round-name /></label>
       <label class="field">
         World
         <select

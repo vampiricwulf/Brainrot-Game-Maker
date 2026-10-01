@@ -32,6 +32,7 @@ done, the Unreleased lines move under that day's heading.
   be one game-wide setting in ⚙ Setup; older games keep their choice on each of their Finals. (288972f)
 - A **Daily Double's wager stays off the stream** until the host presses **Show wager**, as a Final's wagers do.
   (288972f) In single-window mode viewers still see the wager box while the host types in it.
+- **＋ Add round** puts the cursor in the new round's name, selected, ready to type over (it went to the round's tab).
 - The play history says who bought or sold in a shop ("Ann buys Potion") and which party moved once there are several
   ("Party 2 west"). ＋ Text in an RPG round opens the new text's card. The in-play keys list mentions `R` hiding the
   answer again, `Ctrl+Y`, and `Esc` closing a card. (1d763ac)
