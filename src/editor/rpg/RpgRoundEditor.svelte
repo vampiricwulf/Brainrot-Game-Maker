@@ -2,6 +2,7 @@
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
+  import { dropMenu } from '../../lib/menustate.svelte';
   import type { RpgRound, World } from '../../lib/model';
   import { newWorld, rpgRounds, startRef, worldById } from '../../lib/rpg';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -57,11 +58,24 @@
       {#if world}
         <button
           class="ghost small"
-          onclick={() => deleteWorld(world)}
-          disabled={sharing > 0}
-          title={sharing ? 'Another round plays this world' : 'Delete this world and all its maps and screens'}>Delete world</button
+          aria-haspopup="menu"
+          aria-label="More for this world"
+          title="More for this world"
+          onclick={(e) =>
+            dropMenu(e, [
+              { heading: world.name },
+              {
+                label: '🗑 Delete world',
+                danger: true,
+                disabled: sharing > 0,
+                hint: sharing ? 'Another round plays this world' : 'With all its maps and screens',
+                onclick: () => deleteWorld(world),
+              },
+            ])}>⋯</button
         >
-        <label class="field">World name<input bind:value={world.name} /></label>
+        <label class="field" title="A world (its maps and screens) can be played by several rounds: the adventure carries on in the next one">
+          World name<input bind:value={world.name} />
+        </label>
         <label class="field start">
           Party starts at
           <!-- A start screen deleted since: the party starts on the first screen (as the map's 🏁 shows). -->
@@ -75,7 +89,9 @@
         </label>
       {/if}
     </div>
-    {#if sharing}
+    {#if !sharing}
+      <p class="muted small">The round is this part of the show; the world is the place it plays (its maps and screens). A later round can play the same world and carry on the adventure.</p>
+    {:else}
       <p class="muted small">
         {sharing} other round{sharing === 1 ? '' : 's'} play{sharing === 1 ? 's' : ''} this world too: the adventure carries on where it was left
         (the start only applies the first time).

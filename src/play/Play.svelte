@@ -11,6 +11,7 @@
   import { addTime, newLive, overlayDoneAt, playSound, startTimer, timerRemaining, toggleTimer, type StageAction } from '../lib/live';
   import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
+  import { tileDice } from '../lib/tools';
   import { validate } from '../lib/validate';
   import { nextFreeColor } from '../lib/colors';
   import ToolLauncher from './host/ToolLauncher.svelte';
@@ -300,7 +301,7 @@
       else if (w) openWheel(app.live, session, w);
       else toast('This tile has no wheel chosen');
     } else if (c?.clue.type === 'dice') {
-      const d = game.dice.find((x) => x.id === c.clue.diceId);
+      const d = tileDice(game, c.clue.diceId);
       if (d) openDice(app.live, d);
       else toast('This tile has no dice chosen');
     } else autoTimer();

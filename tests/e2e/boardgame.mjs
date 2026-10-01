@@ -221,7 +221,7 @@ try {
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
   assert(
-    (await page.getByRole('button', { name: /^Space / }).count()) === 12 && (await page.locator('.bge').getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()),
+    (await page.getByRole('button', { name: /^Space / }).count()) === 12 && (await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()),
     'a game opened over the board starts its undo afresh (Ctrl+Z brings back nothing from before)',
   );
 

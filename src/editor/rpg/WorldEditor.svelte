@@ -1217,7 +1217,7 @@
               Click an empty cell (＋) to add a screen, click a screen for its settings, double-click it to edit its picture and
               objects. Drag a screen to move it (onto another to swap them, onto a map's tab to move it there). Screens next to each
               other are connected: click ⛔ between two to block the way, or send sides elsewhere in <b>Ways out</b>. Add dungeons,
-              shops and interiors as more maps (＋ Map) and join them with doorway objects.
+              shops and interiors as more maps (＋ Map) and join them with doorways (<b>🚪 Doorway</b> on a screen).
             </p>
             <p class="muted small">
               Drop pictures on the map to make screens. Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the

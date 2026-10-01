@@ -1,10 +1,10 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
-  import { categoryLabel, clueValue, roundName, slideText, type BoardRound } from '../lib/model';
+  import { categoryLabel, clueValue, formatPoints, playableClues, roundName, slideText, type BoardRound } from '../lib/model';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import {
@@ -26,6 +26,7 @@
     type TilePos,
   } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
+  import { followClueText } from '../lib/cluetext';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls } from '../lib/media.svelte';
   import ClueEditor from './ClueEditor.svelte';
@@ -57,6 +58,8 @@
   let dropTarget = $state<string | null>(null);
   const sym = $derived(app.game.settings.currencySymbol);
   const name = $derived(roundName(round, app.game.rounds.indexOf(round)));
+  /** At most one Daily Double a playable tile (and 10). */
+  const ddMax = $derived(Math.min(10, playableClues(round).length));
 
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
@@ -142,7 +145,7 @@
   /** "Memes $400" */
   function tileName(p: TilePos): string {
     const cat = round.categories[p.cat];
-    return `${categoryLabel(cat)} ${sym}${clueValue(round, p.row, cat.clues[p.row])}`;
+    return `${categoryLabel(cat)} ${formatPoints(clueValue(round, p.row, cat.clues[p.row]), sym)}`;
   }
 
   /** The tile with this clue, on the board (an undo flashes it there without opening it). */
@@ -293,6 +296,20 @@
 
   // ---------- Categories ----------
 
+  /** A category's name box grows with its name (a long one never scrolls out of sight), as typed or undone. */
+  function autosize(el: HTMLTextAreaElement, _text: string) {
+    const fit = () => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+    };
+    fit();
+    el.addEventListener('input', fit);
+    return { update: fit, destroy: () => el.removeEventListener('input', fit) };
+  }
+
+  /** Narrower columns for more categories, so 10 still fit across without scrolling sideways. */
+  const colMin = $derived(Math.min(140, Math.floor(1000 / round.categories.length) - 6));
+
   function moveCat(from: number, to: number): void {
     if (to < 0 || to >= round.categories.length || to === from) return;
     step(`Moved category “${categoryLabel(round.categories[from])}” ${to < from ? 'left' : 'right'}`, () => moveCategory(round, from, to));
@@ -300,7 +317,7 @@
 
   /** A new category at `at`, its name ready to type. */
   function insertCat(at: number): void {
-    step(null, () => addCategory(round, at));
+    step(null, () => (addCategory(round, at), followTheme()));
     void tick().then(() => {
       const f = catNameField(at);
       f?.focus();
@@ -319,11 +336,12 @@
     step(`Cleared the clues of “${categoryLabel(cat)}”`, () => cat.clues.forEach(clearClue), { notify: true, place });
   }
 
-  function catMenu(e: MouseEvent, ci: number): void {
+  /** Right-click on a category, or its ⋯ button (`button`: the menu drops from it). */
+  function catMenu(e: MouseEvent, ci: number, button = false): void {
     if (textSelected(e)) return;
     const cat = round.categories[ci];
     const n = round.categories.length;
-    showMenu(e, [
+    (button ? dropMenu : showMenu)(e, [
       { heading: categoryLabel(cat) },
       { label: '◀ Move left', onclick: () => moveCat(ci, ci - 1), disabled: ci === 0 },
       { label: 'Move right ▶', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1 },
@@ -375,9 +393,12 @@
 
   // ---------- Rows ----------
 
+  /** New clues (a category, a row) take the theme's clue text. */
+  const followTheme = () => followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap((cl) => [cl.questionSlide, cl.answerSlide])));
+
   // Rows of clues go in, out and around anywhere; the row values stay by position (the top row is still the cheapest).
   function addRow(at: number): void {
-    step(`Inserted a row in ${name}`, () => insertRow(round, at), { place: rowsPlace() });
+    step(`Inserted a row in ${name}`, () => (insertRow(round, at), followTheme()), { place: rowsPlace() });
   }
 
   // Done at once: the note at the bottom offers Undo.
@@ -403,7 +424,7 @@
   }
 
   function rowMenu(e: MouseEvent, row: number): void {
-    showMenu(e, [{ heading: `Row ${row + 1} · ${sym}${round.values[row]}` }, ...rowItems(row)]);
+    showMenu(e, [{ heading: `Row ${row + 1} · ${formatPoints(round.values[row], sym)}` }, ...rowItems(row)]);
   }
 </script>
 
@@ -426,6 +447,7 @@
             () => {
               while (round.categories.length < n) addCategory(round);
               while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
+              followTheme();
             },
             { notify: lost },
           );
@@ -433,8 +455,8 @@
       }}
     />
   </label>
-  <label class="field">
-    Questions per category
+  <label class="field" title="How many questions each category has">
+    Rows (questions per category)
     <input
       type="number"
       min="1"
@@ -444,7 +466,7 @@
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
         // Like fewer categories: the bottom rows go at once, with Undo when they had clues in them.
         const lost = round.categories.some((c) => c.clues.slice(n).some(clueHasContent));
-        if (n !== round.values.length) step(`Changed ${name} to ${n} row${n === 1 ? '' : 's'}`, () => setRowCount(round, n), { notify: lost });
+        if (n !== round.values.length) step(`Changed ${name} to ${n} row${n === 1 ? '' : 's'}`, () => (setRowCount(round, n), followTheme()), { notify: lost });
         e.currentTarget.value = String(round.values.length);
       }}
     />
@@ -458,7 +480,16 @@
 <div class="values" data-place="values:{round.id}">
   <span class="muted">Row values</span>
   {#each round.values as _, i}
-    <input type="number" bind:value={round.values[i]} aria-label="Row {i + 1} value" oncontextmenu={(e) => rowMenu(e, i)} title="Right-click to insert, move or delete this row" />
+    <!-- Left blank, a row keeps its value (a blank isn't $0). -->
+    <input
+      type="number"
+      value={round.values[i]}
+      oninput={(e) => e.currentTarget.value !== '' && (round.values[i] = +e.currentTarget.value)}
+      onchange={(e) => (e.currentTarget.value = String(round.values[i]))}
+      aria-label="Row {i + 1} value"
+      oncontextmenu={(e) => rowMenu(e, i)}
+      title="Right-click to insert, move or delete this row"
+    />
   {/each}
   <button class="small" onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
   <button class="small" onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
@@ -467,16 +498,22 @@
   <input
     type="number"
     min="0"
-    max="10"
+    max={ddMax}
     value={round.dailyDoubleCount ?? 1}
-    oninput={(e) => (round.dailyDoubleCount = Math.max(0, +e.currentTarget.value || 0))}
+    oninput={(e) => (round.dailyDoubleCount = Math.max(0, Math.min(ddMax, Math.floor(+e.currentTarget.value) || 0)))}
+    onchange={(e) => (e.currentTarget.value = String(round.dailyDoubleCount ?? 1))}
     aria-label="How many Daily Doubles"
     class="ddn"
   />
   <button
     class="small"
     onclick={() => {
-      const n = step('Placed Daily Doubles at random', () => randomizeDailyDoubles(round, round.dailyDoubleCount ?? 1));
+      const n = step('Placed Daily Doubles at random', () => {
+        const placed = randomizeDailyDoubles(round, Math.min(ddMax, round.dailyDoubleCount ?? 1));
+        // The box says how many there are now.
+        round.dailyDoubleCount = placed;
+        return placed;
+      });
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
     title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🎲 Randomize</button>
@@ -484,7 +521,7 @@
 </div>
 
 <div class="grid-wrap">
-  <div class="grid" bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax(140px, 1fr))">
+  <div class="grid" bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
     {#each round.categories as cat, ci (cat.id)}
       <div
         class="cat"
@@ -525,6 +562,7 @@
           placeholder={cat.image ? 'Name (for you; optional on screen)' : 'Category name'}
           aria-label="Category {ci + 1} name"
           data-cat-name={ci}
+          use:autosize={cat.title}
           onkeydown={(e) => catNameKey(e, ci)}></textarea>
         {#if cat.image}
           <div class="cat-img-opts">
@@ -543,17 +581,10 @@
             <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)">✕</button>
           </div>
         {/if}
+        <!-- Moving, duplicating and deleting are in its menu (⋯, or a right-click), so the row fits a narrow column. -->
         <div class="cat-tools">
           <span class="grip" aria-hidden="true" title="Drag to move the category · right-click it for more">⋮⋮</span>
-          <button class="ghost small" onclick={() => moveCat(ci, ci - 1)} disabled={ci === 0} title="Move left">◀</button>
-          <button class="ghost small" onclick={() => moveCat(ci, ci + 1)} disabled={ci === round.categories.length - 1} title="Move right">▶</button>
-          <button
-            class="ghost small"
-            onclick={() => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci))}
-            disabled={round.categories.length >= 10}
-            title="Duplicate">⧉</button>
-          <!-- Done at once: the note at the bottom offers Undo. -->
-          <button class="ghost small" onclick={() => deleteCat(ci)} disabled={round.categories.length <= 1} title="Delete">✕</button>
+          <button class="ghost small" aria-haspopup="menu" onclick={(e) => catMenu(e, ci, true)} title="Move, duplicate, delete…" aria-label="More for category {ci + 1}">⋯</button>
           <span class="pop">
             <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)">🖼</button>
             {#if catPicker === ci}
@@ -598,7 +629,7 @@
           {#if target && tileDrag}<span class="swap">{dropCopy ? '⧉ Copy here' : '⇄ Swap'}</span>{/if}
           {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
           <span class="val">
-            {clue.empty ? 'EMPTY' : `${sym}${clueValue(round, row, clue)}`}
+            {clue.empty ? 'EMPTY' : formatPoints(clueValue(round, row, clue), sym)}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}
             {#if clue.type === 'dailyDouble' && !clue.empty}<span class="dd" title="Daily Double">⭐ DD</span>{/if}
             {#if clue.type === 'wheel' && !clue.empty}<span class="dd" title="Wheel tile">🎡</span>{/if}

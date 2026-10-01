@@ -28,6 +28,9 @@ export interface Theme {
   bannerFit?: 'contain' | 'cover';
   scoreBar: 'bottom' | 'top' | 'hidden';
   scoreBarBg: string;
+  /** The main text of question and answer slides, game-wide (see cluetext.ts). Unset: a new text box's look. */
+  clueFont?: string;
+  clueColor?: string;
 }
 
 export const PRESETS: Record<ThemePreset, { label: string; theme: Omit<Theme, 'preset'> }> = {

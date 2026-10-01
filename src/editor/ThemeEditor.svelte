@@ -2,44 +2,71 @@
 <script lang="ts">
   import { app } from '../lib/app.svelte';
   import { step } from '../lib/history.svelte';
+  import { untrack } from 'svelte';
   import { fontChoices } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
-  import { isBoard, newId, newRound } from '../lib/model';
-  import { newSession } from '../lib/session';
+  import { isBoard, isFinal, newId, newRound, roundName } from '../lib/model';
+  import { goToRound, newSession, openClue } from '../lib/session';
+  import { ROUND_MODES } from '../lib/modes';
+  import { FACTORY_COLOR, FACTORY_FONT, setClueText } from '../lib/cluetext';
   import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, type ThemePreset } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
 
+  /** `round`: the round last open in the editor, which the preview starts on. */
+  let { round: lastRound }: { round?: number } = $props();
   const game = $derived(app.game);
   const t = $derived(game.theme);
   const fonts = $derived(fontChoices(game));
   let picking = $state<'bg' | 'banner' | null>(null);
 
-  // The preview shows the first Jeopardy board, or a sample board while the game has none (not added to the game).
+  // The preview shows one of the game's rounds as it plays (the one last open, else the first), or a clue; a sample
+  // board while the game has no rounds (not added to the game).
   const sample = newRound('Jeopardy!', 6);
-  const shown = $derived(game.rounds.some(isBoard) ? game : { ...game, rounds: [sample] });
+  const shown = $derived(game.rounds.length ? game : { ...game, rounds: [sample] });
+  /** A round's index, or 'clue': the first board's first clue, open. */
+  let previewing = $state<number | 'clue'>(untrack(() => (lastRound !== undefined && lastRound < app.game.rounds.length ? lastRound : 0)));
+  const firstBoard = $derived(shown.rounds.findIndex(isBoard));
+  const view = $derived(previewing === 'clue' ? (firstBoard >= 0 ? 'clue' : 0) : Math.min(previewing, shown.rounds.length - 1));
 
   // A pretend game in progress for the preview.
   const demo = $derived.by(() => {
     const s = newSession(shown);
     if (!s.players.length)
       s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({ id: newId(), name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: [1200, 400, -200][i] }));
-    s.currentRound = Math.max(0, shown.rounds.findIndex(isBoard));
-    const r = shown.rounds[s.currentRound];
-    if (isBoard(r)) r.categories.forEach((c, ci) => ci % 2 === 0 && c.clues[0] && (s.used[c.clues[0].id] = true));
     s.currentPickerId = s.players[0]?.id;
+    const at = view === 'clue' ? firstBoard : view;
+    goToRound(s, shown, at);
+    s.intro = null;
+    const r = shown.rounds[at];
+    if (isBoard(r)) r.categories.forEach((c, ci) => ci % 2 === 0 && c.clues[0] && (s.used[c.clues[0].id] = true));
+    if (isBoard(r) && view === 'clue') {
+      const cat = r.categories.findIndex((c) => c.clues.some((cl) => !cl.empty));
+      if (cat >= 0) openClue(s, { round: at, cat, row: r.categories[cat].clues.findIndex((cl) => !cl.empty) });
+      s.dd = null;
+    }
+    // A Final shows its question (the clue text).
+    if (isFinal(r)) s.finalStep = 'question';
     return s;
   });
+
+  /** The game's clue text: a font or colour for the main text of every question and answer (the note offers Undo). */
+  function clueText(key: 'font' | 'color', to: string | undefined): void {
+    const what = key === 'font' ? 'font' : 'colour';
+    step(`Clue text ${what}: ${to ? (key === 'font' ? to.split(',')[0].replace(/'/g, '') : to) : 'each clue’s own'}`, () => setClueText(game, key, to), { notify: true });
+  }
   const live = newLive();
 
   // A preset replaces every color and font, so the note at the bottom offers Undo.
   function applyPreset(p: ThemePreset): void {
     // A preset changes colors and fonts, not the images or layout.
-    const { boardImage, banner, bannerHeight, bannerFit, scoreBar } = t;
-    step(`Theme preset: ${PRESETS[p].label}`, () => (game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar }), { notify: true });
+    const { boardImage, banner, bannerHeight, bannerFit, scoreBar, clueFont, clueColor } = t;
+    step(`Theme preset: ${PRESETS[p].label}`, () => (game.theme = { ...presetTheme(p), boardImage, banner, bannerHeight, bannerFit, scoreBar, clueFont, clueColor }), {
+      notify: true,
+    });
   }
 
   const COLORS: [keyof typeof t, string][] = [
@@ -97,6 +124,32 @@
       </label>
     </div>
 
+    <h4>Clue text</h4>
+    <div class="grid">
+      <label class="field">
+        Font
+        <select value={t.clueFont ?? ''} onchange={(e) => clueText('font', e.currentTarget.value || undefined)} aria-label="Clue text font">
+          <option value="">Each clue's own</option>
+          {#each fonts as f}<option value={f.css} style:font-family={f.css}>{f.label}</option>{/each}
+          {#if t.clueFont && !fonts.some((f) => f.css === t.clueFont)}<option value={t.clueFont}>{t.clueFont.split(',')[0]}</option>{/if}
+        </select>
+      </label>
+      <label class="check clue-color">
+        <input
+          type="color"
+          value={t.clueColor ?? FACTORY_COLOR}
+          onchange={(e) => clueText('color', e.currentTarget.value)}
+          aria-label="Clue text colour"
+        />
+        Colour
+        {#if t.clueColor}<button class="small ghost" onclick={() => clueText('color', undefined)} title="Back to each clue's own colour">✕</button>{/if}
+      </label>
+    </div>
+    <p class="muted small">
+      The main text of every question and answer (board clues, Final rounds, the tiebreaker), and of new ones. A clue whose text
+      you styled yourself keeps its look. Without a font here, new text uses {FACTORY_FONT.split(',')[0].replace(/'/g, '')}.
+    </p>
+
     <h4>Board</h4>
     <div class="grid">
       <div class="row pop">
@@ -143,16 +196,25 @@
       </label>
     </div>
     <p class="muted small">
-      Question and answer slides use the tile color as their background unless a slide sets its own. Each text box's font and
-      effects are set in the slide editor (use "Use this style elsewhere" to copy a look to every clue). Category images and
+      Question and answer slides use the tile color as their background unless a slide sets its own. Any text box's font and
+      effects can be set in the slide editor ("Use this style elsewhere" copies a look to other clues). Category images and
       free-placed board images are set per round in each round's tab.
     </p>
   </div>
 
-  <div class="preview">
-    <Stage>
-      <AudienceView game={shown} session={demo} {live} role="mirror" />
-    </Stage>
+  <div class="side">
+    <label class="check preview-pick">
+      Preview
+      <select bind:value={previewing} aria-label="Preview">
+        {#each shown.rounds as r, i (r.id)}<option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>{/each}
+        {#if firstBoard >= 0}<option value="clue">❓ A clue</option>{/if}
+      </select>
+    </label>
+    <div class="preview">
+      <Stage>
+        <AudienceView game={shown} session={demo} {live} role="mirror" />
+      </Stage>
+    </div>
   </div>
 </div>
 
@@ -213,13 +275,25 @@
   .small {
     font-size: 12px;
   }
+  .side {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .preview-pick {
+    align-self: flex-end;
+    font-size: 13px;
+  }
   .preview {
     aspect-ratio: 16 / 9;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--border);
-    position: sticky;
-    top: 0;
+  }
+  .clue-color {
+    align-self: end;
   }
   @media (max-width: 900px) {
     .layout {

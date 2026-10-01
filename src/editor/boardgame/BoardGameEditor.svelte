@@ -7,7 +7,7 @@
   import { onDestroy, untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { take } from '../../lib/nav.svelte';
-  import { begin, history, redo, step, undo } from '../../lib/history.svelte';
+  import { begin, history, step, undo } from '../../lib/history.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { copyActions, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
@@ -22,12 +22,38 @@
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { fittingFile, hasFiles, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
+  import ToolPopup, { newTool } from '../tools/ToolPopup.svelte';
 
   let { round }: { round: BoardGameRound } = $props();
   const game = $derived(app.game);
 
   /** The wheel a turn's move spins, if it does. */
   const moverWheel = $derived(round.mover.kind === 'wheel' ? round.mover.wheel : null);
+
+  /** The saved dice a turn's move rolls, if it does (by name, as typed, or id). */
+  const moverDice = $derived(round.mover.kind === 'dice' ? game.dice.find((d) => d.name === (round.mover as { dice: string }).dice || d.id === (round.mover as { dice: string }).dice) : undefined);
+  /** The wheel or dice open over the board (one made from Move by, or ✎ Edit). */
+  let tool = $state<{ kind: 'wheel' | 'dice'; id: string } | null>(null);
+  const NEW_WHEEL = 'new-wheel';
+  const NEW_DICE = 'new-dice';
+  /** ＋ New wheel… / ＋ New dice… in Move by: make one, move by it (one step), and open it. */
+  function newMover(kind: 'wheel' | 'dice'): void {
+    if (kind === 'wheel') {
+      const w = newTool('wheel');
+      step(`Move by: new wheel “${w.name}”`, () => {
+        game.wheels.push(w);
+        round.mover = { kind: 'wheel', wheel: w.id };
+      });
+      tool = { kind, id: w.id };
+    } else {
+      const d = newTool('dice');
+      step(`Move by: new dice “${d.name}”`, () => {
+        game.dice.push(d);
+        round.mover = { kind: 'dice', dice: d.name };
+      });
+      tool = { kind, id: d.id };
+    }
+  }
 
   let view = $state<'spaces' | 'backdrop' | 'zones'>('spaces');
   /** The selected spaces (Shift+click or a box adds more), the last one picked last. */
@@ -471,6 +497,7 @@
         value={round.mover.kind === 'wheel' ? round.mover.wheel : round.mover.kind}
         onchange={(e) => {
           const v = e.currentTarget.value;
+          if (v === NEW_WHEEL || v === NEW_DICE) return newMover(v === NEW_WHEEL ? 'wheel' : 'dice');
           step(`Move by: ${e.currentTarget.selectedOptions[0]?.text}`, () => {
             round.mover = v === 'dice' ? { kind: 'dice', dice: 'd6' } : v === 'step' ? { kind: 'step' } : { kind: 'wheel', wheel: v };
           });
@@ -480,11 +507,19 @@
         <option value="dice">🎲 Dice</option>
         <option value="step">👣 One space a turn (pick the way)</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>🎡 {w.name}</option>{/each}
+        <option value={NEW_WHEEL}>＋ New wheel…</option>
+        <option value={NEW_DICE}>＋ New dice…</option>
       </select>
     </label>
+    {#if moverWheel && game.wheels.some((w) => w.id === moverWheel)}
+      <button class="small ghost" onclick={() => (tool = { kind: 'wheel', id: moverWheel })} title="Change this wheel's slices">✎ Edit wheel</button>
+    {/if}
     {#if round.mover.kind === 'dice'}
       <label class="field">Dice<input class="n" bind:value={round.mover.dice} placeholder="d6, 2d6" list="bg-dice" /></label>
       <datalist id="bg-dice">{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist>
+      {#if moverDice}
+        <button class="small ghost" onclick={() => (tool = { kind: 'dice', id: moverDice.id })} title="Change these dice">✎ Edit dice</button>
+      {/if}
     {/if}
     <label class="field">
       Start
@@ -506,10 +541,6 @@
     <button role="tab" aria-selected={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
   </div>
 
-  {#snippet undoRedo()}
-    <button class="ghost small" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)">↶</button>
-    <button class="ghost small" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)">↷</button>
-  {/snippet}
 
   {#if view === 'spaces'}
     <div class="row tools">
@@ -517,7 +548,6 @@
       {#if linking}<span class="warn small">Click the space {sel?.name} should lead to (again to unlink)…</span>{/if}
       <span class="spacer"></span>
       <span class="muted small">Drag spaces to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</span>
-      {@render undoRedo()}
     </div>
     <div class="main">
       <div class="canvas-box" class:media-drop={fileOver === 'board'} bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
@@ -678,8 +708,7 @@
           Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's buttons or the host
           panel. Drag ⋮⋮ (or Alt+↑/↓) to reorder: the host's Send to list follows. Right-click a zone for more.
         </p>
-        {@render undoRedo()}
-      </div>
+        </div>
       <div class="zone-list" role="list" aria-label="Zones">
         {#each round.zones as z, i (z.id)}
           {@const line = zoneRows.lineAt(z.id)}
@@ -718,6 +747,7 @@
     </div>
   {/if}
 </div>
+{#if tool}<ToolPopup kind={tool.kind} id={tool.id} onclose={() => (tool = null)} />{/if}
 {#if zone}
   <SlideModal slide={zone.slide} title={zone.name} onclose={() => (zoneSlide = null)} />
 {/if}

@@ -137,7 +137,8 @@ try {
   await key('Control+y');
 
   // ---------- Deleting needs no confirm ----------
-  await page.locator('.cat').nth(3).getByTitle('Delete').click();
+  await page.locator('.cat').nth(3).getByRole('button', { name: 'More for category 4' }).click();
+  await page.getByRole('menuitem', { name: '🗑 Delete category' }).click();
   await page.waitForTimeout(200);
   assert((await page.locator('.cat').count()) === 5 && (await notice.innerText()).startsWith('Deleted category “Category 4”'), 'deleting a category is done at once, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();

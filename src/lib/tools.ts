@@ -128,6 +128,19 @@ export function parseDice(text: string): { sides: number; count: number } | null
   return { sides, count };
 }
 
+/** A dice tile's standard dice ("std:2d6"): no preset needed, like the host's quick dice. */
+export const STD_DICE = 'std:';
+
+/** The dice a dice tile rolls: a preset of the game, or standard dice ("std:d20"). */
+export function tileDice(game: Pick<Game, 'dice'>, id: string | undefined): DicePreset | undefined {
+  if (!id) return undefined;
+  const preset = game.dice.find((d) => d.id === id);
+  if (preset || !id.startsWith(STD_DICE)) return preset;
+  const name = id.slice(STD_DICE.length);
+  const d = parseDice(name);
+  return d ? { id, name, showTotal: d.count > 1, dice: [{ id: 'std', sides: d.sides, count: d.count }] } : undefined;
+}
+
 export interface RolledDie {
   sides: number;
   value: number;

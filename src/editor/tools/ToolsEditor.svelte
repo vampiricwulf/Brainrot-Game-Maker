@@ -181,7 +181,7 @@
 </p>
 
 <div class="layout">
-  <nav>
+  <nav aria-label="Wheels and dice">
     <div class="head muted">🎡 Wheels</div>
     {@render group('wheel', game.wheels)}
     <button class="ghost" onclick={() => add('wheel')}>＋ New wheel</button>
@@ -190,7 +190,7 @@
     <button class="ghost" onclick={() => add('dice')}>＋ New dice</button>
   </nav>
 
-  <main>
+  <section aria-label="Wheel or dice">
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>
@@ -208,7 +208,7 @@
     {:else}
       <p class="muted">Pick a wheel or dice on the left, or make a new one. Standard dice (d4–d100, 2d6, any "NdS") are always available during play without setting anything up.</p>
     {/if}
-  </main>
+  </section>
 </div>
 
 <style>

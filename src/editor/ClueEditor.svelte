@@ -4,10 +4,13 @@
   import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { neighbourClue, stepClue, textStyleTargets } from '../lib/ops';
-  import { PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
+  import { formatPoints, PLAYER_WHEEL, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
+  import { step as record } from '../lib/history.svelte';
+  import { QUICK_DICE, STD_DICE, tileDice } from '../lib/tools';
+  import ToolPopup, { newTool } from './tools/ToolPopup.svelte';
 
   let {
     round,
@@ -26,6 +29,26 @@
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
   let emptyBox = $state<HTMLInputElement>();
+
+  /** The wheel or dice open over the clue (one made from the list, or ✎ Edit). */
+  let tool = $state<{ kind: 'wheel' | 'dice'; id: string } | null>(null);
+  const NEW = 'new';
+
+  /** A wheel or dice picked for the tile; ＋ New… makes one (with the tile using it: one step) and opens it. */
+  function pickTool(kind: 'wheel' | 'dice', sel: HTMLSelectElement): void {
+    const c = clue;
+    if (!c) return;
+    const key = kind === 'wheel' ? 'wheelId' : 'diceId';
+    if (sel.value !== NEW) return void (c[key] = sel.value || undefined);
+    const game = app.game;
+    const item = kind === 'wheel' ? newTool('wheel') : newTool('dice');
+    record(`Added ${kind} “${item.name}”`, () => {
+      if ('segments' in item) game.wheels.push(item);
+      else game.dice.push(item);
+      c[key] = item.id;
+    });
+    tool = { kind, id: item.id };
+  }
 
   // An undo or redo on this clue shows the side it changed.
   const handled = { seq: 0 };
@@ -61,6 +84,8 @@
   function onkey(e: KeyboardEvent): void {
     // Esc closes from anywhere but the slide editor's own fields (the quick fields save as you type).
     const quick = !!(e.target as HTMLElement)?.closest?.('.quick');
+    // (A wheel or dice open over the clue has the keys.)
+    if (tool) return;
     if (e.key === 'Escape' && (!typing(e) || quick) && !facePicker) onclose();
     else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -81,7 +106,7 @@
       <header>
         <div>
           <div class="muted small">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>
-          <div class="value">{sym}{clue.value ?? round.values[pos.row]}</div>
+          <div class="value">{formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}</div>
         </div>
         <span class="spacer"></span>
         <span class="muted small keys">Ctrl+Enter next clue · Alt+arrows: the clue above, below or beside</span>
@@ -101,22 +126,35 @@
           </select>
         </label>
         {#if clue.type === 'wheel'}
-          <select bind:value={clue.wheelId} disabled={clue.empty} aria-label="Which wheel">
-            <option value={undefined}>Choose a wheel…</option>
+          <select value={clue.wheelId ?? ''} disabled={clue.empty} aria-label="Which wheel" onchange={(e) => pickTool('wheel', e.currentTarget)}>
+            <option value="">Choose a wheel…</option>
             {#if clue.wheelId && clue.wheelId !== PLAYER_WHEEL && !app.game.wheels.some((w) => w.id === clue.wheelId)}
               <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
             {/if}
             <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
             {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+            <option value={NEW}>＋ New wheel…</option>
           </select>
-          {#if !app.game.wheels.length}<span class="muted small">Make your own in the 🎡 Wheels & Dice tab</span>{/if}
+          {#if clue.wheelId && app.game.wheels.some((w) => w.id === clue.wheelId)}
+            <button class="small ghost" disabled={clue.empty} onclick={() => (tool = { kind: 'wheel', id: clue.wheelId! })} title="Change this wheel's slices">✎ Edit wheel</button>
+          {/if}
         {:else if clue.type === 'dice'}
-          <select bind:value={clue.diceId} disabled={clue.empty} aria-label="Which dice">
-            <option value={undefined}>Choose dice…</option>
-            {#if clue.diceId && !app.game.dice.some((d) => d.id === clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
-            {#each app.game.dice as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+          <select value={clue.diceId ?? ''} disabled={clue.empty} aria-label="Which dice" onchange={(e) => pickTool('dice', e.currentTarget)}>
+            <option value="">Choose dice…</option>
+            {#if clue.diceId && !tileDice(app.game, clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
+            {#if app.game.dice.length}
+              <optgroup label="This game's dice">
+                {#each app.game.dice as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+              </optgroup>
+            {/if}
+            <optgroup label="Standard dice">
+              {#each QUICK_DICE as d (d.label)}<option value="{STD_DICE}{d.label}">🎲 {d.label}</option>{/each}
+            </optgroup>
+            <option value={NEW}>＋ New dice…</option>
           </select>
-          {#if !app.game.dice.length}<span class="muted small">Make some in the 🎡 Wheels & Dice tab</span>{/if}
+          {#if clue.diceId && app.game.dice.some((d) => d.id === clue.diceId)}
+            <button class="small ghost" disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
+          {/if}
         {/if}
         <label class="check"><input type="checkbox" bind:this={emptyBox} bind:checked={clue.empty} /> Empty tile (not playable)</label>
         <label class="check">
@@ -227,6 +265,7 @@
       {/if}
     </div>
   </div>
+  {#if tool}<ToolPopup kind={tool.kind} id={tool.id} onclose={() => (tool = null)} />{/if}
 {/if}
 
 <style>
