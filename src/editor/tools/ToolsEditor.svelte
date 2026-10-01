@@ -94,7 +94,7 @@
       { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
       { sep: true },
-      { label: '🗑 Delete', danger: true, onclick: () => remove(kind, item), keys: 'Delete' },
+      { label: `🗑 Delete ${kind}`, danger: true, onclick: () => remove(kind, item), keys: 'Delete' },
     ]);
   }
 
@@ -194,15 +194,15 @@
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>
-        <button class="small" onclick={() => dup('wheel', wheel)}>Duplicate</button>
-        <button class="small bad" onclick={() => remove('wheel', wheel)}>Delete</button>
+        <button class="ghost small" onclick={() => dup('wheel', wheel)} title="A copy of this wheel, right after it (Ctrl+D)">⧉ Duplicate</button>
+        <button class="ghost small danger" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
       </div>
       {#key wheel.id}<WheelEditor {wheel} />{/key}
     {:else if dice}
       <div class="row top">
         <span class="spacer"></span>
-        <button class="small" onclick={() => dup('dice', dice)}>Duplicate</button>
-        <button class="small bad" onclick={() => remove('dice', dice)}>Delete</button>
+        <button class="ghost small" onclick={() => dup('dice', dice)} title="A copy of these dice, right after them (Ctrl+D)">⧉ Duplicate</button>
+        <button class="ghost small danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
     {:else}
@@ -255,6 +255,9 @@
   }
   .small {
     font-size: 12px;
+  }
+  .danger {
+    color: var(--bad);
   }
   @media (max-width: 760px) {
     .layout {

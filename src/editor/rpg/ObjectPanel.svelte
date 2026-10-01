@@ -86,7 +86,7 @@
           <div class="row">
             <input bind:value={s.name} placeholder="Power" aria-label="Stat name" />
             <input type="number" bind:value={s.value} class="n" aria-label="{s.name || 'Stat'} value" />
-            <button class="ghost tiny" onclick={() => r.stats?.splice(i, 1)} aria-label="Remove stat">✕</button>
+            <button class="ghost tiny" onclick={() => r.stats?.splice(i, 1)} aria-label="Delete stat">✕</button>
           </div>
         {/each}
         <div class="row"><button class="small" onclick={() => (r.stats = [...(r.stats ?? []), { name: 'Power', value: 1 }])}>＋ Stat (power, HP…)</button></div>
@@ -94,7 +94,7 @@
       </div>
       <div class="row">
         <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? 'Edit dialogue slide…' : '＋ Dialogue slide'}</button>
-        {#if r.dialogue}<button class="ghost tiny" onclick={() => (r.dialogue = undefined)} aria-label="Remove dialogue">✕</button>{/if}
+        {#if r.dialogue}<button class="ghost tiny" onclick={() => (r.dialogue = undefined)} aria-label="Delete dialogue">✕</button>{/if}
       </div>
     {/if}
     {#if r.class === 'npc' || r.class === 'shop'}

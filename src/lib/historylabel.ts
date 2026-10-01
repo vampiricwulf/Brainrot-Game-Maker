@@ -107,7 +107,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     owned = true;
     const a = byId<Action>(list, path[i]);
     if (!a) return;
-    reached(i + 1, 'action', '', undefined, false);
+    reached(i + 1, 'button', '', undefined, false);
     if (a.do === 'popup' && path[i + 1] === 'slide') {
       at.crumbs.push('pop-up');
       slide(a.slide, i + 2, placeFor);
@@ -353,9 +353,9 @@ const FIELDS: Record<string, string> = {
   diceId: 'dice',
   to: 'destination',
   next: 'links',
-  onUse: 'actions',
-  onLand: 'landing actions',
-  onPass: 'passing actions',
+  onUse: 'buttons',
+  onLand: 'landing buttons',
+  onPass: 'passing buttons',
   variants: 'looks',
   statFields: 'stats',
 };

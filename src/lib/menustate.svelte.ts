@@ -19,7 +19,7 @@ export function showMenu(e: MouseEvent, items: MenuEntry[], from?: HTMLElement):
 }
 
 /**
- * A menu dropped from a button (＋ Add round, ＋ Add action, 📦 Item ▾), from its click: under the button and kept on
+ * A menu dropped from a button (＋ Add round, ＋ Add button, 📦 Item ▾), from its click: under the button and kept on
  * screen like a right-click menu, for long lists a `dropdown` in a narrow or scrolling panel would cut off. Otherwise it
  * works like a `dropdown`: a second click on the button closes it, as do Esc (the focus goes back to the button) and a
  * click elsewhere.

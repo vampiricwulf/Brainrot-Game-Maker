@@ -65,10 +65,10 @@ try {
   // Start gives points when passed.
   await page.getByRole('button', { name: 'Space Start' }).click();
   // Its menu closes on a second click, like the other menus, and on Esc (the focus goes back to the button).
-  const addAction = page.locator('.side .actions').first().getByRole('button', { name: '＋ Add action' });
+  const addAction = page.locator('.side .actions').first().getByRole('button', { name: '＋ Add button' });
   await addAction.click();
   await addAction.click();
-  assert((await page.getByRole('menu').count()) === 0, '＋ Add action closes on a second click');
+  assert((await page.getByRole('menu').count()) === 0, '＋ Add button closes on a second click');
   await addAction.click();
   await page.keyboard.press('Escape');
   assert((await page.getByRole('menu').count()) === 0 && (await addAction.evaluate((b) => b === document.activeElement)), 'and on Esc, back to its button');
