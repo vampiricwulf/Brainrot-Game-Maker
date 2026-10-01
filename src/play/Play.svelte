@@ -26,6 +26,7 @@
   import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
+  import GameRules from './GameRules.svelte';
   import AudienceView from './AudienceView.svelte';
   import HostPanel from './HostPanel.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
@@ -50,7 +51,7 @@
   import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
-  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
+  import type { ActionEvent, Dir8, Game, GameSettings, Player, PlayerTemplate, ScoreEvent } from '../lib/model';
   import {
     audience,
     audienceTitle,
@@ -1136,11 +1137,12 @@
 
   function start(): void {
     if (!session.players.length) return;
-    // A game without a saved roster keeps these players for next time: only if the editor holds this same game
-    // (after resuming an older save it may not), and not the sample players unless they were renamed.
-    const roster = session.players.filter((p) => samples.get(p.id) !== p.name);
-    if (!app.playerOnly && app.game.id === game.id && !app.game.players.length && roster.length)
-      step('Saved the players from the show', () => (app.game.players = roster.map(({ id, name, color }) => ({ id, name, color }))), { during: 'play' });
+    // (The players are kept with the game as they're changed here: see keepRoster.)
+    // A picture chosen for a player here was stored in the editor's game: the game being played gets it too.
+    for (const p of session.players) {
+      const m = p.avatar && !game.media.some((x) => x.id === p.avatar) ? app.game.media.find((x) => x.id === p.avatar) : undefined;
+      if (m) game.media.push($state.snapshot(m));
+    }
     // This game now replaces any older saved one (autosave starts once pre-game is over).
     app.resumable = null;
     app.pregame = false;
@@ -1190,6 +1192,65 @@
     );
     toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
   }
+
+  // ---------- The game's players and rules (pre-game) ----------
+
+  /** The editor holds this same game (after resuming an older save it may not; a player-only file has no editor). */
+  const editorHasIt = () => !app.playerOnly && app.game.id === game.id;
+
+  /**
+   * The pre-game screen is where the game's players are set: each change to the list here (a name, a color, a picture,
+   * the order, a player added or deleted) is kept with the game, in the editor's copy too, as an undoable change in its
+   * history. Sample players nobody renamed aren't kept. (Start scores are only for this game.)
+   */
+  function keepRoster(g: Game, list: PlayerTemplate[]): void {
+    const old = new Map(g.players.map((p) => [p.id, p]));
+    const next = list.map((p) => {
+      const t: PlayerTemplate = { ...$state.snapshot(old.get(p.id) ?? {}), id: p.id, name: p.name, color: p.color };
+      if (p.avatar) t.avatar = p.avatar;
+      else delete t.avatar;
+      return t;
+    });
+    if (JSON.stringify(next) !== JSON.stringify($state.snapshot(g.players))) g.players = next;
+  }
+  let rosterSeen: { s: unknown; key: string } = { s: null, key: '' };
+  $effect(() => {
+    if (!app.pregame) return;
+    const list = session.players.filter((p) => samples.get(p.id) !== p.name).map(({ id, name, color, avatar }) => ({ id, name, color, avatar }));
+    const key = JSON.stringify(list);
+    // A new pre-game (a rematch) starts from its players as they are.
+    if (rosterSeen.s !== session) return void (rosterSeen = { s: session, key });
+    if (key === rosterSeen.key) return;
+    rosterSeen.key = key;
+    untrack(() => {
+      keepRoster(game, list);
+      if (editorHasIt()) keepRoster(app.game, list);
+    });
+  });
+
+  /** The settings ⚙ Game rules sets. */
+  const RULES = [
+    'allowNegativeScores', 'deductOnWrong', 'pickerFollowsAward', 'buzzer', 'buzzKeys', 'buzzArm', 'buzzFrom', 'phoneJoin', 'earlyBuzzLock',
+    'currencySymbol', 'maxPlayers', 'defaultTimerSeconds', 'timerAutoStart', 'roundIntro',
+  ] as const satisfies readonly (keyof GameSettings)[];
+  // ⚙ Game rules changes the game being played; the editor's copy of the game keeps each change (undoable there).
+  let rulesSeen = '';
+  $effect(() => {
+    if (!app.pregame) return void (rulesSeen = '');
+    const rules = JSON.stringify(RULES.map((k) => game.settings[k] ?? null));
+    if (!rulesSeen || rules === rulesSeen) return void (rulesSeen = rules);
+    rulesSeen = rules;
+    untrack(() => {
+      if (!editorHasIt()) return;
+      const to = app.game.settings as unknown as Record<string, unknown>;
+      for (const k of RULES) {
+        const v = $state.snapshot(game.settings[k]);
+        if (JSON.stringify(v ?? null) === JSON.stringify($state.snapshot(to[k]) ?? null)) continue;
+        if (v === undefined) delete to[k];
+        else to[k] = v;
+      }
+    });
+  });
 
   // ---------- On stream (pre-game) ----------
 
@@ -1544,17 +1605,23 @@
         {app.playerOnly ? 'start screen' : 'editor'} and press Resume game.
       </p>
     {/if}
-    <p class="muted">Confirm who's playing. Names, colors, and starting scores can be changed here or during the game.</p>
-    <PlayerList bind:players={session.players} max={game.settings.maxPlayers} showScores />
+    <h2>👥 Players</h2>
+    <p class="muted">
+      Who's playing: add, rename, recolor and reorder them here{app.playerOnly ? '' : ' (they’re kept with the game for next time)'}.
+      Names and colors can still change during the game.
+    </p>
+    <!-- Deleting is done at once: the note under the list offers Undo. -->
+    <PlayerList bind:players={session.players} max={game.settings.maxPlayers} showScores avatars={!app.playerOnly} rowMenu />
     {#if !session.players.length}
       <div class="row">
-        <span class="warn">Add at least one player to start.</span>
+        <span class="warn">Add players to start: ＋ Add player, or</span>
         <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
       </div>
     {/if}
     {#if phonesOn}
       <PhoneRoom {session} max={game.settings.maxPlayers} onstart={startPhoneRoom} onadd={addPhonePlayer} onreject={rejectPhone} onkick={kickPhone} />
     {/if}
+    <GameRules s={game.settings} players={session.players.length} />
 
     <h2>Display</h2>
     <div class="modes">
@@ -1653,7 +1720,7 @@
 
     <div class="row actions">
       <button class="ghost" onclick={oncancel}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
-      <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add at least one player first'}>
+      <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add players to start'}>
         Start game ▶
       </button>
     </div>
