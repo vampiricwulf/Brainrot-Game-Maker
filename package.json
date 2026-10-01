@@ -8,6 +8,7 @@
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "test:quick": "node tests/e2e/smoke.mjs",
     "test:e2e": "node tests/e2e/smoke.mjs && node tests/e2e/channel.mjs && node tests/e2e/boardimages.mjs && node tests/e2e/layers.mjs && node tests/e2e/slideeditor.mjs && node tests/e2e/audio.mjs && node tests/e2e/links.mjs && node tests/e2e/save.mjs && node tests/e2e/stagemedia.mjs && node tests/e2e/rounds.mjs && node tests/e2e/rpg.mjs && node tests/e2e/boardgame.mjs && node tests/e2e/history.mjs && node tests/e2e/playhistory.mjs && node tests/e2e/board.mjs && node tests/e2e/editormedia.mjs && node tests/e2e/lists.mjs && node tests/e2e/pregame.mjs && node tests/e2e/editorfixes.mjs && node tests/e2e/editorfeatures.mjs && node tests/e2e/stream.mjs && node tests/e2e/desktop.mjs && node tests/e2e/datasafety.mjs && node tests/e2e/playfeatures.mjs && node tests/e2e/hosting.mjs && node tests/e2e/remotebuzz.mjs && node tests/e2e/update.mjs && node tests/e2e/a11y.mjs && node tests/e2e/buzzerroom.mjs && node tests/e2e/buzzerlive.mjs",
     "test:buzzer": "node tests/e2e/buzzerroom.mjs && node tests/e2e/buzzerlive.mjs",
     "screenshots": "node scripts/screenshots.mjs",

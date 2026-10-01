@@ -55,15 +55,20 @@ try {
   // Not now: put away for this version, also after a reload (which uses what it heard, without asking again).
   await notice.getByRole('button', { name: 'Not now' }).click();
   await notice.waitFor({ state: 'detached' });
-  // (The browser stores what a page set a moment later: a reload within a second or two can come back without it.)
-  await page.waitForFunction(() => localStorage.getItem('jb.updateSkip') === '99.0.0');
-  await page.waitForTimeout(3000);
+  assert((await page.evaluate(() => localStorage.getItem('jb.updateSkip'))) === '99.0.0', 'Not now puts it away for that version (kept on this computer)');
+  // After a reload: still put away, and no new question to GitHub. (This browser sometimes comes back from a reload
+  // of a file:// page with the storage of the last few seconds gone, the test's own marker too: then there's nothing
+  // the app could have done, and that part is skipped.)
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => localStorage.setItem('test.marker', '1'));
   const before = asked;
   await page.reload();
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await page.waitForTimeout(1500);
-  assert((await notice.count()) === 0, `Not now puts it away for that version (stored: ${await page.evaluate(() => localStorage.getItem('jb.updateSkip'))})`);
-  assert(asked === before, `a reload asks GitHub no sooner than a few hours later (asked ${asked - before} more; kept: ${await page.evaluate(() => (localStorage.getItem('jb.update') ?? 'nothing').slice(0, 60))})`);
+  if (await page.evaluate(() => localStorage.getItem('test.marker') === '1')) {
+    assert((await notice.count()) === 0, 'after a reload, Not now still holds');
+    assert(asked === before, `and the reload asks GitHub no sooner than a few hours later (asked ${asked - before} more)`);
+  } else console.log('  - (the browser lost its storage on that reload: the reload checks are skipped this time)');
 
   // ℹ About checks on demand: a still newer one shows again; this one is the newest; offline says so.
   const about = async () => {

@@ -326,7 +326,8 @@ npm run build          # → dist/index.html (one self-contained file)
 npm run check          # type-check
 npm test               # unit tests
 (cd buzzer && npm ci)  # once: the buzzer server's packages (its e2e tests run it)
-npm run test:e2e       # end-to-end tests on the built file
+npm run test:quick     # the quick end-to-end test (about a minute; CI waits for it before releasing)
+npm run test:e2e       # the full end-to-end suite (about 10 minutes; CI runs it alongside the release)
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
 ```

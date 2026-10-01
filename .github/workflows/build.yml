@@ -1,6 +1,7 @@
 name: Build
 
-# Every push to main is a release: check, test, build the single-file app and the Windows .exe, stamped with the
+# Every push to main is a release: check, test (unit tests and a quick end-to-end test; the full end-to-end suite
+# runs alongside without holding the release up), build the single-file app and the Windows .exe, stamped with the
 # version this push is released as (scripts/version.mjs: the last release's, stepped up by the changelog lines the
 # push adds), then publish them as GitHub Release vX.Y.Z, marked latest. The app checks that release for updates.
 on:
@@ -65,15 +66,16 @@ jobs:
       - run: npm run build
       - name: Install Chromium (headless shell) for the end-to-end test
         run: npx playwright-core install --with-deps --only-shell chromium
-      - name: End-to-end test (drives the built file from file://)
-        run: npm run test:e2e
+      # The quick end-to-end test (about a minute) gates the release; the full suite runs in the e2e job alongside it.
+      - name: Quick end-to-end test (drives the built file from file://)
+        run: npm run test:quick
         env:
           SCREENSHOTS: test-results/screenshots
       - name: Upload E2E debug output (screenshots + Playwright trace)
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-debug
+          name: e2e-debug-quick
           path: test-results/
           if-no-files-found: ignore
       - name: Build the release file with the buzzer server
@@ -89,6 +91,37 @@ jobs:
         with:
           name: brainrot-game-maker
           path: out/brainrot-game-maker.html
+
+  e2e:
+    # The full end-to-end suite (about 10 minutes). It doesn't hold up the release (which only waits for the quick
+    # test): a failure here marks the run red, so it's still heard about, and gets fixed in the next push.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Buzzer room (buzzer/) dependencies (its tests run it)
+        run: npm ci
+        working-directory: buzzer
+      - run: npm run build
+      - name: Install Chromium (headless shell)
+        run: npx playwright-core install --with-deps --only-shell chromium
+      - name: Full end-to-end test (drives the built file from file://)
+        run: npm run test:e2e
+        env:
+          SCREENSHOTS: test-results/screenshots
+      - name: Upload E2E debug output (screenshots + Playwright trace)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-debug
+          path: test-results/
+          if-no-files-found: ignore
 
   buzzer:
     # The remote buzzer room (buzzer/): deployed to Cloudflare Workers on every push to main, when the repository has
