@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, type BoardGameRound, type Game } from './model';
+import { newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
 import { newSession } from './session';
 import {
-  waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
+  waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
   boardGameProblems,
 } from './boardgame';
 
@@ -223,6 +223,42 @@ describe('board game: turn order', () => {
     // Out of range: nothing moves.
     moveInOrder(bs, 0, 4);
     expect(bs.order).toEqual(['d', 'a', 'c', 'b']);
+  });
+});
+
+describe('board game: skipped turns and rolling again', () => {
+  const state = () => ({ positions: {}, order: ['a', 'b', 'c'], turn: 0 }) as BoardGameState;
+
+  it('passes over players who skip, one turn each time', () => {
+    const bs = state();
+    skipTurns(bs, ['b'], 2);
+    expect(nextTurn(bs)).toEqual(['b']);
+    expect(bs.turn).toBe(2);
+    expect(bs.skips).toEqual({ b: 1 });
+    nextTurn(bs);
+    expect(nextTurn(bs)).toEqual(['b']);
+    expect(bs.turn).toBe(2);
+    expect(bs.skips).toBeUndefined();
+    // Going back doesn't count as a turn missed.
+    skipTurns(bs, ['b']);
+    nextTurn(bs, -1);
+    expect([bs.turn, bs.skips]).toEqual([1, { b: 1 }]);
+  });
+
+  it('never loops forever when everyone skips', () => {
+    const bs = state();
+    skipTurns(bs, ['a', 'b', 'c']);
+    nextTurn(bs);
+    expect(bs.skips).toBeUndefined();
+  });
+
+  it('gives the turn back to a player who rolls again, before any skips', () => {
+    const bs = state();
+    bs.again = 'a';
+    skipTurns(bs, ['b']);
+    expect(nextTurn(bs)).toEqual([]);
+    expect([bs.turn, bs.again]).toEqual([0, undefined]);
+    expect(nextTurn(bs)).toEqual(['b']);
   });
 });
 

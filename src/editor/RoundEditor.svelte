@@ -32,6 +32,8 @@
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import ClueImport from './ClueImport.svelte';
+  import { pasteColumn } from '../lib/clueimport';
 
   let { round }: { round: BoardRound } = $props();
   /** The clue open in the clue editor, by ids (an undo that puts a category back moves the others along). */
@@ -54,6 +56,7 @@
     void tick().then(() => focusTile(cur.cat, cur.row, true));
   }
   let decorOpen = $state(false);
+  let importing = $state(false);
   let catPicker = $state<number | null>(null);
   let dropTarget = $state<string | null>(null);
   const sym = $derived(app.game.settings.currencySymbol);
@@ -238,6 +241,18 @@
       e.preventDefault();
       pasteTile(p);
     }
+  }
+
+  /** Several lines pasted on a category's name (a column copied from a spreadsheet): its clues, top down. One step. */
+  function catNamePaste(e: ClipboardEvent, ci: number): void {
+    const text = e.clipboardData?.getData('text/plain') ?? '';
+    if (!/\n./.test(text.trim())) return;
+    const cat = round.categories[ci];
+    const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
+    const r = step(null, () => pasteColumn(round, ci, text), { notify: true, place });
+    if (!r) return;
+    e.preventDefault();
+    toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`, 4000);
   }
 
   /** ↓ at the end of a category's name goes down to its top tile. */
@@ -472,6 +487,7 @@
     />
   </label>
   <span class="spacer"></span>
+  <button onclick={() => (importing = true)} title="Paste clues from Google Sheets or Excel, or open a CSV / TSV file">Import clues…</button>
   <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
     🖼 Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
   </button>
@@ -563,7 +579,8 @@
           aria-label="Category {ci + 1} name"
           data-cat-name={ci}
           use:autosize={cat.title}
-          onkeydown={(e) => catNameKey(e, ci)}></textarea>
+          onkeydown={(e) => catNameKey(e, ci)}
+          onpaste={(e) => catNamePaste(e, ci)}></textarea>
         {#if cat.image}
           <div class="cat-img-opts">
             <select
@@ -654,9 +671,12 @@
 {#if decorOpen}
   <BoardDecorEditor {round} onclose={() => (decorOpen = false)} />
 {/if}
+{#if importing}
+  <ClueImport {round} onclose={() => (importing = false)} />
+{/if}
 <p class="muted small tip">
   Tips: drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it. Right-click a tile, a category or a row value for
-  more. Drop image files onto a category or a tile to use them there.
+  more. Drop image files onto a category or a tile to use them there. Paste a column of clues from a spreadsheet on a category's name to fill it.
 </p>
 
 <style>

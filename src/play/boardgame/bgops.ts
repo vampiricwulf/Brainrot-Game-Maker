@@ -90,8 +90,10 @@ export function turnNow(game: Game, session: Session, delta = 1): void {
   if (!bs) return;
   // The log says whose turn it is now ("Ann's turn"), as Make it their turn does.
   const after = { ...bs };
-  nextTurn(after, delta);
-  logged(session, `${playerName(session, currentPlayer(after))}'s turn`, () => {
+  const skipped = nextTurn(after, delta);
+  const again = delta > 0 && bs.again && currentPlayer(after) === bs.again ? ' again' : '';
+  const skips = skipped.length ? ` (${nameList(skipped.map((id) => playerName(session, id)))} ${skipped.length === 1 ? 'skips' : 'skip'} a turn)` : '';
+  logged(session, `${playerName(session, currentPlayer(after))}'s turn${again}${skips}`, () => {
     nextTurn(bs, delta);
     bs.last = undefined;
   });

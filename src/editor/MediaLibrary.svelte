@@ -23,6 +23,12 @@
   const unused = $derived(game.media.filter((m) => !usage.get(m.id)));
   const embeds = $derived(allEmbeds(game));
   const missing = $derived(missingMedia(game));
+  /** The filter box: files whose name (or kind: "audio", "font"…) has every word typed. */
+  let filter = $state('');
+  const shown = $derived.by(() => {
+    const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
+    return words.length ? game.media.filter((m) => words.every((w) => `${m.name} ${m.kind}`.toLowerCase().includes(w))) : game.media;
+  });
   const icon = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };
 
@@ -248,6 +254,9 @@
           replace it everywhere it's used.
         </span>
       {/if}
+      <span class="spacer"></span>
+      <input class="filter" type="search" bind:value={filter} placeholder="🔍 Filter by name or kind" aria-label="Filter files" />
+      {#if filter.trim()}<span class="muted small">{shown.length} of {game.media.length}</span>{/if}
     </div>
   {/if}
 
@@ -259,7 +268,7 @@
   {/if}
 
   <div class="grid">
-    {#each game.media as m (m.id)}
+    {#each shown as m (m.id)}
       {@const n = usage.get(m.id) ?? 0}
       <!-- The keyboard selects with the checkbox. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -451,6 +460,9 @@
     margin-top: 10px;
     min-height: 28px;
     align-items: center;
+  }
+  .filter {
+    width: 220px;
   }
   .name-row {
     display: flex;

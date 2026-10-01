@@ -84,10 +84,47 @@ export function currentPlayer(bs: BoardGameState): Id | undefined {
   return bs.order[bs.turn];
 }
 
-export function nextTurn(bs: BoardGameState, delta = 1): void {
-  if (!bs.order.length) return;
-  bs.turn = (((bs.turn + delta) % bs.order.length) + bs.order.length) % bs.order.length;
+/**
+ * Pass the turn on (`delta` -1: back to the one before). Going on, a player who rolls again keeps it, and players who
+ * skip a turn are passed over (one fewer to skip each time). Returns the players passed over.
+ */
+export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
+  const n = bs.order.length;
   bs.fork = undefined;
+  if (!n) return [];
+  const at = (i: number) => ((i % n) + n) % n;
+  if (delta <= 0) {
+    bs.turn = at(bs.turn + delta);
+    return [];
+  }
+  const again = bs.again;
+  bs.again = undefined;
+  if (again && bs.order.includes(again)) {
+    bs.turn = bs.order.indexOf(again);
+    return [];
+  }
+  const skipped: Id[] = [];
+  // (New objects, not changed in place: a copy of the state can try a turn out first.)
+  let skips = { ...bs.skips };
+  let turn = at(bs.turn + delta);
+  for (let tries = 0; tries < n && (skips[bs.order[turn]] ?? 0) > 0; tries++) {
+    const id = bs.order[turn];
+    skips = { ...skips, [id]: skips[id] - 1 };
+    if (!skips[id]) delete skips[id];
+    skipped.push(id);
+    turn = at(turn + 1);
+  }
+  bs.turn = turn;
+  if (Object.keys(skips).length) bs.skips = skips;
+  else delete bs.skips;
+  return skipped;
+}
+
+/** Players miss their next `turns` turns (on top of any they already miss). */
+export function skipTurns(bs: BoardGameState, players: Id[], turns = 1): void {
+  const skips = { ...bs.skips };
+  for (const id of players) skips[id] = (skips[id] ?? 0) + Math.max(1, Math.round(turns));
+  bs.skips = skips;
 }
 
 export interface Walk {

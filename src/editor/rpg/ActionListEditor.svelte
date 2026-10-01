@@ -50,6 +50,9 @@
     ['sound', '🔊 Play a sound'],
     ['move', '🚪 Go to a screen'],
     ['goto', '📍 Send to a space / zone'],
+    ['steps', '↔ Move ±N spaces'],
+    ['skip', '⏭ Skip next turn'],
+    ['again', '🔁 Roll again'],
     ['reveal', '👁 Reveal an object'],
     ['hide', '🙈 Hide an object'],
     ['shop', '🛒 Open a shop'],
@@ -57,6 +60,8 @@
     ['note', '📝 Host note'],
   ];
   const LABEL = Object.fromEntries(KINDS) as Record<ActionKind, string>;
+  /** Kinds only a board game's spaces have. */
+  const BOARD_ONLY: ActionKind[] = ['goto', 'steps', 'skip', 'again'];
 
   function make(kind: ActionKind): Action | null {
     const id = newId();
@@ -93,6 +98,12 @@
         return { id, do: 'note', text: '' };
       case 'goto':
         return board ? { id, do: 'goto', space: board.spaces[0]?.id, who: 'ask' } : null;
+      case 'steps':
+        return board ? { id, do: 'steps', steps: -3, who: 'party' } : null;
+      case 'skip':
+        return board ? { id, do: 'skip', turns: 1, who: 'party' } : null;
+      case 'again':
+        return board ? { id, do: 'again', who: 'party' } : null;
     }
   }
 
@@ -153,7 +164,7 @@
   function paste(): void {
     // (The same kinds ＋ Add button offers here.)
     const fits = (a: Action) =>
-      a.do === 'goto' ? !!board : a.do === 'move' ? !board && !!world?.maps[0]?.screens[0] : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
+      BOARD_ONLY.includes(a.do) ? !!board : a.do === 'move' ? !board && !!world?.maps[0]?.screens[0] : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
     const copies = copyActions(clipboard.actions.filter(fits));
     const left = clipboard.actions.length - copies.length;
     if (!copies.length) return void toast('Those buttons can’t work here');
@@ -185,7 +196,7 @@
     dropMenu(
       e,
       // Board spaces send players to a space (there are no screens); Reveal / Hide need objects on the same screen.
-      KINDS.filter(([k]) => (k === 'goto' ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(([k, l]) => ({
+      KINDS.filter(([k]) => (BOARD_ONLY.includes(k) ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(([k, l]) => ({
         label: l,
         onclick: () => add(k),
         disabled: k === 'move' && !world?.maps[0]?.screens[0],
@@ -351,6 +362,40 @@
             {#each board?.zones ?? [] as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
           </select>
           {@render who(a)}
+        {:else if a.do === 'steps'}
+          <select
+            value={a.steps < 0 ? 'back' : 'on'}
+            onchange={(e) => (a.steps = (e.currentTarget.value === 'back' ? -1 : 1) * Math.abs(a.steps || 1))}
+            aria-label="Which way"
+          >
+            <option value="on">Forward</option>
+            <option value="back">Back</option>
+          </select>
+          <input
+            type="number"
+            min="1"
+            value={Math.abs(a.steps)}
+            onchange={(e) => (a.steps = (a.steps < 0 ? -1 : 1) * Math.max(1, Math.round(+e.currentTarget.value) || 1))}
+            aria-label="Spaces"
+            class="n"
+          />
+          <span class="small muted">spaces</span>
+          {@render who(a, 'party')}
+        {:else if a.do === 'skip'}
+          <span class="small muted">Miss</span>
+          <input
+            type="number"
+            min="1"
+            value={a.turns ?? 1}
+            onchange={(e) => (a.turns = Math.max(1, Math.round(+e.currentTarget.value) || 1))}
+            aria-label="Turns"
+            class="n"
+          />
+          <span class="small muted">turn(s)</span>
+          {@render who(a, 'party')}
+        {:else if a.do === 'again'}
+          <span class="small muted">Next turn comes back to them</span>
+          {@render who(a, 'party')}
         {:else if a.do === 'note'}
           <input bind:value={a.text} placeholder="A reminder for you (never on stream)" aria-label="Note" />
         {/if}

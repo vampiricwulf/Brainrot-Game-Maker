@@ -15,6 +15,7 @@
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
+  import ThemeShare from './ThemeShare.svelte';
 
   /** `round`: the round last open in the editor, which the preview starts on. */
   let { round: lastRound }: { round?: number } = $props();
@@ -90,6 +91,7 @@
         </button>
       {/each}
     </div>
+    <ThemeShare />
 
     <h4>Colors</h4>
     <div class="grid">

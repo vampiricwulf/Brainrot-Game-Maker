@@ -10,6 +10,8 @@
   const s = $derived(app.game.settings);
   const audio = $derived(app.game.audio);
   let picking = $state<keyof GameAudio | null>(null);
+  /** Most players a game can have (the stats strip and the player list stay readable). */
+  const MAX_PLAYERS = 20;
 
   const SOUNDS: [keyof GameAudio, string, string][] = [
     ['roundIntro', 'Round intro', 'Plays with the round title card'],
@@ -59,7 +61,27 @@
       Points symbol
       <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" />
     </label>
+    <label class="field">
+      Most players
+      <input
+        type="number"
+        min={Math.max(1, app.game.players.length)}
+        max={MAX_PLAYERS}
+        value={s.maxPlayers}
+        onchange={(e) => {
+          // Never fewer than the players already listed.
+          const n = Math.max(1, app.game.players.length, Math.min(MAX_PLAYERS, Math.round(+e.currentTarget.value) || 0));
+          if (n !== s.maxPlayers) s.maxPlayers = n;
+          e.currentTarget.value = String(s.maxPlayers);
+        }}
+      />
+    </label>
   </div>
+  {#if s.maxPlayers > 9}
+    <p class="muted small">While hosting, the number keys 1–9 pick only the first 9 players: click the others.</p>
+  {:else}
+    <p class="muted small">While hosting, the number keys 1–{s.maxPlayers} pick players.</p>
+  {/if}
 </section>
 
 <section>

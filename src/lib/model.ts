@@ -652,6 +652,12 @@ export type Action = { id: Id } & (
   | { do: 'note'; text: string }
   /** Board games: send players to a space or an off-board zone. */
   | { do: 'goto'; space?: Id; zone?: Id; who?: Who }
+  /** Board games: move players forward (or back, negative) this many spaces from where they are. */
+  | { do: 'steps'; steps: number; who?: Who }
+  /** Board games: players miss their next turn(s). */
+  | { do: 'skip'; turns?: number; who?: Who }
+  /** Board games: the player goes again (Next turn comes back to them). */
+  | { do: 'again'; who?: Who }
 );
 export type ActionKind = Action['do'];
 
@@ -1110,5 +1116,9 @@ export interface BoardGameState {
   zoneShown?: Id | null;
   /** Secret spaces the host revealed. */
   revealed?: Id[];
+  /** Turns each player still has to miss (⏭ Skip next turn). */
+  skips?: Record<Id, number>;
+  /** The player Next turn goes to instead of the next one (🔁 Roll again). */
+  again?: Id;
 }
 

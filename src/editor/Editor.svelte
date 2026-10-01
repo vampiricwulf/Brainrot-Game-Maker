@@ -41,6 +41,11 @@
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
   import HistoryNotice from './HistoryNotice.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
+  import FindDialog from './FindDialog.svelte';
+  import RoundImport from './RoundImport.svelte';
+  import { clipboard } from '../lib/clipboard.svelte';
+  import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
+  import type { Game } from '../lib/model';
 
   /** `problems`: the checklist, worked out by the app a moment after changes stop. */
   let { onplay, problems }: { onplay: () => void; problems: Problem[] } = $props();
@@ -132,12 +137,15 @@
     focusRoundTab(round.id);
   }
 
-  /** The round modes, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
+  /** The round modes, templates and rounds from elsewhere, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
   function addRoundMenu(e: MouseEvent): void {
-    dropMenu(
-      e,
-      Object.entries(ROUND_MODES).map(([mode, m]) => ({ label: `${m.icon} ${m.label}`, hint: m.hint, onclick: () => addRound(mode as RoundMode) })),
-    );
+    dropMenu(e, addRoundItems(game, addRound, (at) => (tab = at), importRounds));
+  }
+
+  /** Import round from a .brainrot…: the other game, while its rounds are picked. */
+  let importFrom = $state<Game | null>(null);
+  async function importRounds(): Promise<void> {
+    importFrom = await pickOtherGame();
   }
 
   // Moving, copying or deleting a round keeps the same tab on screen (a round's right-click menu can act on
@@ -345,6 +353,13 @@
       shortcuts = true;
       return;
     }
+    // Ctrl+F: 🔍 Find, over the whole game (not in a window open over the editor).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f' && !e.defaultPrevented) {
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      e.preventDefault();
+      finding = true;
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) toast('Close this window first, then save (Ctrl+S)');
@@ -409,6 +424,7 @@
 
   let about = $state(false);
   let shortcuts = $state(false);
+  let finding = $state(false);
   let settings = $state(false);
   // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
   const NOTICE_KEY = 'jb.dataNoticeSeen';
@@ -484,6 +500,7 @@
       </span>
     {/if}
     <button class="ghost" onclick={() => (settings = true)} title="Autosaves, how Save names files, and how much undo to remember">⚙ Settings</button>
+    <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)">🔍</button>
     <button class="ghost" onclick={() => (shortcuts = true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts: the editor's keys and mouse moves (?)">⌨</button>
     <button class="ghost" onclick={() => (about = true)} title="Version, links, and where your data is saved">ℹ About</button>
     <button class="primary" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
@@ -503,6 +520,8 @@
   {/if}
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
   {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
+  {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
+  {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={(at) => (tab = at)} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
   {#if saveList}<OpenSaves saves={saveList} onpick={openSave} onbrowse={browse} onclose={() => (saveList = null)} />{/if}
 
@@ -541,6 +560,15 @@
                 { label: '▲ Move up', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
                 { label: '▼ Move down', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
                 { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
+                { label: '📋 Copy round', onclick: () => copyRoundOf(game, i), hint: 'To paste in this game or another' },
+                {
+                  label: clipboard.round ? `📋 Paste round “${roundName(clipboard.round.round)}” after it` : '📋 Paste round after it',
+                  disabled: !clipboard.round,
+                  onclick: () => {
+                    const at = pasteRound(game, i);
+                    if (at !== null) tab = at;
+                  },
+                },
                 { sep: true },
                 { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), keys: 'Delete' },
               ])}
@@ -631,6 +659,11 @@
           <div class="first-round">
             <h2>Add your first round</h2>
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
+            <button class="sample" onclick={() => (tab = addSample(game))}>
+              <span class="icon" aria-hidden="true">✨</span>
+              <b>Try a sample game</b>
+              <span class="muted small">A small board, an adventure, a board game and a Final, all filled in and ready to play</span>
+            </button>
             <div class="modes">
               {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
                 <button class="mode" onclick={() => addRound(mode as RoundMode)}>
@@ -666,7 +699,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
-  .first-round .mode {
+  .first-round .mode,
+  .first-round .sample {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -674,6 +708,9 @@
     padding: 14px;
     text-align: left;
     white-space: normal;
+  }
+  .first-round .sample {
+    border-color: var(--accent);
   }
   .first-round .icon {
     font-size: 28px;

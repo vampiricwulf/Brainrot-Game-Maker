@@ -1,7 +1,7 @@
 // Running actions (games-maker spec §7.10): the host pressed an object's, item's or wheel slice's button. State
 // changes go through toolset.logged() (undoable); show-only effects (wheels, pop-ups, sounds, timers) go to Live.
 import { newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type Game, type Session, type Who, type World, type WorldState } from './model';
-import { sendTo, spaceById } from './boardgame';
+import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
 import { playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
@@ -52,6 +52,7 @@ const names = (ctx: RunContext, ids: string[]) => nameList(ids.map((id) => ctx.s
 
 /** Whether an action needs players to act on (so the card asks for them first). */
 export function needsPlayers(a: Action): boolean {
+  if (a.do === 'steps' || a.do === 'skip' || a.do === 'again') return !!a.who && a.who !== 'party';
   return a.do === 'stat' || a.do === 'item' || a.do === 'score' || ((a.do === 'move' || a.do === 'goto') && a.who !== 'party');
 }
 
@@ -95,6 +96,14 @@ export function describeAction(game: Game, a: Action): string {
       const board = round?.mode === 'boardgame' ? round : undefined;
       return `Send to ${a.zone ? (board?.zones.find((z) => z.id === a.zone)?.name ?? 'a zone') : ((board && spaceById(board, a.space)?.name) ?? 'a space')}`;
     }
+    case 'steps': {
+      const n = Math.abs(a.steps);
+      return `${a.steps < 0 ? 'Back' : 'Forward'} ${n} space${n === 1 ? '' : 's'}`;
+    }
+    case 'skip':
+      return (a.turns ?? 1) > 1 ? `Skip ${a.turns} turns` : 'Skip next turn';
+    case 'again':
+      return 'Roll again';
   }
 }
 
@@ -200,6 +209,22 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const bs = ctx.bs;
       logged(session, `${text} (${names(ctx, who)})`, () => sendTo(bs, who, { space: a.space, zone: a.zone }));
       return `${text}: ${names(ctx, who)}`;
+    }
+    case 'steps':
+    case 'skip':
+    case 'again': {
+      if (!ctx.board || !ctx.bs) return 'This works only in board-game rounds';
+      // (Unset: whoever's turn it is, as on a space.)
+      const who = targets(ctx, a.who ?? 'party');
+      if (!who.length) return 'Pick who it’s for first';
+      const { board, bs } = ctx;
+      let said = '';
+      logged(session, `${text} (${names(ctx, who)})`, () => {
+        if (a.do === 'steps') said = who.map((id) => movePlayer(board, bs, id, Math.round(a.steps) || 0)).at(-1) ?? '';
+        else if (a.do === 'skip') skipTurns(bs, who, a.turns ?? 1);
+        else bs.again = who[0];
+      });
+      return `${text}: ${names(ctx, who)}${said ? ` · ${said}` : ''}`;
     }
   }
 }
