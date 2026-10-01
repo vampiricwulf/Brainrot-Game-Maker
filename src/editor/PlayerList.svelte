@@ -209,8 +209,8 @@
         <!-- (Its room is kept when there's no picture, so every row lines up and wraps alike.) -->
         {#if p.avatar}<button class="ghost small unpic" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">−🖼</button>{:else}<span class="unpic" aria-hidden="true"></span>{/if}
       {/if}
-      <input class="name" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
-      <span class="chip" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
+      <input class="name" dir="auto" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
+      <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
         <label class="field score">Start score<input type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" /></label>
       {/if}
@@ -329,7 +329,8 @@
     align-items: center;
   }
   .score input {
-    width: 72px;
+    /* Room for 7 digits and the spinner (12400 reads whole). */
+    width: calc(8ch + 24px);
   }
   .pop {
     position: relative;

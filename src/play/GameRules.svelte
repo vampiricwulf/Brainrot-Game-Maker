@@ -63,7 +63,7 @@
       </label>
       <label class="field">
         Points symbol
-        <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" />
+        <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" title="A word (pts, coins) goes after the number: 200 pts. $, € or 🧠 goes in front: $200" />
       </label>
       <label class="field">
         Most players

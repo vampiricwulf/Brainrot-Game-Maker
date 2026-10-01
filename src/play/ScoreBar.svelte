@@ -4,6 +4,7 @@
   import { autofit } from '../lib/autofit';
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { score } from '../lib/session';
+  import { plateScore } from './flow';
 
   let {
     game,
@@ -52,10 +53,10 @@
       title={onpicker ? hint : undefined}
     >
       <span class="name" style:background={p.color} style:color={textOn(p.color)} title={p.name}>
-        <span class="fit" use:autofit={{ size: NAME, min: NAME_MIN, noBreak: true, enabled: true, text: p.name }}><span class="nm">{p.name}</span></span>
+        <span class="fit" use:autofit={{ size: NAME, min: NAME_MIN, noBreak: true, enabled: true, text: p.name }}><span class="nm" dir="auto">{p.name}</span></span>
       </span>
       <span class="score" class:neg={s < 0}>
-        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm">{formatPoints(s, sym)}</span></span>
+        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm" title={formatPoints(s, sym)}>{plateScore(s, sym, session.players.length, reserve)}</span></span>
       </span>
       {#if ticks.includes(p.id)}<span class="tick" title="Wager in">✔</span>{/if}
     </button>

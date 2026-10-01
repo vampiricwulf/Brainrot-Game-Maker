@@ -82,13 +82,13 @@
             <div class="title has-image" class:revealing={!!intro}>
               <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
               {#if cat.showTitleOverImage && cat.title}
-                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}><div>{softHyphens(cat.title)}</div></div>
+                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}><div dir="auto">{softHyphens(cat.title)}</div></div>
               {/if}
             </div>
           {:else}
             <!-- Never so small it can't be read on a scaled-down stream: at the smallest size, long words are hyphenated. -->
             <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}>
-              <div>{softHyphens(cat.title)}</div>
+              <div dir="auto">{softHyphens(cat.title)}</div>
             </div>
           {/if}
         {/if}

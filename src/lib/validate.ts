@@ -55,6 +55,12 @@ export function validate(game: Game): Problem[] {
     if (isFinal(round)) {
       if (!slideHasContent(round.questionSlide)) out.push({ text: `${name} has no question`, tab: i, level: 'warn' });
       if (!slideHasContent(round.answerSlide)) out.push({ text: `${name} has no answer`, tab: i, level: 'warn' });
+      if (round.wasOff)
+        out.push({
+          text: `${name} was switched off in the old game: kept because something is written in it, and plays last. Delete the round if it shouldn't play`,
+          tab: i,
+          level: 'info',
+        });
       return;
     }
     if (isRpg(round)) {

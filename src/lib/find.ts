@@ -1,7 +1,7 @@
 // Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
 // on them, board-game spaces and zones, items, stats, shops, wheels, dice, media files — with the place to go
 // to (nav.svelte.ts's goTo, as the History tab's Go there).
-import { categoryLabel, roundName, type Game, type Slide } from './model';
+import { categoryLabel, formatPoints, roundName, type Game, type Slide } from './model';
 import type { Place } from './historylabel';
 
 export interface Hit {
@@ -53,7 +53,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         const cn = categoryLabel(cat);
         look('🟦', [cat.title], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'category', category: cat.id } }, `[data-place="category:${cat.id}"] textarea`);
         cat.clues.forEach((clue, row) => {
-          const where = `${rn} › ${cn} › ${sym}${clue.value ?? r.values[row] ?? ''}`;
+          const where = `${rn} › ${cn} › ${formatPoints(clue.value ?? r.values[row] ?? 0, sym)}`;
           const at = (side?: 'q' | 'a'): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side } });
           look('❓', slideWords(clue.questionSlide), `${where} › Question`, at('q'), '[data-field="q"]');
           look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');

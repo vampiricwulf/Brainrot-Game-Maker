@@ -196,6 +196,15 @@ try {
   await page.getByText(/^Opened “/).waitFor();
   await page.locator('nav button.round-tab').first().click();
   assert((await page.locator('.tile').count()) === 30, 'a hand-edited game missing its row values, a slide and a color opens with them filled in');
+  // A category short of clues (or with none) gets empty tiles: the board opens whole, no broken page.
+  game.rounds[0].categories[0].clues = game.rounds[0].categories[0].clues.slice(0, 2);
+  game.rounds[0].categories[1].clues = null;
+  game.title = 'Short clues';
+  writeFileSync(resolve('test-results/datasafety-short.json'), JSON.stringify(game));
+  await openGameFile(page, resolve('test-results/datasafety-short.json'));
+  await page.getByText('Opened “Short clues”').waitFor();
+  await page.locator('nav button.round-tab').first().click();
+  assert((await page.locator('.tile').count()) === 30 && !errors.length, 'a category short of clues opens with empty tiles in their place');
   game.rounds[0].mode = 'quiz';
   writeFileSync(resolve('test-results/datasafety-bad.json'), JSON.stringify(game));
   dialogs.length = 0;

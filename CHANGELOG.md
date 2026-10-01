@@ -104,6 +104,17 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **A points symbol that's a word goes after the number**: "200 pts" and "−300 pts" instead of "pts200", with a
+  space; $, €, £, R$ or an emoji still go in front ("$200"). The same everywhere, the phones too.
+- **Scores too long for their plate are shortened** on the score bar ("$999.9M", "−1.2B pts"), never cut off in the
+  middle ("$999,999,…"), and never rounded up. The host panel shows the whole number.
+- **Row values are whole points, 0 or more** (like a clue's own value), and the host panel's Amount and a score typed
+  in are whole points too (2.5 becomes 3), within a trillion either way.
+- **A Jeopardy Builder game with Final Jeopardy switched off keeps it** when something is written in it (a category,
+  a question, an answer or a picture): it's the last round, and the checklist says so, so you can delete it. An empty
+  one is still dropped.
+- **A player left with no name** (blank, only spaces or invisible characters) is called "Player 1", "Player 2"… when
+  the game starts, instead of an empty plate.
 - **A wrong answer goes to the next in the buzz order**: with phone buzzers, the next player who buzzed (and hasn't
   missed the clue) answers at once, instead of the buzzers opening again for a later buzz to jump the queue. The
   buzzers only open again for the rest once everyone in the order has had their go. A phone that's out of the clue
@@ -316,6 +327,25 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **A game with a category short of clues opens**: a hand-edited game where a category had fewer clues than rows
+  (or none) broke the editor after half-opening. The missing tiles are added empty (a longer category gets rows added),
+  and a game the app still can't show is refused before it replaces yours.
+- **A damaged `.brainrot` says so**: a pack whose game can't be read whole says it's incomplete (it said "Bug :
+  uncompressed data size mismatch"), and a damaged picture, video or sound in it is left out, so the game opens with
+  that file listed as missing in the checklist instead of a broken one.
+- **Game files open whatever their name says**: a game saved as `.brainrot`, a pack named `.json` or an exported page
+  renamed opens by what it is. An exported page cut off before its game says it's incomplete (it said "no game
+  inside").
+- **Playing in one window on a small or zoomed screen keeps the stage in sight**: the page no longer scrolls (the
+  board went up out of the window with 12 players, and opening a clue scrolled it further). The host panel scrolls
+  itself instead, the player list first, so its buttons stay in reach.
+- **Right-to-left names** (Arabic, Hebrew) keep their first word when they're shortened on the score bar, the host
+  panel, the player list and the phones.
+- **Very long names and titles fit**: an 80-letter name ends in "…" in the host panel instead of widening it past the
+  window, and a long one-word title wraps on the pre-game screen instead of scrolling it sideways.
+- **The start score box is wide enough** for a 7-digit score (12400 showed as "1240").
+- **A countdown saved below 1 second** in a hand-edited game ("Start -5s") is 1 second; a hand-edited list of rounds
+  with a blank in it opens instead of showing an error.
 - **New, then Open… or New again straight away, asks before replacing the game**: a title typed into a new game in
   the moment before its undo history started wasn't counted as a change, so it could be replaced without asking.
 - **Exit closes the audience window** (and the scores window), also after the host page was reloaded (it no longer

@@ -4,7 +4,8 @@ import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks, stored
 import { settleFiles } from './roundcopy';
 import { migrateGame, type Game } from './model';
 import { parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
-import { buildZip, type ZipEntry } from './zipwrite';
+import { buildZip, crc32, type ZipEntry } from './zipwrite';
+import { looksLikeHtml } from './sniff';
 import { MAX_HTML_CHARS, packInHtml, TOO_BIG, unpackEmbedded } from './export';
 
 function mediaPath(ref: { id: string; name: string }): string {
@@ -69,13 +70,21 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
   }
   const json = zip.file('game.json');
   if (!json) throw new Error('This pack has no game.json inside.');
-  const game = migrateGame(parseGame(await json.async('text')));
+  // A damaged game.json is a damaged file: nothing in it can be trusted.
+  const text = await intact(json);
+  if (!text) throw new Error(CUT_OFF);
+  const game = migrateGame(parseGame(new TextDecoder().decode(text)));
   const files = game.media.filter((ref) => !ref.url);
   for (const [i, ref] of files.entries()) {
     onProgress?.(i, files.length);
     const entry = zip.file(mediaPath(ref));
     if (!entry) continue;
-    const data = await entry.async('blob');
+    // A damaged media file is left out, so the game opens with it listed as missing (the checklist says so), not broken.
+    const data = await intact(entry);
+    if (!data) {
+      console.warn(`Damaged in the pack, left out: ${ref.name}`);
+      continue;
+    }
     await put(ref.id, new Blob([data], { type: mimeFor(ref.name, ref.mime) }));
   }
   registerLinks(game);
@@ -83,21 +92,51 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
 }
 
 /**
+ * A file of a pack, unpacked and checked against the CRC-32 the zip has for it (JSZip's own checkCRC32 fails the whole
+ * pack over one damaged file), or null when it's damaged: it won't unpack, or its bytes aren't the ones packed.
+ */
+async function intact(entry: JSZip.JSZipObject): Promise<Uint8Array<ArrayBuffer> | null> {
+  try {
+    const data = (await entry.async('uint8array')) as Uint8Array<ArrayBuffer>;
+    // (The CRC the zip lists: JSZip keeps it with the still-packed data.)
+    const want = (entry as unknown as { _data?: { crc32?: number } })._data?.crc32;
+    return typeof want === 'number' && crc32(data) !== want >>> 0 ? null : data;
+  } catch {
+    return null;
+  }
+}
+
+/** What a file is from its first bytes, whatever its name says: a zip (a pack), a JSON game, a web page, or unknown. */
+async function sniffGameFile(file: Blob): Promise<'zip' | 'json' | 'html' | null> {
+  const head = new Uint8Array(await file.slice(0, 512).arrayBuffer());
+  if (head[0] === 0x50 && head[1] === 0x4b) return 'zip';
+  if (looksLikeHtml(head)) return 'html';
+  return /^\s*\{/.test(new TextDecoder().decode(head).replace(/^﻿/, '')) ? 'json' : null;
+}
+
+/** Is this page Brainrot Games Maker's (or Jeopardy Builder's) own, cut off before its end? */
+const cutAppPage = (html: string) => /<title>[^<]*(Brainrot Games Maker|Jeopardy Builder)<\/title>/.test(html) && !/<\/html>\s*$/i.test(html);
+
+/**
  * Open a .brainrot pack (or a .jbr from before the rename: same format), a plain .json game, the game in an exported
  * .html, or a backup the desktop app kept of one of those ("Game.brainrot.bak").
  */
 export async function openGameFile(file: File, put: PutMedia = putMedia): Promise<Game> {
-  // A pack is a zip, which starts with "PK": one saved or renamed as .json still opens.
-  const zip = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
+  // What the file is goes by its first bytes (a pack starts with "PK", a game with "{", a page with "<!doctype html"…),
+  // so one renamed or saved with the wrong ending still opens; its name only decides what it's taken for otherwise.
+  const kind = await sniffGameFile(file);
   const name = file.name.replace(/\.bak\d*$/i, '');
-  if (!zip && (/\.html?$/i.test(name) || file.type === 'text/html')) {
+  if (kind === 'html' || (!kind && (/\.html?$/i.test(name) || file.type === 'text/html'))) {
     // (A browser can't read a file this long as text.)
     if (file.size > MAX_HTML_CHARS) throw new Error(TOO_BIG);
-    const inside = packInHtml(await file.text());
+    const html = await file.text();
+    const inside = packInHtml(html);
+    // This app's page, cut off before its game (the game comes last): it didn't arrive whole.
+    if (!inside && cutAppPage(html)) throw new Error(CUT_OFF);
     if (!inside) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
     return openPack(await unpackEmbedded(inside.pack, inside.cut), undefined, put);
   }
-  if (!zip && (/\.json$/i.test(name) || file.type === 'application/json')) {
+  if (kind === 'json' || (!kind && (/\.json$/i.test(name) || file.type === 'application/json'))) {
     const game = migrateGame(parseGame(await file.text()));
     registerLinks(game);
     return game;
