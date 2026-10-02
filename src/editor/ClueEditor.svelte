@@ -414,8 +414,8 @@
             <span class="spacer"></span>
             <div class="slidetools" role="group" aria-label="Question slide {at + 1} of {qslides.length}">
               <span class="muted small">Slide {at + 1} of {qslides.length}</span>
-              <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} title="Move this slide earlier" aria-label="Move slide earlier">◀</button>
-              <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} title="Move this slide later" aria-label="Move slide later">▶</button>
+              <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} title="Move this slide earlier" aria-label="Move slide earlier">◀ Earlier</button>
+              <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} title="Move this slide later" aria-label="Move slide later">Later ▶</button>
               <button class="ghost small" onclick={duplicateSlide} title="A copy of this slide, right after it">⧉ Duplicate</button>
               <button class="ghost small danger" onclick={deleteSlide} title="Delete this question slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
             </div>
@@ -426,7 +426,7 @@
             slide={side === 'q' ? qslide : clue.answerSlide}
             styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
             stylecategory
-            placeholder={side === 'q' ? 'Click to type the question' : 'Click to type the answer'}
+            placeholder={side === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
             badge={side === 'a' ? 'ANSWER' : undefined}
             fill
           />

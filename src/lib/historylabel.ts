@@ -2,7 +2,7 @@
 // worked out from its ops (historyops.ts), and the place in the editor that shows it. Pure: unit-tested in
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
-import { LAYER_ICON, layerLabel } from './layerlabel';
+import { LAYER_ICON, layerLabel, short } from './layerlabel';
 import { categoryLabel, clueValue, formatPoints, roundName, type Action, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
@@ -431,11 +431,7 @@ function themeValue(k: Seg, v: unknown): string {
 }
 
 const fieldName = (k: Seg) => (typeof k === 'number' ? 'item' : (FIELDS[k] ?? k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()));
-/** Text as a label shows it: its first line, 40 characters at most. */
-export const short = (s: string) => {
-  const line = s.trim().split('\n')[0];
-  return line.length > 40 ? `${line.slice(0, 39).trimEnd()}…` : line;
-};
+export { short };
 const quoted = (name: string) => (name.trim() ? ` “${short(name)}”` : '');
 const nounOf = (at: At) => (at.noun === 'game' ? 'the game' : at.noun);
 const what = (at: At) => nounOf(at) + quoted(at.name);

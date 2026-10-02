@@ -7,12 +7,12 @@
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
   import { uniqueMediaName } from '../lib/medianame';
   import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
-  import { allEmbeds, mediaUsage } from '../lib/usage';
+  import { allEmbeds, allSlides, mediaUsage } from '../lib/usage';
   import { redoEdits } from '../lib/reedit';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
   import { embedName, embedOpenUrl, formatWhen, linkHost, linkLifetime } from '../lib/links';
-  import type { MediaRef } from '../lib/model';
+  import { categoryLabel, isBoard, roundName, type MediaRef } from '../lib/model';
   import LinkField from './LinkField.svelte';
   import SaveCopyButton from './SaveCopyButton.svelte';
 
@@ -25,6 +25,47 @@
   const links = $derived(game.media.filter((m) => m.url).length);
   const unused = $derived(game.media.filter((m) => !usage.get(m.id)));
   const embeds = $derived(allEmbeds(game));
+  /** The slides each file shows on ("Jeopardy! · Memes #2 (question)"), for its "used 3×" tooltip. */
+  const places = $derived.by(() => {
+    const at = new Map<string, string[]>();
+    const put = (id: string | undefined, where: string) => {
+      if (!id) return;
+      const list = at.get(id) ?? [];
+      if (!list.includes(where)) list.push(where);
+      at.set(id, list);
+    };
+    for (const { slide, where } of allSlides(game)) {
+      put(slide.background.image, `${where}, background`);
+      for (const el of slide.elements)
+        if (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') {
+          put(el.media, where);
+          if (el.kind === 'image') put(el.editedMedia, where);
+        }
+    }
+    // The commonest places off the slides (the count has them all).
+    for (const id of Object.values(game.audio ?? {})) put(id ?? undefined, '🔊 Sounds');
+    put(game.theme?.boardImage, '🎨 Theme: background picture');
+    put(game.theme?.banner, '🎨 Theme: banner');
+    game.rounds.forEach((r, ri) => {
+      if (!isBoard(r)) return;
+      const name = roundName(r, ri);
+      for (const c of r.categories) {
+        put(c.image, `${name} · ${categoryLabel(c)} (category picture)`);
+        c.clues.forEach((cl, i) => put(cl.tileFace?.image, `${name} · ${categoryLabel(c)} #${i + 1} (tile picture)`));
+      }
+      for (const d of r.decor ?? []) {
+        put(d.media, `${name} (board image)`);
+        put(d.editedMedia, `${name} (board image)`);
+      }
+    });
+    return at;
+  });
+  function usedWhere(m: MediaRef): string | undefined {
+    const list = places.get(m.id);
+    if (!list?.length) return undefined;
+    const more = list.length > 10 ? `\n…and ${list.length - 10} more` : '';
+    return `Used in:\n${list.slice(0, 10).join('\n')}${more}`;
+  }
   const missing = $derived(missingMedia(game));
   /** The filter box: files whose name (or kind: "audio", "font"…) has every word typed. */
   let filter = $state('');
@@ -351,7 +392,7 @@
           </div>
         {/if}
         <div class="meta muted">
-          {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} · {n ? `used ${n}×` : 'unused'}
+          {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} · <span class:where={!!usedWhere(m)} title={usedWhere(m)}>{n ? `used ${n}×` : 'unused'}</span>
           {#if !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)}<span class="warn" title={m.mime}> · may not play</span>{/if}
         </div>
         {#if m.url}
@@ -459,7 +500,8 @@
   .grid {
     margin-top: 14px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    /* Wide enough for Replace… and 🗑 Delete side by side. */
+    grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
     gap: 10px;
   }
   .card {
@@ -546,6 +588,12 @@
   }
   .meta {
     font-size: 12px;
+  }
+  /* "used 3×": the tooltip says where. */
+  .where {
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    cursor: help;
   }
   .small {
     font-size: 12px;

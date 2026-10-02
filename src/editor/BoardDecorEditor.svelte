@@ -116,7 +116,7 @@
   // ---------- Undo: the game's history, as in the slide editor (Ctrl+Z / Ctrl+Y are the editor's) ----------
   // Adding, deleting or restacking is a step of its own, and so is each drag.
   /** Record a discrete edit as its own undo step. */
-  const edit = (fn: () => void) => step(null, fn);
+  const edit = (fn: () => void, label: string | null = null) => step(label, fn);
   let endDrag: (() => void) | null = null;
   onDestroy(() => endDrag?.());
 

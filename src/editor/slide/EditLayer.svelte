@@ -301,6 +301,8 @@
     } else if (drag.kind === 'rotate' && single) {
       let a = drag.r0 + angle(p, drag.cx, drag.cy) - drag.a0;
       if (e.shiftKey) a = Math.round(a / 15) * 15;
+      // Near straight (0°, 90°, 180°) it settles there, so it's easy to turn back level (Alt turns freely).
+      else if (!e.altKey && Math.abs(a - Math.round(a / 90) * 90) <= 3) a = Math.round(a / 90) * 90;
       a = ((Math.round(a) % 360) + 360) % 360;
       single.rotation = a > 180 ? a - 360 : a;
     }
@@ -407,7 +409,7 @@
           ></div>
         {/each}
         <div class="rot-stem"></div>
-        <div class="rot" onpointerdown={rotateDown} role="presentation" title="Rotate (Shift snaps to 15°)"></div>
+        <div class="rot" onpointerdown={rotateDown} role="presentation" title="Rotate (it settles on level near 0° and 90°; Shift: steps of 15°; Alt: freely)"></div>
       {/if}
       {#if el.locked}<div class="lock">🔒</div>{/if}
     </div>
