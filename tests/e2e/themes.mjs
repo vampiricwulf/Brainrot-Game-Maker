@@ -227,6 +227,19 @@ try {
   console.log('themes: all passed');
 } catch (e) {
   await shot('themes-failure');
+  // What the page shows at the failure (CI keeps no browser): the editor paused for another window, its "can't be shown"
+  // card, a window left open, or the page's text in short.
+  const state = await page
+    .evaluate(() => ({
+      url: location.href.slice(-40),
+      nav: document.querySelectorAll('nav .round-tab').length,
+      header: !!document.querySelector('header'),
+      dialogs: [...document.querySelectorAll('[role=dialog], [role=alertdialog]')].map((d) => d.textContent?.trim().slice(0, 160)),
+      text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 600),
+    }))
+    .catch((err) => `(couldn't read the page: ${err.message})`);
+  console.log('Page at the failure:', JSON.stringify(state, null, 2));
+  console.log('Page errors so far:', errors.join(' | ') || 'none');
   throw e;
 } finally {
   await browser.close();
