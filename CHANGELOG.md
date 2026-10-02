@@ -14,6 +14,10 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-02
 
 ### Added
+- **A guide to setting up your own buzzer server** (free, on Cloudflare, about 10 minutes) in the README's new "Set up
+  your own buzzer server" section: install, log in, publish, paste the address into ⚙ Settings › Buzzer server and
+  Test; updating it, publishing from a GitHub fork, and what to do when something's wrong. ⚙ Settings › Buzzer server
+  links to it (**How to set up your own ↗**), so does the ▶ Play screen's ⚙ Set up phone buzzers… (it opens there).
 - **🗂 Pick a category wheel**, built in: on a Jeopardy board, a slice for each category that still has clues to play.
   Spin it from the host's 🎡 Wheel menu (its ✎ leaves categories out or changes their chances); it's listed in the
   editor's 🎡 Wheels & Dice too.

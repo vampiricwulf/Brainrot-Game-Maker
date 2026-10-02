@@ -1,10 +1,11 @@
 <!-- ℹ About: version and build, links, and where this copy keeps its data (the desktop app's folders, with buttons to
      open them, so nobody is surprised by folders the app made). -->
 <script lang="ts">
+  import { externalLink, REPO } from '../lib/sitelinks';
   import { modal } from '../lib/modal';
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
-  import { dataFolders, openDataFolder, openLink, type DataFolders, type FolderName } from '../lib/desktop.svelte';
+  import { dataFolders, openDataFolder, type DataFolders, type FolderName } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
   import { storageKept } from '../lib/persist';
   import { checkForUpdate, update } from '../lib/update.svelte';
@@ -13,7 +14,6 @@
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const REPO = 'https://github.com/vampiricwulf/Brainrot-Game-Maker';
   const desktopApp = inTauri();
   let folders = $state<DataFolders | null>(null);
   const leftovers = $derived(
@@ -35,12 +35,7 @@
   }
 
   /** In the desktop app, the project's pages open in the default browser instead of an app window. */
-  function link(e: MouseEvent): void {
-    if (!desktopApp) return;
-    e.preventDefault();
-    const url = (e.currentTarget as HTMLAnchorElement).href;
-    openLink(url).then((ok) => !ok && toast(`Couldn't open the browser: ${url}`));
-  }
+  const link = externalLink;
 
   async function show(which: FolderName): Promise<void> {
     const err = await openDataFolder(which);

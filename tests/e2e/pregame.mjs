@@ -380,6 +380,8 @@ try {
   const settingsDlg = page.getByRole('dialog', { name: 'Settings' });
   await settingsDlg.waitFor();
   assert(await settingsDlg.getByLabel('Buzzer server').evaluate((e) => e === document.activeElement), '⚙ Set up phone buzzers… opens Settings with the buzzer server box ready');
+  const guide = settingsDlg.getByRole('link', { name: /How to set up your own/ });
+  assert((await guide.getAttribute('href')).endsWith('Brainrot-Game-Maker#set-up-your-own-buzzer-server'), 'and links to the guide to setting up your own buzzer server');
   await settingsDlg.getByRole('button', { name: 'Done' }).click();
   await start.click();
   await page.getByRole('button', { name: 'Skip intro' }).click();

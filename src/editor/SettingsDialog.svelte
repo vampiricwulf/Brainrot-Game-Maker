@@ -5,6 +5,7 @@
   import { keepLimits } from '../lib/history.svelte';
   import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
   import { DEFAULT_BUZZER_URL, testServer } from '../lib/remote.svelte';
+  import { BUZZER_GUIDE, externalLink } from '../lib/sitelinks';
   import { onMount } from 'svelte';
 
   /** `at`: the section it opens at (the pre-game screen's ⚙ Set up phone buzzers… opens it at the phone buzzers). */
@@ -127,6 +128,7 @@
     <p class="hint">
       Advanced: where phone buzzer rooms are made (▶ Play › 📱 Phone buzzers › Buzzer mode).
       {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : "This copy comes without one: phone buzzers need an address here."}
+      <a href={BUZZER_GUIDE} target="_blank" rel="noreferrer" onclick={externalLink}>How to set up your own (free, on Cloudflare) ↗</a>
     </p>
 
     <div class="modal-foot">

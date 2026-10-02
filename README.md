@@ -183,7 +183,7 @@ during the game (at the end of the score bar on the board) and on the cover card
 **🔒 Lock seats** keeps new phones out, and a player whose seat you take back (✕) can't take it again for 2 minutes.
 The rooms run on a small buzzer server
 (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings › Buzzer server can point at your
-own. Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode
+own ([Set up your own buzzer server](#set-up-your-own-buzzer-server): free, about 10 minutes). Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode
 on without it (you pick who answers); the setting stays with the game for a copy that has a server.
 
 **Sounds** are built in and on by default (right, wrong, dice, wheel, buzz, reveal, and an RPG's quiet steps,
@@ -318,7 +318,77 @@ The main ones (press `?` during the game for all of them):
   - **Save replaces the game's last save** and keeps the two before it as `.bak` / `.bak2` (desktop app, on by
     default); off makes `Game (2)`, `Game (3)`… instead. Autosaves are kept per game.
   - **Buzzer server**: where phone buzzer rooms are made, with a **Test** button (the release builds come with one).
-    An exported HTML file keeps the server it was exported with.
+    An exported HTML file keeps the server it was exported with. Its **How to set up your own** link opens
+    [Set up your own buzzer server](#set-up-your-own-buzzer-server).
+
+## Set up your own buzzer server
+
+Phone buzzers need a small server where the host and the phones meet. The release downloads come with one, so most
+people never need this. Set up your own if your copy says **"Phone buzzers aren't set up in this copy"**, if you built
+the app yourself, or if you'd rather not depend on someone else's. It runs on **Cloudflare Workers, free**: no credit
+card, and it stays well within the free plan's limits for game nights.
+
+You need about 10 minutes, a computer with a terminal (Windows: PowerShell), and:
+
+- a free **[Cloudflare account](https://dash.cloudflare.com/sign-up)**;
+- **[Node.js](https://nodejs.org/)** 20 or newer (the LTS download is fine);
+- this project's files: **Code → Download ZIP** on the GitHub page (then unzip it), or `git clone` it.
+
+**1. Install the server's tools.** Open a terminal in the project's folder, then:
+
+```sh
+cd buzzer
+npm ci
+```
+
+**2. Log in to Cloudflare.** This opens your browser; click **Allow**.
+
+```sh
+npx wrangler login
+```
+
+**3. Publish the server.**
+
+```sh
+npx wrangler deploy
+```
+
+The first time, Cloudflare may ask you to pick a `workers.dev` subdomain (any name you like, once per account). When
+it's done it prints the server's address, like:
+
+```
+https://brainrot-buzzer.your-name.workers.dev
+```
+
+**4. Point the app at it.** In the app, open **⋯ → ⚙ Settings**, paste that address into **Buzzer server**, and press
+**Test**: it should say **✔ The buzzer server is answering**. That's it: on the ▶ Play screen, the **📱 Phone
+buzzers** card can now open a room. (The address is kept on this computer. A game exported as a web page keeps the
+server it was exported with.)
+
+**Updating it.** When a new version of the app comes out, get the new files and run `npx wrangler deploy` in `buzzer`
+again (step 1's `npm ci` too if it's a fresh download), ideally not in the middle of a game: phones reconnect by
+themselves, but a buzz in flight could be lost. Older and newer copies of the app keep working with it.
+
+**Or let GitHub do it.** If you keep your own copy (a fork) of this repository on GitHub, every push to `main` can
+publish the server for you: add two repository secrets under **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_ACCOUNT_ID`: in the Cloudflare dashboard, **Workers & Pages** (on the right-hand side).
+- `CLOUDFLARE_API_TOKEN`: **My Profile → API Tokens → Create Token**, with the **Edit Cloudflare Workers** template.
+
+To build the address into your own releases too (so nobody has to paste it), add a repository **variable**
+`BUZZER_URL` with the server's address.
+
+**If something's wrong:**
+
+- **Test says "No answer from there"**: check the address (it starts with `https://` and ends in `.workers.dev`),
+  and that the deploy finished without errors. A new `workers.dev` address can take a minute or two to start answering.
+- **`npx wrangler login` doesn't open a browser** (on a remote machine, say): run `npx wrangler login --browser=false`
+  and open the link it prints.
+- **The deploy asks about Durable Objects or a plan**: the free plan is enough; this server uses the kind of Durable
+  Objects the free plan includes.
+- If the free plan's daily limits are ever reached, new buzzes stop until the next day's reset. It never charges you.
+
+More about how the server works (fair timing, limits, local testing) is in [`buzzer/README.md`](buzzer/README.md).
 
 ## Streaming the sound (Discord, OBS)
 
