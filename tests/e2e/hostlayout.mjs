@@ -242,6 +242,7 @@ try {
   await openGameFile(p2, gameFile);
   await p2.getByText(/^Opened “/).waitFor();
   await p2.getByRole('button', { name: '▶ Play' }).click();
+  assert((await p2.getByRole('button', { name: 'Start game ▶' }).locator('kbd').innerText()) === 'Ctrl+⏎', 'Start game ▶ shows its key (Ctrl+⏎) on it');
   // A double-click on Start game ▶: its second click lands on the host panel's fixed bar, and does nothing there.
   await p2.getByRole('button', { name: 'Start game ▶' }).dblclick();
   await p2.locator('.panel').waitFor();

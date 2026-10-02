@@ -142,8 +142,11 @@ export interface Live {
    * the one player selected during a clue. Viewers see "🔔 Ann is answering".
    */
   buzz?: BuzzState;
-  /** Phone buzzers: the room's code and join link, on the "Starting soon" card so viewers can join. */
-  room?: { code: string; link: string } | null;
+  /**
+   * Phone buzzers: the room's code and join link, on the "Starting soon" card so viewers can join. `closed`: nobody new
+   * can join now (seats locked, or all taken): the stage's join badge says it's the players' code.
+   */
+  room?: { code: string; link: string; closed?: boolean } | null;
   /**
    * A short sound cue for something the host just did (a step, a pick-up, coins): played over whatever else is playing
    * (it doesn't stop a sound the host started), unless switched off in 🔊 Sounds.

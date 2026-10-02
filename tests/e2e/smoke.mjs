@@ -1037,7 +1037,7 @@ await page.keyboard.press('n');
 await page.locator('.round-name').waitFor({ state: 'detached' });
 await page.locator('.fj').waitFor();
 // …and it can be undone: back to the board without a second round intro.
-await page.getByRole('button', { name: '◀ Back to Jeopardy!' }).click();
+await page.getByRole('button', { name: '◀ Previous round (Jeopardy!)' }).click();
 await page.locator('.board').waitFor();
 assert((await page.locator('.round-name').count()) === 0 && (await page.locator('.board .header .title').count()) === 6, 'back from Final shows the board again, no intro');
 await page.waitForTimeout(450);

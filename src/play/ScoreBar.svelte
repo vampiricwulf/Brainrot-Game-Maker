@@ -181,7 +181,10 @@
     /* Room for the shadow, so the last digit isn't cut. */
     padding-right: 4px;
   }
+  /* Below zero: white on a dark red band (red text on the tile's blue read too faintly on a 720p stream). */
   .score.neg {
-    color: var(--stage-bad, #ff6b6b);
+    color: #fff;
+    background: color-mix(in srgb, var(--stage-bad, #ff6b6b) 42%, #000);
+    border-radius: 0 0 max(0px, calc(var(--plate-radius, 14px) - 4px)) max(0px, calc(var(--plate-radius, 14px) - 4px));
   }
 </style>

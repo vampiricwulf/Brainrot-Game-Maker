@@ -68,9 +68,29 @@ export function toastMs(msg: string): number {
   return Math.min(8000, Math.max(2500, 2500 + 50 * words));
 }
 
+/** Where the host is (the editor, the pre-game screen, the game): a toast belongs to the place it was said in. */
+const place = (): string => `${app.screen}|${app.pregame}`;
+/** The place the toast showing now was said in, and when. */
+let toastPlace = '';
+let toastAt = 0;
+
+// Going somewhere else (into the game, back to the editor) puts away a toast said a while before it ("Added a sample
+// game: press ▶ Play…" is about the editor). One said on the way there (Exit's "Game discarded") stays.
+$effect.root(() => {
+  $effect(() => {
+    const now = place();
+    if (app.toast && toastPlace && toastPlace !== now && Date.now() - toastAt > 500) {
+      clearTimeout(toastTimer);
+      app.toast = '';
+    }
+  });
+});
+
 /** A short message at the bottom (at the top while a window is open). `ms`: only where it must stay a set time. */
 export function toast(msg: string, ms = toastMs(msg)): void {
   app.toast = msg;
+  toastPlace = place();
+  toastAt = Date.now();
   // Screen readers hear it from the page's live region (the toast itself comes and goes too fast to be read reliably).
   announce(msg);
   clearTimeout(toastTimer);

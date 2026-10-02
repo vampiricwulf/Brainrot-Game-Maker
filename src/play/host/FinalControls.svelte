@@ -92,6 +92,8 @@
     void tick().then(() => {
       const fs = f;
       if (!fs || session.finalStep !== 'wagers') return;
+      // Phones send the wagers: the keys stay the host's (N goes on once they're all in), no box to type in.
+      if (phones.some((id) => fs.players.includes(id))) return;
       const todo = fs.players.find(needsWager);
       if (todo) wagerBox(todo)?.focus();
     });
@@ -242,10 +244,12 @@
    * What N does next in the reveals, for the main button until everyone is judged: show the spotlit player's wager,
    * or go on to the next player still to judge (none: the spotlit one is waiting on Right or Wrong).
    */
-  const revealStep = $derived.by((): { label: string; disabled?: string } => {
+  const revealStep = $derived.by((): { label: string; disabled?: string; judge?: string } => {
     const fs = f;
     const cur = fs?.current && fs.order.includes(fs.current) ? fs.current : undefined;
     if (fs && cur && !fs.shown[cur] && !fs.results[cur]) return { label: 'Show wager ▶' };
+    // Their wager is up: judging them is next (N waits for it).
+    if (fs && cur && !fs.results[cur] && hasWager(fs, cur)) return { label: '✔ Right', judge: cur };
     if (fs && cur && fs.order.every((id) => id === cur || fs.results[id]))
       return { label: 'Next player ▶', disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
     return { label: 'Next player ▶' };
@@ -284,6 +288,17 @@
   // next step (show the wager, the next player); finishing early is the quiet button beside it, and asks first.
   offerNext('final', () => {
     if (!f) return null;
+    const judge = revealStep.judge;
+    if (session.finalStep === 'reveal' && unjudged && judge) {
+      const who = byId[judge]?.name ?? '?';
+      return {
+        label: `✔ ${who} right`,
+        key: 'C',
+        title: `C: ${who} is right`,
+        run: () => onjudge(judge, true),
+        also: [{ label: '✘ Wrong', key: 'X', title: `X: ${who} is wrong`, run: () => onjudge(judge, false) }],
+      };
+    }
     if (session.finalStep === 'reveal' && unjudged)
       return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
     const step = session.finalStep ?? 'wagers';
@@ -333,7 +348,14 @@
                   wagerStep = { id: p.id, was: f.wagers[p.id], wasPhone: wagerFromPhone(f, p.id), done: startStep(session) };
                 }}
                 onblur={wagerDone}
-                onkeydown={(e) => e.key === 'Enter' && wagerEnter(p.id)}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') wagerEnter(p.id);
+                  // N (no number has one) goes on as anywhere else, once every wager is in.
+                  else if (e.key.toLowerCase() === 'n' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    if (wagersOk) next();
+                  }
+                }}
                 data-wager={p.id}
               />
               {#if phone}
@@ -348,7 +370,7 @@
                 >
               {/if}
               <span class="muted small">
-                {override ? `TV max ${formatPoints(cap, sym)}` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
+                {override ? `max ${formatPoints(cap, sym)} (their score)` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
               </span>
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
@@ -366,7 +388,7 @@
         <!-- Nobody to wager or reveal: the button goes on to the next round (or the end). -->
         <span class="nobody" role="status">Nobody is playing this Final: tick a player to play it, or go on.</span>
       {/if}
-      <label class="check small" title="Ticked, a wager can be more than the player's score (the TV max). Untick to hold wagers to it.">
+      <label class="check small" title="Ticked, a wager can be more than the player's score. Untick to hold wagers to it (max: their score).">
         <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} data-limits /> Ignore the limits
       </label>
     {:else if session.finalStep === 'reveal'}
@@ -375,7 +397,7 @@
         <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
         <span class="muted small">
           Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
-          then the next player · Shift+N back · 1–9 spotlight · C right · X wrong.
+          C / X judge them, then N goes to the next player · Shift+N back · 1–9 spotlight · C right · X wrong.
         </span>
       </details>
       <div class="order" role="list" aria-label="Reveal order" bind:this={orderEl}>
@@ -459,7 +481,7 @@
     {/if}
     <div class="row">
       {#if session.finalStep === 'wagers'}
-        {#if lastRound}<button class="ghost" onclick={onback} title="Who plays and the wagers entered so far are kept">◀ Back to {roundName(lastRound, session.currentRound - 1)}</button>{/if}
+        {#if lastRound}<button class="ghost" onclick={onback} title="Who plays and the wagers entered so far are kept">◀ Previous round ({roundName(lastRound, session.currentRound - 1)})</button>{/if}
       {/if}
       {#if session.finalStep === 'answer'}
         <button onclick={onreveal} title="R">🙈 Hide answer</button>

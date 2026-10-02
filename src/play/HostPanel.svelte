@@ -8,6 +8,7 @@
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
+  import { phoneAwaySince, watchPhonesAway } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
@@ -94,6 +95,7 @@
     phonesDown = '',
     buzzExtra,
     phoneChip,
+    nextAction = $bindable(null),
   }: {
     game: Game;
     session: Session;
@@ -200,6 +202,8 @@
     buzzExtra?: Snippet;
     /** Phone buzzers: the "📱 3/4" chip (its list of phones). */
     phoneChip?: Snippet;
+    /** The NEXT cell's main button now (read back: N on a clue does what it shows). */
+    nextAction?: NextAction | null;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -271,6 +275,8 @@
   const deductLabel = $derived(scoreLabel('− Deduct', '−'));
 
   const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
+  // Phone buzzers: a 📵 on the chip of a player whose phone dropped.
+  watchPhonesAway();
   // The NEXT cell and the confirmation strip, filled by the parts in here too (see slots).
   const slots = hostSlots();
   /** Exit was pressed: it asks in the strip (a browser dialog would show on stream). */
@@ -396,6 +402,11 @@
   // ---------- The NEXT cell: one main button ----------
   /** Buzzer mode: the buzzers are closed, nobody answering or picked. */
   const buzzClosed = $derived(buzzing && buzz?.phase !== 'armed' && buzz?.phase !== 'answering' && !selected.length);
+  /**
+   * Someone got the open clue right (the buzzers closed on it, or a ✔ / ＋ Award on it, after a reload too): the answer
+   * comes next, not the buzzers again (🔔 Open the buzzers stays a quiet button beside it).
+   */
+  const gotIt = $derived(session.phase === 'clue' && (!!buzz?.done || Object.values(marks).some((m) => m.right)));
   /** Someone is answering (picked, or the buzz): ＋ Award is the main button then, and the NEXT cell goes quiet. */
   // (Not while a Daily Double has question slides still to show: its player hasn't heard it all, Next slide ▶ is next.)
   const answering = $derived(session.phase === 'clue' && !ddWager && !!selected.length && canAward && !(session.dd && moreSlides));
@@ -410,7 +421,7 @@
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
       if (moreSlides && slidePos)
         return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
-      if (buzzClosed) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
+      if (buzzClosed && !gotIt) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
       if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
       return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: onback };
     }
@@ -421,6 +432,9 @@
     return null;
   });
   const next = $derived(slots.offers.tool?.() ?? flow ?? slots.next());
+  $effect(() => {
+    nextAction = next;
+  });
 </script>
 
 <div class="panel" class:dual class:side class:final={session.phase === 'final' && !side}>
@@ -443,7 +457,7 @@
       {:else if done}
         <span class="done">Round complete!</span>
       {:else}
-        <span class="muted">Pick a tile on the board.</span>
+        <span class="muted">Pick a tile on the board <span class="hint">(arrows + Enter)</span>.</span>
       {/if}
       {#if !session.intro && lastClosedRef && session.lastClosed}
         {@const id = session.lastClosed}
@@ -584,10 +598,10 @@
               title="Toggle (key {i + 1})"
             >
               <span class="key">{i + 1}</span>
-              <span class="who" dir="auto" title={p.name}>{p.name}</span>
+              <span class="who" dir="auto" title={p.name}>{p.name}</span>{@render away(p.id, p.name)}
             </button>
           {:else}
-            <span class="sel name"><span class="who" dir="auto" title={p.name}>{p.name}</span></span>
+            <span class="sel name"><span class="who" dir="auto" title={p.name}>{p.name}</span>{@render away(p.id, p.name)}</span>
           {/if}
           {#if editingScore === p.id}
             <!-- svelte-ignore a11y_autofocus -->
@@ -641,6 +655,12 @@
       {/each}
     </div>
   {/if}
+
+  {#snippet away(id: string, name: string)}
+    {#if phoneAwaySince(id) !== null}
+      <span class="away" data-phone-away={id} role="img" aria-label="{name}’s phone is offline" title="{name}’s phone is offline (the 📱 chip lists the phones)">📵</span>
+    {/if}
+  {/snippet}
 
   <!-- What this moment needs (it changes) on the left; the one main button in the NEXT cell on the right. -->
   <div class="act">
@@ -743,6 +763,8 @@
               {#if !phonesDown}
                 <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
               {/if}
+            {:else if buzzClosed && gotIt}
+              <span class="muted hint">✔ Answered: reveal the answer, or 🔔 open the buzzers again</span>
             {:else if buzzClosed}
               <span class="muted hint">Buzzers closed (number keys still pick)</span>
             {/if}
@@ -1224,6 +1246,11 @@
     font-size: 12px;
     opacity: 0.7;
     margin-right: 4px;
+  }
+  /* Their phone dropped. */
+  .away {
+    margin-left: 4px;
+    font-size: 12px;
   }
   .score {
     font-weight: 700;
