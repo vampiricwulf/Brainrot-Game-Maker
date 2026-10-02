@@ -4,8 +4,8 @@ import { addScreenBeside, ensureWorld, newRpgRound, splitParty } from '../../lib
 import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
-  addLive, avatarSpot, centredOn, droppedObject, dropEntry, giveEntry, joinPartyNow, liveText, moveChoices, objectMenu, partyOn, pickUp, regroupAll, removeObject,
-  sendPlayers, splitOff, stepParty, wayOffEdge,
+  addLive, avatarRange, avatarSpot, centredOn, droppedObject, dropEntry, giveEntry, groupDelta, joinPartyNow, liveText, moveChoices, moveGroup, objectMenu,
+  objectRange, partyOn, pickUp, regroupAll, removeObject, sendPlayers, splitOff, stepParty, wayOffEdge,
 } from './hostops';
 
 /** An RPG round with three players standing on its start screen. */
@@ -211,5 +211,42 @@ describe('splitting off', () => {
     expect(st.parties).toHaveLength(2);
     expect(splitOff(game, session, ['p1'])).toBeNull();
     expect(st.parties.map((p) => p.members)).toEqual([['p2'], ['p0'], ['p1']]);
+  });
+});
+
+describe('dragging a selection together on the RPG stage', () => {
+  it('moves everything by the same amount, no further than keeps all of it on the screen', () => {
+    const ann = avatarRange(300, 500);
+    const chest = objectRange(1500, 600, 200, 150);
+    expect(groupDelta([ann, chest], 100, -50)).toEqual({ dx: 100, dy: -50 });
+    // Right: the chest reaches the edge first (1920 − 200 − 1500 = 220), and Ann stops with it.
+    expect(groupDelta([ann, chest], 400, 0)).toEqual({ dx: 220, dy: 0 });
+    // Left and up: Ann reaches the edge first (75 from it).
+    expect(groupDelta([ann, chest], -1000, -1000)).toEqual({ dx: -225, dy: -425 });
+    // Down, with the stats strip from y 900: Ann stays clear of it (900 − 75 − 500 = 325), the chest could go 330.
+    expect(groupDelta([avatarRange(300, 500, 0, 900), chest], 0, 600)).toEqual({ dx: 0, dy: 325 });
+    // One already past an edge isn't pulled back, and only can't go further out.
+    const off = objectRange(-50, 100, 200, 100);
+    expect(groupDelta([off, ann], -30, 0)).toEqual({ dx: 0, dy: 0 });
+    expect(groupDelta([off, ann], 40, 0)).toEqual({ dx: 40, dy: 0 });
+  });
+
+  it('moves players and objects as one step, named after them all', () => {
+    const { game, session, st } = setup();
+    const chest = { ...newShapeEl('rect'), name: 'Chest', x: 800, y: 300 };
+    addLive(game, session, chest, 'Chest');
+    const before = { ann: { ...st.positions.p0 }, bob: { ...st.positions.p1 } };
+    const steps = session.actionLog?.length ?? 0;
+    expect(moveGroup(game, session, { p0: { x: 400, y: 600 }, p1: { x: 500, y: 650 } }, { [chest.id]: { x: 900, y: 350 } })).toBe('Move Ann, Bob & Chest');
+    expect(session.actionLog).toHaveLength(steps + 1);
+    expect(session.actionLog?.at(-1)?.text).toBe('Move Ann, Bob & Chest');
+    expect([st.positions.p0.x, st.positions.p0.y, st.positions.p1.x, st.positions.p1.y]).toEqual([400, 600, 500, 650]);
+    expect([st.objects[chest.id].x, st.objects[chest.id].y]).toEqual([900, 350]);
+    undoAction(session, game);
+    const back = Object.values(session.worlds!)[0];
+    expect([back.positions.p0.x, back.positions.p0.y, back.positions.p1.x, back.positions.p1.y]).toEqual([before.ann.x, before.ann.y, before.bob.x, before.bob.y]);
+    expect(back.objects[chest.id]?.x).toBeUndefined();
+    // Nothing that's there: no step.
+    expect(moveGroup(game, session, { nobody: { x: 1, y: 1 } }, {})).toBeNull();
   });
 });

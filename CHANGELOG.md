@@ -166,6 +166,15 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **RPG rounds: selected players and objects drag together** on the stage. Shift+click (or Ctrl+click) an object to
+  select it (a plain click still opens its card; Esc takes the selected objects off, then the players); click avatars to
+  select them as before. Dragging any one of the selection moves all of it on that screen by the same amount, keeping
+  their places, and stops where the first of them would leave the screen (avatars stay clear of the stats strip), so
+  the group keeps its shape. One drag is one undo step ("Move Ann, Bob & Chest"), and the viewers' screen follows. Dropped
+  on another screen, a party or a way out, the selected players go there as before (objects stay on their screen).
+  Dragging something that isn't selected moves just it, and it becomes the selection. A dragged object now stays wholly
+  on its screen, as avatars do. With someone selected, picking a screen on the minimap no longer makes the map jump
+  (both clicks of a double-click land on the same screen again).
 - **Host panel, buzzer mode**: the buzzers' own things (how they stand, "🔔 Al (Red team) buzzed", ⏭ Skip, → Next in
   line, the buzz order and ↺ Reset buzzers) have a row of their own above the Amount row, always the same height. The
   panel (and, in a single window, the stage viewers see) no longer changes size as people buzz, miss or tie, or as the

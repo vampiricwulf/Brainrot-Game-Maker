@@ -514,6 +514,46 @@ try {
   assert(await page.getByRole('button', { name: 'Object: Lava' }).isVisible(), 'after editing it is still on the stage');
   await page.keyboard.press('Escape');
 
+  // Both players and Lava selected (a click on an avatar, Shift+click on an object): dragging one drags them all.
+  {
+    const av = page.locator('.rpg .avatar[data-player-id]');
+    const boxes = async () => Promise.all([av.nth(0).boundingBox(), av.nth(1).boundingBox(), hit.boundingBox()]);
+    const moved = (a, b) => a.map((r, i) => [Math.round(b[i].x - r.x), Math.round(b[i].y - r.y)]);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await av.nth(0).click();
+    await av.nth(1).click();
+    await hit.click({ modifiers: ['Shift'] });
+    assert(!(await page.getByRole('dialog', { name: 'Object: Lava' }).count()), 'Shift+click on an object selects it (no card)');
+    const start = await boxes();
+    await dragBy(page, av.nth(0), { x: start[0].x + start[0].width / 2 - 70, y: start[0].y + start[0].height / 2 - 40 });
+    await page.waitForTimeout(350);
+    const d = moved(start, await boxes());
+    const same = d.every(([x, y]) => Math.abs(x - d[0][0]) <= 2 && Math.abs(y - d[0][1]) <= 2);
+    assert(same && Math.abs(d[0][0]) > 10 && Math.abs(d[0][1]) > 10, `the selected players and object move together by the same amount (${JSON.stringify(d)})`);
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(350);
+    assert((await toast()).includes('Undid Move Player 1, Player 2 & Lava'), `one step moved them all (${await toast()})`);
+    const back = moved(start, await boxes());
+    assert(back.every(([x, y]) => Math.abs(x) <= 2 && Math.abs(y) <= 2), `one Ctrl+Z puts them all back (${JSON.stringify(back)})`);
+    // Esc takes off the selected objects, then the players. An avatar that isn't selected drags on its own, even with
+    // other things selected.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await av.nth(0).click();
+    await hit.click({ modifiers: ['Shift'] });
+    const start2 = await boxes();
+    await dragBy(page, av.nth(1), { x: start2[1].x + start2[1].width / 2 - 70, y: start2[1].y + start2[1].height / 2 - 40 });
+    await page.waitForTimeout(350);
+    const d2 = moved(start2, await boxes());
+    assert(Math.abs(d2[1][0]) > 10 && d2[0].every((v) => Math.abs(v) <= 2) && d2[2].every((v) => Math.abs(v) <= 2), `an unselected avatar dragged moves on its own (${JSON.stringify(d2)})`);
+    await page.keyboard.press('Control+z');
+    // Nothing selected again for what follows.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+  }
+
   // Give Player 1 the hat and equip it: it shows on their avatar.
   await page.locator('.rh .pc').first().getByLabel('Give Player 1 an item').selectOption({ label: 'Hat' });
   await page.locator('.rh .pc').first().getByRole('button', { name: 'Equip' }).click();
