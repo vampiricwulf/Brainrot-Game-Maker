@@ -1454,3 +1454,4 @@ Commits whose titles don't say what they contain:
 | 4acb133 | Merge branch 'worktree-agent-a2d07801aba305344' | Brings in bbc34aa (RPG polish: group drag across split view, the selection shown in the object list, no dark box over a hovered object) |
 | c085ec1 | Merge branch 'worktree-agent-a7d43523363a340a3' | Brings in 38373de (viewer polish: no join code where nobody buzzes, Final ✔ clear of scores, end screen and roll-off fit, Final category in the theme's clue font) |
 | fe18f30 | Merge branch 'worktree-agent-aaf8c5a3577eb5b92' | Brings in 3415a8e (slide editor and media polish: undo names for items, tools for several items, Move to sits under Position, used-where on media) |
+| 34e1bb0 | Merge branch 'worktree-agent-ab6d5fd96a6ae417f' | Brings in 2d50bcd (RPG and board-game building: New shop in place, Enemy preset, space kinds, forks, Mini quest, plainer RPG round top) |
