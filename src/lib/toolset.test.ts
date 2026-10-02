@@ -466,7 +466,6 @@ describe('the host’s own choices', () => {
     logged(session, 'Bob sits out', () => ((f.players = ['a']), (f.order = ['a'])));
     logged(session, 'Bob plays', () => ((f.players = ['a', 'b']), (f.order = ['a', 'b'])));
     logged(session, 'Reveal order', () => (f.order = ['b', 'a']));
-    finalNext(session, game);
     const wager = startStep(session);
     f.wagers.a = 3;
     f.wagers.a = 30;

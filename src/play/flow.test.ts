@@ -100,7 +100,6 @@ describe('Final wagers', () => {
     const t = setup(3);
     applyScore(t.session, t.game, t.ids, 500, 'x');
     goToRound(t.session, t.game, 1);
-    finalNext(t.session, t.game); // category → wagers
     return t;
   }
 

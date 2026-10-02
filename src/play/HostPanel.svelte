@@ -39,7 +39,7 @@
     rpgMapSend = $bindable(null),
     bgSpace = $bindable(null),
     editingScore = $bindable(null),
-    wagerLimitsOff = $bindable(false),
+    wagerLimitsOff = $bindable(true),
     timerSeconds = $bindable(null),
     bgSteps = $bindable(null),
     undoText = null,
@@ -107,7 +107,7 @@
     bgSpace?: string | null;
     /** The player whose score is being set (clicked here, or ✎ Set the score… in their menu). */
     editingScore?: string | null;
-    /** Final wagers: "Ignore the limits" is ticked. */
+    /** Final wagers: "Ignore the limits" is ticked (the default). */
     wagerLimitsOff?: boolean;
     /** Seconds typed in the timer box (T uses them too). */
     timerSeconds?: number | null;
@@ -228,9 +228,8 @@
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
   const finalStepText = $derived({
-    category: 'Category on screen',
     // Single window: viewers see this window, the wager boxes too.
-    wagers: dual ? 'Taking wagers (only you see them)' : 'Taking wagers (viewers can see them in this window)',
+    wagers: dual ? 'Category on screen · taking wagers (only you see them)' : 'Category on screen · taking wagers (viewers can see them in this window)',
     question: 'Question on screen',
     answer: 'Answer on screen',
     reveal: 'Player reveals',
@@ -440,7 +439,7 @@
         <!-- Its title card is up: viewers don't see the category yet. -->
         <span class="muted">Title card <span class="hint">· click the screen to go on</span></span>
       {:else}
-        <span class="muted">{finalStepText[session.finalStep ?? 'category']}</span>
+        <span class="muted">{finalStepText[session.finalStep ?? 'wagers']}</span>
       {/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>

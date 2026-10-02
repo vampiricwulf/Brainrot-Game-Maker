@@ -533,7 +533,9 @@ const FINAL_STEPS: Partial<Record<NonNullable<Session['finalStep']>, string>> = 
  * lost once the question is up).
  */
 export function finalNextStep(session: Session, game: Game): void {
-  const text = session.phase === 'final' && session.finalStep ? FINAL_STEPS[session.finalStep] : undefined;
+  // Nobody plays: the wager screen goes straight on to the next round (not a step, like any round change).
+  const skip = session.finalStep === 'wagers' && !session.final?.players.length;
+  const text = session.phase === 'final' && session.finalStep && !skip ? FINAL_STEPS[session.finalStep] : undefined;
   if (text) logged(session, text, () => finalNext(session, game));
   else finalNext(session, game);
 }

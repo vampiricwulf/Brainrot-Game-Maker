@@ -112,6 +112,21 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **The Final goes straight to its wagers**: there's no "Lock category, take wagers" step any more. When the Final
+  starts, its category is on screen ("Make your wagers…") and the host panel shows one wager screen: a row for each
+  player with a tick for whether they play (players at $0 or less are ticked out when the round says so) and their
+  wager box beside it. Ticking someone out takes their box away; ticked back in, their wager is still there. With
+  nobody ticked in, the main button goes on to the next round. The wagers stay secret in the audience window as before,
+  and in a single window the warning that viewers can see them stays.
+- **Wagers aren't held to the max unless you want them to be**: "Ignore the limits" on the Final's wager screen and
+  "Ignore the limit" on a Daily Double are now ticked to begin with, so a wager over the player's score (or the round's
+  top value on a Daily Double) goes through. Untick it to hold wagers to the TV max. Players at $0 still get a $0
+  wager filled in for the Final, which you can change.
+- **A Final wager can still be changed after it's typed**: on the wager screen, and in the reveals until that
+  player's wager is shown (or they're judged), each row's wager is a box you can fix. Each change is a step in 🕘
+  History that says from what to what ("Ann’s wager: $500 → $300"); after the reveal, fix the score as usual. The
+  wager now remembers whether it came from the host or from the player's phone, ready for phones to send their own
+  wager later (a 📱 next to it then).
 - **The host panel has one layout in every round**: what's going on at the top (with the 📱 and ⏱ chips and ↩ Cancel
   (keep tile) on the right), the players, the row of what this moment needs, then the tools with the round navigation
   at their right, and a fixed bar at the foot that never moves: ↶ Undo ↷ Redo 🔊 Sound ⌨ · 📜 Log 👥 Players ⚖ Rules ·

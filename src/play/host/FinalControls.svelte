@@ -1,4 +1,7 @@
-<!-- Final round host flow: private wagers, then a one-by-one reveal (spec §6.4). -->
+<!--
+  Final round host flow (spec §6.4): one wager screen while the category is up (who plays, and each one's wager), then
+  the question, the answer and a one-by-one reveal.
+-->
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
   import { toast } from '../../lib/app.svelte';
@@ -6,7 +9,8 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
   import {
-    currentFinal, finalChoose, finalShow, finalUnjudged, finalWagerCap, finalWagerProblems, finalWagerRefused, finalWagersOk, hasWager, nameList, score,
+    currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
+    hasWager, nameList, score, wagerFromPhone,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { hostAsk, offerNext } from './slots.svelte';
@@ -29,7 +33,7 @@
     dual?: boolean;
     /** Everyone is judged and N was pressed once: the next N finishes. */
     armed?: boolean;
-    /** "Ignore the limits" is ticked (bound, so N follows it too). */
+    /** "Ignore the limits" is ticked (the default; bound, so N follows it too). */
     override?: boolean;
     onstep: () => void;
     onreveal: () => void;
@@ -37,7 +41,7 @@
     onrevealnext: () => void;
     /** Mark a player right or wrong in the reveals (with its sound, as C / X). */
     onjudge: (id: string, right: boolean) => void;
-    /** Back to the round before this Final (wagers entered so far are kept). */
+    /** Back to the round before this Final (who plays and the wagers entered so far are kept). */
     onback: () => void;
   } = $props();
   const f = $derived(session.final);
@@ -51,28 +55,39 @@
     return r ? finalName(r) : 'the Final';
   });
 
-  const wagerBoxes: HTMLInputElement[] = $state([]);
+  let wagersEl = $state<HTMLElement>();
+  const wagerBox = (id: string) => wagersEl?.querySelector<HTMLInputElement>(`input[data-wager="${id}"]`);
   /** Their wager still has to be typed, or fixed (not a whole number, or over the max). */
   const needsWager = (id: string) => problems.missing.includes(id) || problems.whole.includes(id) || problems.over.includes(id);
+  /** Whose wager isn't right yet, and why (the wager screen's hint, as N's toast says it). */
+  const waitingOn = $derived(
+    problems.missing.length
+      ? `Waiting on: ${names(problems.missing)}`
+      : problems.whole.length
+        ? `Not a whole number: ${names(problems.whole)}`
+        : `Over the max: ${names(problems.over)}`,
+  );
 
   /** Enter in a wager box: show the question once every wager is fine, else go to the next box that needs one. */
-  function wagerEnter(i: number): void {
+  function wagerEnter(id: string): void {
     if (!f) return;
     if (wagersOk) return next();
+    const i = f.players.indexOf(id);
     const after = [...f.players.slice(i + 1), ...f.players.slice(0, i + 1)];
     const todo = after.find(needsWager);
-    if (todo) wagerBoxes[f.players.indexOf(todo)]?.focus();
+    if (todo) wagerBox(todo)?.focus();
   }
 
-  // The wagers come up with the first one still to type focused, as a Daily Double's does (else typed digits select
-  // players, or go into the ⏱ seconds box, where Enter starts a countdown). All in (Ctrl+Z back to them): N goes on.
+  // The wager screen comes up with the first wager still to type focused, as a Daily Double's does (else typed digits
+  // select players, or go into the ⏱ seconds box, where Enter starts a countdown). All in (Ctrl+Z back to them): N
+  // goes on.
   $effect(() => {
     if (session.finalStep !== 'wagers') return;
     void tick().then(() => {
       const fs = f;
       if (!fs || session.finalStep !== 'wagers') return;
-      const todo = fs.players.findIndex(needsWager);
-      if (todo >= 0) wagerBoxes[todo]?.focus();
+      const todo = fs.players.find(needsWager);
+      if (todo) wagerBox(todo)?.focus();
     });
   });
 
@@ -100,15 +115,23 @@
     });
   }
 
+  /** A wager as the history names it ("none" when there isn't one). */
+  const shownWager = (v: number | undefined) => (typeof v === 'number' ? formatPoints(v, sym) : 'none');
+  /** "Ann’s wager: $300", or "Ann’s wager: $500 → $300" when it changes one already in (a phone's too). */
+  function wagerText(id: string, was: number | undefined, now: number | undefined, wasPhone: boolean): string {
+    const name = `${byId[id]?.name ?? '?'}’s wager`;
+    if (was === undefined) return `${name}: ${shownWager(now)}`;
+    return `${name}${wasPhone ? ' (from their phone)' : ''}: ${shownWager(was)} → ${shownWager(now)}`;
+  }
+
   /** The wager being typed: one step from the box's focus until it's left. */
-  let wagerStep: { id: string; done: (text: string) => void } | null = null;
+  let wagerStep: { id: string; was: number | undefined; wasPhone: boolean; done: (text: string) => void } | null = null;
 
   function wagerDone(): void {
     const w = wagerStep;
     wagerStep = null;
     if (!w || !f) return;
-    const v = f.wagers[w.id];
-    w.done(`${byId[w.id]?.name ?? '?'}’s wager: ${typeof v === 'number' ? formatPoints(v, sym) : 'none'}`);
+    w.done(wagerText(w.id, w.was, f.wagers[w.id], w.wasPhone));
   }
 
   let orderEl = $state<HTMLElement>();
@@ -169,17 +192,25 @@
   }
 
   /**
-   * The reveals: a player with no wager (never taken as 0) gets one typed in their row, as a step. A whole number, up
-   * to their max unless "Ignore the limits" was ticked.
+   * The reveals: a wager typed (or changed) in a player's row until it's shown, as a step. A player with no wager
+   * (never taken as 0) gets one here before they can be judged. A whole number, up to their max only if the host
+   * turned the limits on. Refused, the box goes back to the wager as it was.
    */
-  function setWager(id: string, value: string): void {
+  function setWager(id: string, box: HTMLInputElement): void {
     const fs = f;
+    const value = box.value;
     const v = Number(value);
-    if (!fs || value.trim() === '' || !Number.isFinite(v)) return;
+    const was = fs?.wagers[id];
+    const back = (): void => {
+      box.value = typeof was === 'number' ? String(was) : '';
+    };
+    if (!fs || value.trim() === '' || !Number.isFinite(v)) return back();
+    if (v === was) return;
     const why = finalWagerRefused(session, id, v, override);
+    if (why) back();
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
     if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, id), sym)}`, 3000);
-    logged(session, `${byId[id]?.name ?? '?'}’s wager: ${formatPoints(v, sym)}`, () => (fs.wagers[id] = v));
+    logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v));
   }
 
   // The spotlit row stays in sight in a long list (8 players in a short window).
@@ -224,9 +255,8 @@
   const after = $derived(game.rounds[session.currentRound + 1]);
   const goOn = $derived(after ? `Next: ${roundName(after, session.currentRound + 1)} ▶` : 'Finish game ▶');
   const labels = $derived({
-    // Everyone sat out: straight on (finalNext skips the wagers and reveals).
-    category: f && !f.players.length ? goOn : 'Lock category, take wagers ▶',
-    wagers: 'Show question ▶',
+    // Everyone sat out: straight on (finalNext skips the question and the reveals).
+    wagers: f && !f.players.length ? goOn : 'Show question ▶',
     question: 'Reveal answer ▶',
     answer: 'Start player reveals ▶',
     reveal: goOn,
@@ -238,7 +268,7 @@
     if (!f) return null;
     if (session.finalStep === 'reveal' && unjudged)
       return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
-    const step = session.finalStep ?? 'category';
+    const step = session.finalStep ?? 'wagers';
     return {
       label: labels[step],
       key: 'N',
@@ -251,55 +281,59 @@
 
 {#if f}
   <div class="fj">
-    {#if session.finalStep === 'category'}
-      <span class="muted">Category is on screen. Players who can play:</span>
-      <div class="row">
+    {#if session.finalStep === 'wagers'}
+      {#if dual}
+        <span class="muted">Category is on screen. Tick who plays and enter each wager (only you see these).</span>
+      {:else}
+        <span class="exposed">⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.</span>
+      {/if}
+      <!-- One row per player: plays or sits out (players at 0 or less sit out unless the round lets them play), and their wager. -->
+      <div class="wagers" role="list" aria-label="Who plays and their wagers" bind:this={wagersEl}>
         {#each session.players as p (p.id)}
-          <label class="check chip" style:border-color={p.color}>
-            <input type="checkbox" checked={f.players.includes(p.id)} onchange={() => toggleIn(p.id)} />
-            {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
-          </label>
+          {@const plays = f.players.includes(p.id)}
+          {@const cap = finalWagerCap(session, p.id)}
+          {@const w = f.wagers[p.id]}
+          {@const phone = plays && wagerFromPhone(f, p.id)}
+          <div class="wrow chip" class:out={!plays} style:border-color={p.color} role="listitem" data-player={p.id}>
+            <label class="check" title={plays ? 'Untick: sits out this Final' : 'Tick: plays this Final'}>
+              <input type="checkbox" checked={plays} onchange={() => toggleIn(p.id)} data-plays={p.id} />
+              <b>{p.name}</b>
+              <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
+            </label>
+            {#if plays}
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={w ?? ''}
+                placeholder="wager"
+                aria-label="{p.name}’s wager"
+                class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
+                oninput={(e) => finalSetWager(session, p.id, e.currentTarget.value === '' ? undefined : +e.currentTarget.value)}
+                onfocus={() => {
+                  wagerDone();
+                  wagerStep = { id: p.id, was: f.wagers[p.id], wasPhone: wagerFromPhone(f, p.id), done: startStep(session) };
+                }}
+                onblur={wagerDone}
+                onkeydown={(e) => e.key === 'Enter' && wagerEnter(p.id)}
+                data-wager={p.id}
+              />
+              {#if phone}<span class="phone small" title="Sent from their phone. You can still change it.">📱 from phone</span>{/if}
+              <span class="muted small">
+                {override ? `TV max ${formatPoints(cap, sym)}` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
+              </span>
+            {:else}
+              <span class="muted small">sits out</span>
+            {/if}
+          </div>
         {/each}
       </div>
       {#if !f.players.length}
         <!-- Nobody to wager or reveal: the button goes on to the next round (or the end). -->
         <span class="nobody" role="status">Nobody is playing this Final: tick a player to play it, or go on.</span>
       {/if}
-    {:else if session.finalStep === 'wagers'}
-      {#if dual}
-        <span class="muted">Enter each wager (only you see these).</span>
-      {:else}
-        <span class="exposed">⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.</span>
-      {/if}
-      <div class="wagers">
-        {#each f.players as id, i (id)}
-          {@const p = byId[id]}
-          {@const cap = finalWagerCap(session, id)}
-          {@const w = f.wagers[id]}
-          <label class="check chip" style:border-color={p?.color}>
-            {p?.name}
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={w ?? ''}
-              class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
-              oninput={(e) => (f.wagers[id] = e.currentTarget.value === '' ? (undefined as unknown as number) : +e.currentTarget.value)}
-              onfocus={() => {
-                wagerDone();
-                wagerStep = { id, done: startStep(session) };
-              }}
-              onblur={wagerDone}
-              onkeydown={(e) => e.key === 'Enter' && wagerEnter(i)}
-              bind:this={wagerBoxes[i]}
-              data-wager={id}
-            />
-            <span class="muted small">{cap || override ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}</span>
-          </label>
-        {/each}
-      </div>
-      <label class="check small">
-        <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} /> Ignore the limits
+      <label class="check small" title="Ticked, a wager can be more than the player's score (the TV max). Untick to hold wagers to it.">
+        <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} data-limits /> Ignore the limits
       </label>
     {:else if session.finalStep === 'reveal'}
       <!-- The how-to folds away: the rows (and the stage) keep the room. -->
@@ -355,26 +389,33 @@
               }}
               title="Spotlight on screen · drag the row (or Alt+↑/↓) to change the order"
             >{p?.name}</button>
-            {#if hasWager(f, id)}
-              <span class="muted small">{formatPoints(score(session, id), sym)} · wager {formatPoints(f.wagers[id], sym)}</span>
-              <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
-            {:else}
-              <!-- No wager in (it's never taken as 0): asked for here before they can be judged. -->
+            {#if finalWagerEditable(session, id)}
+              <!-- Until it's shown (or they're judged) the wager can still be changed here; with none in (it's never taken as
+                   0) it's asked for here before they can be judged. -->
               {@const cap = finalWagerCap(session, id)}
-              <label class="check small no-wager">
-                {formatPoints(score(session, id), sym)} · no wager:
+              <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
+              <label class="check small" class:no-wager={!hasWager(f, id)}>
+                {hasWager(f, id) ? 'wager' : 'no wager:'}
                 <input
                   type="number"
                   min="0"
                   step="1"
                   max={override ? undefined : cap}
+                  value={f.wagers[id] ?? ''}
                   placeholder="wager"
                   aria-label="{p?.name}’s wager"
-                  onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget.value)}
-                  onchange={(e) => setWager(id, e.currentTarget.value)}
+                  data-reveal-wager={id}
+                  onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget)}
+                  onchange={(e) => setWager(id, e.currentTarget)}
                 />
+                {#if wagerFromPhone(f, id)}<span class="phone" title="Sent from their phone. You can still change it until it's shown.">📱</span>{/if}
                 {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
               </label>
+              {#if hasWager(f, id)}<button class="small" onclick={() => finalShow(session, id)}>Show wager</button>{/if}
+            {:else}
+              <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
+              <span class="muted small">wager {formatPoints(f.wagers[id], sym)}</span>
+              <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
             {/if}
             <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)}>✔ Right</button>
             <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)}>✘ Wrong</button>
@@ -383,21 +424,15 @@
       </div>
     {/if}
     <div class="row">
-      {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
-        {#if lastRound}<button class="ghost" onclick={onback} title="Wagers entered so far are kept">◀ Back to {roundName(lastRound, session.currentRound - 1)}</button>{/if}
+      {#if session.finalStep === 'wagers'}
+        {#if lastRound}<button class="ghost" onclick={onback} title="Who plays and the wagers entered so far are kept">◀ Back to {roundName(lastRound, session.currentRound - 1)}</button>{/if}
       {/if}
       {#if session.finalStep === 'answer'}
         <button onclick={onreveal} title="R">🙈 Hide answer</button>
-      {:else if session.finalStep === 'category' || session.finalStep === 'question'}
+      {:else if session.finalStep === 'question'}
         <span class="muted small">Tip: click the screen to continue</span>
       {:else if session.finalStep === 'wagers' && !wagersOk}
-        <span class="muted small">
-          {problems.missing.length
-            ? `Waiting on: ${names(problems.missing)}`
-            : problems.whole.length
-              ? `Not a whole number: ${names(problems.whole)}`
-              : `Over the max: ${names(problems.over)}`}
-        </span>
+        <span class="muted small">{waitingOn}</span>
       {:else if session.finalStep === 'reveal'}
         {#if armed}
           <span class="armed">Everyone is judged: press N again (or the button) to finish.</span>
@@ -431,7 +466,7 @@
   .no-wager {
     color: var(--warn);
   }
-  .no-wager input {
+  .pl input[type='number'] {
     width: 80px;
   }
   .chip {
@@ -444,8 +479,23 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  .wagers input {
+  .wrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  /* Sitting out: still there to tick back in, but quieter. */
+  .wrow.out {
+    border-style: dashed;
+    opacity: 0.7;
+  }
+  .wagers input[type='number'] {
     width: 100px;
+  }
+  .phone {
+    color: var(--accent);
+    font-weight: 600;
   }
   input.bad {
     outline: 2px solid var(--bad);

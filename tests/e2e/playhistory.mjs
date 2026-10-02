@@ -195,17 +195,40 @@ try {
   await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   await page.locator('.fj').waitFor();
-  await page.locator('.fj input[type=checkbox]').nth(2).uncheck();
+  await page.locator('.fj .wagers input[data-plays]').nth(2).uncheck();
+  assert((await page.locator('.fj .wagers input[data-wager]').count()) === 2, 'a player ticked out on the wager screen loses their wager box');
   await page.keyboard.press('Control+z');
-  assert((await page.locator('.fj input[type=checkbox]:checked').count()) === 3, 'Ctrl+Z brings a player back into the Final');
-  await page.getByRole('button', { name: /take wagers/ }).click();
-  for (let i = 0; i < 3; i++) await page.locator('.fj .wagers input').nth(i).fill(String((i + 1) * 100));
+  assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z brings a player back into the Final');
+  for (let i = 0; i < 3; i++) await page.locator('.fj .wagers input[data-wager]').nth(i).fill(String((i + 1) * 100));
+  // A wager already in is changed in its box: one step, named with the old and the new amount.
+  await page.locator('.fj .wagers input[data-wager]').first().fill('150');
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('l');
+  const wagerSteps = await history();
+  assert(
+    /’s wager: \$100 → \$150$/.test(wagerSteps[0]) && /’s wager: \$300$/.test(wagerSteps[1]),
+    `a wager typed is a step, a change says from what to what (${wagerSteps.slice(0, 2).join(' | ')})`,
+  );
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Show question ▶' }).click();
   await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
   await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
   await page.locator('.spot').waitFor();
   const spot = () => page.locator('.spot-name').innerText();
   const order = await page.locator('.fj .pl .name').allInnerTexts();
+  // In the reveals a wager not shown yet can still be fixed in its row (a step); once shown, it's no longer a field.
+  const firstRow = page.locator('.fj .pl').first();
+  const rowBox = firstRow.locator('input[data-reveal-wager]');
+  assert(/^\d+$/.test(await rowBox.inputValue()), 'in the reveals a wager not shown yet is still a field');
+  await rowBox.fill('120');
+  await rowBox.press('Enter');
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('l');
+  assert(/’s wager: \$\d+ → \$120$/.test((await history())[0]), 'changing it in the reveals is a step too');
+  await page.keyboard.press('Escape');
+  await firstRow.getByRole('button', { name: 'Show wager' }).click();
+  await page.waitForFunction(() => document.querySelector('.spot-wager')?.textContent?.includes('120'));
+  assert((await rowBox.count()) === 0, 'Show wager puts the changed wager on screen, and the field goes');
   await page.keyboard.press('3');
   assert((await spot()) === order[2], '3 spotlights the third player in the reveal order');
   await page.keyboard.press('Shift+N');

@@ -150,12 +150,10 @@ try {
   await page.waitForTimeout(450);
   await confirmStrip(page).getByRole('button', { name: 'Yes', exact: true }).click();
   await page.locator('.fj').waitFor();
-  states.final = await look();
-  assert((await mainLabel(page)).startsWith('Lock category'), `the Final’s step is its main button (${await mainLabel(page)})`);
-  await mainButton(page).click();
-  await page.locator('.fj .wagers input').first().waitFor();
+  await page.locator('.fj .wagers input[data-wager]').first().waitFor();
   states.wagers = await look();
-  const wagers = page.locator('.fj .wagers input');
+  assert((await mainLabel(page)) === 'Show question ▶', `the Final opens on its wager screen, Show question its main button (${await mainLabel(page)})`);
+  const wagers = page.locator('.fj .wagers input[data-wager]');
   for (let i = 0; i < (await wagers.count()); i++) await wagers.nth(i).fill('0');
   for (const label of ['Show question ▶', 'Reveal answer ▶', 'Start player reveals ▶']) {
     await page.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l), label);
@@ -176,7 +174,7 @@ try {
   }
   const counts = Object.fromEntries(Object.entries(states).map(([k, v]) => [k, v.primaries]));
   assert(Object.values(counts).every((c) => c <= 1), `never more than one main button (${JSON.stringify(counts)})`);
-  assert(['clue', 'answering', 'ddWager', 'ddQuestion', 'boardgame', 'final', 'wagers', 'reveals', 'end'].every((k) => counts[k] === 1), 'and exactly one where there’s a next step');
+  assert(['clue', 'answering', 'ddWager', 'ddQuestion', 'boardgame', 'wagers', 'reveals', 'end'].every((k) => counts[k] === 1), 'and exactly one where there’s a next step');
 
   // Beside the stage (a wide window, RPG and board-game rounds): 🚪 Exit in the fixed bar's bottom-right cell, in both.
   console.log('Beside the stage:');
