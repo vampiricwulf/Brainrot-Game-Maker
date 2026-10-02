@@ -67,7 +67,7 @@
           ? '📱 ⚠ Phones not connected'
           : remote.status === 'error'
             ? '📱 ⚠ Room lost'
-            : `📱 ${settings.buzzTeams ? `${people} on ` : ''}${joined}/${session.players.length}${asking ? ` · ${asking} asking` : ''}${full ? ' · room full' : ''}`,
+            : `📱 ${settings.buzzTeams ? `${people} ${people === 1 ? 'person' : 'people'} · ` : ''}${joined}/${session.players.length}${settings.buzzTeams ? ' teams' : ''}${asking ? ` · ${asking} asking` : ''}${full ? ' · room full' : ''}`,
   );
 </script>
 

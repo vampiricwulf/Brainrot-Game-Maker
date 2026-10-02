@@ -259,6 +259,11 @@ function dropped(s: WebSocket, wait?: number): void {
   clearTimeout(probeTimer);
   probeTimer = 0;
   stopSending();
+  // A wager on its way may not have got there: say so, rather than "Sending…" for good.
+  if (wagerSending) {
+    wagerSending = false;
+    wagerErr = 'The connection dropped. If it doesn’t say ✔ Sent once it’s back, send it again.';
+  }
   render();
   if (notice?.final) return;
   const full = notice?.full ? Math.min(30_000, 3000 * 2 ** Math.max(0, fullTries - 1)) : undefined;
@@ -282,7 +287,9 @@ function dropped(s: WebSocket, wait?: number): void {
 
 function ended(): void {
   saveSeat(null);
-  notice = { title: 'The game is over', text: 'Thanks for playing!', final: true };
+  seatId = null;
+  view = null;
+  notice = { title: 'The game is over', text: 'Thanks for playing!', final: true, button: { label: 'Join another game', run: () => location.assign('/') } };
   ws?.close();
   render();
 }
@@ -290,6 +297,8 @@ function ended(): void {
 function onMessage(m: RoomToPhone): void {
   switch (m.t) {
     case 'seats': {
+      // Teams on or off while picking: a note about the old list (a seat, a team) no longer fits.
+      if (seats && !!seats.teams !== !!m.teams && !seatId) seatsNote = '';
       // A seated phone only gets the list when it lost its seat: another tab or phone took it back, or the host
       // removed the player.
       if (!rejoining && seatId) {
@@ -624,7 +633,7 @@ function render(): void {
   }
   if (away) say('Reconnecting…');
   if (seatId && view?.you) return renderBuzz(view);
-  if (pendingName) return wait('Waiting for the host to let you in…');
+  if (pendingName) return wait('Waiting for the host to let you in…', true);
   if (newForm) {
     show('s-new');
     return;
@@ -634,8 +643,10 @@ function render(): void {
   wait('Connecting…');
 }
 
-function wait(text: string): void {
+/** `cancel`: the phone is asking to join, and can take it back. */
+function wait(text: string, cancel = false): void {
   $('wait-text').textContent = text;
+  $('wait-cancel').hidden = !cancel;
   if (connected) say(text);
   show('s-wait');
 }
@@ -645,6 +656,7 @@ function renderTeam(t: SeatsMsg['seats'][number]): void {
   const wasHidden = $('s-team').hidden;
   $('team-title').textContent = `Join ${t.name}`;
   $('team-dot').style.background = t.color;
+  $('team-on').textContent = t.members?.length ? `On it: ${t.members.join(', ')}` : 'Nobody on it yet';
   const inp = $<HTMLInputElement>('team-in');
   if (wasHidden) {
     if (!inp.value) inp.value = loadName();
@@ -732,6 +744,8 @@ function renderBuzz(v: PhoneView): void {
   // Wagers: the player's own box instead of the buzzer (or what's locked in; someone else wagering; sitting out).
   const wager = v.phase === 'lobby' && v.wager ? v.wager : null;
   const boxUp = !!wager?.mine && wager.open;
+  // Above the box: what's on screen ("Final Jeopardy! · US Presidents", "Daily Double — you're up!").
+  if (boxUp && !clue.childNodes.length && v.status) clue.append(v.status);
   $('wager-form').hidden = !boxUp;
   b.hidden = boxUp;
   if (boxUp) return renderWager(v, wager!, sym);
@@ -750,7 +764,12 @@ function renderBuzz(v: PhoneView): void {
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
   if (wager?.mine) {
     // Locked: the question is up.
-    [cls, big, small] = ['off', 'Wager locked', wager.amount !== undefined ? money(wager.amount, sym) : 'No wager sent: the host has it'];
+    const yours = team ? 'Your team’s wager' : 'Your wager';
+    [cls, big, small] = [
+      'off',
+      'Wager locked',
+      wager.amount !== undefined ? `${yours}: ${money(wager.amount, sym)}` : wager.hidden ? 'The host has it (not shown on this phone)' : 'None sent: the host decides',
+    ];
   } else if (wager?.kind === 'dd') {
     [cls, big, small] = ['off', `${wager.who || 'Someone'} is wagering…`, 'Daily Double'];
   } else if (wager) {
@@ -847,7 +866,7 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
     wagerFor = key;
   }
   inp.max = w.limit && w.max !== undefined ? String(w.max) : '';
-  const max = w.max !== undefined ? `Max ${money(w.max, sym)}${w.limit ? '' : ' (not enforced)'}` : '';
+  const max = w.max !== undefined ? `Max ${money(w.max, sym)}${w.limit ? '' : ' (the host may allow more)'}` : '';
   $('wager-info').textContent = [`Score ${money(you.score, sym)}`, max].filter(Boolean).join(' · ');
   let state = '';
   if (w.amount !== undefined) {
@@ -856,8 +875,13 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
     else if (team && w.by) state = `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team`;
     else if (w.sent) state = `✔ Sent: ${amt}`;
     state += '. You can change it until the host locks the wagers.';
+  } else if (w.hidden) {
+    // Seated after the wagers began: one is in, but this phone isn't shown it.
+    state = `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.`;
   }
   $('wager-state').textContent = wagerSending ? 'Sending…' : state;
+  // Green for what's in and shown; plain for "not shown here".
+  $('wager-state').classList.toggle('plain-note', !!w.hidden && w.amount === undefined);
   $('wager-err').textContent = wagerErr;
   $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
   const hostGone = renderFoot(v, sym);
@@ -929,6 +953,17 @@ document.addEventListener('visibilitychange', () => {
   } else probe();
 });
 $('leave').addEventListener('click', leaveSeat);
+$('wait-cancel').addEventListener('click', () => {
+  // Not waiting for the host any more: back to the list.
+  send({ t: 'leave' });
+  pendingName = null;
+  render();
+});
+// The on-screen keyboard opening (or the phone turning) with the wager box in use: keep the box in sight.
+window.visualViewport?.addEventListener('resize', () => {
+  const el = document.activeElement;
+  if (el instanceof HTMLInputElement) el.scrollIntoView({ block: 'center' });
+});
 $('wager-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const w = view?.wager;

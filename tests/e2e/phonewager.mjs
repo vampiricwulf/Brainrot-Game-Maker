@@ -164,7 +164,7 @@ try {
   await dd.locator('.chip', { hasText: 'Player 1' }).click();
   await form(ann).waitFor();
   assert((await ann.locator('#wager-head').innerText()) === 'Daily Double: your wager', 'the player who found it gets a wager box on their phone');
-  assert((await ann.locator('#wager-info').innerText()).includes('Max $1,000 (not enforced)'), `with their score and the max, not enforced while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
+  assert((await ann.locator('#wager-info').innerText()).includes('Max $1,000 (the host may allow more)'), `with their score and the max, not held to it while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
   await big(bo).getByText('Player 1 is wagering…').waitFor();
   assert(true, 'the other phones see "Player 1 is wagering…"');
   await dd.getByText('📱 waiting…').waitFor();
@@ -196,7 +196,7 @@ try {
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '700');
   await mainButton(host).click();
   await big(ann).getByText('Wager locked').waitFor();
-  assert((await small(ann).innerText()) === '$700', 'Show question locks it: the phone says “Wager locked $700”');
+  assert((await small(ann).innerText()) === 'Your wager: $700', 'Show question locks it: the phone says “Wager locked · Your wager: $700”');
   assert(await noneOf(aud, [700, 777]), 'the audience window still has no amount (until the host shows the wager)');
   // Right: Player 1 has 700 to wager in the Final.
   await host.getByRole('button', { name: 'Right: Player 1 +$700' }).click();
@@ -264,9 +264,9 @@ try {
   // Show question: locked.
   await mainButton(host).click();
   await big(ann).getByText('Wager locked').waitFor();
-  assert((await small(ann).innerText()) === '$1,300' && (await form(ann).isHidden()), 'Show question locks the wagers: “Wager locked $1,300”, no box to change it');
+  assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'Show question locks the wagers: “Wager locked · Your wager: $1,300”, no box to change it');
   await big(bo).getByText('Wager locked').waitFor();
-  assert((await small(bo).innerText()) === '$2,000', 'the host’s change is what was locked in');
+  assert((await small(bo).innerText()) === 'Your wager: $2,000', 'the host’s change is what was locked in');
   assert(await noneOf(aud, [1234, 1300, 2000, 2222]), 'the audience window still has no amount once the question is up');
   await shot('pw-6-locked-phone', ann);
 
@@ -308,6 +308,17 @@ try {
   assert((await al.locator('#wager-in').inputValue()) === '450', 'a teammate changes it: still one wager for the team, and every member sees the new one');
   await shot('pw-7-team-phone', al);
   await shot('pw-8-team-host', host2);
+
+  // Cy (Player 2) changes name and joins Player 1 to read their wager: his phone is told one is in, not how much.
+  await cy.locator('#leave').click();
+  await cy.getByRole('heading', { name: 'Pick your team' }).waitFor();
+  await cy.getByRole('button', { name: 'Player 1' }).click();
+  await cy.getByRole('textbox', { name: 'Name for your team' }).fill('Spy');
+  await cy.getByRole('button', { name: 'Join the team' }).click();
+  await form(cy).waitFor();
+  await cy.locator('#wager-state').getByText('wager is in with the host (not shown').waitFor();
+  assert((await noneOf(cy, [450])) && (await cy.locator('#wager-in').inputValue()) === '', 'someone who joins a team after the wagers began is told one is in, never the amount');
+  await shot('pw-9-late-joiner-phone', cy);
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

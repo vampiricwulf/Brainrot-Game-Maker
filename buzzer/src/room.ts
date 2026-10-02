@@ -46,7 +46,10 @@
  * anyone on the team; the newest counts). The room checks it (a whole number up to WAGER_MAX, only while the round is
  * open, over the seat's max only when the host doesn't hold to it, WAGER_RATE sends at most), keeps it per seat, and
  * passes the amount to the host and to that seat's own phones only: never to another phone, never in the seat list.
- * One sent while the host is away reaches it when it is back (unless it already took it: WagerSeat.got).
+ * One sent while the host is away reaches it when it is back (unless it already took it: WagerSeat.got). A phone that
+ * took its seat (teams: joined its team) after the round began sees no amount it didn't send itself: not the host's,
+ * not a teammate's (whoever has the code could otherwise tap a free seat or join a rival team to read theirs). It is
+ * told one is in, and can still send its own.
  *
  * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
  * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and its address can't
@@ -177,8 +180,10 @@ export interface RoomSaved {
   members?: Record<string, Member>;
   /** Teams: member id → when their early-buzz lock ends (an early buzz locks the member, not the team). */
   memberLocks?: Record<string, number>;
-  /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat. */
-  wagers?: { id: string; seats: Record<string, SentWager> };
+  /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat; at: when the round began. */
+  wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
+  /** Seat id → when its token was handed out (a phone coming back with it keeps the time; see Wagers above). */
+  seatedAt?: Record<string, number>;
 }
 
 /** Someone on a team (teams). */
@@ -436,7 +441,7 @@ export class Room {
     // A new wager round (or none) forgets what phones sent; a seat taken out of it forgets its own.
     const ask = next.wager;
     if (!ask) delete this.s.wagers;
-    else if (this.s.wagers?.id !== ask.id) this.s.wagers = { id: ask.id, seats: {} };
+    else if (this.s.wagers?.id !== ask.id) this.s.wagers = { id: ask.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.wagers.seats)) if (!ask.seats.some((x) => x.id === id)) delete this.s.wagers.seats[id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
@@ -574,6 +579,7 @@ export class Room {
   private freeSeat(seatId: string, kicked = false): void {
     delete this.s.tokens[seatId];
     delete this.s.holders[seatId];
+    delete this.s.seatedAt?.[seatId];
     delete this.s.earlyLocks[seatId];
     for (const [id, m] of Object.entries(this.s.members ?? {})) if (m.seatId === seatId) this.dropMember(id, kicked);
     for (const p of this.phones.values()) {
@@ -879,6 +885,7 @@ export class Room {
     const token = this.deps.token();
     this.s.tokens[seatId] = token;
     this.s.holders[seatId] = p.conn;
+    (this.s.seatedAt ??= {})[seatId] = this.deps.now();
     p.seatId = seatId;
     p.lastView = p.lastSeats = undefined;
     this.deps.savePhone(strip(p));
@@ -947,6 +954,8 @@ export class Room {
       this.newRace(st.armId, now);
       race = this.s.race!;
     }
+    // Teams: someone the host moved after they buzzed doesn't buzz again for their new team on the same clue.
+    if (member && race.queue.some((b) => b.member === member && b.seatId !== seatId)) return result('late');
     const by = member ? { member, by: this.s.members![member].name } : {};
     const key = rankKey(now - race.armedAt, reactMs, this.rtt(p.conn));
     const had = race.queue.find((b) => b.seatId === seatId);
@@ -1001,9 +1010,10 @@ export class Room {
     if (!this.allow((p.wagerRate ??= { start: 0, count: 0 }), WAGER_RATE, WAGER_WINDOW_MS)) return no('slow');
     if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0 || amount > WAGER_MAX) return no('bad');
     if (ask.limit && amount > seat.max) return no('over', seat.max);
-    const sent = this.s.wagers?.id === id ? this.s.wagers : (this.s.wagers = { id, seats: {} });
+    const now = this.deps.now();
+    const sent = this.s.wagers?.id === id ? this.s.wagers : (this.s.wagers = { id, seats: {}, at: now });
     const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
-    const w: SentWager = { amount, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
+    const w: SentWager = { amount, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, at: now, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
     sent.seats[p.seatId] = w;
     this.deps.toPhone(p.conn, { t: 'wagered', id, ok: true, amount });
     this.tellWager(id, p.seatId, w);
@@ -1104,8 +1114,10 @@ export class Room {
       let r: RoomToPhone;
       if (race.tie?.includes(q.seatId)) r = { t: 'result', armId: race.armId, outcome: 'tie', rank };
       else if (q.seatId === race.winner) {
+        // "First by 0.12 s" only when they were: not when they answer because a faster one missed or passed.
         const next = queue[i + 1];
-        r = { t: 'result', armId: race.armId, outcome: 'first', rank, afterMs: 0, ...(i === 0 && next ? { byMs: next.afterMs } : {}), ...rolled };
+        const fastest = i === 0 && !!next && race.queue[1].key > race.queue[0].key;
+        r = { t: 'result', armId: race.armId, outcome: 'first', rank, afterMs: 0, ...(fastest ? { byMs: next.afterMs } : {}), ...rolled };
       } else if (shift) r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner!), ...rolled };
       else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: q.afterMs, behind: name(lead.seatId), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
       const member = race.queue[i].member;
@@ -1150,8 +1162,13 @@ export class Room {
       if (p.seatId && st) {
         const m = p.member ? this.s.members?.[p.member] : undefined;
         const me: MemberRef | null = m && p.member ? { id: p.member, name: m.name } : null;
-        const sent = st.wager && this.s.wagers?.id === st.wager.id ? this.s.wagers.seats[p.seatId] : undefined;
-        const view = { ...phoneView(st, p.seatId, me, by, sent), hostHere: this.hostHere };
+        const round = st.wager && this.s.wagers?.id === st.wager.id ? this.s.wagers : undefined;
+        let sent = round?.seats[p.seatId];
+        // Seated (teams: on the team) since the round began: only what it sent itself (see Wagers above).
+        const since = m ? m.at : this.s.seatedAt?.[p.seatId];
+        const late = round?.at !== undefined && since !== undefined && since > round.at;
+        if (late && sent && !(sent.at !== undefined && sent.at >= since)) sent = undefined;
+        const view = { ...phoneView(st, p.seatId, me, by, sent, late), hostHere: this.hostHere };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;

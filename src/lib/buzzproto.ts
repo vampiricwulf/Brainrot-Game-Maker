@@ -131,6 +131,8 @@ export interface SentWager {
   /** Teams: the member who sent it (id, not a credential) and their name. */
   member?: string;
   by?: string;
+  /** Added later: when the room took it (a phone seated after the round began sees only what it sent since). */
+  at?: number;
 }
 
 /** What one phone sees. Built by phoneView() only. */
@@ -183,6 +185,11 @@ export interface PhoneWager {
   byYou?: boolean;
   /** The host typed it (or changed the one sent). */
   host?: boolean;
+  /**
+   * Added later: a wager is in, but this phone doesn't see it (it took its seat, or joined its team, after the round
+   * began; see phoneView's `late`). Sending one replaces it.
+   */
+  hidden?: boolean;
 }
 
 /** A team member as the room knows them: id (not a credential) and the name they joined with. */
@@ -193,9 +200,10 @@ export interface MemberRef {
 
 /**
  * `me`: this phone's team member (teams). `by`: the member whose buzz has the answering team answering (teams; null
- * when the host picked the team itself).
+ * when the host picked the team itself). `late`: this phone took its seat (or joined its team) after the wager round
+ * began, so it isn't told the wager the host has (the room passes only what it sent itself as `sent`).
  */
-export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | null, by?: MemberRef | null, sent?: SentWager | null): PhoneView {
+export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | null, by?: MemberRef | null, sent?: SentWager | null, late = false): PhoneView {
   const seat = seatId ? s.seats.find((x) => x.id === seatId) : undefined;
   const a = s.phase === 'answering' && s.answering ? s.seats.find((x) => x.id === s.answering) : undefined;
   return {
@@ -211,7 +219,7 @@ export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | 
     ...(s.status?.text ? { status: seatId && s.status.seatsText && s.status.seats?.includes(seatId) ? s.status.seatsText : s.status.text } : {}),
     ...(s.currency ? { currency: s.currency } : {}),
     ...(s.teams ? { teams: true } : {}),
-    ...wagerView(s, seatId, me, sent),
+    ...wagerView(s, seatId, me, sent, late),
   };
 }
 
@@ -219,7 +227,7 @@ export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | 
  * The wager part of a phone's view: its own seat's max and amount only, never another seat's. `sent`: what a phone of
  * this seat sent (the room keeps it); the host's own amount wins once the host typed or changed it.
  */
-function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, sent?: SentWager | null): Pick<PhoneView, 'wager'> {
+function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, sent?: SentWager | null, late = false): Pick<PhoneView, 'wager'> {
   const w = s.wager;
   if (!w || !seatId || !s.seats.some((x) => x.id === seatId)) return {};
   const own = w.seats.find((x) => x.id === seatId);
@@ -228,7 +236,7 @@ function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, s
     return { wager: { id: w.id, kind: w.kind, open: w.open, mine: false, ...(who ? { who } : {}) } };
   }
   const phone = !!sent && !own.fromHost;
-  const amount = phone ? sent.amount : own.amount;
+  const amount = phone ? sent.amount : late ? undefined : own.amount;
   return {
     wager: {
       id: w.id,
@@ -241,6 +249,7 @@ function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, s
       ...(phone || (amount !== undefined && !own.fromHost) ? { sent: true } : {}),
       ...(phone && s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}),
       ...(amount !== undefined && own.fromHost ? { host: true } : {}),
+      ...(amount === undefined && own.amount !== undefined ? { hidden: true } : {}),
     },
   };
 }

@@ -51,6 +51,8 @@
     remote.phones.filter((p) => p.seatId === id && p.member).sort((a, b) => Number(b.connected) - Number(a.connected));
   const waiting = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)));
   const full = $derived(session.players.length >= max);
+  /** Phones open on the join screen that haven't picked a name (teams: a team) yet. */
+  const picking = $derived(remote.phones.filter((p) => !p.seatId && !p.pendingName && p.connected).length);
 </script>
 
 <ul class="phones">
@@ -110,6 +112,11 @@
     {/if}
   {/each}
 </ul>
+{#if picking}
+  <p class="muted small note">
+    {picking === 1 ? '1 more phone is' : `${picking} more phones are`} on the join screen, not {teams ? 'on a team' : 'a player'} yet.
+  </p>
+{/if}
 {#if roomFull}
   <p class="warn small" role="status">
     ⚠ Room full: too many phones are connected, so some were turned away. They try again by themselves; idle ones make
@@ -198,6 +205,9 @@
   }
   .warn {
     color: var(--warn);
+    margin: 0;
+  }
+  .note {
     margin: 0;
   }
   .lock {

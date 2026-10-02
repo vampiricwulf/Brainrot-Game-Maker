@@ -191,6 +191,15 @@ in plain words for the people who make and host games. Anything committed but no
 - **⌨ Keyboard shortcuts** lists Enter in the Daily Double's wager box (show the question) and in the Final's wager
   boxes (the next wager to type, then show the question).
 - A board game's history says "Ann’s turn" with the same apostrophe as everywhere else.
+- **Phones, polished**: a long player name wraps onto two lines in the list instead of being cut off; the team name
+  form says who is on the team already ("On it: Ann, Al"); a phone waiting for the host to let it in has a **Cancel**;
+  "The game is over" offers **Join another game**; a locked wager says "Your wager: $1,300" (or "None sent: the host
+  decides"); the max that isn't held to says "(the host may allow more)" instead of "(not enforced)"; and the line
+  above the wager box says what's on screen ("Daily Double — you're up!", the Final and its category).
+- **The phones say the Final's category** ("Final Jeopardy! · US Presidents") from its wager screen on, as the
+  screen does.
+- **The 📱 list says how many phones are still on the join screen** (not a player, or not on a team, yet), and with
+  Teams the 📱 chip reads "3 people · 2/2 teams" instead of "3 on 2/2".
 - **The Final goes straight to its wagers**: there's no "Lock category, take wagers" step any more. When the Final
   starts, its category is on screen ("Make your wagers…") and the host panel shows one wager screen: a row for each
   player with a tick for whether they play (players at $0 or less are ticked out when the round says so) and their
@@ -525,6 +534,19 @@ in plain words for the people who make and host games. Anything committed but no
 - **＋ Award and − Deduct, greyed out, say why** in their tooltip ("Pick who answered first (1–3)", "Type an amount
   first").
 - "Who found it?Pick a player." on the Daily Double screen has its space back.
+- **A wager stays secret from someone who joins late**: with the room's code, anyone could tap a free seat, or join a
+  rival team under another name, during a Daily Double or a Final and read the wager the host or the team had in. A
+  phone that takes its seat (or joins its team) after the wagers began is now only told that one is in, and sees just
+  what it sends itself. (The buzzer server has to be updated for it.)
+- **Teams: someone moved to another team after buzzing** can't buzz again for their new team on the same clue.
+- **"You were first by 0.00 s"** no longer shows on the phone of a player answering because a faster one missed or
+  passed; it says "Say your answer".
+- **Phones with the keyboard up**: on a small phone, opening the wager box's keyboard could switch the page to its
+  landscape layout and squeeze the name and score into a sliver; the box now stays in sight above the keyboard. In
+  landscape, the wager box fits beside the name and score, and a long clue's category line is no longer cut off.
+- **A wager sent as the phone lost its connection** no longer says "Sending…" for good: the phone says to send it again
+  if it doesn't show ✔ Sent once it's back.
+- A phone told it was taken off a seat no longer keeps that note when the host turns Teams on (and the other way).
 - **Pop-ups are always whole on screen and on top**: the 📱 phones list could run off the top or the bottom of the
   window, or be cut off by the host panel as if hidden under the stage (when the window was resized, or the panel
   scrolled), and beside the stage (RPG and board-game rounds) it hung over the stage viewers see. It now drops from its
