@@ -218,6 +218,7 @@ try {
   await form(bo).waitFor();
   assert((await ann.locator('#wager-head').innerText()) === 'Final: your wager', 'the Final’s wager screen: every phone in it gets its wager box');
   await row('Player 1').getByText('📱 waiting…').waitFor();
+  assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
   assert(
     (await row('Player 2').getByText('📱 can still send').count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
     'the host sees whose phone can send one (“📱 waiting…”, or “📱 can still send” over the 0 filled in for nothing to wager); a player without a phone has no 📱',
@@ -261,8 +262,9 @@ try {
   assert(true, 'and that phone shows the host’s amount');
   await shot('pw-5-final-phone', ann);
 
-  // Show question: locked.
-  await mainButton(host).click();
+  // Show question (N, even from a wager box, once every wager is in): locked.
+  await box('Player 3').focus();
+  await host.keyboard.press('n');
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'Show question locks the wagers: “Wager locked · Your wager: $1,300”, no box to change it');
   await big(bo).getByText('Wager locked').waitFor();

@@ -51,7 +51,9 @@
       title: 'Jeopardy board',
       keys: [
         ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
-        ['N / Shift+N during a clue', 'A clue with several slides: the next slide / the slide before'],
+        ['N during a clue', 'The main button (bottom right): the next slide, open the buzzers, reveal the answer, then back to the board'],
+        ['Shift+N during a clue', 'A clue with several slides: the slide before'],
+        ['Arrows, Enter', 'On the board: move between tiles, open one'],
         ['R', 'Reveal the answer (again: hide it); the countdown stops'],
         ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
@@ -72,7 +74,7 @@
     {
       title: 'Final',
       keys: [
-        ['N', 'Title card: start the round; then the next step; in the reveals: show the wager, then the next player'],
+        ['N', 'Title card: start the round; then the next step (Show question once every wager is in); in the reveals: show the wager, then (once they’re judged, C or X) the next player'],
         ['Enter in a wager box', 'The next wager still to type in; with every wager in, show the question'],
         ['Shift+N', 'Reveals: back to the player before'],
         ['R', 'The question: reveal the answer (again: hide it); the countdown stops'],

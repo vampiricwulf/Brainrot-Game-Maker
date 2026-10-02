@@ -284,7 +284,7 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('.fj .wagers input[data-wager]'));
   assert(await page.evaluate(() => document.activeElement.value === ''), 'the Final comes up with the focus in the first wager box still to fill');
   // ◀ Back to the round before, from the keyboard: the keys go on from its board (the button is gone).
-  const backBtn = page.locator('.fj button', { hasText: '◀ Back to' });
+  const backBtn = page.locator('.fj button', { hasText: '◀ Previous round' });
   await backBtn.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');

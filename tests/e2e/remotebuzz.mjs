@@ -213,10 +213,15 @@ try {
   await stateIs((s, a) => s.phase === 'armed' && s.armId > a, closed.armId);
   const armed = await state();
   assert(true, `U opens the buzzers (a new armId ${armed.armId})`);
+  await aud.locator('[data-buzz-now]').getByText('🔔 Buzz now!').waitFor();
+  assert(true, 'viewers see the buzzers open: “🔔 Buzz now!” and a light around the stage');
+  assert((await aud.locator('.join-badge .jb-link').innerText()) === 'buzz.test', 'the corner’s join badge says where to go too (buzz.test), with the code');
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[1].id, rank: 1, afterMs: 0 });
   await say({ t: 'queue', armId: armed.armId, queue: [{ seatId: seats[1].id, afterMs: 0 }] });
   await aud.locator('.plate').waitFor();
   assert((await aud.locator('.plate').innerText()).includes('Player 2'), 'a phone’s buzz picks the player: viewers see Player 2 is answering');
+  await aud.locator('[data-buzz-now]').waitFor({ state: 'detached' });
+  assert(true, 'and the “Buzz now!” cue goes once someone answers');
   assert((await pressed()).join() === '2Player 2' || (await pressed())[0].includes('Player 2'), 'Player 2 is selected in the host panel');
   // A later buzz joins the queue.
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[2].id, rank: 2, afterMs: 120 });
@@ -313,9 +318,41 @@ try {
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'accept' && m.conn === 'c5'));
   assert((await page.locator('.panel .p').count()) === 5, 'Amy joins mid-game');
   assert((await page.getByRole('button', { name: '↶ Undo' }).getAttribute('title')).includes('Added Amy'), 'as one undoable step');
+  // A phone drops: its player's chip shows 📵, and the phones list how long it's been gone.
+  await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: false }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
+  await page.locator(`.panel .p [data-phone-away="${seats[1].id}"]`).waitFor();
+  assert((await page.locator('.panel .p [data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
+  await pop.locator(`[data-phone-offline="${seats[1].id}"]`).waitFor();
+  assert(/📵 phone offline \d+:\d\d/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “phone offline 0:01” (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
+  await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: true }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
+  await page.locator('.panel .p [data-phone-away]').waitFor({ state: 'detached' });
+  assert(true, 'back online, the 📵 goes');
+  // Seats locked (nobody new can join): the stage stops inviting everyone to buzz in.
+  await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
+  await pop.getByLabel(/Lock seats/).check();
+  await aud.locator('.join-badge', { hasText: '📱 Players’ buzzers' }).waitFor();
+  assert((await aud.locator('.join-badge .jb-link').count()) === 0, 'with the seats locked, the stage’s badge says “📱 Players’ buzzers” (no “Buzz in” for everyone watching)');
+  await pop.getByLabel(/Lock seats/).uncheck();
+  await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
   await page.keyboard.press('Escape');
   assert((await pop.count()) === 0, 'Esc closes the phones list (and nothing else)');
   assert((await page.locator('.stage-box .board').count()) === 0, 'the clue is still open');
+
+  // Wrong, then right: the main button is 👁 Reveal answer (not the buzzers again), and nobody is "next in line".
+  const r2 = rolled[1];
+  await page.keyboard.press('Shift+Enter');
+  await stateIs((st, a) => st.phase === 'answering' && st.answering === a, r2);
+  await page.keyboard.press('Enter');
+  await stateIs((st) => st.phase === 'closed' && !!st.done);
+  const mainNow = await page.locator('.panel [data-next]').innerText();
+  assert(mainNow.startsWith('👁 Reveal answer'), `after a right answer the main button is 👁 Reveal answer (${mainNow})`);
+  assert(
+    (await page.locator('.panel .act button:not(.primary)', { hasText: '🔔 Open the buzzers' }).count()) === 1 && (await page.getByText(/Next in line/).count()) === 0,
+    '🔔 Open the buzzers is a quiet button beside it, and nobody is “→ Next in line”',
+  );
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
+  assert(true, 'N does it: the answer is showing');
 
   // ---------- A dropped connection: reconnect with the same code ----------
   await page.evaluate(() => window.__drop());

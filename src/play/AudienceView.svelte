@@ -239,6 +239,10 @@
     if (session.phase === 'tiebreaker') return 'corner';
     return null;
   });
+  /** The host just opened the buzzers ("When I press U"): a cue on the clue's slide while they're open. */
+  const buzzNow = $derived(
+    !!live.room && game.settings.buzzArm === 'host' && session.phase === 'clue' && !session.dd && !session.revealed && live.buzz?.phase === 'armed' && !live.overlay,
+  );
   /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
   const codeShown = $derived(!!codeSpot && !live.overlay);
   /** Room kept free at the score bar's right end on the board: the join code's, the countdown's. */
@@ -511,8 +515,19 @@
     style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : undefined}
     style:right={codeSpot === 'bar' && timerBar ? `${24 + TIMER_ROOM}px` : undefined}
   >
-    <span class="jb-how">📱 Buzz in</span>
+    <!-- Nobody new can join (seats locked, or all taken): it doesn't invite everyone watching, it's the players' code. -->
+    <span class="jb-how">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz in'}</span>
     <span class="jb-code">{live.room.code}</span>
+    <!-- In the corner there's room for where to go, too. -->
+    {#if codeSpot === 'corner' && !live.room.closed}<span class="jb-link">{live.room.link.replace(/^https?:\/\//, '').replace(/\/[^/]*$/, '')}</span>{/if}
+  </div>
+{/if}
+
+<!-- Buzzers opened by the host (📱 Phone buzzers: "When I press U"): viewers see it, a light around the stage and a
+     moment's "🔔 Buzz now!". -->
+{#if buzzNow}
+  <div class="buzz-now" data-buzz-now aria-hidden="true">
+    {#key live.buzz?.armId}<div class="bn-pill" in:scale={{ start: 0.6, duration: 250 }}>🔔 Buzz now!</div>{/key}
   </div>
 {/if}
 
@@ -598,6 +613,50 @@
     font-size: 48px;
     letter-spacing: 0.12em;
     color: var(--value);
+  }
+  .jb-link {
+    font-size: 22px;
+    opacity: 0.85;
+  }
+  /* Buzzers open: a light around the stage, and "🔔 Buzz now!" for a moment (it fades, the light stays). */
+  .buzz-now {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 10px var(--value, #ffcc00), inset 0 0 60px 20px color-mix(in srgb, var(--value, #ffcc00) 55%, transparent);
+    animation: bn-glow 1.4s ease-in-out infinite alternate;
+  }
+  .bn-pill {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    translate: -50% 0;
+    padding: 10px 36px;
+    border-radius: 999px;
+    background: var(--value, #ffcc00);
+    color: #000;
+    font: 64px 'Anton', 'Oswald', sans-serif;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    animation: bn-out 0.5s ease-in 2s forwards;
+  }
+  @keyframes bn-glow {
+    from {
+      opacity: 0.55;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes bn-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .buzz-now {
+      animation: none;
+    }
   }
   .cover.host {
     opacity: 0.35;

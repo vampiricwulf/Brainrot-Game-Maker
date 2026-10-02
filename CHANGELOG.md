@@ -30,6 +30,18 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **N does the main thing on a clue too**: whatever the host panel's main button shows (the next slide, 🔔 Open the
+  buzzers, 👁 Reveal answer, ▦ Done ▶ board). R and Esc work as before. When the board comes up its first open tile
+  has the focus, and the status line says "Pick a tile on the board (arrows + Enter)".
+- **Start game ▶ shows its key** (Ctrl+⏎) on the button, not only in its tooltip.
+- **Phone buzzers: a dropped phone shows**: 📵 on that player's name in the host panel, and "📵 phone offline 0:12" in
+  the 📱 phones list.
+- **Phone buzzers: "🔔 Buzz now!" on stream** when the host opens the buzzers ("When I press U"): a light around the
+  clue while they're open, and the words for a moment.
+- **Phone buzzers: the stage's "📱 Buzz in" badge** says "📱 Players' buzzers" when nobody new can join (seats locked,
+  or every seat taken and phones can't add players), and otherwise, on a clue, also says the site to go to.
+- **The Final's wager screen says "max $400 (their score)"** instead of "TV max $400", and the host info's Wagers list
+  follows the players' order while wagers come in, with "waiting…" for the ones still to come.
 - **Opening a game over unsaved changes says what really happens**: the button is **Open anyway** (or **Reopen anyway**,
   **Start new anyway**), not "Discard", and the note says the game you leave is kept in this browser, where Open… →
   Recent games brings it back. With the browser's storage full it says going on loses it.
@@ -132,6 +144,20 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Buzzer mode: after a right answer the main button reopened the buzzers**: once someone gets the clue right, the
+  main button is 👁 Reveal answer (then ▦ Done ▶ board), 🔔 Open the buzzers is only a quiet button beside it, and
+  "→ Next in line" no longer offers the clue to someone else. The same with teams and after a reload.
+- **The Final's reveals went round and round**: N went Show wager → Next player → Show wager… without anyone being
+  judged, so "3 still to judge" never ended. Now once a wager is up the main button is ✔ *Name* right (C), with
+  ✘ Wrong (X) beside it, N waits for the judging, goes only to players still to judge, and ends at Finish game.
+- **The Final's wager screen kept the keys in a wager box**: with phones sending the wagers no box takes the focus, and
+  N in a wager box (or Enter in the last one) shows the question once every wager is in.
+- **The Final's back button named the wrong round** after jumping to the Final with the round list ("◀ Back to Board
+  game" from Jeopardy!): it's now "◀ Previous round (*name*)", which is where it goes.
+- **A negative score was hard to read on stream** (red on the blue plate at 720p): it's now white on a dark red band.
+  RPG and board-game name tags under the avatars are bigger (they were 8–12 px tall at 720p).
+- **"Added a sample game…" and other editor messages stayed up after going to play** (and back): a message goes when
+  you go somewhere else.
 - **Randomize Daily Doubles' tooltip gave the wrong way to set one by hand**: it said to click a tile (that opens the
   clue); it now says right-click a tile → ⭐ Make it a Daily Double.
 - **Host panel: the status line during the category reveal said "Round intro"** with no progress; it now says

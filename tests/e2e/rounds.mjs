@@ -83,6 +83,18 @@ try {
   await playWithPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
+  // The board is up: the keys go on from its first open tile (arrows + Enter), and the status line says so.
+  await page.waitForFunction(() => document.activeElement?.matches('.stage-box .board .tile:not(.used)'));
+  assert((await page.locator('.panel .status').innerText()).includes('Pick a tile on the board (arrows + Enter)'), 'the board comes up with its first open tile in focus: “Pick a tile on the board (arrows + Enter)”');
+  // N on a clue does what the main button shows: 👁 Reveal answer, then ▦ Done ▶ board.
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('👁 Reveal answer'));
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
+  assert((await page.locator('.panel [data-next]').innerText()).startsWith('▦ Done ▶ board'), 'N on a clue reveals the answer (the main button), then the main button is ▦ Done ▶ board');
+  await page.keyboard.press('n');
+  await page.locator('.stage-box .board').waitFor();
+  assert(true, 'and N again goes back to the board');
   // Give Player 1 some points so they can wager.
   await page.locator('.panel .p').first().locator('.score').click();
   await page.locator('.panel .p').first().locator('input').fill('500');
@@ -97,7 +109,7 @@ try {
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   await page.locator('.fj').waitFor();
   assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('MIDGAME WAGER'), 'the next round is the Final in the middle of the game');
-  await page.getByRole('button', { name: /◀ Back to Jeopardy!/ }).waitFor();
+  await page.getByRole('button', { name: /◀ Previous round \(Jeopardy!\)/ }).waitFor();
   assert(true, 'its Back button goes to the round before it');
   // Through the Final: wagers, question, answer, then judge the one player who can play.
   await page.locator('.fj .wagers input[data-wager]').first().fill('200');
@@ -168,6 +180,37 @@ try {
   assert((await page.locator('.panel [data-next]').innerText()).startsWith('Finish game'), 'nobody playing: the main button goes on (Finish game)');
   await plays.nth(0).check();
   await plays.nth(1).check();
+  // The keys go on: N shows the question once every wager is in, N the answer, N the reveals.
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Question on screen'));
+  assert(true, 'N on the wager screen shows the question once every wager is in');
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer on screen'));
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
+  // The reveals: N shows the wager, then judging (C / X) is the main step; N waits for it, then the next player.
+  const revealMain = () => page.locator('.panel [data-next]').innerText();
+  const spot = () => page.locator('.fj .pl.cur .name').innerText();
+  assert((await revealMain()).startsWith('Show wager ▶'), `the reveals start on Show wager (${await revealMain()})`);
+  const first = await spot();
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.includes('right'));
+  assert((await revealMain()).startsWith(`✔ ${first} right`) && (await page.locator('.panel [data-next-also]').innerText()).startsWith('✘ Wrong'), `after Show wager, judging is the main step: ✔ ${first} right (C), ✘ Wrong (X) beside it (${await revealMain()})`);
+  await page.keyboard.press('n');
+  await page.waitForTimeout(150);
+  assert((await spot()) === first && (await revealMain()).startsWith(`✔ ${first} right`), 'N doesn’t go on past a player whose wager is up until they’re judged');
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player'));
+  await page.keyboard.press('n');
+  await page.waitForFunction((f) => document.querySelector('.fj .pl.cur .name')?.textContent !== f, first);
+  await page.keyboard.press('n');
+  await page.keyboard.press('x');
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game'));
+  assert((await page.locator('.fj').innerText()).includes('still to judge') === false, 'with both judged, nobody is left to judge and the main button is Finish game');
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
+  assert(true, 'N (twice, as it asks) finishes the game');
   await context.close();
 
   // A game saved by Jeopardy Builder (format version 1): the Final becomes the last round.

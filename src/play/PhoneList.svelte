@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
   import type { Session } from '../lib/model';
   import { FULL_SHOWN_MS, remote } from '../lib/remote.svelte';
+  import { awayFor, phoneAwaySince } from './host/phoneaway.svelte';
 
   let {
     session,
@@ -39,7 +40,8 @@
   // "Room full" shows for a while after the room last turned a phone away.
   let now = $state(Date.now());
   onMount(() => {
-    const id = setInterval(() => (now = Date.now()), 10_000);
+    // (Every second: "phone offline 0:12" counts up.)
+    const id = setInterval(() => (now = Date.now()), 1000);
     return () => clearInterval(id);
   });
   const roomFull = $derived(!!remote.fullAt && now - remote.fullAt < FULL_SHOWN_MS);
@@ -64,6 +66,10 @@
         <span class="dot" aria-hidden="true"></span>
         <span class="name" dir="auto">{p.name}</span>
         <span class="muted">{ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
+        {#if phoneAwaySince(p.id) !== null}
+          {@const at = phoneAwaySince(p.id) ?? now}
+          <span class="away" data-phone-offline={p.id}>📵 offline {awayFor(at, now)}</span>
+        {/if}
         {#if ms.length}
           <button class="ghost small x" onclick={() => onkick(p.id)} aria-label="Take everyone off {p.name}" title="Take everyone off this team: those phones can't join it again for 2 minutes">✕</button>
         {/if}
@@ -101,7 +107,8 @@
       {#if ph?.connected}
         <span class="ok">✔ joined</span>
       {:else if ph}
-        <span class="away">… phone away</span>
+        {@const at = phoneAwaySince(p.id)}
+        <span class="away" data-phone-offline={p.id}>📵 phone offline{at !== null ? ` ${awayFor(at, now)}` : ''}</span>
       {:else}
         <span class="muted">waiting</span>
       {/if}

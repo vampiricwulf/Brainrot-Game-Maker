@@ -14,7 +14,7 @@
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, wagerAsk, whoBuzzed,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
   import { clip, type HostState, type WagerAsk } from '../lib/buzzproto';
@@ -44,6 +44,7 @@
   import InlineAsk from './host/InlineAsk.svelte';
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
+  import type { NextAction } from './host/slots.svelte';
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
@@ -140,6 +141,8 @@
   let pickerPending = $state(false);
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
   let finishArmed = $state(false);
+  /** The host panel's main button (its NEXT cell) now: N on a clue does it. */
+  let hostNext = $state<NextAction | null>(null);
   /**
    * Final wagers: "Ignore the limits" is ticked (the default: the host turns the limits on), so a wager over its cap
    * doesn't hold up N / Show question.
@@ -735,9 +738,12 @@
       ? roomQueue.tie.filter((id) => session.players.some((p) => p.id === id))
       : [],
   );
-  /** After a wrong answer: the next player in the queue who hasn't missed this clue (the default stays the rebound). */
+  /**
+   * After a wrong answer: the next player in the queue who hasn't missed this clue (the default stays the rebound).
+   * None once someone got it right.
+   */
   const nextInLine = $derived(
-    buzzing && buzz.phase !== 'answering' && !selected.length && buzz.lockedOut.length && !tie.length
+    buzzing && buzz.phase !== 'answering' && !buzz.done && !selected.length && buzz.lockedOut.length && !tie.length
       ? queueRows.find((r) => !r.out && r.id !== buzz.answering)
       : undefined,
   );
@@ -1000,8 +1006,13 @@
   $effect(() => {
     const live = app.live;
     const room = phonesOn && remote.code && remote.status !== 'off' && remote.status !== 'error' ? { code: remote.code, link: roomLink(remote.code) } : null;
+    // Nobody new can join (seats locked, or every seat has its phone and phones can't add players): the stage's join
+    // badge stops inviting everyone.
+    const seated = session.players.every((p) => remote.phones.some((ph) => ph.seatId === p.id));
+    const closed =
+      !!room && (!!session.remote?.locked || (!teamsOn(game.settings) && seated && (!game.settings.phoneJoin || session.players.length >= game.settings.maxPlayers)));
     untrack(() => {
-      if (live.room?.code !== room?.code || live.room?.link !== room?.link) live.room = room;
+      if (live.room?.code !== room?.code || live.room?.link !== room?.link || !!live.room?.closed !== closed) live.room = room && (closed ? { ...room, closed } : room);
     });
   });
 
@@ -1264,6 +1275,13 @@
     });
   }
 
+  // The board becomes pickable (the game starts on it, its intro ends): the keys go on from its first open tile (arrows
+  // + Enter), unless the focus is somewhere already.
+  $effect(() => {
+    if (app.pregame || session.phase !== 'board' || session.intro) return;
+    untrack(boardFocus);
+  });
+
   /** N in the Final's wagers with some still to type (or over the max): say whose, and go to the first of them. */
   function wagersWaiting(): void {
     const { missing, over, whole } = finalWagerProblems(session, wagerLimitsOff);
@@ -1350,8 +1368,17 @@
     if (session.phase !== 'final' && session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
   }
 
-  /** N in the final reveal: show the wager, then the next player; finishing takes a second N once all are judged. */
+  /**
+   * N in the final reveal: show the wager, then (once they're judged, C or X) the next player still to judge; finishing
+   * takes a second N once all are judged.
+   */
   function finalRevealNext(): void {
+    const f = session.final;
+    const cur = f?.current && f.order.includes(f.current) ? f.current : undefined;
+    // Their wager is up: they're judged before anyone else is spotlit (N never skips past them).
+    // (One with no wager in yet can't be judged: N goes on, as the main button says.)
+    if (f && cur && f.shown[cur] && !f.results[cur] && typeof f.wagers[cur] === 'number')
+      return toast(`Mark ${playerName(session, cur)} right (C) or wrong (X) first`);
     const r = finalAdvance(session);
     if (r === 'done') {
       // The final controls show "press N again to finish" while armed.
@@ -2323,8 +2350,11 @@
           if (e.shiftKey) finalBack(session);
           else finalRevealNext();
         } else if (session.phase === 'clue') {
-          // A clue's question slides: the next one (Shift+N: the one before).
-          if (!slideStep(e.shiftKey ? -1 : 1)) break;
+          // Shift+N: a clue's question slide before. N: whatever the host panel's main button shows (the next slide,
+          // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…).
+          if (e.shiftKey) slideStep(-1);
+          else if (hostNext && !hostNext.disabled) hostNext.run();
+          else slideStep(1);
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         else if (session.phase === 'final') {
@@ -2676,6 +2706,7 @@
         title={session.players.length ? `Start the game${wantAudience && !dual ? ', opening the audience window to capture in OBS' : ''} (Ctrl+Enter)` : 'Add players to start'}
       >
         {wantAudience && !dual ? '📺 Open audience window & start' : 'Start game ▶'}
+        {#if session.players.length}<kbd class="start-key" aria-hidden="true">Ctrl+⏎</kbd>{/if}
       </button>
     </div>
   </main>
@@ -2793,6 +2824,7 @@
         onkeys={() => (showKeys = true)}
         oncloseoverlay={closeOverlay}
         onopenbuzzers={openBuzzers}
+        bind:nextAction={hostNext}
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
         onrolltie={rollTie}
         {phonesDown}
@@ -3175,6 +3207,16 @@
   .big {
     font-size: 16px;
     padding: 10px 22px;
+  }
+  /* Start game's key, as the host panel's main buttons show theirs. */
+  .start-key {
+    font: 11px/1 ui-monospace, monospace;
+    padding: 2px 4px;
+    margin-left: 6px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    opacity: 0.75;
+    vertical-align: middle;
   }
   .actions > button {
     flex: none;

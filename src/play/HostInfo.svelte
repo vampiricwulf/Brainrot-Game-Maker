@@ -78,15 +78,18 @@
       <div class="notes">{finalRound.hostNotes}</div>
     {/if}
     {#if session.final}
+      <!-- While wagers are taken, in the players' own order (as the wager boxes); then in the reveal order. -->
+      {@const taking = (session.finalStep ?? 'wagers') === 'wagers'}
+      {@const fp = session.final.players}
       <!-- The heading and its list together (in columns, the heading never ends a column alone). -->
       <div class="group">
         <div class="label">Wagers</div>
         <ol>
-          {#each session.final.order as id (id)}
+          {#each taking ? session.players.map((x) => x.id).filter((x) => fp.includes(x)) : session.final.order as id (id)}
             {@const p = session.players.find((x) => x.id === id)}
             <li>
               <span class="dot" style:background={p?.color}></span>{p?.name}
-              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : '—'}</b>{#if session.final.wagerFrom?.[id] === 'phone'}<span title="Sent from their phone"> 📱</span>{/if}
+              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : taking ? 'waiting…' : '—'}</b>{#if session.final.wagerFrom?.[id] === 'phone'}<span title="Sent from their phone"> 📱</span>{/if}
               {session.final.results[id] === 'right' ? '✔' : session.final.results[id] === 'wrong' ? '✘' : ''}
             </li>
           {/each}
