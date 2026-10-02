@@ -221,7 +221,7 @@ try {
   // ---------- Exit ends the room ----------
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
-  await host.getByRole('button', { name: 'Leave', exact: true }).click();
+  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await ann.locator('main').getByText('The game is over').waitFor();
   assert(true, 'Exit closes the room');
 

@@ -236,9 +236,13 @@
       {/if}
     </div>
   {/if}
-  <!-- Only while the mouse is over the window, so it stays off the stream (the host panel warns too). -->
-  {#if !activated && !scores && status === 'connected' && !idle}
-    <div class="activate">Click anywhere in this window once so it can play sound</div>
+  <!-- Browsers block sound until the window is clicked once: it says so over the picture until then, so the host sees
+       it in the window (and in the OBS preview); the click takes it away, and the host is told (✓ in Going live?). -->
+  {#if !activated && !scores && status === 'connected'}
+    <div class="activate" role="status">
+      <b>🔊 Click to enable sound</b>
+      <span>Browsers keep this window quiet until it's clicked once.</span>
+    </div>
   {/if}
   <!-- The same: viewers keep the last picture, not a red bar (nothing's on stream before the game came, though). -->
   {#if status === 'host-left' && (!idle || !game)}
@@ -264,15 +268,24 @@
   }
   .activate {
     position: fixed;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 6px 14px;
-    border-radius: 8px;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .activate b {
+    padding: 14px 28px;
+    border-radius: 12px;
     background: rgba(245, 165, 36, 0.95);
     color: #000;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 28px;
   }
   .banner {
     position: fixed;

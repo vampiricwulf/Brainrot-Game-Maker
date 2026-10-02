@@ -253,7 +253,7 @@ try {
   writeFileSync(oldFile, JSON.stringify(old));
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await openGameFile(page, oldFile);
   await opened();
   await page.getByRole('button', { name: 'Old Board', exact: true }).click();

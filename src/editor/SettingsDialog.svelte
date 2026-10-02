@@ -5,8 +5,14 @@
   import { keepLimits } from '../lib/history.svelte';
   import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
   import { DEFAULT_BUZZER_URL, testServer } from '../lib/remote.svelte';
+  import { onMount } from 'svelte';
 
-  let { onclose }: { onclose: () => void } = $props();
+  /** `at`: the section it opens at (the pre-game screen's ⚙ Set up phone buzzers… opens it at the phone buzzers). */
+  let { onclose, at }: { onclose: () => void; at?: 'buzzer' } = $props();
+  let buzzerHead = $state<HTMLElement>();
+  onMount(() => {
+    if (at === 'buzzer') buzzerHead?.scrollIntoView({ block: 'start' });
+  });
   const desktop = inTauri();
   /** What ⚙ Test found at the buzzer server. */
   let tested = $state('');
@@ -96,7 +102,7 @@
       ℹ About can check any time.
     </p>
 
-    <h3>Phone buzzers</h3>
+    <h3 bind:this={buzzerHead}>Phone buzzers</h3>
     <label class="field inline">
       Buzzer server
       <input
@@ -105,6 +111,7 @@
         bind:value={prefs.buzzerServer}
         onchange={() => ((tested = ''), savePrefs())}
         placeholder={DEFAULT_BUZZER_URL || 'https://…'}
+        data-autofocus={at === 'buzzer' ? '' : undefined}
         aria-label="Buzzer server"
       />
       <button

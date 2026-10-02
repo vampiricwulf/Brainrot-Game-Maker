@@ -24,6 +24,9 @@ export type HostAsk = {
   ok: string;
   cancel?: string;
   danger?: boolean;
+  /** A second answer (InlineAsk's alt). */
+  alt?: string;
+  onalt?: () => void;
   onok: () => void;
   oncancel: () => void;
 };

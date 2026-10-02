@@ -135,14 +135,27 @@ try {
   await card.getByLabel('Open the buzzers').selectOption('host');
   await card.getByLabel(/Let new players join/).check();
   await shot('rb-0-setup');
-  // The server turns the first room down: its words show.
+  // A laptop's window: what the room shows once it's started must be in sight, not under the Start bar.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  // Start game with Buzzer mode on and no room asks first; Start the room first starts it (the server turns the
+  // first room down: its words show).
   await page.evaluate(() => (window.__room.refuse = 'Too many new rooms — wait a minute'));
-  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.waitForTimeout(450);
+  await page.locator('.actions .ia').getByRole('button', { name: '📱 Start the room first' }).click();
   await card.getByRole('alert').getByText('Too many new rooms — wait a minute').waitFor();
-  assert(true, 'a refused room shows the server’s reason (Too many new rooms — wait a minute)');
+  assert(true, 'Start the room first (from Start game) starts it; a refused room shows the server’s reason (Too many new rooms — wait a minute)');
   await page.evaluate(() => (window.__room.refuse = ''));
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code BCDF').waitFor();
+  await page.waitForTimeout(600);
+  {
+    const code = await card.getByLabel('Room code BCDF').boundingBox();
+    const bar = await page.locator('.pregame .actions').boundingBox();
+    assert(code.y >= 0 && code.y + code.height <= bar.y, `at 1280×720 the room code scrolls into sight above the Start bar (${Math.round(code.y)}–${Math.round(code.y + code.height)}, the bar at ${Math.round(bar.y)})`);
+    assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · 0 of 3 joined'), 'and the Start bar shows the code and who has joined');
+  }
+  await page.setViewportSize({ width: 1400, height: 900 });
   assert((await page.evaluate(() => window.__room.posts)) === 2, 'Start the room asks the server for a room');
   assert((await page.evaluate(() => window.__room.sockets[0].url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'and connects to it as the host');
   assert((await card.getByRole('link').innerText()) === 'https://buzz.test/BCDF', 'the card shows the join link');
@@ -161,6 +174,7 @@ try {
     ],
   });
   await card.getByText('1 of 3 players joined').waitFor();
+  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '“Going live?” ticks the room off once a phone has joined');
   assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'a joined player shows ✔ joined');
   assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('waiting'), 'the others are waiting');
   await card.getByRole('button', { name: '✔ Add' }).click();
@@ -339,7 +353,7 @@ try {
   // ---------- Exit closes the room ----------
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   assert(true, 'Exit closes the room');
 

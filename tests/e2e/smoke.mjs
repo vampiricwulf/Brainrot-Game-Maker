@@ -84,7 +84,7 @@ async function exitGame() {
   const asked = await page.locator('.panel .confirm').innerText();
   // The ask ignores the second half of a double-click on Exit.
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   return asked;
 }
 
@@ -1336,12 +1336,12 @@ await page.keyboard.press('t');
 await page.locator('.ov .sb').waitFor();
 await page.locator('.timer').waitFor();
 const exitMsg = await exitGame();
-assert(exitMsg.includes('You can resume it'), 'Exit says (inline) the game can be resumed');
+assert(exitMsg.includes('keep it to resume later?'), 'Exit asks (inline) whether to keep the game to resume later');
 await page.getByRole('button', { name: 'Resume game' }).waitFor();
-assert(true, 'after Exit the editor offers to resume the game');
-const replaceMsg = await answerDialog(() => page.getByRole('button', { name: '▶ Play' }).click(), true);
-assert(replaceMsg.includes('can still be resumed'), 'Play with a saved game in progress asks first');
-await page.getByText('Starting replaces the saved game in progress').waitFor();
+assert(true, 'after Exit › Keep & leave the editor offers to resume the game');
+await page.getByRole('button', { name: '▶ Play' }).click();
+await page.locator('.resume-card').getByText('A game in progress is kept').waitFor();
+assert((await page.getByRole('alertdialog').count()) === 0, 'Play with a saved game in progress asks nothing: the pre-game screen offers ▶ Resume it');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
 await page.locator('.board').waitFor();
@@ -1354,8 +1354,9 @@ await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 await exitGame();
 await page.getByRole('button', { name: 'Resume game' }).waitFor();
-const keepMsg = await answerDialog(() => page.getByRole('button', { name: '▶ Play' }).click(), false);
-assert(keepMsg.includes('can still be resumed') && (await page.getByRole('button', { name: 'Resume game' }).isVisible()), 'cancelling Play keeps the saved game');
+await page.getByRole('button', { name: '▶ Play' }).click();
+await page.getByRole('button', { name: '◀ Back to editor' }).click();
+assert(await page.getByRole('button', { name: 'Resume game' }).isVisible(), 'going back from the pre-game screen keeps the saved game');
 await page.waitForTimeout(300);
 await page.reload();
 await page.getByRole('button', { name: 'Resume game' }).click();
@@ -1385,7 +1386,7 @@ await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click
 assert((await page.locator('.cat textarea').first().inputValue()) !== 'Memes', 'new game is blank');
 
 // Pre-game preflight on the blank game: warnings listed, Start needs a player.
-await answerDialog(() => page.getByRole('button', { name: '▶ Play' }).click(), true);
+await page.getByRole('button', { name: '▶ Play' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 assert(await page.getByRole('button', { name: 'Start game ▶' }).isDisabled(), 'Start is disabled with no players');
 assert(await page.locator('.checks summary').getByText(/things to check/).isVisible(), 'pre-game lists what is unfinished');

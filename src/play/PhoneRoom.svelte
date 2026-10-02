@@ -24,6 +24,7 @@
     onlock,
     onkickmember,
     onmove,
+    onsetup,
   }: {
     session: Session;
     settings: GameSettings;
@@ -39,6 +40,8 @@
     /** Teams: take one person off their team / put them on another. */
     onkickmember: (seatId: string, member: string, name: string) => void;
     onmove: (member: string, seatId: string, name: string) => void;
+    /** ⚙ Set up phone buzzers… (no buzzer server yet): ⚙ Settings, at the phone buzzers. None in a player-only file. */
+    onsetup?: () => void;
   } = $props();
 
   const base = $derived(buzzerBase());
@@ -53,9 +56,14 @@
   {#if !base}
     <!-- (A game saved with Buzzer mode on plays without it here: you pick who answers.) -->
     <p class="muted small">
-      Phone buzzers aren't set up in this copy{settings.buzzer ? ', so Buzzer mode is off here: you pick who answers (1–9 or a click)' : ''}.
-      {#if !app.playerOnly}A buzzer server's address can go in ⚙ Settings › Buzzer server (in the editor).{/if}
+      Players can buzz in from their phones once phone buzzers are set up{settings.buzzer ? '. Until then you pick who answers (1–9 or a click)' : ''}.
+      {#if !onsetup && !app.playerOnly}Set them up in ⚙ Settings (in the editor).{/if}
     </p>
+    {#if onsetup}
+      <div class="row">
+        <button onclick={onsetup} title="Where phones meet the game: ⚙ Settings › Phone buzzers">⚙ Set up phone buzzers…</button>
+      </div>
+    {/if}
   {:else}
     <label class="check">
       <input type="checkbox" checked={!!settings.buzzer} onchange={(e) => onset('buzzer', e.currentTarget.checked || undefined, 'Buzzer mode')} />

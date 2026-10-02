@@ -226,16 +226,17 @@ try {
   await playersDlg.getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: /Exit/ }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.getByRole('button', { name: 'Resume game' }).waitFor();
-  await play.click();
+  // (Discard on the line over the editor asks in the app.)
+  await page.getByRole('button', { name: 'Discard', exact: true }).click();
   const ask = page.getByRole('alertdialog');
   await ask.waitFor();
   assert((await ask.getAttribute('aria-modal')) === 'true', 'an in-app question is aria-modal');
-  assert((await ask.innerText()).includes('can still be resumed') && (await focused()) === 'Keep it', 'Play over a saved game asks in the app, the focus on “Keep it”');
+  assert((await ask.innerText()).includes('Its scores and used tiles are deleted') && (await focused()) === 'Keep', 'Discarding a saved game asks in the app, the focus on “Keep”');
   const askFoot = await footer(ask);
-  assert(askFoot.visual.join('|') === 'Keep it|Start a new game' && askFoot.dom[0] === 'Keep it', `its safe answer is on the left, the answer rightmost (${askFoot.visual.join(' · ')})`);
-  assert((await ask.getByRole('heading', { name: 'Start a new game anyway?' }).count()) === 1, 'and its question is its title');
+  assert(askFoot.visual.join('|') === 'Keep|Discard' && askFoot.dom[0] === 'Keep', `its safe answer is on the left, the answer rightmost (${askFoot.visual.join(' · ')})`);
+  assert((await ask.getByRole('heading', { name: /^Discard the saved game .*\?$/ }).count()) === 1, 'and its question is its title');
   await page.keyboard.press('Escape');
   assert((await ask.count()) === 0 && (await page.getByRole('button', { name: 'Resume game' }).isVisible()), 'Esc keeps the saved game');
   assert(dialogs.length === 0, `no browser dialog anywhere (${dialogs.join(' | ')})`);

@@ -40,6 +40,8 @@
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
   import GameRules from './GameRules.svelte';
+  import SettingsDialog from '../editor/SettingsDialog.svelte';
+  import InlineAsk from './host/InlineAsk.svelte';
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
   import HostPanel from './HostPanel.svelte';
@@ -93,11 +95,17 @@
   let {
     onexit,
     oncancel,
+    onresume,
     gameRev = 0,
     gameCopy,
   }: {
-    /** Leave the game (it stays saved and resumable). */
-    onexit: () => void;
+    /** Leave the game: `keep`, it stays saved and resumable (Exit asks); else it's discarded. */
+    onexit: (keep: boolean) => void;
+    /**
+     * The pre-game screen's ▶ Resume: play on with the game kept to resume (with the editor's version of the game:
+     * `withEdits`), shown as picked here. The pre-game's buzzer room, if one is open, goes with it.
+     */
+    onresume?: (withEdits: boolean, room: SavedRoom['remote'] | null) => void;
     /** Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is saved or cleared. */
     oncancel: () => void;
     /** Goes up when the game in play changes (App's watcher). */
@@ -448,7 +456,7 @@
       offWager();
       // Leaving the game (Exit): the phones are told it's over. Not ◀ Back to editor from the pre-game screen: the room
       // stays open for ▶ Play (see backToEditor).
-      if (!keepRoomOpen) closeRoom();
+      if (!keepRoomOpen && !app.test) closeRoom();
       // The scores window belongs to this game (the audience window is closed by leaving it).
       closeScoresWindow();
       for (const t of pending) clearTimeout(t);
@@ -475,14 +483,16 @@
   }
 
   /** Open the audience window, or bring it to the front if it's already open. Never closes it. */
-  async function openAudience(): Promise<void> {
-    if (!(await openAudienceWindow(audienceTitle(game))))
+  async function openAudience(): Promise<boolean> {
+    const ok = await openAudienceWindow(audienceTitle(game));
+    if (!ok)
       toast(
         inTauri()
           ? "Couldn't open the audience window. Try again, or use single-window mode."
           : 'The browser blocked the popup. Allow popups for this file and try again.',
         5000,
       );
+    return ok;
   }
 
   /** The host panel's scores-window button (a lower-third capture for OBS): opens or closes it. */
@@ -995,12 +1005,15 @@
     });
   });
 
-  /** Exit: the room closes (phones are told) and the saved game forgets it. */
-  function exitGame(): void {
-    closeRoom();
-    session.remote = null;
-    void clearRoom();
-    onexit();
+  /** Exit: the room closes (phones are told) and the saved game forgets it. (A test never had one: a room kept open
+   *  in the editor stays open.) */
+  function exitGame(keep: boolean): void {
+    if (!app.test) {
+      closeRoom();
+      session.remote = null;
+      void clearRoom();
+    }
+    onexit(keep);
   }
 
   function pick(ref: ClueRef): void {
@@ -1710,6 +1723,67 @@
 
   // ---------- Pre-game ----------
 
+  /** The display picked (🖥 Display, remembered from the last game): the audience window opens on Start if it isn't yet. */
+  const wantAudience = $derived(dual || prefs.display === 'audience');
+  function pickDisplay(audienceWindow: boolean): void {
+    prefs.display = audienceWindow ? 'audience' : 'single';
+    savePrefs();
+    if (!audienceWindow && dual) closeAudienceWindow();
+    else if (audienceWindow && !dual) void openAudience();
+  }
+
+  /** Buzzer mode is on and the room is up: its code, and the players whose phones are in. */
+  const roomUp = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
+  const phonesIn = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
+  /** Start was pressed with Buzzer mode on but no room: the bar asks (start it first, or play without phones). */
+  let askNoRoom = $state(false);
+  $effect(() => {
+    if (roomUp || !phonesOn) askNoRoom = false;
+  });
+
+  /**
+   * Start game ▶ (or Ctrl+Enter): with Buzzer mode on and no room yet, it asks first; with the audience window picked,
+   * that opens now (from the click: a browser lets only a click open it).
+   */
+  async function startClicked(): Promise<void> {
+    if (!session.players.length) return;
+    if (phonesOn && !roomUp && !askNoRoom) return void (askNoRoom = true);
+    askNoRoom = false;
+    if (wantAudience && !dual && !(await openAudience())) return;
+    start();
+  }
+
+  /** The room started from the bar's question (or the card): scrolled into view, its code above the Start bar. */
+  async function startRoomHere(): Promise<void> {
+    askNoRoom = false;
+    await startPhoneRoom();
+    await tick();
+    document.querySelector('[data-place="play:buzzers"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+
+  /** ✎ Rename on the pre-game screen: the game's title (on stream), kept in the editor too (undoable there). */
+  let renaming = $state(false);
+  const untitled = $derived(!game.title.trim() || game.title.trim() === 'Untitled Game');
+  function rename(to: string): void {
+    renaming = false;
+    const title = to.trim();
+    if (!title || title === game.title) return;
+    game.title = title;
+    if (editorHasIt()) step(`Named the game “${title}”`, () => (app.game.title = title), { during: 'play' });
+  }
+
+  /** ⚙ Set up phone buzzers… (the 📱 card, when this app has no buzzer server): ⚙ Settings, at the phone buzzers. */
+  let showSettings = $state(false);
+
+  /** The pre-game's ▶ Resume: the game kept to resume plays on, in the display picked here (and its room, if open). */
+  function resumeKept(withEdits: boolean): void {
+    const r = session.remote;
+    const room = r && phonesOn && inRoom(r.code) ? $state.snapshot(r) : null;
+    // The room goes on with the resumed game: leaving this screen mustn't close it.
+    if (room) keepRoomOpen = true;
+    onresume?.(withEdits, room);
+  }
+
   /** Things worth fixing before going live (warnings only: Start still works). */
   const checks = $derived.by(() => {
     // (A board short of Daily Doubles gets a button to place them.)
@@ -1886,13 +1960,13 @@
       if (!session.players.length) return void toast('Add players to start');
       // (A field being typed in keeps what's in it: its change lands first.)
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      return start();
+      return void startClicked();
     }
     const key = undoKeyOf(e);
     if (!key || e.defaultPrevented || fields.native(e, key)) return;
     e.preventDefault();
-    // A window over the screen (🔊 Sound for Discord / OBS) isn't about the game.
-    if (showSound) return;
+    // A window over the screen (🔊 Sound for Discord / OBS, ⚙ Settings) isn't about the game.
+    if (showSound || showSettings) return;
     if (!editorHasIt()) return void toast(app.playerOnly ? 'Nothing to undo here' : 'Undo works for the game open in the editor');
     commit();
     const next = key === 'undo' ? history.entries[history.index - 1] : history.entries[history.index];
@@ -1941,6 +2015,8 @@
     if (JSON.stringify(list) !== JSON.stringify($state.snapshot(session.players))) session.players = list;
     const players = $state.snapshot(src.players);
     if (JSON.stringify(players) !== JSON.stringify($state.snapshot(game.players))) game.players = players;
+    // The game's name (✎ Rename here).
+    if (src.title !== game.title) game.title = src.title;
   }
 
   // Before the game, what Tab reaches near the foot of the window scrolls above the sticky Start bar, not under it.
@@ -2344,13 +2420,48 @@
 {#if app.pregame}
   <main class="pregame">
     <div class="pregame-top">
-      <!-- ▶ Play lands here (keyboard and screen reader users start at the top of the page, not on <body>). -->
-      <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
+      <!-- ▶ Play lands here (keyboard and screen reader users start at the top of the page, not on <body>). The game's
+           name shows on stream: it's renamed right here. -->
+      <div class="title-row">
+        {#if renaming}
+          <input
+            class="title-in"
+            value={game.title}
+            maxlength="120"
+            aria-label="Game title"
+            use:takeFocus
+            onfocus={(e) => e.currentTarget.select()}
+            onkeydown={(e) => {
+              if (e.key === 'Enter') rename(e.currentTarget.value);
+              else if (e.key === 'Escape') {
+                e.stopPropagation();
+                renaming = false;
+              }
+            }}
+            onblur={(e) => renaming && rename(e.currentTarget.value)}
+          />
+        {:else}
+          <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
+          <button class="ghost small" onclick={() => (renaming = true)} title="The game's name shows on stream (the title card, the audience window)">✎ Rename</button>
+          {#if untitled}<span class="warn small" data-warn="untitled">Name your game: its title shows on stream.</span>{/if}
+        {/if}
+      </div>
       {#if app.resumable && app.resumable.session.phase !== 'end'}
-        <p class="warn">
-          ⚠ Starting replaces the saved game in progress ("{app.resumable.game.title}"). To keep playing that one, go back to the
-          {app.playerOnly ? 'start screen' : 'editor'} and press Resume game.
-        </p>
+        {@const kept = app.resumable}
+        <!-- A game kept to resume (Exit › Keep): play on with it here, or set up a fresh one below (Start replaces it). -->
+        <div class="resume-card" role="group" aria-label="Game in progress">
+          <span>
+            ⏸ A game in progress is kept: <b>{kept.game.title}</b>
+            <span class="muted small">(saved {new Date(kept.savedAt).toLocaleString()})</span>
+          </span>
+          <button class="primary" onclick={() => resumeKept(false)}>▶ Resume it</button>
+          {#if !app.playerOnly && kept.game.id === app.game.id}
+            <button onclick={() => resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+              Resume with my edits
+            </button>
+          {/if}
+          <span class="muted small">Or start fresh below: Start game replaces it.</span>
+        </div>
       {/if}
     </div>
     <!-- Wide windows: who's playing on the left, how it's played and shown on the right. -->
@@ -2391,7 +2502,7 @@
             settings={game.settings}
             onset={setBuzzSetting}
             max={game.settings.maxPlayers}
-            onstart={startPhoneRoom}
+            onstart={startRoomHere}
             onadd={addPhonePlayer}
             onreject={rejectPhone}
             onkick={kickPhone}
@@ -2399,16 +2510,26 @@
             onlock={lockSeats}
             onkickmember={kickTeamMember}
             onmove={moveTeamMember}
+            onsetup={app.playerOnly ? undefined : () => (showSettings = true)}
           />
         </div>
+        {#if prefs.liveChecklist}
+          {@render goingLive()}
+        {/if}
       </div>
       <div class="col">
         <GameRules s={game.settings} players={session.players.length} />
 
         <section class="part" aria-labelledby="pregame-display">
           <h2 id="pregame-display">🖥 Display</h2>
-          <ModeCards dual={!!dual} onsingle={() => dual && closeAudienceWindow()} onaudience={() => !dual && openAudience()} />
-          {#if !dual}
+          <ModeCards dual={wantAudience} onsingle={() => pickDisplay(false)} onaudience={() => pickDisplay(true)} />
+          {#if wantAudience && !dual}
+            <p class="muted small" data-note="audience-on-start">📺 The audience window opens when you press Start (or click its card now).</p>
+          {/if}
+          {#if !prefs.liveChecklist}
+            <button class="ghost small" onclick={() => ((prefs.liveChecklist = true), savePrefs())}>✅ Show the “Going live?” checklist</button>
+          {/if}
+          {#if !wantAudience}
             <p class="warn small exposed">
               ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
               and hidden objects shown in the controls. To keep those secret, use the audience window.
@@ -2521,6 +2642,24 @@
       <button class="ghost" onclick={backToEditor}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
       <!-- The notes wrap in their own room: Start stays at the right end of the bar, on its line. -->
       <span class="notes">
+        {#if askNoRoom}
+          <!-- Buzzer mode with no room: Start asks here (not a pop-up), and Back leaves things as they are. -->
+          <InlineAsk
+            text="Buzzer mode is on, but the buzzer room isn't started: no phone can join."
+            alt="📱 Start the room first"
+            onalt={startRoomHere}
+            ok="Start without phones"
+            cancel="Back"
+            focusCancel
+            onok={() => void startClicked()}
+            oncancel={() => (askNoRoom = false)}
+          />
+        {:else if roomUp}
+          <!-- The code stays in sight above the fold, however far the 📱 card is scrolled. -->
+          <span class="small room-note" role="status">
+            📱 Room <b>{remote.code}</b> · {phonesIn} of {session.players.length} joined
+          </span>
+        {/if}
         {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
         {#if unplacedDDs}
           <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
@@ -2531,12 +2670,12 @@
       </span>
       <button
         class="primary big"
-        onclick={start}
+        onclick={() => void startClicked()}
         disabled={!session.players.length}
         aria-keyshortcuts="Control+Enter"
-        title={session.players.length ? 'Start the game (Ctrl+Enter)' : 'Add players to start'}
+        title={session.players.length ? `Start the game${wantAudience && !dual ? ', opening the audience window to capture in OBS' : ''} (Ctrl+Enter)` : 'Add players to start'}
       >
-        Start game ▶
+        {wantAudience && !dual ? '📺 Open audience window & start' : 'Start game ▶'}
       </button>
     </div>
   </main>
@@ -2792,6 +2931,44 @@
   </div>
 {/if}
 <!-- Before the game too (from the display settings) and during it (🔊 Sound in the host panel). -->
+<!-- Before going live: the few things worth a look, ticked as they're done. Short, and ✕ hides it (for good, until it's
+     shown again from 🖥 Display). -->
+{#snippet goingLive()}
+  <section class="part live-check" aria-labelledby="pregame-live">
+    <div class="row live-head">
+      <h2 id="pregame-live">✅ Going live?</h2>
+      <button
+        class="ghost small"
+        onclick={() => ((prefs.liveChecklist = false), savePrefs())}
+        aria-label="Hide the Going live checklist"
+        title="Hide this checklist (🖥 Display can show it again)">✕</button
+      >
+    </div>
+    <ul>
+      <li class:done={dual || !wantAudience}>
+        {#if dual}📺 Audience window open: capture it in OBS (Window capture).
+        {:else if wantAudience}📺 The audience window opens when you press Start: capture it in OBS.
+        {:else}🖥 Single window: viewers see this window. Press H in the game to hide the controls.{/if}
+      </li>
+      {#if phonesOn}
+        <li class:done={roomUp && phonesIn > 0}>
+          {#if !roomUp}📱 Buzzer mode is on: <button class="link-btn" onclick={startRoomHere}>start the room</button> so players can join.
+          {:else}📱 Room {remote.code} open: {phonesIn} of {session.players.length} joined.{/if}
+        </li>
+      {/if}
+      {#if wantAudience}
+        <li class:done={dual && audience.activated} data-check="sound-click">
+          {dual && audience.activated ? '🔊 The audience window can play sound.' : '🔊 Sound in the audience window: click it once (browsers keep it quiet until then).'}
+        </li>
+      {/if}
+      <li class="tip">🔊 Streaming on Discord or OBS? <button class="link-btn" onclick={() => (showSound = true)}>Test the sound</button>.</li>
+    </ul>
+  </section>
+{/snippet}
+
+{#if showSettings}
+  <SettingsDialog at="buzzer" onclose={() => (showSettings = false)} />
+{/if}
 {#if showSound}
   <AudioHelp {dual} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
 {/if}
@@ -2831,6 +3008,65 @@
       gap: 28px;
       align-items: start;
     }
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .title-in {
+    font-size: 22px;
+    font-weight: 700;
+    min-width: min(420px, 100%);
+  }
+  .resume-card {
+    display: flex;
+    align-items: center;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border: 1px solid var(--warn);
+    border-radius: 8px;
+  }
+  .room-note {
+    color: var(--good, var(--text));
+  }
+  .live-check ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+  }
+  .live-check li::before {
+    content: '○ ';
+    color: var(--muted);
+  }
+  .live-check li.tip::before {
+    content: '• ';
+  }
+  .live-check li.done::before {
+    content: '✓ ';
+    color: var(--good, #3ccf6e);
+    font-weight: 700;
+  }
+  .live-head {
+    justify-content: space-between;
+  }
+  .live-head h2 {
+    margin: 0;
+  }
+  .link-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    text-decoration: underline;
+    font: inherit;
+    cursor: pointer;
   }
   .pregame h1 {
     margin: 0;

@@ -98,7 +98,7 @@ try {
   assert(!aud2.isClosed(), 'after a host reload the audience window it opened is still up');
   await host2.getByRole('button', { name: '🚪 Exit' }).click();
   await host2.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
-  await host2.getByRole('button', { name: 'Leave', exact: true }).click();
+  await host2.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   if (!aud2.isClosed()) await aud2.waitForEvent('close', { timeout: 3000 });
   assert(aud2.isClosed(), 'and Exit closes it, though the reloaded host page has no handle on it');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));

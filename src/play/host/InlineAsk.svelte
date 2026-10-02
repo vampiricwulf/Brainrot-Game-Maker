@@ -14,6 +14,8 @@
     cancel = 'Cancel',
     danger = false,
     focusCancel = false,
+    alt,
+    onalt,
     onok,
     oncancel,
   }: {
@@ -33,6 +35,9 @@
      * Enter = Award), and Esc there cancels.
      */
     focusCancel?: boolean;
+    /** A second answer, between Cancel and the answer button (Leave: "Discard & leave" beside "Keep & leave"). */
+    alt?: string;
+    onalt?: () => void;
     /** Answered (with the text typed, trimmed). */
     onok: (text: string) => void;
     oncancel: () => void;
@@ -84,6 +89,9 @@
       }
     }}>{cancel}</button
   >
+  {#if alt && onalt}
+    <button class="small ghost" onclick={() => Date.now() - shownAt > 400 && onalt()}>{alt}</button>
+  {/if}
   <button class="small {danger ? 'bad' : 'primary'}" disabled={blank} onclick={() => Date.now() - shownAt > 400 && answer()}>{ok}</button>
 </div>
 

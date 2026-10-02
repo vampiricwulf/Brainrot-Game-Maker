@@ -45,6 +45,9 @@ export function dailyDoublesOver(round: BoardRound): { want: number; placed: num
 
 export function validate(game: Game): Problem[] {
   const out: Problem[] = [];
+  // Its title shows on stream (the title card, the audience window): a game never named says "Untitled Game" there.
+  if (!game.title.trim() || game.title.trim() === 'Untitled Game')
+    out.push({ text: 'The game is still called “Untitled Game”: name it (the title shows on stream)', tab: 'play', level: 'info', place: { tab: 'title' } });
   if (!game.players.length) out.push({ text: 'No players yet: add them when you press Play', tab: 'play', level: 'info' });
   const colors = game.players.map((p) => normalizeColor(p.color));
   if (new Set(colors).size !== colors.length) out.push({ text: 'Two players share a color', tab: 'play', level: 'warn' });
