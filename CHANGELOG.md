@@ -1485,3 +1485,4 @@ Commits whose titles don't say what they contain:
 | c085ec1 | Merge branch 'worktree-agent-a7d43523363a340a3' | Brings in 38373de (viewer polish: no join code where nobody buzzes, Final ✔ clear of scores, end screen and roll-off fit, Final category in the theme's clue font) |
 | fe18f30 | Merge branch 'worktree-agent-aaf8c5a3577eb5b92' | Brings in 3415a8e (slide editor and media polish: undo names for items, tools for several items, Move to sits under Position, used-where on media) |
 | 34e1bb0 | Merge branch 'worktree-agent-ab6d5fd96a6ae417f' | Brings in 2d50bcd (RPG and board-game building: New shop in place, Enemy preset, space kinds, forks, Mini quest, plainer RPG round top) |
+| 068bece | Merge branch 'worktree-agent-af8c8c9e9235d3a87' | Brings in ff9dff4 (going live: remembered display choice, Open audience window & start, room-first question, Going live checklist, keep-or-discard on Exit, ▶ Test this round) |
