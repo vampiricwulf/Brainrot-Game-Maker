@@ -377,7 +377,7 @@
           {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
         </select>
       {/if}
-      <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="V: the map on screen">🗺 Map</button>
+      <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="V: show the map to viewers (on the audience's screen), or hide it">🗺 Map on stream</button>
     </div>
 
     <!-- (On a short window it goes under the pad and the map: see the style.) -->

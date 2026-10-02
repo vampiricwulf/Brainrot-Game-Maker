@@ -113,7 +113,7 @@ async function bigWorld() {
   await jump.waitFor({ state: 'detached' });
 
   // The map on stream: just the part viewers know (and a cell around it), with big cells.
-  await host.getByRole('button', { name: '🗺 Map' }).click();
+  await host.getByRole('button', { name: '🗺 Map on stream' }).click();
   await aud.locator('.map-ov .cell').first().waitFor();
   const ov = await aud.locator('.map-ov').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(/^rgb\(/.test(ov), `the map on stream is solid, the screen behind doesn’t show through (${ov})`);
@@ -135,7 +135,7 @@ async function bigWorld() {
   await host.waitForTimeout(500);
   const spent = (await busy()) - before;
   assert(spent < 1.5, `ten moves with the map on stream keep the audience window quick (${spent.toFixed(2)}s of script)`);
-  await host.getByRole('button', { name: '🗺 Map' }).click();
+  await host.getByRole('button', { name: '🗺 Map on stream' }).click();
 
   // Walking in from the south edge, the avatars stand clear of the stats strip.
   await host.keyboard.press('Numpad2');
@@ -228,7 +228,7 @@ async function bigWorld() {
   await host.getByRole('button', { name: '🚪 Go through (party)' }).click();
   await host.waitForTimeout(500);
   assert((await there()).includes('Dungeon 1') && (await cues(aud)).includes('doorway'), 'through the door, with the Doorway sound');
-  await host.getByRole('button', { name: '🗺 Map' }).click();
+  await host.getByRole('button', { name: '🗺 Map on stream' }).click();
   await aud.locator('.map-ov').waitFor();
   assert((await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()), 'on a hidden map, the viewers’ map says it’s hidden');
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/rpg-big-hidden.png` });

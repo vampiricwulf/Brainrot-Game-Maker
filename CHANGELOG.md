@@ -32,6 +32,8 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **RPG: the host's 🗺 Map button is now "🗺 Map on stream"** (it shows the map to viewers), so it isn't mistaken
+  for ⤢ Full map.
 - **Slides: Ctrl+arrows resize the selected items** from the keyboard (Ctrl+Shift+arrows: 10 pixels at a time):
   → and ↓ make them bigger, ← and ↑ smaller; pictures and videos keep their shape. Listed in ⌨ Shortcuts.
 - The image editor's hint beside **Stickers** is no longer in shouted capitals.
@@ -185,6 +187,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **RPG minimap: a party of three or more on one screen** stays in that screen's cell (their dots overlap), instead of
+  spilling down over the screens below as if some were there.
 - **Adding a second adventure (the Mini quest template) opened ⋯ Advanced with its world settings.** It stays shut
   now, with one line: "Its own world (separate from Adventure)".
 - **Buzzer mode: after a right answer the main button reopened the buzzers**: once someone gets the clue right, the

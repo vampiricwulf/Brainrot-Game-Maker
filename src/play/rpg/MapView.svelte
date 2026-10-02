@@ -398,6 +398,14 @@
     gap: 2px;
     padding: 2px 4px;
   }
+  /* A crowd on one screen overlaps in one row, inside its cell (wrapped, it would spill over the screens below). */
+  .dots:has(.dot:nth-child(3)) {
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .dots:has(.dot:nth-child(3)) .dot + .dot {
+    margin-left: -5px;
+  }
   .dot {
     display: grid;
     place-items: center;
