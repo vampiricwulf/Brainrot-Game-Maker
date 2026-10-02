@@ -122,10 +122,10 @@
     sel = item.id;
   }
 
-  /** The 🎯 Pick a player wheel, built in (shown in the list so it's found; nothing to set up). */
-  let playersShown = $state(false);
+  /** A built-in wheel picked in the list (shown so they're found; nothing to set up). */
+  let builtin = $state<'players' | 'categories' | null>(null);
   $effect(() => {
-    if (sel) playersShown = false;
+    if (sel) builtin = null;
   });
 
   /** A ready-made wheel, added to the game (named after it, numbered when the game has one by that name). */
@@ -207,9 +207,15 @@
     <!-- Always there in play: listed so it's found. -->
     <button
       class="builtin"
-      class:active={playersShown}
-      onclick={() => ((sel = null), (playersShown = true))}
+      class:active={builtin === 'players'}
+      onclick={() => ((sel = null), (builtin = 'players'))}
       title="Built in: a slice for each player, in their colors (nothing to set up)">🎯 Pick a player <span class="muted small">built in</span></button
+    >
+    <button
+      class="builtin"
+      class:active={builtin === 'categories'}
+      onclick={() => ((sel = null), (builtin = 'categories'))}
+      title="Built in: a slice for each category on the board with clues left (nothing to set up)">🗂 Pick a category <span class="muted small">built in</span></button
     >
     {@render group('wheel', game.wheels)}
     <button class="ghost" onclick={() => add('wheel')}>＋ Add wheel</button>
@@ -234,7 +240,14 @@
         <button class="ghost danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
-    {:else if playersShown}
+    {:else if builtin === 'categories'}
+      <h3>🗂 Pick a category</h3>
+      <p>
+        Built into every game: on a Jeopardy board, a slice for each category that still has clues to play, so it shrinks
+        as the board empties. Spin it from <b>🎡 Wheel</b> during play to pick the next category (its ✎ leaves categories
+        out or changes their chances for a spin).
+      </p>
+    {:else if builtin === 'players'}
       <h3>🎯 Pick a player</h3>
       <p>
         Built into every game: a slice for each player, in their colors, so the players who join or leave are always on
@@ -283,9 +296,6 @@
   }
   .rename {
     min-width: 0;
-  }
-  .builtin .small {
-    font-size: 11px;
   }
   .list button.active .muted {
     color: inherit;

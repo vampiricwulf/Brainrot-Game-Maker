@@ -14,6 +14,9 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-02
 
 ### Added
+- **🗂 Pick a category wheel**, built in: on a Jeopardy board, a slice for each category that still has clues to play.
+  Spin it from the host's 🎡 Wheel menu (its ✎ leaves categories out or changes their chances); it's listed in the
+  editor's 🎡 Wheels & Dice too.
 - **Ready-made wheels**: 🪙 Coin flip, 👍 Yes or no, 🎱 Yes, no or maybe, 🔢 1 to 10, 🎰 Point wheel (points, a Double and a
   Bankrupt that change the score), 💰 Double or nothing, 🌀 Chaos (steal, swap, double, halve), 🎁 Rewards, 😈 Punishments,
   🃏 Truth or dare, 🔤 A to Z and ⏱ Time limit (its countdown starts when it lands). Add one to the game from
@@ -199,6 +202,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **↺ Reset in a wheel's ✎ edit box** brings back the slices switched off on a quick, ready-made or category wheel
+  (it used to keep only the ones left on).
 - **RPG minimap: a party of three or more on one screen** stays in that screen's cell (their dots overlap), instead of
   spilling down over the screens below as if some were there.
 - **Adding a second adventure (the Mini quest template) opened ⋯ Advanced with its world settings.** It stays shut

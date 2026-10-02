@@ -1,5 +1,5 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
+import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
 import type { ExtraWheel, Live } from './live';
 import {
   activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
@@ -57,6 +57,28 @@ export function openQuickWheel(live: Live, options: { label: string; weight?: nu
   };
 }
 
+/** The categories of the board being played that still have a clue to play (named; a blank title is "Category N"). */
+export function openCategories(game: Game, session: Session): { id: string; label: string; index: number }[] {
+  const round = game.rounds[session.currentRound];
+  if (!round || !isBoard(round)) return [];
+  return round.categories.flatMap((c, i) =>
+    c.clues.some((cl) => !cl.empty && !session.used[cl.id]) ? [{ id: c.id, label: c.title.trim() ? categoryLabel(c) : `Category ${i + 1}`, index: i }] : [],
+  );
+}
+
+/** The built-in "Pick a category" wheel: one slice per category on the board with clues left (colors kept by column). */
+export function openCategoryWheel(live: Live, game: Game, session: Session): void {
+  live.overlay = {
+    kind: 'wheel',
+    nonce: newId(),
+    name: 'Pick a category',
+    segments: openCategories(game, session).map((c) => ({ ...newSegment(c.label, c.index), id: c.id })),
+    rotation: 0,
+    spin: null,
+    result: null,
+  };
+}
+
 /** A ready-made wheel (wheeltemplates.ts), spun as it is: ✎ Edit wheel's Save as keeps it in the game. */
 export function openTemplateWheel(live: Live, t: WheelTemplate, sym: string): void {
   live.overlay = { kind: 'wheel', nonce: newId(), name: t.name, segments: templateSegments(t, sym), rotation: 0, spin: null, result: null };
@@ -83,6 +105,7 @@ export function wheelPool(o: WheelLike, session: Session, game: Game): PoolSlice
 
 /** Change this run of the wheel only (the saved wheel stays as it is). Clears the last result. */
 export function editWheel(o: WheelLike, pool: PoolSlice[]): void {
+  if (!o.players && !o.wheelId && !o.pool) o.base = copy(o.segments);
   o.pool = copy(pool);
   o.segments = onSlices(pool);
   o.spin = null;
@@ -96,6 +119,7 @@ export function resetWheelEdits(o: WheelLike, session: Session, game: Game): voi
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
   if (o.players) o.segments = playerSegments(session);
   else if (preset) o.segments = copy(activeSegments(session, preset));
+  else if (o.base) o.segments = copy(o.base);
   o.spin = null;
   o.result = null;
   if ('kind' in o) o.tagged = undefined;

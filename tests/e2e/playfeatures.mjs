@@ -163,6 +163,12 @@ try {
   await page.getByLabel('Spin a ready-made wheel').selectOption({ label: '🪙 Coin flip' });
   assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Coin flip')), '🎡 Wheel › Spin a ready-made wheel… opens it (🪙 Coin flip)');
   await page.keyboard.press('Escape');
+  // 🗂 Pick a category: a slice for each category with clues left.
+  await page.getByRole('button', { name: '🎡 Wheel' }).click();
+  await page.getByRole('button', { name: '🗂 Pick a category', exact: true }).click();
+  const catSlices = await page.evaluate(() => document.querySelectorAll('.stage .wheel path[data-slice], .stage svg path[data-slice]').length);
+  assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a category')), `🎡 Wheel › 🗂 Pick a category opens a wheel of the board's categories (${catSlices} slices)`);
+  await page.keyboard.press('Escape');
 
   // ---------- The scores-only window ----------
   const [scores] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);

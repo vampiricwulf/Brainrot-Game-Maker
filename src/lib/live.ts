@@ -56,6 +56,8 @@ export type Overlay =
       players?: boolean;
       /** Set once the host edits this run of the wheel: every slice, including ones switched off. */
       pool?: PoolSlice[];
+      /** A wheel that isn't saved (quick, ready-made, categories): its slices as it opened, for ↺ Reset after edits. */
+      base?: WheelSegment[];
       /** The host's edit box is open (host only). */
       editing?: boolean;
       segments: WheelSegment[];
@@ -124,6 +126,7 @@ export interface ExtraWheel {
   result: number | null;
   /** Set once the host edits this run of the wheel (like the main wheel's). */
   pool?: PoolSlice[];
+  base?: WheelSegment[];
 }
 
 export interface Live {

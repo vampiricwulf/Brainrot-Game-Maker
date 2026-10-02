@@ -4,7 +4,7 @@
   import { anchored } from '../../lib/anchored';
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, Session } from '../../lib/model';
-  import { openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
+  import { openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
@@ -19,6 +19,9 @@
   let sides = $state<number | null>(untrack(() => game.settings.rollOffDie || 20));
   /** A die from d2 to d1000 (a blank box, or a d1 that would tie every round, can't be rolled). */
   const sidesOk = $derived(!!sides && sides >= 2 && sides <= 1000);
+
+  /** On a board: how many of its categories have clues left (null: not on a board). */
+  const cats = $derived(game.rounds[session.currentRound]?.mode === 'board' ? openCategories(game, session).length : null);
 
   /** The button that opened the menu: Esc gives it the focus back. */
   let opener: HTMLElement | null = null;
@@ -118,6 +121,21 @@
             title="Leave players out or change their chances for this spin"
             onclick={() => wheel(() => openPlayerWheel(app.live, session), true)}>✎</button>
         </div>
+        {#if cats !== null}
+          <div class="wl">
+            <button
+              class="small item"
+              disabled={cats < 2}
+              title={cats < 2 ? 'Needs at least two categories with clues left' : 'A wheel of the categories with clues left'}
+              onclick={() => wheel(() => openCategoryWheel(app.live, game, session))}>🗂 Pick a category</button>
+            <button
+              class="small ghost"
+              disabled={cats < 2}
+              aria-label="Edit Pick a category, then spin"
+              title="Leave categories out or change their chances for this spin"
+              onclick={() => wheel(() => openCategoryWheel(app.live, game, session), true)}>✎</button>
+          </div>
+        {/if}
         {#each game.wheels as w (w.id)}
           <div class="wl">
             <button class="small item" onclick={() => wheel(() => openWheel(app.live, session, w))}>{w.name}</button>

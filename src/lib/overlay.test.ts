@@ -4,7 +4,7 @@ import { newLive, overlayDoneAt } from './live';
 import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { addWheel, editWheel, openPlayerWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, startRollOff, wheelPool, wheelSpentUp } from './overlay';
+import { addWheel, editWheel, openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, startRollOff, wheelPool, wheelSpentUp } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
 import { validate } from './validate';
@@ -181,5 +181,44 @@ describe('roll-off die', () => {
       expect(o.sides).toBe(want);
       expect(session.rollLog!.at(-1)!.name).toBe(`Roll-off (d${want})`);
     }
+  });
+});
+
+describe('Pick a category wheel', () => {
+  it('has a slice per category with clues left, named (a blank title by its number)', () => {
+    const { game, session, live } = withPlayers();
+    const b = board(game);
+    b.categories[1].title = '';
+    for (const c of b.categories[0].clues) session.used[c.id] = true;
+    openCategoryWheel(live, game, session);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    expect(o.name).toBe('Pick a category');
+    expect(o.segments.map((s) => s.id)).toEqual(b.categories.slice(1).map((c) => c.id));
+    expect(o.segments[0].label).toBe('Category 2');
+    expect(openCategories(game, session).length).toBe(b.categories.length - 1);
+  });
+
+  it('is empty off a board', () => {
+    const { game, session } = withPlayers();
+    session.currentRound = game.rounds.findIndex((r) => r.mode !== 'board');
+    expect(session.currentRound).toBeGreaterThan(-1);
+    expect(openCategories(game, session)).toEqual([]);
+  });
+});
+
+describe('Reset on a wheel that is not saved', () => {
+  it('brings back the slices it opened with', () => {
+    const { game, session, live } = withPlayers();
+    openQuickWheel(live, [{ label: 'A' }, { label: 'B' }, { label: 'C' }]);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    const pool = wheelPool(o, session, game);
+    pool[1].off = true;
+    pool[0].weight = 5;
+    editWheel(o, pool);
+    expect(o.segments.map((s) => s.label)).toEqual(['A', 'C']);
+    resetWheelEdits(o, session, game);
+    expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
   });
 });
