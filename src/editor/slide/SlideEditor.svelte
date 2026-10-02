@@ -1142,7 +1142,7 @@
       {:else}
         <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
           <ul>
-            <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize, and use the round handle to rotate.</li>
+            <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round handle to rotate.</li>
             <li>Drop or paste images, video, audio and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
             <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
             <li>

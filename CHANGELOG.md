@@ -37,7 +37,7 @@ in plain words for the people who make and host games. Anything committed but no
 - **RPG: the host's 🗺 Map button is now "🗺 Map on stream"** (it shows the map to viewers), so it isn't mistaken
   for ⤢ Full map.
 - **Slides: Ctrl+arrows resize the selected items** from the keyboard (Ctrl+Shift+arrows: 10 pixels at a time):
-  → and ↓ make them bigger, ← and ↑ smaller; pictures and videos keep their shape. Listed in ⌨ Shortcuts.
+  → and ↓ make them bigger, ← and ↑ smaller; pictures and videos keep their shape. Listed in ⌨ Shortcuts and the slide editor's Tips.
 - The image editor's hint beside **Stickers** is no longer in shouted capitals.
 - **Phone buzzers: a player back on a new phone gets their seat back without a 2-minute block.** In the phones list, a
   seat taken by a phone now has **Free seat** (for someone who moved to another phone or browser: it blocks nobody)
