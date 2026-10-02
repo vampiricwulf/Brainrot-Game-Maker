@@ -200,6 +200,20 @@ in plain words for the people who make and host games. Anything committed but no
   with 🎲 Place now.
 - **⚙ Settings in a browser**: one line on how saving works there, instead of a Saving and an Autosave section that
   each only said "this is a desktop app setting".
+- **RPG rounds: the host panel's list of objects shows which are selected** (outlined in yellow, with "2 selected: they
+  drag with the selected players · Clear" over it), and Shift+click (or Ctrl+click) there selects or unselects one, as
+  on the stage; a plain click still opens its card. In a single window, where the stage doesn't ring them (viewers see
+  it), this is where the selection shows.
+- **RPG rounds: in split view, the selected players and objects drag together across the panes**: dragging one moves
+  the selected ones on the other party's screen too, by as much, as one undo step (before, only the ones on the dragged
+  one's screen moved).
+- **RPG rounds: more feedback in the host panel.** ✂ Split off selected says who the new party is and that the pad moves
+  them now ("Cy & Dee are Party 2 now: the pad moves them"); ▦ Split view with everyone on one screen says it shows each
+  party's screen once they're apart; an object's card opening below the fold of a short host panel scrolls into sight.
+- **RPG rounds: a look's undo step says so**: "Village: look “On fire”", "Village: original look", "Village: new look
+  “On fire”" (before: "Village: On fire", "Village: the original look"). The look menu's last choice is ＋ New look…
+  (its tooltip and question say it starts as a copy), and in a narrow host panel "or drop a picture on the stage" moves
+  into ✏ Draw's tooltip, so the movement pad and minimap sit a line higher.
 - **RPG rounds: selected players and objects drag together** on the stage. Shift+click (or Ctrl+click) an object to
   select it (a plain click still opens its card; Esc takes the selected objects off, then the players); click avatars to
   select them as before. Dragging any one of the selection moves all of it on that screen by the same amount, keeping
@@ -598,6 +612,9 @@ in plain words for the people who make and host games. Anything committed but no
 ### Fixed
 - **Start game ▶ stays at the right end of the pre-game bar**: with a note beside it (no players yet, a Daily Double
   not placed), it dropped onto a line of its own under ◀ Back at 1280 px. The notes wrap in their own room now.
+- **RPG rounds: hovering an object on the stage no longer covers it with a dark box** (the buttons' hover colour): it's
+  only outlined, so viewers watching a single window don't see objects vanish under the host's pointer.
+- **RPG editor: a screen's default name on the map shows its space again** ("Screen B1", not "ScreenB1").
 - **Edits made just after New or Open… are no longer lost**: while the old game was being kept in Recent games (a
   moment on a slow disk), the editor still showed it and took edits, which then vanished when the new game arrived.
   The editor waits for the new game now.

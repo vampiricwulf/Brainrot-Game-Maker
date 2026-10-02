@@ -151,20 +151,23 @@
   const dy = $derived(drag ? drag.y - drag.oy : 0);
   const groupOf = (d: Drag) => d.players.length + d.objects.length;
 
-  /** The selected players and objects on a screen, when the thing pressed is one of them (else just it). */
-  function withGroup(screen: Screen, kind: 'avatar' | 'object', id: string): { players: string[]; objects: string[] } {
+  /**
+   * The selected players and objects on the stage, when the thing pressed is one of them (else just it): in split view,
+   * the ones on the other panes' screens too (each moves on its own screen, by as much).
+   */
+  function withGroup(kind: 'avatar' | 'object', id: string): { players: string[]; objects: string[] } {
     const inSel = kind === 'avatar' ? selected.includes(id) : selectedObjects.includes(id);
     if (!inSel) return kind === 'avatar' ? { players: [id], objects: [] } : { players: [], objects: [id] };
-    const players = selected.filter((p) => st?.positions[p]?.screen === screen.id && !st.positions[p].hidden);
-    const here = new Set(screenElements(st, screen, !hostCopy).map((e) => e.id));
-    return { players, objects: selectedObjects.filter((o) => here.has(o)) };
+    const shown = new Set(panes.map((r) => r.screen));
+    const players = selected.filter((p) => shown.has(st?.positions[p]?.screen ?? '') && !st?.positions[p].hidden);
+    return { players, objects: selectedObjects.filter((o) => stageObject(o)) };
   }
 
-  function avatarDown(e: PointerEvent, id: string, pos: Position, screen: Screen): void {
+  function avatarDown(e: PointerEvent, id: string, pos: Position): void {
     if (!onavatar || e.button !== 0) return;
     e.stopPropagation();
     capture(e);
-    drag = { kind: 'avatar', id, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, x: pos.x, y: pos.y, moved: false, pick: false, ...withGroup(screen, 'avatar', id) };
+    drag = { kind: 'avatar', id, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, x: pos.x, y: pos.y, moved: false, pick: false, ...withGroup('avatar', id) };
   }
 
   /** What a dragged avatar is over: a screen (on a map, or another split-view pane) or a party chip, else its own pane. */
@@ -216,7 +219,7 @@
     const way = wayOffEdge(world, pos, d.x, d.y);
     const paneEl = (e.currentTarget as HTMLElement).closest('.pane');
     if (way) return onavatar?.(d.id, way);
-    if (groupOf(d) > 1) return groupDrop(d, paneEl);
+    if (groupOf(d) > 1) return groupDrop(d);
     onavatar?.(d.id, { spot: spotOn(paneEl, d.x, d.y) });
   }
 
@@ -235,29 +238,32 @@
     return avatarSpot(x, y, b.top, b.bottom);
   }
 
-  /** The objects on the stage now (where they stand, and their size), by id. */
-  function stageObject(id: string): SlideElement | undefined {
+  /** The objects on the stage now (where they stand, and their size), by id, and the screen each is on. */
+  function stageObject(id: string): { el: SlideElement; screen: string } | undefined {
     for (const ref of panes) {
       const found = world && findIn(world, ref);
       const el = found ? screenElements(st, found.screen, !hostCopy).find((x) => x.id === id) : undefined;
-      if (el) return el;
+      if (el) return { el, screen: ref.screen };
     }
     return undefined;
   }
 
+  /** The pane showing a screen. */
+  const paneOf = (screen: string) => rpgEl?.querySelector(`.pane[data-screen="${CSS.escape(screen)}"]`) ?? null;
+
   /**
-   * A group dropped on its own screen: each moves by as much as the others, as far as keeps all of them on it (the
-   * avatars clear of the stats strip), so the group keeps its shape.
+   * A group dropped: each moves by as much as the others on its own screen (in split view, the panes' screens), as far
+   * as keeps all of them on their screens (the avatars clear of the stats strip), so the group keeps its shape.
    */
-  function groupDrop(d: Drag, pane: Element | null): void {
-    const b = stripBounds(pane);
+  function groupDrop(d: Drag): void {
     const items: { id: string; player: boolean; at: GroupItem }[] = [];
     for (const id of d.players) {
       const p = st?.positions[id];
-      if (p) items.push({ id, player: true, at: avatarRange(p.x, p.y, b.top, b.bottom) });
+      const b = p && stripBounds(paneOf(p.screen));
+      if (p && b) items.push({ id, player: true, at: avatarRange(p.x, p.y, b.top, b.bottom) });
     }
     for (const id of d.objects) {
-      const el = stageObject(id);
+      const el = stageObject(id)?.el;
       if (el) items.push({ id, player: false, at: objectRange(el.x, el.y, el.w, el.h) });
     }
     const g = groupDelta(
@@ -271,11 +277,11 @@
     ongroupmove?.(players, objects);
   }
 
-  function objDown(e: PointerEvent, el: SlideElement, screen: Screen): void {
+  function objDown(e: PointerEvent, el: SlideElement): void {
     e.stopPropagation();
     if (e.button !== 0) return;
     capture(e);
-    const group = withGroup(screen, 'object', el.id);
+    const group = withGroup('object', el.id);
     const pick = !!onpickup && (el.role?.class === 'item' || el.role?.class === 'currency') && group.players.length + group.objects.length === 1;
     drag = { kind: 'object', id: el.id, sx: e.clientX, sy: e.clientY, ox: el.x, oy: el.y, x: el.x, y: el.y, moved: false, pick, ...group };
   }
@@ -295,10 +301,10 @@
     dragCancel();
     if (!d) return;
     if (on && onpickup) onpickup(d.id, on);
-    else if (d.moved && groupOf(d) > 1) groupDrop(d, (e.currentTarget as HTMLElement).closest('.pane'));
+    else if (d.moved && groupOf(d) > 1) groupDrop(d);
     else if (d.moved && onobjectmove) {
       // On its own, kept on its screen the same way.
-      const el = stageObject(d.id);
+      const el = stageObject(d.id)?.el;
       const g = el ? groupDelta([objectRange(d.ox, d.oy, el.w, el.h)], d.x - d.ox, d.y - d.oy) : { dx: d.x - d.ox, dy: d.y - d.oy };
       onobjectmove(d.id, { x: d.ox + g.dx, y: d.oy + g.dy });
     } else onobject?.(d.id, e.shiftKey || e.ctrlKey || e.metaKey);
@@ -331,7 +337,7 @@
         style:height="{el.h}px"
         style:transform="rotate({el.rotation}deg)"
         data-object={el.id}
-        onpointerdown={(e) => objDown(e, el, screen)}
+        onpointerdown={(e) => objDown(e, el)}
         onpointermove={objMove}
         onpointerup={objUp}
         onpointercancel={dragCancel}
@@ -355,7 +361,7 @@
       class:drop-on={dropHover.at === `player:${p.id}`}
       style:left="{pos.x + (d ? dx : 0)}px"
       style:top="{pos.y + (d ? dy : 0)}px"
-      onpointerdown={(e) => avatarDown(e, p.id, pos, screen)}
+      onpointerdown={(e) => avatarDown(e, p.id, pos)}
       onpointermove={avatarMove}
       onpointerup={avatarUp}
       onpointercancel={dragCancel}
@@ -482,8 +488,10 @@
     outline: 4px solid #ffcc00;
     box-shadow: 0 0 18px #ffcc00;
   }
+  /* (Not the buttons' hover colour: it would cover the object, for viewers too in a single window.) */
   .hit:hover {
     outline: 3px solid rgba(255, 204, 0, 0.8);
+    background: transparent;
   }
   .npc-stats {
     position: absolute;

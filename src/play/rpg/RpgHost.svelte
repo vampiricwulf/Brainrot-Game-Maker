@@ -3,7 +3,7 @@
   the object clicked on the stage (or every object here), and each player's stats and inventory.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
@@ -11,7 +11,7 @@
   import type { RunContext } from '../../lib/actions';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import {
-    activeParty, addScreenBeside, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, newVariant, screenElements, screenAt,
+    activeParty, addScreenBeside, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, newVariant, screenElements, screenAt,
     screenSlide,
   } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
@@ -38,6 +38,7 @@
     session,
     selected = $bindable(),
     object = $bindable(),
+    selectedObjects = $bindable([]),
     mapOpen = $bindable(false),
     mapSend = $bindable(null),
     ask = $bindable(null),
@@ -48,6 +49,8 @@
     session: Session;
     selected: string[];
     object: string | null;
+    /** The objects selected on the stage (Shift/Ctrl+click there or in the list here): they drag with the selected players. */
+    selectedObjects?: string[];
     mapOpen?: boolean;
     /** The full map was opened to send these players somewhere (from their menu or their party's). */
     mapSend?: { players: string[]; label: string } | null;
@@ -116,6 +119,19 @@
     ask = null;
   });
 
+  /** An object's card, once it opens: in sight, when the panel is short and the card would open below its fold. */
+  let cardEl = $state<HTMLElement>();
+  $effect(() => {
+    if (!obj?.el.id) return;
+    tick().then(() => cardEl?.scrollIntoView({ block: 'nearest' }));
+  });
+
+  /** An object in the list here, in or out of the selection (Shift/Ctrl+click, as on the stage). */
+  function toggleObject(id: string): void {
+    selectedObjects = selectedObjects.includes(id) ? selectedObjects.filter((x) => x !== id) : [...selectedObjects, id];
+  }
+  const objectsPicked = $derived(objects.filter((el) => selectedObjects.includes(el.id)).length);
+
   /** The live editor on the screen an object is on (its current look). */
   function editObject(screen: Screen): void {
     const v = screen.variants?.find((x) => x.id === st?.variant?.[screen.id]);
@@ -151,7 +167,7 @@
     // One step: undoing it takes the new look away again, not only back to the old one.
     logged(
       session,
-      `${screen.name}: ${name}`,
+      `${screen.name}: new look “${name}”`,
       () => {
         screen.variants = [...(screen.variants ?? []), look];
         st.variant ??= {};
@@ -166,8 +182,8 @@
     if (!here || !st) return;
     const screen = here.screen;
     if (v === '+') return void (ask = { what: 'look' });
-    const name = screen.variants?.find((x) => x.id === v)?.name ?? 'the original look';
-    logged(session, `${screen.name}: ${name}`, () => {
+    const name = screen.variants?.find((x) => x.id === v)?.name;
+    logged(session, name ? `${screen.name}: look “${name}”` : `${screen.name}: original look`, () => {
       st.variant ??= {};
       if (v) st.variant[screen.id] = v;
       else delete st.variant[screen.id];
@@ -206,10 +222,20 @@
     if (why) toast(why);
   }
 
+  /** Split view on or off; on with every party in one place, it says why the stage still shows one screen. */
+  function toggleSplit(): void {
+    if (!st) return;
+    st.split = !st.split;
+    if (st.split && occupiedScreens(st).length < 2) toast('Everyone is on this screen: split view shows each party’s screen once they’re apart', 3500);
+  }
+
   function split(): void {
     const why = splitOff(game, session, selected);
-    if (why) toast(why);
-    else selected = [];
+    if (why) return void toast(why);
+    selected = [];
+    // The new party is the one followed now: the pad (and the keys) move it.
+    const pt = st && activeParty(st);
+    if (pt) toast(`${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))} ${pt.members.length > 1 ? 'are' : 'is'} ${pt.name} now: the pad moves them`, 3000);
   }
 
   /** Right-click a screen on the minimap: move the party (or some players, or another party) there. */
@@ -317,7 +343,7 @@
       </button>
       {#if st.parties.length > 1}
         <button class="small" onclick={() => regroupAll(game, session)} title="G: everyone back together, here">🤝 Regroup</button>
-        <button class="small" class:on={st.split} aria-pressed={!!st.split} onclick={() => (st.split = !st.split)} title="Show every party's screen at once">▦ Split view</button>
+        <button class="small" class:on={st.split} aria-pressed={!!st.split} onclick={toggleSplit} title="Show every party's screen at once">▦ Split view</button>
       {/if}
       {#if game.shops?.length}
         <select
@@ -365,21 +391,21 @@
           e.currentTarget.blur();
           setLook(v);
         }}
-        title="Other looks for this screen (the village, on fire)"
+        title="Other looks for this screen (the village, on fire): a new one starts as a copy of this one"
       >
         <option value="">🎭 Original look</option>
         {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
-        <option value="+">＋ New look (a copy)…</option>
+        <option value="+">＋ New look…</option>
       </select>
       <button class="small" onclick={() => (ask = { what: 'text' })} title="Type text onto the screen">＋ Text</button>
       <button
         class="small"
         onclick={() => (drawpad = true)}
-        title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard…"
+        title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard… (or drop a picture on the stage)"
       >
         ✏ Draw
       </button>
-      <span class="muted small">or drop a picture on the stage</span>
+      <span class="muted small drop-hint">or drop a picture on the stage</span>
       <span class="spacer"></span>
       <!-- (An exported player-only file has no editor to keep it in.) -->
       {#if !app.playerOnly}
@@ -402,7 +428,7 @@
             oncancel={() => (ask = null)}
           />
         {:else if a.what === 'look'}
-          <InlineAsk text="Name of the new look (e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
+          <InlineAsk text="Name of the new look (a copy of this one to change, e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
         {:else if a.what === 'party'}
           {@const pt = st.parties.find((p) => p.id === a.party)}
           <InlineAsk
@@ -466,16 +492,27 @@
       <div class="side">
         {#if obj}
           {#key obj.el.id}
-            <ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} {dual} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={app.playerOnly ? undefined : () => keep({ map: obj.map.id, screen: obj.screen.id })} />
+            <div bind:this={cardEl}><ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} {dual} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={app.playerOnly ? undefined : () => keep({ map: obj.map.id, screen: obj.screen.id })} /></div>
           {/key}
         {:else}
-          <div class="muted small">Objects here (or click one on the stage):</div>
+          <div class="muted small">
+            {#if objectsPicked}
+              {objectsPicked} selected: {objectsPicked > 1 ? 'they drag' : 'it drags'} with the selected players ·
+              <button class="link" onclick={() => (selectedObjects = [])}>Clear</button>
+            {:else}
+              Objects here (or click one on the stage):
+            {/if}
+          </div>
           <div class="objs">
             {#each objects as el (el.id)}
+              {@const on = selectedObjects.includes(el.id)}
               <button
                 class="small obj"
                 class:secret={el.secret}
-                onclick={() => (object = el.id)}
+                class:picked={on}
+                aria-pressed={on}
+                title="{el.secret ? 'Hidden from viewers. ' : ''}Click for its card, Shift+click to select it (selected players and objects drag together on the stage)"
+                onclick={(e) => (e.shiftKey || e.ctrlKey || e.metaKey ? toggleObject(el.id) : (object = el.id))}
                 oncontextmenu={(e) =>
                   showMenu(
                     e,
@@ -570,6 +607,13 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    container-type: inline-size;
+  }
+  /* In a narrow panel the hint gives its line back (✏ Draw's tooltip says it too): the pad and the map stay higher up. */
+  @container (width < 560px) {
+    .drop-hint {
+      display: none;
+    }
   }
   .row {
     display: flex;
@@ -676,6 +720,19 @@
   .obj.secret {
     opacity: 0.6;
     border-style: dashed;
+  }
+  /* Selected (as on the stage, where the host's copy rings it in yellow). */
+  .obj.picked {
+    border-color: #ffcc00;
+    box-shadow: 0 0 0 1px #ffcc00;
+  }
+  .link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-size: inherit;
+    text-decoration: underline;
   }
   .last {
     display: block;

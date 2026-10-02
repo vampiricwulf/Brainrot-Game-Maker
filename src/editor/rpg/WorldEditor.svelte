@@ -1087,7 +1087,7 @@
                         title={picking ? `Lead there: ${s.name}` : `${s.name}: click for settings, double-click to edit, drag to move`}
                       >
                         <div class="thumb"><Stage><SlideView slide={s.slide} mode="edit" /></Stage></div>
-                        <span class="nm">{#if code}<span class="long">Screen </span>{code}{:else}{s.name}{/if}</span>
+                        <span class="nm">{#if code}<span class="long">{'Screen '}</span>{code}{:else}{s.name}{/if}</span>
                         {#if isStart(s)}<span class="start" title="The party starts here">🏁</span>{/if}
                         {#if doorways(s).length || DIRS.some((d) => warpSide(s, d))}<span class="door" title="Has doorways or warps">🚪</span>{/if}
                       </button>

@@ -2578,6 +2578,7 @@
         bind:selected
         bind:amount
         bind:rpgObject
+        bind:rpgSelObjects
         bind:rpgMap
         bind:rpgAsk
         bind:rpgMapSend
