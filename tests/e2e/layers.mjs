@@ -217,6 +217,8 @@ try {
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   assert((await rowIndex()) === 0 && (await focusedRow()) === topId, 'Enter on ▲ twice brings it back to the top, keeping focus on the row');
+  const undoTitle = (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
+  assert(/^Undo: Brought \S+ “.+” forward/.test(undoTitle), `the History names a ▲ in the Layers list (${undoTitle})`);
 
   // The inspector's Lock box is one undo step each time, like the list's 🔒.
   const lockBox = page.locator('.insp').getByLabel('Lock', { exact: true });

@@ -22,6 +22,30 @@ export function lockedNote(n: number, noun = 'item'): string {
 export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
 const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow', path: 'Drawing' };
 
+/** Text as a label shows it: its first line, 40 characters at most. */
+export const short = (s: string) => {
+  const line = s.trim().split('\n')[0];
+  return line.length > 40 ? `${line.slice(0, 39).trimEnd()}…` : line;
+};
+
+const NOUNS: Record<SlideElement['kind'], [string, string]> = {
+  text: ['text box', 'text boxes'],
+  image: ['image', 'images'],
+  video: ['video', 'videos'],
+  audio: ['audio clip', 'audio clips'],
+  shape: ['shape', 'shapes'],
+  embed: ['link', 'links'],
+};
+
+/**
+ * Items as the History names a step done to them: shape “Ellipse”, 3 shapes, or 3 items when they're of different
+ * kinds (named from the changes alone, a paste of a text box and two shapes was "Added 3 text boxes").
+ */
+export function itemsNamed(els: SlideElement[], game: Game): string {
+  if (els.length === 1) return `${NOUNS[els[0].kind][0]} “${short(layerLabel(els[0], game))}”`;
+  return `${els.length} ${new Set(els.map((e) => e.kind)).size === 1 ? NOUNS[els[0].kind][1] : 'items'}`;
+}
+
 export function layerLabel(el: SlideElement, game: Game): string {
   if (el.name?.trim()) return el.name.trim();
   switch (el.kind) {

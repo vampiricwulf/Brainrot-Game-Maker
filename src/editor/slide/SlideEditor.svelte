@@ -51,7 +51,7 @@
   import ImageEditor from './ImageEditor.svelte';
   import LayersPanel from './LayersPanel.svelte';
   import LayerMenu from './LayerMenu.svelte';
-  import { layerLabel, lockedNote, type Align, type LayerAction } from '../../lib/layerlabel';
+  import { itemsNamed, layerLabel, lockedNote, type Align, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
   import { itemsFor, placeElement, take } from '../../lib/nav.svelte';
   import { gameUndo, slideHistory } from '../../lib/slideundo.svelte';
@@ -216,8 +216,8 @@
   onMount(() => {
     if (root?.closest('[aria-modal="true"]')) ownUndo = true;
   });
-  /** Record a discrete edit as its own undo step. */
-  const edit = (fn: () => void) => undoApi.step(null, fn);
+  /** Record a discrete edit as its own undo step (`label`: its name in the History, else named from what changed). */
+  const edit = (fn: () => void, label: string | null = null) => undoApi.step(label, fn);
   /** The drag going on (one step until it ends). */
   let endDrag: (() => void) | null = null;
   onDestroy(() => endDrag?.());
@@ -234,6 +234,8 @@
 
   const NAMES: Record<SlideElement['kind'], string> = { text: 'text box', image: 'image', video: 'video', audio: 'audio clip', shape: 'shape', embed: 'link' };
   const describe = (els: SlideElement[]) => (els.length === 1 ? NAMES[els[0].kind] : `${els.length} items`);
+  /** The items as the History names a step done to them: shape “Ellipse”, 3 shapes, 3 items. */
+  const named = (els: SlideElement[]) => itemsNamed(els, game);
 
   // ---------- Adding elements ----------
   /** `also`: more changes in the same undo step (moving the question's text out of a new picture's way). */
@@ -434,7 +436,7 @@
       return;
     }
     const ids = new Set(gone.map((e) => e.id));
-    edit(() => {
+    undoApi.step(`${verb} ${named(gone)}`, () => {
       slide.elements = slide.elements.filter((e) => !ids.has(e.id));
       selected = selected.filter((id) => !ids.has(id));
     });
@@ -442,8 +444,10 @@
   }
 
   function duplicate(): void {
-    edit(() => {
-      const copies = slide.elements.filter((e) => selected.includes(e.id)).map((e) => ({ ...clone(e), id: newId(), x: e.x + 30, y: e.y + 30 }));
+    const from = slide.elements.filter((e) => selected.includes(e.id));
+    if (!from.length) return;
+    undoApi.step(`Duplicated ${named(from)}`, () => {
+      const copies = from.map((e) => ({ ...clone(e), id: newId(), x: e.x + 30, y: e.y + 30 }));
       for (const c of copies) {
         c.zIndex = topZ();
         // (A copy of an item at the bottom-right edge stays partly on the slide.)
@@ -455,8 +459,12 @@
   }
 
   /** Restack the selection (Inspector, right-click menu, Ctrl+] / Ctrl+[) as one undo step. */
+  const RESTACKED: Record<Restack, [string, string]> = { front: ['Brought', 'to the front'], forward: ['Brought', 'forward'], backward: ['Sent', 'backward'], back: ['Sent', 'to the back'] };
   function restackSelected(dir: Restack): void {
-    edit(() => restack(slide.elements, selected, dir));
+    const els = slide.elements.filter((e) => selected.includes(e.id));
+    if (!els.length) return;
+    const [verb, where] = RESTACKED[dir];
+    undoApi.step(`${verb} ${named(els)} ${where}`, () => restack(slide.elements, selected, dir));
   }
 
   function order(dir: 'front' | 'back' | 'up' | 'down'): void {
@@ -468,10 +476,13 @@
     if (a.startsWith('align-')) align(a.slice(6) as Align);
     else if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restackSelected(a);
     else if (a === 'duplicate') duplicate();
-    else if (a === 'lock' || a === 'unlock')
-      edit(() => {
-        for (const e of slide.elements) if (selected.includes(e.id)) e.locked = a === 'lock' || undefined;
-      });
+    else if (a === 'lock' || a === 'unlock') {
+      const els = slide.elements.filter((e) => selected.includes(e.id) && !e.locked === (a === 'lock'));
+      if (els.length)
+        edit(() => {
+          for (const e of els) e.locked = a === 'lock' || undefined;
+        }, `${a === 'lock' ? 'Locked' : 'Unlocked'} ${named(els)}`);
+    }
     else if (a === 'hide') {
       // Editor-only (not part of the slide), so it's never an undo step.
       hidden = [...hidden, ...selected];
@@ -525,9 +536,20 @@
     menu = { x: r.left + (at.x / SLIDE_W) * r.width, y: r.top + (at.y / SLIDE_H) * r.height, at, stack };
   }
 
+  /** How the History names Align (# is the items): several line up with each other, one goes to the slide's edge or middle. */
+  const ALIGNED: Record<Align, [several: string, one: string]> = {
+    left: ['Lined up the left edges of #', "Moved # to the slide's left edge"],
+    hcenter: ['Lined up the middles of # across', 'Centered # across the slide'],
+    right: ['Lined up the right edges of #', "Moved # to the slide's right edge"],
+    top: ['Lined up the top edges of #', "Moved # to the slide's top edge"],
+    vcenter: ['Lined up the middles of # down', 'Centered # down the slide'],
+    bottom: ['Lined up the bottom edges of #', "Moved # to the slide's bottom edge"],
+    hdistribute: ['Spaced # evenly across', 'Spaced # evenly across'],
+    vdistribute: ['Spaced # evenly down', 'Spaced # evenly down'],
+  };
   function align(how: Align): void {
     const { free, locked } = selection();
-    edit(() => alignTo(free, how, SLIDE_W, SLIDE_H));
+    if (free.length) undoApi.step(ALIGNED[how][free.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H));
     if (locked) tell(lockedNote(locked));
   }
 
@@ -740,7 +762,7 @@
     }
     const z = topZ();
     copies.forEach((c, i) => (c.zIndex = z + i));
-    edit(() => {
+    undoApi.step(`Pasted ${named(copies)}`, () => {
       slide.elements.push(...copies);
       selected = copies.map((c) => c.id);
     });
@@ -799,15 +821,15 @@
     <fieldset class="tools" disabled={previewing}>
       <button onclick={() => addText()} title="Add a text box">🅣 Text</button>
       <div class="pop">
-        <button onclick={() => (picker = 'image')}>🖼 Image</button>
+        <button onclick={() => (picker = 'image')} title="Add a picture: upload one, link to one online, or reuse one from this game">🖼 Image</button>
         {#if picker === 'image' && !replacing}<MediaPicker kind="image" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
-        <button onclick={() => (picker = 'video')}>🎬 Video</button>
+        <button onclick={() => (picker = 'video')} title="Add a video: upload one, link to one online, or reuse one from this game">🎬 Video</button>
         {#if picker === 'video' && !replacing}<MediaPicker kind="video" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
-        <button onclick={() => (picker = 'audio')}>🔊 Audio</button>
+        <button onclick={() => (picker = 'audio')} title="Add a sound: upload one, link to one online, or reuse one from this game">🔊 Audio</button>
         {#if picker === 'audio' && !replacing}<MediaPicker kind="audio" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
@@ -932,8 +954,8 @@
          Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
          is always there, hidden until then, and the Preview button has room for both of its labels. -->
     <div class="right">
-      <button class="ghost small" onclick={copySlide}>📋 Copy slide</button>
-      <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide}>📋 Paste slide</button>
+      <button class="ghost small" onclick={copySlide} title="Copy this whole slide, to paste over another one">📋 Copy slide</button>
+      <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide} title={clipboard.slide ? 'Replace everything on this slide with the copied one (Undo brings it back)' : 'Copy a slide first (📋 Copy slide)'}>📋 Paste slide</button>
       <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
       <button class="small swap" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
         <span class:hide={previewing}>▶ Preview</span>
@@ -1064,16 +1086,38 @@
           oneditimage={single.kind === 'image' ? () => (editingImage = single!.id) : undefined}
           onedit={edit}
           {objectsection}
+          aligns={lineUp}
         />
         {#if picker && replacing === single.id}
           <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
         {/if}
       {:else if selected.length > 1}
-        <p class="muted">{selected.length} items selected.</p>
-        <div class="row">
-          <button class="small" onclick={duplicate} title="Ctrl+D">⧉ Duplicate</button>
-          <button class="ghost small danger" onclick={() => remove()} title="Delete them (Del)">🗑 Delete</button>
-        </div>
+        {@const els = slide.elements.filter((e) => selected.includes(e.id))}
+        {@const lockedN = els.filter((e) => e.locked).length}
+        <!-- The same controls, in the same places, as the Inspector's Position for one item. -->
+        <section class="multi">
+          <p class="muted">{selected.length} items selected.</p>
+          {@render lineUp()}
+          <div class="row">
+            <button class="small" onclick={() => order('front')} title="Bring them to the front (Ctrl+Shift+])">⤒ Front</button>
+            <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
+            <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
+            <button class="small" onclick={() => order('back')} title="Send them to the back (Ctrl+Shift+[)">⤓ Back</button>
+          </div>
+          <div class="row">
+            <label class="check" title="Locked items can't be moved, resized, nudged or deleted, and clicks on the slide go through them">
+              <input
+                type="checkbox"
+                checked={lockedN === els.length}
+                indeterminate={lockedN > 0 && lockedN < els.length}
+                onchange={(e) => menuAction(e.currentTarget.checked ? 'lock' : 'unlock')}
+              /> Lock
+            </label>
+            <span class="spacer"></span>
+            <button class="small" onclick={duplicate} title="Ctrl+D">⧉ Duplicate</button>
+            <button class="ghost small danger" onclick={() => remove()} title="Delete them (Del)">🗑 Delete</button>
+          </div>
+        </section>
       {:else}
         <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
           <ul>
@@ -1088,44 +1132,46 @@
           </ul>
         </Tips>
       {/if}
-      {#if selected.length && !previewing}
-        <!-- One item goes to the slide's edges; several line up with each other (and can be spaced evenly). -->
-        <div class="aligns">
-          {#if selected.length > 1}
-            <span class="muted small">Line up the selected items…</span>
-            <div class="agrid">
-              <button class="small" onclick={() => align('left')} aria-label="Line up their left edges">Left</button>
-              <button class="small" onclick={() => align('hcenter')} aria-label="Line up their middles across">Center</button>
-              <button class="small" onclick={() => align('right')} aria-label="Line up their right edges">Right</button>
-              <button class="small" onclick={() => align('top')} aria-label="Line up their top edges">Top</button>
-              <button class="small" onclick={() => align('vcenter')} aria-label="Line up their middles down">Middle</button>
-              <button class="small" onclick={() => align('bottom')} aria-label="Line up their bottom edges">Bottom</button>
-            </div>
-            {#if selected.length > 2}
-              <div class="agrid two">
-                <button class="small" onclick={() => align('hdistribute')} title="The outermost two stay; the gaps between them all become equal">↔ Space evenly</button>
-                <button class="small" onclick={() => align('vdistribute')} title="The outermost two stay; the gaps between them all become equal">↕ Space evenly</button>
-              </div>
-            {/if}
-          {:else}
-            <span class="muted small">Move to the slide's…</span>
-            <div class="agrid">
-              <button class="small" onclick={() => align('left')} aria-label="Move to the slide's left edge">Left</button>
-              <button class="small" onclick={() => align('hcenter')} aria-label="Center across the slide">Center</button>
-              <button class="small" onclick={() => align('right')} aria-label="Move to the slide's right edge">Right</button>
-              <button class="small" onclick={() => align('top')} aria-label="Move to the slide's top edge">Top</button>
-              <button class="small" onclick={() => align('vcenter')} aria-label="Center down the slide">Middle</button>
-              <button class="small" onclick={() => align('bottom')} aria-label="Move to the slide's bottom edge">Bottom</button>
-            </div>
-          {/if}
-        </div>
-      {/if}
       {#if picker === 'font'}
         <MediaPicker kind="font" anchor={pickerFrom} onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} />
       {/if}
     </aside>
   </div>
 </div>
+
+<!-- One item goes to the slide's edges (in the Inspector's Position, under X and Y); several line up with each other
+     (and can be spaced evenly). -->
+{#snippet lineUp()}
+  <div class="aligns">
+    {#if selected.length > 1}
+      <span class="muted small">Line up the selected items…</span>
+      <div class="agrid">
+        <button class="small" onclick={() => align('left')} aria-label="Line up their left edges">Left</button>
+        <button class="small" onclick={() => align('hcenter')} aria-label="Line up their middles across">Center</button>
+        <button class="small" onclick={() => align('right')} aria-label="Line up their right edges">Right</button>
+        <button class="small" onclick={() => align('top')} aria-label="Line up their top edges">Top</button>
+        <button class="small" onclick={() => align('vcenter')} aria-label="Line up their middles down">Middle</button>
+        <button class="small" onclick={() => align('bottom')} aria-label="Line up their bottom edges">Bottom</button>
+      </div>
+      {#if selected.length > 2}
+        <div class="agrid two">
+          <button class="small" onclick={() => align('hdistribute')} title="The outermost two stay; the gaps between them all become equal">↔ Space evenly</button>
+          <button class="small" onclick={() => align('vdistribute')} title="The outermost two stay; the gaps between them all become equal">↕ Space evenly</button>
+        </div>
+      {/if}
+    {:else}
+      <span class="muted small">Move to the slide's…</span>
+      <div class="agrid">
+        <button class="small" onclick={() => align('left')} aria-label="Move to the slide's left edge">Left</button>
+        <button class="small" onclick={() => align('hcenter')} aria-label="Center across the slide">Center</button>
+        <button class="small" onclick={() => align('right')} aria-label="Move to the slide's right edge">Right</button>
+        <button class="small" onclick={() => align('top')} aria-label="Move to the slide's top edge">Top</button>
+        <button class="small" onclick={() => align('vcenter')} aria-label="Center down the slide">Middle</button>
+        <button class="small" onclick={() => align('bottom')} aria-label="Move to the slide's bottom edge">Bottom</button>
+      </div>
+    {/if}
+  </div>
+{/snippet}
 
 {#if drawpad}
   <DrawPad oninsert={insertDrawing} oncancel={() => (drawpad = false)}>
@@ -1274,13 +1320,23 @@
     margin: 0 0 8px;
   }
   .aligns {
-    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .agrid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 4px;
-    margin-top: 4px;
+  }
+  /* Several items: laid out as the Inspector's sections are. */
+  .multi {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .multi p {
+    margin: 0;
   }
   .agrid.two {
     grid-template-columns: 1fr 1fr;

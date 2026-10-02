@@ -7,7 +7,7 @@
   import { tick } from 'svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
-  import { LAYER_ICON, layerLabel } from '../../lib/layerlabel';
+  import { itemsNamed, LAYER_ICON, layerLabel } from '../../lib/layerlabel';
   import { offStage } from '../../lib/layers';
 
   let {
@@ -27,11 +27,12 @@
     hovered?: string | null;
     /**
      * Makes each discrete change (restack, lock) by calling `change`, so an undo history can record it
-     * as one step. Hiding while editing isn't a change to the slide and never goes through here.
+     * as one step (`label`: its name, when the change alone can't say it). Hiding while editing isn't a change to the
+     * slide and never goes through here.
      */
-    onedit?: (change: () => void) => void;
+    onedit?: (change: () => void, label?: string) => void;
   } = $props();
-  const edit = (change: () => void) => (onedit ? onedit(change) : change());
+  const edit = (change: () => void, label?: string) => (onedit ? onedit(change, label) : change());
 
   const top = $derived([...elements].sort((a, b) => b.zIndex - a.zIndex));
   let listEl = $state<HTMLDivElement>();
@@ -49,9 +50,9 @@
     edit(() => (el.locked = el.locked ? undefined : true));
   }
 
-  /** Restack: `order` is top-most first. */
-  function apply(order: SlideElement[]): void {
-    edit(() => order.forEach((el, i) => (el.zIndex = order.length - 1 - i)));
+  /** Restack: `order` is top-most first. `label` names it ("Brought shape “Star” forward"). */
+  function apply(order: SlideElement[], label?: string): void {
+    edit(() => order.forEach((el, i) => (el.zIndex = order.length - 1 - i)), label);
   }
 
   /**
@@ -65,7 +66,7 @@
     const j = i + dir;
     if (j < 0 || j >= order.length) return;
     [order[i], order[j]] = [order[j], order[i]];
-    apply(order);
+    apply(order, `${dir < 0 ? 'Brought' : 'Sent'} ${itemsNamed([el], game)} ${dir < 0 ? 'forward' : 'backward'}`);
     tick().then(() => {
       const row = listEl?.querySelector(`[data-layer="${el.id}"]`);
       const target = row?.querySelector<HTMLButtonElement>(refocus);
@@ -91,7 +92,8 @@
       const order = top.filter((x) => x !== moving);
       const at = order.findIndex((x) => x.id === dropAt!.id);
       order.splice(at + (dropAt.after ? 1 : 0), 0, moving);
-      apply(order);
+      const up = order.indexOf(moving) < top.indexOf(moving);
+      apply(order, `${up ? 'Brought' : 'Sent'} ${itemsNamed([moving], game)} ${up ? 'forward' : 'backward'}`);
       selected = [moving.id];
     }
     dragId = null;

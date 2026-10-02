@@ -114,6 +114,11 @@ try {
   await nameBox.fill('nope');
   await nameBox.press('Escape');
   assert((await names())[2] === 'pasted.png', 'Esc cancels a rename');
+  // A card's buttons sit on one line, and its "used 1×" says where.
+  const [replaceBox, deleteBox] = [await cards.nth(0).getByRole('button', { name: 'Replace…' }).boundingBox(), await cards.nth(0).getByRole('button', { name: /^Delete / }).boundingBox()];
+  assert(Math.abs(replaceBox.y - deleteBox.y) < 2, "a card's Replace… and 🗑 Delete sit side by side");
+  const where = (await cards.nth(0).locator('.meta .where').getAttribute('title')) ?? '';
+  assert(where.includes('Theme: background picture'), `its "used 1×" tooltip says where (${where.replace(/\n/g, ' / ')})`);
 
   await drop(cards.nth(0), [['song.mp3', 'audio/mpeg']]);
   assert((await toast.innerText()).includes('song.mp3') && (await names())[0] === 'wall.png', 'a sound dropped on a picture card is refused with a toast');

@@ -11,6 +11,32 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-02
+
+### Changed
+- **Slide editor: several items selected get the same tools as one**: ⤒ Front / ↑ / ↓ / ⤓ Back and a **Lock** box
+  (ticked when they're all locked) beside ⧉ Duplicate and 🗑 Delete, laid out as the Inspector's Position is for one
+  item.
+- **Slide editor: "Move to the slide's…" Left / Center / Right / Top / Middle / Bottom sits under X, Y, W and H** in the
+  Inspector's Position, instead of below Lock and Delete at the very bottom.
+- **Slide editor: a turn within 3° of level settles on level** (0°, 90°, 180°), so a slightly tilted item is easy to
+  straighten; Alt turns freely, Shift still steps by 15°.
+- **Multi-slide clues: the slide tools say ◀ Earlier / Later ▶** (not bare arrows that read like "previous / next
+  slide"), and a later question slide's empty text says "Click to type what this slide adds", as its field above does.
+- **🖼 Media: a card's Replace… and 🗑 Delete sit side by side** (they were stacked on two lines), and **"used 3×" says
+  where** when you point at it: the slides, the theme's background or banner, 🔊 Sounds, category and tile pictures,
+  board images.
+- **Slide editor: tooltips on 🖼 Image, 🎬 Video, 🔊 Audio, 📋 Copy slide and 📋 Paste slide** (a greyed-out Paste slide
+  says to copy a slide first).
+
+### Fixed
+- **Slide editor: Undo and the 🕘 History name what was done to the items**: a paste of a text box and two shapes was
+  "Added 3 text boxes", a duplicate "Added shape", Cut "Deleted…", lining up "Moved shape" (just the one that moved),
+  locking several "4 changes" and a restack "Restacked items". Now: "Pasted 3 items", "Duplicated shape “Star”", "Cut 2
+  shapes", "Lined up the top edges of 4 shapes", "Spaced 3 items evenly across", "Moved image “cat.png” to the slide's
+  left edge", "Locked 4 shapes", "Sent shape “Star” to the back", and ▲ ▼ in the Layers list "Brought image “cat.png”
+  forward".
+
 ## 2026-10-01
 
 ### Added

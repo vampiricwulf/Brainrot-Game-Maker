@@ -24,6 +24,7 @@
     oneditimage,
     onedit,
     objectsection,
+    aligns,
   }: {
     el: SlideElement;
     game: Game;
@@ -46,6 +47,8 @@
     onedit?: (change: () => void) => void;
     /** Extra settings for the item (RPG screens: its class, secret, host notes). */
     objectsection?: Snippet<[SlideElement]>;
+    /** Move it to the slide's edges or middle: shown with X and Y. */
+    aligns?: Snippet;
   } = $props();
   const edit = (change: () => void) => (onedit ? onedit(change) : change());
   /** The selected image/video/audio file, when it plays from the internet (a live link). */
@@ -356,6 +359,7 @@
       <label class="field">W<NumField min={1} bind:value={el.w} fallback={100} /></label>
       <label class="field">H<NumField min={1} bind:value={el.h} fallback={100} /></label>
     </div>
+    {@render aligns?.()}
     <div class="grid2">
       <label class="field">Rotation°<NumField min={-180} max={180} bind:value={el.rotation} /></label>
       <label class="field">Opacity {Math.round(el.opacity * 100)}%<input type="range" min="0" max="1" step="0.05" bind:value={el.opacity} /></label>

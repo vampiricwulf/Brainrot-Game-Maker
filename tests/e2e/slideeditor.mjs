@@ -3,7 +3,8 @@
 // Esc on an Inspector checkbox, room for text effects, the typewriter, one copy of a file dropped twice, 🎨 Apply
 // keeping a turned picture's size (and Use original its old one), the image editor's tool options and slider undo,
 // Replace redoing edits, the History's names for these, pastes from Word and from another tab, nudging off the slide,
-// Tab saying which item it picked, and Shift+F10's menu.
+// Tab saying which item it picked, Shift+F10's menu, the several-items panel's Back and Lock, Move to the slide's… beside X and Y, a
+// turn that settles on level, and the History's names for line-ups, restacks, duplicates and pastes.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -31,6 +32,8 @@ const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` }
 const canvas = page.locator('.canvas');
 const insp = page.locator('.insp');
 const toast = page.locator('.toast');
+/** The clue's ↶ tooltip: "Undo: ‹the newest step› (Ctrl+Z)". */
+const undoTitle = async () => (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
 /** Viewport point for a stage (1920×1080) point. */
 async function at(x, y) {
   const r = await canvas.locator('.stage').boundingBox();
@@ -179,6 +182,15 @@ try {
   // Delete with the focus still on that button is nothing (it used to delete the four); on the canvas it deletes.
   await page.keyboard.press('Delete');
   assert((await rects()).length === 4, 'Delete on a focused side-panel button leaves the selected items alone');
+  assert((await undoTitle()).startsWith('Undo: Spaced 4 shapes evenly across'), `the History names it “Spaced 4 shapes evenly across” (${await undoTitle()})`);
+  // Several selected: the same Front / Back and Lock as one item has.
+  const multi = page.locator('.side .multi');
+  await multi.getByRole('button', { name: '⤓ Back' }).click();
+  assert((await undoTitle()).startsWith('Undo: Sent 4 shapes to the back'), `⤓ Back sends the four to the back, named so (${await undoTitle()})`);
+  await multi.getByLabel('Lock', { exact: true }).check();
+  assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 5, 'Lock locks all four (and the text box stays locked)');
+  await multi.getByLabel('Lock', { exact: true }).uncheck();
+  assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 1, 'unticking it unlocks them again');
   await canvas.focus();
   await page.keyboard.press('Delete');
   // (Clicks go through the locked text box: the Layers list unlocks it.)
@@ -304,7 +316,7 @@ try {
   const labels = (await page.locator('.hist .hr').allInnerTexts()).join('\n');
   assert(labels.includes('Slide background color #333333'), 'History: “Slide background color #333333”');
   assert(labels.includes('Added an outline to text box'), 'History: “Added an outline to text box …”');
-  assert(!/\b\d+ changes\b/.test(labels), 'no “N changes” steps');
+  assert(!/\b\d+ changes\b/.test(labels), 'no “N changes” steps' + (labels.match(/.*\b\d+ changes\b.*/)?.[0] ? ` (${labels.match(/.*\b\d+ changes\b.*/)[0]})` : ''));
 
   // ---------- Pastes, Tab through the items, the keyboard's menu, nudging off the slide ----------
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
@@ -346,6 +358,41 @@ try {
   await setNumber(posField('X'), 2000);
   assert((await page.locator('.layers-box').innerText()).includes('off the slide'), 'the Layers list flags an item that is off the slide');
   await setNumber(posField('X'), 1700);
+  // The History names a duplicate and a paste as such (from the changes alone a paste of mixed items was "Added 3 text boxes").
+  await canvas.focus();
+  await page.keyboard.press('Control+d');
+  assert((await undoTitle()).startsWith('Undo: Duplicated shape “Rectangle”'), `Ctrl+D is “Duplicated shape “Rectangle”” (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  await click(1750, 550);
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press('Control+v');
+  assert((await undoTitle()).startsWith('Undo: Pasted shape “Rectangle”'), `Ctrl+V is “Pasted shape “Rectangle”” (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  // One item: Move to the slide's… sits with X and Y, and names where it went.
+  await click(1750, 550);
+  const toLeft = position.getByRole('button', { name: "Move to the slide's left edge" });
+  assert((await toLeft.count()) === 1, "Move to the slide's… is in the Inspector's Position, with X and Y");
+  await toLeft.click();
+  assert((await undoTitle()).startsWith("Undo: Moved shape “Rectangle” to the slide's left edge"), `and the History says where it went (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  // Turning it a little off level settles back on level; further, it turns.
+  const turn = async (deg) => {
+    const k = await canvas.locator('.frame .rot').boundingBox();
+    const c = await at(1750, 550);
+    const kx = k.x + k.width / 2;
+    const ky = k.y + k.height / 2;
+    const r = Math.hypot(kx - c.x, ky - c.y);
+    const a = (deg * Math.PI) / 180;
+    await page.mouse.move(kx, ky);
+    await page.mouse.down();
+    await page.mouse.move(c.x + r * Math.sin(a), c.y - r * Math.cos(a), { steps: 4 });
+    await page.mouse.up();
+    return Number(await posField('Rotation°').inputValue());
+  };
+  assert((await turn(2)) === 0, 'a rotation 2° off level settles on level');
+  const ten = await turn(10);
+  assert(Math.abs(ten - 10) <= 1, `a bigger one turns it (${ten}°)`);
+  await setNumber(posField('Rotation°'), 0);
 
   await canvas.focus();
   await page.keyboard.press('Escape');
