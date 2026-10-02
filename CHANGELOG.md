@@ -1335,3 +1335,4 @@ Commits whose titles don't say what they contain:
 | efe84a3 | Merge branch 'worktree-agent-a505055b32929844f' | Brings in 9ffa095 (pre-game polish: two columns on laptops, Start level with Back, Ctrl+Enter starts, same-name note) |
 | 4acb133 | Merge branch 'worktree-agent-a2d07801aba305344' | Brings in bbc34aa (RPG polish: group drag across split view, the selection shown in the object list, no dark box over a hovered object) |
 | c085ec1 | Merge branch 'worktree-agent-a7d43523363a340a3' | Brings in 38373de (viewer polish: no join code where nobody buzzes, Final ✔ clear of scores, end screen and roll-off fit, Final category in the theme's clue font) |
+| 817ecab | Merge branch 'worktree-agent-aaaa79b0fa8a36f89' | Brings in 817ecab (builders polish: the board-game editor uses play's gestures and names, History filter, Find searches space buttons) |
