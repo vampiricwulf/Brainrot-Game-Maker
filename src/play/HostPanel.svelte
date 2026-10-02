@@ -856,13 +856,13 @@
         onclick={onundo}
         oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
         disabled={!undoText}
-        title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ Undo</button
+        title={undoText ? `Undo: ${undoText} (Ctrl+Z · right-click: history)` : 'Nothing to undo'}>↶ <span class="word">Undo</span></button
       >
       <button
         onclick={onredo}
         oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
         disabled={!redoText}
-        title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
+        title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ <span class="word">Redo</span></button
       >
       <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
     </span>
@@ -1066,7 +1066,8 @@
   /* The fixed bar as a two-column grid of its groups, 🚪 Exit in the bottom-right cell. */
   .side > .fixed {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* (The left groups as wide as they need, the right ones the rest: Log, Players and Rules stay on one line.) */
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas: 'edit lists' 'screen windows' '. exit';
     align-items: start;
   }
@@ -1088,6 +1089,15 @@
   }
   .side > .fixed > :is(.divider, .spacer) {
     display: none;
+  }
+  /* (In the column: ↶ and ↷ alone, so Undo, Redo and Sound fit their cell; their tooltips say what they'd undo.) */
+  .side .g-edit .word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .side .award .hint {
     display: none;

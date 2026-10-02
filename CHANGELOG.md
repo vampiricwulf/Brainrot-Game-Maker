@@ -51,8 +51,8 @@ in plain words for the people who make and host games. Anything committed but no
   no separate lock step any more).
 - **Try a sample game no longer selects its first round's name**: the focus goes to the round's tab, so a key
   pressed next doesn't type over "Jeopardy!".
-- **Host panel: ⌨ (keyboard shortcuts) sits beside 🚪 Exit**, so with the controls beside the stage it no longer wraps
-  onto a row of its own under ↶ Undo.
+- **Host panel: ⌨ (keyboard shortcuts) sits beside 🚪 Exit**, and with the controls beside the stage the bottom bar is
+  three tidy rows: ↶ and ↷ (their tooltips say what they'd undo) with 🔊 Sound, Log, Players and Rules on one line.
 - **RPG: the host's 🗺 Map button is now "🗺 Map on stream"** (it shows the map to viewers), so it isn't mistaken
   for ⤢ Full map.
 - **Slides: Ctrl+arrows resize the selected items** from the keyboard (Ctrl+Shift+arrows: 10 pixels at a time):
