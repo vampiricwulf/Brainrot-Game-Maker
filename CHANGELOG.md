@@ -1110,3 +1110,4 @@ Commits whose titles don't say what they contain:
 | e8b6e1d | Merge branch 'worktree-agent-a60d194b8ff51af6d' | Brings in 42faaad (team buzzers: people join a team from their phone, anyone on it can buzz for it) |
 | a859105 | Merge branch 'worktree-agent-a35ba9cd7caa2c1b4' | Brings in a7234a0 (the Final goes from the category straight to one wager screen; wager limits off by default; wagers editable until shown) |
 | f812b22 | Merge branch 'worktree-agent-a2cd6615ecb607e42' | Brings in 0adc6d6 (pop-ups always whole on screen and on top: the phones list, tool menus, slide editor menus, pickers, context menus) |
+| 96c8298 | Merge branch 'worktree-agent-a50aeabb1a0a1fdf0' | Brings in 589918c (players send their Daily Double or Final wager secretly from their phone) |
