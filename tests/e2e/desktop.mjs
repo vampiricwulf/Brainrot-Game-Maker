@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace } from './helpers.mjs';
+import { addClassicRounds, answerReplace, clickExportHtml } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -98,7 +98,7 @@ try {
   const w = await newPage(web, 'browser');
   await addClassicRounds(w);
   await w.locator('input.title').fill('Exported Quiz');
-  const [download] = await Promise.all([w.waitForEvent('download'), w.getByRole('button', { name: 'Export HTML' }).click()]);
+  const [download] = await Promise.all([w.waitForEvent('download'), clickExportHtml(w)]);
   const htmlPath = resolve('test-results/desktop-export.html');
   await download.saveAs(htmlPath);
   // (An export isn't a Save: New asks first.)
@@ -181,7 +181,7 @@ try {
   await d.locator('input.title').fill('From a second launch');
   await d.getByRole('button', { name: /^More:/ }).click();
   await d.getByRole('menuitem', { name: /Export JSON/ }).click();
-  await d.waitForFunction(() => window.__saves.has('From-a-second-launch.json'));
+  await d.waitForFunction(() => window.__saves.has('From-a-second-launch.json'), null, { polling: 100 });
   await d.locator('input.title').fill('Before');
   await d.evaluate(() => {
     window.__opened = { name: 'From-a-second-launch.json', bytes: window.__saves.get('From-a-second-launch.json').bytes };

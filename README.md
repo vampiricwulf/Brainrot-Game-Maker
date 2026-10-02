@@ -304,14 +304,14 @@ The main ones (press `?` during the game for all of them):
     only a title isn't kept. **🗑 Delete** asks first: it deletes the kept copy and its files.
   - Opening an older copy of a game never changes the pictures and sounds of the game you have open: a file that
     differs is opened as a file of its own.
-- New and Open… ask **Cancel / Discard / Save first** when the game has unsaved changes (Open… checks the file is a
-  game first). Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
+- New and Open… ask **Cancel / Open anyway / Save first** (or **Start new anyway**) when the game has unsaved changes
+  (Open… checks the file is a game first); going on anyway keeps the old game in Open… → Recent games. Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
   editing tab closes.
-- **⬇ Export HTML** makes a single file to host the game from, with everything inside. It shows the answers, so keep
+- **⋯ → ⬇ Export as a web page…** (Export HTML) makes a single file to play the game from, without this app, with everything inside. It shows the answers, so keep
   it to yourself. A game over about 375 MB is too big for one HTML file (browsers can't read it back): save a
   `.brainrot` instead.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**.
-- **⚙ Settings** (in the header's ⋯ menu, with Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
+- **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
   - **Autosave** every few minutes (desktop app). The default is every 5 minutes, keeping the last 3.

@@ -70,11 +70,11 @@ try {
   await header.getByText('⚠ Autosave unavailable here: use Save').waitFor();
   assert(true, 'a full storage switches the header to "use Save"');
   await shot('datasafety-full');
-  // New while full: the question says Discard loses the game (it can't be kept in Recent games).
+  // New while full: the question says going on loses the game (it can't be kept in Recent games).
   await page.getByRole('button', { name: 'New', exact: true }).click();
   const fullAsk = page.getByRole('dialog', { name: /^Start a new game/ });
-  await fullAsk.getByText('storage is full, so Discard loses it').waitFor();
-  assert((await fullAsk.getByText('Recent games brings it back').count()) === 0, 'with storage full, Save first / Discard says Discard loses the game');
+  await fullAsk.getByText(/storage is full.*Start new anyway loses it/).waitFor();
+  assert((await fullAsk.getByText('Recent games brings it back').count()) === 0, 'with storage full, the question says Start new anyway loses the game');
   await answerReplace(page, 'Cancel');
   // Closing the tab now would lose the changes: the browser asks first.
   const leave = new Promise((r) => page.once('dialog', (d) => (r(d.type()), d.dismiss())));
@@ -144,14 +144,28 @@ try {
   const openDialog = page.getByRole('dialog', { name: 'Open a game' });
   await openDialog.waitFor();
   assert((await openDialog.getByRole('button', { name: /^Safe Game/ }).count()) === 1, 'Open… lists the recent games');
+  assert(
+    (await openDialog.getByRole('heading', { name: 'Recent games' }).count()) === 1 &&
+      (await openDialog.getByRole('group', { name: 'Saved files' }).getByRole('button', { name: 'Browse…' }).count()) === 1,
+    'Open… keeps Recent games (kept in this browser) apart from Saved files: Browse…',
+  );
   await shot('datasafety-open');
   await openDialog.getByRole('button', { name: /^Safe Game/ }).click();
+  // Going on without saving keeps the game (in Recent games): the question says so, and its button isn't "Discard".
+  const reopenAsk = page.getByRole('dialog', { name: /^Reopen “Safe Game”/ });
+  await reopenAsk.waitFor();
+  assert(
+    (await reopenAsk.getByRole('button', { name: 'Reopen anyway' }).count()) === 1 &&
+      (await reopenAsk.getByRole('button', { name: 'Discard' }).count()) === 0 &&
+      (await reopenAsk.innerText()).includes('Reopen anyway keeps it in this browser'),
+    'reopening a recent game over unsaved changes offers Reopen anyway, which says it keeps the game in Recent games',
+  );
   await answerReplace(page, 'Discard');
   await page.getByText('Reopened “Safe Game”').waitFor();
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Unsaved', 'a recent game reopens from Open…');
   await page.getByRole('button', { name: 'Open…' }).click();
   await openDialog.waitFor();
-  assert((await openDialog.getByRole('button', { name: /^Untitled Game/ }).count()) === 1, 'and the game it replaced (Discard) is kept there in turn');
+  assert((await openDialog.getByRole('button', { name: /^Untitled Game/ }).count()) === 1, 'and the game it replaced (Reopen anyway) is kept there in turn');
   // 🗑 Delete deletes the kept game and its files for good: it asks first.
   await openDialog.getByRole('button', { name: /^Delete “Untitled Game”/ }).click();
   const forgetAsk = page.getByRole('alertdialog').filter({ hasText: 'Delete “Untitled Game” from Recent games?' });

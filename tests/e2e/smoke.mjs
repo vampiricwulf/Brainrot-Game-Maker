@@ -706,7 +706,7 @@ await page.locator('.se .canvas .hit').first().click();
 await page.locator('.se .insp textarea').fill('TIEBREAKER TEXT');
 assert((await page.getByRole('button', { name: 'Tiebreaker', exact: true }).count()) === 1, 'the tiebreaker is edited on its own tab');
 await page.getByLabel('Include a tiebreaker clue').uncheck();
-assert((await page.getByRole('button', { name: 'Tiebreaker (off)' }).count()) === 1, 'the nav says when the tiebreaker is off');
+assert((await page.getByRole('button', { name: 'Tiebreaker (optional)' }).count()) === 1, 'the nav shows the tiebreaker as optional while it is off');
 
 // Theme: Brainrot Neon with the score bar on top.
 await page.getByRole('button', { name: '🎨 Theme' }).click();

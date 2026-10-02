@@ -220,8 +220,13 @@
         <span class="spacer"></span>
         <span class="hint keys">Ctrl+Enter next clue · Alt+arrows: the clue above, below or beside</span>
         <button onclick={() => step(-1)} disabled={!prev} title="Shift+Ctrl+Enter">◀ Prev</button>
-        <button onclick={() => step(1)} disabled={!next} title="Ctrl+Enter">Next ▶</button>
-        <button class="primary" onclick={onclose}>Done</button>
+        <!-- (On the last clue, Next ▶ becomes Done ✓: there's no next one to go to.) -->
+        {#if next}
+          <button onclick={() => step(1)} title="Ctrl+Enter">Next ▶</button>
+          <button class="primary" onclick={onclose}>Done</button>
+        {:else}
+          <button class="primary" onclick={onclose} title="That’s the last clue: close it (Esc)">Done <span aria-hidden="true">✓</span></button>
+        {/if}
         <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
       </header>
 

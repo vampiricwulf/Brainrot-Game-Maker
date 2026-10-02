@@ -226,7 +226,10 @@ try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
 
-  // Stats & items.
+  // Stats & items: in the sidebar once there's an RPG (or board game) round to use them.
+  assert((await page.getByRole('button', { name: '📊 Stats & Items' }).count()) === 0, 'a game of Jeopardy rounds has no 📊 Stats & Items in the sidebar');
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
@@ -261,9 +264,8 @@ try {
   // A second shop, deleted below.
   await page.getByRole('button', { name: '＋ Add shop' }).click();
 
-  // An RPG round: its world starts with one screen; add one to the east.
-  await page.getByRole('button', { name: '＋ Add round' }).click();
-  await page.getByRole('menuitem', { name: /RPG/ }).click();
+  // The RPG round: its world starts with one screen; add one to the east.
+  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   assert(await page.getByRole('button', { name: 'Screen Screen B1' }).isVisible(), 'a screen can be added to the map grid');
   const b1Name = await page.getByRole('button', { name: 'Screen Screen B1' }).locator('.nm').innerText();

@@ -33,6 +33,12 @@ export async function nameGame(page, name = '') {
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
 }
 
+/** ⋯ → ⬇ Export as a web page… (Export HTML, the playable file). */
+export async function clickExportHtml(page, opts = {}) {
+  await page.getByRole('button', { name: /^More:/ }).click(opts);
+  await page.getByRole('menuitem', { name: /Export as a web page/ }).click(opts);
+}
+
 /**
  * Export HTML, answering the name it asks for on an untitled game's first export (with `name`: '' keeps "Untitled Game").
  * Returns the download.
@@ -45,18 +51,21 @@ export async function exportHtml(page, name = '') {
     throw new Error(`Export HTML: a window is still open over the editor: “${(await over.innerText()).replace(/\s+/g, ' ').slice(0, 200)}”`);
   const download = page.waitForEvent('download');
   // (A click that can't land fails here, saying why, well before the download's wait runs out.)
-  await page.getByRole('button', { name: 'Export HTML' }).click({ timeout: 10000 });
+  await clickExportHtml(page, { timeout: 10000 });
   const naming = page.getByRole('dialog', { name: 'Name your game' });
   const first = await Promise.race([download.then(() => 'download'), naming.waitFor().then(() => 'name', () => 'none')]);
   if (first === 'name') await nameGame(page, name);
   return download;
 }
 
-/** New, Open… or a recent game asks before replacing a game with unsaved changes: answer it (Save first, Discard, Cancel). */
+/**
+ * New, Open… or a recent game asks before replacing a game with unsaved changes: answer it (Save first, Cancel, or
+ * 'Discard' for "Open anyway" / "Reopen anyway" / "Start new anyway", which keeps it in Recent games).
+ */
 export async function answerReplace(page, answer = 'Discard') {
   const dialog = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
   await dialog.waitFor();
-  await dialog.getByRole('button', { name: answer, exact: true }).click();
+  await dialog.getByRole('button', answer === 'Discard' ? { name: / anyway$/ } : { name: answer, exact: true }).click();
 }
 
 /** Open… a game file (`files` as for setFiles), through Browse… when Open… lists recent games first. */

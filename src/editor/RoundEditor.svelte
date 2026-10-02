@@ -630,7 +630,7 @@
       });
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
-    title="Scatter Daily Doubles at random. Click a tile to set one by hand.">🔀 Randomize</button>
+    title="Scatter Daily Doubles at random. To set one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick ⭐ Daily Double as its Type).">🔀 Randomize</button>
   <span class="hint">{dailyDoublesPlaced(round)} placed</span>
     </div>
   </div>
@@ -693,7 +693,7 @@
           bind:value={cat.title}
           class:sub={!!cat.image}
           rows={cat.image ? 1 : 2}
-          placeholder={cat.image ? 'Name (for you; optional on screen)' : 'Category name'}
+          placeholder={cat.image ? 'Name (for you; optional on screen)' : 'Type a name, or paste a column of clues'}
           aria-label="Category {ci + 1} name"
           data-cat-name={ci}
           use:autosize={cat.title}

@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerReplace, openRules } from './helpers.mjs';
+import { answerReplace, clickExportHtml, openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -53,12 +53,17 @@ try {
   assert(cards.length === 4 && cards[0] === cards[1] && cards[2] === cards[3] && cards[1] < cards[2], `the four mode cards sit two by two (${cards})`);
   assert((await page.locator('main').count()) === 1, 'one main landmark');
   // A game with no rounds isn't exported: the file couldn't be played (and has no ＋ Add round).
-  await page.getByRole('button', { name: 'Export HTML' }).click();
+  await clickExportHtml(page);
   await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();
   assert((await page.getByRole('dialog', { name: 'Name your game' }).count()) === 0, 'Export HTML with no rounds says to add one, and exports nothing');
 
   // ---------- Board values and focus ----------
+  assert((await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).innerText()).includes('📥 Import clues'), 'the Jeopardy board card mentions 📥 Import clues…');
   await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).click();
+  // The board's 💡 Tips are open the first time it's seen (and closed after that).
+  assert(await page.locator('details.tips').first().evaluate((d) => d.open), "the board's 💡 Tips open the first time");
+  assert((await page.evaluate(() => localStorage.getItem('jb.tips.board'))) === 'closed', '…and closed from then on');
+  assert((await page.locator('.cat textarea').first().getAttribute('placeholder')) === 'Type a name, or paste a column of clues', 'an empty category name says a column of clues can be pasted');
   await addRound(/Jeopardy board/);
   assert(
     await page.evaluate(() => { const a = document.activeElement; return a?.hasAttribute('data-round-name') && a.value === 'Double Jeopardy!' && a.selectionEnd - a.selectionStart === a.value.length; }),
@@ -127,6 +132,10 @@ try {
   await page.locator('[data-tile="5,4"]').click();
   await page.keyboard.press('Control+Enter');
   assert((await toastText()).includes('last clue'), `Ctrl+Enter on the last clue says it's the last (${await toastText()})`);
+  assert(
+    (await page.getByRole('button', { name: 'Next ▶' }).count()) === 0 && (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Done' }).innerText()).includes('✓'),
+    'on the last clue, Next ▶ becomes Done ✓ (one Done, which closes it)',
+  );
   await page.getByRole('button', { name: 'Done' }).click();
 
   // ---------- Import clues keeps what was pasted ----------

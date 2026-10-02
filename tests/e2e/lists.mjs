@@ -30,6 +30,9 @@ const texts = async (loc) => (await loc.allInnerTexts()).map((t) => t.trim());
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
+  // (📊 Stats & Items is in the sidebar once an RPG or board game round uses it.)
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /RPG/ }).click();
 
   // ---------- Stats ----------
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();

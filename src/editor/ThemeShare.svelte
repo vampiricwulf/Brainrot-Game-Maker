@@ -31,6 +31,7 @@
   import { addMedia, sameContent } from '../lib/roundcopy';
   import { copyText } from '../play/standings';
   import { pickOtherGame } from './roundtools';
+  import { inTauri } from '../lib/platform';
   import ThemeSwatch from './ThemeSwatch.svelte';
   import ThemeNameDialog from './ThemeNameDialog.svelte';
   import ThemeImportDialog from './ThemeImportDialog.svelte';
@@ -94,6 +95,9 @@
   // ---------- Saving ----------
 
   /** 💾 Save as new theme…: under a name, and the game's theme is that one from then on. */
+  /** Where My themes are kept: this browser's storage (or the desktop app's, on this computer). */
+  const here = inTauri() ? 'on this computer' : 'in this browser';
+
   function saveNew(): void {
     naming = {
       title: '💾 Save as new theme',
@@ -106,7 +110,10 @@
         const saved = next[next.length - 1];
         linkTo(saved.id, `Saved the theme as “${saved.name}”`);
         const fonts = usesUploadedFonts(game.theme);
-        toast(`Saved “${saved.name}” to My themes: use it in any game on this computer (pictures${fonts ? ' and uploaded fonts' : ''} stay with this game)`);
+        toast(
+          `Saved “${saved.name}” to My themes: use it in any game ${here} (pictures${fonts ? ' and uploaded fonts' : ''} stay with this game). ` +
+            `To take it to another ${inTauri() ? 'computer' : 'browser or computer'}, use ⬇ Export theme.`,
+        );
       },
     };
   }
@@ -311,7 +318,7 @@
         💾 Save changes to “{m.name}”
       </button>
     {/if}
-    <button class="small" onclick={saveNew} title="Keep this look in My themes under a new name, to use in any game on this computer">💾 Save as new theme…</button>
+    <button class="small" onclick={saveNew} title="Keep this look in My themes under a new name, to use in any game {here}">💾 Save as new theme…</button>
   </div>
   {#if origin?.kind === 'preset' && origin.edited}
     <p class="hint">Built-in themes stay as they are: Save as new theme… keeps this look in My themes.</p>
@@ -344,7 +351,7 @@
 </section>
 
 <section class="mine" aria-labelledby="my-themes-heading">
-  <h3 id="my-themes-heading">My themes <span class="where">· on this computer</span></h3>
+  <h3 id="my-themes-heading">My themes <span class="where">· {here}</span></h3>
   {#if list.length}
     <div class="cards">
       {#each list as m (m.id)}
@@ -367,7 +374,11 @@
       {/each}
     </div>
   {:else}
-    <p class="empty">No saved themes yet. <strong>💾 Save as new theme…</strong> keeps this game’s look here, to use in any game on this computer.</p>
+    <p class="empty">
+      No saved themes yet. <strong>💾 Save as new theme…</strong> keeps this game’s look here, to use in any game {here}. To bring one
+      in, use <strong>📂 Import theme…</strong> (a theme file someone sent) or <strong>📂 Use a theme from another game…</strong>
+      under Share below.
+    </p>
   {/if}
 </section>
 

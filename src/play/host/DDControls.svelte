@@ -105,7 +105,7 @@
         aria-pressed={playerId === p.id}
         onclick={() => pick(p.id)}
       >
-        {p.name} <span class="muted small">{formatPoints(score(session, p.id), sym)}</span>
+        {p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
     {/each}
   </div>
@@ -178,6 +178,15 @@
   }
   .small {
     font-size: 12px;
+  }
+  /* The score reads on the chip as it is: the muted grey on the outlined chip, the chip's own text color (bold) once the
+     chip is filled with the player's color. */
+  .score {
+    color: var(--muted);
+  }
+  .chip[aria-pressed='true'] .score {
+    color: inherit;
+    font-weight: 700;
   }
   .warn {
     color: var(--warn);

@@ -7,17 +7,20 @@
   let { player, size = 64, ring = true }: { player: { name: string; color: string; avatar?: string }; size?: number; ring?: boolean } = $props();
   const src = $derived(player.avatar ? mediaUrls[player.avatar] : undefined);
   const letters = $derived(initials(player.name));
+  /** Small tokens (a host's list, a chip): the plain UI font, so two initials stay two letters, not a condensed blob. */
+  const small = $derived(size < 48);
 </script>
 
 <span
   class="av"
   class:ring
+  class:small
   style:width="{size}px"
   style:height="{size}px"
   style:--c={player.color}
   style:background={src ? 'transparent' : player.color}
   style:color={textOn(player.color)}
-  style:font-size="{Math.round(size * 0.42)}px"
+  style:font-size="{Math.round(size * (small ? 0.4 : 0.42))}px"
   aria-hidden="true"
 >
   {#if src}<img {src} alt="" draggable="false" />{:else}{letters}{/if}
@@ -33,6 +36,11 @@
     font-family: 'Anton', 'Oswald', sans-serif;
     flex: none;
     box-sizing: border-box;
+  }
+  .av.small {
+    font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
   }
   .av.ring {
     border: max(2px, 0.06em) solid var(--c);

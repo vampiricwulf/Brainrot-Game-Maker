@@ -260,11 +260,14 @@
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   /** Why ＋ Award and − Deduct are off (their tooltip). */
   const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who answered first (1–${Math.min(9, session.players.length) || 9})`);
-  const awardLabel = $derived.by(() => {
-    if (selected.length !== 1) return `＋ Award${selected.length ? ` (${selected.length})` : ''}`;
+  /** ＋ Award / − Deduct name who and how much, alike ("＋ Award Bob +$200", "− Deduct Bob −$200"). */
+  const scoreLabel = (word: string, sign: string): string => {
+    if (selected.length !== 1) return `${word}${selected.length ? ` (${selected.length})` : ''}`;
     const p = session.players.find((x) => x.id === selected[0]);
-    return `＋ Award ${p?.name ?? ''}${amount ? ` +${formatPoints(Math.abs(amount), sym)}` : ''}`;
-  });
+    return `${word} ${p?.name ?? ''}${amount ? ` ${sign}${formatPoints(Math.abs(amount), sym)}` : ''}`;
+  };
+  const awardLabel = $derived(scoreLabel('＋ Award', '+'));
+  const deductLabel = $derived(scoreLabel('− Deduct', '−'));
 
   const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
   // The NEXT cell and the confirmation strip, filled by the parts in here too (see slots).
@@ -410,19 +413,30 @@
   <div class="status row" use:announceChanges>
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
+      <!-- (Says where the intro is, and nothing about picking tiles once none are left.) -->
       {#if session.intro}
-        <span class="muted">Round intro <span class="hint">· click the screen to go on</span></span>
+        {@const intro = session.intro}
+        {@const cats = round?.mode === 'board' ? round.categories.length : 0}
+        {#if intro.stage === 'categories' && cats}
+          <span class="muted"
+            >Revealing the categories: {Math.min(intro.revealed, cats)} of {cats}
+            <span class="hint">· {game.settings.roundIntro.categoryReveal === 'auto' ? 'they come up on their own' : 'click the screen (or N) for the next'}</span></span
+          >
+        {:else}
+          <span class="muted">Round intro <span class="hint">· click the screen (or N) to go on</span></span>
+        {/if}
+      {:else if done}
+        <span class="done">Round complete!</span>
       {:else}
         <span class="muted">Pick a tile on the board.</span>
       {/if}
-      {#if done}<span class="done">Round complete!</span>{/if}
-      {#if lastClosedRef && session.lastClosed}
+      {#if !session.intro && lastClosedRef && session.lastClosed}
         {@const id = session.lastClosed}
         <button class="small ghost" onclick={() => onreopen(id)} title="Put the last tile you closed back on the board">
           ↶ Reopen {clueName(game, lastClosedRef)}
         </button>
       {/if}
-      {#if used.length}
+      {#if !session.intro && used.length}
         <select
           class="small"
           aria-label="Reopen a used tile"
@@ -743,7 +757,7 @@
             {awardLabel} <kbd aria-hidden="true">⏎</kbd>
           </button>
           <button class="bad" disabled={!canAward || (session.phase === 'tiebreaker' && !amount)} onclick={() => onaward(-1)} title={canAward ? 'Shift+Enter' : awardWhyNot}>
-            − Deduct <kbd aria-hidden="true">⇧⏎</kbd>
+            {deductLabel} <kbd aria-hidden="true">⇧⏎</kbd>
           </button>
           <!-- (Buzzer mode: the buzzers' own things are on their row, above.) -->
           {#if selected.length && !buzzing}

@@ -258,6 +258,27 @@
       (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
   );
   let hideAgain = false;
+
+  /**
+   * 🙈 Hide: the controls go. In one window, the first time ever, a short note says how to bring them back (there's no
+   * button for it on screen until the mouse moves). Viewers see it for those few seconds too.
+   */
+  function hideByButton(): void {
+    hideAgain = false;
+    hideControls = true;
+    if (dual) return;
+    try {
+      if (localStorage.getItem('jb.hideHintSeen')) return;
+      localStorage.setItem('jb.hideHintSeen', '1');
+    } catch {
+      /* not kept: said again next time */
+    }
+    // (Not a toast: those stay off the stage while it's on air.)
+    hideNote = true;
+    setTimeout(() => (hideNote = false), 3500);
+  }
+  /** The note 🙈 Hide shows the first time: "Press H to bring the controls back". */
+  let hideNote = $state(false);
   $effect(() => {
     const need = needControls;
     untrack(() => {
@@ -2571,6 +2592,7 @@
     {/if}
     {#if hideControls}
       <button class="show-controls" class:shown={pointerMoved} onclick={() => ((hideAgain = false), (hideControls = false))} title="H">Show controls</button>
+      {#if hideNote}<div class="toast note-pill" role="status">Press H to bring the controls back</div>{/if}
     {:else}
       <HostPanel
         {game}
@@ -2636,7 +2658,7 @@
         onrolltie={rollTie}
         {phonesDown}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
-        onhide={() => ((hideAgain = false), (hideControls = true))}
+        onhide={hideByButton}
         onexit={exitGame}
       >
         {#snippet buzzExtra()}

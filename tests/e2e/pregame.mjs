@@ -229,7 +229,7 @@ try {
   // (A question's buttons ignore clicks right after it appears.)
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Leave', exact: true }).click();
-  await page.getByRole('button', { name: 'Export HTML' }).waitFor();
+  await page.getByRole('button', { name: /^More:/ }).waitFor();
 
   // ---------- An exported player-only file: no pointer to the editor's settings ----------
   const html = await exportHtml(page);

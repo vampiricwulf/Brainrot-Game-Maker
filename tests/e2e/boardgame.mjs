@@ -416,7 +416,7 @@ try {
   writeFileSync(boardFile, JSON.stringify(g));
   await openGameFile(page, boardFile);
   const replace = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
-  if (await replace.isVisible().catch(() => false)) await replace.getByRole('button', { name: 'Discard', exact: true }).click();
+  if (await replace.isVisible().catch(() => false)) await replace.getByRole('button', { name: / anyway$/ }).click();
   await page.getByText(/^Opened “/).waitFor();
   // Finish is low down (y 910), but the board is scaled into the room above the stats strip in play: no warning.
   assert(!(await page.locator('nav .problem', { hasText: 'stats strip' }).count()), 'the checklist no longer warns about spaces under the stats strip');

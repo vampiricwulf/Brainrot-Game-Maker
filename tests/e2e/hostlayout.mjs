@@ -70,8 +70,17 @@ try {
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.locator('.panel').waitFor();
-  // (Its categories are revealed with a click: skip that.)
-  if (await page.getByRole('button', { name: 'Skip intro' }).count()) await page.getByRole('button', { name: 'Skip intro' }).click();
+  // (Its categories are revealed with a click: the status line says where that's at, not "Pick a tile". Skip it.)
+  await page.getByRole('button', { name: 'Skip intro' }).waitFor();
+  const introStatus = await page.locator('.panel .status').innerText();
+  assert(/Revealing the categories: \d+ of \d+/.test(introStatus) && !introStatus.includes('Pick a tile'), `during the category reveal the status line says so (${introStatus.replace(/\s+/g, ' ')})`);
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  // 🙈 Hide in one window: the first time, a note says how to get the controls back.
+  await page.getByRole('button', { name: '🙈 Hide', exact: true }).click();
+  await page.locator('.toast', { hasText: 'Press H to bring the controls back' }).waitFor();
+  await page.keyboard.press('h');
+  await page.getByRole('button', { name: '🙈 Hide', exact: true }).waitFor();
+  assert(true, '🙈 Hide says “Press H to bring the controls back” the first time, and H does');
 
   const btn =(name) => page.locator('.panel .fixed').getByRole('button', { name, exact: true });
   const box = async (l) => {
@@ -123,9 +132,21 @@ try {
   assert((await page.locator('.panel .status').innerText()).includes('Daily Double: who found it, and their wager'), 'the status line says what the Daily Double screen wants (no lone “·”)');
   assert((await mainLabel(page)) === 'Show question ▶' && (await mainButton(page).isDisabled()), 'the Daily Double’s main button is Show question ▶, off until there’s a wager');
   await page.locator('.dd .chip', { hasText: 'Bob' }).click();
+  // (The picked chip is filled with the player's color: their score on it reads like their name.)
+  const ddScore = await page.locator('.dd .chip[aria-pressed="true"] .score').evaluate((el) => {
+    const rgb = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
+    const lum = (c) => {
+      const [r, g, b] = rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const [x, y] = [lum(getComputedStyle(el).color), lum(getComputedStyle(el.closest('.chip')).backgroundColor)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  });
+  assert(ddScore >= 4.5, `the Daily Double's picked player chip shows their score at ${ddScore.toFixed(2)}:1`);
   await page.locator('.dd input[type=number]').fill('100');
   await mainButton(page).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
+  assert((await page.getByRole('button', { name: /^− Deduct Bob/ }).count()) === 1, '− Deduct names the player, like ＋ Award (− Deduct Bob)');
   states.ddQuestion = await look();
   // Its player is picked (＋ Award Bob is ready), but there are slides still to show: Next slide ▶ is the main button.
   assert(

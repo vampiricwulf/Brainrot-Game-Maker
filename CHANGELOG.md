@@ -14,6 +14,31 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-02
 
 ### Changed
+- **Opening a game over unsaved changes says what really happens**: the button is **Open anyway** (or **Reopen anyway**,
+  **Start new anyway**), not "Discard", and the note says the game you leave is kept in this browser, where Open… →
+  Recent games brings it back. With the browser's storage full it says going on loses it.
+- **⬇ Export HTML moved into the header's ⋯ menu as "⬇ Export as a web page…"**, which says what it's for (one file that
+  plays the game in any browser, without this app). Beside Save it read like the way to host the game. While it
+  exports, the header says "Exporting the web page…".
+- **Open… lists Recent games and Saved files apart**: Recent games are the games New and Open… replaced (kept in this
+  browser), and **Saved files: Browse…** opens a game file you saved or were sent.
+- **🎨 Theme: an empty My themes points to 📂 Import theme… and 📂 Use a theme from another game…**, and saving a theme
+  says it's kept in this browser (⬇ Export theme takes it to another one).
+- **The sidebar's Tiebreaker shows as "＋ Tiebreaker (optional)"**, muted and dashed, until it's turned on (it looked
+  like a round of every new game).
+- **📊 Stats & Items is in the sidebar once there's an RPG or board game round** (or stats, items or shops in the game):
+  a game of Jeopardy rounds doesn't use them.
+- **Clue editor: on the last clue, Next ▶ becomes Done ✓**, which closes it (it used to just grey out).
+- **💡 Tips are open the first time you see each editor page** (the board, the slide editor, board images, the RPG map,
+  the board game), and closed after that unless you open them.
+- **An empty category name says "Type a name, or paste a column of clues"**, and the Jeopardy board card under "Add your
+  first round" mentions 📥 Import clues… for clues already in a spreadsheet.
+- **Host panel: − Deduct names the player and amount like ＋ Award** ("− Deduct Bob −$200").
+- **The 4th default player color is a brighter blue** (it was navy, which vanished on the Classic theme's blue tiles and
+  dark score bar). Games keep the colors they were saved with.
+- **Avatars with initials read at small sizes**: under 48 px they use the plain UI font, not the condensed display font
+  that made two letters a blob.
+- **Phones: the 🔔 button in the header says "Sound on" or "Muted"**, with a tooltip saying what a tap does.
 - **Board games: space names are hidden from viewers unless you tick "Show name on the board"** for that space, in
   the editor's space card or in ✎ Edit board during play (or right-click a space: 👁 Show name / ⊘ Hide name). This
   applies to games made before too, so their names disappear from the stage until you show them; **Names on the board:
@@ -44,6 +69,15 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Randomize Daily Doubles' tooltip gave the wrong way to set one by hand**: it said to click a tile (that opens the
+  clue); it now says right-click a tile → ⭐ Make it a Daily Double.
+- **Host panel: the status line during the category reveal said "Round intro"** with no progress; it now says
+  "Revealing the categories: 2 of 6" and how to go on. On a cleared board it says "Round complete!" without "Pick a
+  tile on the board", and the ↶ Reopen controls wait until the intro is over.
+- **Daily Double: the picked player's score was hard to read** on their colored chip; it's in the chip's own text color
+  now.
+- **Single window: 🙈 Hide left no hint of how to get the controls back**; the first time, a short note says "Press H to
+  bring the controls back".
 - **Slide editor: Undo and the 🕘 History name what was done to the items**: a paste of a text box and two shapes was
   "Added 3 text boxes", a duplicate "Added shape", Cut "Deleted…", lining up "Moved shape" (just the one that moved),
   locking several "4 changes" and a restack "Restacked items". Now: "Pasted 3 items", "Duplicated shape “Star”", "Cut 2

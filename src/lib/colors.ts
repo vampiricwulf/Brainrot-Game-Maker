@@ -5,7 +5,7 @@ export const PLAYER_PALETTE = [
   '#e6194b', // red
   '#56b4e9', // sky blue
   '#f0e442', // yellow
-  '#1f3a93', // navy
+  '#4f7cff', // cornflower blue (not navy: that vanished on the Classic blue tiles and the dark score bars)
   '#d55e00', // orange (vermillion)
   '#f2f2f2', // white
   '#009e73', // bluish green

@@ -98,8 +98,8 @@ try {
   await replacing.waitFor();
   foot = await footer(replacing);
   assert(
-    foot.dom.join('|') === 'Cancel|Discard|Save first' && foot.visual.join('|') === 'Cancel|Discard|Save first',
-    `Start a new game?: Cancel first, Discard, then Save first rightmost (${foot.visual.join(' · ')})`,
+    foot.dom.join('|') === 'Cancel|Start new anyway|Save first' && foot.visual.join('|') === 'Cancel|Start new anyway|Save first',
+    `Start a new game?: Cancel first, Start new anyway, then Save first rightmost (${foot.visual.join(' · ')})`,
   );
   await replacing.getByRole('button', { name: 'Cancel' }).click();
 
@@ -178,8 +178,15 @@ try {
 
   // ---------- Landmarks and headings ----------
   assert((await page.getByRole('main').getByRole('heading', { level: 1 }).count()) === 1, 'the editor has a main part with a heading naming the game');
+  // 📊 Stats & Items shows up once an RPG or board game round is there to use it.
+  assert((await page.getByRole('button', { name: '📊 Stats & Items' }).count()) === 0, 'a game of Jeopardy boards has no 📊 Stats & Items in the sidebar');
+  const roundTabs = await page.locator('nav > button.round-tab').count();
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, 'Stats & Items has no empty lists (nothing added yet)');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, roundTabs);
 
   // ---------- In-app questions ----------
   // A game in progress, then ▶ Play again: the app asks in its own window, with the focus on the safe answer.

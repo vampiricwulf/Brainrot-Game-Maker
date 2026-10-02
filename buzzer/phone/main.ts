@@ -582,7 +582,11 @@ function flash(): void {
 
 function drawSound(): void {
   const b = $('sound');
-  b.textContent = soundOn ? '🔔' : '🔕';
+  // The bell and a word for its state (a bare bell didn't say what it was), and a tooltip saying what a tap does.
+  const word = document.createElement('small');
+  word.textContent = soundOn ? 'Sound on' : 'Muted';
+  b.replaceChildren(soundOn ? '🔔 ' : '🔕 ', word);
+  b.title = soundOn ? 'Sound is on: tap to mute this phone' : 'Sound is off: tap to hear the buzzer sounds on this phone';
   // One name, and the button's pressed state says whether it's on (a label that changes too would say it twice).
   b.setAttribute('aria-label', 'Sound');
   b.setAttribute('aria-pressed', String(soundOn));

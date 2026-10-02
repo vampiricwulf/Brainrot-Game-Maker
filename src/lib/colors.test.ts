@@ -60,6 +60,13 @@ describe('player colors for colour-blind viewers', () => {
     expect(colorDistance('#e6194b', '#3cb44b')).toBeGreaterThan(50);
   });
 
+  it('the first 8 stand out on the Classic theme (its blue tiles and dark score bar), none a navy that vanishes there', () => {
+    for (const c of PLAYER_PALETTE.slice(0, CVD_SAFE_UPTO)) {
+      expect(contrast(c, '#060ce9')).toBeGreaterThanOrEqual(1.5);
+      expect(contrast(c, '#050835')).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it('has 12 different colors', () => {
     expect(new Set(PLAYER_PALETTE).size).toBe(12);
   });

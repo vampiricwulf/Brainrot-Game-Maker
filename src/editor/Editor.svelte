@@ -80,6 +80,10 @@
   // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
   let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
   const game = $derived(app.game);
+  /** 📊 Stats & Items in the sidebar: once an RPG or board game round uses it, or it has anything in it (or it's open). */
+  const showStats = $derived(
+    tab === 'stats' || game.rounds.some((r) => r.mode === 'rpg' || r.mode === 'boardgame') || !!game.statFields?.length || !!game.items?.length || !!game.shops?.length,
+  );
   /** The round tab last open (🎨 Theme previews it). */
   let lastRound = $state(0);
   $effect(() => {
@@ -330,20 +334,20 @@
   // ---------- New, Open… and recent games ----------
   // The browser keeps one game at a time, so a game that New, Open… or a recent game replaces is kept in Recent games
   // (recent.ts) with its undo history: Open… lists them, and a note offers to reopen it at once. A game with changes
-  // that aren't saved to a file asks first: Save first, Discard or Cancel. A game with nothing in it asks nothing.
+  // that aren't saved to a file asks first: Save first, Open anyway (it's kept in Recent games) or Cancel. A game with nothing in it asks nothing.
 
   /** The question being asked before this game is replaced (null: none). */
-  let asking = $state<{ heading: string; title: string; answer: (c: ReplaceChoice) => void } | null>(null);
+  let asking = $state<{ heading: string; title: string; go: string; answer: (c: ReplaceChoice) => void } | null>(null);
   /** The game just replaced, which "↶ Reopen previous game" brings back (null: no note), and kept games that made room. */
   let previous = $state<{ key: string; title: string; dropped?: string[] } | null>(null);
 
   /** Counts the questions asked, so an older one answered late doesn't close a newer one. */
   let asked = 0;
-  /** Discard was picked while told that storage is full (so the game is lost): replaceGame doesn't ask again. */
+  /** "… anyway" was picked while told that storage is full (so the game is lost): replaceGame doesn't ask again. */
   let lossAccepted = false;
 
   /** May this game be replaced? Asks when it has changes not saved to a file (and saves it first if told to). */
-  async function mayReplace(heading: string): Promise<boolean> {
+  async function mayReplace(heading: string, go: string): Promise<boolean> {
     // Typing not yet made a step (it becomes one after a pause) counts as a change too.
     commit();
     lossAccepted = false;
@@ -353,7 +357,7 @@
     // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
     asking?.answer('cancel');
     const mine = ++asked;
-    const choice = await new Promise<ReplaceChoice>((answer) => (asking = { heading, title: game.title.trim() || 'Untitled Game', answer }));
+    const choice = await new Promise<ReplaceChoice>((answer) => (asking = { heading, title: game.title.trim() || 'Untitled Game', go, answer }));
     if (mine === asked) asking = null;
     if (choice === 'save') return save();
     lossAccepted = choice === 'discard' && !app.storageOk;
@@ -411,7 +415,7 @@
   }
 
   async function newFile(): Promise<void> {
-    if (await mayReplace('Start a new game?')) await replaceGame(newGame(), { kind: 'new', label: 'New game' });
+    if (await mayReplace('Start a new game?', 'Start new')) await replaceGame(newGame(), { kind: 'new', label: 'New game' });
   }
 
   /** Bring back a game from Recent games, with its undo history (this game takes its place there). */
@@ -423,7 +427,7 @@
       await forgetRecent(entry.key);
       return void tell(`“${entry.title}” is no longer kept in this browser.`);
     }
-    if (!(await mayReplace(`Reopen “${entry.title}”?`))) return;
+    if (!(await mayReplace(`Reopen “${entry.title}”?`, 'Reopen'))) return;
     // Brought up to date if an older version kept it; its history goes on only if that changed nothing.
     const plain = JSON.stringify(kept.draft);
     const g = migrateGame(kept.draft);
@@ -513,7 +517,7 @@
     } catch (e) {
       return void tell((e as Error).message);
     }
-    if (!(await mayReplace(`Open “${file.name}”?`))) return;
+    if (!(await mayReplace(`Open “${file.name}”?`, 'Open'))) return;
     if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` }, undefined, undefined, read)) toast(`Opened “${opened.title}”`);
   }
 
@@ -589,7 +593,7 @@
   /** Games already asked for a name (asked once: "Untitled Game" is a fine name if the host says so). */
   const named = new Set<string>();
 
-  /** The first Save (or Export HTML) of an untitled game asks for its name, once. False when that was cancelled. */
+  /** The first Save (or Export as a web page) of an untitled game asks for its name, once. False when that was cancelled. */
   async function askName(): Promise<boolean> {
     if ((game.title.trim() && game.title.trim() !== 'Untitled Game') || named.has(game.id)) return true;
     const name = await new Promise<string | null>((answer) => (naming = answer));
@@ -657,6 +661,12 @@
   /** The header's ⋯ menu: what isn't needed every few minutes, so the header fits at 125% and 150% zoom. */
   function moreMenu(e: MouseEvent): void {
     dropMenu(e, [
+      {
+        label: '⬇ Export as a web page…',
+        hint: 'One .html file that plays this game in any browser, without this app: to share it, or to play it on another computer. It shows the answers, so keep it to yourself until the show.',
+        disabled: exporting,
+        onclick: exportHtml,
+      },
       { label: '{ } Export JSON', hint: 'Text only, no media. Handy for hand-editing.', onclick: exportJson },
       { sep: true },
       { label: '⚙ Settings', hint: 'Autosaves, how Save names files, how much undo to remember, motion on stream', onclick: () => (settings = true) },
@@ -717,10 +727,10 @@
     >
       <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}
     </button>
-    <button onclick={exportHtml} disabled={exporting} title="One HTML file to host this game from, with everything inside (it shows the answers: keep it to yourself)">
-      <span aria-hidden="true">⬇</span> {exporting ? `Exporting…${packPct !== null ? ` ${packPct}%` : ''}` : 'Export HTML'}
-    </button>
     <span class="spacer"></span>
+    {#if exporting}
+      <span class="muted autosave" role="status">⬇ Exporting the web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
+    {/if}
     {#if app.storageOk}
       <span
         class="muted autosave saved"
@@ -734,7 +744,7 @@
       </span>
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
-    <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export JSON, Settings, Keyboard shortcuts, About" title="Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, ℹ About">⋯</button>
+    <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, ℹ About'}>⋯</button>
     <button class="primary play" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
@@ -782,7 +792,7 @@
       onclose={() => (recentList = null)}
     />
   {/if}
-  {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} full={!app.storageOk} onchoice={asking.answer} />{/if}
+  {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} go={asking.go} full={!app.storageOk} onchoice={asking.answer} />{/if}
   {#if naming}<NameDialog onname={naming} />{/if}
   {#if previous}
     {@const prev = previous}
@@ -858,10 +868,17 @@
           </button>
         {/if}
       {/each}
-      <!-- Played after the rounds, when the game ends in a tie (once there's a round for it to follow). -->
+      <!-- Played after the rounds, when the game ends in a tie (once there's a round for it to follow). Until it's
+           turned on it's an optional extra, not a round: muted, with a ＋. -->
       {#if game.rounds.length || game.tiebreaker}
-        <button class:active={tab === 'tiebreaker'} aria-current={tab === 'tiebreaker' ? 'page' : undefined} onclick={() => (tab = 'tiebreaker')} title="Played after the last round when players tie for the win">
-          <span aria-hidden="true">🤝</span> Tiebreaker{game.tiebreaker ? '' : ' (off)'}
+        <button
+          class:active={tab === 'tiebreaker'}
+          class:optional={!game.tiebreaker}
+          aria-current={tab === 'tiebreaker' ? 'page' : undefined}
+          onclick={() => (tab = 'tiebreaker')}
+          title={game.tiebreaker ? 'Played after the last round when players tie for the win' : 'Optional: a clue played after the last round when players tie for the win (off)'}
+        >
+          {#if game.tiebreaker}<span aria-hidden="true">🤝</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Tiebreaker <span class="opt">(optional)</span>{/if}
         </button>
       {/if}
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
@@ -869,7 +886,10 @@
       <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
       <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} aria-current={tab === 'tools' ? 'page' : undefined} onclick={() => (tab = 'tools')}>🎡 Wheels & Dice</button>
-      <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG rounds)">📊 Stats & Items</button>
+      <!-- (Only RPG and board game rounds use stats and items: shown once there's one, or anything in it.) -->
+      {#if showStats}
+        <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG and board game rounds)">📊 Stats & Items</button>
+      {/if}
       <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
       <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
@@ -949,6 +969,7 @@
                   <span class="icon" aria-hidden="true">{m.icon}</span>
                   <b>{m.label}</b>
                   <span class="muted small">{m.hint}</span>
+                  {#if mode === 'board'}<span class="muted small">Clues in a spreadsheet already? <b>📥 Import clues…</b> on the board brings them in.</span>{/if}
                 </button>
               {/each}
             </div>
@@ -1116,6 +1137,15 @@
     background: var(--accent-fill);
     border-color: var(--accent-fill);
     color: #fff;
+  }
+  /* The Tiebreaker before it's turned on: an optional extra, not a round. */
+  nav > button.optional:not(.active) {
+    background: transparent;
+    border-style: dashed;
+    color: var(--muted);
+  }
+  nav > button .opt {
+    font-size: 12px;
   }
   .round-tab.lifted {
     opacity: 0.5;

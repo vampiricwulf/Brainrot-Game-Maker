@@ -100,7 +100,7 @@
       {#if folders}
         <div class="folder">
           <div>
-            <div class="what">Your saves (Save, Export JSON, Export HTML, autosaves)</div>
+            <div class="what">Your saves (Save, Export as a web page, Export JSON, autosaves)</div>
             <code>{folders.saves?.path ?? 'unknown'}</code>
             {#if !folders.saves?.exists}<div class="hint">Made the first time you save.</div>{/if}
             {#if folders.savesDocuments?.exists}

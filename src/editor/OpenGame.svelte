@@ -1,5 +1,5 @@
-<!-- Open…: the games New and Open… replaced lately (kept in this browser, with their undo history), and Browse… for a
-     game file (an exported .html too; in the desktop app, a .bak backup) in its footer. In the desktop app,
+<!-- Open…: the games New and Open… replaced lately (kept in this browser, with their undo history), and under "Saved
+     files", Browse… for a game file (an exported .html too; in the desktop app, a .bak backup). In the desktop app,
      BrainrotSaves… lists the saves and exported games (OpenSaves). -->
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -38,15 +38,12 @@
       <h2 class="modal-title" id="open-heading">📂 Open a game</h2>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
+    <h3 class="sec" id="open-recent">Recent games</h3>
     <p class="hint">
-      Recent games: the last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo
-      history. They're kept in this browser only, so use Save for a copy that lasts.
+      The last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo history. They're
+      kept in this browser only (not your saved files), so use Save for a copy that lasts.
     </p>
-    <p class="hint">
-      Browse… opens a game file: a .brainrot, a .json, an exported .html game, or an older version the desktop app's Save
-      kept (Game.brainrot.bak).{saves ? ' BrainrotSaves… lists your saves and exported games.' : ''}
-    </p>
-    <div class="list" bind:this={list}>
+    <div class="list" role="group" aria-labelledby="open-recent" bind:this={list}>
       {#each recent as e (e.key)}
         <div class="game">
           <button class="pick" onclick={() => onreopen(e)}>
@@ -64,11 +61,17 @@
         </div>
       {/each}
     </div>
+    <h3 class="sec" id="open-files">Saved files</h3>
+    <div class="files" role="group" aria-labelledby="open-files">
+      <p class="hint">
+        A game you saved or were sent: a .brainrot, a .json, an exported .html game, or an older version the desktop app's Save
+        kept (Game.brainrot.bak).{saves ? ' BrainrotSaves… lists your saves and exported games.' : ''}
+      </p>
+      {#if saves}<button onclick={onsaves}>BrainrotSaves…</button>{/if}
+      <button onclick={onbrowse} title="Pick a game file on this computer">Browse…</button>
+    </div>
     <div class="modal-foot">
       <button class="ghost" onclick={onclose}>Cancel</button>
-      <span class="spacer"></span>
-      {#if saves}<button onclick={onsaves}>BrainrotSaves…</button>{/if}
-      <button onclick={onbrowse}>Browse…</button>
     </div>
   </div>
 </div>
@@ -85,6 +88,22 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+  .sec {
+    margin: 12px 0 2px;
+    font-size: 1rem;
+  }
+  .files {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .files .hint {
+    flex: 1;
+    margin: 0;
+  }
+  .files button {
+    flex: none;
   }
   .pick {
     flex: 1;
