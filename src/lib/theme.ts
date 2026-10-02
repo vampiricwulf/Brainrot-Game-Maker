@@ -36,6 +36,162 @@ export interface Theme {
   clueColor?: string;
   /** For OBS's chroma key: a flat green or magenta around the stage, behind the board and in the scores-only view. */
   stageBg?: 'green' | 'magenta';
+
+  // ----- More looks (all optional: a game without them looks exactly as before) -----
+  /** Alternating tiles: every other tile (checkerboard), every other row or column takes `tile2`. */
+  tilePattern?: TilePattern;
+  /** The alternating tiles' color. */
+  tile2?: string;
+  /** Tiles fade from their color to this one (at `tileAngle`). */
+  tileGradient?: string;
+  /** The tiles' (and the category headers') gradient direction, in degrees (180: top to bottom). */
+  tileAngle?: number;
+  /** The line inside each tile's edge (default a 35% black, 3px). */
+  tileBorder?: string;
+  tileBorderWidth?: number;
+  /** Rounded tile corners (stage px; 0 by default). */
+  tileRadius?: number;
+  /** How far the tile glow spreads (stage px; 18 by default). */
+  glowSize?: number;
+  /** A soft drop shadow under each tile. */
+  tileShadow?: boolean;
+  /** The values' shadow: a hard offset one (the default), a soft blur, or none. */
+  valueShadow?: 'soft' | 'none';
+  /** Played tiles: in the used-tile color (the default), a darkened tile, or gone (the background shows). */
+  usedLook?: 'dim' | 'hidden';
+  /** Space between tiles and around the board (stage px; 10 by default). */
+  tileGap?: number;
+  /** Category headers' color (default: the tile color). */
+  headerBg?: string;
+  /** Every other category header takes this color. */
+  header2?: string;
+  /** Category headers fade to this color (at `tileAngle`). */
+  headerGradient?: string;
+  /** The line under the category headers (default black; 'none': no line). */
+  headerLine?: string;
+  /** Score plates' corners: rounded (the default), square or pill. */
+  plateShape?: 'square' | 'pill';
+  /** The plate of the player in the lead glows. */
+  leaderGlow?: boolean;
+  /** The board's background fades from the line color to this one (at `bgAngle`). */
+  bgGradient?: string;
+  bgAngle?: number;
+}
+
+export type TilePattern = 'checker' | 'rows' | 'columns';
+
+/** The optional looks above: a preset takes them all off, and a saved theme brings its own (or none). */
+export const EXTRA_LOOKS = [
+  'tilePattern',
+  'tile2',
+  'tileGradient',
+  'tileAngle',
+  'tileBorder',
+  'tileBorderWidth',
+  'tileRadius',
+  'glowSize',
+  'tileShadow',
+  'valueShadow',
+  'usedLook',
+  'tileGap',
+  'headerBg',
+  'header2',
+  'headerGradient',
+  'headerLine',
+  'plateShape',
+  'leaderGlow',
+  'bgGradient',
+  'bgAngle',
+] as const satisfies readonly (keyof Theme)[];
+
+/** The defaults of the numbers above (and what they may be). */
+export const LOOK_RANGES = {
+  tileAngle: { min: 0, max: 360, def: 180 },
+  bgAngle: { min: 0, max: 360, def: 180 },
+  tileBorderWidth: { min: 0, max: 20, def: 3 },
+  tileRadius: { min: 0, max: 60, def: 0 },
+  glowSize: { min: 0, max: 60, def: 18 },
+  tileGap: { min: 0, max: 40, def: 10 },
+} as const;
+export type Ranged = keyof typeof LOOK_RANGES;
+
+/** A theme number, within its range (its default when it's unset or not a number). */
+export function lookNumber(t: Partial<Theme> | undefined, k: Ranged): number {
+  const r = LOOK_RANGES[k];
+  const v = t?.[k];
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(r.max, Math.max(r.min, Math.round(v))) : r.def;
+}
+
+/**
+ * A color a theme may hold: #hex, rgb()/hsl() with plain numbers, or a color name. Anything else (it goes into a
+ * style) isn't one.
+ */
+export function isThemeColor(c: unknown): c is string {
+  return (
+    typeof c === 'string' &&
+    c.length <= 60 &&
+    (/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c) || /^(?:rgba?|hsla?)\([\d\s.,%/-]+\)$/i.test(c) || /^[a-z]{3,24}$/i.test(c))
+  );
+}
+
+/** A CSS font list a theme may hold: font names, quotes, commas and spaces only. */
+export function isThemeFont(f: unknown): f is string {
+  return typeof f === 'string' && f.length > 0 && f.length <= 200 && /^[\p{L}\p{N}\s'",._-]+$/u.test(f);
+}
+
+/** Is a tile (row, column) one of the alternating ones? */
+export function altTile(pattern: TilePattern | undefined, row: number, col: number): boolean {
+  if (pattern === 'checker') return (row + col) % 2 === 1;
+  if (pattern === 'rows') return row % 2 === 1;
+  if (pattern === 'columns') return col % 2 === 1;
+  return false;
+}
+
+/** Is a category header (by its column) one of the alternating ones? */
+export const altHeader = (t: Partial<Theme> | undefined, col: number): boolean => !!t?.header2 && isThemeColor(t.header2) && col % 2 === 1;
+
+/** A color, or a fade from it to `to` at `angle` degrees. */
+const fill = (from: string, to: string | undefined, angle: number) => (to && isThemeColor(to) ? `linear-gradient(${angle}deg, ${from}, ${to})` : from);
+const color = (c: string | undefined, def: string) => (c && isThemeColor(c) ? c : def);
+
+/** A tile's background (row and column on its board): its color or the alternating one, faded when set. */
+export function tileBackground(t: Theme, row: number, col: number): string {
+  const base = altTile(t.tilePattern, row, col) ? color(t.tile2, t.tile) : t.tile;
+  return fill(base, t.tileGradient, lookNumber(t, 'tileAngle'));
+}
+
+/** A category header's background (by its column). */
+export function headerBackground(t: Theme, col: number): string {
+  const base = altHeader(t, col) ? t.header2! : color(t.headerBg, t.tile);
+  return fill(base, t.headerGradient, lookNumber(t, 'tileAngle'));
+}
+
+/**
+ * The CSS variables of the optional looks. Without them each is what the board, the headers and the plates always
+ * had (Board.svelte, ScoreBar.svelte and AudienceView.svelte read them), so an older game looks the same.
+ */
+export function lookVars(t: Theme): Record<string, string> {
+  const angle = lookNumber(t, 'tileAngle');
+  const tileBg = fill(t.tile, t.tileGradient, angle);
+  const header = fill(color(t.headerBg, t.tile), t.headerGradient, angle);
+  const value =
+    t.valueShadow === 'none' ? 'none' : t.valueShadow === 'soft' ? '0 0 14px var(--tile-shadow, #000), 0 0 4px var(--tile-shadow, #000)' : '5px 5px 0 var(--tile-shadow, #000)';
+  return {
+    '--tile-bg': tileBg,
+    '--tile-bg-2': t.tilePattern ? fill(color(t.tile2, t.tile), t.tileGradient, angle) : tileBg,
+    '--tile-used-bg': t.usedLook === 'hidden' ? 'transparent' : t.tileUsed,
+    '--tile-border-width': `${lookNumber(t, 'tileBorderWidth')}px`,
+    '--tile-border-color': color(t.tileBorder, 'rgba(0, 0, 0, 0.35)'),
+    '--tile-radius': `${lookNumber(t, 'tileRadius')}px`,
+    '--tile-drop': t.tileShadow ? '0 10px 18px rgba(0, 0, 0, 0.6)' : '0 0 0 transparent',
+    '--tile-gap': `${lookNumber(t, 'tileGap')}px`,
+    '--value-shadow': value,
+    '--header-bg': header,
+    '--header-bg-2': t.header2 && isThemeColor(t.header2) ? fill(t.header2, t.headerGradient, angle) : header,
+    '--header-line': t.headerLine === 'none' ? '0 solid transparent' : `6px solid ${color(t.headerLine, '#000')}`,
+    '--plate-radius': t.plateShape === 'square' ? '0px' : t.plateShape === 'pill' ? '48px' : '14px',
+    '--board-bg': fill(t.boardGap, t.bgGradient, lookNumber(t, 'bgAngle')),
+  };
 }
 
 /** The chroma-key colors (OBS's Chroma Key filter's own presets). */
@@ -115,9 +271,10 @@ export function presetTheme(p: ThemePreset): Theme {
 /** What a preset sets: its colors and fonts (applying one keeps the images and where the score bar goes). */
 const PRESET_LOOK = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'stageText', 'boardFont', 'valueFont', 'glow', 'scoreBarBg'] as const;
 
-/** Some of the theme's colors or fonts no longer match its preset. */
+/** Some of the theme's colors or fonts no longer match its preset, or it has looks no preset has. */
 export function presetEdited(t: Theme): boolean {
   const p = PRESETS[t.preset]?.theme;
+  if (p && EXTRA_LOOKS.some((k) => t[k] !== undefined)) return true;
   return !!p && PRESET_LOOK.some((k) => (k === 'stageText' ? stageText(t) : t[k]).toLowerCase() !== (p[k] ?? '').toLowerCase());
 }
 
@@ -146,7 +303,7 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     '--board-font': th.boardFont,
     '--value-font': th.valueFont,
     '--glow': th.glow === 'none' ? 'transparent' : th.glow,
-    '--glow-size': th.glow === 'none' ? '0px' : '18px',
+    '--glow-size': th.glow === 'none' ? '0px' : `${lookNumber(th, 'glowSize')}px`,
     '--scorebar-bg': th.scoreBarBg,
     // The bar darkens a little towards the foot, never to black (a pastel bar stays pastel on a compressed stream).
     '--scorebar-end': `color-mix(in srgb, ${th.scoreBarBg} 72%, #000)`,
@@ -156,6 +313,7 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     // The Daily Double splash is purple: the value color on it, unless that's too close (Pastel's purple), then white.
     '--dd-text': contrast(th.value, '#7a00ff') >= 3 ? th.value : '#ffffff',
     '--board-image': boardImageUrl ? cssUrl(boardImageUrl) : 'none',
+    ...lookVars(th),
   };
   return Object.entries(vars)
     .map(([k, v]) => `${k}: ${v}`)

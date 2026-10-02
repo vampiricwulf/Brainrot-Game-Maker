@@ -69,6 +69,14 @@ export function textOn(bg: string): string {
   return contrast(bg, '#000') > contrast(bg, '#fff') ? '#000' : '#fff';
 }
 
+/** `a` mixed with `b` (`amount` of b, 0 … 1) as #rrggbb; `a` itself when either isn't a #hex color. */
+export function mixHex(a: string, b: string, amount: number): string {
+  const x = parseHex(a);
+  const y = parseHex(b);
+  if (!x || !y) return a;
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * amount).toString(16).padStart(2, '0')).join('');
+}
+
 /** Colour vision as simulated (Machado et al. 2009, full strength), in linear RGB. */
 export type Vision = 'normal' | 'deutan' | 'protan';
 const CVD: Record<Exclude<Vision, 'normal'>, number[][]> = {

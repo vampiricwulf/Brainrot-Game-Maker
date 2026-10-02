@@ -1,0 +1,206 @@
+// Themes: more looks (alternating tiles and category colors…) on the board, in the audience window and in an exported
+// HTML file; my themes saved on this computer (kept after a reload, used in another game, renamed, deleted); a theme
+// exported as a .brainrot-theme file and imported again; a theme code copied and pasted; and bad files and codes refused.
+import { chromium } from 'playwright-core';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { addClassicRounds, answerReplace, exportHtml, playWithPlayers } from './helpers.mjs';
+
+const file = resolve(process.env.APP_FILE || 'dist/index.html');
+if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+const shots = process.env.SHOTS;
+if (shots) mkdirSync(shots, { recursive: true });
+const browser = await chromium.launch({ executablePath });
+const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+const page = await context.newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+page.on('dialog', (d) => d.accept());
+function assert(cond, msg) {
+  if (!cond) throw new Error('Assertion failed: ' + msg);
+  console.log('  ✓ ' + msg);
+}
+const shot = (name, p = page) => shots && p.screenshot({ path: `${shots}/${name}.png` });
+const RED = 'rgb(255, 0, 0)';
+const CLASSIC_TILE = 'rgb(6, 12, 233)';
+/** A board's tile background (row, column) in `where` (the Theme page's preview, the stage…). */
+const bg = (where, row, cat) => where.locator(`.board .tile[data-row="${row}"][data-cat="${cat}"]`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
+const headerBg = (where, cat) => where.locator('.board .header').nth(cat).evaluate((e) => getComputedStyle(e).backgroundColor);
+const preview = page.locator('.preview');
+const themePage = () => page.getByRole('button', { name: '🎨 Theme' }).click();
+const card = (name) => page.locator('.mine .card', { hasText: name });
+const lastToast = () => page.locator('.toast').last().innerText();
+/** Past the round's intro, to the board. */
+async function skipIntro(p) {
+  await p.getByRole('button', { name: 'Skip intro' }).click();
+  await p.locator('.board .tile').first().waitFor();
+}
+async function openSection(name) {
+  const d = page.locator('details.sec', { has: page.locator('summary', { hasText: name }) });
+  if (!(await d.evaluate((e) => e.open))) await d.locator('summary').click();
+}
+
+try {
+  await page.goto(pathToFileURL(file).href);
+  await addClassicRounds(page);
+  await themePage();
+
+  // ---------- A plain game looks as it always did ----------
+  // (Row 1: the preview plays every other category's first tile.)
+  assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await bg(preview, 1, 1)) === CLASSIC_TILE, 'a game without the new looks: every tile the tile color');
+  const plainShadow = await preview.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).boxShadow);
+  assert(plainShadow.includes('rgba(0, 0, 0, 0.35)') && plainShadow.includes('3px'), `and the same dark 3px edge inside each tile (${plainShadow})`);
+
+  // ---------- Alternating tiles and categories ----------
+  await openSection('Tiles');
+  await page.getByRole('combobox', { name: 'Alternating tiles' }).selectOption('checker');
+  await page.getByLabel('Second tile color').fill('#ff0000');
+  assert((await bg(preview, 1, 0)) === RED && (await bg(preview, 1, 1)) === CLASSIC_TILE, 'checkerboard: two tiles side by side take the two colors');
+  assert((await bg(preview, 2, 0)) === CLASSIC_TILE && (await bg(preview, 2, 1)) === RED, 'and the next row the other way round');
+  await page.getByRole('combobox', { name: 'Alternating tiles' }).selectOption('columns');
+  assert((await bg(preview, 1, 1)) === RED && (await bg(preview, 2, 1)) === RED && (await bg(preview, 2, 0)) === CLASSIC_TILE, 'by column: every other column');
+  await page.getByRole('combobox', { name: 'Alternating tiles' }).selectOption('checker');
+  await page.getByRole('combobox', { name: 'Played tiles' }).selectOption('hidden');
+  const played = await preview.locator('.board .tile.used').first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  assert(played === 'rgba(0, 0, 0, 0)', `played tiles can be hidden (${played})`);
+  await page.getByLabel('Rounded corners (0)').fill('20');
+  assert((await preview.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'rounded tile corners');
+  await openSection('Categories');
+  await page.getByLabel('Alternate colors').check();
+  await page.getByLabel('Second category color').fill('#00ff00');
+  assert((await headerBg(preview, 0)) === CLASSIC_TILE && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'alternating category colors');
+  await openSection('Score plates');
+  await page.getByLabel('Glow on the leader').check();
+  assert((await page.locator('summary', { hasText: 'Tiles' }).innerText()).includes('changed'), 'a section with looks of its own says it’s changed');
+  assert((await page.getByRole('button', { name: /Classic \(edited\)/ }).count()) === 1, 'and the preset shows as edited');
+  await shot('1-theme-page');
+
+  // ---------- 💾 Save as my theme… ----------
+  await page.getByRole('button', { name: '💾 Save as my theme…' }).click();
+  const naming = page.getByRole('dialog', { name: '💾 Save as my theme' });
+  await naming.getByLabel('Theme name').fill('Checker party');
+  await naming.getByRole('button', { name: 'Save', exact: true }).click();
+  await card('Checker party').waitFor();
+  assert(await card('Checker party').locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'a saved theme shows in My themes, marked as the one this game looks like');
+  assert((await card('Checker party').locator('.tag').innerText()) === '★', 'marked as yours');
+
+  // ---------- Kept after a reload, used in another game ----------
+  await page.waitForTimeout(400);
+  await page.reload();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard').catch(() => {});
+  await addClassicRounds(page);
+  await themePage();
+  await card('Checker party').waitFor();
+  assert(true, 'the saved theme is still there after a reload, in a new game');
+  assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'the new game starts plain');
+  await card('Checker party').locator('.use').click();
+  assert((await bg(preview, 1, 0)) === RED && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'using it puts its alternating tiles and categories on this game');
+  await page.keyboard.press('Control+z');
+  assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'Ctrl+Z takes it back in one step');
+  await page.keyboard.press('Control+y');
+  assert((await bg(preview, 1, 0)) === RED, 'Ctrl+Y puts it back');
+
+  // ---------- Rename ----------
+  await card('Checker party').getByRole('button', { name: /More for/ }).click();
+  await page.getByRole('menuitem', { name: '✏ Rename…' }).click();
+  const renaming = page.getByRole('dialog', { name: '✏ Rename theme' });
+  await renaming.getByLabel('Theme name').fill('Checkers');
+  await renaming.getByRole('button', { name: 'Rename' }).click();
+  await card('Checkers').waitFor();
+  assert((await page.locator('.mine .card').count()) === 1, 'rename keeps one theme, with its new name');
+
+  // ---------- ⬇ Export theme / 📂 Import theme… ----------
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export theme' }).click()]);
+  assert(download.suggestedFilename() === 'Checkers.brainrot-theme', `Export theme writes a .brainrot-theme file named after the theme (${download.suggestedFilename()})`);
+  const themePath = resolve('test-results/themes-checkers.brainrot-theme');
+  mkdirSync(resolve('test-results'), { recursive: true });
+  await download.saveAs(themePath);
+  const data = JSON.parse(readFileSync(themePath, 'utf8'));
+  assert(data.format === 'brainrot-theme' && data.version === 1 && data.theme.tilePattern === 'checker' && data.theme.tile2 === '#ff0000', 'the file is JSON with its format, version and the looks');
+  await page.getByRole('button', { name: /^Classic/ }).click();
+  assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'a preset takes the extra looks off');
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📂 Import theme…' }).click()]);
+  await chooser.setFiles(themePath);
+  const imported = page.getByRole('dialog', { name: /Theme “Checkers”/ });
+  await imported.waitFor();
+  assert((await bg(imported, 1, 0)) === RED, 'importing a theme file previews it on this game’s board first');
+  await shot('2-import-preview');
+  await imported.getByRole('button', { name: '🎨 Use in this game' }).click();
+  assert((await bg(preview, 1, 0)) === RED, 'Use in this game puts it on the game');
+  // A bad file is refused with a message, and the game is untouched.
+  const [bad] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📂 Import theme…' }).click()]);
+  await bad.setFiles({ name: 'broken.brainrot-theme', mimeType: 'application/json', buffer: Buffer.from('{"format":"brainrot-theme","theme":{"tile":"url(evil)"}}') });
+  const refused = page.getByRole('alertdialog').filter({ hasText: 'can’t be used as a theme' });
+  await refused.waitFor();
+  assert((await refused.innerText()).includes('no colors'), 'a bad theme file is refused, saying why');
+  await refused.getByRole('button', { name: 'OK' }).click();
+  assert((await bg(preview, 1, 0)) === RED, 'and the game keeps its look');
+
+  // ---------- 📋 Copy theme code / ⌨ Paste theme code… ----------
+  await page.getByRole('button', { name: '📋 Copy theme code' }).click();
+  await page.waitForTimeout(200);
+  const code = await page.evaluate(() => navigator.clipboard.readText());
+  assert(/^BRT1:[A-Za-z0-9_-]+$/.test(code) && code.length < 800, `Copy theme code puts a short code on the clipboard (${code.length} characters)`);
+  assert((await lastToast()).includes('Theme code copied'), 'and says so');
+  await page.getByRole('button', { name: '⌨ Paste theme code…' }).click();
+  const paste = page.getByRole('dialog', { name: '⌨ Paste a theme code' });
+  await paste.getByLabel(/Theme code/).fill('BRT1:not-a-real-code');
+  await paste.getByRole('button', { name: 'Preview' }).click();
+  await paste.getByRole('alert').waitFor();
+  assert((await paste.getByRole('alert').innerText()).includes('damaged'), 'a bad code says it can’t be read');
+  await paste.getByLabel(/Theme code/).fill(`Try my theme! ${code}`);
+  await paste.getByRole('button', { name: 'Preview' }).click();
+  const pasted = page.getByRole('dialog', { name: /Theme “Checkers”/ });
+  await pasted.waitFor();
+  assert((await bg(pasted, 1, 0)) === RED, 'a pasted code (with words around it) previews the theme');
+  await pasted.getByRole('button', { name: '💾 Save to my themes' }).click();
+  await card('Checkers 2').waitFor();
+  assert((await page.locator('.mine .card').count()) === 2, 'Save to my themes adds it under a name of its own');
+
+  // ---------- Delete ----------
+  await card('Checkers 2').getByRole('button', { name: /More for/ }).click();
+  await page.getByRole('menuitem', { name: '🗑 Delete…' }).click();
+  const ask = page.getByRole('alertdialog').filter({ hasText: 'Delete “Checkers 2”' });
+  await ask.getByRole('button', { name: 'Delete' }).click();
+  await card('Checkers 2').waitFor({ state: 'detached' });
+  assert((await page.locator('.mine .card').count()) === 1, 'Delete… asks, then takes it off the list');
+
+  // ---------- An exported HTML file ----------
+  const html = await exportHtml(page, 'Theme test');
+  const saved = resolve('test-results/themes-export.html');
+  await html.saveAs(saved);
+  const player = await context.newPage();
+  player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
+  await player.goto(pathToFileURL(saved).href);
+  await player.getByRole('button', { name: '▶ Play' }).click({ timeout: 20000 });
+  await player.getByRole('button', { name: '＋ Add player' }).click();
+  await player.getByRole('button', { name: 'Start game ▶' }).click();
+  await skipIntro(player);
+  assert((await bg(player, 0, 0)) === CLASSIC_TILE && (await bg(player, 0, 1)) === RED, 'an exported HTML game shows the same alternating tiles');
+  await player.close();
+
+  // ---------- The audience window ----------
+  await playWithPlayers(page, 2);
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await skipIntro(page);
+  const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
+  await aud.locator('.board .tile').first().waitFor();
+  await aud.waitForTimeout(300);
+  assert((await bg(aud, 0, 0)) === CLASSIC_TILE && (await bg(aud, 0, 1)) === RED, 'the audience window shows the alternating tiles');
+  assert((await headerBg(aud, 1)) === 'rgb(0, 255, 0)', 'and the alternating categories');
+  assert((await aud.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'and the rounded corners');
+  await shot('3-audience', aud);
+  await aud.close();
+
+  assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
+  console.log('themes: all passed');
+} catch (e) {
+  await shot('themes-failure');
+  throw e;
+} finally {
+  await browser.close();
+}

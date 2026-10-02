@@ -4,6 +4,7 @@
   import { autofit, softHyphens } from '../lib/autofit';
   import { CAT_FLOOR, CAT_MIN } from '../lib/boardfit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
+  import { altHeader, altTile } from '../lib/theme';
 
   let {
     game,
@@ -23,6 +24,9 @@
   });
   const sym = $derived(game.settings.currencySymbol);
   const intro = $derived(session.intro);
+  const theme = $derived(game.theme);
+  /** How played tiles look (the used-tile color unless the theme dims or hides them). */
+  const usedLook = $derived(theme?.usedLook);
   // Tile-fill animation: each tile pops in after a random delay (stable per round).
   const delays = $derived.by(() => {
     void round?.id;
@@ -76,7 +80,7 @@
     style:grid-template-rows="1.35fr repeat({round.values.length}, 1fr)"
   >
     {#each round.categories as cat, ci (cat.id)}
-      <div class="cell header" class:fill={intro?.stage === 'fill'} style:animation-delay="{delays[ci]}s">
+      <div class="cell header" class:alt={altHeader(theme, ci)} class:fill={intro?.stage === 'fill'} style:animation-delay="{delays[ci]}s">
         {#if catShown(ci)}
           {#if cat.image && mediaUrls[cat.image]}
             <div class="title has-image" class:revealing={!!intro}>
@@ -103,6 +107,9 @@
         <button
           class="cell tile"
           class:used
+          class:alt={altTile(theme?.tilePattern, row, ci)}
+          class:dim={used && usedLook === 'dim'}
+          class:gone={used && usedLook === 'hidden'}
           data-clue={clue.id}
           data-row={row}
           data-cat={ci}
@@ -138,8 +145,8 @@
     position: absolute;
     inset: 0;
     display: grid;
-    gap: 10px;
-    padding: 10px;
+    gap: var(--tile-gap, 10px);
+    padding: var(--tile-gap, 10px);
     /* The board's background (gap colour / image) is drawn by AudienceView so board images can sit between it and the tiles. */
     background: transparent;
   }
@@ -154,9 +161,12 @@
     min-width: 0;
     min-height: 0;
     border: none;
-    border-radius: 0;
+    border-radius: var(--tile-radius, 0);
     padding: 12px;
-    box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 0 0 var(--glow-size, 0) var(--glow, transparent);
+    box-shadow:
+      inset 0 0 0 var(--tile-border-width, 3px) var(--tile-border-color, rgba(0, 0, 0, 0.35)),
+      0 0 var(--glow-size, 0) var(--glow, transparent),
+      var(--tile-drop, 0 0 0 transparent);
   }
   .fill {
     animation: fill-in 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) both;
@@ -213,14 +223,19 @@
     text-transform: uppercase;
     line-height: 1.05;
     text-shadow: 4px 4px 0 var(--tile-shadow, #000);
-    border-bottom: 6px solid #000;
+    border-bottom: var(--header-line, 6px solid #000);
+    background: var(--header-bg, var(--tile));
+  }
+  .header.alt {
+    background: var(--header-bg-2, var(--header-bg, var(--tile)));
   }
   .tile {
     font-family: var(--value-font);
     font-size: 84px;
     font-weight: 800;
     color: var(--value);
-    text-shadow: 5px 5px 0 var(--tile-shadow, #000);
+    text-shadow: var(--value-shadow, 5px 5px 0 var(--tile-shadow, #000));
+    background: var(--tile-bg, var(--tile));
     cursor: pointer;
     transition: filter 0.12s;
   }
@@ -253,9 +268,24 @@
   .board.intro .tile {
     pointer-events: none;
   }
+  .tile.alt {
+    background: var(--tile-bg-2, var(--tile-bg, var(--tile)));
+  }
   .tile.used {
-    background: var(--tile-used);
+    background: var(--tile-used-bg, var(--tile-used));
     cursor: default;
+  }
+  /* The theme's played-tile look: the tile itself, darkened; or nothing (the board's background shows). */
+  .tile.used.dim {
+    background: var(--tile-bg, var(--tile));
+    filter: brightness(0.4) saturate(0.7);
+  }
+  .tile.used.dim.alt {
+    background: var(--tile-bg-2, var(--tile-bg, var(--tile)));
+  }
+  .tile.used.gone {
+    background: transparent;
+    box-shadow: none;
   }
   .tile:disabled {
     opacity: 1;
