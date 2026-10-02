@@ -268,6 +268,25 @@ try {
     assert(Math.abs(u.y - e.y) < 2 && f.x + f.width - (e.x + e.width) < 2, `${where}: ↶ Undo and 🚪 Exit on one line, Exit at the right`);
   };
   await oneLine('on the board');
+  // Several wheels, edited: one edit box at a time, and a tall one scrolls in the panel, never up over the stage.
+  await p3.getByRole('button', { name: '🎡 Wheel' }).click();
+  await p3.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
+  for (let i = 0; i < 2; i++) await p3.getByLabel('Spin another wheel too').selectOption({ label: '🎯 Pick a player' });
+  await p3.getByRole('button', { name: /✎ Edit wheel/ }).click();
+  await p3.getByRole('button', { name: 'Edit Pick a player for this spin' }).first().click();
+  assert((await p3.getByRole('button', { name: 'Even chances' }).count()) === 1, 'one wheel’s edit box open at a time');
+  // A short window: the panel has less room than the edit box needs.
+  await p3.setViewportSize({ width: 1024, height: 480 });
+  await p3.waitForTimeout(300);
+  const stage = await p3.locator('.stage-area').boundingBox();
+  const action = await p3.locator('.panel .act > .action').boundingBox();
+  assert(action.y >= stage.y + stage.height - 1, `the edit box stays under the stage (it starts at ${Math.round(action.y)}, the stage ends at ${Math.round(stage.y + stage.height)})`);
+  assert(await p3.locator('.panel .act > .action').evaluate((a) => [a, ...a.querySelectorAll('.mode-host')].some((e) => e.scrollHeight > e.clientHeight + 4)), 'and scrolls inside the panel');
+  const exitBox = await p3.getByRole('button', { name: '🚪 Exit' }).boundingBox();
+  assert(exitBox.y + exitBox.height <= 480, 'the fixed bar stays in the window');
+  await p3.setViewportSize({ width: 1024, height: 600 });
+  await p3.locator('[data-tool-controls]').getByRole('button', { name: '✕ Close' }).click();
+  await p3.locator('[data-tool-controls]').waitFor({ state: 'detached' });
   await p3.locator('.stage-box .board .tile').first().click();
   await p3.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   await oneLine('in a clue');

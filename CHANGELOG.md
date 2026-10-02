@@ -544,6 +544,12 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **Editing several wheels at once no longer pushes the host panel up over the stage**: with a wheel added beside the
+  first (＋ Spin another wheel too), both edit boxes could be open together, and the panel's lower part grew upward
+  past the stage where it couldn't be scrolled (the window had to be made taller to get out). One wheel's edit box is
+  open at a time now, and a panel that runs out of room scrolls in its place, under the stage.
+- **A wheel or dice can be closed before it's spun or rolled**: a quiet ✕ Close in its row (Esc didn't work while
+  typing in its edit box).
 - **The check for a newer version at start-up now really asks each time**: it went by what GitHub had said in the last
   six hours, and with a new version out every push, a start soon after a check (while that was the newest) never
   heard of the ones after it. Every start asks now (one small request), going by the last answer only when GitHub

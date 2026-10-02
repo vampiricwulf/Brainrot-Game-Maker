@@ -961,11 +961,13 @@
   .panel.final:not(.dual) {
     height: clamp(280px, 44vh, 440px);
   }
-  .panel.final:not(.dual) > .act {
+  /* Under the stage, when the panel runs out of height (a tall wheel editor, a long Final), the action part scrolls in
+     its place: it never spills up over the stage, out of the scrollbar's reach (the row sits at its foot). */
+  .panel:not(.side) > .act {
     flex: 0 1 auto;
     grid-template-rows: minmax(0, 1fr);
   }
-  .panel.final:not(.dual) > .act > .action {
+  .panel:not(.side) > .act > .action {
     max-height: 100%;
     overflow: auto;
   }

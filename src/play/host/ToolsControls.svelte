@@ -131,7 +131,7 @@
         <b>🎡 {o.name}</b>
         <!-- (Spin! is the main button until it lands, then Close is.) -->
         {#if landed}<button onclick={() => spinWheel(app.live, session, game)} disabled={spent} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>Spin again</button>{/if}
-        <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => (o.editing = !o.editing)} title="Turn slices off or change their chances for this spin">
+        <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{o.pool ? ' (edited)' : ''}
         </button>
         {#each o.extra ?? [] as w (w.key)}
@@ -140,7 +140,7 @@
             <button
               class="ghost tiny"
               aria-pressed={editExtra === w.key}
-              onclick={() => (editExtra = editExtra === w.key ? null : w.key)}
+              onclick={() => ((editExtra = editExtra === w.key ? null : w.key), editExtra && (o.editing = false))}
               aria-label="Edit {w.name} for this spin"
               title="Turn slices off or change their chances for this spin">✎</button
             >
@@ -200,6 +200,10 @@
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
+      <!-- Before it's spun or rolled: a way out without (Spin! / Roll! is the main button; Esc can't, from a box). -->
+      {#if (o.kind === 'wheel' || o.kind === 'dice') && !landed && !busy}
+        <button class="small ghost" onclick={onclose} title="Close it without {o.kind === 'wheel' ? 'spinning' : 'rolling'}">✕ Close</button>
+      {/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">
