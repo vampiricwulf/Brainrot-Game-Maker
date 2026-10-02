@@ -256,8 +256,8 @@
       </p>
     {:else}
       <p class="muted">
-        Pick a wheel or dice on the left, add one, or start from a <b>📋 Ready-made wheel</b>. Standard dice (d4–d100, 2d6, any "NdS") and a <b>🎯 Pick a player</b> wheel
-        (a slice for each player, in their colors) are always there during play, without setting anything up.
+        Pick a wheel or dice on the left, add one, or start from a <b>📋 Ready-made wheel</b>. Standard dice (d4–d100, 2d6, any "NdS") and the built-in
+        <b>🎯 Pick a player</b> and <b>🗂 Pick a category</b> wheels are always there during play, without setting anything up.
       </p>
     {/if}
   </section>
