@@ -54,7 +54,7 @@ try {
   assert((await spaces.count()) === 12, 'and delete it');
   // A fork: Space 3 can also go straight to Space 7.
   await space('Space 3').click();
-  await page.getByRole('button', { name: '🔗 Link to…' }).click();
+  await page.getByRole('button', { name: '🔗 Connect to…' }).click();
   await space('Space 7').click();
   assert((await page.locator('.side').innerText()).includes('A fork'), 'linking a second way makes a fork');
   assert((await page.locator('.side').getByRole('button', { name: '🗑 Delete space' }).count()) === 1, 'the space card’s Delete space has its 🗑');
@@ -66,6 +66,33 @@ try {
   assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore + 1, 'a two-way link is drawn with arrows at both ends');
   await page.getByRole('button', { name: 'Both ways with Space 3' }).click();
   assert((await page.locator('.canvas line[marker-start]').count()) === arrowsBefore, 'and back to one way');
+  // The gestures of ✎ Edit board in play: double-click adds a space, a click on a link picks it, Delete disconnects it.
+  const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  await space('Space 9').click();
+  await page.mouse.dblclick(canvasBox.x + canvasBox.width * 0.5, canvasBox.y + canvasBox.height * 0.62);
+  assert((await spaces.count()) === 13 && (await page.getByLabel('Space name').inputValue()) === 'Space 13', 'double-click on the board adds a space');
+  assert((await undoTitle()).includes('Added space “Space 13” after “Space 9”'), `after the space selected before, as one named step (${await undoTitle()})`);
+  assert((await page.locator('.side [data-leads]').innerText()).includes('From:'), 'its card says where it’s reached from');
+  await page.getByLabel('Connect Space 13 to', { exact: true }).selectOption({ label: 'Space 2' });
+  assert((await undoTitle()).includes('Connected Space 13 → Space 2'), `→ Connect to a space… connects it, named as in play (${await undoTitle()})`);
+  await page.getByRole('button', { name: 'Disconnect Space 13 from Space 2' }).click();
+  assert((await undoTitle()).includes('Disconnected Space 13 → Space 2'), 'and its ✂ disconnects it');
+  const hit = await page.locator('.canvas line.hit').first().evaluate((e) => [e.getAttribute('data-link'), +e.getAttribute('x1'), +e.getAttribute('y1'), +e.getAttribute('x2'), +e.getAttribute('y2')]);
+  const k = canvasBox.width / 1920;
+  await page.mouse.click(canvasBox.x + ((hit[1] + hit[3]) / 2) * k, canvasBox.y + ((hit[2] + hit[4]) / 2) * k);
+  assert((await page.locator('[data-picked-link]').getAttribute('data-picked-link')) === hit[0], 'a click on a link picks it');
+  assert(await page.locator('.side [data-edit-link]').isVisible(), 'and its card shows beside the board');
+  const linksBefore = await page.locator('.canvas line.hit').count();
+  await page.keyboard.press('Delete');
+  assert((await page.locator('.canvas line.hit').count()) === linksBefore - 1 && (await page.locator('[data-picked-link]').count()) === 0, 'Delete disconnects the picked link');
+  assert((await page.locator('.history-notice').innerText()).startsWith('Disconnected'), 'with a note that offers Undo');
+  await page.locator('.history-notice').getByRole('button', { name: '↶ Undo' }).click();
+  await space('Space 13').dblclick();
+  await page.keyboard.type('Detour');
+  assert((await page.getByLabel('Space name').inputValue()) === 'Detour', 'double-click on a space renames it');
+  await space('Detour').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
+  assert((await spaces.count()) === 12, 'and it can go again');
   // Start gives points when passed.
   await space('Start').click();
   // Its menu closes on a second click, like the other menus, and on Esc (the focus goes back to the button).

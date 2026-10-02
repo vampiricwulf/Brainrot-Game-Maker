@@ -301,6 +301,22 @@
     toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
   }
 
+  /** A name the board made up ("Category 3", "New category"), which nobody wants to keep. */
+  const madeUpName = (t: string) => /^(Category \d+|New category( \d+)?)$/.test(t.trim());
+  /** The name box just got the focus: a click in it doesn't put the caret in a made-up name, it selects it to type over. */
+  let freshName: HTMLTextAreaElement | null = null;
+  function catNameFocus(e: FocusEvent): void {
+    const t = e.currentTarget as HTMLTextAreaElement;
+    if (!madeUpName(t.value)) return;
+    t.select();
+    freshName = t;
+  }
+  function catNameClick(e: MouseEvent): void {
+    const t = e.currentTarget as HTMLTextAreaElement;
+    if (freshName === t && t.selectionStart === t.selectionEnd && madeUpName(t.value)) t.select();
+    freshName = null;
+  }
+
   /**
    * ↓ at the end of a category's name, or Enter, goes down to its top tile (Shift+Enter starts a second line of the
    * name).
@@ -682,6 +698,8 @@
           data-cat-name={ci}
           use:autosize={cat.title}
           onkeydown={(e) => catNameKey(e, ci)}
+          onfocus={catNameFocus}
+          onclick={catNameClick}
           onblur={() => /\s+$/.test(cat.title) && (cat.title = cat.title.trimEnd())}
           onpaste={(e) => catNamePaste(e, ci)}></textarea>
         {#if cat.image}

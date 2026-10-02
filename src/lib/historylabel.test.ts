@@ -327,6 +327,15 @@ describe('step labels', () => {
     const space = structuredClone(before);
     (space.rounds.at(-1) as BoardGameRound).spaces[2].secret = true;
     expect(describeStep(diff(before, space), before, space).label).toBe('Made “Space 3” secret');
+    // A board game's Start and links, as ✎ Edit board in play names them.
+    const race = (g: typeof before) => g.rounds.at(-1) as BoardGameRound;
+    const started = structuredClone(before);
+    race(started).start = race(started).spaces[4].id;
+    expect(describeStep(diff(before, started), before, started).label).toBe('Made “Space 5” Start');
+    const forked = structuredClone(before);
+    race(forked).spaces[2].next.push(race(forked).spaces[6].id);
+    expect(describeStep(diff(before, forked), before, forked).label).toBe('Connected Space 3 → Space 7');
+    expect(describeStep(diff(forked, before), forked, before).label).toBe('Disconnected Space 3 → Space 7');
     expect(step((g) => (board(g).dailyDoubleCount = 2)).label).toBe('Set round “Jeopardy!” to 2 Daily Doubles');
     expect(step((g) => (screens(g)[1].exits = { n: { kind: 'blocked' } })).label).toBe('Changed ways out of screen “Town”');
   });

@@ -40,6 +40,23 @@ describe('Find', () => {
     expect(findAll(game, 'ann').some((h) => h.icon === '👤')).toBe(false);
   });
 
+  it('finds what a space’s buttons say, and names the space when it isn’t what matched', () => {
+    const g = newGame();
+    addSampleGame(g);
+    const r = g.rounds.find((x) => x.mode === 'boardgame')!;
+    if (r.mode !== 'boardgame') throw new Error('no board game');
+    const s = r.spaces[1];
+    s.hostNotes = 'Watch out for lava';
+    s.onLand = [{ id: 'n1', do: 'note', text: 'Ask about the volcano' }];
+    const notes = findAll(g, 'lava');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].where).toBe(`${r.name} › Space “${s.name}”`);
+    const button = findAll(g, 'volcano');
+    expect(button).toHaveLength(1);
+    expect(button[0].where).toBe(`${r.name} › Space “${s.name}” › Buttons`);
+    expect(button[0].place).toMatchObject({ tab: 'round', part: { kind: 'space', space: s.id } });
+  });
+
   it('shortens long text around the match', () => {
     const long = 'a '.repeat(100) + 'needle ' + 'b '.repeat(100);
     const s = snippet(long, 'needle', 40);

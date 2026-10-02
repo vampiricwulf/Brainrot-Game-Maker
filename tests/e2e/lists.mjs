@@ -288,7 +288,7 @@ try {
   await page.keyboard.up('Alt');
   await space('Space 2').click();
   assert((await page.locator('.side').innerText()).includes('→ Space 8'), 'Alt+drag from a space links it to where it is let go');
-  await dragBy(page, page.getByRole('button', { name: 'Link Space 2 to…' }), space('Space 8'));
+  await dragBy(page, page.getByRole('button', { name: 'Connect Space 2 to…' }), space('Space 8'));
   assert(!(await page.locator('.side').innerText()).includes('→ Space 8'), 'dragging its ⊕ onto a linked space unlinks it');
   // Right-click a link: reverse it, both ways, remove.
   const l = await page.locator('.canvas line.hit').first().evaluate((e) => [e.getAttribute('data-link'), +e.getAttribute('x1'), +e.getAttribute('y1'), +e.getAttribute('x2'), +e.getAttribute('y2')]);
@@ -298,8 +298,8 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '⇄ Both ways' }).click();
   assert((await page.locator('.canvas line[marker-start]').count()) === 1, 'right-click a link → Both ways');
   await page.mouse.click(mid.x, mid.y, { button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '− Unlink' }).click();
-  assert((await notice.innerText()).startsWith('Unlinked'), 'and → Unlink, with a note');
+  await page.getByRole('menu').getByRole('menuitem', { name: '✂ Disconnect' }).click();
+  assert((await notice.innerText()).startsWith('Disconnected'), 'and ✂ Disconnect, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   // Zones reorder (the header's ↶ ↷ undo it).
   await page.getByRole('tab', { name: /Off-board zones/ }).click();

@@ -61,6 +61,16 @@ export function startSpace(round: BoardGameRound): BoardSpace | undefined {
   return spaceById(round, round.start) ?? round.spaces[0];
 }
 
+/**
+ * A link as menus and undo steps say it, as ✎ Edit board in play does: "Space 3 → Space 4", or "Space 3 ↔ Space 4"
+ * when it goes both ways.
+ */
+export function linkName(round: BoardGameRound, from: Id, to: Id): string {
+  const a = spaceById(round, from);
+  const b = spaceById(round, to);
+  return `${a?.name ?? '?'} ${b?.next.includes(from) ? '↔' : '→'} ${b?.name ?? '?'}`;
+}
+
 /** Spaces that lead into this one (for moving backwards). */
 export function previousOf(round: BoardGameRound, id: Id): BoardSpace[] {
   return round.spaces.filter((s) => s.next.includes(id));

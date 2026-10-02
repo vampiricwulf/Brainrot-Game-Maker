@@ -66,9 +66,19 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       look('❓', slideWords(r.questionSlide), `${rn} › Question`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
     } else if (r.mode === 'boardgame') {
-      for (const s of r.spaces)
-        look('⬤', [s.name, s.hostNotes], `${rn} › Space`, { tab: 'round', round: r.id, part: { kind: 'space', space: s.id } }, field([[s.name, 'main input[aria-label="Space name"]'], [s.hostNotes, 'main [data-field="space-notes"]']]));
-      for (const z of r.zones) look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], `${rn} › Zone`, { tab: 'round', round: r.id, part: { kind: 'zone', zone: z.id } });
+      for (const s of r.spaces) {
+        const place: Place = { tab: 'round', round: r.id, part: { kind: 'space', space: s.id } };
+        // (Found by something else than its name: where says which space it is.)
+        const where = match(s.name) ? `${rn} › Space` : `${rn} › Space “${s.name}”`;
+        look('⬤', [s.name, s.hostNotes], where, place, field([[s.name, 'main input[aria-label="Space name"]'], [s.hostNotes, 'main [data-field="space-notes"]']]));
+        // What its buttons say: a slide shown, a question asked, a host note.
+        for (const a of [...(s.onPass ?? []), ...(s.onLand ?? [])]) {
+          const words = a.do === 'popup' ? slideWords(a.slide) : a.do === 'question' ? [...slideWords(a.question), ...slideWords(a.answer)] : a.do === 'note' ? [a.text] : [];
+          look('🔘', words, `${rn} › Space “${s.name}” › Buttons`, place);
+        }
+      }
+      for (const z of r.zones)
+        look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], match(z.name) ? `${rn} › Zone` : `${rn} › Zone “${z.name}”`, { tab: 'round', round: r.id, part: { kind: 'zone', zone: z.id } });
       look('🏆', [r.winNotes], `${rn} › How to win`, { tab: 'round', round: r.id });
     }
   });

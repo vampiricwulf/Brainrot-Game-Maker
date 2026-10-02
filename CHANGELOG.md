@@ -186,6 +186,19 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **Board-game editor: the same gestures as ✎ Edit board in play.** Double-click the empty board to add a space (after
+  the space that was selected), double-click a space to rename it, and click a link to pick it: its card beside the
+  board makes it both ways or one way, reverses it, or ✂ disconnects it (so does `Delete`; `Esc` lets go). Linking is
+  called connecting everywhere, as in play: 🔗 Connect to…, ✂ Disconnect, and undo steps named "Connected Space 3 →
+  Space 7", "Disconnected …", "Made “Lava pit” Start", "Added space “Space 13” after “Space 9”".
+- **Board-game editor: a space's card shows the ways into it too** ("From: ← Space 5 ✂"), and has a **→ Connect to a
+  space…** list beside 🔗 Connect to… for connecting without the mouse. The right-click menu lists Connect to… before
+  Make it Start (as in play), the ⌨ shortcuts list says the new gestures, and the card is a little wider so 🏁 Make it
+  Start, ⧉ Duplicate and 🗑 Delete space sit on one line.
+- **🕘 History: a filter box** over the steps ("space", "Memes $400"): only the steps whose names or places have those
+  words show, with how many ("3 of 40 steps"); ↓ goes to the first one, `Esc` shows them all again.
+- **🔍 Find looks in a board-game space's buttons too** (a slide it shows, a question it asks, a host note), and a space
+  or zone found by its notes says which one it is ("Board game › Space “Lava pit”").
 - **▶ Play's pre-game screen: two columns on a laptop too** (from 1200 px wide, so 1280×720 and 1366×768): the
   players and phone buzzers on the left, ⚖ Game rules, 🖥 Display and 📺 On stream on the right, so the display choice
   is in view without scrolling. Single window has its 🖥 icon like the audience window's 📺, and the Players card's
@@ -615,6 +628,10 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **Jeopardy board: clicking a category's made-up name ("Category 3", "New category") selects it**, so typing replaces
+  it instead of making "Category 3Memes". Names of your own keep the caret where you click.
+- **🕘 History: changing a board game's Start or a space's links from the editor's boxes** is named for what it did
+  ("Made “Space 4” Start", "Connected Space 3 → Space 7") instead of "Changed start of round" or "Changed links of …".
 - **Start game ▶ stays at the right end of the pre-game bar**: with a note beside it (no players yet, a Daily Double
   not placed), it dropped onto a line of its own under ◀ Back at 1280 px. The notes wrap in their own room now.
 - **RPG rounds: hovering an object on the stage no longer covers it with a dark box** (the buttons' hover colour): it's

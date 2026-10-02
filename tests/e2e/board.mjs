@@ -162,6 +162,17 @@ try {
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
   assert((await catNames()).slice(0, 3).join('|') === 'Category 1|Category 2|Category 3', 'Ctrl+Z moves it back');
+  // A made-up name ("Category 3") is selected by a click in it, to type over; a name of your own isn't.
+  await page.getByLabel('Category 3 name').click();
+  await page.keyboard.type('Snacks');
+  assert((await catNames())[2] === 'Snacks', `a click in a made-up category name selects it, so typing replaces it (${(await catNames())[2]})`);
+  await page.locator('main').click({ position: { x: 4, y: 4 } });
+  await page.getByLabel('Category 3 name').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  assert((await catNames())[2] === 'Snacks!', 'a name of your own keeps the caret where it’s clicked');
+  await page.getByLabel('Category 3 name').fill('Category 3');
+  await page.locator('main').click({ position: { x: 4, y: 4 } });
 
   // ---------- ED-20: rows anywhere ----------
   await page.getByLabel('Row 1 value').click({ button: 'right' });

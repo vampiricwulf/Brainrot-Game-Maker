@@ -161,6 +161,22 @@ try {
   await rows.nth(1).locator('.pick').click();
   await page.waitForTimeout(250);
   assert((await page.locator('nav button.round-tab').count()) === 2 && (await page.locator('.hist .hr.undone').count()) === 1, 'a row redoes everything up to it');
+  // The filter shows only the steps whose names (or places) have its words.
+  const allSteps = await page.locator('.hist .hr:not(.origin)').count();
+  const filter = page.getByLabel('Filter the steps');
+  await filter.fill('category');
+  const shownSteps = await page.locator('.hist .hr:not(.origin) .lb').allInnerTexts();
+  assert(
+    shownSteps.length > 0 && shownSteps.length < allSteps && shownSteps.every((t) => /category/i.test(t)),
+    `the filter shows only the matching steps (${shownSteps.length} of ${allSteps})`,
+  );
+  assert((await page.locator('.hist .filter [role="status"]').innerText()) === `${shownSteps.length} of ${allSteps} steps`, 'and says how many');
+  await filter.press('ArrowDown');
+  assert(await page.locator('.hist .hr:not(.origin) .pick').first().evaluate((el) => el === document.activeElement), '↓ from the filter goes to the first step shown');
+  await filter.fill('no such step anywhere');
+  assert((await page.locator('.hist .filter [role="status"]').innerText()) === 'No steps match', 'a filter that matches nothing says so');
+  await filter.press('Escape');
+  assert((await filter.inputValue()) === '' && (await page.locator('.hist .hr:not(.origin)').count()) === allSteps, 'Esc clears it: every step is back');
   // The list is one Tab stop (the step the game is at), however many steps it has: ↑/↓ move between them.
   assert(
     (await page.locator('.hist .pick[tabindex="0"]').count()) === 1 && (await rows.nth(1).locator('.pick').getAttribute('tabindex')) === '0',

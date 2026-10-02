@@ -15,7 +15,8 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { clampToBoard, moverDiceGone, moverPreset, newBoardSpace, nextSpaceName, previousOf, SPACE_COLORS, spaceById, spaceToward } from '../../lib/boardgame';
+  import { clampToBoard, linkName, moverDiceGone, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addLiveSpace, connectSpaces, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import { newId, SLIDE_H, SLIDE_W, textSlide, type BoardGameRound, type BoardSpace, type BoardZone } from '../../lib/model';
@@ -78,8 +79,18 @@
   /** The one space selected, whose settings the side panel shows. */
   const sel = $derived(picked.length === 1 ? picked[0] : undefined);
   const selectOnly = (id: string | null) => (selIds = id ? [id] : []);
-  /** The next space clicked is linked from (or unlinked from) the selected one. */
+  /** The next space clicked is connected from (or disconnected from) the selected one. */
   let linking = $state(false);
+  /**
+   * The link picked (a click on its line, as in ✎ Edit board in play): its settings show beside the board, and Delete
+   * disconnects it. Picking a space lets go of it.
+   */
+  let linkPick = $state<{ from: string; to: string } | null>(null);
+  const link = $derived.by(() => {
+    const a = linkPick && !selIds.length ? spaceById(round, linkPick.from) : undefined;
+    const b = linkPick && spaceById(round, linkPick.to);
+    return a && b && a.next.includes(b.id) ? { a, b, both: b.next.includes(a.id) } : null;
+  });
   let pickingIcon = $state(false);
   let zoneSlide = $state<string | null>(null);
 
@@ -153,7 +164,7 @@
     if (!quiet && !pressing && !selIds.includes(id)) selectOnly(id);
   }
 
-  function toBoard(e: PointerEvent): { x: number; y: number } {
+  function toBoard(e: MouseEvent): { x: number; y: number } {
     const r = canvas!.getBoundingClientRect();
     return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
   }
@@ -173,18 +184,34 @@
     return [...round.spaces].reverse().find((s) => Math.hypot(s.x - p.x, s.y - p.y) <= SPACE_R);
   }
 
-  /** Link `from` to `to`, or unlink them when it already leads there. */
+  /** Connect `from` to `to`, or disconnect them when it already leads there (named as ✎ Edit board in play names it). */
   function toggleLink(from: BoardSpace, to: BoardSpace): void {
-    const on = from.next.includes(to.id);
-    step(on ? `Unlinked “${from.name}” from “${to.name}”` : `Linked “${from.name}” to “${to.name}”`, () => {
-      from.next = on ? from.next.filter((n) => n !== to.id) : [...from.next, to.id];
-    });
+    if (from.next.includes(to.id)) return disconnect(from.id, to.id);
+    step(`Connected ${from.name} → ${to.name}`, () => connectSpaces(round, from.id, to.id));
+  }
+
+  /** A link both ways becomes one way (from → to), or one way becomes both ways. */
+  function bothWays(from: string, to: string): void {
+    const both = !!spaceById(round, to)?.next.includes(from);
+    step(`Made ${linkName(round, from, to)} ${both ? 'one way' : 'both ways'}`, () => toggleBothWays(round, from, to));
+  }
+
+  function reverse(from: string, to: string): void {
+    step(`Reversed ${linkName(round, from, to)}`, () => reverseLink(round, from, to));
+    if (linkPick?.from === from && linkPick.to === to) linkPick = { from: to, to: from };
+  }
+
+  /** Take a link away (both ways). Done at once: the note at the bottom offers Undo. */
+  function disconnect(from: string, to: string): void {
+    step(`Disconnected ${linkName(round, from, to)}`, () => disconnectSpaces(round, from, to), { notify: true });
+    if (linkPick && [linkPick.from, linkPick.to].includes(from) && [linkPick.from, linkPick.to].includes(to)) linkPick = null;
   }
 
   function spaceDown(e: PointerEvent, s: BoardSpace): void {
     e.stopPropagation();
     pressing = true;
     if (e.button !== 0) return;
+    linkPick = null;
     if (linking && sel && sel.id !== s.id) {
       toggleLink(sel, s);
       linking = false;
@@ -265,31 +292,51 @@
     }
   }
 
+  /** The spaces selected before a press on the empty board (a double-click's first click deselects them), and when. */
+  let selBefore: string[] = [];
+  let lastDown = { t: -Infinity, x: 0, y: 0 };
+
   /**
-   * Ctrl+click (⌘+click) on the board adds a space after the selected one; a drag on the empty board draws a box
-   * that selects the spaces in it (a plain click deselects).
+   * Ctrl+click (⌘+click) on the board adds a space after the selected one; a click on a link picks it; a drag on the
+   * empty board draws a box that selects the spaces in it (a plain click deselects).
    */
   function boardDown(e: PointerEvent): void {
     pressing = true;
     if (e.button !== 0) return;
     const el = e.target as HTMLElement;
-    if (e.target !== e.currentTarget && !el.closest('.backdrop') && !el.closest('[data-link]')) return;
+    const line = el.closest?.('[data-link]')?.getAttribute('data-link')?.split('>');
+    if (e.target !== e.currentTarget && !el.closest('.backdrop') && !line) return;
     linking = false;
+    // (Not the second click of a double-click: the first one has deselected them.)
+    if (e.timeStamp - lastDown.t > 600 || Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) > 8) selBefore = selIds;
+    lastDown = { t: e.timeStamp, x: e.clientX, y: e.clientY };
     if (e.ctrlKey || e.metaKey) return addSpaceAt(toBoard(e));
+    if (line && !e.shiftKey) {
+      linkPick = { from: line[0], to: line[1] };
+      selIds = [];
+      return;
+    }
+    linkPick = null;
     const p = toBoard(e);
     box = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, add: e.shiftKey };
     capture(e);
   }
 
+  /** Double-click: on the empty board, a space there (after the space selected before); on a space, rename it. */
+  function boardDbl(e: MouseEvent): void {
+    const el = e.target as HTMLElement;
+    if (el.closest('[data-space]')) return openPanel(true);
+    if (e.target !== e.currentTarget && !el.closest('.backdrop')) return;
+    selIds = selBefore.filter((id) => spaceById(round, id));
+    addSpaceAt(toBoard(e));
+  }
+
+  /** A new space (one step), after the selected one: it takes over where that one led (so a loop stays a loop). */
   function addSpaceAt(at: { x: number; y: number }): void {
-    const p = clampToBoard(at.x, at.y);
-    const s = newBoardSpace(p.x, p.y, nextSpaceName(round), SPACE_COLORS[round.spaces.length % SPACE_COLORS.length]);
-    // Inserted after the selected space: it takes over the selected space's links (so a loop stays a loop).
-    if (sel) {
-      s.next = [...sel.next];
-      sel.next = [s.id];
-    }
-    round.spaces.push(s);
+    const after = sel;
+    const name = nextSpaceName(round);
+    const s = step(`Added space “${name}”${after ? ` after “${after.name}”` : ''}`, () => addLiveSpace(round, at, after));
+    linkPick = null;
     selectOnly(s.id);
     refocus(s.id);
   }
@@ -357,38 +404,17 @@
     });
   }
 
-  /** A link's menu (right-click its line): both ways or one, reversed, or gone. */
+  /** A link's menu (right-click its line, which picks it): both ways or one, reversed, or gone (as in play). */
   function linkMenu(e: MouseEvent, a: BoardSpace, b: BoardSpace): void {
     const both = b.next.includes(a.id);
-    const title = `“${a.name}” ${both ? '↔' : '→'} “${b.name}”`;
+    linkPick = { from: a.id, to: b.id };
+    selIds = [];
     showMenu(e, [
-      { heading: `${a.name} ${both ? '↔' : '→'} ${b.name}` },
-      both
-        ? { label: `→ One way (${a.name} → ${b.name})`, onclick: () => step(`Made ${title} one way`, () => (b.next = b.next.filter((n) => n !== a.id))) }
-        : { label: '⇄ Both ways', onclick: () => step(`Made ${title} both ways`, () => (b.next = [...b.next, a.id])) },
-      {
-        label: '↺ Reverse',
-        disabled: both,
-        onclick: () =>
-          step(`Reversed ${title}`, () => {
-            a.next = a.next.filter((n) => n !== b.id);
-            b.next = [...b.next, a.id];
-          }),
-      },
+      { heading: linkName(round, a.id, b.id) },
+      { label: both ? `→ One way only (${a.name} → ${b.name})` : '⇄ Both ways', onclick: () => bothWays(a.id, b.id) },
+      { label: '↺ Reverse', disabled: both, onclick: () => reverse(a.id, b.id) },
       { sep: true },
-      {
-        label: '− Unlink',
-        danger: true,
-        onclick: () =>
-          step(
-            `Unlinked ${title}`,
-            () => {
-              a.next = a.next.filter((n) => n !== b.id);
-              b.next = b.next.filter((n) => n !== a.id);
-            },
-            { notify: true },
-          ),
-      },
+      { label: '✂ Disconnect', danger: true, onclick: () => disconnect(a.id, b.id), keys: 'Delete' },
     ]);
   }
 
@@ -428,8 +454,8 @@
       showMenu(e, [
         { heading: s.name },
         { label: '✎ Rename', onclick: () => openPanel(true), keys: 'F2' },
-        { label: '🏁 Make it Start', onclick: () => (round.start = s.id), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
-        { label: '🔗 Link it to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
+        { label: '🔗 Connect to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
+        { label: '🏁 Make it Start', onclick: () => makeStart(s), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
         { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
         { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), keys: 'Ctrl+D' },
         { label: '📋 Copy space', onclick: () => copySpacesToClipboard([s]), keys: 'Ctrl+C' },
@@ -502,12 +528,16 @@
     } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey && picked.length) {
       e.preventDefault();
       removeSpaces(picked);
-    } else if (k === 'escape' && (linking || wire || selIds.length)) {
+    } else if ((k === 'delete' || k === 'backspace') && !mod && !e.altKey && link) {
+      e.preventDefault();
+      disconnect(link.a.id, link.b.id);
+    } else if (k === 'escape' && (linking || wire || selIds.length || link)) {
       e.preventDefault();
       if (linking || wire) {
         linking = false;
         wire = null;
-      } else selectOnly(null);
+      } else if (link) linkPick = null;
+      else selectOnly(null);
     }
   }
 
@@ -565,6 +595,10 @@
     selectOnly(null);
     // (The board keeps the focus, for the next key.)
     if (focused) refocus(null, true);
+  }
+
+  function makeStart(s: BoardSpace): void {
+    step(`Made “${s.name}” Start`, () => (round.start = s.id));
   }
 
   /** The same colour, or secret or not, for all the selected spaces. */
@@ -705,9 +739,12 @@
   {#if view === 'spaces'}
     <div class="row tools">
       {#if linking}
-        <span class="warn small" role="status">Click the space {sel?.name} should lead to (again to unlink), or go to it with the arrow keys and press Enter…</span>
+        <span class="warn small" role="status">Click the space {sel?.name} should lead to (again to disconnect), or go to it with the arrow keys and press Enter · Esc stops</span>
       {:else}
-        <span class="hint">Ctrl+click adds a space (after the selected one) · Alt+drag or ⊕ links · Shift+click or a box selects several · right-click for more</span>
+        <span class="hint">
+          Ctrl+click or double-click adds a space (after the selected one) · Alt+drag or ⊕ connects · click a link to pick it · Shift+click or a box selects
+          several · right-click for more
+        </span>
       {/if}
     </div>
     <div class="main">
@@ -719,6 +756,7 @@
           bind:this={canvas}
           style:transform="scale({scale})"
           onpointerdown={boardDown}
+          ondblclick={boardDbl}
           oncontextmenu={boardMenu}
           onpointermove={boardMove}
           onkeydown={key}
@@ -742,11 +780,16 @@
               onpointerdown={(e) => startWire(e, sel)}
               role="button"
               tabindex="-1"
-              aria-label="Link {sel.name} to…"
-              title="Drag to the space it leads to (onto a linked one to unlink)"
+              aria-label="Connect {sel.name} to…"
+              title="Drag to the space it leads to (onto a connected one to disconnect)"
             >
               ⊕
             </div>
+          {/if}
+          {#if link}
+            <svg class="overlay" viewBox="0 0 {SLIDE_W} {SLIDE_H}" aria-hidden="true">
+              <line x1={link.a.x} y1={link.a.y} x2={link.b.x} y2={link.b.y} class="picked-link" data-picked-link="{link.a.id}>{link.b.id}" />
+            </svg>
           {/if}
           {#if wire}
             {@const from = spaceById(round, wire.from)}
@@ -819,7 +862,8 @@
             </div>
             {#if sel.icon}<button class="ghost small" onclick={() => (sel.icon = undefined)}>No icon</button>{/if}
           </div>
-          <div class="row">
+          {@const into = round.spaces.filter((x) => x.next.includes(sel.id) && !sel.next.includes(x.id))}
+          <div class="row" data-leads>
             <span class="muted small">Leads to:</span>
             {#each sel.next as n (n)}
               {@const other = spaceById(round, n)}
@@ -830,16 +874,39 @@
                   class="ghost tiny"
                   class:on={both}
                   aria-pressed={both}
-                  onclick={() => other && (other.next = both ? other.next.filter((x) => x !== sel.id) : [...other.next, sel.id])}
+                  onclick={() => bothWays(sel.id, n)}
                   aria-label="Both ways with {other?.name}"
                   title={both ? 'Both ways: click for one way only' : 'Make it both ways (back and forth)'}>⇄</button
                 >
-                <button class="ghost tiny" onclick={() => other && toggleLink(sel, other)} aria-label="Unlink" title="Unlink">−</button>
+                <button class="ghost tiny" onclick={() => disconnect(sel.id, n)} aria-label="Disconnect {sel.name} from {other?.name ?? '?'}" title="Disconnect">✂</button>
               </span>
             {:else}
               <span class="muted small">nothing (the path ends)</span>
             {/each}
-            <button class="small" class:on={linking} aria-pressed={!!linking} onclick={() => (linking = !linking)} title="Then click the space it leads to; two or more ways make a fork">🔗 Link to…</button>
+            {#if into.length}
+              <span class="muted small">· From:</span>
+              {#each into as f (f.id)}
+                <span class="chip">
+                  ← {f.name}
+                  <button class="ghost tiny" onclick={() => disconnect(f.id, sel.id)} aria-label="Disconnect {f.name} from {sel.name}" title="Disconnect">✂</button>
+                </span>
+              {/each}
+            {/if}
+          </div>
+          <div class="row">
+            <button class="small" class:on={linking} aria-pressed={!!linking} onclick={() => (linking = !linking)} title="Then click the space it leads to; two or more ways make a fork">🔗 Connect to…</button>
+            <select
+              class="small"
+              aria-label="Connect {sel.name} to"
+              onchange={(e) => {
+                const to = spaceById(round, e.currentTarget.value);
+                e.currentTarget.value = '';
+                if (to) toggleLink(sel, to);
+              }}
+            >
+              <option value="">→ Connect to a space…</option>
+              {#each round.spaces.filter((x) => x.id !== sel.id && !sel.next.includes(x.id)) as x (x.id)}<option value={x.id}>{x.name}</option>{/each}
+            </select>
           </div>
           {#if sel.next.length > 1}<div class="muted small">A fork: the host picks the way in play.</div>{/if}
           <h5>When passed <span class="muted small">(e.g. Start: +2 gold)</span></h5>
@@ -849,13 +916,24 @@
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
           <label class="field">Host notes (never shown on stream)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">
-            <button class="small" onclick={() => (round.start = sel.id)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
-            <button class="small" onclick={() => duplicateSpace(sel)} title="A copy after it on the path (Ctrl+D)">⧉ Duplicate space</button>
+            <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
+            <button class="small" onclick={() => duplicateSpace(sel)} title="A copy of this space after it on the path (Ctrl+D)">⧉ Duplicate</button>
             <span class="spacer"></span>
             <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Undo brings it back)">🗑 Delete space</button>
           </div>
+        {:else if link}
+          {@const k = link}
+          <h4>Link</h4>
+          <div class="row" data-edit-link><b>{k.a.name} {k.both ? '↔' : '→'} {k.b.name}</b></div>
+          <div class="row">
+            <button class="small" onclick={() => bothWays(k.a.id, k.b.id)}>{k.both ? '→ One way only' : '⇄ Both ways'}</button>
+            <button class="small" disabled={k.both} onclick={() => reverse(k.a.id, k.b.id)}>↺ Reverse</button>
+            <span class="spacer"></span>
+            <button class="ghost small danger" onclick={() => disconnect(k.a.id, k.b.id)} title="Delete">✂ Disconnect</button>
+          </div>
+          <p class="muted small">Delete disconnects it, Esc lets go of it. Click a space to set it up.</p>
         {:else}
-          <Tips id="board-game" hint="Click a space to set it up. Ctrl+click (⌘+click) the board to add one, or right-click → Add a space here.">
+          <Tips id="board-game" hint="Click a space to set it up. Ctrl+click (⌘+click) or double-click the board to add one, or right-click → Add a space here.">
             <ul>
               <li>New spaces go after the selected space, so you can draw the path in order.</li>
               <li>Drag spaces (or Alt+arrows) to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</li>
@@ -1020,6 +1098,11 @@
     height: 100%;
     pointer-events: none;
   }
+  .picked-link {
+    stroke: #ffcc00;
+    stroke-width: 10;
+    stroke-dasharray: 18 12;
+  }
   .wire {
     stroke: #ffcc00;
     stroke-width: 8;
@@ -1032,7 +1115,7 @@
     pointer-events: none;
   }
   .side {
-    width: 320px;
+    width: 340px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;

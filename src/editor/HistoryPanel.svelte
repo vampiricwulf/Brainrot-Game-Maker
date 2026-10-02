@@ -74,7 +74,38 @@
     }
     if (index === 0 && entries.length) out.push({ kind: 'now', key: 'now' });
     out.push(...marksAt(0));
-    return out;
+    return filtered(out);
+  });
+
+  /** Words to find in the steps' names and places ("space", "memes $400"): only the steps that have them all show. */
+  let filter = $state('');
+  const words = $derived(filter.toLowerCase().split(/\s+/).filter(Boolean));
+  const shows = (e: HistoryEntry) => {
+    const text = `${e.label} ${e.where}`.toLowerCase();
+    return words.every((w) => text.includes(w));
+  };
+  /** How many steps the filter shows. */
+  const shown = $derived(words.length ? history.entries.filter(shows).length : history.entries.length);
+
+  /** Filtering: the steps that match (and the times over them), without saves and the like. */
+  function filtered(out: Row[]): Row[] {
+    if (!words.length) return out;
+    const kept = out.filter((r) => (r.kind === 'step' ? shows(r.e) : r.kind !== 'mark'));
+    // A time (or a day) shows only over a step that's left under it.
+    return kept.filter((r, i) => {
+      if (r.kind !== 'head') return true;
+      for (const next of kept.slice(i + 1)) {
+        if (next.kind === 'step') return true;
+        if (next.kind === 'head' && (next.day || !r.day)) return false;
+      }
+      return false;
+    });
+  }
+  /** The step Tab goes to in the list: the one the game is at, or while filtering, the first one shown if that's hidden. */
+  const tabStep = $derived.by(() => {
+    const steps = rows.filter((r) => r.kind === 'step');
+    const current = steps.find((r) => r.i === history.index - 1);
+    return current ? current.key : words.length ? steps[0]?.key : undefined;
   });
 
   // Stored files that are no longer in the game, kept only so their steps can be undone (freed with the steps).
@@ -156,6 +187,30 @@
       <button class="ghost danger" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)">🗑 Clear history…</button>
     {/snippet}
   </PageHeader>
+  {#if history.entries.length > 1}
+    <div class="filter">
+      <input
+        type="search"
+        bind:value={filter}
+        placeholder="🔍 Filter the steps (e.g. space, Memes $400)"
+        aria-label="Filter the steps"
+        onkeydown={(e) => {
+          if (e.key === 'Escape' && filter) {
+            e.preventDefault();
+            e.stopPropagation();
+            filter = '';
+          } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+            e.preventDefault();
+            list?.querySelector<HTMLButtonElement>('.hr:not(.origin) .pick')?.focus();
+          }
+        }}
+      />
+      {#if words.length}
+        <span class="muted small" role="status">{shown ? `${shown} of ${history.entries.length} steps` : 'No steps match'}</span>
+        <button class="ghost small" onclick={() => (filter = '')}>✕ Show all</button>
+      {/if}
+    </div>
+  {/if}
   {#if clearing}
     <div class="ask">
       <InlineAsk
@@ -192,7 +247,7 @@
           <!-- (One Tab stop for the list, on the step the game is at: ↑/↓ move between them.) -->
           <button
             class="pick"
-            tabindex={current ? 0 : -1}
+            tabindex={r.key === tabStep ? 0 : -1}
             onclick={() => pick(r.i + 1)}
             aria-current={current ? 'step' : undefined}
             title="{e.label}{e.where ? `\n${e.where}` : ''}\n{second(e.ts)} · {applied ? 'Go back to just after this step' : 'Redo up to this step'}"
@@ -239,6 +294,15 @@
   }
   .ask {
     margin: 0 0 10px;
+  }
+  .filter {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 6px;
+  }
+  .filter input {
+    width: min(420px, 100%);
   }
   .ask.at {
     margin: 2px 0 6px 46px;

@@ -733,7 +733,20 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   const own = op.p.length === at.depth;
   // A tile is named as the board shows it ("Memes $400"); a value changed, by the one it had.
   const tile = `${at.crumbs[at.crumbs.length - 2] ?? ''} ${at.name}`.trim();
-  if (own && at.noun === 'clue' && k === 'type') return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
+  // A board game's Start, and a space's ways on (said as ✎ Edit board in play says them).
+  const spaceName = (id: unknown) => {
+    const r = byId<Round>(after.rounds, op.p[1]) ?? byId<Round>(before.rounds, op.p[1]);
+    return (r?.mode === 'boardgame' && r.spaces.find((s) => s.id === id)?.name) || '?';
+  };
+  if (own && at.noun === 'round' && k === 'start') return v ? `Made “${spaceName(v)}” Start` : 'Made the first space Start';
+  if (own && at.noun === 'space' && k === 'next' && Array.isArray(v) && Array.isArray((op as Op & { t: 'set' }).b)) {
+    const was = (op as Op & { t: 'set' }).b as Json[];
+    const added = v.filter((x) => !was.includes(x));
+    const gone = was.filter((x) => !v.includes(x));
+    if (added.length === 1 && !gone.length) return `Connected ${at.name} → ${spaceName(added[0])}`;
+    if (gone.length === 1 && !added.length) return `Disconnected ${at.name} → ${spaceName(gone[0])}`;
+  }
+  if (own && at.noun === 'clue' && k === 'type')return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
   if (own && at.noun === 'clue' && k === 'empty') return v ? `Left ${tile} empty` : `Made ${tile} playable again`;
   if (own && at.noun === 'clue' && k === 'value') {
     const sym = after.settings.currencySymbol;
