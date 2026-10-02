@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { linkMoverDice, newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
+import { linkMoverDice, migrateGame, newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
 import { goToRound, newSession, rebaseSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, moverPreset, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
+  boardGameProblems, moverPreset, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -455,5 +455,42 @@ describe('board game: a crowd on one space', () => {
     }
     // A few along the rim, at the right edge.
     for (const s of placeTokens(1900, 500, 3, 100, 1000).spots) expect(s.x + 42).toBeLessThanOrEqual(1912);
+  });
+});
+
+describe('board game: space names', () => {
+  it('are hidden by default, for new boards and spaces and in games saved before the setting existed', () => {
+    const round = newBoardGameRound('Board');
+    expect(round.spaces.some(nameShown)).toBe(false);
+    expect(nameShown(newBoardSpace(10, 10, 'Bonus'))).toBe(false);
+    // An older game's spaces have no flag: still hidden after loading.
+    const game = newGame();
+    game.rounds.push(round);
+    const old = JSON.parse(JSON.stringify(game));
+    for (const s of old.rounds.at(-1).spaces) expect('showName' in s).toBe(false);
+    const loaded = migrateGame(old);
+    expect((loaded.rounds.at(-1) as BoardGameRound).spaces.some(nameShown)).toBe(false);
+  });
+
+  it('show one at a time, or all; hiding stores no flag', () => {
+    const round = newBoardGameRound('Board');
+    const [start, two] = round.spaces;
+    setNameShown(two, true);
+    expect(round.spaces.filter(nameShown).map((s) => s.name)).toEqual(['Space 2']);
+    expect(nameShown(start)).toBe(false);
+    setNameShown(two, false);
+    expect(JSON.parse(JSON.stringify(two)).showName).toBeUndefined();
+    expect(setAllNamesShown(round, true)).toBe(12);
+    expect(round.spaces.every(nameShown)).toBe(true);
+    expect(setAllNamesShown(round, true)).toBe(0);
+    expect(setAllNamesShown(round, false)).toBe(12);
+    expect(round.spaces.some(nameShown)).toBe(false);
+  });
+
+  it('name their undo steps', () => {
+    expect(nameShownLabel({ name: 'Bonus' }, true)).toBe('Showed the name of “Bonus”');
+    expect(nameShownLabel({ name: 'Nap time' }, false)).toBe('Hid the name of “Nap time”');
+    expect(allNamesLabel(true)).toBe('Showed all space names');
+    expect(allNamesLabel(false)).toBe('Hid all space names');
   });
 });

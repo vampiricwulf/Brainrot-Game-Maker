@@ -176,7 +176,7 @@
     {:else}
       <div class="layer" class:clickable={!!onspace} onclick={onspace ? boardClick : undefined} role="presentation">
         <SlideView slide={round.slide} mode="play" {role} fallbackBg="#1d5e3a" />
-        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} />
+        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} allNames={editing} />
         {#each tokens as t (t.id)}
           {@const p = session.players.find((x) => x.id === t.id)}
           {@const d = drag?.id === t.id ? drag : null}

@@ -36,6 +36,8 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Board game/ }).click();
   assert((await spaces.count()) === 12, 'a new board has a loop of 12 spaces');
+  // Space names are hidden from viewers by default: the editor shows them all, dimmed.
+  assert((await page.locator('.canvas .label[data-name-hidden]').count()) === 12, 'its names are hidden from viewers by default (dimmed in the editor)');
   // Ctrl+click adds a space (a plain click only deselects); Delete removes the selected one; right-click has both.
   const canvasBox = await page.locator('.canvas-box').boundingBox();
   await page.mouse.click(canvasBox.x + canvasBox.width * 0.5, canvasBox.y + canvasBox.height * 0.5);
@@ -94,6 +96,15 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
   assert((await spaces.count()) === 12, 'and it can go again');
   // Start gives points when passed.
+  await space('Start').click();
+  // Its name, shown on the board: the box in its card, one named step.
+  const shownNames = () => page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts();
+  await page.locator('.side [data-show-name]').check();
+  assert((await undoTitle()).includes('Showed the name of “Start”') && (await shownNames()).join() === 'Start', `ticking “Show name on the board” shows only that name (${await undoTitle()})`);
+  await page.locator('.tools [data-names-all="show"]').click();
+  assert((await undoTitle()).includes('Showed all space names') && (await shownNames()).length === 12, 'Names on the board: Show all');
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  assert((await shownNames()).join() === 'Start', 'and Undo takes it back');
   await space('Start').click();
   // Its menu closes on a second click, like the other menus, and on Esc (the focus goes back to the button).
   const addAction = page.locator('.side .actions').first().getByRole('button', { name: '＋ Add button' });
@@ -208,6 +219,8 @@ try {
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
   assert((await page.locator('.stage .on-board').count()) === 2, 'both tokens are on the board');
+  const stageNames = await page.locator('.stage .space .label').allInnerTexts();
+  assert(stageNames.join() === 'Start', `one window: the stage shows only the names ticked to show (${stageNames.join()})`);
 
   // Right-click a token: make it their turn.
   await page.locator('.stage .on-board[data-player="Player 2"]').click({ button: 'right' });
@@ -480,6 +493,7 @@ try {
   if (await aud.locator('.title-card').count()) await host.locator('.stage-box .title-card').click().catch(() => {});
   await aud.locator('[data-space="b8"]').waitFor();
   await aud.waitForTimeout(600);
+  assert((await aud.locator('.space .label').count()) === 0 && (await host.locator('.stage .space .label').count()) === 0, 'a game saved before names could be hidden: no names in the audience window, nor in the host’s copy');
   const cards = aud.locator('.strip .card');
   const tops = await cards.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
   assert((await cards.count()) === 12 && tops.length === 1, `the stats strip is one row of 12 cards (rows at ${tops.join(', ')})`);

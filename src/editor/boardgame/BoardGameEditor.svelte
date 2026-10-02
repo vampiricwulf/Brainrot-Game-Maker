@@ -15,7 +15,7 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { clampToBoard, linkName, moverDiceGone, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
+  import { allNamesLabel, clampToBoard, linkName, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -446,6 +446,13 @@
             setAll(on ? 'Secret' : 'Not secret', (x) => (x.secret = on || undefined));
           },
         },
+        {
+          label: list.every(nameShown) ? '⊘ Hide their names' : '👁 Show their names',
+          onclick: () => {
+            const on = !list.every(nameShown);
+            namesOf(list, on);
+          },
+        },
         { sep: true },
         { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), keys: 'Delete' },
       ]);
@@ -456,6 +463,9 @@
         { label: '✎ Rename', onclick: () => openPanel(true), keys: 'F2' },
         { label: '🔗 Connect to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
         { label: '🏁 Make it Start', onclick: () => makeStart(s), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
+        nameShown(s)
+          ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => showName(s, false) }
+          : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => showName(s, true) },
         { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
         { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), keys: 'Ctrl+D' },
         { label: '📋 Copy space', onclick: () => copySpacesToClipboard([s]), keys: 'Ctrl+C' },
@@ -467,6 +477,9 @@
       showMenu(e, [
         { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) },
         pasteItem,
+        { sep: true },
+        { label: '👁 Show all space names', disabled: round.spaces.every(nameShown), onclick: () => allNames(true) },
+        { label: '⊘ Hide all space names', disabled: !round.spaces.some(nameShown), onclick: () => allNames(false) },
         { sep: true },
         { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), keys: 'Ctrl+A' },
         { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
@@ -599,6 +612,21 @@
 
   function makeStart(s: BoardSpace): void {
     step(`Made “${s.name}” Start`, () => (round.start = s.id));
+  }
+
+  /** Show or hide one space's name on the board, as a named step. */
+  function showName(s: BoardSpace, on: boolean): void {
+    step(nameShownLabel(s, on), () => setNameShown(s, on));
+  }
+
+  /** Show or hide the names of several spaces. */
+  function namesOf(list: BoardSpace[], on: boolean): void {
+    step(`${on ? 'Showed' : 'Hid'} the names of ${list.length} spaces`, () => list.forEach((x) => setNameShown(x, on)));
+  }
+
+  /** Show or hide every space's name. */
+  function allNames(on: boolean): void {
+    step(allNamesLabel(on), () => setAllNamesShown(round, on));
   }
 
   /** The same colour, or secret or not, for all the selected spaces. */
@@ -746,6 +774,12 @@
           several · right-click for more
         </span>
       {/if}
+      <span class="spacer"></span>
+      <span class="names small" title="Viewers see a space's name only when it's shown (here you always see it, dimmed when they don't)">
+        Names on the board:
+        <button class="small" data-names-all="show" disabled={!round.spaces.length || round.spaces.every(nameShown)} onclick={() => allNames(true)}>Show all</button>
+        <button class="small" data-names-all="hide" disabled={!round.spaces.some(nameShown)} onclick={() => allNames(false)}>Hide all</button>
+      </span>
     </div>
     <div class="main">
       <div class="canvas-box" class:media-drop={fileOver === 'board'} bind:clientWidth={boxW} style:height="{SLIDE_H * scale}px">
@@ -770,7 +804,7 @@
           tabindex={round.spaces.length ? -1 : 0}
         >
           <div class="backdrop"><SlideView slide={round.slide} mode="edit" fallbackBg="#1d5e3a" /></div>
-          <BoardSpaces {round} selected={selIds} marked={fileOver && fileOver !== 'board' ? [fileOver] : []} ondown={spaceDown} tabStop={rover} />
+          <BoardSpaces {round} selected={selIds} marked={fileOver && fileOver !== 'board' ? [fileOver] : []} ondown={spaceDown} tabStop={rover} allNames />
           {#if sel && !wire}
             <!-- Drag from it to the space this one should lead to. -->
             <div
@@ -841,6 +875,19 @@
             />
             Secret (viewers see “?” until you reveal them)
           </label>
+          {@const named = picked.filter(nameShown).length}
+          <label class="check small">
+            <input
+              type="checkbox"
+              checked={named === picked.length}
+              indeterminate={named > 0 && named < picked.length}
+              onchange={(e) => {
+                const on = e.currentTarget.checked;
+                namesOf(picked, on);
+              }}
+            />
+            Show names on the board
+          </label>
           <div class="row">
             <span class="spacer"></span>
             <button class="small" onclick={() => duplicateSpaces(picked)} title="Ctrl+D">⧉ Duplicate</button>
@@ -850,6 +897,10 @@
         {:else if sel}
           <h4>Space</h4>
           <label class="field">Name<input bind:value={sel.name} bind:this={nameField} aria-label="Space name" /></label>
+          <label class="check small" title="Viewers see its name under it (here you always see it, dimmed when they don't)">
+            <input type="checkbox" data-show-name checked={nameShown(sel)} onchange={(e) => showName(sel, e.currentTarget.checked)} />
+            Show name on the board
+          </label>
           <div class="row">
             <label class="check small">Color <input type="color" bind:value={sel.color} aria-label="Space color" /></label>
             <div class="pop">

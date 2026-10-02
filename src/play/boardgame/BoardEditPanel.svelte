@@ -5,10 +5,10 @@
 -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
-  import { spaceById } from '../../lib/boardgame';
+  import { nameShown, spaceById } from '../../lib/boardgame';
   import type { BoardGameRound, BoardGameState, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
-  import { boardEdit, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editSpace, editStart } from './boardedit.svelte';
+  import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart } from './boardedit.svelte';
 
   let { game, session, round, bs, dual }: { game: Game; session: Session; round: BoardGameRound; bs: BoardGameState; dual: boolean } = $props();
 
@@ -32,6 +32,7 @@
     <b>✎ Editing the board</b>
     <span class="muted small">
       {dual ? 'Viewers see the changes as you make them (not the dashed marks).' : 'Viewers see this: the board changes as you edit it, with its dashed marks.'}
+      {dual ? 'Hidden names show dimmed, here only.' : 'Hidden names show dimmed while you edit (on the stage too), and go again when you’re done.'}
       The changes last for this game only, unless you press 💾 Keep in game. Each one is a step: Ctrl+Z takes it back.
     </span>
   </div>
@@ -43,6 +44,13 @@
   {/if}
   <div class="row">
     <button class="small" class:on={boardEdit.adding} aria-pressed={boardEdit.adding} onclick={() => (boardEdit.adding = !boardEdit.adding)} title="Then click the board where it goes">＋ Space</button>
+    <span class="muted small">Names:</span>
+    <button class="small" data-names-all="show" disabled={round.spaces.every(nameShown)} onclick={() => editAllNames(game, session, true)} title="Viewers see every space's name">
+      Show all
+    </button>
+    <button class="small" data-names-all="hide" disabled={!round.spaces.some(nameShown)} onclick={() => editAllNames(game, session, false)} title="Viewers see no space's name">
+      Hide all
+    </button>
     <span class="spacer"></span>
     <!-- (An exported player-only file has no editor to keep it in.) -->
     {#if !app.playerOnly}
@@ -98,6 +106,10 @@
           }}
         />
         Secret
+      </label>
+      <label class="check small" title="Viewers see its name under it (you always see it while editing)">
+        <input type="checkbox" data-show-name checked={nameShown(s)} onchange={(e) => editShowName(game, session, s.id, e.currentTarget.checked)} />
+        Show name on the board
       </label>
       <button class="small" onclick={() => (buttonsFor = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
       <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it Start</button>

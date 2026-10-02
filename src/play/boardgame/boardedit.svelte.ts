@@ -3,7 +3,7 @@
 // named undo step (the board goes back with it).
 import { app, toast } from '../../lib/app.svelte';
 import { connectSpaces, deleteLiveSpace, disconnectSpaces, keepBoard, reverseLink, toggleBothWays, addLiveSpace } from '../../lib/boardedit';
-import { nextSpaceName, spaceById } from '../../lib/boardgame';
+import { allNamesLabel, nameShownLabel, nextSpaceName, setAllNamesShown, setNameShown, spaceById } from '../../lib/boardgame';
 import { step } from '../../lib/history.svelte';
 import type { BoardSpace, Game, Session } from '../../lib/model';
 import { logged, startStep } from '../../lib/toolset';
@@ -115,6 +115,21 @@ export function editSpace(game: Game, session: Session, id: string, text: string
   const s = round && spaceById(round, id);
   if (!round || !s) return;
   logged(session, text, () => fn(s), game);
+}
+
+/** Show or hide a space's name on the board (viewers see it only when it's shown). */
+export function editShowName(game: Game, session: Session, id: string, on: boolean): void {
+  const { round } = boardNow(game, session);
+  const s = round && spaceById(round, id);
+  if (!round || !s) return;
+  logged(session, nameShownLabel(s, on), () => setNameShown(s, on), game);
+}
+
+/** Show or hide every space's name. */
+export function editAllNames(game: Game, session: Session, on: boolean): void {
+  const { round } = boardNow(game, session);
+  if (!round) return;
+  logged(session, allNamesLabel(on), () => setAllNamesShown(round, on), game);
 }
 
 export function editStart(game: Game, session: Session, id: string): void {

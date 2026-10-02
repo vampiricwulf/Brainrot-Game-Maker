@@ -24,6 +24,37 @@ export function newBoardSpace(x: number, y: number, name = 'Space', color = '#43
   return { id: newId(), name, x: Math.round(x), y: Math.round(y), color, next: [] };
 }
 
+/** Viewers see this space's name under it (hidden unless its box is ticked, in older games too). */
+export function nameShown(s: Pick<BoardSpace, 'showName'>): boolean {
+  return !!s.showName;
+}
+
+/** Show or hide a space's name on the board (hidden is the default: no flag stored). */
+export function setNameShown(s: BoardSpace, on: boolean): void {
+  s.showName = on || undefined;
+}
+
+/** The undo step for showing or hiding one space's name: Showed the name of “Bonus”. */
+export function nameShownLabel(s: Pick<BoardSpace, 'name'>, on: boolean): string {
+  return `${on ? 'Showed' : 'Hid'} the name of “${s.name}”`;
+}
+
+/** Show or hide every space's name; how many changed. */
+export function setAllNamesShown(round: BoardGameRound, on: boolean): number {
+  let n = 0;
+  for (const s of round.spaces)
+    if (nameShown(s) !== on) {
+      setNameShown(s, on);
+      n++;
+    }
+  return n;
+}
+
+/** The undo step for the bulk toggle: Showed all space names. */
+export function allNamesLabel(on: boolean): string {
+  return on ? 'Showed all space names' : 'Hid all space names';
+}
+
 /** A name for a new space: "Space N" with a number no space has yet (after a delete, not a second "Space 12"). */
 export function nextSpaceName(round: BoardGameRound): string {
   const used = round.spaces.map((s) => Number(/^Space (\d+)$/.exec(s.name)?.[1] ?? 0));

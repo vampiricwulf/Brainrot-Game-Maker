@@ -409,6 +409,7 @@ const TOGGLES: Record<string, (on: boolean, who: string) => string> = {
   winPublic: (on, who) => (on ? `Showed how to win on the board of ${who}` : `Took how to win off the board of ${who}`),
   locked: (on, who) => (on ? `Locked ${who}` : `Unlocked ${who}`),
   secret: (on, who) => (on ? `Made ${who} secret` : `Made ${who} not secret`),
+  showName: (on, who) => (on ? `Showed the name of ${who}` : `Hid the name of ${who}`),
   statsShown: (on, who) => (on ? `Showed the stats of ${who} to viewers` : `Hid the stats of ${who} from viewers`),
 };
 /** Fields that are words people type: a change says what they say now. */

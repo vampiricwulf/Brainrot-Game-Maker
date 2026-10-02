@@ -14,6 +14,12 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-02
 
 ### Changed
+- **Board games: space names are hidden from viewers unless you tick "Show name on the board"** for that space, in
+  the editor's space card or in ✎ Edit board during play (or right-click a space: 👁 Show name / ⊘ Hide name). This
+  applies to games made before too, so their names disappear from the stage until you show them; **Names on the board:
+  Show all / Hide all** over the editor's board (and in ✎ Edit board) does them all at once. While you edit, you still
+  see every name, with the hidden ones dimmed and marked ⊘. The circles' numbers and icons stay as they were, and the
+  board doesn't move. Each change is an undo step ("Showed the name of “Bonus”").
 - **Slide editor: several items selected get the same tools as one**: ⤒ Front / ↑ / ↓ / ⤓ Back and a **Lock** box
   (ticked when they're all locked) beside ⧉ Duplicate and 🗑 Delete, laid out as the Inspector's Position is for one
   item.

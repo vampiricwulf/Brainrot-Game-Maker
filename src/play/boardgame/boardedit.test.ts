@@ -4,7 +4,7 @@ import { newBoardGameRound } from '../../lib/boardgame';
 import { addLiveSpace, connectSpaces, deleteLiveSpace, disconnectSpaces, keepBoard, linkAt, refuge, reverseLink, toggleBothWays } from '../../lib/boardedit';
 import { goToRound, newSession } from '../../lib/session';
 import { undoAction, redoAction } from '../../lib/toolset';
-import { boardEdit, editAdd, editConnect, editDelete, editDisconnect, editSpace, setEditing } from './boardedit.svelte';
+import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDisconnect, editShowName, editSpace, setEditing } from './boardedit.svelte';
 
 /** A game with a 12-space loop (Start, Space 2…Space 12) and two players, playing it. */
 function setup() {
@@ -149,5 +149,33 @@ describe('editing a board during play: each edit is a named undo step', () => {
     expect(names(round, round.spaces[4].next)).toEqual(['Space 6']);
     setEditing(false);
     expect(boardEdit.on).toBe(false);
+  });
+});
+
+describe('editing a board during play: space names', () => {
+  it('shows and hides names as named undo steps', () => {
+    const { game, round, session, id } = setup();
+    const log = () => session.actionLog?.at(-1)?.text;
+    const shown = () => round.spaces.filter((s) => s.showName).map((s) => s.name);
+    expect(shown()).toEqual([]);
+    editSpace(game, session, id('Space 3'), 'Renamed space “Space 3” to “Bonus”', (s) => (s.name = 'Bonus'));
+    editShowName(game, session, id('Bonus'), true);
+    expect(log()).toBe('Showed the name of “Bonus”');
+    expect(shown()).toEqual(['Bonus']);
+    editAllNames(game, session, true);
+    expect(log()).toBe('Showed all space names');
+    expect(shown()).toHaveLength(12);
+    editShowName(game, session, id('Start'), false);
+    expect(log()).toBe('Hid the name of “Start”');
+    editAllNames(game, session, false);
+    expect(log()).toBe('Hid all space names');
+    expect(shown()).toEqual([]);
+    undoAction(session, game);
+    expect(shown()).toHaveLength(11);
+    undoAction(session, game);
+    undoAction(session, game);
+    expect(shown()).toEqual(['Bonus']);
+    undoAction(session, game);
+    expect(shown()).toEqual([]);
   });
 });

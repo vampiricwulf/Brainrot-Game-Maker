@@ -1498,6 +1498,11 @@ export interface BoardSpace {
   hostNotes?: string;
   /** Viewers see a plain space until the host reveals what it is. */
   secret?: boolean;
+  /**
+   * Viewers see the space's name under it (absent: they don't, in games made before names could be hidden too). The
+   * host always sees it while editing, dimmed when viewers don't.
+   */
+  showName?: boolean;
 }
 
 /** An area off the board (the Shadow Realm) where players are sent until they escape. */

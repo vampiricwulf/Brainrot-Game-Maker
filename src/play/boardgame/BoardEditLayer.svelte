@@ -5,11 +5,11 @@
   link): in a single window, viewers see them.
 -->
 <script lang="ts">
-  import { clampToBoard, spaceById } from '../../lib/boardgame';
+  import { clampToBoard, nameShown, spaceById } from '../../lib/boardgame';
   import { linkAt } from '../../lib/boardedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { SLIDE_H, SLIDE_W, type BoardGameRound, type Game, type Session } from '../../lib/model';
-  import { boardEdit, editAdd, editBothWays, editConnect, editDelete, editDisconnect, editDrag, editIdle, editReverse, editStart } from './boardedit.svelte';
+  import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editDrag, editIdle, editReverse, editShowName, editStart } from './boardedit.svelte';
 
   let { game, session, round }: { game: Game; session: Session; round: BoardGameRound } = $props();
 
@@ -94,6 +94,9 @@
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
         { label: '🔗 Connect to…', hint: 'Then click the space it leads to (or Shift+click it)', onclick: () => (boardEdit.connecting = true) },
         { label: '🏁 Make it Start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
+        nameShown(s)
+          ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false) }
+          : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => editShowName(game, session, s.id, true) },
         { label: '＋ Add a space after it', onclick: () => editAdd(game, session, { x: s.x + 160, y: s.y }) },
         { sep: true },
         { label: '🗑 Delete space', danger: true, keys: 'Delete', onclick: () => editDelete(game, session, s.id) },
@@ -111,7 +114,12 @@
       ]);
     }
     const sel = spaceById(round, boardEdit.sel ?? undefined);
-    showMenu(e, [{ label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => editAdd(game, session, p) }]);
+    showMenu(e, [
+      { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => editAdd(game, session, p) },
+      { sep: true },
+      { label: '👁 Show all space names', disabled: round.spaces.every(nameShown), onclick: () => editAllNames(game, session, true) },
+      { label: '⊘ Hide all space names', disabled: !round.spaces.some(nameShown), onclick: () => editAllNames(game, session, false) },
+    ]);
   }
 
   const sel = $derived(spaceById(round, boardEdit.sel ?? undefined));

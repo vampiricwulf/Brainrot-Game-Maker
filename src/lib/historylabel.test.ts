@@ -327,6 +327,10 @@ describe('step labels', () => {
     const space = structuredClone(before);
     (space.rounds.at(-1) as BoardGameRound).spaces[2].secret = true;
     expect(describeStep(diff(before, space), before, space).label).toBe('Made “Space 3” secret');
+    const named = structuredClone(before);
+    (named.rounds.at(-1) as BoardGameRound).spaces[2].showName = true;
+    expect(describeStep(diff(before, named), before, named).label).toBe('Showed the name of “Space 3”');
+    expect(describeStep(diff(named, before), named, before).label).toBe('Hid the name of “Space 3”');
     // A board game's Start and links, as ✎ Edit board in play names them.
     const race = (g: typeof before) => g.rounds.at(-1) as BoardGameRound;
     const started = structuredClone(before);

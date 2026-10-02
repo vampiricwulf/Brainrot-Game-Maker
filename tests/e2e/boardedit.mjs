@@ -122,8 +122,11 @@ try {
 
   // ---------- ✎ Edit board ----------
   await page.getByLabel('Steps').blur();
+  const names = (pg) => pg.locator('.stage-box .space .label:not([data-name-hidden])').allInnerTexts();
+  assert((await page.locator('.stage-box .space .label').count()) === 0, 'one window: space names are hidden on the stage by default');
   await page.keyboard.press('e');
   await page.locator('[data-board-editing]').waitFor();
+  assert((await page.locator('.stage-box .space .label[data-name-hidden]').count()) === 6, 'editing: the host sees every name, the hidden ones dimmed');
   assert((await mainLabel(page)) === '✓ Done editing', 'E edits the board: ✓ Done editing is the main button');
   assert((await page.locator('[data-board-editing]').innerText()).includes('Viewers see this'), 'one window: the panel says viewers see it');
   assert((await page.locator('[data-board-editing]').innerText()).includes('this game only'), 'and that the changes last for this game only');
@@ -197,11 +200,21 @@ try {
   assert((await stageSpaces(page).allInnerTexts()).some((t) => t.includes('Nap time')), 'Ctrl+Z brings the deleted space back');
   const annBack = await page.locator('.stage .on-board[data-player="Ann"]').evaluate((e) => parseFloat(e.style.left));
   assert(Math.abs(annBack - 1400) < 160, `and Ann on it (${annBack})`);
+  // Show one space's name: the box in the panel, one named step.
+  await page.mouse.click(nap.x, nap.y);
+  await page.locator('[data-board-editing] [data-show-name]').check();
+  assert((await last(page)).includes('Showed the name of “Nap time”') && (await names(page)).join() === 'Nap time', `ticking “Show name on the board” shows its name (${await last(page)})`);
+  if (shots) await page.screenshot({ path: `${shots}/names-editing.png` });
+  await page.locator('[data-board-editing] [data-show-name]').blur();
   // Esc lets go of what's picked, then ends editing.
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.locator('[data-board-editing]').waitFor({ state: 'detached' });
   assert(!(await layer.count()) && (await mainLabel(page)) !== '✓ Done editing', 'Esc (again) ends editing');
+  assert((await page.locator('.stage-box .space .label').allInnerTexts()).join() === 'Nap time', 'playing: the stage shows only the name ticked to show');
+  if (shots) await page.screenshot({ path: `${shots}/names-playing.png` });
+  await page.keyboard.press('Control+z');
+  assert((await page.locator('.stage-box .space .label').count()) === 0, 'Ctrl+Z hides it again');
   // No Keep in game: the editor's game is as it was.
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
@@ -239,6 +252,19 @@ try {
   await aud.waitForFunction((n) => document.querySelectorAll('[data-space]').length === n + 1, audN);
   assert(true, 'the audience window follows');
   assert(!(await aud.locator('[data-board-edit], [data-picked-space]').count()), 'the audience window shows none of the editing marks');
+  // Names: hidden in the audience window; the host, editing, sees them dimmed.
+  assert((await aud.locator('.space .label').count()) === 0, 'the audience window shows no space names by default');
+  assert((await host.locator('.stage-box .space .label[data-name-hidden]').count()) === audN + 1, 'the host, editing, sees them all dimmed');
+  await host.mouse.click(b.x + (300 * b.width) / 1920, b.y + (300 * b.height) / 1080, { button: 'right' });
+  await host.getByRole('menu').getByRole('menuitem', { name: '👁 Show name' }).click();
+  await aud.waitForFunction(() => document.querySelectorAll('.space .label').length === 1);
+  assert((await aud.locator('.space .label').allInnerTexts()).join() === 'Start' && (await names(host)).join() === 'Start', 'right-click ▸ Show name: the audience sees that one name');
+  await host.locator('[data-board-editing] [data-names-all="show"]').click();
+  await aud.waitForFunction((n) => document.querySelectorAll('.space .label').length === n, audN + 1);
+  assert((await last(host)).includes('Showed all space names'), 'Names: Show all shows every name, one step');
+  await host.keyboard.press('Control+z');
+  await aud.waitForFunction(() => document.querySelectorAll('.space .label').length === 1);
+  assert(true, 'Ctrl+Z takes it back');
   if (shots) {
     await host.screenshot({ path: `${shots}/side-editing.png` });
     await aud.screenshot({ path: `${shots}/audience-follows.png` });
@@ -249,6 +275,11 @@ try {
   await host.keyboard.press('e');
   await host.locator('[data-board-editing]').waitFor({ state: 'detached' });
   assert(true, 'E ends editing too');
+  assert((await host.locator('.stage-box .space .label').allInnerTexts()).join() === 'Start', 'not editing, the host’s copy shows the names as the audience sees them');
+  if (shots) {
+    await host.screenshot({ path: `${shots}/names-host-dual.png` });
+    await aud.screenshot({ path: `${shots}/names-audience.png` });
+  }
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Leave', exact: true }).click();
@@ -256,6 +287,8 @@ try {
   const ed2 = host.locator('.canvas [data-space]');
   await ed2.first().waitFor();
   assert((await ed2.count()) === 7 && (await ed2.allInnerTexts()).some((t) => t.includes('Space 7')), 'and the game in the editor has the new space');
+  assert((await host.locator('.canvas .label:not([data-name-hidden])').allInnerTexts()).join() === 'Start', 'and Start’s name shown');
+  if (shots) await host.screenshot({ path: `${shots}/names-editor.png` });
   await ctx2.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

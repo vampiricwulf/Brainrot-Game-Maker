@@ -1,13 +1,14 @@
 <!--
   A board game's spaces and the links between them, drawn in 1920×1080 board coordinates over the backdrop. Viewers
-  see a secret space as a plain "?" until the host reveals it.
+  see a secret space as a plain "?" until the host reveals it, and a space's name only when its box is ticked (the host,
+  editing, sees every name: the ones viewers don't see dimmed).
 -->
 <script lang="ts">
   import { textOn } from '../colors';
   import { mediaUrls } from '../media.svelte';
   import type { BoardGameRound, BoardSpace } from '../model';
   import { SLIDE_H, SLIDE_W } from '../model';
-  import { spaceNumber } from '../boardgame';
+  import { nameShown, spaceNumber } from '../boardgame';
 
   let {
     round,
@@ -18,6 +19,7 @@
     lit = null,
     ondown,
     tabStop = null,
+    allNames = false,
   }: {
     round: BoardGameRound;
     /** Viewers: secret spaces show as "?" and host notes never show. */
@@ -33,6 +35,8 @@
     ondown?: (e: PointerEvent, space: BoardSpace) => void;
     /** Editor: the space Tab goes to (the others take the focus by the arrow keys: the board is one tab stop). */
     tabStop?: string | null;
+    /** The host editing the board: every space's name shows, the ones viewers don't see dimmed. */
+    allNames?: boolean;
   } = $props();
 
   const R = 58;
@@ -108,7 +112,10 @@
     {:else if number(s)}
       <span class="n">{number(s)}</span>
     {/if}
-    {#if !h}<span class="label">{s.name}</span>{/if}
+    {#if !h && (nameShown(s) || allNames)}
+      <!-- (Absolutely placed under the circle: a hidden name leaves the board as it is.) -->
+      <span class="label" class:off={!nameShown(s)} data-name-hidden={nameShown(s) ? undefined : ''}>{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span>
+    {/if}
   </div>
 {/each}
 
@@ -201,5 +208,16 @@
     color: #fff;
     font-size: 30px;
     white-space: nowrap;
+  }
+  /* The host's view of a name viewers don't see. */
+  .label.off {
+    opacity: 0.55;
+    font-style: italic;
+    background: rgba(0, 0, 0, 0.45);
+    outline: 2px dashed rgba(255, 255, 255, 0.6);
+  }
+  .eye {
+    margin-right: 6px;
+    font-style: normal;
   }
 </style>
