@@ -62,6 +62,22 @@ in plain words for the people who make and host games. Anything committed but no
   or every seat taken and phones can't add players), and otherwise, on a clue, also says the site to go to.
 - **The Final's wager screen says "max $400 (their score)"** instead of "TV max $400", and the host info's Wagers list
   follows the players' order while wagers come in, with "waiting…" for the ones still to come.
+- **The buzzer room lasts the whole stream, not one game**: Exit › Keep & leave keeps the room open (phones say "The
+  host is setting up", as after ◀ Back to editor) and Resume goes back into it, same code, nobody joins again; only
+  Discard & leave, leaving the results or ✕ Close the room closes it. Opening another game and pressing ▶ Play asks
+  "Keep buzzer room XVGZ and its 5 players?" (Enter keeps it): the players and their phones carry over, Buzzer mode on.
+  The bar over the editor says ▶ Play asks to keep it once another game is open.
+- **The audience window stays up between games**: ◀ Back to editor and Exit no longer close it, so OBS keeps its capture
+  source; in the editor it shows the game's "Starting soon" card (with the room code when a room is open). The bar over
+  the editor has a ✕ to close it (asked first).
+- **Game over has ▶ Next game…** beside 🔁 Rematch: it opens Open… / Recent games for the stream's next game, keeping
+  the room, its players and the audience window, and the results stay viewable from the editor.
+- **Resume asks "How is it shown?" with the display you used last picked**, so Enter resumes in it.
+- **The audience window's "Click to enable sound" is a small chip in its corner** instead of a big orange box over a
+  dimmed stage (which was on stream), and a window already clicked isn't asked again after it reloads.
+- **One status bar over the editor**: the room left open, the game kept to resume (or a finished one) and the audience
+  window share one compact line that stays in sight; the page itself no longer scrolls under it.
+- **A rematch's card on stream says "Rematch! Starting soon…"**.
 - **Opening a game over unsaved changes says what really happens**: the button is **Open anyway** (or **Reopen anyway**,
   **Start new anyway**), not "Discard", and the note says the game you leave is kept in this browser, where Open… →
   Recent games brings it back. With the browser's storage full it says going on loses it.
@@ -180,6 +196,12 @@ in plain words for the people who make and host games. Anything committed but no
   RPG and board-game name tags under the avatars are bigger (they were 8–12 px tall at 720p).
 - **"Added a sample game…" and other editor messages stayed up after going to play** (and back): a message goes when
   you go somewhere else.
+- **Closing the audience window by accident went unnoticed** (the stage just grew): the host panel now says
+  "📺 Audience window closed: viewers see nothing" with a Reopen (A) button until it's back.
+- **After a reload, Resume warned "Click the audience window once…"** for an audience window that never reloaded and
+  had been clicked: the window is asked whether it may play sound instead.
+- **"Resume with my edits" showed when nothing had been edited** (after a reload too): it shows only when the game in
+  the editor differs from the one kept.
 - **Randomize Daily Doubles' tooltip gave the wrong way to set one by hand**: it said to click a tile (that opens the
   clue); it now says right-click a tile → ⭐ Make it a Daily Double.
 - **Host panel: the status line during the category reveal said "Round intro"** with no progress; it now says

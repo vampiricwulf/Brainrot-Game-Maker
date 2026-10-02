@@ -1,6 +1,7 @@
 <!-- End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { getContext, onDestroy } from 'svelte';
+  import { NEXT_GAME } from './nextgame';
   import { isFinal, roundName, type Game, type Session } from '../../lib/model';
   import { nameList, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
@@ -55,6 +56,9 @@
     });
   }
   onDestroy(() => asking && setAsk(null));
+
+  /** ▶ Next game… (a stream of several games): the editor's Open… / Recent games, the room and audience window kept. */
+  const nextGame = getContext<(() => void) | undefined>(NEXT_GAME);
 </script>
 
 {#if ties.length}
@@ -92,6 +96,11 @@
   <span class="spacer"></span>
   <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
   {#if !asking}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
+  {#if nextGame && !asking}
+    <button onclick={nextGame} title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor.">
+      ▶ Next game…
+    </button>
+  {/if}
 </div>
 
 <style>

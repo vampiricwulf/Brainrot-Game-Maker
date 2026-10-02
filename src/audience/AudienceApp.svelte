@@ -28,9 +28,26 @@
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   // Browsers only allow sound autoplay after the user has clicked this window once. The desktop app
   // starts its windows with autoplay allowed (WebView2's --autoplay-policy=no-user-gesture-required).
-  let activated = $state(inTauri() || !!navigator.userActivation?.hasBeenActive);
+  // Remembered for this window (its session storage), so the host isn't asked again for a window already clicked; a
+  // sound it blocks after all asks again (blockedSince).
+  const ACTIVATED_KEY = 'brainrot.audience.activated';
+  function remembered(): boolean {
+    try {
+      return sessionStorage.getItem(ACTIVATED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+  function remember(): void {
+    try {
+      sessionStorage.setItem(ACTIVATED_KEY, '1');
+    } catch {
+      /* asked again after a reload */
+    }
+  }
+  let activated = $state(inTauri() || !!navigator.userActivation?.hasBeenActive || remembered());
   /** A game sound was blocked since this window last told the host it may play sound. */
-  let blockedSince = false;
+  let blockedSince = $state(false);
 
   // Talk to the host through window.opener when there is one; otherwise (e.g. a window the desktop app
   // created itself) through a BroadcastChannel. Only one link is used so nothing is handled twice.
@@ -90,6 +107,11 @@
         case 'bye':
           status = 'host-left';
           break;
+        case 'ping':
+          // A host page that reloaded found this window again: hello, and whether sound may play here.
+          send({ type: 'hello' });
+          send({ type: 'audience-event', event: { kind: 'activation', active: activated && !blockedSince } });
+          break;
         case 'close':
           // (A window the page didn't open can't close itself: it says the host left instead.)
           window.close();
@@ -129,6 +151,7 @@
       if (event.kind === 'sound' && event.ok) {
         activated = true;
         blockedSince = false;
+        remember();
       } else if (event.kind === 'sound' && event.reason === 'blocked') blockedSince = true;
       send({ type: 'audience-event', event });
     });
@@ -172,6 +195,7 @@
     if (activated && !blockedSince) return;
     activated = true;
     blockedSince = false;
+    remember();
     send({ type: 'audience-event', event: { kind: 'activation', active: true } });
   }
 
@@ -236,13 +260,11 @@
       {/if}
     </div>
   {/if}
-  <!-- Browsers block sound until the window is clicked once: it says so over the picture until then, so the host sees
-       it in the window (and in the OBS preview); the click takes it away, and the host is told (✓ in Going live?). -->
-  {#if !activated && !scores && status === 'connected'}
-    <div class="activate" role="status">
-      <b>🔊 Click to enable sound</b>
-      <span>Browsers keep this window quiet until it's clicked once.</span>
-    </div>
+  <!-- Browsers block sound until the window is clicked once: a small chip in the corner says so until then (the host
+       sees it in the window and the OBS preview, without the stage dimmed); the click takes it away, and the host is
+       told (✓ in Going live?). -->
+  {#if (!activated || blockedSince) && !scores && status === 'connected'}
+    <div class="activate" role="status" title="Browsers keep this window quiet until it's clicked once">🔊 Click to enable sound</div>
   {/if}
   <!-- The same: viewers keep the last picture, not a red bar (nothing's on stream before the game came, though). -->
   {#if status === 'host-left' && (!idle || !game)}
@@ -268,24 +290,15 @@
   }
   .activate {
     position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.6);
+    right: 10px;
+    bottom: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(245, 165, 36, 0.9);
     color: #fff;
-    font-size: 16px;
-    text-align: center;
+    font-size: 13px;
     cursor: pointer;
-  }
-  .activate b {
-    padding: 14px 28px;
-    border-radius: 12px;
-    background: rgba(245, 165, 36, 0.95);
-    color: #000;
-    font-size: 28px;
   }
   .banner {
     position: fixed;

@@ -90,13 +90,16 @@
   import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, setContext, tick, untrack } from 'svelte';
+  import { NEXT_GAME } from './host/nextgame';
+  import { sameGame } from '../lib/samegame';
   import { MediaQuery } from 'svelte/reactivity';
 
   let {
     onexit,
     oncancel,
     onresume,
+    onnextgame,
     gameRev = 0,
     gameCopy,
   }: {
@@ -109,6 +112,11 @@
     onresume?: (withEdits: boolean, room: SavedRoom['remote'] | null) => void;
     /** Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is saved or cleared. */
     oncancel: () => void;
+    /**
+     * Game over › ▶ Next game…: back to the editor to open the stream's next game (Open… / Recent games). The buzzer
+     * room (and its players) and the audience window stay up for it.
+     */
+    onnextgame?: () => void;
     /** Goes up when the game in play changes (App's watcher). */
     gameRev?: number;
     /** That watcher's plain copy of the game (null until it has started). Never read inside an effect. */
@@ -175,7 +183,8 @@
   const undone = $state<Undone[]>([]);
 
   const sym = $derived(game.settings.currencySymbol);
-  const dual = $derived(audience.open);
+  // (▶ Test this round never goes on stream: an audience window left open keeps its card, and the test plays here.)
+  const dual = $derived(audience.open && !app.test);
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
   // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): on a wide window it
@@ -197,7 +206,7 @@
   // The game goes as App's plain copy (its watcher), and only while a window is open: copying the whole game on every
   // change made ▶ Play and each rule ticked lag in big games. What changed goes together a moment later, the game
   // first, so a viewer never gets a session or overlay that refers to a part of the game it hasn't got yet.
-  const viewers = $derived(audience.open || scoresWindow.open);
+  const viewers = $derived((audience.open || scoresWindow.open) && !app.test);
   let sentGame: Game | null = null;
   let outSession: Parameters<typeof pushSession>[0] | null = null;
   let outLive: Parameters<typeof pushLive>[0] | null = null;
@@ -209,7 +218,7 @@
     sendQueued = true;
     queueMicrotask(() => {
       sendQueued = false;
-      if (left || !(audience.open || scoresWindow.open)) return;
+      if (left || app.test || !(audience.open || scoresWindow.open)) return;
       // (Until the watcher has started, a copy of its own.)
       const g = gameCopy?.() ?? $state.snapshot(game);
       if (g !== sentGame) pushGame((sentGame = g));
@@ -457,10 +466,11 @@
       offBuzz();
       offQueue();
       offWager();
-      // Leaving the game (Exit): the phones are told it's over. Not ◀ Back to editor from the pre-game screen: the room
-      // stays open for ▶ Play (see backToEditor).
-      if (!keepRoomOpen && !app.test) closeRoom();
-      // The scores window belongs to this game (the audience window is closed by leaving it).
+      // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
+      // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
+      // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
+      if (!keepRoomOpen && !app.test && !(kept.room && inRoom(kept.room.remote.code))) closeRoom();
+      // The scores window belongs to this game (the audience window stays up between games: App shows its card).
       closeScoresWindow();
       for (const t of pending) clearTimeout(t);
       pending.clear();
@@ -952,15 +962,25 @@
    * Only Exit / End game, ✕ Close the room or turning Buzzer mode off close it.
    */
   function backToEditor(): void {
-    const r = session.remote;
-    if (app.pregame && phonesOn && r && inRoom(r.code)) {
-      const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players: $state.snapshot(session.players), screen: 'editor', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
-      sendHostState(hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked }), true);
-      keepRoomOpen = true;
-      kept.room = saved;
-      void saveRoom(saved);
-    }
+    if (app.pregame) keepRoomInEditor();
     oncancel();
+  }
+
+  /**
+   * Back to the editor with the buzzer room left open (◀ Back to editor, Exit › Keep & leave, ▶ Next game…): its phones
+   * are told the host is setting up, and it's saved (a reload keeps it); ▶ Play (or Resume) goes back into it. The
+   * players go with it, at their start scores (a game played since starts them at 0).
+   */
+  function keepRoomInEditor(): boolean {
+    const r = session.remote;
+    if (app.test || !phonesOn || !r || !inRoom(r.code)) return false;
+    const players = $state.snapshot(session.players).map((p) => (app.pregame ? p : { ...p, startScore: 0 }));
+    const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players, screen: 'editor', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
+    sendHostState(hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked }), true);
+    keepRoomOpen = true;
+    kept.room = saved;
+    void saveRoom(saved);
+    return true;
   }
 
   /** ✕ Close the room (the 📱 card): the phones are told the game is over; Start the room makes a new one. */
@@ -1017,16 +1037,27 @@
     });
   });
 
-  /** Exit: the room closes (phones are told) and the saved game forgets it. (A test never had one: a room kept open
-   *  in the editor stays open.) */
+  /**
+   * Exit › Keep & leave: the buzzer room stays open with the kept game (its phones are told the host is setting up), and
+   * Resume goes back into it. Discard & leave, or leaving the results, closes it (phones are told the game is over) and
+   * the saved game forgets it. (A test never had one: a room kept open in the editor stays open.)
+   */
   function exitGame(keep: boolean): void {
-    if (!app.test) {
+    // (Only this game's own room: one kept in the editor that it didn't take, as with results viewed, stays open.)
+    if (!app.test && session.remote && !(keep && session.phase !== 'end' && keepRoomInEditor())) {
       closeRoom();
       session.remote = null;
       void clearRoom();
     }
     onexit(keep);
   }
+
+  /** Game over › ▶ Next game…: the room (and its players) stays open for the stream's next game. */
+  function nextGame(): void {
+    keepRoomInEditor();
+    onnextgame?.();
+  }
+  if (untrack(() => !!onnextgame) && !app.playerOnly) setContext(NEXT_GAME, nextGame);
 
   function pick(ref: ClueRef): void {
     openClue(session, ref, game);
@@ -1336,7 +1367,8 @@
     s.remote = session.remote;
     selected = [];
     amount = null;
-    app.live = newLive();
+    // (Viewers' card says "Rematch! Starting soon…".)
+    app.live = { ...newLive(), rematch: true };
     app.session = s;
     app.pregame = true;
   }
@@ -1743,6 +1775,7 @@
     void clearRoom();
     app.pregame = false;
     app.live.soonAt = undefined;
+    app.live.rematch = undefined;
     // A game can open with a Final or an RPG round: those start through goToRound (only a title card).
     if (!isBoard(game.rounds[0])) goToRound(session, game, 0);
     else startIntro(session, game);
@@ -1802,6 +1835,9 @@
 
   /** ⚙ Set up phone buzzers… (the 📱 card, when this app has no buzzer server): ⚙ Settings, at the phone buzzers. */
   let showSettings = $state(false);
+
+  /** "Resume with my edits" only when the editor's game was changed since the kept game was played. */
+  const editsDiffer = $derived(!!app.resumable && !sameGame($state.snapshot(app.game), app.resumable.game));
 
   /** The pre-game's ▶ Resume: the game kept to resume plays on, in the display picked here (and its room, if open). */
   function resumeKept(withEdits: boolean): void {
@@ -2490,7 +2526,7 @@
             <span class="muted small">(saved {new Date(kept.savedAt).toLocaleString()})</span>
           </span>
           <button class="primary" onclick={() => resumeKept(false)}>▶ Resume it</button>
-          {#if !app.playerOnly && kept.game.id === app.game.id}
+          {#if !app.playerOnly && kept.game.id === app.game.id && editsDiffer}
             <button onclick={() => resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
               Resume with my edits
             </button>

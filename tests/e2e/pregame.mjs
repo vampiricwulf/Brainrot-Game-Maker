@@ -182,12 +182,34 @@ try {
   await page.getByRole('button', { name: 'End game ▶' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  // ---------- ▶ Next game… (a stream of several games): the editor's Open…, the results kept ----------
+  {
+    const chooser = page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
+    await page.getByRole('button', { name: '▶ Next game…' }).click();
+    const openList = page.getByRole('dialog', { name: 'Open a game' });
+    const how = await Promise.race([chooser.then((c) => (c ? 'picker' : 'none')), openList.waitFor().then(() => 'list')]);
+    assert(how !== 'none', `game over › ▶ Next game… goes to the editor's Open… (${how === 'list' ? 'Recent games' : 'the file picker'})`);
+    if (how === 'list') await page.keyboard.press('Escape');
+    await page.locator('.status-bar .kept').getByText('Finished game').waitFor();
+    await page.getByRole('button', { name: 'View results' }).click();
+    await page.locator('.end h1').waitFor();
+    assert(true, 'and the results stay viewable from the editor (View results)');
+  }
   // Rematch asks first (the results go).
   await page.getByRole('button', { name: '🔁 Rematch' }).click();
   await page.getByText('Start a rematch? Scores go back to 0.').waitFor();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: '🔁 Rematch' }).click();
   await start.waitFor();
+  // Viewers' card says it's a rematch.
+  {
+    const [audR] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+    audR.on('pageerror', (e) => errors.push('[audience] ' + e.message));
+    await audR.locator('.soon-text').waitFor();
+    assert((await audR.locator('.soon-text').innerText()) === 'Rematch! Starting soon…', 'a rematch’s card on stream says “Rematch! Starting soon…”');
+    await page.locator('.mode', { hasText: 'Single window' }).click();
+    if (!audR.isClosed()) await audR.waitForEvent('close', { timeout: 3000 });
+  }
   assert((await page.getByRole('button', { name: 'Picture for Bo' }).locator('img').count()) === 1, 'a rematch keeps the players’ pictures');
   await page.getByLabel('Player 2 name').fill('Cyd');
   await page.waitForTimeout(900);
@@ -231,6 +253,13 @@ try {
   await page.locator('.live-check li.done[data-check="sound-click"]').waitFor();
   assert((await aud1.locator('.activate').count()) === 0, 'a click there takes its “Click to enable sound” away, and the host gets a ✓');
   await back.click();
+  // ◀ Back to editor keeps the audience window (OBS's capture source) up, on the Starting soon card; its ✕ closes it.
+  const audOpen = page.locator('.status-bar [data-audience-open]');
+  await audOpen.waitFor();
+  await page.waitForTimeout(400);
+  assert(!aud1.isClosed() && (await aud1.locator('.soon-text').count()) === 1, '◀ Back to editor keeps the audience window up, on the Starting soon card');
+  await audOpen.getByRole('button', { name: 'Close the audience window' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();
   if (!aud1.isClosed()) await aud1.waitForEvent('close', { timeout: 3000 });
   await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
   await page.waitForTimeout(400);
@@ -248,7 +277,7 @@ try {
   assert((await page.locator('.panel .confirm').innerText()).includes('keep it to resume later?'), 'Exit asks whether to keep the game to resume later');
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-  const kept = page.locator('.resume.kept');
+  const kept = page.locator('.status-bar .kept');
   await kept.waitFor();
   const keptBox = await kept.boundingBox();
   assert(keptBox.height <= 44, `the game kept to resume is one line over the editor (${Math.round(keptBox.height)}px)`);

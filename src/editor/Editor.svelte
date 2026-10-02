@@ -80,6 +80,8 @@
     ontest,
     checklist,
     startRound = null,
+    startOpen = false,
+    onopened,
   }: {
     onplay: () => void;
     /** ▶ Test this round (its index). */
@@ -87,6 +89,9 @@
     checklist: ChecklistLine[];
     /** The round to open on (back from testing it). */
     startRound?: string | null;
+    /** Open… right away (Game over › ▶ Next game…); `onopened` says it was. */
+    startOpen?: boolean;
+    onopened?: () => void;
   } = $props();
 
   // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
@@ -539,6 +544,12 @@
 
   // Desktop app: a game file the app was opened with ("Open with…") opens like Open….
   onMount(() => onOpenedFile(openFile));
+  // Game over › ▶ Next game…: Open… (Recent games, or the file picker when there are none) for the stream's next game.
+  onMount(() => {
+    if (!untrack(() => startOpen)) return;
+    onopened?.();
+    void open();
+  });
 
   /** A game file dropped anywhere no other part of the editor takes the drop opens, like Open…. */
   function ondrop(e: DragEvent): void {
