@@ -445,7 +445,7 @@
 {/if}
 
 {#if answering}
-  <AnsweringPlate player={answering} />
+  <AnsweringPlate player={answering} by={live.buzz?.by} />
 {/if}
 
 {#if live.overlay}

@@ -10,6 +10,7 @@ import {
   KICK_BLOCK_MS,
   lowRtt,
   MAX_GRACE_MS,
+  MAX_MEMBERS,
   MAX_PHONES,
   MAX_RTT_MS,
   MAX_SOCKETS,
@@ -112,7 +113,7 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000 });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams'] });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1142,5 +1143,251 @@ describe('untrusted input', () => {
       p.send({ t: 'join', seatId: 'a', token: 'guess' + i });
     }
     expect(p.msgs().filter((m) => m.t === 'denied')).toHaveLength(10);
+  });
+});
+
+describe('teams', () => {
+  /** Teams on: Ann and Al on team a (Red), Bea on team b (Blue). */
+  function teams(over: Partial<HostState> = {}) {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) =>
+      state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...over, ...x });
+    g.send({ t: 'state', state: st() });
+    const join = (conn: string, seatId: string, name: string) => {
+      const p = g.phone(conn);
+      p.send({ t: 'join', seatId, name, device: `dev-${conn}` });
+      return p;
+    };
+    const ann = join('ann', 'a', 'Ann');
+    const al = join('al', 'a', 'Al');
+    const bea = join('bea', 'b', 'Bea');
+    const arm = (armId: number, x: Partial<HostState> = {}) => g.send({ t: 'state', state: st({ phase: 'armed', armId, clue: { text: 'Q?' }, ...x }) });
+    const memberOf = (conn: string) => g.hostLast('phones')!.phones.find((p) => p.conn === conn)?.member;
+    return { ...g, st, join, ann, al, bea, arm, memberOf };
+  }
+
+  it('the room says it knows teams, and the host state keeps teams on', () => {
+    const g = teams();
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams'] });
+    expect(g.room.saved.state?.teams).toBe(true);
+    expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
+  });
+
+  it('several phones join one team, each with their own name and token', () => {
+    const g = teams();
+    expect(g.ann.last('joined')).toEqual({ t: 'joined', seatId: 'a', token: expect.any(String), name: 'Ann' });
+    expect(g.al.last('joined')).toMatchObject({ seatId: 'a', name: 'Al' });
+    expect(g.ann.last('joined')!.token).not.toBe(g.al.last('joined')!.token);
+    expect(g.al.last('view')?.view).toMatchObject({ teams: true, you: { id: 'a', name: 'Red', member: 'Al' } });
+    // The host sees who is on which team.
+    const phones = g.hostLast('phones')!.phones;
+    expect(phones.filter((p) => p.seatId === 'a').map((p) => p.name)).toEqual(['Ann', 'Al']);
+    expect(phones.find((p) => p.conn === 'bea')).toMatchObject({ seatId: 'b', name: 'Bea', connected: true, member: expect.any(String) });
+    // A newcomer sees the teams (never taken) and who is on them.
+    const n = g.phone('new');
+    expect(n.last('seats')).toMatchObject({
+      teams: true,
+      allowNew: false,
+      seats: [
+        { id: 'a', taken: false, members: ['Ann', 'Al'] },
+        { id: 'b', taken: false, members: ['Bea'] },
+      ],
+    });
+  });
+
+  it('checks a team join: the team must exist, a name is needed (cleaned and cut), names are unique', () => {
+    const g = teams();
+    const p = g.phone('x');
+    p.send({ t: 'join', seatId: 'zz', name: 'Zed' });
+    expect(p.last('denied')?.reason).toBe('unknown-seat');
+    p.send({ t: 'join', seatId: 'a' });
+    expect(p.last('denied')?.reason).toBe('need-name');
+    p.send({ t: 'join', seatId: 'a', name: ' ​‮ ' });
+    expect(p.last('denied')?.reason).toBe('need-name');
+    p.send({ t: 'join', seatId: 'a', name: 42 });
+    expect(p.last('joined')).toBeUndefined();
+    p.send({ t: 'join', seatId: 'b', name: ' ann ' });
+    expect(p.last('denied')?.reason).toBe('name-taken');
+    p.send({ t: 'join', seatId: 'b', name: 'A'.repeat(100) });
+    expect(Array.from(p.last('joined')!.name!)).toHaveLength(24);
+    // No "I'm new" in teams: people join a team.
+    const q = g.phone('y');
+    q.send({ t: 'new', name: 'Newbie' });
+    expect(q.last('denied')?.reason).toBe('no-new');
+  });
+
+  it('a name whose phone is gone can be taken over (the same person, their token lost)', () => {
+    const g = teams();
+    g.room.phoneClose('al');
+    expect(g.hostLast('phones')!.phones.find((p) => p.name === 'Al')).toMatchObject({ connected: false, seatId: 'a' });
+    const p = g.phone('al2');
+    p.send({ t: 'join', seatId: 'b', name: 'Al' });
+    expect(p.last('joined')).toMatchObject({ seatId: 'b', name: 'Al' });
+    expect(g.hostLast('phones')!.phones.filter((x) => x.name === 'Al')).toHaveLength(1);
+  });
+
+  it('a team is in the queue once: its first buzz counts, and says who it was', () => {
+    const g = teams();
+    g.arm(1);
+    g.t.now += 100;
+    g.al.send({ t: 'buzz', armId: 1, reactMs: 90 });
+    g.t.now += 20;
+    g.ann.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.t.now += 10;
+    g.bea.send({ t: 'buzz', armId: 1, reactMs: 120 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'a' });
+    expect(g.hostLast('queue')!.queue.map((q) => [q.seatId, q.by])).toEqual([
+      ['a', 'Al'],
+      ['b', 'Bea'],
+    ]);
+    expect(g.hostAll('buzz')[0]).toMatchObject({ seatId: 'a', rank: 1, by: 'Al' });
+    // Al answers; Ann hears her team is answering, by Al.
+    expect(g.al.last('result')).toMatchObject({ outcome: 'first', by: 'Al', byYou: true });
+    expect(g.ann.last('result')).toMatchObject({ outcome: 'first', by: 'Al', byYou: false });
+    expect(g.al.last('view')!.view.answering).toEqual({ name: 'Red', color: '#ff0000', you: true, by: 'Al', byYou: true });
+    expect(g.ann.last('view')!.view.answering).toMatchObject({ you: true, by: 'Al', byYou: false });
+    expect(g.bea.last('view')!.view.answering).toMatchObject({ name: 'Red', you: false, by: 'Al', byYou: false });
+    // A teammate buzzing once it's decided doesn't add a place.
+    g.ann.clear();
+    g.t.now += 300;
+    g.ann.send({ t: 'buzz', armId: 1, reactMs: 100 });
+    expect(g.room.saved.race!.queue).toHaveLength(2);
+    expect(g.ann.last('result')).toMatchObject({ outcome: 'first', by: 'Al', byYou: false });
+  });
+
+  it('while the room is still collecting, a teammate who reacted faster is the team’s time', () => {
+    const g = teams();
+    g.arm(1);
+    g.t.now += 300;
+    g.ann.send({ t: 'buzz', armId: 1, reactMs: 280 });
+    g.t.now += 10;
+    g.bea.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.t.now += 10;
+    g.al.send({ t: 'buzz', armId: 1, reactMs: 150 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('a');
+    expect(g.hostLast('queue')!.queue.map((q) => [q.seatId, q.by])).toEqual([
+      ['a', 'Al'],
+      ['b', 'Bea'],
+    ]);
+  });
+
+  it('a wrong answer locks the whole team out; an early buzz only the one who jumped', () => {
+    const g = teams();
+    g.send({ t: 'state', state: g.st({ phase: 'closed', armId: 1, clue: { text: 'Q?' } }) });
+    g.ann.send({ t: 'buzz', armId: 1 });
+    expect(g.ann.last('result')).toMatchObject({ outcome: 'early' });
+    g.arm(2);
+    g.t.now += 100;
+    g.ann.send({ t: 'buzz', armId: 2, reactMs: 60 });
+    expect(g.ann.last('result')).toMatchObject({ outcome: 'locked' });
+    // Al wasn't early: he buzzes for the team.
+    g.al.send({ t: 'buzz', armId: 2, reactMs: 80 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('a');
+    // Wrong: team a is out; the buzzers open again for the rest.
+    g.arm(3, { lockedOut: ['a'] });
+    g.t.now += 1000;
+    g.ann.send({ t: 'buzz', armId: 3, reactMs: 60 });
+    expect(g.ann.last('result')).toMatchObject({ outcome: 'locked' });
+    expect(g.ann.last('view')!.view.you?.lockedOut).toBe(true);
+    g.bea.send({ t: 'buzz', armId: 3, reactMs: 80 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('b');
+  });
+
+  it('a member comes back with their token, on the team the host moved them to', () => {
+    const g = teams();
+    const token = g.al.last('joined')!.token;
+    const id = g.memberOf('al')!;
+    g.send({ t: 'move', member: id, seatId: 'b' });
+    expect(g.al.last('joined')).toEqual({ t: 'joined', seatId: 'b', token, name: 'Al' });
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', name: 'Blue', member: 'Al' });
+    // Unknown members or teams are ignored.
+    g.send({ t: 'move', member: id, seatId: 'nope' });
+    g.send({ t: 'move', member: 'nobody', seatId: 'a' });
+    expect(g.room.saved.members![id].seatId).toBe('b');
+    // A reload: the token (with the team it had saved) brings Al back on Blue.
+    g.room.phoneClose('al');
+    const back = g.phone('al-again');
+    back.send({ t: 'join', seatId: 'a', token });
+    expect(back.last('joined')).toMatchObject({ seatId: 'b', name: 'Al', token });
+    const other = g.phone('guess');
+    other.send({ t: 'join', seatId: 'a', token: 'made-up' });
+    expect(other.last('denied')?.reason).toBe('bad-token');
+  });
+
+  it('the host kicks one member (kept off that team a while) or a whole team', () => {
+    const g = teams();
+    const id = g.memberOf('al')!;
+    g.send({ t: 'kick', seatId: 'a', member: id });
+    expect(g.al.last('kicked')).toBeDefined();
+    expect(g.ann.last('kicked')).toBeUndefined();
+    expect(g.room.saved.members![id]).toBeUndefined();
+    g.al.send({ t: 'join', seatId: 'a', name: 'Al', device: 'dev-al' });
+    expect(g.al.last('denied')?.reason).toBe('blocked');
+    g.al.send({ t: 'join', seatId: 'b', name: 'Al', device: 'dev-al' });
+    expect(g.al.last('joined')).toMatchObject({ seatId: 'b' });
+    // A member id that isn't on that team does nothing.
+    g.send({ t: 'kick', seatId: 'a', member: g.memberOf('bea') });
+    expect(g.bea.last('kicked')).toBeUndefined();
+    // The whole team.
+    g.send({ t: 'kick', seatId: 'a' });
+    expect(g.ann.last('kicked')).toBeDefined();
+    expect(Object.values(g.room.saved.members!).map((m) => m.name)).toEqual(['Bea', 'Al']);
+    g.t.now += KICK_BLOCK_MS + 1;
+    g.ann.send({ t: 'join', seatId: 'a', name: 'Ann', device: 'dev-ann' });
+    expect(g.ann.last('joined')).toMatchObject({ seatId: 'a' });
+  });
+
+  it('leaving, a team removed from the game, and teams turned off let members go', () => {
+    const g = teams();
+    g.bea.send({ t: 'leave' });
+    expect(Object.values(g.room.saved.members!).map((m) => m.name)).toEqual(['Ann', 'Al']);
+    expect(g.bea.last('seats')).toBeDefined();
+    // Team a leaves the game: its members are back to the list.
+    g.send({ t: 'state', state: g.st({ seats: [{ id: 'b', name: 'Blue', color: '#0000ff' }] }) });
+    expect(g.room.saved.members).toEqual({});
+    expect(g.ann.last('seats')?.seats.map((s) => s.id)).toEqual(['b']);
+    // Teams off: phones pick a player again (no names, a seat each).
+    g.ann.send({ t: 'join', seatId: 'b', name: 'Ann' });
+    g.send({ t: 'state', state: state() });
+    expect(g.room.saved.members).toEqual({});
+    expect(g.ann.last('seats')).toMatchObject({ seats: [{ id: 'a', taken: false }, { id: 'b' }, { id: 'c' }] });
+    expect(g.ann.last('seats')?.teams).toBeUndefined();
+    g.ann.send({ t: 'join', seatId: 'a' });
+    expect(g.ann.last('joined')).toMatchObject({ seatId: 'a' });
+    expect(g.ann.last('joined')?.name).toBeUndefined();
+  });
+
+  it('solo seats are untouched when teams are off (no names, one phone a seat)', () => {
+    const g = game();
+    expect(g.pa.last('joined')).toEqual({ t: 'joined', seatId: 'a', token: expect.any(String) });
+    const p = g.phone('x');
+    p.send({ t: 'join', seatId: 'a', name: 'Ann' });
+    expect(p.last('denied')?.reason).toBe('taken');
+    g.arm(1);
+    g.t.now += 100;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 80 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.hostLast('queue')!.queue[0]).toEqual({ seatId: 'a', afterMs: 0 });
+    expect(g.pa.last('result')?.by).toBeUndefined();
+    expect(g.pa.last('view')!.view.teams).toBeUndefined();
+  });
+
+  it('keeps at most MAX_MEMBERS members: the ones gone longest make room', () => {
+    const g = teams();
+    g.room.phoneClose('ann');
+    for (let i = 0; i < MAX_MEMBERS; i++) {
+      g.t.now += 1;
+      const p = g.join(`m${i}`, 'b', `M${i}`);
+      g.room.phoneClose(p.conn);
+    }
+    const names = Object.values(g.room.saved.members!).map((m) => m.name);
+    expect(names).toHaveLength(MAX_MEMBERS);
+    expect(names).not.toContain('Ann');
+    expect(names).toContain('Bea');
   });
 });

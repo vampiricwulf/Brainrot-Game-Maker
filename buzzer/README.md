@@ -37,6 +37,16 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   minutes; it can take another free seat. (So another phone on the same Wi-Fi can't take that one seat for those 2
   minutes either.)
   With `locked` in the host's state, only a seat's token gets a seat and nobody can ask to join.
+- **Teams** (`teams` in the host's state): each seat is a team. A phone joins one with its own name (`join` with
+  `name`; 24 characters at most, cleaned as below, unique among people connected; a name only a phone gone quiet has is
+  taken over) and becomes a member with its own token, so a reload brings it back on whichever team the host has put
+  it on (`move`). The race still counts one buzz per seat: a team's buzz holds one place in the queue and says who it
+  was (`by` on the host's `buzz` and queue, `answering.by` in the phones' view); while the room is still collecting,
+  a teammate who reacted faster becomes the team's time; after that, a teammate's buzz only hears where the team
+  stands. A lock-out locks the whole team; an early buzz only the member who jumped. `kick` with `member` takes one
+  person off a team (kept off that team for 2 minutes), without it everyone on the team. Turning teams on or off lets
+  every seat and member go. Nobody asks to join as a new player in teams; at most 64 members are kept (those gone
+  longest make room).
 - **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`), but phones without a seat that have done nothing for
   10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
   with 4001; the phone page tries again after a few seconds, then less often) to let a newcomer in. With nobody idle,
@@ -66,7 +76,11 @@ The protocol is still version 1: everything added since is optional, so a deploy
 (or an older room and a newer app) still work together; the older side ignores or leaves out the new fields. Added:
 `HostState.done/status/currency/locked`, `PhoneView.done/status/currency/hostHere`, `seats.locked/note`, the deny
 reasons `locked`, `blocked`, `name-taken`, `join/new.device`, the room → host message `full`, `arrivedLate` on a
-queued buzz and a phone's `result`, and the round-trip probe (room → phone `probe`, phone → room `echo`). The old
+queued buzz and a phone's `result`, the round-trip probe (room → phone `probe`, phone → room `echo`), and teams:
+`welcome.features` (`['teams']`; the app warns when a room doesn't list it), `HostState.teams`, `join.name`, the host's
+`move` and `kick.member`, `by` on `buzz`, queued buzzes and a phone's `result` (with `byYou`), `PhoneInfo.member/name`,
+`PhoneView.teams`, `you.member` and `answering.by/byYou`, `seats.teams` and each seat's `members`, `joined.name`, and
+the deny reason `need-name`. The old
 phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
 
 ## Fair timing

@@ -25,6 +25,8 @@ export const remote = $state<{
   /** The server the room is on (its join link). */
   base: string;
   phones: PhoneInfo[];
+  /** What the room can do beyond the first protocol ('teams'); empty from an older buzzer server. */
+  features: string[];
   error: string;
   /** Reconnect attempts since the room was last reached. */
   attempts: number;
@@ -32,7 +34,7 @@ export const remote = $state<{
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+}>({ status: 'off', code: null, base: '', phones: [], features: [], error: '', attempts: 0, answered: [], fullAt: 0 });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -58,6 +60,7 @@ function sync(): void {
   remote.code = link.code;
   if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId));
   remote.phones = link.phones;
+  if (remote.features.join() !== link.features.join()) remote.features = link.features;
   remote.error = link.error;
   remote.attempts = link.attempts;
 }
@@ -128,12 +131,18 @@ export function rejectPhone(conn: string): boolean {
   return !!link?.send({ t: 'reject', conn });
 }
 export const kickSeat = (seatId: string) => !!link?.send({ t: 'kick', seatId });
+/** Teams: take one person (their phone) off their team; they can't join it again for 2 minutes. */
+export const kickMember = (seatId: string, member: string) => !!link?.send({ t: 'kick', seatId, member });
+/** Teams: put one person (their phone) on another team. */
+export const moveMember = (member: string, seatId: string) => !!link?.send({ t: 'move', member, seatId });
+/** The room this window is in knows teams (an older buzzer server doesn't: its phones join as players). */
+export const roomHasTeams = (): boolean => remote.features.includes('teams');
 
 /** Close the room: the phones are told the game is over. */
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', attempts: 0, answered: [], fullAt: 0 });
 }
 
 /**
@@ -143,7 +152,7 @@ export function closeRoom(): void {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', attempts: 0, answered: [], fullAt: 0 });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */

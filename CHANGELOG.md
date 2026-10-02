@@ -27,6 +27,16 @@ in plain words for the people who make and host games. Anything committed but no
   audience window and the phones show the slide the host is on, and the buzzers stay as they are between slides (you
   open them when you want). Daily Doubles play their slides after the wager. Games made before open and play exactly
   as they did (a clue there has its one question slide). Final rounds and the tiebreaker keep one question slide.
+- **Team buzzers**: tick **Teams: people join a team, anyone on it can buzz for it** on the pre-game screen's 📱 Phone
+  buzzers card (saved with the game). Each player is then a team: on their phone people pick their team (they see who's
+  on it) and type their own name, and anyone on the team can buzz. Whoever on it buzzes first answers for the team, and
+  the team scores; a teammate's later buzz doesn't take another place in the buzz order, and a wrong answer locks out
+  the whole team ("Your team already answered this one"). An early buzz only makes the one who pressed wait. The host
+  panel's buzz order says who buzzed ("Ann (Red team)", and "🔔 Ann (Red team) buzzed"), viewers see "Red team is
+  answering · Ann", and teammates' phones say "Ann is answering for your team". The 📱 list shows who's on each team:
+  **Move to…** puts someone on another team, ✕ takes one person off (or everyone, on the team's own ✕). Without Teams
+  nothing changes. The buzzer server has to be updated for it (the 📱 card says so when it isn't); buzzers on keys
+  were already gone, so teams are phones only.
 - **Version numbers and updates**: the app has a version (1.0.0 to start; every push to `main` is released as the
   next one, `MAJOR.MINOR.PATCH`), shown in ℹ About. When a newer version is out, the editor says so: the desktop app
   updates itself in place (⬆ Update: it downloads the new `.exe`, checks it's signed with the project's key, saves your

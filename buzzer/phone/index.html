@@ -35,7 +35,7 @@
       </section>
 
       <section id="s-seats" hidden>
-        <h1>Tap your name</h1>
+        <h1 id="seats-title">Tap your name</h1>
         <p id="seats-status" class="note"></p>
         <p id="seats-note" class="note"></p>
         <div id="seat-list"></div>
@@ -49,6 +49,17 @@
           <input id="new-in" maxlength="24" autocomplete="nickname" aria-label="Your name" />
           <button type="submit" class="primary">Ask to join</button>
           <button type="button" id="new-back" class="plain">Back</button>
+        </form>
+      </section>
+
+      <section id="s-team" hidden>
+        <h1><span id="team-dot" aria-hidden="true"></span><span id="team-title"></span></h1>
+        <form id="team-form">
+          <label for="team-in">Name for your team</label>
+          <input id="team-in" maxlength="24" autocomplete="nickname" />
+          <button type="submit" class="primary">Join the team</button>
+          <button type="button" id="team-back" class="plain">Back</button>
+          <p id="team-err" class="note" role="alert"></p>
         </form>
       </section>
 

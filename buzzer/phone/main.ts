@@ -13,7 +13,7 @@
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type RoomToPhone } from '../../src/lib/buzzproto';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-msg', 's-buzz'] as const;
+const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
 type ScreenId = (typeof screens)[number];
 
 type SeatsMsg = Extract<RoomToPhone, { t: 'seats' }>;
@@ -58,6 +58,10 @@ let rejoining = false;
 /** The name this phone asked to join as, while waiting for the host (asked again after a dropped connection). */
 let pendingName: string | null = null;
 let newForm = false;
+/** Teams: the team tapped, while this phone gives its name (and until the room answers). */
+let teamPick: SeatsMsg['seats'][number] | null = null;
+/** Teams: a join sent for teamPick that the room hasn't answered yet. */
+let teamAsked = false;
 let notice: Notice | null = null;
 let seatsNote = '';
 let result: ResultMsg | null = null;
@@ -98,6 +102,23 @@ function saveSeat(s: { seatId: string; token: string } | null): void {
     else localStorage.removeItem(key());
   } catch {
     // private mode: the seat just won't survive a reload
+  }
+}
+
+/** Teams: the name this browser last joined a team as (filled in next time). */
+const NAME_KEY = 'brainrot-buzzer:name';
+function loadName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function saveName(name: string): void {
+  try {
+    localStorage.setItem(NAME_KEY, name);
+  } catch {
+    // fine
   }
 }
 
@@ -263,13 +284,21 @@ function onMessage(m: RoomToPhone): void {
       // A seated phone only gets the list when it lost its seat: another tab or phone took it back, or the host
       // removed the player.
       if (!rejoining && seatId) {
-        seatsNote = m.seats.some((x) => x.id === seatId)
-          ? 'Your seat moved to another tab or phone. Tap your name to take it back here.'
-          : 'The host took you out of the game.';
-        if (!m.seats.some((x) => x.id === seatId)) saveSeat(null);
+        const wasTeams = !!view?.teams;
+        seatsNote = !m.seats.some((x) => x.id === seatId)
+          ? wasTeams
+            ? 'Your team left the game. Pick another one.'
+            : 'The host took you out of the game.'
+          : m.teams || wasTeams
+            ? 'You’re not on a team on this phone any more. Pick your team.'
+            : 'Your seat moved to another tab or phone. Tap your name to take it back here.';
+        if (!m.seats.some((x) => x.id === seatId) || !!m.teams !== wasTeams) saveSeat(null);
         seatId = null;
         view = null;
       }
+      // Teams turned off while this phone was giving its name, or its team left the game.
+      if (teamPick && (!m.teams || !m.seats.some((x) => x.id === teamPick!.id))) teamPick = null;
+      if (teamPick) teamPick = m.seats.find((x) => x.id === teamPick!.id) ?? null;
       if (notice?.full) {
         notice = null;
         fullTries = 0;
@@ -285,6 +314,9 @@ function onMessage(m: RoomToPhone): void {
     case 'joined':
       seatId = m.seatId;
       saveSeat({ seatId: m.seatId, token: m.token });
+      if (m.name) saveName(m.name);
+      teamPick = null;
+      teamAsked = false;
       rejoining = newForm = false;
       pendingName = null;
       seatsNote = '';
@@ -309,19 +341,21 @@ function onMessage(m: RoomToPhone): void {
       if (m.armId === sendingArm) stopSending();
       if (m.armId === held?.armId) held = null;
       if (m.lockedUntil) lockedUntil = m.lockedUntil;
-      if (m.outcome === 'first') vibrate([80, 50, 80]);
+      if (m.outcome === 'first' && m.byYou !== false) vibrate([80, 50, 80]);
       else if (m.outcome === 'early') vibrate(250);
       break;
-    case 'kicked':
+    case 'kicked': {
+      const team = !!view?.teams;
       seatId = null;
       view = null;
       saveSeat(null);
       notice = {
-        title: 'The host took your seat back',
-        text: 'You can pick a seat again.',
-        button: { label: 'Pick a seat', run: () => ((notice = null), render()) },
+        title: team ? 'The host took you off the team' : 'The host took your seat back',
+        text: team ? 'You can pick a team again.' : 'You can pick a seat again.',
+        button: { label: team ? 'Pick a team' : 'Pick a seat', run: () => ((notice = null), render()) },
       };
       break;
+    }
     case 'closed':
       ended();
       return;
@@ -354,16 +388,25 @@ function denied(reason: DenyReason): void {
   if (wasRejoin || reason === 'bad-token') saveSeat(null);
   pendingName = null;
   newForm = false;
+  // Teams: a name someone else has, or a missing one, keeps the name form up to try again.
+  const keepForm = teamPick && teamAsked && (reason === 'name-taken' || reason === 'need-name');
+  teamAsked = false;
+  if (teamPick && !keepForm) teamPick = null;
+  if (keepForm) {
+    $('team-err').textContent = reason === 'name-taken' ? 'Someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
+    return;
+  }
   seatsNote =
     {
       taken: wasRejoin ? 'Your seat was given to someone else. Tap your name again.' : 'Someone already has that seat.',
       'unknown-seat': "That player isn't in the game any more.",
       rejected: "The host didn't let you in.",
       'no-new': "The host isn't taking new players.",
-      'bad-token': 'Your seat was given back. Tap your name again.',
+      'bad-token': seats?.teams ? 'You’re not on a team any more. Pick your team again.' : 'Your seat was given back. Tap your name again.',
       locked: 'The host has locked the seats.',
-      blocked: 'The host took you off that seat. Pick another one, or ask the host.',
+      blocked: seats?.teams ? 'The host took you off that team. Pick another one, or ask the host.' : 'The host took you off that seat. Pick another one, or ask the host.',
       'name-taken': 'A player already has that name. If it’s you, tap it; if not, pick another name.',
+      'need-name': 'Pick your team, then type your name.',
     }[reason] ?? "That didn't work. Try again.";
 }
 
@@ -563,6 +606,7 @@ function render(): void {
     show('s-new');
     return;
   }
+  if (teamPick && seats?.teams && !rejoining) return renderTeam(teamPick);
   if (seats && !rejoining) return renderSeats(seats);
   wait('Connecting…');
 }
@@ -573,8 +617,26 @@ function wait(text: string): void {
   show('s-wait');
 }
 
+/** Teams: the name form for the team tapped. */
+function renderTeam(t: SeatsMsg['seats'][number]): void {
+  const wasHidden = $('s-team').hidden;
+  $('team-title').textContent = `Join ${t.name}`;
+  $('team-dot').style.background = t.color;
+  const inp = $<HTMLInputElement>('team-in');
+  if (wasHidden) {
+    if (!inp.value) inp.value = loadName();
+    $('team-err').textContent = '';
+  }
+  const err = $('team-err').textContent ?? '';
+  say(sentences([`Join ${t.name}`, t.members?.length ? `On it: ${t.members.join(', ')}` : '', 'Type your name', err]));
+  show('s-team');
+  if (wasHidden) inp.focus();
+}
+
 function renderSeats(s: SeatsMsg): void {
   if (s.title) $('title').textContent = s.title;
+  const teams = !!s.teams;
+  $('seats-title').textContent = teams ? 'Pick your team' : 'Tap your name';
   const list = $('seat-list');
   list.replaceChildren(
     ...s.seats.map((x) => {
@@ -587,7 +649,17 @@ function renderSeats(s: SeatsMsg): void {
       const name = document.createElement('span');
       name.className = 'name';
       name.textContent = x.name;
-      b.append(dot, name);
+      if (teams) {
+        // Who is on it already, under the team's name.
+        const who = document.createElement('span');
+        who.className = 'who';
+        const on = document.createElement('span');
+        on.className = 'members';
+        on.textContent = x.members?.length ? x.members.join(', ') : 'Nobody yet';
+        who.append(name, on);
+        b.append(dot, who);
+        b.setAttribute('aria-label', `${x.name}${x.members?.length ? `: ${x.members.join(', ')}` : ''}`);
+      } else b.append(dot, name);
       if (x.taken || s.locked) {
         const tag = document.createElement('span');
         tag.className = 'tag';
@@ -597,17 +669,23 @@ function renderSeats(s: SeatsMsg): void {
       b.addEventListener('click', () => {
         seatsNote = '';
         unlockAudio();
+        // Teams: then your name (the room needs it to put you on the team).
+        if (teams) {
+          teamPick = x;
+          teamAsked = false;
+          return render();
+        }
         send({ t: 'join', seatId: x.id, device });
       });
       return b;
     }),
   );
-  if (!s.seats.length) list.innerHTML = '<p class="note">No players yet. Wait for the host to add them.</p>';
+  if (!s.seats.length) list.innerHTML = `<p class="note">${teams ? 'No teams yet' : 'No players yet'}. Wait for the host to add them.</p>`;
   $('new-btn').hidden = !s.allowNew || !!s.locked;
   $('host-away').hidden = s.hostHere;
   $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : (s.note ?? '');
   $('seats-note').textContent = seatsNote;
-  say(['Tap your name.', seatsNote, s.locked ? 'The host has locked the seats.' : s.note ?? '', s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
+  say([teams ? 'Pick your team.' : 'Tap your name.', seatsNote, s.locked ? 'The host has locked the seats.' : s.note ?? '', s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
   show('s-seats');
 }
 
@@ -634,33 +712,41 @@ function renderBuzz(v: PhoneView): void {
   let small = '';
   /** What a screen reader hears instead of `small` (the early lock's countdown is said once, not every second). */
   let spoken: string | null = null;
+  // Teams: you is your team; member is the name this phone joined it as.
+  const team = !!v.teams;
+  /** Teams: a teammate's buzz holds your team's place (not yours). */
+  const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
   if (v.phase === 'lobby') {
     big = you.name;
     small = v.status || 'Wait for the next clue';
+  } else if (v.phase === 'answering' && v.answering?.you && team && !v.answering.byYou) {
+    // Your team is answering: a teammate buzzed (or the host picked the team).
+    const by = v.answering.by;
+    [cls, big, small] = by ? ['team', `${by} is answering`, 'for your team'] : ['first', 'Your team is answering!', 'Say your answer'];
   } else if (v.phase === 'answering' && v.answering?.you) {
     const how = mine?.rolled === 1 ? 'You won the roll' : mine?.byMs !== undefined ? `You were first by ${secs(mine.byMs)}` : 'Say your answer';
     [cls, big, small] = ['first', "You're answering!", how];
   } else if (v.phase === 'answering') {
-    const who = v.answering ? `${v.answering.name} is answering` : 'Tie! The host decides';
+    const who = v.answering ? `${v.answering.name} is answering${v.answering.by ? ` (${v.answering.by})` : ''}` : 'Tie! The host decides';
     // Out of this clue (wrong, or skipped): no place in the order to show any more.
     if (you.lockedOut) [cls, big, small] = ['off', 'Wait', who];
     else if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host decides who goes first'];
     else if (mine?.outcome === 'late' && mine.rank) {
       const how = mine.rolled ? `Tie — you rolled ${ordinal(mine.rolled)}` : mine.afterMs !== undefined && mine.behind ? `${secs(mine.afterMs)} behind ${mine.behind}` : who;
-      [cls, big, small] = ['off', `You're ${ordinal(mine.rank)}`, how];
+      [cls, big, small] = ['off', team ? `Your team is ${ordinal(mine.rank)}` : `You're ${ordinal(mine.rank)}`, mate ? `${mate} buzzed for your team · ${how}` : how];
     } else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', who];
   } else if (v.phase === 'closed' && v.done) {
     const by = v.done.by;
-    [cls, big, small] = ['off', by ? (by.you ? 'You got it!' : `${by.name} got it`) : 'Clue over', 'Wait for the next clue'];
+    [cls, big, small] = ['off', by ? (by.you ? (team ? 'Your team got it!' : 'You got it!') : `${by.name} got it`) : 'Clue over', 'Wait for the next clue'];
   } else if (mine?.outcome === 'pending' && v.phase === 'armed') {
     [cls, big, small] = ['off', '…', 'Buzzed! Checking who was first'];
   } else if (you.lockedOut) {
-    [cls, big, small] = ['off', 'Wait', 'You already answered this one'];
+    [cls, big, small] = ['off', 'Wait', team ? 'Your team already answered this one' : 'You already answered this one'];
   } else if (left > 0) {
     [cls, big, small] = ['locked', 'Too early', `wait ${left}s`];
     spoken = 'Wait a moment before buzzing again';
   } else if (v.phase === 'armed') {
-    [cls, big, small] = ['armed', 'BUZZ!', you.name];
+    [cls, big, small] = ['armed', 'BUZZ!', team && you.member ? `${you.member} for ${you.name}` : you.name];
   } else {
     [cls, big, small] = ['ready', 'Get ready…', "Don't buzz yet"];
   }
@@ -682,7 +768,7 @@ function renderBuzz(v: PhoneView): void {
   cued = cue || cued;
   b.className = cls;
   // A name may be one long word: it breaks anywhere rather than push the page sideways (status words stay whole).
-  const names = [you.name, v.answering?.name, v.done?.by?.name, mine?.behind].filter((x): x is string => !!x);
+  const names = [you.name, you.member, v.answering?.name, v.answering?.by, v.done?.by?.name, mine?.behind, mate].filter((x): x is string => !!x);
   for (const [id, text] of [['buzz-big', big], ['buzz-small', small]] as const) {
     $(id).textContent = text;
     $(id).classList.toggle('name', names.some((n) => text.includes(n)));
@@ -691,7 +777,8 @@ function renderBuzz(v: PhoneView): void {
   const sym = v.currency ?? '';
   // (As the game shows it: a word like "pts" goes after the number, $ or 🧠 in front.)
   const pts = Math.abs(you.score).toLocaleString();
-  $('me').textContent = `${you.name} · ${you.score < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
+  $('me').textContent = `${team && you.member ? `${you.member} · ` : ''}${you.name} · ${you.score < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
+  $('leave').textContent = team ? 'Change team or name' : 'Not you? Change player';
   const hostGone = v.hostHere === false;
   $('host-note').hidden = !hostGone;
   say(sentences([connected ? '' : 'Reconnecting…', big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));
@@ -791,6 +878,25 @@ $('new-form').addEventListener('submit', (e) => {
   unlockAudio();
   pendingName = name;
   send({ t: 'new', name, device });
+  render();
+});
+$('team-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = $<HTMLInputElement>('team-in').value.trim();
+  if (!teamPick) return;
+  if (!name) {
+    $('team-err').textContent = 'Type your name first.';
+    return render();
+  }
+  unlockAudio();
+  $('team-err').textContent = '';
+  teamAsked = true;
+  send({ t: 'join', seatId: teamPick.id, name, device });
+  render();
+});
+$('team-back').addEventListener('click', () => {
+  teamPick = null;
+  teamAsked = false;
   render();
 });
 $('msg-btn').addEventListener('click', () => notice?.button?.run());

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newTextEl, textSlide, type BoardRound } from './model';
 import { applyScore, newSession, openClue } from './session';
-import { buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText } from './buzz';
+import {
+  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, whoBuzzed,
+} from './buzz';
 
 const P = ['a', 'b', 'c'];
 
@@ -58,6 +60,59 @@ describe('buzzer rules', () => {
     expect(done).toMatchObject({ phase: 'closed', answering: null, lockedOut: ['a'], done: true, doneBy: 'b' });
     expect(buzzArm(done, P)).toMatchObject({ phase: 'armed', armId: r.armId + 1, lockedOut: ['a'] });
     expect(buzzIdle(done)).toEqual({ phase: 'lobby', armId: done.armId, answering: null, lockedOut: [] });
+  });
+});
+
+describe('team buzzers', () => {
+  it('a team member’s buzz: the team answers, and the state says who on it buzzed', () => {
+    const armed = buzzClueOpened(newBuzz(), true);
+    const a = buzzTake(armed, 'a', false, 'Ann')!;
+    expect(a).toEqual({ phase: 'answering', armId: 1, answering: 'a', lockedOut: [], by: 'Ann' });
+    // A teammate (or anyone) buzzing after doesn't take over.
+    expect(buzzTake(a, 'a', false, 'Al')).toBeNull();
+    // Picked by the host: nobody on the team buzzed.
+    expect(buzzTake(armed, 'a', true)).not.toHaveProperty('by');
+    expect(whoBuzzed('Red team', 'Ann')).toBe('Ann (Red team)');
+    expect(whoBuzzed('Ann')).toBe('Ann');
+    expect(whoBuzzed('Ann', null)).toBe('Ann');
+  });
+
+  it('a wrong answer locks out the whole team; the next team in the order answers, with who buzzed for it', () => {
+    const a = buzzTake(buzzClueOpened(newBuzz(), true), 'a', false, 'Ann')!;
+    const r = buzzMissed(a, 'a', P, [{ id: 'a', by: 'Ann' }, { id: 'a', by: 'Al' }, { id: 'b', by: 'Bea' }]);
+    expect(r).toEqual({ phase: 'answering', armId: 1, answering: 'b', lockedOut: ['a'], by: 'Bea' });
+    // Team b misses too: c (no phone buzz: picked by number key earlier) is next, then a rebound for nobody left.
+    const s = buzzMissed(r, 'b', P, [{ id: 'a', by: 'Ann' }, { id: 'b', by: 'Bea' }, 'c']);
+    expect(s).toEqual({ phase: 'answering', armId: 1, answering: 'c', lockedOut: ['a', 'b'] });
+    const t = buzzMissed(s, 'c', P, ['a', 'b', 'c']);
+    expect(t).toMatchObject({ phase: 'closed', lockedOut: ['a', 'b', 'c'] });
+    expect(t).not.toHaveProperty('by');
+    // A rebound (nobody left in the order) opens the buzzers with nobody answering.
+    expect(buzzMissed(a, 'a', P, [{ id: 'a', by: 'Ann' }])).toEqual({ phase: 'armed', armId: 2, answering: null, lockedOut: ['a'] });
+  });
+
+  it('the buzz order has each team once, its first buzz (a teammate’s later one is no new place)', () => {
+    expect(buzzOrder([{ id: 'a', by: 'Ann' }, { id: 'b', by: 'Bea' }, { id: 'a', by: 'Al' }, 'c', 'b'])).toEqual([
+      { id: 'a', by: 'Ann' },
+      { id: 'b', by: 'Bea' },
+      { id: 'c' },
+    ]);
+    expect(buzzOrder([])).toEqual([]);
+  });
+
+  it('the room is told teams are on (and new players from phones are off); off, nothing changes', () => {
+    const game = jeopardyGame();
+    game.players = [{ id: 'a', name: 'Red', color: '#ff0000' }];
+    const session = newSession(game);
+    game.settings.phoneJoin = true;
+    const solo = hostState(game, session, newBuzz(), 0);
+    expect(solo.allowNew).toBe(true);
+    expect(solo).not.toHaveProperty('teams');
+    expect(teamsOn(game.settings)).toBe(false);
+    game.settings.buzzTeams = true;
+    expect(teamsOn(game.settings)).toBe(true);
+    expect(hostState(game, session, newBuzz(), 0)).toMatchObject({ teams: true, allowNew: false });
+    expect(setupState(game, session.players, 3, 0)).toMatchObject({ teams: true, allowNew: false, phase: 'lobby' });
   });
 });
 

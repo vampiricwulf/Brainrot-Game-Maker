@@ -18,6 +18,36 @@ export interface BuzzState {
   /** Answered right: the clue is over (phones say who got it, not "Get ready"). Dropped by any other change. */
   done?: boolean;
   doneBy?: Id | null;
+  /**
+   * Teams (⚙ Teams on the 📱 card): who on the answering team buzzed (their own name, from their phone), so the host and
+   * viewers see "Ann (Red team)". Left out when nobody did (the host picked the team) or teams are off.
+   */
+  by?: string;
+}
+
+/** A place in the buzz order: a player (team) id, or (teams) with the name of the team member who buzzed. */
+export type QueuedId = Id | { id: Id; by?: string };
+
+/** Teams are on: each player is a team that any number of phones join (the 📱 card's Teams). */
+export const teamsOn = (settings: { buzzTeams?: boolean }): boolean => !!settings.buzzTeams;
+
+/** Who buzzed, as the host and viewers see it: "Ann (Red team)" for a team member, else the player's name. */
+export const whoBuzzed = (name: string, by?: string | null): string => (by ? `${by} (${name})` : name);
+
+/**
+ * The buzz order with each player (team) once, fastest first: a teammate's later buzz never counts as another place.
+ * (The buzzer room already sends it so; this keeps the host's side right whatever it is given.)
+ */
+export function buzzOrder(queue: QueuedId[]): { id: Id; by?: string }[] {
+  const seen = new Set<Id>();
+  const out: { id: Id; by?: string }[] = [];
+  for (const q of queue) {
+    const e = typeof q === 'string' ? { id: q } : q;
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    out.push(e.by ? { id: e.id, by: e.by } : { id: e.id });
+  }
+  return out;
 }
 
 export function newBuzz(armId = 0): BuzzState {
@@ -37,7 +67,10 @@ export function buzzClueOpened(b: BuzzState, armNow: boolean): BuzzState {
 /** Open the buzzers (for everyone not locked out). With everyone locked out they stay closed. */
 export function buzzArm(b: BuzzState, players: Id[]): BuzzState {
   const left = players.filter((id) => !b.lockedOut.includes(id));
-  if (players.length && !left.length) return { ...b, phase: 'closed', answering: null };
+  if (players.length && !left.length) {
+    const { by: _by, ...rest } = b;
+    return { ...rest, phase: 'closed', answering: null };
+  }
   return { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [...b.lockedOut] };
 }
 
@@ -48,21 +81,22 @@ export function buzzReset(b: BuzzState): BuzzState {
 
 /**
  * Player `id` buzzed in: they answer. Null when it doesn't count: someone is answering already, or they missed this clue.
- * `force` (the host picked them) skips both checks.
+ * `force` (the host picked them) skips both checks. `by` (teams): the team member who buzzed for team `id`.
  */
-export function buzzTake(b: BuzzState, id: Id, force = false): BuzzState | null {
+export function buzzTake(b: BuzzState, id: Id, force = false, by?: string): BuzzState | null {
   if (!force && (b.phase === 'answering' || b.phase === 'lobby' || b.lockedOut.includes(id))) return null;
-  return { phase: 'answering', armId: b.armId, answering: id, lockedOut: [...b.lockedOut] };
+  return { phase: 'answering', armId: b.armId, answering: id, lockedOut: [...b.lockedOut], ...(by ? { by } : {}) };
 }
 
 /**
- * The one answering got it wrong: they're locked out. The next in the clue's buzz order (`queue`, fastest first) who
- * hasn't missed it answers now; with nobody left in it, the buzzers open again for the rest (a rebound).
+ * The one answering got it wrong: they're locked out (teams: the whole team, whoever on it buzzed). The next in the
+ * clue's buzz order (`queue`, fastest first) who hasn't missed it answers now; with nobody left in it, the buzzers open
+ * again for the rest (a rebound).
  */
-export function buzzMissed(b: BuzzState, id: Id, players: Id[], queue: Id[] = []): BuzzState {
+export function buzzMissed(b: BuzzState, id: Id, players: Id[], queue: QueuedId[] = []): BuzzState {
   const lockedOut = b.lockedOut.includes(id) ? [...b.lockedOut] : [...b.lockedOut, id];
-  const next = queue.find((q) => !lockedOut.includes(q) && players.includes(q));
-  if (next) return { phase: 'answering', armId: b.armId, answering: next, lockedOut };
+  const next = buzzOrder(queue).find((q) => !lockedOut.includes(q.id) && players.includes(q.id));
+  if (next) return { phase: 'answering', armId: b.armId, answering: next.id, lockedOut, ...(next.by ? { by: next.by } : {}) };
   return buzzArm({ ...b, answering: null, lockedOut }, players);
 }
 
@@ -141,7 +175,8 @@ export function hostState(
   return {
     title: clip(game.title, 200),
     seats,
-    allowNew: !!game.settings.phoneJoin,
+    // Teams: phones join a team the host made (no new players from phones).
+    allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings),
     phase: b.phase,
     armId: b.armId,
     clue: info ? { text: questionText(shownQuestionSlide(session, info.clue)), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` } : null,
@@ -155,6 +190,7 @@ export function hostState(
     ...(extra.status?.text ? { status: extra.status } : {}),
     ...(game.settings.currencySymbol ? { currency: game.settings.currencySymbol } : {}),
     ...(extra.locked ? { locked: true } : {}),
+    ...(teamsOn(game.settings) ? { teams: true } : {}),
   };
 }
 
@@ -166,7 +202,7 @@ export function setupState(game: Game, players: Session['players'], armId: numbe
   return {
     title: clip(game.title, 200),
     seats: players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color })),
-    allowNew: !!game.settings.phoneJoin,
+    allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings),
     phase: 'lobby',
     armId,
     clue: null,
@@ -177,5 +213,6 @@ export function setupState(game: Game, players: Session['players'], armId: numbe
     status: { text: SETTING_UP },
     ...(game.settings.currencySymbol ? { currency: game.settings.currencySymbol } : {}),
     ...(locked ? { locked: true } : {}),
+    ...(teamsOn(game.settings) ? { teams: true } : {}),
   };
 }

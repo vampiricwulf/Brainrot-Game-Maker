@@ -53,13 +53,21 @@ function parsePhone(x: unknown): PhoneInfo | null {
   if (!isObj(x) || !isStr(x.conn) || typeof x.connected !== 'boolean') return null;
   if (!(x.seatId === null || isStr(x.seatId))) return null;
   if (x.pendingName !== undefined && !isStr(x.pendingName, 60)) return null;
-  return { conn: x.conn, seatId: x.seatId, connected: x.connected, ...(x.pendingName !== undefined ? { pendingName: x.pendingName } : {}) };
+  // Teams (added later): the member on that phone and their name.
+  const member = isStr(x.member, 64) && x.member && isStr(x.name, 100) ? { member: x.member, name: x.name } : {};
+  return { conn: x.conn, seatId: x.seatId, connected: x.connected, ...(x.pendingName !== undefined ? { pendingName: x.pendingName } : {}), ...member };
 }
 
 function parseQueued(x: unknown): QueuedBuzz | null {
   if (!isObj(x) || !isStr(x.seatId) || !isNum(x.afterMs)) return null;
   if (x.rolled !== undefined && !(isNum(x.rolled) && x.rolled >= 1)) return null;
-  return { seatId: x.seatId, afterMs: x.afterMs, ...(x.rolled !== undefined ? { rolled: x.rolled } : {}), ...(x.arrivedLate === true ? { arrivedLate: true } : {}) };
+  return {
+    seatId: x.seatId,
+    afterMs: x.afterMs,
+    ...(x.rolled !== undefined ? { rolled: x.rolled } : {}),
+    ...(x.arrivedLate === true ? { arrivedLate: true } : {}),
+    ...(isStr(x.by, 100) && x.by ? { by: x.by } : {}),
+  };
 }
 
 /** A message from the room, checked field by field (anything else is dropped). Takes the raw WebSocket data. */
@@ -73,12 +81,18 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
   if (!isObj(m)) return null;
   switch (m.t) {
     case 'welcome':
-      return isStr(m.code) && isRoomCode(m.code) && isNum(m.protocol) && isNum(m.serverNow)
-        ? { t: 'welcome', code: m.code, protocol: m.protocol, serverNow: m.serverNow }
-        : null;
+      if (!(isStr(m.code) && isRoomCode(m.code) && isNum(m.protocol) && isNum(m.serverNow))) return null;
+      // features (added later): what the room can do beyond protocol 1 (teams…).
+      return {
+        t: 'welcome',
+        code: m.code,
+        protocol: m.protocol,
+        serverNow: m.serverNow,
+        ...(Array.isArray(m.features) ? { features: m.features.filter((f): f is string => isStr(f, 40)).slice(0, 20) } : {}),
+      };
     case 'buzz':
       return isNum(m.armId) && isStr(m.seatId) && isNum(m.rank) && m.rank >= 1 && isNum(m.afterMs)
-        ? { t: 'buzz', armId: m.armId, seatId: m.seatId, rank: m.rank, afterMs: m.afterMs }
+        ? { t: 'buzz', armId: m.armId, seatId: m.seatId, rank: m.rank, afterMs: m.afterMs, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
         : null;
     case 'queue': {
       if (!isNum(m.armId) || !Array.isArray(m.queue) || m.queue.length > 200) return null;
@@ -133,6 +147,8 @@ export class RoomLink {
   status: RoomStatus = 'off';
   code: string | null = null;
   phones: PhoneInfo[] = [];
+  /** What the room said it can do beyond protocol 1 (its welcome's features; none from an older room). */
+  features: string[] = [];
   error = '';
   /** Reconnect attempts since the room was last reached. */
   attempts = 0;
@@ -339,6 +355,7 @@ export class RoomLink {
           return this.close();
         }
         this.code = m.code;
+        this.features = m.features ?? [];
         this.attempts = 0;
         this.error = '';
         this.set('online');
