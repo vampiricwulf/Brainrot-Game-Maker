@@ -208,6 +208,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **The host's notes during a Daily Double's wager** say the question is "(not shown yet)" (they said "(on screen)" while
+  viewers still see the Daily Double splash).
 - **↺ Reset in a wheel's ✎ edit box** brings back the slices switched off on a quick, ready-made or category wheel
   (it used to keep only the ones left on).
 - **RPG minimap: a party of three or more on one screen** stays in that screen's cell (their dots overlap), instead of
