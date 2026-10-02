@@ -133,6 +133,9 @@
       return;
     }
     editing = true;
+    // Is a newer version out? Asked first, so nothing slow (or failing) while the game loads holds it up. (The builder
+    // only: an exported game file isn't updated.)
+    void checkForUpdate();
     const [editor, play, ok] = await Promise.all([loadEditor(), loadPlay(), testStorage()]);
     app.storageOk = ok;
     /** Removed files the undo history can bring back. */
@@ -159,8 +162,6 @@
     await pruneMedia([app.game, app.resumable?.game], held);
     loaded = true;
     await restoreRoom();
-    // Is a newer version out? (The builder only: an exported game file isn't updated.)
-    void checkForUpdate();
   });
 
   /**

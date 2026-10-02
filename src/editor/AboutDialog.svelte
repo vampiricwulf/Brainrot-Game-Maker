@@ -8,6 +8,7 @@
   import { inTauri } from '../lib/platform';
   import { storageKept } from '../lib/persist';
   import { checkForUpdate, update } from '../lib/update.svelte';
+  import { prefs } from '../lib/prefs.svelte';
   import UpdateControls from './UpdateControls.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
@@ -25,6 +26,13 @@
     if (desktopApp) dataFolders().then((f) => (folders = f));
     else storageKept().then((k) => (kept = k));
   });
+
+  /** When GitHub last answered: a time today, else the date. */
+  function checkedWhen(at: number): string {
+    const d = new Date(at);
+    const today = d.toDateString() === new Date().toDateString();
+    return today ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
 
   /** In the desktop app, the project's pages open in the default browser instead of an app window. */
   function link(e: MouseEvent): void {
@@ -66,7 +74,8 @@
       <dt>Updates</dt>
       <dd class="updates">
         <span role="status">
-          {#if update.status === 'checking'}Checking…{:else if update.status === 'available' && update.latest}Version {update.latest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{/if}
+          {#if update.status === 'checking'}Checking…{:else if update.status === 'available' && update.latest}Version {update.latest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked at start-up (⚙ Settings).{/if}
+          {#if update.checkedAt && update.status !== 'checking'}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}
         </span>
         {#if (update.status === 'available' || update.status === 'installing') && update.latest}
           <UpdateControls release={update.latest} />

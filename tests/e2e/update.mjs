@@ -67,8 +67,26 @@ try {
   await page.waitForTimeout(1500);
   if (await page.evaluate(() => localStorage.getItem('test.marker') === '1')) {
     assert((await notice.count()) === 0, 'after a reload, Not now still holds');
-    assert(asked === before, `and the reload asks GitHub no sooner than a few hours later (asked ${asked - before} more)`);
+    assert(asked === before + 1, `and each start asks GitHub again (asked ${asked - before} more)`);
   } else console.log('  - (the browser lost its storage on that reload: the reload checks are skipped this time)');
+
+  // A start asks even when it heard from GitHub a little while ago (releases come often: what it heard then would hide a
+  // newer one), and an offline start goes by what it heard last.
+  await page.evaluate(() => localStorage.setItem('jb.update', JSON.stringify({ at: Date.now() - 60_000, release: { version: '0.0.1', page: 'p', notes: '', files: {} } })));
+  answer = release('99.2.0');
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => localStorage.setItem('test.marker', '3'));
+  await page.reload();
+  await page.getByRole('button', { name: 'Open…' }).waitFor();
+  if (await page.evaluate(() => localStorage.getItem('test.marker') === '3')) {
+    await page.locator('.data-notice', { hasText: '99.2.0 is out' }).waitFor();
+    assert(true, 'a start finds a newer version though it checked a minute ago');
+    answer = 'offline';
+    await page.reload();
+    await page.getByRole('button', { name: 'Open…' }).waitFor();
+    await page.locator('.data-notice', { hasText: '99.2.0 is out' }).waitFor();
+    assert(true, 'offline, a start goes by what GitHub said last');
+  } else console.log('  - (the browser lost its storage on that reload: the stale-answer check is skipped this time)');
 
   // ℹ About checks on demand: a still newer one shows again; this one is the newest; offline says so.
   const about = async () => {
@@ -81,6 +99,7 @@ try {
   await dlg.getByRole('button', { name: 'Check for updates' }).click();
   await dlg.getByText('✓ This is the newest version.').waitFor();
   assert(true, 'ℹ About › Check for updates: "This is the newest version" when it is');
+  assert(/\(checked \d/.test(await dlg.locator('.updates').innerText()), 'and says when it last checked');
   answer = 'offline';
   await dlg.getByRole('button', { name: 'Check for updates' }).click();
   await dlg.getByText(/Couldn't reach GitHub/).waitFor();

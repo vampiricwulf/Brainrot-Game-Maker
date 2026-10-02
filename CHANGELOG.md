@@ -529,6 +529,11 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **The check for a newer version at start-up now really asks each time**: it went by what GitHub had said in the last
+  six hours, and with a new version out every push, a start soon after a check (while that was the newest) never
+  heard of the ones after it. Every start asks now (one small request), going by the last answer only when GitHub
+  can't be reached, and ℹ About says when it last checked. It also starts before the game finishes loading, so nothing
+  slow there holds it up.
 - **✔ / ✘ on a player chip** no longer drop the keyboard focus (the button greys out once pressed): it goes on to the
   main button.
 - **＋ Award and − Deduct, greyed out, say why** in their tooltip ("Pick who answered first (1–3)", "Type an amount

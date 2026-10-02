@@ -96,7 +96,7 @@
       Check for a newer version when the app starts
     </label>
     <p class="hint">
-      Asks GitHub, where new versions are published (at most every few hours), and says so in the editor when one is out.
+      Asks GitHub, where new versions are published, each time the app starts, and says so in the editor when one is out.
       ℹ About can check any time.
     </p>
 

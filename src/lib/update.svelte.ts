@@ -1,5 +1,5 @@
 // Is a newer version out? The app asks GitHub for the newest release (every push to main is one, numbered by
-// scripts/version.mjs) when it starts (at most every few hours, ⚙ Settings can turn it off) and when ℹ About is asked.
+// scripts/version.mjs) each time it starts (⚙ Settings can turn that off) and when ℹ About is asked.
 // The desktop app can then update itself in place; the HTML file offers the new file to download (a page can't
 // replace the file it was opened from).
 import { isNewer } from './semver';
@@ -13,8 +13,6 @@ export const ASSETS = { html: 'brainrot-game-maker.html', exe: 'brainrot-game-ma
 
 const CACHE_KEY = 'jb.update';
 const SKIP_KEY = 'jb.updateSkip';
-/** How often the start-up check asks GitHub (in between, it uses what it heard last). */
-const EVERY_MS = 6 * 60 * 60 * 1000;
 
 export interface Release {
   version: string;
@@ -31,7 +29,9 @@ export const update = $state<{
   error: string;
   /** The notice in the editor was put away for this version. */
   skipped: string;
-}>({ status: 'idle', latest: null, error: '', skipped: readSkip() });
+  /** When GitHub last answered (ms; 0: not yet), shown in ℹ About. */
+  checkedAt: number;
+}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0 });
 
 function storedFlag(key: string): boolean {
   try {
@@ -70,22 +70,31 @@ function settle(latest: Release | null): void {
   update.status = latest && isNewer(latest.version, __APP_VERSION__) ? 'available' : 'current';
 }
 
+/** What GitHub said last time (kept for when it can't be reached). */
+function lastHeard(): { at: number; release: Release | null } | null {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as { at?: unknown; release?: unknown } | null;
+    if (!cached || typeof cached.at !== 'number') return null;
+    return { at: cached.at, release: cached.release ? releaseFrom(toApi(cached.release as Release)) : null };
+  } catch {
+    return null;
+  }
+}
+
+/** A kept release, in GitHub's shape again (so it's checked the same way as a fresh answer). */
+function toApi(r: Release): unknown {
+  return { tag_name: typeof r?.version === 'string' ? r.version : undefined, html_url: r?.page, body: r?.notes, assets: Object.entries(r?.files ?? {}).map(([name, url]) => ({ name, browser_download_url: url })) };
+}
+
 /**
- * Ask GitHub for the newest release. `manual` (ℹ About's button): always asks, and says so when it can't; the start-up
- * check uses what it heard in the last few hours, and stays quiet when offline.
+ * Ask GitHub for the newest release, at start-up and when ℹ About's button is pressed (`manual`). It always asks
+ * (one small request; releases come often, so an answer kept from earlier would hide a newer one). When GitHub can't be
+ * reached, the start-up check stays quiet and goes by what it heard last; the button says so.
  */
 export async function checkForUpdate(manual = false): Promise<void> {
   if (update.status === 'checking' || update.status === 'installing') return;
-  if (!manual) {
-    // Only published releases check on their own (a test can turn it on with the "jb.updateCheck" storage key).
-    if (!prefs.checkUpdates || !(__RELEASE__ || storedFlag('jb.updateCheck'))) return;
-    try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as { at: number; release: Release | null } | null;
-      if (cached && Date.now() - cached.at < EVERY_MS) return settle(cached.release);
-    } catch {
-      // Nothing usable kept: ask.
-    }
-  }
+  // Only published releases check on their own (a test can turn it on with the "jb.updateCheck" storage key).
+  if (!manual && (!prefs.checkUpdates || !(__RELEASE__ || storedFlag('jb.updateCheck')))) return;
   update.status = 'checking';
   update.error = '';
   try {
@@ -93,15 +102,20 @@ export async function checkForUpdate(manual = false): Promise<void> {
     if (res.status === 404) return settle(null);
     if (!res.ok) throw new Error(res.status === 403 || res.status === 429 ? 'GitHub is busy: try again in a while' : `GitHub answered ${res.status}`);
     const release = releaseFrom(await res.json());
+    update.checkedAt = Date.now();
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), release }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ at: update.checkedAt, release }));
     } catch {
-      // Storage off: it asks again next time.
+      // Storage off: nothing kept for an offline start.
     }
     settle(release);
   } catch (err) {
-    update.status = manual ? 'failed' : 'idle';
     update.error = err instanceof Error && err.message !== 'Failed to fetch' ? err.message : "Couldn't reach GitHub (offline?)";
+    const heard = manual ? null : lastHeard();
+    if (heard) {
+      update.checkedAt = heard.at;
+      settle(heard.release);
+    } else update.status = manual ? 'failed' : 'idle';
   }
 }
 

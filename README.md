@@ -16,7 +16,7 @@ Get it from the **[Latest release](../../releases/latest)** (every push to `main
 - **`brainrot-game-maker.html`**: double-click it to open it in Chrome, Edge or Firefox.
 - **`brainrot-game-maker-portable.exe`**: the Windows desktop app. No install needed.
 
-**Updating.** When a newer version is out, the editor says so (it asks GitHub when it starts, at most every few hours;
+**Updating.** When a newer version is out, the editor says so (it asks GitHub each time it starts;
 ⚙ Settings can turn that off, and ℹ About checks any time):
 
 - The desktop app updates itself: **⬆ Update to …** downloads the new `.exe`, checks it's signed with the project's
