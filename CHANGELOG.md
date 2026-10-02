@@ -42,6 +42,8 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **The Final's wager step says it once**: under "Category on screen · taking wagers (only you see them)" the panel now
+  just says "Tick who plays and enter each wager."
 - **Board games: landing on a space counts as passing it** — the host gets its "when passed" buttons too ("Landed on
   Start (counts as passing): +$100"), so landing on Start still pays. The editor says so beside "When passed".
 - **Board games: no numbers in the spaces' circles** (a space called "Space 4" no longer shows a 4); a space shows its

@@ -316,7 +316,7 @@
   <div class="fj">
     {#if session.finalStep === 'wagers'}
       {#if dual}
-        <span class="muted">Category is on screen. Tick who plays and enter each wager (only you see these).</span>
+        <span class="muted">Tick who plays and enter each wager.</span>
       {:else}
         <span class="exposed">⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.</span>
       {/if}
