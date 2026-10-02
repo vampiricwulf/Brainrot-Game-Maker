@@ -1183,3 +1183,4 @@ Commits whose titles don't say what they contain:
 | f812b22 | Merge branch 'worktree-agent-a2cd6615ecb607e42' | Brings in 0adc6d6 (pop-ups always whole on screen and on top: the phones list, tool menus, slide editor menus, pickers, context menus) |
 | 96c8298 | Merge branch 'worktree-agent-a50aeabb1a0a1fdf0' | Brings in 589918c (players send their Daily Double or Final wager secretly from their phone) |
 | 2c6f65d | Merge branch 'worktree-agent-a21cda5a4267ff0d5' | Brings in 529b391 (saved themes shared as a file or a code, and more theme controls: alternating colors, gradients, borders, played-tile looks, plate styles) |
+| 8c51705 | Merge branch 'worktree-agent-a8528ec06fe65151f' | Brings in 46aec31 (phones, teams and phone wagers polish: a late joiner can't see a seat's wager, phone layouts, wording) |
