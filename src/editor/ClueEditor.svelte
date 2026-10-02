@@ -4,8 +4,8 @@
   import { app, toast } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
-  import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, type ClueType, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
+  import { addClueSlide, deleteClueSlide, duplicateClueSlide, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, questionSlides, type ClueType, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -28,12 +28,52 @@
   const sym = $derived(app.game.settings.currencySymbol);
 
   const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile' };
+  /** The tile as the board shows it ("Memes $400"), for the history. */
+  const tileName = () => `${categoryLabel(cat)} ${formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}`;
   /** The tile's type (one step, with the ⭐ Daily Doubles count it raises). */
   function setType(type: ClueType): void {
-    const tile = `${categoryLabel(cat)} ${formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}`;
-    record(`Made ${tile} ${TYPE_WORDS[type]}`, () => setClueType(round, clue, type));
+    record(`Made ${tileName()} ${TYPE_WORDS[type]}`, () => setClueType(round, clue, type));
   }
   let side = $state<'q' | 'a'>('q');
+
+  // ---------- Question slides ----------
+  // A clue can have several question slides (a lead-in, then more information…), shown in order before the answer.
+  // Most have one: then it's the "Question slide" tab with a quiet ＋ Add slide beside it.
+  /** The question slide open (0: the first), kept while the Answer tab is open. */
+  let qi = $state(0);
+  const qslides = $derived(clue ? questionSlides(clue) : []);
+  const at = $derived(Math.min(qi, Math.max(0, qslides.length - 1)));
+  const qslide = $derived(qslides[at]);
+  /**
+   * What tells the open slide apart, so the slide editor starts afresh on another one (moving, deleting or undoing can
+   * put another slide in the same place, and the first one has no id).
+   */
+  const slideNo = new WeakMap<object, number>();
+  let slideCount = 0;
+  const slideKey = $derived.by(() => {
+    if (side === 'a' || !qslide) return 'a';
+    if (!slideNo.has(qslide)) slideNo.set(qslide, ++slideCount);
+    return `q${slideNo.get(qslide)}`;
+  });
+
+  /** A change to the question slides as one named step; the slide it returns opens. */
+  function slides(label: string, fn: () => number): void {
+    const to = record(label, fn);
+    side = 'q';
+    qi = to;
+  }
+  /** A new question slide after the one open (on the Answer tab: after the last one), its text box ready to type in. */
+  function addSlide(): void {
+    const after = side === 'a' ? qslides.length - 1 : at;
+    slides(`Added question slide ${after + 2} to ${tileName()}`, () => addClueSlide(clue, after));
+    focusQuestion();
+  }
+  function duplicateSlide(): void {
+    slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
+    focusQuestion();
+  }
+  const deleteSlide = () => slides(`Deleted question slide ${at + 1} of ${tileName()}`, () => deleteClueSlide(clue, at));
+  const moveSlide = (d: -1 | 1) => slides(`Moved question slide ${at + 1} of ${tileName()} ${d < 0 ? 'earlier' : 'later'}`, () => moveClueSlide(clue, at, d));
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
   let answerField = $state<HTMLTextAreaElement>();
@@ -64,7 +104,10 @@
   $effect(() => {
     const place = take(handled);
     const part = place?.tab === 'round' ? place.part : undefined;
-    if (part?.kind === 'clue' && part.side && part.clue === untrack(() => clue?.id)) side = part.side;
+    if (part?.kind !== 'clue' || !part.side || part.clue !== untrack(() => clue?.id)) return;
+    side = part.side;
+    // (On one of its extra question slides: that one.)
+    if (part.side === 'q') qi = part.slide ? (untrack(() => clue?.extraSlides)?.findIndex((s) => s.id === part.slide) ?? -1) + 1 : 0;
   });
 
   // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next (on an
@@ -80,6 +123,7 @@
     if (!to) return;
     pos = to;
     side = 'q';
+    qi = 0;
     focusQuestion();
   }
   /** Ctrl+Enter / Ctrl+Shift+Enter: the next or previous clue; at the end of the board, a note says so. */
@@ -257,16 +301,17 @@
       {:else}
         <!-- Quick text: the main text of each slide, so plain clues never need the canvas. Tab moves along. -->
         <div class="quick">
+          <!-- (A clue with several question slides: the one open below.) -->
           <label class="field">
-            Question
+            {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
             <textarea
               bind:this={questionField}
               dir="auto"
               data-field="q"
               rows="2"
-              placeholder="Type the question…"
-              value={slideText(clue.questionSlide)}
-              oninput={(e) => setSlideText(clue.questionSlide, e.currentTarget.value)}
+              placeholder={at ? 'Type what this slide adds…' : 'Type the question…'}
+              value={slideText(qslide)}
+              oninput={(e) => setSlideText(qslide, e.currentTarget.value)}
             ></textarea>
           </label>
           <label class="field">
@@ -286,13 +331,41 @@
             <textarea rows="2" data-field="notes" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
           </label>
         </div>
-        <div class="tabs" role="tablist">
-          <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question slide</button>
-          <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer slide (hidden until revealed)</button>
+        <div class="tabs">
+          <!-- The question slides in the order they show, then the answer. -->
+          <div class="tablist" role="tablist" aria-label="Slides">
+            {#each qslides as _, i (i)}
+              <button
+                role="tab"
+                class:on={side === 'q' && at === i}
+                aria-selected={side === 'q' && at === i}
+                data-qslide={i + 1}
+                onclick={() => ((side = 'q'), (qi = i))}
+                title={qslides.length > 1 ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer` : undefined}
+                >{qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
+              >
+            {/each}
+            <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer slide (hidden until revealed)</button>
+          </div>
+          <button
+            class="ghost add"
+            onclick={addSlide}
+            title={side === 'a' ? 'Add a question slide before the answer' : 'Add a question slide after this one: lead in, then show more before the answer'}>＋ Add slide</button
+          >
+          {#if qslides.length > 1 && side === 'q'}
+            <span class="spacer"></span>
+            <div class="slidetools" role="group" aria-label="Question slide {at + 1} of {qslides.length}">
+              <span class="muted small">Slide {at + 1} of {qslides.length}</span>
+              <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} title="Move this slide earlier" aria-label="Move slide earlier">◀</button>
+              <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} title="Move this slide later" aria-label="Move slide later">▶</button>
+              <button class="ghost small" onclick={duplicateSlide} title="A copy of this slide, right after it">⧉ Duplicate</button>
+              <button class="ghost small" onclick={deleteSlide} title="Delete this question slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
+            </div>
+          {/if}
         </div>
-        {#key `${clue.id}-${side}`}
+        {#key `${clue.id}-${slideKey}`}
           <SlideEditor
-            slide={side === 'q' ? clue.questionSlide : clue.answerSlide}
+            slide={side === 'q' ? qslide : clue.answerSlide}
             styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
             stylecategory
             placeholder={side === 'q' ? 'Click to type the question' : 'Click to type the answer'}
@@ -383,10 +456,31 @@
   .tabs {
     display: flex;
     gap: 4px;
+    align-items: flex-end;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
+  }
+  .tablist {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
   }
   .tabs button {
     border-radius: 6px 6px 0 0;
+  }
+  /* ＋ Add slide sits quietly after the tabs. */
+  .tabs .add {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  .slidetools {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding-bottom: 3px;
+  }
+  .slidetools button {
+    border-radius: 6px;
   }
   .tabs button.on {
     background: var(--accent-fill);

@@ -51,6 +51,7 @@
       title: 'Jeopardy board',
       keys: [
         ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
+        ['N / Shift+N during a clue', 'A clue with several slides: the next slide / the slide before'],
         ['R', 'Reveal the answer (again: hide it); the countdown stops'],
         ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],

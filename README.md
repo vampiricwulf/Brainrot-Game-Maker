@@ -125,7 +125,9 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 
-Click a tile to open its clue, then reveal the answer with `R` or a click. Select players and **＋ Award** (`Enter`) or
+Click a tile to open its clue, then reveal the answer with `R` or a click. A clue can have several question slides (a
+lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
+through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`) or
 **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
 selected.
 
@@ -252,7 +254,7 @@ The main ones (press `?` during the game for all of them):
 | `R` | Reveal / hide the answer (the countdown stops) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
-| `N` | Next step (intro, Final, next turn) |
+| `N` | Next step (intro, a clue's next slide, Final, next turn) |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players) / scoreboard |

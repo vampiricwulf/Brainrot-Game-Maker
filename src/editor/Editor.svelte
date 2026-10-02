@@ -16,6 +16,7 @@
     newGame,
     newRound,
     roundName,
+    slidesOfClue,
     type Game,
     type Round,
     type RoundMode,
@@ -160,7 +161,7 @@
       round = newRound(name, prev?.categories.length ?? 6, prev ? prev.values.map((v) => (boards.length === 1 ? v * 2 : v)) : undefined);
     }
     // Its clues take the theme's clue text.
-    if (isBoard(round)) followClueText(game, round.categories.flatMap((c) => c.clues.flatMap((cl) => [cl.questionSlide, cl.answerSlide])));
+    if (isBoard(round)) followClueText(game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
     else if (isFinal(round)) followClueText(game, [round.questionSlide, round.answerSlide]);
     game.rounds.splice(at, 0, round);
     tab = at;

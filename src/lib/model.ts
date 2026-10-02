@@ -325,6 +325,11 @@ export interface GameAudio {
   winner?: Id;
 }
 
+/** A clue's question slide after the first: its id keeps it apart from the others in the undo history. */
+export interface ExtraSlide extends Slide {
+  id: Id;
+}
+
 export type ClueType = 'standard' | 'dailyDouble' | 'wheel' | 'dice';
 
 export interface Clue {
@@ -333,6 +338,11 @@ export interface Clue {
   value: number | null;
   type: ClueType;
   questionSlide: Slide;
+  /**
+   * More question slides, shown after questionSlide in this order (a lead-in, then more information…): the host steps
+   * through them before revealing the answer. Absent (older games, and most clues): the one question slide.
+   */
+  extraSlides?: ExtraSlide[];
   answerSlide: Slide;
   hostNotes?: string;
   timerSeconds?: number | null;
@@ -606,6 +616,8 @@ export interface Session {
   /** Wheel slices already used when "remove after landing" is on: wheelId → segment ids. */
   removedSegments?: Record<Id, Id[]>;
   currentClue: ClueRef | null;
+  /** The open clue's question slide on screen (0, or left out: the first; see clueSlideIndex). */
+  slide?: number;
   revealed: boolean;
   scoreLog: ScoreEvent[];
   /** Event ids undone by Undo, most recent last; cleared by any new score change. */
@@ -979,6 +991,16 @@ export function setSlideText(slide: Slide, text: string): void {
   else slide.elements.push(newTextEl(text));
 }
 
+/** A clue's question slides in the order they show (the first, then its extra slides). */
+export function questionSlides(clue: Pick<Clue, 'questionSlide' | 'extraSlides'>): Slide[] {
+  return clue.extraSlides?.length ? [clue.questionSlide, ...clue.extraSlides] : [clue.questionSlide];
+}
+
+/** Every slide of a clue: its question slides, then the answer. */
+export function slidesOfClue(clue: Pick<Clue, 'questionSlide' | 'extraSlides' | 'answerSlide'>): Slide[] {
+  return [...questionSlides(clue), clue.answerSlide];
+}
+
 export function newClue(): Clue {
   return { id: newId(), value: null, type: 'standard', questionSlide: textSlide(), answerSlide: textSlide() };
 }
@@ -1316,6 +1338,18 @@ function repairGame(g: Game): void {
           cl.type ??= 'standard';
           cl.questionSlide = repairSlide(cl.questionSlide);
           cl.answerSlide = repairSlide(cl.answerSlide);
+          // More question slides (left out: just the one). Each needs an id, and its parts what any slide needs.
+          if (cl.extraSlides !== undefined) {
+            const extra = objects<ExtraSlide>(cl.extraSlides);
+            if (!extra.length) delete cl.extraSlides;
+            else {
+              if (extra !== cl.extraSlides) cl.extraSlides = extra;
+              for (const sl of extra) {
+                fixId(sl);
+                repairSlide(sl);
+              }
+            }
+          }
         }
       }
       // No row values: the usual 200, 400… for as many rows as the board has.

@@ -39,7 +39,8 @@ const PLAY_PARTS: Record<PlayPart, [string, string]> = {
 export type RoundPart =
   | { kind: 'category'; category: string }
   /** `onBoard`: the tile on the board (moved, cleared, pasted), without opening the clue. */
-  | { kind: 'clue'; category: string; clue: string; side?: Side; element?: string; onBoard?: boolean }
+  /** `slide`: one of the clue's extra question slides (its id; none: the first question slide). */
+  | { kind: 'clue'; category: string; clue: string; side?: Side; slide?: string; element?: string; onBoard?: boolean }
   | { kind: 'decor'; element?: string }
   | { kind: 'final'; side?: Side; element?: string }
   | { kind: 'space'; space: string }
@@ -157,6 +158,20 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         const clue = cat.clues[row];
         reached(6, 'clue', formatPoints(clueValue(r, row, clue), game.settings.currencySymbol));
         part({ kind: 'clue', category: cat.id, clue: clue.id });
+        if (path[6] === 'extraSlides') {
+          // One of the clue's extra question slides ("Question 2").
+          at.crumbs.push(SIDE_NAME.q);
+          part({ kind: 'clue', category: cat.id, clue: clue.id, side: 'q' });
+          const n = clue.extraSlides?.findIndex((s) => s.id === path[7]) ?? -1;
+          if (n < 0) return;
+          const sl = clue.extraSlides![n];
+          at.crumbs[at.crumbs.length - 1] = `${SIDE_NAME.q} ${n + 2}`;
+          reached(8, 'slide', `question slide ${n + 2}`, undefined, false);
+          const at8 = { kind: 'clue', category: cat.id, clue: clue.id, side: 'q', slide: sl.id } as const;
+          part(at8);
+          slide(sl, 8, (element) => ({ tab: 'round', round: id, part: { ...at8, element } }), 'q');
+          return;
+        }
         const side = path[6] === 'questionSlide' ? 'q' : path[6] === 'answerSlide' ? 'a' : null;
         if (!side) return;
         at.crumbs.push(SIDE_NAME[side]);
@@ -329,6 +344,8 @@ export function itemPlace(game: Game, id: string): Place | null {
         for (const cl of c.clues) {
           const side = sides.find((k) => on(cl[k]));
           if (side) return placeAt(game, ['rounds', r.id, 'categories', c.id, 'clues', cl.id, side, 'elements', id]).place;
+          const extra = cl.extraSlides?.find(on);
+          if (extra) return placeAt(game, ['rounds', r.id, 'categories', c.id, 'clues', cl.id, 'extraSlides', extra.id, 'elements', id]).place;
         }
     if (r.mode === 'final') {
       const side = sides.find((k) => on(r[k]));
@@ -553,6 +570,8 @@ const themeField = (k: Seg | undefined) => (k === undefined ? 'theme' : (THEME_F
 
 /** Keys that hold a slide. */
 const SLIDE_KEYS = new Set<Seg>(['questionSlide', 'answerSlide', 'slide', 'dialogue']);
+/** Does the path up to `p[i]` lead to a slide (a key that holds one, or one of a clue's extra slides)? */
+const isSlide = (p: readonly Seg[], i: number) => SLIDE_KEYS.has(p[i]) || p[i - 1] === 'extraSlides';
 /**
  * Is the op about a slide's own background (not a text box's background box)? 'whole' when it's set all at once
  * (↺ BG resets it), else which of its settings.
@@ -560,8 +579,8 @@ const SLIDE_KEYS = new Set<Seg>(['questionSlide', 'answerSlide', 'slide', 'dialo
 function slideBackground(op: Op): Seg | 'whole' | null {
   if (op.t !== 'set') return null;
   const p = op.p;
-  if (op.k === 'background' && SLIDE_KEYS.has(p[p.length - 1])) return 'whole';
-  if (p[p.length - 1] === 'background' && SLIDE_KEYS.has(p[p.length - 2])) return op.k;
+  if (op.k === 'background' && isSlide(p, p.length - 1)) return 'whole';
+  if (p[p.length - 1] === 'background' && isSlide(p, p.length - 2)) return op.k;
   return null;
 }
 

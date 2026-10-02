@@ -15,7 +15,9 @@ export function allSlides(game: Game): SlideRef[] {
         c.clues.forEach((cl, i) => {
           if (cl.empty) return;
           const where = `${roundName(r, ri)} · ${categoryLabel(c)} #${i + 1}`;
-          out.push({ slide: cl.questionSlide, where: `${where} (question)` }, { slide: cl.answerSlide, where: `${where} (answer)` });
+          out.push({ slide: cl.questionSlide, where: `${where} (question)` });
+          cl.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${where} (question slide ${j + 2})` }));
+          out.push({ slide: cl.answerSlide, where: `${where} (answer)` });
         });
     else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
