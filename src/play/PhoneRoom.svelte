@@ -6,7 +6,7 @@
   import type { GameSettings, Session } from '../lib/model';
   import BuzzerOptions, { type SetBuzzSetting } from './BuzzerOptions.svelte';
   import QrCode from '../lib/QrCode.svelte';
-  import { buzzerBase, remote, roomLink } from '../lib/remote.svelte';
+  import { buzzerBase, remote, roomHasTeams, roomLink } from '../lib/remote.svelte';
   import { app } from '../lib/app.svelte';
   import { copyText } from './standings';
   import PhoneList from './PhoneList.svelte';
@@ -22,6 +22,8 @@
     onkick,
     onclose,
     onlock,
+    onkickmember,
+    onmove,
   }: {
     session: Session;
     settings: GameSettings;
@@ -34,11 +36,16 @@
     /** ✕ Close the room: the phones are told the game is over. */
     onclose: () => void;
     onlock: (on: boolean) => void;
+    /** Teams: take one person off their team / put them on another. */
+    onkickmember: (seatId: string, member: string, name: string) => void;
+    onmove: (member: string, seatId: string, name: string) => void;
   } = $props();
 
   const base = $derived(buzzerBase());
   const link = $derived(roomLink());
   const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
+  /** Teams: the people (phones) on a team. */
+  const people = $derived(remote.phones.filter((ph) => ph.member && ph.connected && session.players.some((p) => p.id === ph.seatId)).length);
 </script>
 
 <section class="card" aria-label="Phone buzzers">
@@ -85,7 +92,11 @@
           <button class="small ghost" onclick={onclose} title="Phones are told the game is over. (◀ Back to editor keeps the room open.)">✕ Close the room</button>
         </div>
         {#if remote.status === 'online'}
-          <span class="muted small" role="status">{joined} of {session.players.length} players joined</span>
+          {#if settings.buzzTeams}
+            <span class="muted small" role="status">{people} {people === 1 ? 'person' : 'people'} on {joined} of {session.players.length} teams</span>
+          {:else}
+            <span class="muted small" role="status">{joined} of {session.players.length} players joined</span>
+          {/if}
         {:else if remote.status === 'error'}
           <span class="warn small" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</span>
           <button class="small" onclick={onstart}>Start a new room</button>
@@ -94,7 +105,14 @@
         {/if}
       </div>
     </div>
-    <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} />
+    {#if settings.buzzTeams && remote.status === 'online' && !roomHasTeams()}
+      <p class="warn small" role="alert">
+        ⚠ This buzzer server doesn't know teams yet (it needs updating): phones join as players, one each.
+      </p>
+    {:else if settings.buzzTeams}
+      <p class="muted small">Teams: each player above is a team. People pick theirs on their phone and type their own name.</p>
+    {/if}
+    <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />
   {/if}
 </section>
 

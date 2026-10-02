@@ -359,9 +359,10 @@ const RULES: Record<string, string> = {
   buzzArm: 'When the buzzers open',
   phoneJoin: 'New players from their phone',
   earlyBuzzLock: 'Early buzz wait',
+  buzzTeams: 'Teams',
 };
 /** Settings on the pre-game screen's 📱 Phone buzzers card (the rest are in ⚖ Game rules). */
-const BUZZ_SETTINGS = new Set<unknown>(['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock']);
+const BUZZ_SETTINGS = new Set<unknown>(['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock', 'buzzTeams']);
 const FIELDS: Record<string, string> = {
   hostNotes: 'host notes',
   winNotes: 'win notes',

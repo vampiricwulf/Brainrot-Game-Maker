@@ -131,6 +131,11 @@ input:focus { outline: none; border-color: var(--accent); }
 .seat .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .seat .tag { color: var(--muted); font-weight: 400; font-size: 15px; }
 .seat:disabled { opacity: 0.45; cursor: default; }
+/* Teams: who is on a team, under its name. */
+.seat .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.seat .who .name { flex: none; }
+.seat .members { color: var(--muted); font-weight: 400; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#team-dot { display: inline-block; width: 22px; height: 22px; border-radius: 50%; vertical-align: -3px; margin-right: 8px; }
 .seat.new { justify-content: center; background: transparent; border-style: dashed; color: var(--accent); }
 
 #s-buzz { align-items: center; justify-content: center; gap: 14px; padding-bottom: 20px; }
@@ -221,6 +226,12 @@ input:focus { outline: none; border-color: var(--accent); }
   color: var(--seat-ink);
   border-color: #fff;
   box-shadow: 0 0 0 10px #fff3, 0 0 80px var(--seat);
+}
+/* Teams: a teammate is answering for your team. */
+#buzz.team {
+  background: color-mix(in srgb, var(--seat) 35%, var(--panel-2));
+  color: #fff;
+  border-color: var(--seat);
 }
 #buzz.off { background: var(--panel-2); color: var(--muted); }
 #buzz.locked { background: #3a2226; color: #ffb3b3; border-color: var(--bad); }

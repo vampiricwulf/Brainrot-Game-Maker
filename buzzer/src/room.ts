@@ -35,19 +35,29 @@
  * later) to make room. With none to turn away a newcomer still gets in, up to MAX_SOCKETS, but only to come back to its
  * seat with a token; anything else turns it away. The host is told ('full').
  *
+ * Teams (HostState.teams): each seat is a team. A phone joins one with its own name and becomes a member (its own
+ * token, so it comes back after a reload, on whichever team the host has put it). The race still counts one buzz per
+ * seat: a team's first buzz holds its place (and says who it was); a teammate's later buzz only hears where the team
+ * stands. A lock-out (a wrong answer) locks the team; an early buzz only the member who jumped. The host can move a
+ * member to another team or kick one (kick with member), or the whole team (kick without). Turning teams on or off
+ * frees every seat and member: phones pick again.
+ *
  * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
  * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and its address can't
  * connect again for FLOOD_BLOCK_MS.
  */
 import {
   BUZZ_PROTOCOL,
+  MEMBER_NAME_MAX,
   phoneView,
+  ROOM_FEATURES,
   TIE_MS,
   clip,
   cleanName,
   type BuzzPhase,
   type DenyReason,
   type HostState,
+  type MemberRef,
   type PhoneInfo,
   type QueuedBuzz,
   type RoomToHost,
@@ -74,6 +84,8 @@ export const STATUS_MAX = 120;
 export const PHONE_MSG_MAX = 1024;
 /** A new player's name (phones type it). */
 export const NAME_MAX = 24;
+/** Team members the room keeps at most (phones gone for good still count, until a newcomer needs the room). */
+export const MAX_MEMBERS = 64;
 /** Messages per socket per second; more are dropped (and a phone that keeps it up is closed: see Floods). */
 export const PHONE_RATE = 20;
 export const HOST_RATE = 50;
@@ -111,6 +123,9 @@ export interface Buzz {
   n: number;
   /** It came after the grace window (it can't pass the settled head, even with a lower key). */
   late?: boolean;
+  /** Teams: the member whose buzz it was, and their name then. */
+  member?: string;
+  by?: string;
 }
 
 /** The current arm's race. */
@@ -145,12 +160,28 @@ export interface RoomSaved {
   earlyLocks: Record<string, number>;
   /** Seat id → the phones kicked from it (sockets, device ids, addresses) and until when they can't take it again. */
   blocks?: Record<string, { until: number; conns: string[]; devices: string[]; ips?: string[] }>;
+  /** Teams: member id → their team (seat id), name, token and the conn that last held it. */
+  members?: Record<string, Member>;
+  /** Teams: member id → when their early-buzz lock ends (an early buzz locks the member, not the team). */
+  memberLocks?: Record<string, number>;
+}
+
+/** Someone on a team (teams). */
+export interface Member {
+  seatId: string;
+  name: string;
+  token: string;
+  conn?: string;
+  /** When they joined (the member gone longest makes room when there are MAX_MEMBERS). */
+  at: number;
 }
 
 /** What each phone socket keeps (stored on the socket, so it survives hibernation). */
 export interface PhoneSaved {
   conn: string;
   seatId: string | null;
+  /** Teams: the member this phone is (seatId is their team). */
+  member?: string;
   pendingName?: string;
   /** The last few round trips the room timed (ms, newest last). */
   rtts?: number[];
@@ -279,15 +310,17 @@ export class Room {
     this.hostHere = true;
     this.lastPhones = '';
     this.lastQueue = '';
-    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now() });
+    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features: [...ROOM_FEATURES] });
     this.settle();
     this.sync();
     this.announce();
     // A buzz won while the host was away never reached it: it hears it again (a host that had it already ignores it).
     const race = this.s.race;
     const st = this.s.state;
-    if (race?.decided && race.winner && st?.phase === 'answering' && st.answering === race.winner && st.armId === race.armId)
-      this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: race.winner, rank: 1, afterMs: 0 });
+    if (race?.decided && race.winner && st?.phase === 'answering' && st.answering === race.winner && st.armId === race.armId) {
+      const by = race.queue.find((b) => b.seatId === race.winner)?.by;
+      this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: race.winner, rank: 1, afterMs: 0, ...(by ? { by } : {}) });
+    }
   }
 
   hostClose(): void {
@@ -316,7 +349,10 @@ export class Room {
         if (typeof m.conn === 'string') this.reject(m.conn);
         break;
       case 'kick':
-        if (typeof m.seatId === 'string') this.kick(m.seatId);
+        if (typeof m.seatId === 'string') this.kick(m.seatId, typeof m.member === 'string' ? m.member : undefined);
+        break;
+      case 'move':
+        if (typeof m.member === 'string' && typeof m.seatId === 'string') this.move(m.member, m.seatId);
         break;
       case 'close':
         this.stopGrace();
@@ -359,9 +395,17 @@ export class Room {
     }
     delete next.rollOrder;
     this.s.state = next;
-    // Seats gone from the game free their tokens and phones.
+    // Teams turned on or off: every seat and member is let go (phones pick again: a team, or their own name).
+    if (prev && !!prev.teams !== !!next.teams) {
+      for (const id of Object.keys(this.s.tokens)) this.freeSeat(id);
+      for (const id of Object.keys(this.s.members ?? {})) this.dropMember(id);
+      for (const p of this.phones.values()) if (p.seatId) this.unseat(p);
+    }
+    // Seats gone from the game free their tokens and phones (teams: their members).
     for (const id of Object.keys(this.s.tokens)) if (!seatIds.has(id)) this.freeSeat(id);
+    for (const [id, m] of Object.entries(this.s.members ?? {})) if (!seatIds.has(m.seatId)) this.dropMember(id);
     for (const id of Object.keys(this.s.earlyLocks)) if (!seatIds.has(id) || this.s.earlyLocks[id] <= now) delete this.s.earlyLocks[id];
+    for (const id of Object.keys(this.s.memberLocks ?? {})) if (!this.s.members?.[id] || this.s.memberLocks![id] <= now) delete this.s.memberLocks![id];
     for (const id of Object.keys(this.s.blocks ?? {})) if (!seatIds.has(id) || this.s.blocks![id].until <= now) delete this.s.blocks![id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
@@ -430,30 +474,80 @@ export class Room {
     this.sync();
   }
 
-  private kick(seatId: string): void {
-    const holders = [...this.phones.values()].filter((p) => p.seatId === seatId);
-    if (!this.s.tokens[seatId] && !holders.length) return;
+  /** Takes a seat back (teams: one member, or without `member` everyone on the team). */
+  private kick(seatId: string, member?: string): void {
+    const one = member !== undefined;
+    if (one && this.s.members?.[member]?.seatId !== seatId) return;
+    const holders = [...this.phones.values()].filter((p) => (one ? p.member === member : p.seatId === seatId));
+    const members = Object.entries(this.s.members ?? {}).filter(([id, x]) => (one ? id === member : x.seatId === seatId));
+    if (!this.s.tokens[seatId] && !holders.length && !members.length) return;
     // The kicked phone can't just tap the same name again (a troll with the code from the stream).
     const conns = new Set(holders.map((p) => p.conn));
-    if (this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
+    if (!one && this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
+    for (const [, x] of members) if (x.conn) conns.add(x.conn);
     const devices = new Set(holders.flatMap((p) => (p.device ? [p.device] : [])));
     // Its address too: a new device id is one cleared localStorage away.
     const ips = new Set(holders.flatMap((p) => (p.ip ? [p.ip] : [])));
-    (this.s.blocks ??= {})[seatId] = { until: this.deps.now() + KICK_BLOCK_MS, conns: [...conns], devices: [...devices], ips: [...ips] };
-    this.freeSeat(seatId, true);
+    // A team's block adds up: kicking a second member doesn't let the first back on.
+    const now = this.deps.now();
+    const was = this.s.blocks?.[seatId];
+    const keep = was && was.until > now ? was : { conns: [], devices: [], ips: [] };
+    (this.s.blocks ??= {})[seatId] = {
+      until: now + KICK_BLOCK_MS,
+      conns: [...new Set([...keep.conns, ...conns])],
+      devices: [...new Set([...keep.devices, ...devices])],
+      ips: [...new Set([...(keep.ips ?? []), ...ips])],
+    };
+    if (one) this.dropMember(member, true);
+    else this.freeSeat(seatId, true);
     this.save();
   }
 
-  /** Revokes a seat's token and unseats its phone (told 'kicked' when kick). */
+  /** Teams: the host puts a member (and their phone) on another team. */
+  private move(member: string, seatId: string): void {
+    const m = this.s.members?.[member];
+    if (!m || !this.s.state?.teams || !this.s.state.seats.some((x) => x.id === seatId) || m.seatId === seatId) return;
+    m.seatId = seatId;
+    for (const p of this.phones.values()) {
+      if (p.member !== member) continue;
+      p.seatId = seatId;
+      p.lastView = p.lastSeats = undefined;
+      this.deps.savePhone(strip(p));
+      // Its saved seat follows (the token stays the same).
+      this.deps.toPhone(p.conn, { t: 'joined', seatId, token: m.token, name: m.name });
+    }
+    this.save();
+  }
+
+  /** Teams: forgets a member (left, kicked, their team gone); their phone is unseated (told 'kicked' when kicked). */
+  private dropMember(id: string, kicked = false): void {
+    if (!this.s.members?.[id]) return;
+    delete this.s.members[id];
+    delete this.s.memberLocks?.[id];
+    for (const p of this.phones.values()) {
+      if (p.member !== id) continue;
+      this.unseat(p);
+      if (kicked) this.deps.toPhone(p.conn, { t: 'kicked' });
+    }
+  }
+
+  /** The phone holds no seat (and is no team member) any more. */
+  private unseat(p: Phone): void {
+    p.seatId = null;
+    delete p.member;
+    p.lastView = p.lastSeats = undefined;
+    this.deps.savePhone(strip(p));
+  }
+
+  /** Revokes a seat's token (teams: its members') and unseats its phones (told 'kicked' when kick). */
   private freeSeat(seatId: string, kicked = false): void {
     delete this.s.tokens[seatId];
     delete this.s.holders[seatId];
     delete this.s.earlyLocks[seatId];
+    for (const [id, m] of Object.entries(this.s.members ?? {})) if (m.seatId === seatId) this.dropMember(id, kicked);
     for (const p of this.phones.values()) {
       if (p.seatId !== seatId) continue;
-      p.seatId = null;
-      p.lastView = p.lastSeats = undefined;
-      this.deps.savePhone(strip(p));
+      this.unseat(p);
       if (kicked) this.deps.toPhone(p.conn, { t: 'kicked' });
     }
   }
@@ -561,8 +655,8 @@ export class Room {
     }
     switch (m.t) {
       case 'join':
-        if (typeof m.seatId !== 'string' || (m.token !== undefined && typeof m.token !== 'string')) return;
-        if (this.allow(p.joins, JOIN_RATE, 60_000)) this.join(p, m.seatId, m.token);
+        if (typeof m.seatId !== 'string' || (m.token !== undefined && typeof m.token !== 'string') || (m.name !== undefined && typeof m.name !== 'string')) return;
+        if (this.allow(p.joins, JOIN_RATE, 60_000)) this.join(p, m.seatId, m.token, m.name);
         break;
       case 'new':
         if (typeof m.name !== 'string') return;
@@ -572,7 +666,13 @@ export class Room {
         if (typeof m.armId === 'number') this.buzz(p, m.armId, typeof m.reactMs === 'number' ? m.reactMs : undefined);
         break;
       case 'leave':
-        if (p.seatId) {
+        if (p.member) {
+          this.dropMember(p.member);
+          this.save();
+        } else if (p.seatId && this.s.state?.teams) {
+          this.unseat(p);
+          this.save();
+        } else if (p.seatId) {
           this.freeSeat(p.seatId);
           this.save();
         } else if (p.pendingName !== undefined) {
@@ -639,8 +739,9 @@ export class Room {
     return r?.length ? Math.min(MAX_RTT_MS, lowRtt(r)) : null;
   }
 
-  private join(p: Phone, seatId: string, token?: string): void {
+  private join(p: Phone, seatId: string, token?: string, name?: string): void {
     const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
+    if (this.s.state?.teams) return this.joinTeam(p, seatId, token, name);
     if (!this.s.state?.seats.some((x) => x.id === seatId)) return deny('unknown-seat');
     if (p.seatId === seatId) return; // already there
     const held = this.s.tokens[seatId];
@@ -676,6 +777,69 @@ export class Room {
     this.seat(p, seatId);
   }
 
+  /**
+   * Teams: with a token, the member it names comes back on this phone (on whichever team the host has them now);
+   * otherwise the phone joins team `seatId` as a new member called `raw`. A name someone on a connected phone has is
+   * taken; one a member gone quiet has is theirs to take over (the same person, their token lost).
+   */
+  private joinTeam(p: Phone, seatId: string, token?: string, raw?: string): void {
+    const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
+    const st = this.s.state!;
+    const members = (this.s.members ??= {});
+    if (token !== undefined) {
+      const id = Object.keys(members).find((k) => members[k].token === token);
+      if (!id) return deny('bad-token');
+      if (p.member === id) return;
+      for (const o of this.phones.values()) if (o !== p && o.member === id) this.unseat(o);
+      if (p.member) this.dropMember(p.member);
+      delete p.pendingName;
+      delete p.hold;
+      return this.seatMember(p, id, members[id]);
+    }
+    if (!st.seats.some((x) => x.id === seatId)) return deny('unknown-seat');
+    const name = cleanName(raw ?? '', MEMBER_NAME_MAX);
+    if (!name) return deny('need-name');
+    if (p.member && members[p.member]?.seatId === seatId && members[p.member].name === name) return; // already there
+    if (st.locked) return deny('locked');
+    const block = this.s.blocks?.[seatId];
+    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip)));
+    if (kicked && block.until > this.deps.now()) return deny('blocked');
+    const key = (a: string) => a.toLocaleLowerCase().replace(/\s+/g, '');
+    const here = (id: string) => [...this.phones.values()].some((o) => o.member === id);
+    const same = Object.keys(members).find((k) => k !== p.member && key(members[k].name) === key(name));
+    if (same && here(same)) return deny('name-taken');
+    if (this.turnedAway(p)) return;
+    if (same) this.dropMember(same);
+    if (p.member) this.dropMember(p.member);
+    else if (p.seatId) this.unseat(p);
+    delete p.pendingName;
+    // Full: the members gone longest make room (there are always some: fewer phones than that can connect).
+    const ids = Object.keys(members);
+    if (ids.length >= MAX_MEMBERS) {
+      const gone = ids.filter((k) => !here(k)).sort((a, b) => members[a].at - members[b].at);
+      for (const k of gone.slice(0, ids.length - MAX_MEMBERS + 1)) this.dropMember(k);
+      if (Object.keys(members).length >= MAX_MEMBERS) return deny('full');
+    }
+    // Its id is never a credential (the host and teammates hear it); the token is.
+    let id = `m${this.deps.token().slice(0, 15)}`;
+    while (members[id]) id = `m${this.deps.token().slice(0, 15)}`;
+    const m: Member = { seatId, name, token: this.deps.token(), at: this.deps.now() };
+    members[id] = m;
+    this.seatMember(p, id, m);
+  }
+
+  /** Teams: the phone is member `id` now, on their team. */
+  private seatMember(p: Phone, id: string, m: Member): void {
+    m.conn = p.conn;
+    p.seatId = m.seatId;
+    p.member = id;
+    p.lastView = p.lastSeats = undefined;
+    this.deps.savePhone(strip(p));
+    this.deps.toPhone(p.conn, { t: 'joined', seatId: m.seatId, token: m.token, name: m.name });
+    this.save();
+    this.seated(p, m.seatId);
+  }
+
   /** Gives a phone a free seat with a fresh token. */
   private seat(p: Phone, seatId: string): void {
     const token = this.deps.token();
@@ -695,7 +859,7 @@ export class Room {
    */
   private seated(p: Phone, seatId: string): void {
     this.probe(p);
-    this.lastResults.delete(seatId);
+    this.lastResults.delete(p.conn);
     const race = this.s.race;
     if (!race || race.armId !== this.s.state?.armId || !race.queue.some((b) => b.seatId === seatId)) return;
     if (race.decided) this.announce();
@@ -708,7 +872,7 @@ export class Room {
     const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
     const st = this.s.state;
     if (st?.locked) return deny('locked');
-    if (!st?.allowNew) return deny('no-new');
+    if (!st?.allowNew || st.teams) return deny('no-new');
     // A second "Ann": if it's her, she taps her name; if not, she picks another one.
     const key = (a: string) => a.toLocaleLowerCase().replace(/\s+/g, '');
     if (st.seats.some((x) => key(x.name) === key(name))) return deny('name-taken');
@@ -727,16 +891,21 @@ export class Room {
     const result = (outcome: 'pending' | 'late' | 'early' | 'locked', extra: { lockedUntil?: number } = {}) =>
       this.deps.toPhone(p.conn, { t: 'result', armId, outcome, ...extra });
     if (st.phase === 'closed' && st.done) return result('late'); // the clue is over: no penalty
+    // Teams: an early buzz locks the one who jumped, not their teammates.
+    const member = st.teams && p.member && this.s.members?.[p.member] ? p.member : undefined;
     if (st.phase === 'closed') {
       // Pressing again while closed starts the penalty over, as on the show.
-      if (st.earlyLockMs > 0) this.s.earlyLocks[seatId] = now + st.earlyLockMs;
+      if (st.earlyLockMs > 0) {
+        if (member) (this.s.memberLocks ??= {})[member] = now + st.earlyLockMs;
+        else this.s.earlyLocks[seatId] = now + st.earlyLockMs;
+      }
       result('early', { lockedUntil: now + st.earlyLockMs });
       if (st.earlyLockMs > 0) this.save();
       return;
     }
     if (armId !== st.armId) return result('late');
     if (st.lockedOut.includes(seatId)) return result('locked');
-    const until = this.s.earlyLocks[seatId] ?? 0;
+    const until = (member ? this.s.memberLocks?.[member] : this.s.earlyLocks[seatId]) ?? 0;
     if (until > now) return result('locked', { lockedUntil: until });
     let race = this.s.race;
     if (!race || race.armId !== st.armId) {
@@ -744,20 +913,31 @@ export class Room {
       this.newRace(st.armId, now);
       race = this.s.race!;
     }
-    if (race.queue.some((b) => b.seatId === seatId)) {
-      // One counted buzz per seat per arm. The same press sent again (its phone lost the connection) hears where it stands.
-      if (!race.decided) return result('pending');
-      this.lastResults.delete(seatId);
+    const by = member ? { member, by: this.s.members![member].name } : {};
+    const key = rankKey(now - race.armedAt, reactMs, this.rtt(p.conn));
+    const had = race.queue.find((b) => b.seatId === seatId);
+    if (had) {
+      // One counted buzz per seat per arm (teams: per team, a teammate's buzz already holds its place). The same press
+      // sent again (its phone lost the connection), or a teammate's, hears where the seat stands. Teams: while the room
+      // is still collecting, a teammate who reacted faster is the team's time (the team's fastest, as one player's).
+      if (!race.decided) {
+        if (member && had.member !== member && key < had.key) {
+          Object.assign(had, { key, ...by });
+          this.save();
+        }
+        return result('pending');
+      }
+      this.lastResults.delete(p.conn);
       return this.announce();
     }
-    const buzz: Buzz = { seatId, key: rankKey(now - race.armedAt, reactMs, this.rtt(p.conn)), n: race.queue.length };
+    const buzz: Buzz = { seatId, key, n: race.queue.length, ...by };
     if (race.decided) {
       // After the grace window: into the queue by its key, behind the settled head.
       buzz.late = true;
       let i = race.head;
       while (i < race.queue.length && byKey(race.queue[i], buzz) <= 0) i++;
       race.queue.splice(i, 0, buzz);
-      this.deps.toHost({ t: 'buzz', armId, seatId, rank: i + 1, afterMs: Math.max(0, buzz.key - race.queue[0].key) });
+      this.deps.toHost({ t: 'buzz', armId, seatId, rank: i + 1, afterMs: Math.max(0, buzz.key - race.queue[0].key), ...(buzz.by ? { by: buzz.by } : {}) });
     } else if (st.phase === 'armed') {
       race.queue.push(buzz);
       if (race.graceUntil === undefined) {
@@ -814,7 +994,9 @@ export class Room {
       } else if (race.winner) {
         st.phase = 'answering';
         st.answering = race.winner;
-        race.queue.forEach((b, i) => this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: b.seatId, rank: i + 1, afterMs: b.key - race.queue[0].key }));
+        race.queue.forEach((b, i) =>
+          this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: b.seatId, rank: i + 1, afterMs: b.key - race.queue[0].key, ...(b.by ? { by: b.by } : {}) }),
+        );
       }
     }
     this.save();
@@ -849,7 +1031,7 @@ export class Room {
       const r = race.rolled?.indexOf(b.seatId) ?? -1;
       // Reacted faster than the first, but got here after the window: it says so rather than "0.00 s behind".
       const late = b.late && b.key < lead.key ? { arrivedLate: true as const } : {};
-      return { seatId: b.seatId, afterMs: Math.max(0, b.key - lead.key), ...(r >= 0 ? { rolled: r + 1 } : {}), ...late };
+      return { seatId: b.seatId, afterMs: Math.max(0, b.key - lead.key), ...(r >= 0 ? { rolled: r + 1 } : {}), ...late, ...(b.by ? { by: b.by } : {}) };
     });
     const msg: RoomToHost = { t: 'queue', armId: race.armId, queue, ...(race.tie ? { tie: race.tie } : {}) };
     const key = JSON.stringify(msg);
@@ -869,10 +1051,16 @@ export class Room {
         r = { t: 'result', armId: race.armId, outcome: 'first', rank, afterMs: 0, ...(i === 0 && next ? { byMs: next.afterMs } : {}), ...rolled };
       } else if (shift) r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner!), ...rolled };
       else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: q.afterMs, behind: name(lead.seatId), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
-      const k = JSON.stringify(r);
-      if (this.lastResults.get(q.seatId) === k) return;
-      this.lastResults.set(q.seatId, k);
-      for (const p of this.phones.values()) if (p.seatId === q.seatId) this.deps.toPhone(p.conn, r);
+      const member = race.queue[i].member;
+      for (const p of this.phones.values()) {
+        if (p.seatId !== q.seatId) continue;
+        // Teams: whose buzz holds the team's place, and whether it's this phone's.
+        const mine = st.teams && q.by ? { ...r, by: q.by, byYou: !!member && p.member === member } : r;
+        const k = JSON.stringify(mine);
+        if (this.lastResults.get(p.conn) === k) continue;
+        this.lastResults.set(p.conn, k);
+        this.deps.toPhone(p.conn, mine);
+      }
     });
   }
 
@@ -886,18 +1074,26 @@ export class Room {
   /** Brings every phone and the host up to date, sending only what changed. */
   private sync(): void {
     const st = this.s.state;
+    const teams = !!st?.teams;
+    const members = Object.entries(this.s.members ?? {});
     const seatsMsg = JSON.stringify({
       t: 'seats',
       title: st?.title ?? '',
-      seats: (st?.seats ?? []).map((x) => ({ ...x, taken: !!this.s.tokens[x.id] })),
-      allowNew: st?.allowNew ?? false,
+      seats: (st?.seats ?? []).map((x) =>
+        teams ? { ...x, taken: false, members: members.filter(([, m]) => m.seatId === x.id).map(([, m]) => m.name) } : { ...x, taken: !!this.s.tokens[x.id] },
+      ),
+      allowNew: !teams && (st?.allowNew ?? false),
       hostHere: this.hostHere,
       ...(st?.locked ? { locked: true } : {}),
       ...(st?.status?.text ? { note: st.status.text } : {}),
+      ...(teams ? { teams: true } : {}),
     } satisfies RoomToPhone);
+    const by = teams ? this.answeringBy() : null;
     for (const p of this.phones.values()) {
       if (p.seatId && st) {
-        const view = { ...phoneView(st, p.seatId), hostHere: this.hostHere };
+        const m = p.member ? this.s.members?.[p.member] : undefined;
+        const me: MemberRef | null = m && p.member ? { id: p.member, name: m.name } : null;
+        const view = { ...phoneView(st, p.seatId, me, by), hostHere: this.hostHere };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;
@@ -909,20 +1105,38 @@ export class Room {
       }
     }
     if (!this.hostHere) return;
+    const named = (id: string | undefined) => {
+      const m = id ? this.s.members?.[id] : undefined;
+      return m && id ? { member: id, name: m.name } : {};
+    };
     const list: PhoneInfo[] = [...this.phones.values()].map((p) => ({
       conn: p.conn,
       seatId: p.seatId,
       ...(p.pendingName !== undefined ? { pendingName: p.pendingName } : {}),
       connected: true,
+      ...named(p.member),
     }));
     for (const [seatId, conn] of Object.entries(this.s.holders)) {
       if (this.s.tokens[seatId] && ![...this.phones.values()].some((p) => p.seatId === seatId)) list.push({ conn, seatId, connected: false });
+    }
+    // Team members whose phone is away (asleep, reloading): still on their team.
+    for (const [id, m] of members) {
+      if (![...this.phones.values()].some((p) => p.member === id)) list.push({ conn: m.conn ?? id, seatId: m.seatId, connected: false, ...named(id) });
     }
     const key = JSON.stringify(list);
     if (key !== this.lastPhones) {
       this.lastPhones = key;
       this.deps.toHost({ t: 'phones', phones: list });
     }
+  }
+
+  /** Teams: the member whose buzz has the answering team answering (null: none did, e.g. the host picked the team). */
+  private answeringBy(): MemberRef | null {
+    const st = this.s.state;
+    const race = this.s.race;
+    if (!st || st.phase !== 'answering' || !st.answering || !race || race.armId !== st.armId) return null;
+    const b = race.queue.find((x) => x.seatId === st.answering);
+    return b?.member && b.by ? { id: b.member, name: b.by } : null;
   }
 
   /** Fixed-window rate limit: false (drop) once `max` events land in one window. */
@@ -939,6 +1153,7 @@ export class Room {
 const strip = (p: Phone): PhoneSaved => ({
   conn: p.conn,
   seatId: p.seatId,
+  ...(p.member ? { member: p.member } : {}),
   ...(p.pendingName !== undefined ? { pendingName: p.pendingName } : {}),
   ...(p.rtts?.length ? { rtts: p.rtts } : {}),
   ...(p.device ? { device: p.device } : {}),
@@ -1002,6 +1217,7 @@ export function cleanState(x: unknown): HostState | null {
   }
   if (typeof x.currency === 'string' && x.currency) extra.currency = clip(x.currency, 8);
   if (x.locked === true) extra.locked = true;
+  if (x.teams === true) extra.teams = true;
   return {
     title: clip(x.title, TITLE_MAX),
     seats,

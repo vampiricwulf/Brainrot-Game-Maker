@@ -284,6 +284,11 @@ export interface GameSettings {
   buzzArm?: 'open' | 'host';
   /** Phone buzzers: someone not in the game can ask to join from their phone (the host adds them). */
   phoneJoin?: boolean;
+  /**
+   * Phone buzzers: teams. Each player is a team; people join one from their phone with their own name, and any of them
+   * buzzes for it (the team's first buzz counts; a wrong answer locks out the whole team).
+   */
+  buzzTeams?: boolean;
   /** Phone buzzers: seconds a phone that buzzes before the buzzers open has to wait once they do (default 1; 0: none). */
   earlyBuzzLock?: number;
 }

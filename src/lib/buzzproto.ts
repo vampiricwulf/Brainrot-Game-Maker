@@ -16,6 +16,16 @@
 
 export const BUZZ_PROTOCOL = 1;
 
+/**
+ * What this room can do beyond protocol 1 (the welcome lists them; a room from before lists none). 'teams': seats can be
+ * teams that several phones join (HostState.teams).
+ */
+export const ROOM_FEATURES = ['teams'] as const;
+export type RoomFeature = (typeof ROOM_FEATURES)[number];
+
+/** A team member's name, as typed on their phone (characters). */
+export const MEMBER_NAME_MAX = 24;
+
 /** Room codes: consonants only (no words, no 0/O or 1/I mix-ups). */
 export const ROOM_ALPHABET = 'BCDFGHJKLMNPQRSTVWXZ';
 export const ROOM_CODE_LENGTH = 4;
@@ -73,6 +83,11 @@ export interface HostState {
   currency?: string;
   /** 🔒 Seats locked: nobody new takes a seat or asks to join; only phones with a seat's token come back. */
   locked?: boolean;
+  /**
+   * Teams: each seat is a team. Any number of phones join one (each with its own name), and any of them buzzes for it:
+   * the team's first buzz counts (one place in the queue per team), a lock-out locks the whole team. allowNew is off.
+   */
+  teams?: boolean;
 }
 
 /** What one phone sees. Built by phoneView() only. */
@@ -81,10 +96,13 @@ export interface PhoneView {
   phase: BuzzPhase;
   armId: number;
   clue: { text: string; caption?: string } | null;
-  /** Who is answering (name and colour only). */
-  answering: { name: string; color: string; you: boolean } | null;
-  /** This phone's player; null until it has a seat. */
-  you: (Seat & { score: number; lockedOut: boolean }) | null;
+  /**
+   * Who is answering (name and colour only). Teams: by is the team member whose buzz it was (when one did), byYou
+   * whether that's this phone; `you` is this phone's team.
+   */
+  answering: { name: string; color: string; you: boolean; by?: string; byYou?: boolean } | null;
+  /** This phone's player (teams: its team, with member: the name this phone joined it as); null until it has a seat. */
+  you: (Seat & { score: number; lockedOut: boolean; member?: string }) | null;
   // ---- Added later (optional: an older room leaves them out) ----
   /** The clue is over: who got it (null: not said). */
   done?: { by: { name: string; color: string; you: boolean } | null };
@@ -93,9 +111,21 @@ export interface PhoneView {
   currency?: string;
   /** false while the host's connection is gone (the room adds it). */
   hostHere?: boolean;
+  /** Seats are teams (HostState.teams). */
+  teams?: boolean;
 }
 
-export function phoneView(s: HostState, seatId: string | null): PhoneView {
+/** A team member as the room knows them: id (not a credential) and the name they joined with. */
+export interface MemberRef {
+  id: string;
+  name: string;
+}
+
+/**
+ * `me`: this phone's team member (teams). `by`: the member whose buzz has the answering team answering (teams; null
+ * when the host picked the team itself).
+ */
+export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | null, by?: MemberRef | null): PhoneView {
   const seat = seatId ? s.seats.find((x) => x.id === seatId) : undefined;
   const a = s.phase === 'answering' && s.answering ? s.seats.find((x) => x.id === s.answering) : undefined;
   return {
@@ -103,11 +133,14 @@ export function phoneView(s: HostState, seatId: string | null): PhoneView {
     phase: s.phase,
     armId: s.armId,
     clue: s.phase === 'lobby' ? null : s.clue ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) } : null,
-    answering: a ? { name: a.name, color: a.color, you: a.id === seatId } : null,
-    you: seat ? { id: seat.id, name: seat.name, color: seat.color, score: s.scores[seat.id] ?? 0, lockedOut: s.lockedOut.includes(seat.id) } : null,
+    answering: a ? { name: a.name, color: a.color, you: a.id === seatId, ...(s.teams && by ? { by: by.name, byYou: !!me && me.id === by.id } : {}) } : null,
+    you: seat
+      ? { id: seat.id, name: seat.name, color: seat.color, score: s.scores[seat.id] ?? 0, lockedOut: s.lockedOut.includes(seat.id), ...(s.teams && me ? { member: me.name } : {}) }
+      : null,
     ...doneView(s, seatId),
     ...(s.status?.text ? { status: seatId && s.status.seatsText && s.status.seats?.includes(seatId) ? s.status.seatsText : s.status.text } : {}),
     ...(s.currency ? { currency: s.currency } : {}),
+    ...(s.teams ? { teams: true } : {}),
   };
 }
 
@@ -169,6 +202,9 @@ export interface PhoneInfo {
   /** A name typed for a new player waiting on the host (allowNew). */
   pendingName?: string;
   connected: boolean;
+  /** Added later. Teams: the team member on this phone (id, not a credential) and the name they joined with. */
+  member?: string;
+  name?: string;
 }
 
 /** The host → room. The host's token goes in the WebSocket URL, not in messages. */
@@ -177,8 +213,13 @@ export type HostMsg =
   /** Accept a phone waiting as a new player: the host has added the seat (newSeat) to the game and to state.seats. */
   | { t: 'accept'; conn: string; seatId: string }
   | { t: 'reject'; conn: string }
-  /** Take a seat back: its phone is told and its token stops working (it can claim a free seat again). */
-  | { t: 'kick'; seatId: string }
+  /**
+   * Take a seat back: its phone is told and its token stops working (it can claim a free seat again). Teams: member
+   * (added later) takes just that one person off the team; without it, everyone on the team.
+   */
+  | { t: 'kick'; seatId: string; member?: string }
+  /** Added later. Teams: put a team member (and their phone) on another team. */
+  | { t: 'move'; member: string; seatId: string }
   | { t: 'close' }
   | { t: 'ping'; at: number };
 
@@ -189,6 +230,8 @@ export interface QueuedBuzz {
   rolled?: number;
   /** Added later: it reacted faster than the first, but got to the room after the race was decided. */
   arrivedLate?: boolean;
+  /** Added later. Teams: the team member whose buzz it was (the team's first; teammates' later buzzes don't count). */
+  by?: string;
 }
 
 /** Buzzes this close (ms) are a tie: below that it's touch sampling and screen timing, not who reacted first. */
@@ -196,12 +239,13 @@ export const TIE_MS = 10;
 
 /** The room → host. */
 export type RoomToHost =
-  | { t: 'welcome'; code: string; protocol: number; serverNow: number }
+  /** features (added later): what this room can do beyond protocol 1 (ROOM_FEATURES; an older room sends none). */
+  | { t: 'welcome'; code: string; protocol: number; serverNow: number; features?: string[] }
   /**
    * A buzz the room counted while armed. rank 1 is the winner (the room has moved to 'answering'); later ranks came
    * after. afterMs: 0 for the winner; for later ranks, how much slower than the winner they reacted (ms).
    */
-  | { t: 'buzz'; armId: number; seatId: string; rank: number; afterMs: number }
+  | { t: 'buzz'; armId: number; seatId: string; rank: number; afterMs: number; by?: string }
   /**
    * Every buzz counted in this arm, fastest reaction first, sent again whenever it changes (late buzzes keep coming).
    * afterMs: behind the first. tie: seats tied for first (within TIE_MS): the room picked nobody, the host decides
@@ -219,8 +263,10 @@ export type PhoneMsg =
   /**
    * Claim a seat. With a token (from an earlier 'joined') it takes the seat back even if another socket holds it.
    * device (added later): a random id this browser keeps, so a kick can keep that phone off the seat for a while.
+   * Teams (added later): seatId is the team and name the person's own name (a token takes its member back, on whichever
+   * team the host has them now).
    */
-  | { t: 'join'; seatId: string; token?: string; device?: string }
+  | { t: 'join'; seatId: string; token?: string; device?: string; name?: string }
   /** Ask to join as a new player (only when allowNew). */
   | { t: 'new'; name: string; device?: string }
   /** reactMs: ms from this phone showing BUZZ! for armId to the press (old phones leave it out). */
@@ -230,8 +276,11 @@ export type PhoneMsg =
   /** Sent straight back on every probe, so the room can time the round trip itself (replaced pong → sync). */
   | { t: 'echo'; id: number };
 
-/** Added later: 'locked' (🔒 the host locked the seats), 'blocked' (kicked from that seat a moment ago), 'name-taken'. */
-export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken';
+/**
+ * Added later: 'locked' (🔒 the host locked the seats), 'blocked' (kicked from that seat a moment ago), 'name-taken',
+ * 'need-name' (teams: joining a team takes your name).
+ */
+export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken' | 'need-name';
 
 /** The room → a phone. */
 export type RoomToPhone =
@@ -239,9 +288,23 @@ export type RoomToPhone =
    * On connect and whenever seats change: the seats and which are free. Added later: locked (🔒 nobody new can take a
    * seat), note (HostState.status's text, e.g. "The host is setting up — hang on").
    */
-  | { t: 'seats'; title: string; seats: (Seat & { taken: boolean })[]; allowNew: boolean; hostHere: boolean; locked?: boolean; note?: string }
-  /** This phone holds seatId; keep token (localStorage, per room code) to come back after a refresh. */
-  | { t: 'joined'; seatId: string; token: string }
+  | {
+      t: 'seats';
+      title: string;
+      /** members (teams): the names of the people on that team. */
+      seats: (Seat & { taken: boolean; members?: string[] })[];
+      allowNew: boolean;
+      hostHere: boolean;
+      locked?: boolean;
+      note?: string;
+      /** Added later: the seats are teams (pick one and give your name). */
+      teams?: boolean;
+    }
+  /**
+   * This phone holds seatId; keep token (localStorage, per room code) to come back after a refresh. Teams: name is the
+   * name this phone joined its team as.
+   */
+  | { t: 'joined'; seatId: string; token: string; name?: string }
   | { t: 'waiting' }
   | { t: 'denied'; reason: DenyReason }
   | { t: 'view'; view: PhoneView }
@@ -265,6 +328,9 @@ export type RoomToPhone =
       rolled?: number;
       lockedUntil?: number;
       arrivedLate?: boolean;
+      /** Teams: the team member whose buzz holds the team's place (by), and whether that's this phone (byYou). */
+      by?: string;
+      byYou?: boolean;
     }
   | { t: 'kicked' }
   /** The host closed the room (or it expired). */

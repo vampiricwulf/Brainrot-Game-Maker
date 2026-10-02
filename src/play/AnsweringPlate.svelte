@@ -1,10 +1,13 @@
-<!-- "🔔 Ann is answering": who the host picked to answer the clue on screen, in stage coordinates. -->
+<!--
+  "🔔 Ann is answering": who the host picked to answer the clue on screen, in stage coordinates. Teams: "🔔 Red team is
+  answering · Ann", with who on the team buzzed.
+-->
 <script lang="ts">
   import { fly } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import type { Player } from '../lib/model';
 
-  let { player }: { player: Player } = $props();
+  let { player, by }: { player: Player; by?: string } = $props();
 </script>
 
 {#key player.id}
@@ -12,6 +15,7 @@
     <span class="bell" aria-hidden="true">🔔</span>
     <span class="name" dir="auto" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
     <span>is answering</span>
+    {#if by}<span class="by" dir="auto">· {by}</span>{/if}
   </div>
 {/key}
 
@@ -47,6 +51,14 @@
     text-overflow: ellipsis;
     padding: 0 18px;
     border-radius: 12px;
+  }
+  /* Teams: who on the team buzzed. */
+  .by {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 36px;
+    opacity: 0.85;
   }
   @keyframes ring {
     25% {

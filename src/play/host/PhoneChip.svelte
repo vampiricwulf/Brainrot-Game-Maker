@@ -16,6 +16,8 @@
     onreject,
     onkick,
     onlock,
+    onkickmember,
+    onmove,
   }: {
     session: Session;
     settings: GameSettings;
@@ -26,10 +28,15 @@
     onreject: (conn: string) => void;
     onkick: (seatId: string) => void;
     onlock: (on: boolean) => void;
+    /** Teams: take one person off their team / put them on another. */
+    onkickmember: (seatId: string, member: string, name: string) => void;
+    onmove: (member: string, seatId: string, name: string) => void;
   } = $props();
 
   let open = $state(false);
   const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
+  /** Teams: the people (phones) on a team. */
+  const people = $derived(remote.phones.filter((ph) => ph.member && ph.connected && session.players.some((p) => p.id === ph.seatId)).length);
   const asking = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)).length);
   const trouble = $derived(remote.status === 'reconnecting' || remote.status === 'error');
   let now = $state(Date.now());
@@ -48,7 +55,7 @@
           ? '📱 ⚠ Phones not connected'
           : remote.status === 'error'
             ? '📱 ⚠ Room lost'
-            : `📱 ${joined}/${session.players.length}${asking ? ` · ${asking} asking` : ''}${full ? ' · room full' : ''}`,
+            : `📱 ${settings.buzzTeams ? `${people} on ` : ''}${joined}/${session.players.length}${asking ? ` · ${asking} asking` : ''}${full ? ' · room full' : ''}`,
   );
 </script>
 
@@ -82,7 +89,7 @@
           <p class="warn small" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</p>
           <button class="small" onclick={onstart}>Start a new room</button>
         {/if}
-        <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} />
+        <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />
       {/if}
       <BuzzerOptions {settings} {onset} compact />
     </div>

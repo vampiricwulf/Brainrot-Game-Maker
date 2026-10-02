@@ -107,6 +107,27 @@ describe('parseRoomMsg', () => {
     });
   });
 
+  it('takes the teams fields (added later): what the room can do, who on a team buzzed, who is on which phone', () => {
+    expect(parseRoomMsg(JSON.stringify({ ...welcome, features: ['teams', 7, 'x'.repeat(50)] }))).toEqual({ ...welcome, features: ['teams'] });
+    expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"by":"Ann"}')).toMatchObject({ seatId: 'a', by: 'Ann' });
+    expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"by":5}')).not.toHaveProperty('by');
+    expect(parseRoomMsg('{"t":"queue","armId":2,"queue":[{"seatId":"a","afterMs":0,"by":"Ann"},{"seatId":"b","afterMs":9}]}')).toEqual({
+      t: 'queue',
+      armId: 2,
+      queue: [
+        { seatId: 'a', afterMs: 0, by: 'Ann' },
+        { seatId: 'b', afterMs: 9 },
+      ],
+    });
+    expect(parseRoomMsg('{"t":"phones","phones":[{"conn":"c1","seatId":"a","connected":true,"member":"m1","name":"Ann"},{"conn":"c2","seatId":"a","connected":true,"member":"m2"}]}')).toEqual({
+      t: 'phones',
+      phones: [
+        { conn: 'c1', seatId: 'a', connected: true, member: 'm1', name: 'Ann' },
+        { conn: 'c2', seatId: 'a', connected: true },
+      ],
+    });
+  });
+
   it('drops anything else, and strips unknown fields', () => {
     for (const bad of [
       'not json',

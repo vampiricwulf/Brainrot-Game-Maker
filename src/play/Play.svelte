@@ -13,11 +13,12 @@
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, type BuzzState,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, whoBuzzed,
+    type BuzzState,
   } from '../lib/buzz';
   import { clip } from '../lib/buzzproto';
   import {
-    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickSeat, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState,
     roomLink, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
@@ -612,12 +613,13 @@
    * A phone's buzz won (the room decided): that player answers, the others are locked out until a wrong answer or 0
    * opens the buzzers again. Never an undo step: a stray buzz must not cost the host their redo.
    */
-  function buzzPlayer(id: string): boolean {
+  function buzzPlayer(id: string, by?: string): boolean {
     const b = app.live.buzz;
     const p = session.players.find((x) => x.id === id);
     // Someone picked already (a number key or a click): the host's choice stands. And only while the buzzers are open.
     if (!buzzing || !b || !p || selected.length || b.phase !== 'armed') return false;
-    const next = buzzTake(b, id);
+    // Teams: who on the team buzzed ("Ann (Red team)").
+    const next = buzzTake(b, id, false, by);
     if (!next) return false;
     setBuzz(next);
     selected = [id];
@@ -668,7 +670,9 @@
     (roomQueue?.queue ?? []).map((q, i) => ({
       id: q.seatId,
       rank: i + 1,
-      name: session.players.find((p) => p.id === q.seatId)?.name ?? '?',
+      // Teams: who on the team buzzed, "Ann (Red team)".
+      name: whoBuzzed(session.players.find((p) => p.id === q.seatId)?.name ?? '?', q.by),
+      by: q.by,
       after: q.arrivedLate ? 'faster, but arrived late' : q.afterMs ? `+${(q.afterMs / 1000).toFixed(2)} s` : '',
       rolled: q.rolled,
       out: buzz.lockedOut.includes(q.seatId),
@@ -696,7 +700,7 @@
   });
   $effect(() => {
     const id = buzzing ? app.live.buzz?.answering : null;
-    if (id) announce(`${playerName(session, id)} is answering`);
+    if (id) announce(`${whoBuzzed(playerName(session, id), app.live.buzz?.by)} is answering`);
   });
   const ordinal = (n: number) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'));
 
@@ -707,7 +711,7 @@
     roomQueue = q;
     // The room decided this opening, but its "buzz" never got here (the connection dropped just then): the queue's
     // first answers, as the buzz would have made them.
-    if (q.armId === buzz.armId && buzz.phase === 'armed' && !q.tie && q.queue.length && !selected.length) buzzPlayer(q.queue[0].seatId);
+    if (q.armId === buzz.armId && buzz.phase === 'armed' && !q.tie && q.queue.length && !selected.length) buzzPlayer(q.queue[0].seatId, q.queue[0].by);
   }
 
   /**
@@ -715,7 +719,7 @@
    * answers (with nobody left in it, the buzzers open for the rest). Returns who answers now.
    */
   function passOn(b: BuzzState, id: string): string | null {
-    const queue = roomQueue && roomQueue.armId > clueArmFloor ? roomQueue.queue.map((q) => q.seatId) : [];
+    const queue = roomQueue && roomQueue.armId > clueArmFloor ? roomQueue.queue.map((q) => ({ id: q.seatId, by: q.by })) : [];
     const after = buzzMissed(b, id, session.players.map((p) => p.id), queue);
     setBuzz(after);
     return after.phase === 'answering' ? after.answering : null;
@@ -732,10 +736,10 @@
   }
 
   /** → Next in line: they answer now, no new opening. Not an undo step (like a buzz). */
-  function takeNext(id: string): void {
+  function takeNext(id: string, by?: string): void {
     const b = app.live.buzz;
     if (!buzzing || !b) return;
-    setBuzz(buzzTake(b, id, true)!);
+    setBuzz(buzzTake(b, id, true, by)!);
     selected = [id];
     playCue(app.live, game, 'buzz');
   }
@@ -769,7 +773,7 @@
   function roomBuzz(b: RoomBuzz): void {
     if (!phonesOn) return;
     // The room moved on to "answering" by itself: if that's not what happened here, it hears the host's state again.
-    if (b.rank === 1 && (b.armId !== buzz.armId || !buzzPlayer(b.seatId))) resendHostState();
+    if (b.rank === 1 && (b.armId !== buzz.armId || !buzzPlayer(b.seatId, b.by))) resendHostState();
   }
 
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
@@ -793,7 +797,19 @@
   }
 
   function kickPhone(seatId: string): void {
-    if (kickSeat(seatId)) toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
+    if (!kickSeat(seatId)) return;
+    if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
+    else toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
+  }
+
+  /** Teams: one person off their team (their phone can't join it again for 2 minutes; another team it can). */
+  function kickTeamMember(seatId: string, member: string, name: string): void {
+    if (kickMember(seatId, member)) toast(`${name} is off ${playerName(session, seatId)} (that phone can't join it again for 2 minutes)`, 4000);
+  }
+
+  /** Teams: put one person on another team. */
+  function moveTeamMember(member: string, seatId: string, name: string): void {
+    if (moveMember(member, seatId)) toast(`${name} moved to ${playerName(session, seatId)}`);
   }
 
   // Whatever the phones need to know (the players, scores, the buzzers, the clue's words) goes to the room as it changes.
@@ -1763,7 +1779,7 @@
   }
 
   /** The buzzer settings (the 📱 Phone buzzers card). */
-  const BUZZ = ['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock'] as const satisfies readonly (keyof GameSettings)[];
+  const BUZZ = ['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock', 'buzzTeams'] as const satisfies readonly (keyof GameSettings)[];
 
   /** An undo or redo changed the editor's game: the game here, and the players listed, follow it. */
   function fromEditor(): void {
@@ -2216,6 +2232,8 @@
             onkick={kickPhone}
             onclose={closePhoneRoom}
             onlock={lockSeats}
+            onkickmember={kickTeamMember}
+            onmove={moveTeamMember}
           />
         </div>
       </div>
@@ -2464,13 +2482,16 @@
             <button class="primary" onclick={rollTie}>🎲 Roll for it</button>
             <span class="muted later-buzz">or pick one (click or 1–9)</span>
           {/if}
+          {#if buzzing && buzz.phase === 'answering' && buzz.answering && buzz.by}
+            <span class="buzzed-by" role="status">🔔 {whoBuzzed(playerName(session, buzz.answering), buzz.by)} buzzed</span>
+          {/if}
           {#if buzzing && buzz.phase === 'answering' && buzz.answering}
             <button onclick={skipAnswering} title="No points taken: they can't buzz again on this clue, and the next in the buzz order answers">
               ⏭ Skip {playerName(session, buzz.answering)}
             </button>
           {/if}
           {#if nextInLine}
-            <button onclick={() => takeNext(nextInLine.id)} title="They answer now (the buzzers stay open for the others until then)">→ Next in line: {nextInLine.name}</button>
+            <button onclick={() => takeNext(nextInLine.id, nextInLine.by)} title="They answer now (the buzzers stay open for the others until then)">→ Next in line: {nextInLine.name}</button>
           {/if}
           {#if queueRows.length}
             <ol class="buzz-queue" aria-label="Buzz order">
@@ -2494,6 +2515,8 @@
               onreject={rejectPhone}
               onkick={kickPhone}
               onlock={lockSeats}
+              onkickmember={kickTeamMember}
+              onmove={moveTeamMember}
             />
           {/if}
         {/snippet}
@@ -2662,6 +2685,9 @@
     padding: 0;
     list-style: none;
     font-size: 12px;
+  }
+  .buzzed-by {
+    font-weight: 600;
   }
   .buzz-queue .out {
     text-decoration: line-through;

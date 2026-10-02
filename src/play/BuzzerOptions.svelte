@@ -1,8 +1,11 @@
-<!-- Phone buzzers' options, saved with the game: when the buzzers open, new players from phones, the early-buzz wait. -->
+<!--
+  Phone buzzers' options, saved with the game: when the buzzers open, teams, new players from phones, the early-buzz
+  wait.
+-->
 <script lang="ts" module>
   import type { GameSettings } from '../lib/model';
 
-  export type BuzzSettingKey = 'buzzer' | 'buzzArm' | 'phoneJoin' | 'earlyBuzzLock';
+  export type BuzzSettingKey = 'buzzer' | 'buzzArm' | 'phoneJoin' | 'earlyBuzzLock' | 'buzzTeams';
   /** Changes one buzzer setting (here and in the editor's copy of the game, undoable there). */
   export type SetBuzzSetting = <K extends BuzzSettingKey>(key: K, value: GameSettings[K], label: string) => void;
 </script>
@@ -20,10 +23,19 @@
     </select>
   </label>
   {#if !compact}
-    <label class="check">
+    <label class="check" title="Each player is a team. On their phone people pick a team and type their own name; whoever on the team buzzes first answers for it, and a wrong answer locks out the whole team.">
       <input
         type="checkbox"
-        checked={!!settings.phoneJoin}
+        checked={!!settings.buzzTeams}
+        onchange={(e) => onset('buzzTeams', e.currentTarget.checked || undefined, 'Teams')}
+      />
+      Teams: people join a team, anyone on it can buzz for it
+    </label>
+    <label class="check" title={settings.buzzTeams ? 'With teams, people join a team you made (add teams as players)' : undefined}>
+      <input
+        type="checkbox"
+        checked={!!settings.phoneJoin && !settings.buzzTeams}
+        disabled={!!settings.buzzTeams}
         onchange={(e) => onset('phoneJoin', e.currentTarget.checked || undefined, 'New players from their phone')}
       />
       Let new players join from their phone (you add them)
