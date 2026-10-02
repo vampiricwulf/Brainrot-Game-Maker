@@ -102,6 +102,8 @@
         ['N / Shift+N', 'Title card: start the round (N); then the next / previous player’s turn'],
         ['I', 'The selected player’s sheet on screen'],
         ['Alt+← / → on a name', 'Move them earlier / later in the turn order (or drag the chip)'],
+        ['E', '✎ Edit board: add, move, delete and connect spaces while you play (E or Esc again: back to playing)'],
+        ['Delete / F2 while editing', 'Delete the picked space or link / rename the picked space'],
       ],
     },
   ];

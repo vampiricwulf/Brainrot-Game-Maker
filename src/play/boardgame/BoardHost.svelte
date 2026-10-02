@@ -17,6 +17,8 @@
   import { boardNow, busyZones, moveNow, moverDiceName, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { offerNext } from '../host/slots.svelte';
+  import { boardEdit, setEditing } from './boardedit.svelte';
+  import BoardEditPanel from './BoardEditPanel.svelte';
 
   let {
     game,
@@ -59,8 +61,24 @@
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
   const showPlayers = $derived(cardsShown());
-  // The round's main button, in the host panel's main cell: the next turn.
-  offerNext('turn', () => (bs ? { label: 'Next turn ▶', key: 'N', run: () => turnNow(game, session, 1) } : null));
+  /** This turn's move is made (or there's nothing to roll: a one-space board, a fork to pick). */
+  const moved = $derived(!!bs && (!!bs.fork || round?.mover.kind === 'step' || (!!last && last.playerId === turnId)));
+  /**
+   * The round's main button, in the host panel's main cell: 🎲 Roll (D), then ▶ Move (Enter), then Next turn ▶ (N), with
+   * ◀ Previous turn (Shift+N) right beside it (and Next turn ▶ too while the main button rolls or moves). While the
+   * board is being edited: ✓ Done editing (Esc).
+   */
+  offerNext('turn', () => {
+    if (!bs || !round) return null;
+    if (boardEdit.on) return { label: '✓ Done editing', key: 'Esc', title: 'Esc: back to playing (the changes stay in this game)', run: () => setEditing(false) };
+    const prev = { label: '◀ Previous turn', key: '⇧N', title: 'Shift+N: back to the turn before', run: () => turnNow(game, session, -1) };
+    const next = { label: 'Next turn ▶', key: 'N', title: 'N: the next player’s turn', run: () => turnNow(game, session, 1) };
+    if (moved) return { ...next, also: [prev] };
+    const also = [prev, next];
+    if (steps) return { label: `▶ Move ${steps}`, key: '⏎', title: `Enter: move ${turnName} ${steps} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
+    const wheel = round.mover.kind === 'wheel';
+    return { label: wheel ? '🎡 Spin' : '🎲 Roll', key: 'D', title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, run: roll, also };
+  });
 
   // A new turn starts with no count: the last player's roll isn't theirs. A move (a way picked on the stage too) uses it up.
   $effect(() => {
@@ -205,9 +223,18 @@
       </span>
       <button class="ghost small" onclick={shuffle}>🔀 Shuffle</button>
       <span class="spacer"></span>
-      <button class="small" onclick={() => turnNow(game, session, -1)} title="Shift+N">◀ Previous turn</button>
+      <button
+        class="small"
+        class:on={boardEdit.on}
+        aria-pressed={boardEdit.on}
+        onclick={() => setEditing(!boardEdit.on)}
+        title={boardEdit.on ? 'E or Esc: back to playing' : 'E: add, move, delete and connect spaces while you play (this game only, unless you keep it)'}
+      >✎ Edit board <kbd aria-hidden="true">E</kbd></button>
     </div>
 
+    {#if boardEdit.on}
+      <BoardEditPanel {game} {session} {round} {bs} {dual} />
+    {:else}
     <div class="row move">
       <b>🎲 {turnName}’s turn</b>
       {#if round.mover.kind === 'step'}
@@ -243,7 +270,7 @@
           }}
         />
       </label>
-      <button class="good" disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">▶ Move {turnName} {steps ?? ''}</button>
+      <button disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">▶ Move {turnName} {steps ?? ''}</button>
       <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>◀ Back {steps ?? ''}</button>
       {/if}
       <span class="spacer"></span>
@@ -305,7 +332,9 @@
       {/if}
     </div>
 
-    {#if card}
+    {/if}
+
+    {#if card && !boardEdit.on}
       <div bind:this={cardEl}>
         {#key card.id}
           <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} onclose={() => (space = null)} />
@@ -313,7 +342,7 @@
       </div>
     {/if}
 
-    {#if fork && forkSpace}
+    {#if fork && forkSpace && !boardEdit.on}
       <div class="row fork" role="alert">
         <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
         <span class="muted small">(or click the space on the stage)</span>
@@ -323,7 +352,7 @@
       </div>
     {/if}
 
-    {#if last && (passed.length || landed)}
+    {#if last && (passed.length || landed) && !boardEdit.on}
       <div class="row acts">
         {#each passed as s (s.id)}
           <span class="muted small">Passed {s.name}:</span>
@@ -477,5 +506,16 @@
   .tiny {
     font-size: 12px;
     padding: 0 4px;
+  }
+  kbd {
+    font: 10px/1 ui-monospace, monospace;
+    padding: 1px 3px;
+    margin-left: 3px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    opacity: 0.7;
+  }
+  button.on {
+    outline: 2px solid var(--accent);
   }
 </style>

@@ -166,12 +166,12 @@ try {
   await nextRound();
   await page.locator('.panel .status', { hasText: 'Board game' }).waitFor();
   states.boardgame = await look();
-  assert((await mainLabel(page)) === 'Next turn ▶', 'a board-game round’s main button is Next turn ▶');
+  assert((await mainLabel(page)) === '🎲 Roll', `a board-game turn’s main button is 🎲 Roll first (${await mainLabel(page)})`);
   // Its own roll (D) is the round's: ▶ Move (Enter) is next, so its dice don't take the main button with a Close.
   await page.keyboard.press('d');
   await page.locator('.panel [data-tool-controls]').waitFor();
   await page.waitForTimeout(1500);
-  assert((await mainLabel(page)) === 'Next turn ▶', `the round’s own roll keeps the main button the round’s (${await mainLabel(page)})`);
+  assert(/^▶ Move -?\d+$/.test(await mainLabel(page)), `the round’s own roll makes ▶ Move the main button, not the dice’s Close (${await mainLabel(page)})`);
   await page.keyboard.press('Escape');
   // Leaving an RPG or board-game round always asks (nothing to count there), quietly.
   await page.waitForTimeout(450);
@@ -181,7 +181,7 @@ try {
   assert((await confirmStrip(page).innerText()).includes('Leave Board game?'), 'and leaving it asks first (“Leave Board game?”)');
   assert(
     (await page.locator('.panel button.primary:visible').count()) === 1 && (await confirmStrip(page).locator('button.primary').count()) === 1,
-    'while it asks, its answer is the one main button (Next turn ▶ goes quiet)',
+    'while it asks, its answer is the one main button (the round’s goes quiet)',
   );
   await page.waitForTimeout(450);
   await confirmStrip(page).getByRole('button', { name: 'Yes', exact: true }).click();

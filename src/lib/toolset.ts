@@ -2,7 +2,7 @@
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
 import { answerShowing, applyScore, finalNext, score, stepOf, toggleReveal } from './session';
 import {
-  formatPoints, newId, type ActionEvent, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
+  formatPoints, newId, type ActionEvent, type BoardSpace, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
   type StatValue, type Wearable, type WorldMap,
 } from './model';
 import type { Problem } from './validate';
@@ -352,6 +352,8 @@ function capture(session: Session, game?: Game): Record<string, string> {
       out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
       for (const s of m.screens) out[`screen:${w.id}/${m.id}/${s.id}`] = JSON.stringify(s);
     }
+  // Board-game boards edited during play (✎ Edit board): their spaces and Start.
+  for (const r of game?.rounds ?? []) if (r.mode === 'boardgame') out[`board:${r.id}`] = JSON.stringify({ spaces: r.spaces, start: r.start ?? null });
   return out;
 }
 
@@ -375,6 +377,7 @@ function restore(session: Session, json: string, game?: Game): void {
     else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers' | 'wagerFrom' | 'wagerBy'> | null);
     else if (k.startsWith('step:')) putStep(session, k.slice(5), v as Session['finalStep'] | null);
     else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
+    else if (k.startsWith('board:')) putBoard(game, k.slice(6), v as { spaces: BoardSpace[]; start: string | null } | null);
   }
   // Viewers keep following the party they were (switched outside any step) while it's still there, and with one party
   // left there's no split view.
@@ -424,6 +427,14 @@ function putBack(game: Game | undefined, key: string, v: Pick<WorldMap, 'cols' |
   if (v && i >= 0) map.screens[i] = v as Screen;
   else if (v) map.screens.push(v as Screen);
   else if (i >= 0) map.screens.splice(i, 1);
+}
+
+/** A board-game board as it was (its spaces and Start). */
+function putBoard(game: Game | undefined, roundId: string, v: { spaces: BoardSpace[]; start: string | null } | null): void {
+  const r = game?.rounds.find((x) => x.id === roundId);
+  if (!v || r?.mode !== 'boardgame') return;
+  r.spaces = v.spaces;
+  r.start = v.start ?? undefined;
 }
 
 /** Only the newest steps keep their snapshots (a long show must not grow without bound). */

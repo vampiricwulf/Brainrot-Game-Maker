@@ -14,6 +14,8 @@ export type NextAction = {
   key?: string;
   title?: string;
   disabled?: boolean;
+  /** Quiet buttons right beside it, on its left, in the same cell (◀ Previous turn beside Next turn ▶). */
+  also?: NextAction[];
 };
 
 /** A question for the confirmation strip (as InlineAsk takes it). */
