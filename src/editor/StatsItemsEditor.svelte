@@ -729,6 +729,16 @@
   .name {
     width: 170px;
   }
+  /* On a narrow window an item's name gives way first, so ⧉ and 🗑 stay on its line. */
+  .item-row .name {
+    flex: 1 1 110px;
+    max-width: 170px;
+    min-width: 90px;
+  }
+  .item-row select {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
   .n {
     width: 64px;
   }
