@@ -267,13 +267,12 @@ try {
   assert((await stageSize()) === finalSize, `starting the Final keeps the stage at ${finalSize}`);
   assert((await page.locator('.panel .status').innerText()).includes('Category on screen'), 'then the category is on screen');
   assert(!(await page.locator('.stage .final-label').count()), 'a Final without a category shows its name once');
-  await page.getByRole('button', { name: /take wagers/ }).click();
   assert((await stageSize()) === finalSize, `taking wagers keeps the stage at ${finalSize}`);
   assert((await page.locator('.fj .exposed').innerText()).includes('Viewers can see this'), 'the wager boxes say viewers can see them');
   assert((await page.locator('.panel .status').innerText()).includes('viewers can see them'), 'so does the status line');
   assert((await page.locator('.stage .score-area .plate').count()) === 3, 'the scores stay on screen while wagers are taken');
   const ticks = await page.locator('.stage .score-area .tick').count();
-  const boxes = page.locator('.fj .wagers input');
+  const boxes = page.locator('.fj .wagers input[data-wager]');
   for (let i = 0; i < 3; i++) await boxes.nth(i).fill('0');
   await page.locator('.fj').click({ position: { x: 2, y: 2 } });
   await page.waitForTimeout(200);

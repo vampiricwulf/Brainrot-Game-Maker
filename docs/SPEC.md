@@ -336,7 +336,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 1. **Board**: category headers + tiles (value or custom face). Used tiles are dimmed or blank. The score bar shows each
    player's name, color, and score (up to 8 players, one row).
 2. Host clicks a tile. It zoom-transitions to the **Question slide**.
-   - *Daily Double*: DD splash, then a wager input for the chosen player (limited to max(score, highest round value) by default; the host can override), then the question.
+   - *Daily Double*: DD splash, then a wager input for the chosen player (not limited by default; the host can turn on the max(score, highest round value) limit), then the question.
    - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
      so a tile can be purely "spin the punishment wheel" with no question at all.
    - *Dice clue*: the dice roll animation, then the outcome. The question slide is optional too.
@@ -353,9 +353,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 7. When all tiles in a round are used (or the host clicks "Next round"), move to the next round, then Final.
 
 ### 6.4 Final Jeopardy (optional)
-1. Category slide.
-2. Wager entry: the host enters each player's wager in the host view only. It is validated from 0 to max(score, 0) with an override. Players
-   with ≤ 0 can be excluded or allowed (setting).
+1. Category slide and wager entry together: on one screen the host ticks who plays (players with ≤ 0 can be excluded or
+   allowed, a setting of the round) and enters each player's wager in the host view only. Wagers are whole numbers,
+   0 or more; the max(score, 0) limit is off by default and the host can turn it on. A wager stays editable until it's
+   revealed, and remembers whether the host or the player's phone entered it.
 3. Question slide + timer (default 30 s) + optional music file.
 4. Answer reveal.
 5. **Per-player reveal**, one at a time in an order the host chooses: show the wager, then mark ✔ / ✘, and the score animates.

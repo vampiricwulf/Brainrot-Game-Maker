@@ -470,7 +470,10 @@ export interface FinalRound {
   questionSlide: Slide;
   answerSlide: Slide;
   timerSeconds: number;
-  /** Players with a score of 0 or less can play it too (they can only wager 0 unless the host ignores the limits). */
+  /**
+   * Players with a score of 0 or less can play it too (a wager of 0 is filled in for them; the host can type more, as
+   * wagers aren't held to their max unless the host turns the limits on).
+   */
   allowNonPositive?: boolean;
   hostNotes?: string;
   /**
@@ -520,7 +523,14 @@ export interface Game {
 
 // ---------- Runtime session ----------
 
-export type FinalStep = 'category' | 'wagers' | 'question' | 'answer' | 'reveal';
+/**
+ * The Final's steps. 'wagers' is the first: the category is on screen while the host picks who plays and takes the
+ * wagers. (Sessions saved before had a 'category' step before the wagers: it reads as 'wagers', see finalStepFix.)
+ */
+export type FinalStep = 'wagers' | 'question' | 'answer' | 'reveal';
+
+/** Where a Final wager came from: typed by the host, or sent from the player's phone buzzer (the host can still change it). */
+export type WagerSource = 'host' | 'phone';
 
 export interface FinalState {
   /** The Final round this is for (absent in games saved before Final became a round). */
@@ -528,11 +538,16 @@ export interface FinalState {
   /** Players taking part (others sat out, e.g. score ≤ 0). */
   players: Id[];
   /**
-   * The host's own ticks before the wagers: true plays, false sits out, whatever their score. Coming back to the Final
+   * The host's own ticks on the wager screen: true plays, false sits out, whatever their score. Coming back to the Final
    * keeps them (the others are checked again).
    */
   chosen?: Record<Id, boolean>;
   wagers: Record<Id, number>;
+  /**
+   * Where each wager came from (left out: the host typed it, as in every session saved before phones could send one).
+   * A wager from a phone stays editable by the host until it's shown; the host's change makes it the host's.
+   */
+  wagerFrom?: Record<Id, WagerSource>;
   /** Order for the one-by-one reveal. */
   order: Id[];
   /** Wager shown on screen for this player. */

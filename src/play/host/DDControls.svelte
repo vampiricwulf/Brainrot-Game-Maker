@@ -34,7 +34,8 @@
     wagerBox?.focus();
   }
   let wager = $state<number | null>(null);
-  let override = $state(false);
+  // Wagers aren't held to the max unless the host turns the limit on (untick "Ignore the limit").
+  let override = $state(true);
   let wagerBox = $state<HTMLInputElement>();
   const sym = $derived(game.settings.currencySymbol);
   const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
@@ -94,7 +95,7 @@
       />
     </label>
     <button class="small ghost" onclick={() => (wager = cap)}>True Daily Double ({formatPoints(cap, sym)})</button>
-    <span class="muted small">Max {formatPoints(cap, sym)} (their score or the round's top value)</span>
+    <span class="muted small">{override ? 'TV max' : 'Max'} {formatPoints(cap, sym)} (their score or the round's top value){override ? ': not enforced' : ''}</span>
     <label class="check small">
       <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>

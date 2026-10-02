@@ -86,7 +86,7 @@
             {@const p = session.players.find((x) => x.id === id)}
             <li>
               <span class="dot" style:background={p?.color}></span>{p?.name}
-              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : '—'}</b>
+              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : '—'}</b>{#if session.final.wagerFrom?.[id] === 'phone'}<span title="Sent from their phone"> 📱</span>{/if}
               {session.final.results[id] === 'right' ? '✔' : session.final.results[id] === 'wrong' ? '✘' : ''}
             </li>
           {/each}

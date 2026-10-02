@@ -8,7 +8,7 @@ import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
-  finalWagerRefused,
+  finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList,
 } from './session';
 import { newRpgRound } from './rpg';
@@ -113,12 +113,11 @@ describe('flow', () => {
     applyScore(session, game, [a], 1000, 'x');
     applyScore(session, game, [b], 400, 'x');
     goToRound(session, game, 1);
-    expect([session.phase, session.finalStep]).toEqual(['final', 'category']);
+    expect([session.phase, session.finalStep]).toEqual(['final', 'wagers']);
     // c has $0 and sits out; reveal order is lowest score first.
     expect(session.final!.players).toEqual([a, b]);
     expect(session.final!.order).toEqual([b, a]);
     expect(finalWagerCap(session, b)).toBe(400);
-    finalNext(session, game); // wagers
     session.final!.wagers[a] = 600;
     session.final!.wagers[b] = 400;
     finalNext(session, game); // question
@@ -202,7 +201,6 @@ describe('reveal / hide', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 100, 'x');
     goToRound(session, game, 1);
-    finalNext(session, game);
     finalNext(session, game);
     expect(session.finalStep).toBe('question');
     toggleReveal(session);
@@ -323,7 +321,6 @@ describe('players mid-game', () => {
     applyScore(session, game, [a, b, c], 400, 'x');
     session.currentPickerId = c;
     goToRound(session, game, 1);
-    finalNext(session, game);
     session.final!.wagers[c] = 100;
     removePlayer(session, c);
     expect(session.players.map((p) => p.id)).toEqual([a, b]);
@@ -346,7 +343,7 @@ describe('players mid-game', () => {
     const { game, session, a, b, c } = setup();
     applyScore(session, game, [a, b, c], 400, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session, game);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
     const f = session.final!;
     const first = f.order[0];
     f.wagers[first] = 0;
@@ -498,13 +495,12 @@ describe('round navigation', () => {
     goToRound(session, game, 1);
     applyScore(session, game, [a, b], 500, 'x');
     goToRound(session, game, 2);
-    finalNext(session, game);
     session.final!.wagers[a] = 300;
     goToRound(session, game, 1); // the host's "◀ Back" from the Final: the round before it
     expect([session.phase, session.currentRound, session.intro]).toEqual(['board', 1, null]);
     expect(session.final!.wagers[a]).toBe(300);
     goToRound(session, game, 2);
-    expect([session.phase, session.finalStep]).toEqual(['final', 'category']);
+    expect([session.phase, session.finalStep]).toEqual(['final', 'wagers']);
     expect(session.final!.wagers[a]).toBe(300);
     expect(session.final!.players).toEqual([a, b]);
   });
@@ -517,7 +513,7 @@ describe('final reveal with N', () => {
     applyScore(session, game, [b], 200, 'x');
     applyScore(session, game, [c], 100, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session, game); // category → wagers → question → answer → reveal
+    for (let i = 0; i < 3; i++) finalNext(session, game);
     const f = session.final!;
     for (const id of f.players) f.wagers[id] = 0;
     expect(f.current).toBe(c);
@@ -546,7 +542,7 @@ describe('final reveal with N', () => {
     applyScore(session, game, [b], 200, 'x');
     applyScore(session, game, [c], 100, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session, game);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
     const f = session.final!;
     expect(f.order).toEqual([c, b, a]);
     expect(finalBack(session)).toBe(false); // the first one has nobody before them
@@ -561,7 +557,7 @@ describe('final reveal with N', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 300, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session, game);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
     session.final!.wagers[a] = 0;
     finalJudge(session, game, a, true);
     finalNext(session, game);
@@ -575,7 +571,6 @@ describe('final reveal with N', () => {
     applyScore(session, game, [a], 1000, 'x');
     applyScore(session, game, [b], 600, 'x');
     goToRound(session, game, 1);
-    finalNext(session, game);
     session.final!.wagers[a] = 1000;
     session.final!.wagers[b] = 0;
     for (let i = 0; i < 3; i++) finalNext(session, game);
@@ -595,7 +590,6 @@ describe('final wagers', () => {
     applyScore(session, game, [a], 1000, 'x');
     applyScore(session, game, [b], 400, 'x');
     goToRound(session, game, 1);
-    finalNext(session, game);
     session.final!.wagers[a] = 600;
     expect(finalWagerProblems(session)).toEqual({ missing: [b], over: [], whole: [] });
     expect(finalWagersOk(session)).toBe(false);
@@ -610,7 +604,6 @@ describe('final wagers', () => {
     const { game, session, a, b } = setup();
     applyScore(session, game, [a, b], 1000, 'x');
     goToRound(session, game, 1);
-    finalNext(session, game);
     Object.assign(session.final!.wagers, { [a]: 100.5, [b]: 0 });
     expect(finalWagerProblems(session)).toEqual({ missing: [], over: [], whole: [a] });
     expect(finalWagersOk(session, true)).toBe(false);
@@ -682,7 +675,6 @@ describe('final wagers', () => {
     applyScore(session, game, [a], 1000, 'x');
     applyScore(session, game, [b], -200, 'x');
     goToRound(session, game, 1);
-    finalNext(session, game); // wagers
     expect(session.final!.wagers).toEqual({ [b]: 0, [c]: 0 });
     expect(finalWagerProblems(session)).toEqual({ missing: [a], over: [], whole: [] });
     session.final!.wagers[a] = 1000;
@@ -702,6 +694,72 @@ describe('final wagers', () => {
     expect(session.final!.wagers[b]).toBe(50);
   });
 
+  it('takes the wagers as soon as the Final starts: no step before them', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 1);
+    expect(session.finalStep).toBe('wagers');
+    Object.assign(session.final!.wagers, { [a]: 100, [b]: 200 });
+    finalNext(session, game);
+    expect(session.finalStep).toBe('question');
+  });
+
+  it('fills in 0 for a player at $0 ticked in on the wager screen', () => {
+    const { game, session, a, c } = setup();
+    applyScore(session, game, [a], 500, 'x');
+    goToRound(session, game, 1);
+    expect(session.final!.players).toEqual([a]);
+    finalChoose(session, c, true);
+    expect(session.final!.wagers[c]).toBe(0);
+  });
+
+  it('reads a session saved on the old category step as the wager screen', () => {
+    const { game, session, a, c } = setup();
+    for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
+    applyScore(session, game, [a], 500, 'x');
+    goToRound(session, game, 1);
+    session.final!.wagers = {};
+    (session as { finalStep?: string }).finalStep = 'category';
+    migrateSession(session, game);
+    expect([session.finalStep, session.final!.wagers[c]]).toEqual(['wagers', 0]);
+    // An undo that puts the old step back: N goes on from the wager screen, never into a step that's gone.
+    (session as { finalStep?: string }).finalStep = 'category';
+    session.final!.wagers[a] = 100;
+    finalNext(session, game);
+    expect(session.finalStep).toBe('question');
+    (session as { finalStep?: string }).finalStep = 'category';
+    finalStepFix(session);
+    expect(session.finalStep).toBe('wagers');
+  });
+
+  it('marks a wager sent from a phone, and the host’s change makes it the host’s', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 1);
+    finalSetWager(session, a, 300, 'phone');
+    expect([session.final!.wagers[a], wagerFromPhone(session.final, a), wagerFromPhone(session.final, b)]).toEqual([300, true, false]);
+    expect(finalWagerEditable(session, a)).toBe(true);
+    finalSetWager(session, a, 250);
+    expect([session.final!.wagers[a], wagerFromPhone(session.final, a)]).toEqual([250, false]);
+    finalSetWager(session, b, undefined);
+    expect(b in session.final!.wagers).toBe(false);
+  });
+
+  it('keeps a wager editable until it is shown or judged', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 1);
+    Object.assign(session.final!.wagers, { [a]: 100, [b]: 200 });
+    finalNext(session, game); // question
+    expect(finalWagerEditable(session, a)).toBe(false);
+    finalNext(session, game); // answer
+    finalNext(session, game); // reveals
+    expect([finalWagerEditable(session, a), finalWagerEditable(session, b)]).toEqual([true, true]);
+    finalShow(session, a);
+    finalJudge(session, game, b, true);
+    expect([finalWagerEditable(session, a), finalWagerEditable(session, b)]).toEqual([false, false]);
+  });
+
   it('carries the old game setting over to each Final round', () => {
     const old = jeopardyGame();
     for (const r of old.rounds) if (r.mode === 'final') delete r.allowNonPositive;
@@ -719,7 +777,7 @@ describe('undoing a final judgment', () => {
     const { game, session, a } = setup(1);
     applyScore(session, game, [a], 500, 'x');
     goToRound(session, game, 1);
-    for (let i = 0; i < 4; i++) finalNext(session, game);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
     session.final!.wagers[a] = 300;
     return { game, session, a, f: session.final! };
   }
@@ -873,7 +931,7 @@ describe('resume with edits after deleting the round being played', () => {
     const edited = clone(game);
     edited.rounds.splice(0, 1);
     rebaseSession(session, game, edited);
-    expect([session.currentRound, session.phase, session.finalStep]).toEqual([0, 'final', 'category']);
+    expect([session.currentRound, session.phase, session.finalStep]).toEqual([0, 'final', 'wagers']);
   });
 
   it('drops the deleted board’s intro when another board takes its place', () => {

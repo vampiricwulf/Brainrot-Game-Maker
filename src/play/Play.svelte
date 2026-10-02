@@ -9,7 +9,7 @@
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
-    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
+    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -130,8 +130,11 @@
   let pickerPending = $state(false);
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
   let finishArmed = $state(false);
-  /** Final wagers: "Ignore the limits" is ticked, so a wager over its cap doesn't hold up N / Show question. */
-  let wagerLimitsOff = $state(false);
+  /**
+   * Final wagers: "Ignore the limits" is ticked (the default: the host turns the limits on), so a wager over its cap
+   * doesn't hold up N / Show question.
+   */
+  let wagerLimitsOff = $state(true);
   /** Seconds typed in the host panel's timer box: T starts that countdown, like its Start button. */
   let timerSeconds = $state<number | null>(null);
   /** RPG rounds: the object whose card is open in the host panel. */
@@ -286,7 +289,7 @@
   $effect(() => {
     const now = session.phase === 'final' ? session.finalStep : undefined;
     untrack(() => {
-      if ((finalStepWas === 'question' || finalStepWas === 'answer') && (now === 'wagers' || now === 'category')) {
+      if ((finalStepWas === 'question' || finalStepWas === 'answer') && now === 'wagers') {
         app.live.timer = null;
         app.live.sound = null;
       }
@@ -317,10 +320,14 @@
       }
     });
   });
-  // "Ignore the limits" is for the wagers being entered now, not the next Final's.
+  // "Ignore the limits" is for the wagers being entered now: the next Final starts with them off again (the default).
   $effect(() => {
     void session.phase;
-    wagerLimitsOff = false;
+    wagerLimitsOff = true;
+  });
+  // An undo back to a step saved before the category and the wagers were one screen: it's the wager screen.
+  $effect(() => {
+    if (session.phase === 'final' && (session.finalStep as string) === 'category') untrack(() => finalStepFix(session));
   });
   /** Controls hidden: the "Show controls" button shows for a moment only after the mouse moves (else it's on stream). */
   let pointerMoved = $state(false);

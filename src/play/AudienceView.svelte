@@ -350,14 +350,14 @@
       class="full"
       class:clickable={!!onact && session.finalStep !== 'wagers' && session.finalStep !== 'reveal'}
       onclick={() =>
-        session.finalStep === 'question' ? act('reveal') : session.finalStep === 'category' || session.finalStep === 'answer' ? act('final-next') : undefined}
+        session.finalStep === 'question' ? act('reveal') : session.finalStep === 'answer' ? act('final-next') : undefined}
       role="presentation"
       in:fade={{ duration: 400 }}
     >
-      {#if session.finalStep === 'category' || session.finalStep === 'wagers'}
+      {#if session.finalStep === 'wagers'}
         {#if finalLabelShown}<div class="final-label">{finalLabel}</div>{/if}
         <SlideView slide={finalCategorySlide} />
-        {#if session.finalStep === 'wagers'}<div class="final-sub">Make your wagers…</div>{/if}
+        <div class="final-sub">Make your wagers…</div>
         <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
         <div class="score-area"><ScoreBar {game} {session} host={!!onact} lit={null} ticks={wagersIn} /></div>
       {:else if session.finalStep === 'question'}

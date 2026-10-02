@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -462,7 +462,7 @@ export function currentRound(session: Session, game: Game): Round | undefined {
 function stashFinal(session: Session): void {
   const f = session.final;
   if (!f?.roundId) return;
-  session.finals = { ...(session.finals ?? {}), [f.roundId]: { state: f, step: session.finalStep ?? 'category' } };
+  session.finals = { ...(session.finals ?? {}), [f.roundId]: { state: f, step: session.finalStep ?? 'wagers' } };
 }
 
 /**
@@ -626,15 +626,16 @@ export function currentFinal(session: Session, game: Game): FinalRound | undefin
 }
 
 /**
- * Enter a Final round. Coming back to one (after a trip elsewhere) picks up its wagers and results; eligibility
- * is checked again because scores may have changed, keeping what was entered for players who are still in.
+ * Enter a Final round: its category goes on screen and the wagers are taken at once (the host picks who plays on the
+ * same screen). Coming back to one (after a trip elsewhere) picks up its wagers and results; eligibility is checked
+ * again because scores may have changed, keeping what was entered for players who are still in.
  */
 export function startFinal(session: Session, game: Game, round: FinalRound): void {
   const saved = session.final?.roundId === round.id ? { state: session.final, step: session.finalStep } : session.finals?.[round.id];
   // A game saved before Final became a round kept its state without a round id.
   const prev = saved?.state ?? (session.final && !session.final.roundId ? session.final : undefined);
   session.phase = 'final';
-  session.finalStep = 'category';
+  session.finalStep = 'wagers';
   // Once the reveals have started the players are settled (their scores now include this Final): someone it took to
   // $0 can still be judged again.
   if (prev && saved?.step === 'reveal') {
@@ -654,15 +655,36 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     roundId: round.id,
     players: eligible,
     wagers: keep(prev?.wagers),
+    ...(prev?.wagerFrom ? { wagerFrom: keep(prev.wagerFrom) } : {}),
     order,
     shown: keep(prev?.shown),
     results: keep(prev?.results),
     current,
     ...(chosen ? { chosen } : {}),
   };
+  fillNothingToWager(session);
 }
 
-/** Tick a player in or out of the Final (before the wagers): the reveal order stays lowest score first. */
+/**
+ * A player with nothing to wager (a score of 0 or less, playing as the round allows) gets a wager of 0 filled in (the
+ * host can still type more: the limits are off unless the host turns them on).
+ */
+function fillNothingToWager(session: Session): void {
+  const f = session.final;
+  if (f) for (const id of f.players) if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, id) === 0) f.wagers[id] = 0;
+}
+
+/**
+ * A session saved (or a step undone) from before the category and the wagers were one screen: its 'category' step
+ * is the wager screen now.
+ */
+export function finalStepFix(session: Session): void {
+  if ((session.finalStep as string) !== 'category') return;
+  session.finalStep = 'wagers';
+  fillNothingToWager(session);
+}
+
+/** Tick a player in or out of the Final (on the wager screen): the reveal order stays lowest score first. */
 export function finalChoose(session: Session, playerId: string, plays: boolean): void {
   const f = session.final;
   if (!f) return;
@@ -673,7 +695,40 @@ export function finalChoose(session: Session, playerId: string, plays: boolean):
   } else if (!f.players.includes(playerId)) {
     f.players = [...f.players, playerId];
     f.order = [...f.order, playerId].sort((x, y) => score(session, x) - score(session, y));
+    fillNothingToWager(session);
   }
+}
+
+/**
+ * Set a player's Final wager (undefined: none yet), saying where it came from. The host's own (a new one, or a change
+ * to one a phone sent) is the host's; a phone's is marked so the host's field shows it.
+ */
+export function finalSetWager(session: Session, playerId: string, wager: number | undefined, from: WagerSource = 'host'): void {
+  const f = session.final;
+  if (!f) return;
+  if (wager === undefined) delete f.wagers[playerId];
+  else f.wagers[playerId] = wager;
+  if (from === 'phone' && wager !== undefined) f.wagerFrom = { ...f.wagerFrom, [playerId]: 'phone' };
+  else if (f.wagerFrom?.[playerId]) {
+    const { [playerId]: _, ...rest } = f.wagerFrom;
+    f.wagerFrom = rest;
+  }
+}
+
+/** The wager came from the player's phone (and the host hasn't changed it since). */
+export function wagerFromPhone(f: FinalState | null | undefined, playerId: string): boolean {
+  return f?.wagerFrom?.[playerId] === 'phone';
+}
+
+/**
+ * The host can still change this player's wager: on the wager screen, and in the reveals until their wager is shown or
+ * they're judged (after that, a fix is a score correction).
+ */
+export function finalWagerEditable(session: Session, playerId: string): boolean {
+  const f = session.final;
+  if (!f || !f.players.includes(playerId)) return false;
+  if (session.finalStep === 'wagers') return true;
+  return session.finalStep === 'reveal' && !f.shown[playerId] && !f.results[playerId];
 }
 
 export function finalWagerCap(session: Session, playerId: string): number {
@@ -711,16 +766,11 @@ export function finalWagersOk(session: Session, ignoreLimits = false): boolean {
 /** The Final's next step. After the reveals: the next round, or the end screen if this Final was the last round. */
 export function finalNext(session: Session, game: Game): void {
   const f = session.final;
+  finalStepFix(session);
   switch (session.finalStep) {
-    case 'category':
+    case 'wagers':
       // Everyone sat out: nothing to wager or reveal, so on to the next round (or the end).
       if (f && !f.players.length) return goToRound(session, game, session.currentRound + 1);
-      session.finalStep = 'wagers';
-      // A player with nothing to wager (a score of 0 or less, playing as the round allows) can only wager 0: it's
-      // filled in for them (Ignore the limits still lets the host type more).
-      if (f) for (const id of f.players) if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, id) === 0) f.wagers[id] = 0;
-      break;
-    case 'wagers':
       session.finalStep = 'question';
       break;
     case 'question':
@@ -932,6 +982,7 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
  * and score events are tagged with it. Newer sessions are returned as they are.
  */
 export function migrateSession(session: Session, game: Game): Session {
+  finalStepFix(session);
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
   if (finalIndex < 0) return session;
   for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);

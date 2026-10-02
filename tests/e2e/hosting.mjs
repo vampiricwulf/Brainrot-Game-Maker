@@ -277,8 +277,12 @@ try {
   // ---------- The Final: wagers, Ctrl+Z back to them, ✔/✘ with their sounds ----------
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await status()).includes('Title card')) await page.keyboard.press('n');
-  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen'));
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen · taking wagers'));
   assert((await page.locator('.panel .award').count()) === 0, 'no award row during the Final (it has its own scoring)');
+  // No step between the category and the wagers: the wager screen is up at once, with who plays on it.
+  assert((await page.getByRole('button', { name: /Lock category|take wagers/ }).count()) === 0, 'no “Lock category, take wagers” step: the wagers are taken while the category is up');
+  await page.waitForFunction(() => document.activeElement?.matches('.fj .wagers input[data-wager]'));
+  assert(await page.evaluate(() => document.activeElement.value === ''), 'the Final comes up with the focus in the first wager box still to fill');
   // ◀ Back to the round before, from the keyboard: the keys go on from its board (the button is gone).
   const backBtn = page.locator('.fj button', { hasText: '◀ Back to' });
   await backBtn.focus();
@@ -293,10 +297,10 @@ try {
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await status()).includes('Title card')) await page.keyboard.press('n');
-  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen'));
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen · taking wagers'));
   // Everyone sat out: the panel says so, and its button goes on (no wagers to take). Ticked back in (last first),
   // the players keep the reveal order lowest score first (checked at the reveals).
-  const ticks = page.locator('.fj input[type="checkbox"]');
+  const ticks = page.locator('.fj .wagers input[data-plays]');
   const playing = [];
   for (let i = 0; i < (await ticks.count()); i++) if (await ticks.nth(i).isChecked()) playing.push(i);
   for (const i of playing) await ticks.nth(i).uncheck();
@@ -304,17 +308,13 @@ try {
   assert((await mainLabel(page)).includes('Finish game'), 'nobody playing the Final: it says so, and offers to go on (Finish game)');
   for (const i of [...playing].reverse()) await ticks.nth(i).check();
   assert((await page.locator('.fj .nobody').count()) === 0, 'and ticked back in, the Final is played as usual');
-  await page.locator('.panel .status').click();
-  await page.keyboard.press('n');
-  const boxes = page.locator('.fj .wagers input');
-  await boxes.first().waitFor();
-  await page.waitForFunction(() => document.activeElement?.matches('.fj .wagers input'));
-  assert(await page.evaluate(() => document.activeElement.value === ''), 'taking wagers puts the focus in the first wager box still to fill');
+  const boxes = page.locator('.fj .wagers input[data-wager]');
+  assert((await boxes.count()) === playing.length, 'each player ticked in has their wager box on the same screen');
   await page.locator('.panel .status').click();
   await page.keyboard.press('n');
   await page.locator('.toast', { hasText: 'Waiting on:' }).waitFor();
   assert(
-    await page.evaluate(() => document.activeElement?.matches('.fj .wagers input') && document.activeElement.value === ''),
+    await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === ''),
     'N with a wager missing says whose (a toast) and goes to that box',
   );
   const n = await boxes.count();
@@ -340,7 +340,7 @@ try {
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
-  const revealScores = (await page.locator('.fj .pl > .muted.small').allInnerTexts()).map((t) => Number(t.split(' · ')[0].replace('−', '-').replace(/[^\d-]/g, '')));
+  const revealScores = (await page.locator('.fj .pl .pscore').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
   assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
   // The main button is N's next step until everyone is judged (finishing early is the smaller one), and the how-to is
   // open the first time.

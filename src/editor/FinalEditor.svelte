@@ -32,7 +32,10 @@
     <input type="checkbox" checked={round.allowNonPositive ?? true} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
     Players with a score of 0 or less can play it
   </label>
-  <span class="hint">Wagers are entered privately by the host during the game, then revealed player by player.</span>
+  <span class="hint">
+    While the category is up the host ticks who plays and enters each wager privately (not held to the player's score
+    unless the host turns the limits on), then they're revealed player by player.
+  </span>
 </div>
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
 <div class="quick">

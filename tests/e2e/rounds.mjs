@@ -100,8 +100,7 @@ try {
   await page.getByRole('button', { name: /◀ Back to Jeopardy!/ }).waitFor();
   assert(true, 'its Back button goes to the round before it');
   // Through the Final: wagers, question, answer, then judge the one player who can play.
-  await page.getByRole('button', { name: /take wagers/ }).click();
-  await page.locator('.fj .wagers input').first().fill('200');
+  await page.locator('.fj .wagers input[data-wager]').first().fill('200');
   await page.getByRole('button', { name: 'Show question ▶' }).click();
   await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
   await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
@@ -134,22 +133,41 @@ try {
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   await page.locator('.fj').waitFor();
   assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('FINAL JEOPARDY!'), 'the round picker jumps straight to any round');
-  // This Final lets players with $0 play: they can only wager $0, so it's filled in and Show question waits on no one else.
-  await page.getByRole('button', { name: /take wagers/ }).click();
-  const wagerBoxes = page.locator('.fj .wagers input');
+  // No "Lock category, take wagers" step: the category is up and the wager screen with it, who plays on the same screen.
+  assert((await page.getByRole('button', { name: /Lock category|take wagers/ }).count()) === 0, 'the Final opens straight on its wager screen (no lock step)');
+  assert((await page.locator('.panel .status').innerText()).includes('Category on screen · taking wagers'), 'the status line says the category is up and wagers are being taken');
+  // This Final lets players with $0 play: a wager of $0 is filled in for them, and Show question waits on no one else.
+  const wagerBoxes = page.locator('.fj .wagers input[data-wager]');
+  const plays = page.locator('.fj .wagers input[data-plays]');
   const showQuestion = page.getByRole('button', { name: 'Show question ▶' });
+  const limits = page.getByLabel('Ignore the limits');
   const zeroes = page.locator('.fj .wagers .chip').filter({ hasText: 'can only wager $0' });
+  assert(await limits.isChecked(), 'the limits are ignored by default');
   assert(
-    (await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).inputValue()))).join('|') === '|0' && (await zeroes.count()) === 1,
-    'a player at $0 gets a wager of $0 filled in, and the host panel says they can only wager $0',
+    (await plays.count()) === 2 && (await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).inputValue()))).join('|') === '|0',
+    'each player’s row has its plays tick and its wager box; a player at $0 gets $0 filled in',
   );
   assert(await showQuestion.isDisabled(), 'Show question still waits for the player who can wager more');
   await wagerBoxes.first().fill('100');
   assert(await showQuestion.isEnabled(), 'and nobody at $0 holds it up');
   await wagerBoxes.nth(1).fill('50');
-  assert(await showQuestion.isDisabled(), 'more than $0 is over their max');
-  await page.getByLabel('Ignore the limits').check();
-  assert(await showQuestion.isEnabled(), 'unless the limits are ignored');
+  assert(await showQuestion.isEnabled(), 'more than a player’s score is fine while the limits are ignored (the default)');
+  await limits.uncheck();
+  assert((await zeroes.count()) === 1 && (await showQuestion.isDisabled()), 'with the limits on, a player at $0 can only wager $0 and $50 is over their max');
+  await limits.check();
+  assert(await showQuestion.isEnabled(), 'and ignored again, it goes');
+  // Ticking a player out on the wager screen drops their box (they sit out); ticked back in, their wager is still there.
+  await plays.nth(1).uncheck();
+  assert((await wagerBoxes.count()) === 1 && (await page.locator('.fj .wagers .wrow.out').innerText()).includes('sits out'), 'a player ticked out sits out: no wager box');
+  assert(await showQuestion.isEnabled(), 'and Show question doesn’t wait on them');
+  await plays.nth(1).check();
+  assert((await wagerBoxes.nth(1).inputValue()) === '50', 'ticked back in, their wager is kept');
+  // Nobody ticked in: the main button goes on to the end instead.
+  await plays.nth(0).uncheck();
+  await plays.nth(1).uncheck();
+  assert((await page.locator('.panel [data-next]').innerText()).startsWith('Finish game'), 'nobody playing: the main button goes on (Finish game)');
+  await plays.nth(0).check();
+  await plays.nth(1).check();
   await context.close();
 
   // A game saved by Jeopardy Builder (format version 1): the Final becomes the last round.
