@@ -111,6 +111,9 @@ try {
   await page.reload();
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard').catch(() => {});
+  // (The new game, with no rounds, has arrived: until then the old one's round tabs are still there, and
+  // addClassicRounds would take them for this game's and add none.)
+  await page.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
   await addClassicRounds(page);
   await themePage();
   await card('Checker party').waitFor();
