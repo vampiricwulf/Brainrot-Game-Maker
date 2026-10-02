@@ -163,7 +163,7 @@ try {
   const ddH = await ddBox();
   await dd.locator('.chip', { hasText: 'Player 1' }).click();
   await form(ann).waitFor();
-  assert((await ann.locator('#wager-head').innerText()) === 'Daily Double: your wager', 'the player who found it gets a wager box on their phone');
+  assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the player who found it gets a wager box on their phone (“Your wager”, under “Daily Double — you’re up!”)');
   assert((await ann.locator('#wager-info').innerText()).includes('Max $1,000 (the host may allow more)'), `with their score and the max, not held to it while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
   await big(bo).getByText('Player 1 is wagering…').waitFor();
   assert(true, 'the other phones see "Player 1 is wagering…"');

@@ -874,9 +874,8 @@ function renderFoot(v: PhoneView, sym: string): boolean {
 function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   const you = v.you!;
   const team = !!v.teams;
-  // (A Final's name is in the line above already.)
-  const what = team ? 'your team’s wager' : 'your wager';
-  $('wager-head').textContent = w.kind === 'dd' ? `Daily Double: ${what}` : what[0].toUpperCase() + what.slice(1);
+  // (The line above already says it's a Daily Double or names the Final.)
+  $('wager-head').textContent = team ? 'Your team’s wager' : 'Your wager';
   $('wager-label').textContent = `Wager (only the host sees it)`;
   const inp = $<HTMLInputElement>('wager-in');
   // Filled with what's in when the box comes up, or when what's in changes (a teammate, the host) while not typing.
