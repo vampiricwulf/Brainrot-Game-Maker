@@ -366,7 +366,22 @@
    * from, whose files are stored only now (so a game that isn't opened after all never changes the stored ones). False
    * when it didn't happen.
    */
+  /**
+   * A game is being put in place of this one (it's being kept in Recent games first, a moment on a slow disk): the
+   * editor takes no edits meanwhile, which would land on the game that's on its way out and be lost.
+   */
+  let replacing = $state(false);
+
   async function replaceGame(next: Game, origin: Omit<Origin, 'ts'>, history?: RecentGame['history'], spare?: string, read?: ReadGame): Promise<boolean> {
+    replacing = true;
+    try {
+      return await replaceNow(next, origin, history, spare, read);
+    } finally {
+      replacing = false;
+    }
+  }
+
+  async function replaceNow(next: Game, origin: Omit<Origin, 'ts'>, history?: RecentGame['history'], spare?: string, read?: ReadGame): Promise<boolean> {
     const old = game;
     let kept: { key: string; dropped: string[] } | null = null;
     if (hasWork(old)) {
@@ -527,6 +542,7 @@
    * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one). Ctrl+Z / Ctrl+Y undo and redo.
    */
   function onkeydown(e: KeyboardEvent): void {
+    if (replacing) return;
     const key = undoKeyOf(e);
     if (key) return undoKey(e, key);
     // ? (not typing, nothing open over the editor): the editor's keys.
@@ -687,8 +703,8 @@
 <svelte:window {onkeydown} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
 <svelte:document {ondrop} />
 
-<div class="editor">
-  <header>
+<div class="editor" aria-busy={replacing}>
+  <header inert={replacing}>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
     <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
     <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
@@ -780,7 +796,7 @@
   {/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
-  <div class="body">
+  <div class="body" inert={replacing}>
     <nav aria-label="Editor">
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}

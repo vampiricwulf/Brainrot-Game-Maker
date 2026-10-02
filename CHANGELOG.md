@@ -553,6 +553,9 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **Edits made just after New or Open… are no longer lost**: while the old game was being kept in Recent games (a
+  moment on a slow disk), the editor still showed it and took edits, which then vanished when the new game arrived.
+  The editor waits for the new game now.
 - **Editing several wheels at once no longer pushes the host panel up over the stage**: with a wheel added beside the
   first (＋ Spin another wheel too), both edit boxes could be open together, and the panel's lower part grew upward
   past the stage where it couldn't be scrolled (the window had to be made taller to get out). One wheel's edit box is
