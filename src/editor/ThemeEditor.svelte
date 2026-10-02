@@ -2,7 +2,7 @@
 <script lang="ts">
   import PageHeader from './PageHeader.svelte';
   import { app } from '../lib/app.svelte';
-  import { contrast, mixHex, parseHex } from '../lib/colors';
+  import { contrast, mixHex, toHex } from '../lib/colors';
   import { step } from '../lib/history.svelte';
   import { untrack } from 'svelte';
   import { fontChoices } from '../lib/fonts';
@@ -21,6 +21,7 @@
     presetEdited,
     presetTheme,
     stageText,
+    themeReadability,
     type Ranged,
     type Theme,
     type ThemePreset,
@@ -30,11 +31,15 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import ThemeShare from './ThemeShare.svelte';
+  import type { SharedTheme } from '../lib/themefile';
   import ThemeSwatch from './ThemeSwatch.svelte';
   import { themeDemo } from './themedemo';
 
-  /** `round`: the round last open in the editor, which the preview starts on. */
-  let { round: lastRound }: { round?: number } = $props();
+  /**
+   * `round`: the round last open in the editor, which the preview starts on. `incoming`: a theme file opened or dropped
+   * on the editor, to show first (taken, it goes back to null).
+   */
+  let { round: lastRound, incoming = $bindable(null) }: { round?: number; incoming?: SharedTheme | null } = $props();
   const game = $derived(app.game);
   const t = $derived(game.theme);
   const fonts = $derived(fontChoices(game));
@@ -68,12 +73,9 @@
     });
   }
 
-  /** Values on tiles too close in color to read (under 3:1), or null. */
-  const valueContrast = $derived.by(() => {
-    // The tiles, and the alternating ones when there are.
-    const on = [t.tile, ...(t.tilePattern && t.tile2 ? [t.tile2] : [])].filter((c) => parseHex(c));
-    return parseHex(t.value) && on.length ? Math.min(...on.map((c) => contrast(t.value, c))) : null;
-  });
+  /** How well the values and the category names read on their colors (a note under 3:1). */
+  const readable = $derived(themeReadability(t));
+  const hard = (r: number | null): r is number => r !== null && r < 3;
 
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],
@@ -93,8 +95,8 @@
   function setNumber(k: Ranged, v: number): void {
     set(k, v === LOOK_RANGES[k].def ? undefined : v);
   }
-  /** A color for a color box (a theme color that isn't #rrggbb shows as the fallback). */
-  const hex = (c: string | undefined, fallback: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : fallback);
+  /** A color for a color box, which only takes #rrggbb (a theme's rgb() or named color shows as itself; none: the fallback). */
+  const hex = (c: string | undefined, fallback: string) => toHex(c) ?? fallback;
   /** A second color to start from: the first one, a little lighter (or darker on a light one). */
   const near = (c: string) => mixHex(hex(c, '#000000'), contrast(hex(c, '#000000'), '#000') > 10 ? '#000000' : '#ffffff', 0.22);
   const set2 = (keys: (keyof Theme)[]) => keys.some((k) => t[k] !== undefined);
@@ -109,6 +111,17 @@
   const opened = $state(untrack(() => ({ tiles: set2(TILE_LOOKS), headers: set2(HEADER_LOOKS), plates: set2(PLATE_LOOKS) })));
 </script>
 
+{#snippet valuesNote()}
+  {#if hard(readable.values)}
+    <p class="warn small" role="status">⚠ The values are hard to read on the tiles ({readable.values.toFixed(1)}:1): pick colors further apart.</p>
+  {/if}
+{/snippet}
+{#snippet namesNote()}
+  {#if hard(readable.names)}
+    <p class="warn small" role="status">⚠ The category names are hard to read on their color ({readable.names.toFixed(1)}:1): pick colors further apart.</p>
+  {/if}
+{/snippet}
+
 <PageHeader title="Theme" sub="How the board, the slides and the scores look on stream, in every round." />
 <div class="layout">
   <div class="controls">
@@ -120,26 +133,25 @@
         </button>
       {/each}
     </div>
-    <ThemeShare />
+    <ThemeShare bind:incoming />
 
     <details class="sec" open>
     <summary>Colors</summary>
     <div class="grid">
       {#each COLORS as [key, label]}
         <label class="check">
-          <input type="color" value={key === 'stageText' ? stageText(t) : (t[key] as string)} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
+          <input type="color" value={hex(key === 'stageText' ? stageText(t) : (t[key] as string), '#000000')} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
           {label}
         </label>
       {/each}
       <label class="check">
         <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => (t.glow = e.currentTarget.checked ? '#ff00e6' : 'none')} />
         Tile glow
-        {#if t.glow !== 'none'}<input type="color" bind:value={t.glow} aria-label="Tile glow color" />{/if}
+        {#if t.glow !== 'none'}<input type="color" value={hex(t.glow, '#ff00e6')} oninput={(e) => (t.glow = e.currentTarget.value)} aria-label="Tile glow color" />{/if}
       </label>
     </div>
-    {#if valueContrast !== null && valueContrast < 3}
-      <p class="warn small" role="status">⚠ The values are hard to read on the tiles ({valueContrast.toFixed(1)}:1): pick colors further apart.</p>
-    {/if}
+    {@render valuesNote()}
+    {@render namesNote()}
     </details>
 
     <details class="sec" open>
@@ -209,7 +221,7 @@
       </div>
       {#if t.banner}
         <label class="field">
-          Banner height
+          Banner height ({t.bannerHeight ?? BANNER_DEFAULT})
           <input
             type="range"
             min={BANNER_MIN}
@@ -268,7 +280,7 @@
     </details>
 
     <details class="sec" bind:open={opened.tiles}>
-    <summary>Tiles{#if set2(TILE_LOOKS)}<span class="changed"> · changed</span>{/if}</summary>
+    <summary>Tiles{#if set2(TILE_LOOKS)}<span class="changed">· changed</span>{/if}</summary>
     <div class="grid">
       <label class="field">
         Alternating tiles
@@ -276,7 +288,7 @@
           value={t.tilePattern ?? ''}
           onchange={(e) => {
             const v = (e.currentTarget.value || undefined) as Theme['tilePattern'];
-            step(`Alternating tiles: ${v ?? 'off'}`, () => {
+            step(`Theme: alternating tiles ${v ? { checker: 'checkerboard', rows: 'by row', columns: 'by column' }[v] : 'off'}`, () => {
               set('tilePattern', v);
               if (v && !t.tile2) set('tile2', near(t.tile));
             });
@@ -324,7 +336,7 @@
           <input type="range" min="0" max={LOOK_RANGES.glowSize.max} step="2" value={lookNumber(t, 'glowSize')} oninput={(e) => setNumber('glowSize', +e.currentTarget.value)} />
         </label>
       {:else}
-        <span class="hint glow-hint">Tile glow: in Colors</span>
+        <span class="hint glow-hint">Glow size: turn on Tile glow (in Colors) first</span>
       {/if}
       <label class="check">
         <input type="checkbox" checked={!!t.tileShadow} onchange={(e) => set('tileShadow', e.currentTarget.checked || undefined)} />
@@ -347,11 +359,12 @@
         </select>
       </label>
     </div>
+    {#if opened.tiles}{@render valuesNote()}{/if}
     <button class="small ghost reset" disabled={!set2(TILE_LOOKS)} onclick={() => step('Theme: plain tiles', () => plain(TILE_LOOKS), { notify: true })}>↺ Plain tiles</button>
     </details>
 
     <details class="sec" bind:open={opened.headers}>
-    <summary>Categories{#if set2(HEADER_LOOKS)}<span class="changed"> · changed</span>{/if}</summary>
+    <summary>Categories{#if set2(HEADER_LOOKS)}<span class="changed">· changed</span>{/if}</summary>
     <div class="grid">
       <label class="check">
         <input type="color" value={hex(t.headerBg, hex(t.tile, '#000000'))} oninput={(e) => set('headerBg', e.currentTarget.value)} />
@@ -374,12 +387,13 @@
         {#if t.headerLine !== 'none'}<input type="color" value={hex(t.headerLine, '#000000')} oninput={(e) => set('headerLine', e.currentTarget.value)} aria-label="Line under the categories color" />{/if}
       </label>
     </div>
+    {#if opened.headers}{@render namesNote()}{/if}
     <p class="muted small">The names' color and font are in Colors and Fonts; a gradient goes the tiles' direction.</p>
     <button class="small ghost reset" disabled={!set2(HEADER_LOOKS)} onclick={() => step('Theme: plain categories', () => plain(HEADER_LOOKS), { notify: true })}>↺ Plain categories</button>
     </details>
 
     <details class="sec" bind:open={opened.plates}>
-    <summary>Score plates{#if set2(PLATE_LOOKS)}<span class="changed"> · changed</span>{/if}</summary>
+    <summary>Score plates{#if set2(PLATE_LOOKS)}<span class="changed">· changed</span>{/if}</summary>
     <div class="grid">
       <label class="field">
         Plate corners
@@ -394,6 +408,7 @@
         Glow on the leader
       </label>
     </div>
+    <button class="small ghost reset" disabled={!set2(PLATE_LOOKS)} onclick={() => step('Theme: plain score plates', () => plain(PLATE_LOOKS), { notify: true })}>↺ Plain score plates</button>
     </details>
   </div>
 
@@ -429,6 +444,7 @@
     color: var(--muted);
   }
   .changed {
+    margin-left: 0.4em;
     text-transform: none;
     letter-spacing: 0;
     font-weight: 400;
@@ -439,7 +455,7 @@
   }
   .layout {
     display: grid;
-    grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+    grid-template-columns: minmax(300px, 460px) minmax(0, 1fr);
     gap: 20px;
     align-items: start;
   }
@@ -463,7 +479,12 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 8px 12px;
+    /* A tick or a color box lines up with the box or slider beside it, under that one's label. */
+    align-items: end;
+  }
+  .grid > .check {
+    min-height: 32px;
   }
   .grid select {
     max-width: 100%;
@@ -495,6 +516,9 @@
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--border);
+  }
+  .glow-hint {
+    align-self: center;
   }
   .clue-color {
     align-self: end;

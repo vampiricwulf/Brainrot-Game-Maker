@@ -55,7 +55,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         cat.clues.forEach((clue, row) => {
           const where = `${rn} › ${cn} › ${formatPoints(clue.value ?? r.values[row] ?? 0, sym)}`;
           const at = (side?: 'q' | 'a', slide?: string): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) } });
-          look('❓', slideWords(clue.questionSlide), `${where} › Question`, at('q'), '[data-field="q"]');
+          look('❓', slideWords(clue.questionSlide), `${where} › Question${clue.extraSlides?.length ? ' 1' : ''}`, at('q'), '[data-field="q"]');
           clue.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${where} › Question ${j + 2}`, at('q', sl.id), '[data-field="q"]'));
           look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');
           look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at(), field([[clue.hostNotes, '[data-field="notes"]']]));

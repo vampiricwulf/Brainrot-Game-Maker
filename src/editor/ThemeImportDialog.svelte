@@ -170,6 +170,8 @@
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--border);
-    max-height: 60vh;
+    /* As big as a short screen leaves room for, and 16:9 there too (no black bars beside the board). */
+    width: min(100%, 60vh * 16 / 9);
+    margin-inline: auto;
   }
 </style>

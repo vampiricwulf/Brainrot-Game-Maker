@@ -10,6 +10,8 @@ export const THEME_VERSION = 1;
 export const THEME_EXT = '.brainrot-theme';
 /** What 📂 Import theme… offers to open. */
 export const THEME_FILES = `${THEME_EXT},.json,application/json`;
+/** A theme file, by its name (Open… and a drop on the editor take one too). */
+export const isThemeFile = (name: string) => /\.brainrot-theme$/i.test(name);
 /** A code: deflate-compressed JSON, base64url. */
 export const CODE_PREFIX = 'BRT1:';
 /** A code made where the browser can't compress: plain JSON, base64url. */

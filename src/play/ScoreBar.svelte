@@ -122,7 +122,8 @@
   .name {
     flex: none;
     height: 52px;
-    padding: 0 10px;
+    /* Clear of the plate's corners (a pill's round ends would cut a long name). */
+    padding: 0 max(10px, calc(var(--plate-radius, 14px) * 0.6));
     font-family: var(--board-font);
     font-weight: 800;
     line-height: 1.1;
@@ -161,7 +162,7 @@
   .score {
     flex: 1;
     min-height: 0;
-    padding: 0 8px;
+    padding: 0 max(8px, calc(var(--plate-radius, 14px) * 0.5));
     font-family: var(--value-font);
     font-weight: 800;
     color: var(--stage-text, #fff);

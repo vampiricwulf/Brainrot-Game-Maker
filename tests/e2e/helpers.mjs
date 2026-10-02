@@ -38,8 +38,14 @@ export async function nameGame(page, name = '') {
  * Returns the download.
  */
 export async function exportHtml(page, name = '') {
+  // Nothing may be open over the editor: a window or question still up leaves the header inert, so the click would wait
+  // in vain and the test fail on the download instead (CI run 117). Say which one it is.
+  const over = page.locator('[role="alertdialog"], [role="dialog"][aria-modal="true"]').first();
+  if (await over.waitFor({ state: 'detached', timeout: 5000 }).then(() => false, () => true))
+    throw new Error(`Export HTML: a window is still open over the editor: “${(await over.innerText()).replace(/\s+/g, ' ').slice(0, 200)}”`);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export HTML' }).click();
+  // (A click that can't land fails here, saying why, well before the download's wait runs out.)
+  await page.getByRole('button', { name: 'Export HTML' }).click({ timeout: 10000 });
   const naming = page.getByRole('dialog', { name: 'Name your game' });
   const first = await Promise.race([download.then(() => 'download'), naming.waitFor().then(() => 'name', () => 'none')]);
   if (first === 'name') await nameGame(page, name);

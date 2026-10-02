@@ -34,6 +34,14 @@
   import ThemeNameDialog from './ThemeNameDialog.svelte';
   import ThemeImportDialog from './ThemeImportDialog.svelte';
 
+  /** A theme file opened or dropped on the editor: shown first, like 📂 Import theme… (then back to null). */
+  let { incoming = $bindable(null) }: { incoming?: SharedTheme | null } = $props();
+  $effect(() => {
+    if (!incoming) return;
+    importing = incoming;
+    incoming = null;
+  });
+
   let list = $state.raw<MyTheme[]>(loadMyThemes());
   const game = $derived(app.game);
   const NOT_STORED = 'This browser won’t store it (storage is blocked or full)';

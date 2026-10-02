@@ -200,6 +200,21 @@ in plain words for the people who make and host games. Anything committed but no
   screen does.
 - **The 📱 list says how many phones are still on the join screen** (not a player, or not on a team, yet), and with
   Teams the 📱 chip reads "3 people · 2/2 teams" instead of "3 on 2/2".
+- **Theme page tidied**: in the folding sections a tick or a color box now lines up with the box or slider beside
+  it, the controls column is a little wider, Score plates has its own **↺ Plain score plates**, the banner height
+  slider shows its number, and the glow size hint says what to do ("turn on Tile glow (in Colors) first"). The history
+  says "Theme: alternating tiles checkerboard" instead of "Alternating tiles: checker".
+- **A warning when the category names are hard to read**, like the one for the values: a category color, the
+  alternate one or a gradient too close to the names' color says so (under Colors and Categories). The values' warning
+  now counts the tiles' gradient too, and shows under Tiles as well.
+- **Clues with many slides keep their tabs on one line**: past four question slides the tabs read Q1, Q2… (a screen
+  reader still says "Question 1"), and with more than one the answer's tab reads just "Answer". Find and the history
+  call the first slide "Question 1" when there are more.
+- **The slide tabs work from the keyboard**: they're one Tab stop; ←/→ (Home/End) go along them, and on a question
+  slide's tab Alt+←/→ move it, Ctrl+D duplicates it and Delete deletes it (a note says so; Ctrl+Z brings it back).
+  🗑 Delete slide is red like the other delete buttons.
+- **A theme preview fills its window on a short screen**: Import theme… and Paste theme code… show the board 16:9,
+  without black bars beside it.
 - **The Final goes straight to its wagers**: there's no "Lock category, take wagers" step any more. When the Final
   starts, its category is on screen ("Make your wagers…") and the host panel shows one wager screen: a row for each
   player with a tick for whether they play (players at $0 or less are ticked out when the round says so) and their
@@ -552,6 +567,11 @@ in plain words for the people who make and host games. Anything committed but no
 - **A wager sent as the phone lost its connection** no longer says "Sending…" for good: the phone says to send it again
   if it doesn't show ✔ Sent once it's back.
 - A phone told it was taken off a seat no longer keeps that note when the host turns Teams on (and the other way).
+- **A .brainrot-theme file opened with Open… or dropped on the editor** did nothing (or said it wasn't a game): it now
+  opens 🎨 Theme and shows the theme first, as 📂 Import theme… does.
+- **Color boxes showed black for a theme color written another way** (rgb(), a color name or #abc, as a theme code or
+  file can have): they show the color itself.
+- **Pill score plates cut long names** at their round ends: the name and score stay clear of the corners.
 - **Pop-ups are always whole on screen and on top**: the 📱 phones list could run off the top or the bottom of the
   window, or be cut off by the host panel as if hidden under the stage (when the window was resized, or the panel
   scrolled), and beside the stage (RPG and board-game rounds) it hung over the stage viewers see. It now drops from its

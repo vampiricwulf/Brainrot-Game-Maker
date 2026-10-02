@@ -49,6 +49,7 @@
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
+  import { isThemeFile, parseThemeFile, ThemeError, type SharedTheme } from '../lib/themefile';
   import UpdateControls from './UpdateControls.svelte';
   import { update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
@@ -465,7 +466,19 @@
     }
   }
 
+  /** A .brainrot-theme file opened or dropped here: the 🎨 Theme page, showing it first (Use in this game / Save to my themes). */
+  let incomingTheme = $state.raw<SharedTheme | null>(null);
+  async function openThemeFile(file: File): Promise<void> {
+    try {
+      incomingTheme = parseThemeFile(await file.text());
+      tab = 'theme';
+    } catch (e) {
+      void tell(`“${file.name}” can’t be used as a theme: ${e instanceof ThemeError ? e.message : 'it can’t be read.'}`);
+    }
+  }
+
   async function openFile(file: File): Promise<void> {
+    if (isThemeFile(file.name)) return openThemeFile(file);
     let read: ReadGame;
     let opened: Game;
     try {
@@ -496,9 +509,12 @@
   function ondrop(e: DragEvent): void {
     if (e.defaultPrevented || !e.dataTransfer?.files.length) return;
     e.preventDefault();
-    const file = Array.from(e.dataTransfer.files).find((f) => isGameFile(f.name));
+    const file = Array.from(e.dataTransfer.files).find((f) => isGameFile(f.name) || isThemeFile(f.name));
     if (file) openFile(file);
-    else toast('Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A game file (.brainrot, .json, exported .html) dropped here opens.');
+    else
+      toast(
+        'Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A game file (.brainrot, .json, exported .html) dropped here opens, and a theme file (.brainrot-theme) shows on 🎨 Theme.',
+      );
   }
 
   let saving = $state(false);
@@ -874,7 +890,7 @@
         {:else if tab === 'tools'}
           <ToolsEditor />
         {:else if tab === 'theme'}
-          <ThemeEditor round={lastRound} />
+          <ThemeEditor round={lastRound} bind:incoming={incomingTheme} />
         {:else if tab === 'history'}
           <HistoryPanel />
         {:else if game.rounds[tab]}

@@ -57,8 +57,8 @@
   });
 
   /** A change to the question slides as one named step; the slide it returns opens. */
-  function slides(label: string, fn: () => number): void {
-    const to = record(label, fn);
+  function slides(label: string, fn: () => number, notify = false): void {
+    const to = record(label, fn, notify ? { notify: true } : undefined);
     side = 'q';
     qi = to;
   }
@@ -72,8 +72,53 @@
     slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
     focusQuestion();
   }
-  const deleteSlide = () => slides(`Deleted question slide ${at + 1} of ${tileName()}`, () => deleteClueSlide(clue, at));
+  const deleteSlide = () => slides(`Deleted question slide ${at + 1} of ${tileName()}`, () => deleteClueSlide(clue, at), true);
   const moveSlide = (d: -1 | 1) => slides(`Moved question slide ${at + 1} of ${tileName()} ${d < 0 ? 'earlier' : 'later'}`, () => moveClueSlide(clue, at, d));
+
+  // ---------- The slide tabs' keys ----------
+  /** Many question slides: short tab names (Q1, Q2…), so the tabs stay on one line. */
+  const SHORT_TABS = 4;
+  let tablist = $state<HTMLElement>();
+  /** The focus on the open slide's tab (after a key changed the tabs). */
+  const focusTab = () => tick().then(() => tablist?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
+  /**
+   * On a tab: ←/→ (Home/End) open the slide beside it (the first, the last), the answer last. On a question slide's
+   * tab, when there are several: Alt+←/→ move it (like Alt+↑/↓ on a list's rows), Ctrl+D duplicates it, Delete deletes it.
+   */
+  function tabKey(e: KeyboardEvent): void {
+    const n = qslides.length;
+    // The tabs in order: 0…n-1 the question slides, n the answer.
+    const now = side === 'a' ? n : at;
+    const mod = e.ctrlKey || e.metaKey;
+    const open = (i: number) => {
+      e.preventDefault();
+      if (i >= n) side = 'a';
+      else ((side = 'q'), (qi = i));
+      focusTab();
+    };
+    if (!mod && !e.altKey && !e.shiftKey) {
+      if (e.key === 'ArrowLeft') return open(Math.max(0, now - 1));
+      if (e.key === 'ArrowRight') return open(Math.min(n, now + 1));
+      if (e.key === 'Home') return open(0);
+      if (e.key === 'End') return open(n);
+    }
+    if (side === 'a' || n < 2) return;
+    if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      // (Not the next clue, as Alt+arrows are elsewhere in the clue.)
+      e.preventDefault();
+      const d = e.key === 'ArrowLeft' ? -1 : 1;
+      if (at + d >= 0 && at + d < n) moveSlide(d);
+      focusTab();
+    } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
+      focusTab();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) {
+      e.preventDefault();
+      deleteSlide();
+      focusTab();
+    }
+  }
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
   let answerField = $state<HTMLTextAreaElement>();
@@ -333,19 +378,32 @@
         </div>
         <div class="tabs">
           <!-- The question slides in the order they show, then the answer. -->
-          <div class="tablist" role="tablist" aria-label="Slides">
+          <!-- (One Tab stop, the open slide's: ←/→ go along, see tabKey.) -->
+          <div class="tablist" role="tablist" aria-label="Slides" tabindex="-1" bind:this={tablist} onkeydown={tabKey}>
             {#each qslides as _, i (i)}
+              {@const on = side === 'q' && at === i}
               <button
                 role="tab"
-                class:on={side === 'q' && at === i}
-                aria-selected={side === 'q' && at === i}
+                class:on
+                aria-selected={on}
+                tabindex={on ? 0 : -1}
                 data-qslide={i + 1}
+                aria-label={qslides.length > SHORT_TABS ? `Question ${i + 1}` : undefined}
                 onclick={() => ((side = 'q'), (qi = i))}
-                title={qslides.length > 1 ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer` : undefined}
-                >{qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
+                title={qslides.length > 1
+                  ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it`
+                  : undefined}
+                >{qslides.length > SHORT_TABS ? `Q${i + 1}` : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
               >
             {/each}
-            <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer slide (hidden until revealed)</button>
+            <button
+              role="tab"
+              class:on={side === 'a'}
+              aria-selected={side === 'a'}
+              tabindex={side === 'a' ? 0 : -1}
+              onclick={() => (side = 'a')}
+              title={qslides.length > 1 ? 'The answer slide: hidden until revealed' : undefined}>{qslides.length > 1 ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
+            >
           </div>
           <button
             class="ghost add"
@@ -359,7 +417,7 @@
               <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} title="Move this slide earlier" aria-label="Move slide earlier">◀</button>
               <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} title="Move this slide later" aria-label="Move slide later">▶</button>
               <button class="ghost small" onclick={duplicateSlide} title="A copy of this slide, right after it">⧉ Duplicate</button>
-              <button class="ghost small" onclick={deleteSlide} title="Delete this question slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
+              <button class="ghost small danger" onclick={deleteSlide} title="Delete this question slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
             </div>
           {/if}
         </div>
@@ -460,10 +518,16 @@
     flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
   }
+  /* One line however many slides (short names past four; it scrolls if it must). */
   .tablist {
     display: flex;
     gap: 4px;
-    flex-wrap: wrap;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .tablist button {
+    flex: none;
   }
   .tabs button {
     border-radius: 6px 6px 0 0;

@@ -184,7 +184,8 @@ export function parseGame(text: string): Game {
 }
 
 /** What Open… takes: game packs (.jbr before the rename), plain JSON games, exported .html games, and the desktop app's backups. */
-export const GAME_FILES = '.brainrot,.jbr,.zip,.json,.html,.bak,.bak2,application/json,application/zip,text/html';
+/** What Open… lists: game files (and theme files, which show on 🎨 Theme). */
+export const GAME_FILES = '.brainrot,.brainrot-theme,.jbr,.zip,.json,.html,.bak,.bak2,application/json,application/zip,text/html';
 export const isGameFile = (name: string) => /\.(brainrot|jbr|zip|json|html?)(\.bak\d*)?$/i.test(name);
 
 export function pickFile(accept: string): Promise<File | null> {
