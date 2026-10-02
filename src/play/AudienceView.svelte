@@ -14,6 +14,7 @@
   import { autoPlay } from '../lib/audioout.svelte';
   import { cuesAfter, type Live, type SoundCue, type StageAction } from '../lib/live';
   import { plateCenter } from './flow';
+  import { autofit } from '../lib/autofit';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
   import ScoreBar from './ScoreBar.svelte';
@@ -90,7 +91,16 @@
 
   const info = $derived(currentClueInfo(session, game));
   const finalRound = $derived(currentFinal(session, game));
-  const finalCategorySlide = $derived(textSlide(finalRound ? finalRound.category || finalName(finalRound) : ''));
+  /** The Final's category, in the theme's clue text (🎨 Theme → Clue text) like its question and answer. */
+  const finalCategorySlide = $derived.by(() => {
+    const slide = textSlide(finalRound ? finalRound.category || finalName(finalRound) : '');
+    const t = slide.elements[0];
+    if (t?.kind === 'text') {
+      if (game.theme?.clueFont) t.font = game.theme.clueFont;
+      if (game.theme?.clueColor) t.color = game.theme.clueColor;
+    }
+    return slide;
+  });
   const finalLabel = $derived(finalRound ? finalName(finalRound).toUpperCase() : '');
   // With no category the big slide already says the Final's name: no second, smaller one over it.
   const finalLabelShown = $derived(!!finalRound?.category?.trim());
@@ -217,17 +227,20 @@
   /**
    * Phone buzzers: the join code in a corner while the room is open (unless the host turned it off), kept off the board's
    * tiles: on the board it sits at the end of the score bar (none without one); on clue slides and title cards in the
-   * bottom-right corner (the caption is bottom-left); not over a Final, RPG or board game round, the Daily Double splash
-   * or the results.
+   * bottom-right corner (the caption is bottom-left); not over a Final, RPG or board game round, a Daily Double (only
+   * the player who found it plays it: nobody buzzes), a wheel, dice or roll-off on screen (it showed through their
+   * backdrop), or the results.
    */
   const codeSpot = $derived.by((): 'bar' | 'corner' | null => {
     if (!live.room || stream?.hideJoinCode || live.pregame) return null;
     if (introName || (session.phase === 'board' && session.intro?.stage === 'title')) return 'corner';
     if (session.phase === 'board') return layout.score ? 'bar' : null;
-    if (session.phase === 'clue') return session.dd?.stage === 'splash' ? null : 'corner';
+    if (session.phase === 'clue') return session.dd ? null : 'corner';
     if (session.phase === 'tiebreaker') return 'corner';
     return null;
   });
+  /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
+  const codeShown = $derived(!!codeSpot && !live.overlay);
   /** Room kept free at the score bar's right end on the board: the join code's, the countdown's. */
   const barReserve = $derived((codeSpot === 'bar' ? JOIN_ROOM : 0) + (timerBar ? TIMER_ROOM : 0));
   const ties = $derived(tiedLeaders(session));
@@ -427,20 +440,19 @@
   {/key}
 {:else if session.phase === 'end'}
   {@const ranked = places(session)}
-  <!-- The tiebreaker line takes a row's room. -->
-  <div class="full end" in:fade={{ duration: 500 }} style:--n={ranked.length}>
+  <!-- Everything's at full size while it fits (6 places); with more, it shrinks just enough for the last one to show. -->
+  {@const k = Math.min(1, 1040 / (300 + 120 * ranked.length))}
+  {@const heading = tieOpen
+    ? `Tie for first: ${nameList(winners.map((w) => w.name))}!`
+    : winners.length > 1
+      ? `It's a tie: ${nameList(winners.map((w) => w.name))}!`
+      : winners.length
+        ? `${winners[0].name} wins!`
+        : 'Game over'}
+  <div class="full end" in:fade={{ duration: 500 }} style:--k={k}>
     {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} keepOut={{ left: 410, right: 1510 }} />{/if}
-    <h1>
-      {#if tieOpen}
-        Tie for first: {nameList(winners.map((w) => w.name))}!
-      {:else if winners.length > 1}
-        It's a tie: {nameList(winners.map((w) => w.name))}!
-      {:else if winners.length}
-        {winners[0].name} wins!
-      {:else}
-        Game over
-      {/if}
-    </h1>
+    <!-- Long names (a tie of two) shrink the heading instead of pushing the last places off the bottom. -->
+    <h1 use:autofit={{ size: Math.round(110 * k), min: Math.round(44 * k), enabled: true, text: heading }}><span dir="auto">{heading}</span></h1>
     <ol>
       {#each ranked as { player, score: s, place }, i (player.id)}
         <li style:--c={player.color} in:fly={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
@@ -492,7 +504,7 @@
   {/each}
 </div>
 
-{#if codeSpot && live.room}
+{#if codeShown && live.room}
   <div
     class="join-badge"
     class:on-bar={codeSpot === 'bar'}
@@ -546,7 +558,9 @@
     background: radial-gradient(circle, var(--tile-light), #000);
   }
   .cover-join {
-    font: 44px 'Inter', sans-serif;
+    font-family: var(--board-font);
+    font-size: 44px;
+    font-weight: 700;
     color: #fff;
     text-shadow: 3px 3px 0 #000;
   }
@@ -566,7 +580,8 @@
     border-radius: 14px;
     background: rgba(0, 0, 0, 0.72);
     color: #fff;
-    font-family: 'Inter', sans-serif;
+    /* The board's fonts, as the clue caption across from it and the Starting soon card's code. */
+    font-family: var(--board-font);
     line-height: 1.1;
     pointer-events: none;
   }
@@ -575,12 +590,14 @@
     transform: translateY(-50%);
   }
   .jb-how {
-    font-size: 30px;
+    font-size: 32px;
+    font-weight: 700;
   }
   .jb-code {
-    font-size: 44px;
-    font-weight: 800;
+    font-family: var(--value-font);
+    font-size: 48px;
     letter-spacing: 0.12em;
+    color: var(--value);
   }
   .cover.host {
     opacity: 0.35;
@@ -893,12 +910,13 @@
     text-shadow: 6px 6px 0 #000;
   }
   .end {
-    /* Up to 6 players fit at full size; with more, everything shrinks so the last one stays on screen. */
-    --k: min(1, calc(6 / var(--n, 1)));
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: calc(70px * var(--k));
+    /* In the middle of the stage (a game of two leaves no empty bottom half). */
+    justify-content: safe center;
+    padding: calc(50px * var(--k)) 0;
+    box-sizing: border-box;
     color: #fff;
     background: radial-gradient(circle at 50% 30%, var(--tile-light), var(--tile) 45%, var(--tile-dark));
   }
@@ -907,10 +925,22 @@
     z-index: 6;
     font-family: var(--value-font);
     font-size: calc(110px * var(--k));
-    margin: 0 40px calc(40px * var(--k));
+    line-height: 1.15;
+    /* One line at full size, or two smaller ones: never more. */
+    height: calc(160px * var(--k));
+    width: 1840px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    margin: 0 0 calc(40px * var(--k));
     text-align: center;
     color: var(--value);
     text-shadow: 6px 6px 0 #000;
+  }
+  .end h1 span {
+    display: block;
+    width: 100%;
   }
   .end ol {
     position: relative;
@@ -992,24 +1022,26 @@
     top: 0;
     bottom: auto;
   }
+  /* Big enough to count on a scaled-down stream; level with the caption beside it. */
   .pips {
     position: absolute;
     left: 50%;
-    bottom: 28px;
+    bottom: 31px;
     transform: translateX(-50%);
     z-index: 15;
     display: flex;
-    gap: 14px;
-    padding: 10px 16px;
+    gap: 18px;
+    padding: 12px 20px;
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.55);
     pointer-events: none;
   }
   .pips span {
-    width: 18px;
-    height: 18px;
+    width: 32px;
+    height: 32px;
+    box-sizing: border-box;
     border-radius: 50%;
-    border: 3px solid #fff;
+    border: 4px solid #fff;
     opacity: 0.8;
   }
   .pips span.on {

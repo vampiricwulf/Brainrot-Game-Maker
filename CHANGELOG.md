@@ -214,6 +214,11 @@ in plain words for the people who make and host games. Anything committed but no
   “On fire”" (before: "Village: On fire", "Village: the original look"). The look menu's last choice is ＋ New look…
   (its tooltip and question say it starts as a copy), and in a narrow host panel "or drop a picture on the stage" moves
   into ✏ Draw's tooltip, so the movement pad and minimap sit a line higher.
+- **What viewers see, polished**: the 📱 join code on stage is in the board's fonts (the code in the value color, as
+  on the Starting soon card), like the clue caption across from it; a clue's slide dots are bigger, to count on a
+  scaled-down stream, and level with the caption; the end screen sits in the middle of the stage (a game of two no
+  longer leaves the bottom half empty) and, with 7 or more players, shrinks only as much as the last place needs; the
+  Final's category is in the game's clue font and color (🎨 Theme → Clue text) like its question and answer.
 - **RPG rounds: selected players and objects drag together** on the stage. Shift+click (or Ctrl+click) an object to
   select it (a plain click still opens its card; Esc takes the selected objects off, then the players); click avatars to
   select them as before. Dragging any one of the selection moves all of it on that screen by the same amount, keeping
@@ -615,6 +620,18 @@ in plain words for the people who make and host games. Anything committed but no
 - **RPG rounds: hovering an object on the stage no longer covers it with a dark box** (the buttons' hover colour): it's
   only outlined, so viewers watching a single window don't see objects vanish under the host's pointer.
 - **RPG editor: a screen's default name on the map shows its space again** ("Screen B1", not "ScreenB1").
+- **Viewers no longer see the join code where nobody can buzz**: it's gone over a Daily Double (only who found it
+  plays) and under a wheel, dice or roll-off on screen (it showed through their backdrop); the score plates keep their
+  place meanwhile.
+- **The Final's ✔ marks no longer cover the scores**: with many players a "wager in" ✔ sat on the score's digits; it
+  now sits over the top edge of the plate.
+- **The end screen no longer pushes places off the bottom**: a long heading (a tie of two long names) took three lines
+  and the last place went off screen; it shrinks to fit two lines at most now.
+- **A roll-off for many players stays on the stage**: "Who goes first" with 12 players ran off the top and bottom of
+  the stream; the dice and names get smaller (a long name ends in "…"), and the result line's room is kept from the
+  start, so the dice no longer jump up when it comes.
+- **Slanted fonts' last letters are no longer cut** on the score plates and in "… is answering · Ann" (Brainrot
+  Neon's "CAT" read "CA1").
 - **Edits made just after New or Open… are no longer lost**: while the old game was being kept in Recent games (a
   moment on a slow disk), the editor still showed it and took edits, which then vanished when the new game arrived.
   The editor waits for the new game now.

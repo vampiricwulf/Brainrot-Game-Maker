@@ -59,6 +59,8 @@
     text-overflow: ellipsis;
     font-size: 36px;
     opacity: 0.85;
+    /* A slanted font's last letter leans past the box: room for it, or it's cut. */
+    padding-right: 0.15em;
   }
   @keyframes ring {
     25% {

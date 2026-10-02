@@ -1,6 +1,8 @@
 // What viewers see in single-window mode, and around the game: the honest "viewers can see this" warnings, the stage
 // keeping its size (a clue opening, the Final's steps), the in-panel key list, score pops, the stream cards (Starting
-// soon with a countdown, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings.
+// soon with a countdown, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings; a
+// crowded 720p game; and 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
+// the ✔ marks, a long tie heading on the end screen).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -162,6 +164,184 @@ async function crowd() {
   await ctx.close();
 }
 
+/**
+ * A 12-player game with phone buzzers, the way viewers see it: the join code gone where nobody can buzz (a Daily
+ * Double, a roll-off), a roll-off for 12 that stays on the stage, the Final's category in the theme's clue font and its
+ * ✔ marks clear of the scores, and an end screen whose tie heading (two long names) keeps every place on screen.
+ */
+async function viewers() {
+  console.log('What viewers see, 12 players with phone buzzers:');
+  const NAMES = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
+  const SCORES = [5000, 5000, 0, 800, 2600, 100, -400, 600, 200, 1600, 3000, 4000];
+  const COLORS = ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'];
+  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: "'Libre Baskerville', Georgia, serif", size: 110, weight: 700, italic: false, underline: false, uppercase: true, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, shadow: { color: '#000000', x: 6, y: 6, blur: 0 }, autoFit: true }] });
+  const values = [200, 400, 600, 800, 1000];
+  const game = {
+    id: 'g_viewers', version: 2, title: 'Viewers',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 12, stream: {} },
+    players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: COLORS[i] })),
+    rounds: [
+      {
+        id: 'r_b', name: 'Board', mode: 'board', values, dailyDoubleCount: 1,
+        categories: ['One', 'Two', 'Three'].map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: c + r ? 'standard' : 'dailyDouble', questionSlide: slide(`Clue ${c}-${r}`), answerSlide: slide(`Answer ${c}-${r}`) })) })),
+      },
+      { id: 'r_f', name: 'Final Round', mode: 'final', category: 'Famous Brainrot', questionSlide: slide('The final clue'), answerSlide: slide('The final answer'), timerSeconds: 30, allowNonPositive: true },
+    ],
+    media: [], audio: {}, wheels: [], dice: [],
+    // (🎨 Theme → Clue text: Anton.)
+    theme: { clueFont: "'Anton', Impact, sans-serif" },
+  };
+  const gameFile = resolve('test-results/stream-viewers.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+  const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  // A fake buzzer room (as in remotebuzz.mjs): room BCDF.
+  await ctx.addInitScript(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
+      if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: 'https://buzz.test' }));
+    } catch {}
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, init) =>
+      String(url) === 'https://buzz.test/api/rooms' && init?.method === 'POST'
+        ? new Response(JSON.stringify({ code: 'BCDF', hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } })
+        : realFetch(url, init);
+    window.WebSocket = class {
+      static OPEN = 1;
+      constructor() {
+        this.readyState = 0;
+        setTimeout(() => {
+          this.readyState = 1;
+          this.onopen?.({});
+          this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now() }) });
+        }, 20);
+      }
+      send() {}
+      close() {
+        this.readyState = 3;
+      }
+    };
+  });
+  const host = await ctx.newPage();
+  host.on('pageerror', (e) => errors.push(`[viewers] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await openGameFile(host, gameFile);
+  await host.getByText(/^Opened “/).waitFor();
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  const card = host.getByRole('region', { name: 'Phone buzzers' });
+  await card.getByLabel(/Buzzer mode/).check();
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByLabel('Room code BCDF').waitFor();
+  const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  aud.on('pageerror', (e) => errors.push(`[viewers audience] ${e.message}`));
+  await aud.setViewportSize({ width: 1280, height: 720 });
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  const skip = host.getByRole('button', { name: 'Skip intro' });
+  if (await skip.isVisible().catch(() => false)) await skip.click();
+  await aud.locator('.board .tile').first().waitFor();
+  for (let i = 0; i < 12; i++) {
+    await host.locator('.panel .p').nth(i).locator('button.score').click();
+    await host.locator('.panel .p .score-edit').fill(String(SCORES[i]));
+    await host.locator('.panel .p .score-edit').press('Enter');
+  }
+  const badge = aud.locator('.join-badge');
+  await badge.waitFor();
+  assert(true, 'on the board the join code is at the end of the score bar');
+  const plates = () => aud.locator('.plate').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)).join());
+  const before = await plates();
+
+  // 🏁 Who goes first for 12: everything on the stage, the result line's room kept from the start.
+  await host.getByRole('button', { name: '🏁 Who goes first' }).click();
+  await host.getByRole('button', { name: /^Roll for 12/ }).click();
+  await aud.locator('.ov .title').waitFor();
+  await aud.waitForTimeout(300);
+  assert((await badge.count()) === 0, 'a roll-off on screen hides the join code (it showed through)');
+  const footAt = await aud.locator('.ov .foot').boundingBox();
+  await aud.locator('.ov .win').waitFor({ timeout: 15000 });
+  await aud.waitForTimeout(500);
+  const outside = await aud.evaluate(() =>
+    [...document.querySelectorAll('.ov .title, .ov .pl, .ov .win')].filter((e) => {
+      const r = e.getBoundingClientRect();
+      return r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth;
+    }).length,
+  );
+  assert(outside === 0, 'a roll-off for 12 players stays on the stage: the title, every die and name, the result');
+  const footAfter = await aud.locator('.ov .foot').boundingBox();
+  assert(Math.abs(footAfter.height - footAt.height) < 2, `the result line's room is there from the start: the dice don't jump up when it comes (${Math.round(footAt.height)}, then ${Math.round(footAfter.height)} px)`);
+  await host.keyboard.press('Escape');
+  await aud.locator('.ov').waitFor({ state: 'detached' });
+  await badge.waitFor();
+  assert((await plates()) === before, 'the code is back after it, and the score plates never moved');
+
+  // A Daily Double: only who found it plays, so no join code.
+  await host.locator('.board .tile').first().click();
+  await host.locator('.dd .chip').nth(2).click();
+  await host.locator('.dd input[type=number]').fill('0');
+  await host.locator('.dd input[type=number]').press('Enter');
+  await aud.locator('.dd-badge').waitFor();
+  assert((await badge.count()) === 0, 'no join code over a Daily Double’s question (nobody buzzes)');
+  await host.keyboard.press('r');
+  await aud.waitForTimeout(300);
+  assert((await badge.count()) === 0, 'nor its answer');
+  await host.keyboard.press('Escape');
+  await aud.locator('.board .tile').first().waitFor();
+  await badge.waitFor();
+
+  // The Final: its category in the theme's clue font; each ✔ above its plate, never over the score.
+  await nextRoundOf(host);
+  const start = host.getByRole('button', { name: 'Start the round ▶' });
+  if (await start.isVisible().catch(() => false)) await start.click();
+  await aud.locator('.final-sub').waitFor();
+  const catFont = await aud.locator('.slide [style*="font-family"]', { hasText: 'Famous Brainrot' }).first().evaluate((e) => e.style.fontFamily);
+  assert(/Anton/.test(catFont), `the Final's category is in the theme's clue font (${catFont})`);
+  const boxes = host.locator('.fj .wagers input[data-wager]');
+  for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).fill('0');
+  await host.locator('.fj').click({ position: { x: 2, y: 2 } });
+  await aud.locator('.tick').nth(11).waitFor();
+  const overScore = await aud.locator('.plate').evaluateAll((els) =>
+    els.filter((p) => {
+      const t = p.querySelector('.tick')?.getBoundingClientRect();
+      const s = p.querySelector('.score .nm')?.getBoundingClientRect();
+      return !t || !s || (t.bottom > s.top && t.top < s.bottom && t.right > s.left && t.left < s.right);
+    }).length,
+  );
+  assert(overScore === 0, 'with 12 players, every ✔ (wager in) is clear of its plate’s score');
+  await host.getByRole('button', { name: 'Show question ▶' }).click();
+  await host.getByRole('button', { name: 'Reveal answer ▶' }).click();
+  await host.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();
+  for (let k = 0; k < wrongs; k++) {
+    const main = host.locator('.panel [data-next]');
+    if (/Show wager/.test(await main.innerText())) await main.click();
+    await host.getByRole('button', { name: '✘ Wrong' }).nth(k).click();
+    if (/Next player/.test(await main.innerText())) await main.click();
+  }
+  await host.getByRole('button', { name: /Finish game/ }).first().click();
+  const yes = host.getByRole('button', { name: 'Yes', exact: true });
+  if (await yes.isVisible().catch(() => false)) await yes.click();
+
+  // The end: a tie of two long names, 12 places: the heading shrinks to fit, every place stays on the stage.
+  await aud.locator('.end h1').waitFor();
+  // (Once the last place has flown in.)
+  await aud.waitForTimeout(300 + 12 * 250 + 700);
+  const head = await aud.locator('.end h1').innerText();
+  assert(head.startsWith('Tie for first: xXx_DarkLord'), `the end screen says who tied (${head.replace(/\s+/g, ' ')})`);
+  const last = await aud.locator('.end li').last().boundingBox();
+  assert(last.y + last.height <= 720, `with a long tie heading and 12 players the last place is on screen (it ends at ${Math.round(last.y + last.height)} of 720)`);
+  const h1 = await aud.locator('.end h1 span').evaluate((e) => ({ over: e.scrollHeight > e.parentElement.clientHeight + 1, size: parseFloat(getComputedStyle(e.parentElement).fontSize) }));
+  assert(!h1.over && h1.size >= 28, `and the heading fits its room (${h1.size} stage px)`);
+  if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-viewers-end.png` });
+  await ctx.close();
+}
+
+/** The next round, from a host page. */
+async function nextRoundOf(p) {
+  await p.waitForTimeout(450);
+  await p.locator('.rn button').last().click();
+  await p.waitForTimeout(450);
+  const yes = p.getByRole('button', { name: 'Yes', exact: true });
+  if (await yes.isVisible()) await yes.click();
+}
+
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
@@ -286,6 +466,7 @@ try {
   assert((await page.locator('.stage .score-area .plate.picker').innerText()).includes(spot), 'the score bar lights up the spotlit player');
 
   await crowd();
+  await viewers();
 
   assert(!dialogs.length, 'no browser dialogs' + (dialogs.length ? ': ' + dialogs.join(' | ') : ''));
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

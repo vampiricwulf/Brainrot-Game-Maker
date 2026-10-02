@@ -95,7 +95,7 @@
     padding: 0;
     border: 4px solid var(--c);
     border-radius: var(--plate-radius, 14px);
-    overflow: hidden;
+    /* (Not clipped: the ✔ of a wager in sits over the top edge. The name strip has the corners' curve itself.) */
     background: var(--tile);
     cursor: pointer;
     transition: box-shadow 0.2s, transform 0.2s;
@@ -122,8 +122,9 @@
   .name {
     flex: none;
     height: 52px;
-    /* Clear of the plate's corners (a pill's round ends would cut a long name). */
-    padding: 0 max(10px, calc(var(--plate-radius, 14px) * 0.6));
+    /* Clear of the plate's corners (a pill's round ends would cut a long name), with the name's own 4px (below). */
+    padding: 0 max(6px, calc(var(--plate-radius, 14px) * 0.6 - 4px));
+    border-radius: max(0px, calc(var(--plate-radius, 14px) - 4px)) max(0px, calc(var(--plate-radius, 14px) - 4px)) 0 0;
     font-family: var(--board-font);
     font-weight: 800;
     line-height: 1.1;
@@ -140,18 +141,22 @@
   .nm {
     display: block;
     max-width: 100%;
+    box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* The Final's "wager in": over the plate's top edge, never over its score (narrow plates have no room beside it). */
   .tick {
     position: absolute;
-    right: 8px;
-    bottom: 8px;
+    left: 50%;
+    top: -34px;
+    translate: -50% 0;
     display: grid;
     place-items: center;
     width: 46px;
     height: 46px;
+    z-index: 1;
     border-radius: 50%;
     background: #1f9d55;
     border: 3px solid #fff;
@@ -167,6 +172,10 @@
     font-weight: 800;
     color: var(--stage-text, #fff);
     text-shadow: 4px 4px 0 var(--tile-shadow, #000);
+  }
+  /* A slanted font's last letter (Bangers' T) leans past its box: room for it, or it's cut. */
+  .name .nm {
+    padding: 0 4px;
   }
   .score .nm {
     /* Room for the shadow, so the last digit isn't cut. */
