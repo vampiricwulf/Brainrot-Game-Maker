@@ -210,10 +210,16 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Only the release's own files: a failed test's debug output (e2e-debug: screenshots, trace) is never released.
       - uses: actions/download-artifact@v7
         with:
+          pattern: brainrot-game-maker*
           path: out
           merge-multiple: true
+      - uses: actions/download-artifact@v7
+        with:
+          name: release-notes
+          path: out
       - name: Publish release v${{ needs.version.outputs.version }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -235,6 +241,16 @@ jobs:
           if gh release view "v$VERSION" --repo "$REPO" > /dev/null 2>&1; then
             # A run again on a released commit: its files are replaced.
             gh release upload "v$VERSION" out/* --repo "$REPO" --clobber
+            # A release left as a draft by a run that failed while uploading (gh makes a draft, uploads, then
+            # publishes): finished now, as this commit's release.
+            if [ "$(gh release view "v$VERSION" --repo "$REPO" --json isDraft -q .isDraft)" = "true" ]; then
+              # (Files that run uploaded which aren't the release's own are taken off first.)
+              for asset in $(gh release view "v$VERSION" --repo "$REPO" --json assets -q '.assets[].name'); do
+                [ -e "out/$asset" ] || gh release delete-asset "v$VERSION" "$asset" --repo "$REPO" --yes
+              done
+              gh release edit "v$VERSION" --repo "$REPO" --draft=false --latest --target "$SHA" \
+                --title "Brainrot Games Maker $VERSION" --notes-file notes.md
+            fi
           else
             gh release create "v$VERSION" out/* --repo "$REPO" --target "$SHA" --latest \
               --title "Brainrot Games Maker $VERSION" --notes-file notes.md

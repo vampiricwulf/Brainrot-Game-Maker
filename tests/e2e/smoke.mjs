@@ -1306,11 +1306,19 @@ await page.getByRole('button', { name: '👥 Players' }).click();
 // A row dragged by its grip goes above another (and with it the player's number key), and back.
 const playerRows = page.locator('.modal .player');
 const chipNames = () => page.locator('.panel .p .sel').allInnerTexts();
+// (Measured once the window has finished opening, with both rows in sight: a row measured mid-animation, or before the
+// drag scrolls, sends the drop somewhere else.)
+await playerRows.nth(2).waitFor();
+await page.waitForFunction(() => (document.querySelector('.modal')?.getAnimations({ subtree: true }) ?? []).every((a) => a.playState !== 'running'));
+await playerRows.nth(2).evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
+await playerRows.nth(0).evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
 const firstRow = await playerRows.nth(0).boundingBox();
 await dragBy(page, playerRows.nth(2).locator('.grip'), { x: firstRow.x + 40, y: firstRow.y + 3 });
+await page.waitForFunction(() => document.querySelector('.panel .p .sel')?.textContent?.includes('Player 3'), null, { timeout: 3000 }).catch(() => {});
 assert((await chipNames())[0].includes('Player 3'), 'a row dragged in 👥 Players reorders the players (and their number keys)');
 const lastRow = await playerRows.nth(2).boundingBox();
 await dragBy(page, playerRows.nth(0).locator('.grip'), { x: lastRow.x + 40, y: lastRow.y + lastRow.height - 3 });
+await page.waitForFunction(() => document.querySelectorAll('.panel .p .sel')[2]?.textContent?.includes('Player 3'), null, { timeout: 3000 }).catch(() => {});
 assert((await chipNames())[2].includes('Player 3'), 'and dragged below the last row, back at the end');
 await page.getByRole('button', { name: 'Remove Player 3' }).click();
 const removeAsk = page.locator('.modal .ask');
