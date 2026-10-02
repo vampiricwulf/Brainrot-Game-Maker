@@ -23,6 +23,17 @@ in plain words for the people who make and host games. Anything committed but no
   color, a slider or a whole section can go back to the theme it came from ("↺ Reset to Party night", "↺ Reset Colors
   to Classic"), and colors copy and paste between settings. **Shift+F10** or the menu key opens the same menu on the
   card or setting in focus; the **⋯** buttons stay for touch.
+- **Board games: ✎ Edit board while you play** (the button above the round's controls, or `E`). Add a space (＋ Space
+  then a click, or Ctrl+click or double-click the board), drag spaces to move them, Shift+click a space to connect the
+  picked one to it (or 🔗 Connect to…), click a link and press `Delete` to disconnect it (or make it both ways, or
+  reverse it), and delete a space with `Delete` or 🗑: players on it go to the space before it, and the path closes up
+  over it (the host is told who moved where). The picked space's name, color, Secret, Start and its buttons (⚙
+  Buttons…, the editor's own fields) can be changed there too, and right-clicking the stage has the same edits. Each
+  change is one undo step with a name ("Added space “Space 13”", "Connected Space 5 → Bonus", "Deleted space “Nap
+  time” (Ann moved to Space 7)"). The changes are made to this game only; **💾 Keep in game** copies the board into the
+  game in the editor, as the RPG's does. The audience window follows as you edit, without the dashed marks the host
+  sees (in a single window, viewers see them: the panel says so). Rolling and moving wait while editing; `Esc` or ✓ Done
+  editing goes back to playing.
 - **My themes**: on the 🎨 Theme page, **💾 Save as my theme…** keeps the game's look on this computer under a name
   (as many as you like; the one "my theme" saved before shows there as "My theme"). They sit under the presets, marked
   ★, and a click puts one on the game (one step: Ctrl+Z takes it back). Each one's **⋯** menu renames it, updates it
@@ -190,6 +201,9 @@ in plain words for the people who make and host games. Anything committed but no
   Board section's pictures line up and both have the same ✕ to remove them, with no gaps between its settings; and the
   long notes are shorter. **💾 Save as my theme…** is now **💾 Save as new theme…**, and the saved theme becomes the
   game's theme.
+- **Board games: the host panel's main button follows the turn**: 🎲 Roll (`D`), then ▶ Move (`Enter`), then Next
+  turn ▶ (`N`). **◀ Previous turn** (`Shift+N`) is right beside it in the same place, no longer up in the corner under
+  the timer, both under the stage and in the column beside it. The round's own Roll and Move buttons are quiet ones now.
 - **Host panel, buzzer mode**: the buzzers' own things (how they stand, "🔔 Al (Red team) buzzed", ⏭ Skip, → Next in
   line, the buzz order and ↺ Reset buzzers) have a row of their own above the Amount row, always the same height. The
   panel (and, in a single window, the stage viewers see) no longer changes size as people buzz, miss or tie, or as the

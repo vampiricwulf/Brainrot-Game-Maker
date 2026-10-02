@@ -758,7 +758,13 @@
     {#if next}
       {@const n = next}
       <div class="next">
-        <!-- The one main button (quiet while someone answers: ＋ Award is the main one then; and while the strip asks). -->
+        <!-- Its quiet companions first (◀ Previous turn), then the one main button (quiet while someone answers: ＋ Award is
+             the main one then; and while the strip asks). -->
+        {#each n.also ?? [] as a (a.label)}
+          <button class="also" data-next-also disabled={a.disabled} onclick={() => a.run()} title={a.title ?? a.key}>
+            {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
+          </button>
+        {/each}
         <button class:primary={!answering && !ask} data-next disabled={n.disabled} onclick={() => n.run()} title={n.title ?? n.key}>
           {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
         </button>
@@ -920,6 +926,9 @@
   .next {
     display: flex;
     justify-content: flex-end;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 6px;
   }
   kbd {
     font: 11px/1 ui-monospace, monospace;

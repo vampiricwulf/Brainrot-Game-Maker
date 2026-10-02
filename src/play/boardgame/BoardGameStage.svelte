@@ -20,6 +20,8 @@
   import { dropHover, dropTarget } from '../dragdrop.svelte';
   import { boardNow } from './bgops';
   import { aboveStrip } from '../stagefit';
+  import BoardEditLayer from './BoardEditLayer.svelte';
+  import { boardEdit } from './boardedit.svelte';
 
   let {
     game,
@@ -151,6 +153,9 @@
     if (id) onspace?.(id);
   }
 
+  /** ✎ Edit board: the host's copy takes the edits (the audience window's never does). */
+  const editing = $derived(boardEdit.on && !!onspace);
+
   const lit = $derived(dropHover.at?.startsWith('space:') ? dropHover.at.slice(6) : null);
 </script>
 
@@ -197,6 +202,7 @@
             </div>
           {/if}
         {/each}
+        {#if editing}<BoardEditLayer {game} {session} {round} />{/if}
       </div>
     {/if}
     </div>

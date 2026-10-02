@@ -61,6 +61,7 @@
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, override } from '../lib/rpg';
   import { boardNow, moveNow, rollMover, runSpace, sendNow, turnNow } from './boardgame/bgops';
+  import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
   import { dragDone, dragGhost, dropHover, itemDrag } from './dragdrop.svelte';
@@ -359,6 +360,8 @@
     rpgSelObjects = [];
     bgSpace = null;
     untrack(() => {
+      // ✎ Edit board is for the board on screen: another round starts without it.
+      setEditing(false);
       const k = app.live.overlay?.kind;
       if (k === 'shop' || k === 'sheet' || k === 'popup' || k === 'dice' || k === 'wheel') app.live.overlay = null;
     });
@@ -384,6 +387,9 @@
       if (selected.some((id) => !here.has(id))) selected = selected.filter((id) => here.has(id));
     });
   });
+
+  // ✎ Edit board ends with the game.
+  onMount(() => () => setEditing(false));
 
   onMount(() => {
     registerGameFonts(game);
@@ -2013,6 +2019,33 @@
     return true;
   }
 
+  /**
+   * ✎ Edit board's keys: E starts (and ends) it; while editing, Esc lets go of what's picked (then ends it), Delete
+   * deletes the picked space or link, F2 renames, and the round's moves (D, Enter, N) wait. True when the key was used.
+   */
+  function boardEditKey(e: KeyboardEvent, k: string): boolean {
+    if (!boardEdit.on) {
+      hideControls = false;
+      setEditing(true);
+      return true;
+    }
+    if (k === 'e' && !e.shiftKey) setEditing(false);
+    else if (k === 'escape') {
+      if (boardEdit.sel || boardEdit.link || boardEdit.adding || boardEdit.connecting) {
+        if (boardEdit.adding || boardEdit.connecting) [boardEdit.adding, boardEdit.connecting] = [false, false];
+        else editIdle();
+      } else setEditing(false);
+    } else if (k === 'delete' || k === 'backspace') {
+      if (boardEdit.sel) editDelete(game, session, boardEdit.sel);
+      else if (boardEdit.link) editDisconnect(game, session, boardEdit.link);
+    } else if (k === 'f2') {
+      hideControls = false;
+      void tick().then(() => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select());
+    } else if (k === 'd' || k === 'enter' || k === 'n') toast('Editing the board: press Esc (or ✓ Done editing) to play on');
+    else return false;
+    return true;
+  }
+
   // What Tab (or Shift+Tab) moved the focus to. (Not :focus-visible: browsers show a clicked button's focus too, once any
   // key is pressed.) A Tab that moved nothing here (out to the browser's address bar) doesn't count for the next click.
   let tabbing = false;
@@ -2064,6 +2097,12 @@
       }
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // Board games: E edits the board; while it's edited, its own keys (and none of the round's moves).
+    if (session.phase === 'boardgame' && (boardEdit.on || (k === 'e' && !e.shiftKey)) && boardEditKey(e, k)) {
+      e.preventDefault();
+      return;
+    }
 
     // RPG rounds: the full map (J), regroup (G) and the map on screen for viewers (V; M mutes the media, as anywhere).
     if (session.phase === 'rpg' && !e.shiftKey && ['g', 'v', 'j'].includes(k)) {
