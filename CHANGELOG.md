@@ -430,6 +430,16 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **Pop-ups are always whole on screen and on top**: the 📱 phones list could run off the top or the bottom of the
+  window, or be cut off by the host panel as if hidden under the stage (when the window was resized, or the panel
+  scrolled), and beside the stage (RPG and board-game rounds) it hung over the stage viewers see. It now drops from its
+  chip inside the host panel in a single window (scrolling if the list is long), over the stage's preview only with an
+  audience window, and follows the chip as the window or the panel changes.
+- **The same for every other pop-up**: 🎲 Dice / 🎡 Wheel / 🏁 Who goes first in the host panel; in the slide editor
+  ◼ Shape ▾, Background ▾, 🌐 Link and the 🖼 Image / 🎬 Video / 🔊 Audio pickers (and every other "choose a
+  picture / sound" picker in the editor and on the pre-game screen); and the ⋯ More, ＋ Add and right-click menus.
+  Near the window's edge they move in, flip above their button when there's more room there, and scroll inside on a
+  short window, instead of running off screen or behind the panels.
 - **Exit and closing the audience window no longer squash the host panel**: their question pushed the panel's
   buttons over each other; it's now a strip of its own.
 - **📱 The phones list opens in sight in a single window**: it opened upward, hidden behind the stage. It opens

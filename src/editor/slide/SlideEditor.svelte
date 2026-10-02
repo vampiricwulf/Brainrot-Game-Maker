@@ -23,6 +23,7 @@
 <script lang="ts">
   import Tips from '../Tips.svelte';
   import { pathShape } from '../../lib/draw';
+  import { anchored } from '../../lib/anchored';
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
@@ -824,7 +825,7 @@
         </button>
         {#if shapeMenu}
           <div class="backdrop" onclick={() => (shapeMenu = false)} role="presentation"></div>
-          <div class="menu" use:dropdown={() => (shapeMenu = false)}>
+          <div class="menu" use:anchored use:dropdown={() => (shapeMenu = false)}>
             <button onclick={() => addShape('rect')}>▭ Rectangle</button>
             <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
             <button onclick={() => addShape('line')}>― Line</button>
@@ -844,6 +845,7 @@
           <!-- Stays open while you click around the slide (a download keeps going); ✕ or Esc closes it. -->
           <div
             class="linkbox"
+            use:anchored
             role="dialog"
             aria-label="Add from a link"
             tabindex="-1"
@@ -886,6 +888,7 @@
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
           <div
             class="menu bg-menu"
+            use:anchored
             role="group"
             aria-label="Background"
             onkeydown={(e) => {
@@ -1154,12 +1157,10 @@
   .pop {
     position: relative;
   }
+  /* The Shape ▾ and Background ▾ menus and the 🌐 Link box: placed by anchored.ts (fixed to the window, over
+     everything, scrolling inside on a short window). */
   .menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 50;
-    margin-top: 4px;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -1194,12 +1195,8 @@
     grid-area: 1 / 1;
   }
   .linkbox {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 60;
-    margin-top: 4px;
     width: 360px;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: 6px;

@@ -1,22 +1,34 @@
 <!-- The open right-click menu (see menustate.svelte.ts): kept on screen, closed by a click elsewhere, Esc or scrolling. -->
 <script lang="ts">
   import { tick } from 'svelte';
+  import { placePopup } from './anchored';
   import { closeMenu, contextMenu } from './menustate.svelte';
 
   let box = $state<HTMLDivElement>();
   /** "Ctrl+" reads "⌘" on a Mac. */
   const mac = /Mac|iPhone|iPad/.test(navigator.platform);
   const keysText = (k: string) => (mac ? k.replaceAll('Ctrl+', '⌘') : k);
-  let pos = $state({ x: 0, y: 0 });
+  let pos = $state<{ x: number; y: number; maxHeight?: number }>({ x: 0, y: 0 });
 
   $effect(() => {
     const m = contextMenu.open;
     if (!m) return;
-    pos = { x: m.x, y: m.y };
+    // (Measured at the window's left first: by the right edge it would wrap narrower.)
+    pos = { x: 0, y: m.y };
     tick().then(() => {
       if (!box) return;
-      const r = box.getBoundingClientRect();
-      pos = { x: Math.max(4, Math.min(m.x, innerWidth - r.width - 4)), y: Math.max(4, Math.min(m.y, innerHeight - r.height - 4)) };
+      // Under the pointer, or a dropped menu under its button; over it when there's more room above (see anchored.ts),
+      // moved in from the window's sides, and scrolling inside on a short window.
+      const r = m.from?.getBoundingClientRect();
+      const p = placePopup({
+        anchor: r ?? { left: m.x, top: m.y, right: m.x, bottom: m.y },
+        width: box.offsetWidth,
+        height: box.scrollHeight + box.offsetHeight - box.clientHeight,
+        view: { width: innerWidth, height: innerHeight },
+        gap: r ? 2 : 0,
+        margin: 4,
+      });
+      pos = { x: p.left, y: p.top, maxHeight: p.maxHeight };
       box.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     });
   });
@@ -65,7 +77,7 @@
 />
 
 {#if contextMenu.open}
-  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" oncontextmenu={(e) => e.preventDefault()}>
+  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" style:max-height={pos.maxHeight === undefined ? undefined : `${pos.maxHeight}px`} oncontextmenu={(e) => e.preventDefault()}>
     {#each contextMenu.open.items as item, i (i)}
       {#if 'sep' in item}
         <div class="sep" role="separator"></div>
@@ -87,6 +99,7 @@
     z-index: var(--z-menu);
     min-width: 190px;
     max-width: 320px;
+    overflow-y: auto;
     padding: 4px;
     display: flex;
     flex-direction: column;
