@@ -137,6 +137,8 @@ export interface Live {
   pregame?: boolean;
   /** When the show starts (ms timestamp): the "Starting soon" card counts down to it. */
   soonAt?: number;
+  /** The pre-game screen is a rematch's: the "Starting soon" card says "Rematch!". */
+  rematch?: boolean;
   /**
    * Buzzer mode during a clue: open or not, who is answering, who already missed it. Outside buzzer mode `answering` is
    * the one player selected during a clue. Viewers see "🔔 Ann is answering".

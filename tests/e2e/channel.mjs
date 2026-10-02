@@ -84,23 +84,59 @@ try {
   await notice.waitFor({ state: 'detached', timeout: 3000 });
   assert(true, 'and the notice goes once the mouse is still, off the stream');
 
-  // A host page that opened its audience window, then reloaded: it no longer holds that window, and Exit still closes it.
+  // A host page that opened its audience window, then reloaded: Resume preselects the display used last, finds that
+  // window again (no new one) and asks it whether it may play sound, instead of asking for a click again.
   const host2 = await context.newPage();
   host2.on('pageerror', (e) => errors.push('[host2] ' + e.message));
   await host2.goto(base);
   await host2.getByRole('button', { name: 'Resume game' }).click();
   const [aud2] = await Promise.all([host2.waitForEvent('popup'), host2.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click()]);
+  aud2.on('pageerror', (e) => errors.push('[audience 2] ' + e.message));
   await aud2.locator('.board').waitFor();
+  const clickOnce = host2.getByText('Click the audience window once');
+  await clickOnce.waitFor();
+  await aud2.mouse.click(400, 300);
+  await clickOnce.waitFor({ state: 'detached' });
+  await aud2.locator('.activate').waitFor({ state: 'detached' });
+  assert(true, 'the host clicks the audience window once: it may play sound');
   await host2.reload();
   await host2.getByRole('button', { name: 'Resume game' }).click();
-  await host2.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  const picked = host2.locator('.mode-ask .mode.on');
+  await picked.waitFor();
+  assert((await picked.innerText()).includes('Separate audience window'), 'after a reload, Resume preselects the display used last (the audience window)');
+  await host2.waitForFunction(() => document.activeElement?.classList.contains('on'));
+  assert(true, 'with the focus on it');
+  let popups = 0;
+  host2.on('popup', () => popups++);
+  await host2.keyboard.press('Enter');
   await host2.locator('.panel').waitFor();
-  assert(!aud2.isClosed(), 'after a host reload the audience window it opened is still up');
+  await host2.waitForTimeout(1200);
+  assert(popups === 0 && !aud2.isClosed(), 'Enter resumes in it: the audience window from before the reload is found again (no second window)');
+  assert((await aud2.locator('.board').count()) === 1, 'and shows the game');
+  assert((await clickOnce.count()) === 0, 'it says it may play sound: no false "Click the audience window once"');
+
+  // Leaving the game keeps the audience window (OBS's capture source) up, on the "Starting soon" card.
   await host2.getByRole('button', { name: '🚪 Exit' }).click();
   await host2.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
   await host2.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await aud2.locator('.soon-text').waitFor();
+  assert(!aud2.isClosed() && (await aud2.locator('.board').count()) === 0, 'Keep & leave: the audience window stays up, on the Starting soon card');
+  const audItem = host2.locator('.status-bar [data-audience-open]');
+  await audItem.waitFor();
+  assert(true, 'the bar over the editor says the audience window is up');
+  // ▶ Play and ◀ Back to editor: still there.
+  await host2.getByRole('button', { name: '▶ Play' }).click();
+  await host2.getByRole('button', { name: '◀ Back to editor' }).click();
+  await audItem.waitFor();
+  await host2.waitForTimeout(300);
+  assert(!aud2.isClosed() && (await aud2.locator('.soon-text').count()) === 1, '◀ Back to editor keeps it too');
+  // Its ✕ (asked first) closes it.
+  await audItem.getByRole('button', { name: 'Close the audience window' }).click();
+  await host2.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();
   if (!aud2.isClosed()) await aud2.waitForEvent('close', { timeout: 3000 });
-  assert(aud2.isClosed(), 'and Exit closes it, though the reloaded host page has no handle on it');
+  assert(aud2.isClosed(), 'and the bar’s ✕ closes it');
+  await host2.waitForTimeout(900);
+  assert((await host2.locator('.status-bar [data-audience-lost]').count()) === 0, 'closed by the host: no "Audience window closed" warning');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Channel sync test passed');
 } finally {

@@ -20,8 +20,9 @@
     type SavedPlay,
     type SavedRoom,
   } from './lib/persist';
-  import { buzzerOn, closeRoom, endRoom, inRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
+  import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
   import { setupState } from './lib/buzz';
+  import { joinUrl } from './lib/buzzproto';
   import { openPack } from './lib/pack';
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
@@ -33,11 +34,12 @@
   import { blankName, isBoard, migrateGame, newId } from './lib/model';
   import { nextFreeColor } from './lib/colors';
   import { checkForUpdate } from './lib/update.svelte';
-  import { audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow } from './lib/sync.svelte';
+  import { audience, audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow, pushGame, pushLive } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
+  import { sameGame } from './lib/samegame';
   import Editor from './editor/Editor.svelte';
   import ContextMenu from './lib/ContextMenu.svelte';
   import AskDialog from './lib/AskDialog.svelte';
@@ -45,7 +47,7 @@
   import { autosave } from './lib/autosave';
   import { inTauri } from './lib/platform';
   import { flushOnClose, whileWriting } from './lib/desktop.svelte';
-  import { prefs } from './lib/prefs.svelte';
+  import { prefs, savePrefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
   import {
     arriving,
@@ -166,21 +168,17 @@
   });
 
   /**
-   * Phone buzzers: a room the pre-game screen had open before this reload. On the pre-game screen: back to it, in the
-   * same room with the same players. Back in the editor (the room left open): the room waits for ▶ Play. Another game's
-   * room is closed.
+   * Phone buzzers: a room left open before this reload. On the pre-game screen: back to it, in the same room with the
+   * same players. Back in the editor (the room left open, or kept with a game to resume): the room waits for ▶ Play or
+   * Resume. It belongs to the stream, not to one game: with another game in the editor it stays open too (▶ Play offers
+   * to keep it).
    */
   async function restoreRoom(): Promise<void> {
     const r = await loadRoom();
     if (!r?.remote?.code || !Array.isArray(r.players)) return;
     // The room itself says Buzzer mode was on: a reload right after turning it on can come back before the editor's
     // copy of that setting was written, and the room must not close for it.
-    if (r.gameId !== app.game.id) {
-      endRoom(r.remote);
-      await clearRoom();
-      return;
-    }
-    if (r.screen === 'pregame' && app.screen === 'editor') {
+    if (r.screen === 'pregame' && app.screen === 'editor' && r.gameId === app.game.id) {
       applyRoomSettings(app.game.settings, r);
       app.playGame = clone(app.game);
       const s = newSession(app.playGame);
@@ -203,14 +201,17 @@
     sendHostState(setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked));
   }
 
-  /** ✕ Close the room (the banner in the editor): phones are told the game is over. */
-  async function closeKeptRoom(): Promise<void> {
+  /** ✕ Close the room (the bar over the editor): phones are told the game is over. */
+  async function closeKeptRoom(quiet = false): Promise<void> {
     const r = kept.room;
     kept.room = null;
-    if (r && inRoom(r.remote.code)) closeRoom();
-    else if (r) endRoom(r.remote);
+    // (The room this window is in is closed through its link; one an earlier page left open, through the server.)
+    if (r) endRoom(r.remote);
+    // A game kept to resume forgets it too (Resume would try to get back into a closed room).
+    const saved = app.resumable;
+    if (r && saved?.session.remote?.code === r.remote.code) app.resumable = { ...saved, session: { ...saved.session, remote: null } };
     await clearRoom();
-    toast('Buzzer room closed');
+    if (!quiet) toast('Buzzer room closed');
   }
 
   /**
@@ -228,6 +229,8 @@
     // The phones stay in the room: the tab taking over picks it up again.
     if (kept.room || (app.screen === 'play' && app.session?.remote)) leaveRoom();
     kept.room = null;
+    // The audience window goes with this tab (the one taking over opens its own).
+    closeAudienceWindow();
     if (app.screen !== 'play') return;
     leavePlay();
     app.resumable = null;
@@ -325,6 +328,8 @@
     watching = game;
     watch.subscribe(saveEditorSoon);
     watch.subscribe(checkSoon);
+    watch.subscribe(compareSoon);
+    compareSoon();
     saveEditorSoon();
     startHistory(game, watch);
     // Changes count from the game as it arrives, so an unchanged game is never autosaved.
@@ -435,30 +440,48 @@
     // (A game kept to resume isn't asked about here: the pre-game screen offers ▶ Resume it, and Start replaces it.)
     app.test = null;
     backTo = null;
+    // The room left open in the editor belongs to the stream: another game asks first whether to keep it (and its
+    // players), the safe answer (Enter, Esc) keeping it.
+    const open = kept.room;
+    if (open && open.gameId !== app.game.id && !(await keepRoomFor(open))) await closeKeptRoom(true);
     mark('played', 'Played');
     saveEditorSoon.flush();
     app.playGame = clone(app.game);
     app.session = newSession(app.playGame);
-    // The room left open going back to the editor: the same one again (phones stay joined), if it's this game's.
+    // The same room again (phones stay joined).
     const room = kept.room;
     kept.room = null;
     // (A kept room means Buzzer mode is on: turning it off closes the room. The editor's copy of the setting may not
     // say so yet after a quick reload.)
-    if (room && room.gameId === app.game.id) {
+    if (room) {
       app.session.remote = room.remote;
       app.playGame.settings.buzzer = true;
       // The players the phones joined as (the Play screen sets the players; a quick reload can leave the editor's copy
-      // of them behind).
-      if (Array.isArray(room.players) && room.players.length) app.session.players = room.players;
-    } else if (room) {
-      endRoom(room.remote);
-      void clearRoom();
+      // of them behind). Another game's room brings its players along, seats and all, at 0.
+      const same = room.gameId === app.game.id;
+      if (Array.isArray(room.players) && room.players.length) app.session.players = room.players.map((p) => (same ? p : { ...p, startScore: 0 }));
     }
     app.live = newLive();
     app.pregame = true;
     // An editor toast ("Added a sample game…") would cover the Start game button.
     app.toast = '';
     app.screen = 'play';
+  }
+
+  /**
+   * ▶ Play with another game's room open: keep it (true) and its players for this game, or close it. Asked with the
+   * keeping answer focused (Enter and Esc keep it). A copy with no buzzer server can't use it: it's closed.
+   */
+  async function keepRoomFor(room: SavedRoom): Promise<boolean> {
+    if (!buzzerBase()) return false;
+    const code = room.remote.code;
+    const n = Array.isArray(room.players) ? room.players.length : 0;
+    const players = n ? ` and its ${n} player${n === 1 ? '' : 's'}` : '';
+    const close = await ask(
+      `The phones stay joined for “${app.game.title.trim() || 'this game'}” and Buzzer mode stays on, so nobody has to join again. Closing it tells the phones the game is over (Start the room makes a new code).`,
+      { title: `Keep buzzer room ${code}${players}?`, cancel: n ? 'Keep room & players' : 'Keep the room', ok: 'Close it, start fresh', danger: true },
+    );
+    return !close && kept.room === room;
   }
 
   /**
@@ -502,6 +525,22 @@
    * capture), as before the game. A finished one shows its results at once.
    */
   let resuming = $state<{ withEdits: boolean } | null>(null);
+
+  /**
+   * The editor's game differs from the game kept to resume (it was edited since): only then is "Resume with my edits"
+   * offered. Worked out a moment after changes stop, from the watcher's plain copy.
+   */
+  let editsDiffer = $state(false);
+  const compareSoon = debounce(() => {
+    const saved = app.resumable;
+    if (!saved || saved.game.id !== app.game.id) return void (editsDiffer = false);
+    const now = watch && watching === app.game ? watch.value() : $state.snapshot(app.game);
+    editsDiffer = !sameGame(now, saved.game);
+  }, 300);
+  $effect(() => {
+    void app.resumable;
+    untrack(() => compareSoon());
+  });
   function askResume(withEdits = false): void {
     if (app.resumable?.session.phase === 'end') void resume(withEdits);
     else resuming = { withEdits };
@@ -513,7 +552,12 @@
     const withEdits = !!resuming?.withEdits;
     resuming = null;
     if (!saved) return;
-    if (audienceWindow)
+    // (Remembered for next time, like the pre-game screen's 🖥 Display.)
+    prefs.display = audienceWindow ? 'audience' : 'single';
+    savePrefs();
+    // One window: an audience window still up from before (a reload of this page no longer holds it) closes.
+    if (!audienceWindow) closeAudienceWindow();
+    else
       void openAudienceWindow(audienceTitle(saved.game)).then((ok) => {
         if (!ok)
           toast(
@@ -540,11 +584,22 @@
       game = clone(app.game);
       rebaseSession(saved.session, saved.game, game);
     }
-    // From the pre-game screen with its buzzer room open: the phones stay in it for the resumed game (when that one
-    // plays with phone buzzers and has no room of its own).
-    if (room) {
-      if (buzzerOn(game.settings) && !saved.session.remote) saved.session.remote = room;
-      else endRoom(room);
+    // The buzzer room open now (the pre-game screen's, or the one left open in the editor): the phones stay in it for
+    // the resumed game, when that one plays with phone buzzers (a room of its own it had before is closed). A finished
+    // game's results (View results) leave the room kept for the next game.
+    const open = room ?? kept.room?.remote ?? null;
+    if (open) {
+      const own = saved.session.remote;
+      if (saved.session.phase === 'end') {
+        if (own?.code === open.code) saved.session.remote = null;
+      } else if (buzzerOn(game.settings)) {
+        if (own && own.code !== open.code) endRoom(own);
+        saved.session.remote = own?.code === open.code ? { ...open, armId: Math.max(own.armId ?? 0, open.armId ?? 0) } : open;
+        kept.room = null;
+        void clearRoom();
+      } else if (room) endRoom(room);
+      // (A room kept in the editor that this game doesn't use stays kept: the game mustn't close it on its way in.)
+      else if (own?.code === open.code) saved.session.remote = null;
     }
     app.test = null;
     await loadGameMedia(game);
@@ -576,8 +631,8 @@
   }
 
   function leavePlay(): void {
-    // The windows on stream close with the game (the audience window even after a reload of this page).
-    closeAudienceWindow();
+    // The audience window stays up (OBS keeps its capture source between games): in the editor it shows the "Starting
+    // soon" card. Only its ✕ (or closing it) closes it. The scores window belongs to the game.
     closeScoresWindow();
     app.screen = 'editor';
     app.playGame = null;
@@ -614,6 +669,56 @@
         };
     }
     leavePlay();
+  }
+
+  /**
+   * Game over › ▶ Next game…: the results stay viewable from the editor (like a rematch's), and the editor opens
+   * Open… / Recent games for the stream's next game. Play left the buzzer room open; the audience window stays up.
+   */
+  let openOnArrival = $state(false);
+  function nextGame(): void {
+    const { playGame, session } = app;
+    savePlaySoon.flush();
+    if (playGame && session) app.resumable = { game: $state.snapshot(playGame), session: $state.snapshot(session), savedAt: Date.now() };
+    resumeHidden = false;
+    openOnArrival = !playerOnly;
+    leavePlay();
+  }
+
+  // In the editor, an audience window left open shows the "Starting soon" card of the game in the editor, with the
+  // buzzer room's code when one is open (viewers can join for the next game). A moment after the title changes, and at
+  // once when the room or the game does.
+  function soonCard(): void {
+    if (app.screen !== 'editor' || !audience.open || !mayPlay()) return;
+    const r = kept.room?.remote;
+    pushGame(watch && watching === app.game ? watch.value() : $state.snapshot(app.game));
+    pushLive({ ...newLive(), pregame: true, room: r?.code && r.base ? { code: r.code, link: joinUrl(r.base, r.code) } : null });
+  }
+  const soonCardLater = debounce(soonCard, 400);
+  $effect(() => {
+    if (!loaded || app.screen !== 'editor' || !audience.open) return;
+    void app.game;
+    void kept.room?.remote.code;
+    untrack(soonCard);
+  });
+  $effect(() => {
+    void app.game.title;
+    untrack(() => loaded && app.screen === 'editor' && audience.open && soonCardLater());
+  });
+
+  /** The bar's ✕ for the audience window (OBS's capture goes black): asked first. */
+  async function closeAudience(): Promise<void> {
+    if (await ask('Close the audience window? Your stream capture goes black until it opens again.', { ok: 'Close it', cancel: 'Keep it', danger: true }))
+      closeAudienceWindow();
+  }
+  async function reopenAudience(): Promise<void> {
+    if (!(await openAudienceWindow(audienceTitle(app.game))))
+      toast(inTauri() ? "Couldn't open the audience window." : 'The browser blocked the popup. Allow popups for this file and try again.', 5000);
+  }
+
+  /** Focus the remembered display's card, so Enter resumes in it. */
+  function focusPicked(node: HTMLElement): void {
+    requestAnimationFrame(() => node.querySelector<HTMLElement>('.mode.on')?.focus());
   }
 </script>
 
@@ -653,55 +758,90 @@
     </div>
   </div>
 {:else if playerOnly && app.screen === 'editor'}
-  {@render roomBar()}
+  {@render statusBar(false)}
   <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
 {:else if app.screen === 'editor'}
-  {@render roomBar()}
-  {#if app.resumable && (!resumeHidden || resuming)}
-    {@const saved = app.resumable}
-    {@const ended = saved.session.phase === 'end'}
-    <!-- One line, ✕ to put it away (▶ Play offers to resume too). -->
-    <div class="resume kept" class:asking={!!resuming} role="region" aria-label={ended ? 'Finished game' : 'Game in progress'}>
-      <span class="what" title="Saved {savedTime(saved.savedAt)}{ended ? '' : ". Edits you make here don't change it unless you resume with them."}">
-        {ended ? '🏁 Finished game:' : '⏸ Kept to resume:'} <b>{saved.game.title}</b>
-      </span>
-      {#if resuming}
-        {@render modeAsk()}
-      {:else}
-        <button class="small primary" onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
-        {#if !ended && saved.game.id === app.game.id}
-          <button class="small" onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
-            Resume with my edits
-          </button>
-        {/if}
-        <button class="small ghost" onclick={discardResume}>Discard</button>
-        <button class="small ghost x" onclick={() => (resumeHidden = true)} aria-label="Hide this line" title="Hide this line (the game stays kept: ▶ Play offers to resume it)">✕</button>
-      {/if}
+  <!-- The editor fills the window (the page itself never scrolls): the status bar stays on top of it. -->
+  <div class="editor-screen">
+    {@render statusBar(true)}
+    <div class="editor-slot">
+      <Editor onplay={startPlay} ontest={testRound} startRound={backTo} {checklist} startOpen={openOnArrival} onopened={() => (openOnArrival = false)} />
     </div>
-  {/if}
-  <Editor onplay={startPlay} ontest={testRound} startRound={backTo} {checklist} />
+  </div>
 {:else}
   {#key playKey}
-    <Play onexit={exitPlay} oncancel={leavePlay} onresume={(withEdits, room) => void resume(withEdits, room)} gameRev={playRev} gameCopy={playCopy} />
+    <Play onexit={exitPlay} oncancel={leavePlay} onresume={(withEdits, room) => void resume(withEdits, room)} onnextgame={nextGame} gameRev={playRev} gameCopy={playCopy} />
   {/key}
 {/if}
 
 {#snippet modeAsk()}
-  <div class="mode-ask" role="group" aria-label="How is the game shown?">
-    <span><b>How is it shown?</b>{#if app.resumable?.cover} <span class="muted small">It comes back with the screen covered (⏸ Cover).</span>{/if}</span>
-    <ModeCards onsingle={() => resumeIn(false)} onaudience={() => resumeIn(true)} />
+  <div class="mode-ask" role="group" aria-label="How is the game shown?" use:focusPicked>
+    <span>
+      <b>How is it shown?</b>
+      <span class="muted small">Enter picks the one you used last.</span>
+      {#if app.resumable?.cover} <span class="muted small">It comes back with the screen covered (⏸ Cover).</span>{/if}
+    </span>
+    <ModeCards dual={audience.open || prefs.display === 'audience'} onsingle={() => resumeIn(false)} onaudience={() => resumeIn(true)} />
     <button class="ghost" onclick={() => (resuming = null)}>Cancel</button>
   </div>
 {/snippet}
 
-{#snippet roomBar()}
-  {#if kept.room}
-    <div class="resume room-bar" role="status">
-      <span>
-        📱 The buzzer room <b>{kept.room.remote.code}</b> is still open: phones are told you're setting up.
-        <span class="muted small">▶ Play goes back into it.</span>
-      </span>
-      <button class="ghost" onclick={closeKeptRoom}>✕ Close the room</button>
+<!--
+  One compact line over the editor for what's still going on between games: the buzzer room left open, the game kept to
+  resume (or a finished one's results) and the audience window. `resume`: with the kept game (the player-only start
+  screen shows its own).
+-->
+{#snippet statusBar(resume: boolean)}
+  {@const saved = resume && app.resumable && (!resumeHidden || resuming) ? app.resumable : null}
+  {@const room = kept.room}
+  {@const showAudience = resume && (audience.open || audience.lost)}
+  {#if room || saved || showAudience}
+    <div class="status-bar" class:asking={!!resuming && !!saved} role="region" aria-label="Status">
+      {#if room}
+        {@const n = Array.isArray(room.players) ? room.players.length : 0}
+        {@const other = room.gameId !== app.game.id}
+        <span class="item room-bar" role="status">
+          <span class="what" title="Phones in the room are told you're setting up">
+            📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} player${n === 1 ? '' : 's'})` : ''}.
+            <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : '▶ Play goes back into it.'}</span>
+          </span>
+          <button class="small ghost" onclick={() => closeKeptRoom()}>✕ Close the room</button>
+        </span>
+      {/if}
+      {#if saved}
+        {@const ended = saved.session.phase === 'end'}
+        <span class="item kept" role="group" aria-label={ended ? 'Finished game' : 'Game in progress'}>
+          <span class="what" title="Saved {savedTime(saved.savedAt)}{ended ? '' : ". Edits you make here don't change it unless you resume with them."}">
+            {ended ? '🏁 Finished game:' : '⏸ Kept to resume:'} <b>{saved.game.title}</b>
+          </span>
+          {#if !resuming}
+            <button class="small primary" onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
+            {#if !ended && saved.game.id === app.game.id && editsDiffer}
+              <button class="small" onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+                Resume with my edits
+              </button>
+            {/if}
+            <button class="small ghost" onclick={discardResume}>Discard</button>
+            <button class="small ghost x" onclick={() => (resumeHidden = true)} aria-label="Hide this line" title="Hide this line (the game stays kept: ▶ Play offers to resume it)">✕</button>
+          {/if}
+        </span>
+      {/if}
+      {#if showAudience}
+        {#if audience.open}
+          <span class="item audience-item" data-audience-open>
+            <span class="what" title="Viewers see the “Starting soon” card until the next game starts">📺 Audience window: <span class="muted">“Starting soon”</span></span>
+            <button class="small ghost" onclick={closeAudience} aria-label="Close the audience window" title="Close the audience window (your stream capture goes black)">✕</button>
+          </span>
+        {:else}
+          <span class="item audience-item lost" role="alert" data-audience-lost>
+            <span class="what">📺 Audience window closed: viewers see nothing</span>
+            <button class="small" onclick={reopenAudience}>Reopen</button>
+          </span>
+        {/if}
+      {/if}
+      {#if resuming && saved}
+        {@render modeAsk()}
+      {/if}
     </div>
   {/if}
 {/snippet}
@@ -739,30 +879,58 @@
   .card p {
     margin: 0;
   }
-  .resume {
+  .editor-screen {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .editor-slot {
+    flex: 1;
+    min-height: 0;
+  }
+  .status-bar {
+    flex: none;
+    display: flex;
+    gap: 6px 16px;
     align-items: center;
     flex-wrap: wrap;
-    padding: 4px 16px;
+    padding: 3px 16px;
+    font-size: 13px;
     background: #2a2410;
     border-bottom: 1px solid var(--warn);
   }
-  .resume.kept:not(.asking) {
-    flex-wrap: nowrap;
+  .status-bar .item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
   }
-  .resume .what {
-    flex: 1;
+  /* Between items, a thin line. */
+  .status-bar .item + .item {
+    padding-left: 16px;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .status-bar .what {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .resume .x {
-    margin-left: auto;
+  .status-bar .lost .what {
+    color: var(--bad);
+    font-weight: 600;
+  }
+  .status-bar button.small {
+    padding: 2px 8px;
   }
   .small {
     font-size: 12px;
+  }
+  .status-bar .mode-ask {
+    flex-basis: 100%;
+    padding: 6px 0;
   }
   .mode-ask {
     display: flex;

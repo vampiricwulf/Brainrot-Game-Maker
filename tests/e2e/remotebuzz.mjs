@@ -2,12 +2,13 @@
 // Buzzer mode and its options on the pre-game card, starting the room (a refusal in the server's words, then the code,
 // link, QR), the phones list, a new player joining from their phone, opening the buzzers with U, a phone's buzz picking
 // the player (and the audience plate), the queue of buzzes, a wrong answer locking them out, → Next in line, ↺ Reset
-// buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, and Exit closing the room.
+// buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, the audience window closed by accident (the host is told),
+// Exit › Keep & leave keeping the room for Resume, another game keeping the room and its players, and ✕ Close the room.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, exportHtml, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, answerReplace, exportHtml, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -331,12 +332,33 @@ try {
   assert(true, 'back to the board: the phones go back to the lobby');
   await shot('rb-4-host');
 
+  // ---------- The audience window closed by accident: the host panel says so, and Reopen brings it back ----------
+  const lost = page.locator('.panel [data-audience-lost]');
+  assert((await lost.count()) === 0, 'no "Audience window closed" strip while it is open');
+  await aud.close();
+  await lost.waitFor();
+  assert((await lost.innerText()).includes('Audience window closed: viewers see nothing'), 'closing the audience window by accident: the host panel says viewers see nothing');
+  await page.waitForTimeout(1000);
+  assert((await lost.count()) === 1, 'and the strip stays');
+  const [aud2] = await Promise.all([page.waitForEvent('popup'), lost.getByRole('button', { name: 'Reopen (A)' }).click()]);
+  watch(aud2, 'audience 2');
+  await aud2.locator('.board').waitFor();
+  await lost.waitFor({ state: 'detached' });
+  assert(true, 'Reopen (A) opens it again, the board on it, and the strip goes');
+  // The reopened window asks for a click with a small chip in its corner: the stage isn't dimmed (it's on stream).
+  const chipBox = await aud2.locator('.activate').boundingBox();
+  const vpAud = aud2.viewportSize();
+  assert(chipBox && chipBox.width < vpAud.width / 3 && chipBox.height < 60 && chipBox.x > vpAud.width / 2 && chipBox.y > vpAud.height / 2, `"Click to enable sound" is a small chip in the corner (${Math.round(chipBox.width)}×${Math.round(chipBox.height)})`);
+  assert((await aud2.locator('.activate').evaluate((e) => getComputedStyle(e).backgroundColor)) !== 'rgba(0, 0, 0, 0.6)' && (await aud2.locator('.activate').evaluate((e) => e.getBoundingClientRect().width)) < 400, 'and no dimming layer over the stage');
+
   // ---------- One window: the phones list opens over the host panel, never the stage viewers see ----------
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: '📺 Audience ●' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Close it' }).click();
-  if (!aud.isClosed()) await aud.waitForEvent('close', { timeout: 3000 });
+  if (!aud2.isClosed()) await aud2.waitForEvent('close', { timeout: 3000 });
+  await page.waitForTimeout(900);
+  assert((await lost.count()) === 0, 'closed by the host (📺 Audience › Close it): no "closed" strip');
   await chip.click();
   await pop.waitFor();
   await page.waitForTimeout(300);
@@ -350,12 +372,55 @@ try {
   await page.keyboard.press('Escape');
   await pop.waitFor({ state: 'detached' });
 
-  // ---------- Exit closes the room ----------
-  await page.getByRole('button', { name: 'Exit' }).click();
-  await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  // ---------- Exit › Keep & leave keeps the room: the phones wait, Resume goes back into it ----------
+  const closes = () => page.evaluate(() => window.__room.sent.filter((m) => m.t === 'close').length);
+  const exitKeep = async () => {
+    await page.getByRole('button', { name: 'Exit' }).click();
+    await page.waitForTimeout(450);
+    await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  };
+  await exitKeep();
+  const roomBar = page.locator('.status-bar .room-bar');
+  await roomBar.getByText('BCDF').waitFor();
+  await stateIs((s) => s.status?.text === 'The host is setting up — hang on');
+  await page.waitForTimeout(300);
+  assert((await closes()) === 0, 'Keep & leave keeps the buzzer room: phones are told the host is setting up, not that the game is over');
+  assert((await roomBar.innerText()).includes('▶ Play goes back into it'), 'the bar over the editor says the room is still open');
+  assert((await page.locator('.status-bar').count()) === 1 && (await page.locator('.status-bar .kept').count()) === 1, 'one status bar over the editor: the room and the kept game on it');
+  assert((await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight)), 'the page itself doesn’t scroll (the bar stays in sight)');
+  assert((await page.getByRole('button', { name: 'Resume with my edits' }).count()) === 0, 'nothing was edited: no "Resume with my edits"');
+  await page.getByRole('button', { name: 'Resume game' }).click();
+  await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await page.locator('.panel .chip').waitFor();
+  await page.waitForTimeout(300);
+  assert((await page.evaluate(() => window.__room.posts)) === 2 && (await closes()) === 0, 'Resume goes back into the same room BCDF (no new room)');
+  assert((await page.locator('.panel .chip').innerText()).startsWith('📱'), 'the 📱 chip is back in the host panel');
+
+  // ---------- Another game: the room and its players carry over ----------
+  await exitKeep();
+  await roomBar.waitFor();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await roomBar.getByText('▶ Play asks to keep it for this game').waitFor();
+  assert(true, 'with another game open, the bar says ▶ Play asks to keep the room for it');
+  await addClassicRounds(page);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  const keepAsk = page.getByRole('alertdialog', { name: 'Keep buzzer room BCDF and its 5 players?' });
+  await keepAsk.waitFor();
+  assert((await page.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep room & players', '▶ Play asks: keep buzzer room BCDF and its 5 players? (Keep room & players focused)');
+  await page.keyboard.press('Enter');
+  await card.getByLabel('Room code BCDF').waitFor();
+  assert((await page.locator('.pregame input.name').count()) === 5, 'the 5 players come along');
+  assert(await card.getByLabel(/Buzzer mode/).isChecked(), 'Buzzer mode stays on');
+  await stateIs((s) => s.seats.length === 5);
+  assert((await page.evaluate(() => window.__room.posts)) === 2 && (await closes()) === 0, 'same room, same seats: nobody joins again');
+
+  // ---------- ✕ Close the room ----------
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
+  await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
-  assert(true, 'Exit closes the room');
+  await roomBar.waitFor({ state: 'detached' });
+  assert(true, '✕ Close the room closes it (phones are told the game is over)');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('remotebuzz e2e passed');

@@ -283,12 +283,15 @@ try {
   assert(true, 'back online, the host picks the player who buzzed while it was away');
   await host.keyboard.press('Escape');
 
-  // ---------- Exit ends the room ----------
+  // ---------- Exit › Keep & leave keeps the room; ✕ Close the room ends it ----------
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await small(p1).getByText('The host is setting up — hang on').waitFor();
+  assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404 && (await p1.locator('main').getByText('The game is over').count()) === 0, 'Keep & leave keeps the room: phones say the host is setting up (not that the game is over)');
+  await host.locator('.room-bar').getByRole('button', { name: '✕ Close the room' }).click();
   await p1.locator('main').getByText('The game is over').waitFor();
-  assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, 'Exit closes the room: phones say the game is over');
+  assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '✕ Close the room closes it: phones say the game is over');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Buzzer live E2E passed.');

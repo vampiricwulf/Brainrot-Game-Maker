@@ -1,6 +1,7 @@
 <!-- Why the stream may have no game sound: shown to the host whenever it applies (not only when a slide has media). -->
 <script lang="ts">
-  import { audience, sound } from '../../lib/sync.svelte';
+  import { audience, audienceTitle, openAudienceWindow, sound } from '../../lib/sync.svelte';
+  import { app, toast } from '../../lib/app.svelte';
   import { audioOut } from '../../lib/audioout.svelte';
   import { captureProblem, desktop, RESTART_ASK, restartApp } from '../../lib/desktop.svelte';
   import InlineAsk from './InlineAsk.svelte';
@@ -12,6 +13,11 @@
   let retryError = $state('');
   /** "Try it again" was pressed: it asks inline (a browser dialog would show on stream). */
   let askRetry = $state(false);
+
+  /** The audience window was closed by accident: open it again (from this click, or the browser blocks it). */
+  async function reopen(): Promise<void> {
+    if (!(await openAudienceWindow(audienceTitle(app.playGame ?? app.game)))) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+  }
 
   async function retry(): Promise<void> {
     askRetry = false;
@@ -44,6 +50,13 @@
   <div class="w bad" role="alert">
     ⚠ The Discord audio fix didn't start this time, so Discord may stream no game sound. Restart Brainrot Games Maker to try again.
     <button class="small ghost" onclick={onhelp}>🔊 Help</button>
+  </div>
+{/if}
+<!-- The audience window (the stream capture) was closed some other way than the host closing it: viewers see nothing. -->
+{#if !dual && audience.lost}
+  <div class="w bad lost" role="alert" data-audience-lost>
+    📺 Audience window closed: viewers see nothing
+    <button class="small" onclick={reopen} title="Open the audience window again (A)">Reopen (A)</button>
   </div>
 {/if}
 {#if dual && (!audience.activated || sound.cueBlocked)}

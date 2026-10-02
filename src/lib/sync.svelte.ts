@@ -27,6 +27,11 @@ export type HostMsg =
   /** The game audio output the host picked. */
   | { type: 'audio-out'; deviceId: string; label: string }
   | { type: 'bye' }
+  /**
+   * Say hello again (with whether it may play sound): a host page that reloaded found the window it had opened, which
+   * never reloaded itself, so it still knows whether it was clicked.
+   */
+  | { type: 'ping' }
   /** The host closed it (Exit, Close audience window): it closes itself, even one the host page no longer holds. */
   | { type: 'close' };
 
@@ -54,8 +59,11 @@ export function audienceTitle(game: Game | undefined): string {
   return `${game?.title.trim() || 'Brainrot Games Maker'} · Audience`;
 }
 
-/** open: the audience window exists · activated: it has been clicked, so it may autoplay with sound. */
-export const audience = $state({ open: false, activated: false });
+/**
+ * open: the audience window exists · activated: it has been clicked, so it may autoplay with sound · lost: it was open
+ * and got closed some other way than the host closing it (its ✕, by accident): viewers see nothing, so the host is told.
+ */
+export const audience = $state({ open: false, activated: false, lost: false });
 
 export type SoundTest = { nonce: string; where: 'audience' | 'host'; state: 'waiting' | 'ok' | 'blocked' | 'error' | 'no-answer' };
 /**
@@ -173,7 +181,7 @@ function fromAudience(msg: AudienceMsg): void {
   } else if (msg?.type === 'key') {
     keyHandler?.(msg.key);
   } else if (msg?.type === 'bye' && !win) {
-    markClosed();
+    markClosed(true);
   }
 }
 
@@ -203,7 +211,9 @@ if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location
   onSoundReport((r) => !audience.open && onSound(r));
 }
 
-function markClosed(): void {
+/** `lost`: closed some other way than the host closing it (see audience.lost). */
+function markClosed(lost = false): void {
+  if (lost && audience.open) audience.lost = true;
   audience.open = false;
   audience.activated = false;
   sound.cueBlocked = false;
@@ -217,7 +227,7 @@ function markClosed(): void {
 function watchClosed(check: () => boolean | Promise<boolean>): void {
   clearInterval(closedPoll);
   closedPoll = setInterval(async () => {
-    if (await check()) markClosed();
+    if (await check()) markClosed(true);
   }, 700);
 }
 
@@ -245,6 +255,7 @@ async function openNativeAudience(title: string): Promise<boolean> {
     });
     nativeWin = w;
     audience.open = true;
+    audience.lost = false;
     watchClosed(async () => !(await WebviewWindow.getByLabel(label)));
     return true;
   } catch (err) {
@@ -263,6 +274,7 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
     return true;
   }
   if (nativeWin) return true;
+  audience.lost = false;
   // Connected over the channel only (e.g. an audience page opened separately): it's open, just not ours to focus.
   if (audience.open && viaChannel) return true;
   const url = location.href.split('#')[0] + AUDIENCE_HASH;
@@ -271,6 +283,13 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
   if (!win) return inTauri() ? openNativeAudience(title) : false;
   audience.open = true;
   watchClosed(() => !win || win.closed);
+  // It may be the window an earlier load of this page opened (window.open found it by its name, and didn't reload it):
+  // it says hello again, with whether it may play sound. (A new window says hello itself once it has loaded.)
+  try {
+    win.postMessage({ type: 'ping' } satisfies HostMsg, '*');
+  } catch {
+    // Not loaded yet: it says hello itself.
+  }
   return true;
 }
 
@@ -342,6 +361,7 @@ export function closeAudienceWindow(): void {
   nativeWin?.close().catch(() => {});
   closeAudienceNative();
   markClosed();
+  audience.lost = false;
 }
 
 /** Send a playback command to media in this window and, in dual mode, the audience window. */

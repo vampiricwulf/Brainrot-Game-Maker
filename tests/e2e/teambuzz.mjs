@@ -218,12 +218,12 @@ try {
   assert((await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann'), 'right: the team scores, and both teammates see it ("Your team got it!")');
   await host.keyboard.press('Escape');
 
-  // ---------- Exit ends the room ----------
+  // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
-  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await host.getByRole('button', { name: 'Discard & leave', exact: true }).click();
   await ann.locator('main').getByText('The game is over').waitFor();
-  assert(true, 'Exit closes the room');
+  assert(true, 'Discard & leave closes the room');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Team buzzers E2E passed.');

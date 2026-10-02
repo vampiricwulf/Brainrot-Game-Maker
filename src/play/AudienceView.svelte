@@ -260,7 +260,7 @@
     <div class="soon" class:has-room={!!live.room}>
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
       <div class="round-name">{game.title}</div>
-      <div class="soon-text">{stream?.soonText?.trim() || 'Starting soon…'}</div>
+      <div class="soon-text">{live.rematch ? 'Rematch! ' : ''}{stream?.soonText?.trim() || 'Starting soon…'}</div>
       {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
       {#if live.room}
         <!-- Phone buzzers: viewers who play join from their phone. -->
