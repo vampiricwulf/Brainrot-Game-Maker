@@ -5,6 +5,7 @@ import {
   activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
   type PoolSlice,
 } from './tools';
+import { templateSegments, type WheelTemplate } from './wheeltemplates';
 
 type WheelOverlay = Extract<NonNullable<Live['overlay']>, { kind: 'wheel' }>;
 /** The main wheel on screen, or one spun together with it: both can be edited for the spin. */
@@ -54,6 +55,11 @@ export function openQuickWheel(live: Live, options: { label: string; weight?: nu
     spin: null,
     result: null,
   };
+}
+
+/** A ready-made wheel (wheeltemplates.ts), spun as it is: ✎ Edit wheel's Save as keeps it in the game. */
+export function openTemplateWheel(live: Live, t: WheelTemplate, sym: string): void {
+  live.overlay = { kind: 'wheel', nonce: newId(), name: t.name, segments: templateSegments(t, sym), rotation: 0, spin: null, result: null };
 }
 
 /** Players added, renamed or removed since the edit: they keep their on/off and chance. */

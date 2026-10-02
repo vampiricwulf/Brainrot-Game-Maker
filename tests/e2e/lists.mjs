@@ -183,6 +183,13 @@ try {
   await wheelList.nth(2).focus();
   await page.keyboard.press('Delete');
   assert((await texts(wheelList)).join() === 'Wheel 1,Dares' && (await notice.innerText()).startsWith('Deleted wheel “Dares (copy)”'), 'Delete removes it, with a note');
+  // The built-in 🎯 Pick a player is listed, and a ready-made wheel comes in filled in.
+  await page.getByRole('button', { name: /🎯 Pick a player/ }).click();
+  assert((await page.getByRole('heading', { name: '🎯 Pick a player' }).count()) === 1, 'the built-in 🎯 Pick a player wheel is in the list, and says what it is');
+  await page.getByRole('button', { name: '📋 Ready-made wheel…' }).click();
+  await page.getByRole('menuitem', { name: /Point wheel/ }).click();
+  assert((await texts(wheelList)).join() === 'Wheel 1,Dares,Point wheel', `📋 Ready-made wheel… adds one (${await texts(wheelList)})`);
+  assert((await values(labels)).join() === '+$100,+$200,+$300,+$500,+$1,000,Double!,Bankrupt,Lose a turn', `with its slices (${await values(labels)})`);
 
   // Dice faces from a list.
   await page.getByRole('button', { name: '＋ Add dice' }).click();

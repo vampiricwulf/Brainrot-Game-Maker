@@ -4,7 +4,8 @@
   import { anchored } from '../../lib/anchored';
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, Session } from '../../lib/model';
-  import { openPlayerWheel, openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
+  import { openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
+  import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
 
@@ -127,8 +128,22 @@
               onclick={() => wheel(() => openWheel(app.live, session, w), true)}>✎</button>
           </div>
         {:else}
-          <div class="muted small">No saved wheels yet: make them in the editor's 🎡 tab, or use a quick one.</div>
+          <div class="muted small">No saved wheels yet: make them in the editor's 🎡 tab, or use a ready-made or quick one.</div>
         {/each}
+        <!-- Ready-made ones, spun as they are (✎ Edit wheel's Save as keeps one in the game). -->
+        <select
+          class="small"
+          aria-label="Spin a ready-made wheel"
+          value=""
+          onchange={(e) => {
+            const t = WHEEL_TEMPLATES.find((x) => x.key === e.currentTarget.value);
+            e.currentTarget.value = '';
+            if (t) wheel(() => openTemplateWheel(app.live, t, game.settings.currencySymbol));
+          }}
+        >
+          <option value="">📋 Spin a ready-made wheel…</option>
+          {#each WHEEL_TEMPLATES as t (t.key)}<option value={t.key}>{t.icon} {t.name}</option>{/each}
+        </select>
         <div class="muted small">Quick wheel (one option per line)</div>
         <textarea rows="4" bind:value={quickList} placeholder={'Sing a song\nDo 10 push-ups x2\nSkip'} aria-label="Quick wheel options"></textarea>
         <div class="muted small">End a line with x2, x3… to make it that many times as likely.</div>

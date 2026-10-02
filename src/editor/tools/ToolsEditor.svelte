@@ -10,7 +10,9 @@
   import { step } from '../../lib/history.svelte';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { copyActions, copySegment, moveTo } from '../../lib/listedit';
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, showMenu } from '../../lib/menustate.svelte';
+  import { uniqueName } from '../../lib/roundcopy';
+  import { WHEEL_TEMPLATES, wheelFromTemplate, type WheelTemplate } from '../../lib/wheeltemplates';
   import { newId, type DicePreset, type WheelPreset } from '../../lib/model';
   import { newDice, newWheel } from '../../lib/tools';
   import WheelEditor from './WheelEditor.svelte';
@@ -119,6 +121,26 @@
     else game.dice.push(item as DicePreset);
     sel = item.id;
   }
+
+  /** The 🎯 Pick a player wheel, built in (shown in the list so it's found; nothing to set up). */
+  let playersShown = $state(false);
+  $effect(() => {
+    if (sel) playersShown = false;
+  });
+
+  /** A ready-made wheel, added to the game (named after it, numbered when the game has one by that name). */
+  function addTemplate(t: WheelTemplate): void {
+    const w = wheelFromTemplate(t, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), t.name, false));
+    step(`Added wheel “${w.name}”`, () => game.wheels.push(w));
+    sel = w.id;
+    focusItem(w.id);
+  }
+  function templateMenu(e: MouseEvent): void {
+    dropMenu(e, [
+      { heading: 'Ready-made wheels (change anything after)' },
+      ...WHEEL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name} · ${t.hint}`, onclick: () => addTemplate(t) })),
+    ]);
+  }
 </script>
 
 {#snippet group(kind: Kind, list: Tool[])}
@@ -182,8 +204,16 @@
   <!-- Not a second nav and main: the editor's own are around it. -->
   <section class="list" aria-label="Wheels and dice">
     <div class="head muted">🎡 Wheels</div>
+    <!-- Always there in play: listed so it's found. -->
+    <button
+      class="builtin"
+      class:active={playersShown}
+      onclick={() => ((sel = null), (playersShown = true))}
+      title="Built in: a slice for each player, in their colors (nothing to set up)">🎯 Pick a player <span class="muted small">built in</span></button
+    >
     {@render group('wheel', game.wheels)}
     <button class="ghost" onclick={() => add('wheel')}>＋ Add wheel</button>
+    <button class="ghost" onclick={templateMenu} aria-haspopup="menu" title="Coin flip, Yes or no, a point wheel, punishments…">📋 Ready-made wheel…</button>
     <div class="head muted">🎲 Dice</div>
     {@render group('dice', game.dice)}
     <button class="ghost" onclick={() => add('dice')}>＋ Add dice</button>
@@ -204,9 +234,16 @@
         <button class="ghost danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
+    {:else if playersShown}
+      <h3>🎯 Pick a player</h3>
+      <p>
+        Built into every game: a slice for each player, in their colors, so the players who join or leave are always on
+        it. Spin it from <b>🎡 Wheel</b> during play (its ✎ leaves players out or changes their chances for a spin), make a
+        tile a wheel tile with it, or spin it from a board game space or an RPG object's buttons.
+      </p>
     {:else}
       <p class="muted">
-        Pick a wheel or dice on the left, or add one. Standard dice (d4–d100, 2d6, any "NdS") and a <b>🎯 Pick a player</b> wheel
+        Pick a wheel or dice on the left, add one, or start from a <b>📋 Ready-made wheel</b>. Standard dice (d4–d100, 2d6, any "NdS") and a <b>🎯 Pick a player</b> wheel
         (a slice for each player, in their colors) are always there during play, without setting anything up.
       </p>
     {/if}
@@ -246,6 +283,12 @@
   }
   .rename {
     min-width: 0;
+  }
+  .builtin .small {
+    font-size: 11px;
+  }
+  .list button.active .muted {
+    color: inherit;
   }
   .head {
     margin-top: 8px;

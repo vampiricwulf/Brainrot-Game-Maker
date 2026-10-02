@@ -14,6 +14,12 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-02
 
 ### Added
+- **Ready-made wheels**: 🪙 Coin flip, 👍 Yes or no, 🎱 Yes, no or maybe, 🔢 1 to 10, 🎰 Point wheel (points, a Double and a
+  Bankrupt that change the score), 💰 Double or nothing, 🌀 Chaos (steal, swap, double, halve), 🎁 Rewards, 😈 Punishments,
+  🃏 Truth or dare, 🔤 A to Z and ⏱ Time limit (its countdown starts when it lands). Add one to the game from
+  **📋 Ready-made wheel…** in the editor's 🎡 Wheels & Dice (then change anything), or spin one as it is from the host's
+  🎡 Wheel menu (**📋 Spin a ready-made wheel…**; ✎ Edit wheel's Save as keeps it).
+- **The built-in 🎯 Pick a player wheel is listed in 🎡 Wheels & Dice**, with what it does and where to spin it.
 - **The "Starting soon" card on stream lists who's playing**: each player (team) in their color, with a team's members
   who joined from their phones under its name. With the phones' join code on the card too, the banner and the names
   are smaller, so it all fits.

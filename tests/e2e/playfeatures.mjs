@@ -158,6 +158,11 @@ try {
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#wheelLand')), null, { timeout: 10000 });
   assert((await played(page, 'wheelTick')) === 0, '…and lands with a ding (none of it in the host’s window)');
   await page.keyboard.press('Escape');
+  // A ready-made wheel spins as it is, on the audience's screen.
+  await page.getByRole('button', { name: '🎡 Wheel' }).click();
+  await page.getByLabel('Spin a ready-made wheel').selectOption({ label: '🪙 Coin flip' });
+  assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Coin flip')), '🎡 Wheel › Spin a ready-made wheel… opens it (🪙 Coin flip)');
+  await page.keyboard.press('Escape');
 
   // ---------- The scores-only window ----------
   const [scores] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
