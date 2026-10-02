@@ -1059,3 +1059,4 @@ Commits whose titles don't say what they contain:
 | 6addcfa | Merge branch 'worktree-agent-a137613afaaae8d2c' | Merge of the first-time host usability fixes: pictures clear of the question, drop-on-tile asks, Daily Doubles placed on Start, steadier host panel (c8dc0f8) |
 | 8b0f1cd | Merge remote-tracking branch 'origin/main' | Brings in 60b4e38 (.gitignore: the signing key's folder) |
 | 749aea4 | Merge branch 'worktree-agent-aca595146e0e3416f' | Brings in 3dde2ea (editor look and feel: one style for windows, pages, buttons, toasts and the pre-game screen) |
+| d5bbca3 | Merge branch 'worktree-agent-a65acfb86fee270b1' | Brings in 6d19748 (clues with several question slides) |
