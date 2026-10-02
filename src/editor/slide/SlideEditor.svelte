@@ -616,6 +616,12 @@
     }
   }
 
+  /** Ctrl+arrow resizing: each picture's shape when the keys started on it (forgotten when the selection changes). */
+  const keyRatio = new Map<string, number>();
+  $effect(() => {
+    void selected;
+    keyRatio.clear();
+  });
   /** Pictures and videos keep their shape when resized (as dragging a corner does). */
   const keepsShape = (el: SlideElement): boolean => el.kind === 'image' || el.kind === 'video' || (el.kind === 'embed' && el.embedKind !== 'remoteAudio');
 
@@ -710,7 +716,9 @@
       for (const el of free) {
         const grow = k === 'arrowright' || k === 'arrowdown' ? step : -step;
         if (keepsShape(el)) {
-          const ratio = el.w / el.h;
+          // The shape it had at the first press (worked out again each time, the rounding would drift it).
+          const ratio = keyRatio.get(el.id) ?? el.w / el.h;
+          keyRatio.set(el.id, ratio);
           const w = Math.max(20, el.w + grow, Math.ceil(20 * ratio));
           el.h = Math.max(20, Math.round(w / ratio));
           el.w = w;

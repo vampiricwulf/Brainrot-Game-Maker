@@ -212,6 +212,9 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Ctrl+arrows on a picture keep its shape exactly**, however many presses (its shape slowly drifted).
+- **Board games: a space landed on after going round a loop** shows its passing buttons once, not twice (once as
+  "Passed", once as "Landed on"), so they can't be pressed twice by mistake.
 - **📊 Stats & Items on a small laptop**: an item's row stays on one line (its name box gives way a little), instead of
   its 🗑 dropping onto a line of its own.
 - **RPG host panel: the minimap is no taller than its map**, so a small world no longer leaves an empty band under it;

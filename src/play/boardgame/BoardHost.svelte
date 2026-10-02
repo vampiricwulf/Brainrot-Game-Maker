@@ -52,7 +52,12 @@
   const forkWays = $derived(round && bs && fork ? waysOn(round, fork.at, bs.prev?.[fork.playerId], fork.stepsLeft < 0) : []);
   const last = $derived(bs?.last);
   const landed = $derived(round && last?.landed ? spaceById(round, last.landed) : undefined);
-  const passed = $derived(round && last ? last.passed.map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s?.onPass?.length) : []);
+  // (The space landed on shows its passing buttons with its own, once: not here too after a loop round it.)
+  const passed = $derived(
+    round && last
+      ? last.passed.filter((id) => id !== last.landed).map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s?.onPass?.length)
+      : [],
+  );
   /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);

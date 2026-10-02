@@ -281,6 +281,11 @@ try {
   await page.keyboard.press('Control+Shift+ArrowLeft');
   await page.waitForTimeout(100);
   assert((await drawn()).find((e) => e.id === editPic.id).w === pre.w, 'and Ctrl+Shift+← narrows it back');
+  for (let i = 0; i < 30; i++) await page.keyboard.press('Control+ArrowRight');
+  await page.waitForTimeout(100);
+  const many = (await drawn()).find((e) => e.id === editPic.id);
+  assert(many.w === pre.w + 30 && Math.abs(many.w / many.h - pre.w / pre.h) < 0.02, `30 presses keep its shape (${pre.w}×${pre.h} → ${many.w}×${many.h})`);
+  for (let i = 0; i < 30; i++) await page.keyboard.press('Control+ArrowLeft');
 
   // ---------- The History names these ----------
   await clue.getByRole('button', { name: /Background ▾/ }).click();
