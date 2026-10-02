@@ -34,6 +34,7 @@
     selected = $bindable(),
     amount = $bindable(),
     rpgObject = $bindable(null),
+    rpgSelObjects = $bindable([]),
     rpgMap = $bindable(false),
     rpgAsk = $bindable(null),
     rpgMapSend = $bindable(null),
@@ -100,6 +101,8 @@
     amount: number | null;
     /** RPG rounds: the object whose card is open (clicked on the stage). */
     rpgObject?: string | null;
+    /** RPG rounds: the objects selected on the stage (they drag with the selected players). */
+    rpgSelObjects?: string[];
     /** RPG rounds: the full map (jump anywhere) is open. */
     rpgMap?: boolean;
     /** RPG rounds: a name or text being asked for (text right-clicked onto the stage too). */
@@ -643,6 +646,7 @@
             {session}
             bind:selected
             bind:object={rpgObject}
+            bind:selectedObjects={rpgSelObjects}
             bind:mapOpen={rpgMap}
             bind:mapSend={rpgMapSend}
             bind:ask={rpgAsk}

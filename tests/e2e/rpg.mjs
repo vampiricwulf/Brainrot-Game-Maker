@@ -176,16 +176,35 @@ async function bigWorld() {
   await host.keyboard.press('3');
   await host.keyboard.press('4');
   await host.getByRole('button', { name: '✂ Split off selected' }).click();
-  await host.keyboard.press('Numpad2');
-  await host.waitForTimeout(400);
+  assert((await said()) === 'Cy & Dee are Party 2 now: the pad moves them', `splitting off says who the pad moves now (${await said()})`);
+  // Split view while they still stand together says why it shows one screen.
   await host.getByRole('button', { name: '▦ Split view' }).click();
-  await host.waitForTimeout(400);
+  assert((await said()).startsWith('Everyone is on this screen'), `split view with everyone in one place says so (${await said()})`);
+  await host.keyboard.press('Numpad2');
+  await host.waitForTimeout(800);
   await host.locator('.rpg .hit[data-object="el_trap"]').click();
   await host.getByRole('dialog', { name: 'Object: Trap' }).getByRole('button', { name: 'HP −3' }).click();
   assert((await said()) === 'Trap: HP −3: Ann & Bob', `the Trap’s party button hurts the party at the Trap, not the one viewers follow (${await said()})`);
   await host.waitForTimeout(300);
   assert((await cues(aud)).includes('hurt'), '…with the Damage sound');
   await host.keyboard.press('Escape');
+  // In split view, everyone selected: dragging one avatar moves the ones on the other pane too, by as much.
+  {
+    const av = host.locator('.rpg .avatar[data-player-id]');
+    const boxes = () => Promise.all(['p1', 'p2', 'p3', 'p4'].map((id) => host.locator(`.rpg .avatar[data-player-id="${id}"]`).boundingBox()));
+    for (const k of ['1', '2', '3', '4']) await host.keyboard.press(k);
+    const start = await boxes();
+    assert(new Set(await av.evaluateAll((els) => els.map((e) => e.closest('.pane')?.dataset.screen))).size === 2, 'split view shows both parties’ screens');
+    await dragBy(host, host.locator('.rpg .avatar[data-player-id="p1"]'), { x: start[0].x + start[0].width / 2 - 50, y: start[0].y + start[0].height / 2 - 30 });
+    await host.waitForTimeout(350);
+    const end = await boxes();
+    const d = start.map((r, i) => [Math.round(end[i].x - r.x), Math.round(end[i].y - r.y)]);
+    const same = d.every(([x, y]) => Math.abs(x - d[0][0]) <= 2 && Math.abs(y - d[0][1]) <= 2);
+    assert(same && Math.abs(d[0][0]) > 10, `in split view the selected players on both screens move together (${JSON.stringify(d)})`);
+    await host.keyboard.press('Control+z');
+    assert((await said()).includes('Undid Move Ann, Bob, Cy & Dee'), `…as one step (${await said()})`);
+    await host.keyboard.press('Escape');
+  }
 
   // Everyone back together at the Village (with Ann & Bob's party), through the door to a map viewers aren't shown:
   // their map says so.
@@ -247,6 +266,8 @@ try {
   await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   assert(await page.getByRole('button', { name: 'Screen Screen B1' }).isVisible(), 'a screen can be added to the map grid');
+  const b1Name = await page.getByRole('button', { name: 'Screen Screen B1' }).locator('.nm').innerText();
+  assert(b1Name === 'Screen B1', `its name on the map has its space (${b1Name})`);
   const focusedLabel = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
   assert((await focusedLabel()) === 'Screen Screen B1', `the new screen has the focus (not the page) (${await focusedLabel()})`);
   // Ctrl+C on it copies the screen, though the round's name is still selected from when the round was added.
@@ -525,6 +546,16 @@ try {
     await av.nth(1).click();
     await hit.click({ modifiers: ['Shift'] });
     assert(!(await page.getByRole('dialog', { name: 'Object: Lava' }).count()), 'Shift+click on an object selects it (no card)');
+    const inList = page.locator('.rh .objs').getByRole('button', { name: /Lava/ });
+    assert((await inList.getAttribute('aria-pressed')) === 'true' && (await page.locator('.rh .side').innerText()).includes('1 selected'), 'the host panel’s list shows it selected');
+    // Hovering it on the stage only outlines it: no button colour over it (viewers see this stage in one window).
+    await hit.hover();
+    assert((await hit.evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgba(0, 0, 0, 0)', 'hovering an object doesn’t cover it');
+    // Shift+click in the list takes it out of the selection, and puts it back (no card either).
+    await inList.click({ modifiers: ['Shift'] });
+    assert((await inList.getAttribute('aria-pressed')) === 'false', 'Shift+click in the list takes it out of the selection');
+    await inList.click({ modifiers: ['Shift'] });
+    assert((await inList.getAttribute('aria-pressed')) === 'true' && !(await page.getByRole('dialog', { name: 'Object: Lava' }).count()), '…and back in, without opening its card');
     const start = await boxes();
     await dragBy(page, av.nth(0), { x: start[0].x + start[0].width / 2 - 70, y: start[0].y + start[0].height / 2 - 40 });
     await page.waitForTimeout(350);
@@ -622,6 +653,11 @@ try {
   assert(true, 'a new look opens in the live editor');
   await page.getByRole('button', { name: 'Done' }).click();
   assert((await page.getByLabel('Look').locator('option:checked').innerText()).includes('New look'), 'the screen now shows the new look');
+  const lastStep = () => page.locator('.rh .last').innerText();
+  await page.getByLabel('Look').selectOption('');
+  assert((await lastStep()) === 'Last: Start: original look', `going back to the original look is a step named so (${await lastStep()})`);
+  await page.keyboard.press('Control+z');
+  assert((await page.getByLabel('Look').locator('option:checked').innerText()).includes('New look'), 'Ctrl+Z puts the new look back on');
   await page.getByLabel('Add a screen').selectOption('s');
   await page.locator('.rh .ask', { hasText: 'Name of the new screen' }).waitFor();
   assert((await page.getByRole('textbox', { name: 'Screen name' }).inputValue()) === 'New south of Start', 'a new screen asks for its name');
