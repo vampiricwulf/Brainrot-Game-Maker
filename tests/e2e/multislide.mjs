@@ -62,7 +62,7 @@ try {
   assert((await tabs.getByRole('tab', { name: 'Question 2' }).getAttribute('aria-selected')) === 'true', 'the new slide is open');
   assert(await q.evaluate((e) => e === document.activeElement), 'its question field has the focus, ready to type');
   assert((await q.inputValue()) === '', 'the new slide starts empty');
-  assert((await dialog.locator('label.field').first().innerText()).includes('slide 2 of 2'), 'the Question field says which slide it is');
+  assert((await dialog.locator('label.field', { has: page.locator('[data-field="q"]') }).innerText()).includes('slide 2 of 2'), 'the Question field says which slide it is');
   await q.fill('It is a YouTube series');
   await addSlide.click();
   await q.fill('Toilets with heads');
