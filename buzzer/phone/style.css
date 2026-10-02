@@ -82,6 +82,8 @@ h1 { font-size: 26px; margin: 8px 0 4px; text-align: center; }
 .note { color: var(--muted); text-align: center; margin: 0; min-height: 1.2em; }
 .err { color: var(--bad); text-align: center; margin: 0; min-height: 1.2em; }
 .big-msg { font-size: 24px; text-align: center; margin: auto 0; color: var(--muted); }
+#wait-cancel { margin-bottom: auto; }
+#msg-text { text-align: center; margin: 0; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 form { display: flex; flex-direction: column; gap: 12px; }
@@ -128,7 +130,7 @@ input:focus { outline: none; border-color: var(--accent); }
   border: 2px solid var(--border);
 }
 .seat .dot { flex: none; width: 28px; height: 28px; border-radius: 50%; }
-.seat .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seat .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .seat .tag { color: var(--muted); font-weight: 400; font-size: 15px; }
 .seat:disabled { opacity: 0.45; cursor: default; }
 /* Teams: who is on a team, under its name. */
@@ -195,8 +197,11 @@ input:focus { outline: none; border-color: var(--accent); }
 #buzz-small { font-size: clamp(15px, 4.2vmin, 22px); max-width: 100%; overflow-wrap: normal; }
 #buzz-big.name, #buzz-small.name { overflow-wrap: anywhere; }
 
-/* Landscape phones: the button on the right, the clue and the score beside it. */
-@media (orientation: landscape) and (max-height: 600px) {
+/*
+ * Landscape phones: the button on the right, the clue and the score beside it. By the screen's shape, not
+ * "orientation": a portrait phone with its keyboard up can be a little wider than tall, and stays as it is.
+ */
+@media (min-aspect-ratio: 4/3) and (max-height: 600px) {
   #s-buzz {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -208,7 +213,7 @@ input:focus { outline: none; border-color: var(--accent); }
   }
   #s-buzz .side { grid-area: clue; align-self: center; }
   #s-buzz .side.foot { grid-area: foot; }
-  #clue { max-height: 55dvh; }
+  #clue { max-height: 55dvh; font-size: clamp(15px, 5.2vh, 20px); }
   #buzz { grid-area: buzz; width: max(150px, min(calc(100dvh - 70px), 50vw, 520px)); align-self: center; }
 }
 #buzz.pressed { transform: scale(0.95); }
@@ -277,6 +282,11 @@ input:focus { outline: none; border-color: var(--accent); }
 #wager-head { font-size: 22px; margin: 0; text-align: center; }
 #wager-in { text-align: center; font-size: 34px; font-weight: 800; }
 #wager-state { color: #6fdc8c; font-weight: 600; }
-@media (orientation: landscape) and (max-height: 600px) {
-  #wager-form { grid-area: buzz; align-self: center; }
+#wager-state.plain-note { color: var(--muted); font-weight: 400; }
+@media (min-aspect-ratio: 4/3) and (max-height: 600px) {
+  /* The box takes the right side, top to bottom (its notes need the room); the name and score stay on the left. */
+  #wager-form { grid-area: buzz; grid-row: 1 / span 2; align-self: center; width: min(420px, 56vw); gap: 6px; }
+  #wager-head { font-size: 19px; }
+  #wager-in { font-size: 26px; padding: 8px; }
+  #wager-form .primary { min-height: 46px; }
 }

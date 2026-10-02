@@ -110,7 +110,7 @@
         ⚠ This buzzer server doesn't know teams yet (it needs updating): phones join as players, one each.
       </p>
     {:else if settings.buzzTeams}
-      <p class="muted small">Teams: each player above is a team. People pick theirs on their phone and type their own name.</p>
+      <p class="muted small">Teams: each player is a team. People pick theirs on their phone and type their own name.</p>
     {/if}
     <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />
   {/if}

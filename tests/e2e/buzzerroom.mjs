@@ -177,6 +177,17 @@ try {
   await dee.getByLabel('Your name').fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
+  // She changes her mind (Cancel takes the request back: the host no longer sees it), then asks again.
+  await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee asking');
+  const before = host.got.length;
+  await dee.getByRole('button', { name: 'Cancel' }).click();
+  await dee.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  await host.wait((m) => host.got.indexOf(m) >= before && m.t === 'phones' && !m.phones.some((p) => p.pendingName === 'Dee'), 'Dee no longer asking');
+  assert(true, 'a phone waiting to be let in can cancel (the host stops seeing the request)');
+  await dee.getByRole('button', { name: "＋ I'm new" }).click();
+  await dee.getByLabel('Your name').fill('Dee');
+  await dee.getByRole('button', { name: 'Ask to join' }).click();
+  await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
   await shot(bob, 'lobby');
   const pend = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee waiting');
   const deeConn = pend.phones.find((p) => p.pendingName === 'Dee').conn;

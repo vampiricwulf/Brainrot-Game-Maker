@@ -142,6 +142,9 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
     case 'final': {
       const f = currentFinal(session, game);
       const n = f ? finalName(f) : 'Final';
+      // Its category is on screen from the wagers on, so the phones say it too.
+      const cat = f?.category?.trim();
+      if (cat) return { text: `${n} · ${cat}` };
       return { text: session.finalStep === 'wagers' ? `${n}: time to wager` : n };
     }
     case 'rpg':

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newTextEl, textSlide, type BoardRound } from './model';
+import { finalName, newImageEl, newTextEl, textSlide, type BoardRound, type FinalRound } from './model';
 import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, newSession, openClue } from './session';
 import {
   buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, wagerAsk,
@@ -318,5 +318,25 @@ describe('wagerAsk (the wagers phones may send)', () => {
     expect(JSON.stringify(phoneView(st, 'c'))).not.toMatch(/4321|1234/);
     expect(phoneView(st, 'c').wager).toMatchObject({ mine: false });
     expect(hostState(game, session, newBuzz(), 0).wager).toBeUndefined();
+    // A phone seated after the wagers began isn't told the host's amount, only that one is in.
+    const late = phoneView(st, 'a', null, null, null, true);
+    expect(JSON.stringify(late)).not.toContain('4321');
+    expect(late.wager).toMatchObject({ mine: true, hidden: true });
+    // What it sent itself it sees (unless the host typed over it: still not shown).
+    expect(phoneView(st, 'a', null, null, { amount: 77, n: 1 }, true).wager).toMatchObject({ hidden: true });
+    finalSetWager(session, 'a', 77, 'phone');
+    const st2 = hostState(game, session, newBuzz(), 0, { wager: wagerAsk(game, session, true) });
+    expect(phoneView(st2, 'a', null, null, { amount: 77, n: 1 }, true).wager).toMatchObject({ amount: 77, sent: true });
+  });
+
+  it("the phones' line in a Final says its category (on screen from the wagers on)", () => {
+    const { game, session } = setup();
+    goToRound(session, game, 1);
+    session.intro = null;
+    const f = game.rounds[1] as FinalRound;
+    f.category = '  US Presidents ';
+    expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)} · US Presidents`);
+    f.category = '';
+    expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)}: time to wager`);
   });
 });

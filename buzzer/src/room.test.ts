@@ -540,6 +540,9 @@ describe('the race', () => {
     ]);
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 40, behind: 'Cat' });
     expect(g.pc.last('result')?.byMs).toBe(40);
+    // Cat missed: Ann answers next. She wasn't first, so her phone doesn't say "first by 0.00 s".
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, clue: { text: 'Q?' }, answering: 'a', lockedOut: ['c'] }) });
+    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0 });
   });
 
   it('every buzz counts: later ones join the queue by reaction, never ahead of the one answering', () => {
@@ -1321,6 +1324,20 @@ describe('teams', () => {
     expect(other.last('denied')?.reason).toBe('bad-token');
   });
 
+  it('someone moved after buzzing gets no second place for their new team on that clue', () => {
+    const g = teams();
+    g.arm(1);
+    g.al.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.tick(MAX_GRACE_MS);
+    g.send({ t: 'move', member: g.memberOf('al')!, seatId: 'b' });
+    g.al.send({ t: 'buzz', armId: 1, reactMs: 300 });
+    expect(g.al.last('result')?.outcome).toBe('late');
+    expect(g.room.saved.race!.queue.map((b) => b.seatId)).toEqual(['a']);
+    // Bea, on Blue all along, still can.
+    g.bea.send({ t: 'buzz', armId: 1, reactMs: 300 });
+    expect(g.room.saved.race!.queue.map((b) => b.seatId)).toEqual(['a', 'b']);
+  });
+
   it('the host kicks one member (kept off that team a while) or a whole team', () => {
     const g = teams();
     const id = g.memberOf('al')!;
@@ -1494,7 +1511,7 @@ describe('wagers', () => {
     g.send({ t: 'state', state: state({ wager: final() }) });
     g.pa.send({ t: 'wager', id: 'final:r9', amount: 5 });
     g.send({ t: 'state', state: state({ wager: { id: 'dd:x', kind: 'dd', open: true, seats: [{ id: 'b', max: 1000 }] } }) });
-    expect(g.room.saved.wagers).toEqual({ id: 'dd:x', seats: {} });
+    expect(g.room.saved.wagers).toMatchObject({ id: 'dd:x', seats: {} });
     g.send({ t: 'state', state: state() });
     expect(g.room.saved.wagers).toBeUndefined();
     expect(g.pa.last('view')!.view.wager).toBeUndefined();
@@ -1561,6 +1578,52 @@ describe('wagers', () => {
     expect(g.hostLast('wager')).toMatchObject({ seatId: 'a', amount: 10, n: 2, by: 'Ann' });
     expect(al.last('view')!.view.wager).toMatchObject({ amount: 10, by: 'Ann', byYou: false });
     expect(Object.keys(g.room.saved.wagers!.seats)).toEqual(['a']);
+  });
+
+  it('teams: someone who joins a team after the wagers began is told one is in, not how much', () => {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    g.send({ t: 'state', state: st() });
+    const join = (conn: string, seatId: string, name: string) => {
+      const p = g.phone(conn);
+      p.send({ t: 'join', seatId, name });
+      return p;
+    };
+    const ann = join('ann', 'a', 'Ann');
+    g.send({ t: 'state', state: st({ wager: final() }) });
+    ann.send({ t: 'wager', id: 'final:r9', amount: 4747 });
+    // The host takes it.
+    g.send({ t: 'state', state: st({ wager: final({ seats: [{ id: 'a', max: 100, amount: 4747, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.t.now += 1000;
+    // Bea from Blue changes her name and joins Red to read their wager: she sees one is in, never the amount.
+    const spy = join('spy', 'a', 'Bea');
+    expect(spy.last('view')!.view.wager).toMatchObject({ mine: true, hidden: true });
+    expect(said(spy.msgs())).not.toContain('4747');
+    // Ann (on it before) still sees it; what the newcomer sends herself, she sees.
+    spy.send({ t: 'wager', id: 'final:r9', amount: 12 });
+    expect(spy.last('view')!.view.wager).toMatchObject({ amount: 12, byYou: true });
+    expect(ann.last('view')!.view.wager).toMatchObject({ amount: 12, by: 'Bea' });
+    // A reload (with her token) doesn't make her an old member; a new round counts her in.
+    g.send({ t: 'state', state: st({ wager: final({ id: 'final:r10' }) }) });
+    expect(spy.last('view')!.view.wager).toEqual({ id: 'final:r10', kind: 'final', open: true, mine: true, max: 100 });
+  });
+
+  it("a seat taken after the wagers began doesn't show the host's amount for it", () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 100, amount: 6565, fromHost: true }] }) }) });
+    expect(g.pa.last('view')!.view.wager).toMatchObject({ amount: 6565, host: true });
+    g.pa.send({ t: 'leave' });
+    g.t.now += 1000;
+    const other = g.phone('other');
+    other.send({ t: 'join', seatId: 'a' });
+    expect(other.last('view')!.view.wager).toMatchObject({ mine: true, hidden: true });
+    expect(said(other.msgs())).not.toContain('6565');
+    // Coming back with the seat's token (a reload) is the same claim: nothing changes.
+    const token = other.last('joined')!.token;
+    const again = g.phone('again');
+    again.send({ t: 'join', seatId: 'a', token });
+    expect(again.last('view')!.view.wager).toMatchObject({ hidden: true });
   });
 
   it('cleans the wager round in the host state', () => {

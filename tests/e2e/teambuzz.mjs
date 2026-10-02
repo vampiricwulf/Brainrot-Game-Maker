@@ -125,6 +125,12 @@ try {
   const zed = watch(await (await browser.newContext({ viewport: { width: 390, height: 760 } })).newPage(), 'zed');
   await zed.goto(`${base}/${code}`);
   await zed.getByRole('button', { name: 'Player 1' }).getByText('Ann, Al').waitFor();
+  await card.getByText('1 more phone is on the join screen, not on a team yet.').waitFor();
+  assert(true, 'the host sees a phone still on the join screen (not on a team yet)');
+  await zed.getByRole('button', { name: 'Player 2' }).click();
+  await zed.locator('#team-on').getByText('On it: Bea').waitFor();
+  await zed.getByRole('button', { name: 'Back' }).click();
+  assert(true, 'the name form says who is on the team already ("On it: Bea")');
   await zed.getByRole('button', { name: 'Player 2' }).click();
   await zed.getByRole('textbox', { name: 'Name for your team' }).fill('ann');
   await zed.getByRole('button', { name: 'Join the team' }).click();

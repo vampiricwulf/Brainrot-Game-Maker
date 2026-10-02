@@ -32,6 +32,7 @@
       <section id="s-wait" hidden>
         <h1 class="sr">Joining the game</h1>
         <p class="big-msg" id="wait-text">Connecting…</p>
+        <button type="button" id="wait-cancel" class="plain" hidden>Cancel</button>
       </section>
 
       <section id="s-seats" hidden>
@@ -54,6 +55,7 @@
 
       <section id="s-team" hidden>
         <h1><span id="team-dot" aria-hidden="true"></span><span id="team-title"></span></h1>
+        <p id="team-on" class="note" dir="auto"></p>
         <form id="team-form">
           <label for="team-in">Name for your team</label>
           <input id="team-in" maxlength="24" autocomplete="nickname" />
