@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -252,10 +252,50 @@ export function rosterChange(
 
 export function openClue(session: Session, ref: ClueRef, game?: Game): void {
   session.currentClue = ref;
+  delete session.slide;
   session.revealed = false;
   session.phase = 'clue';
   const clue = game && getClue(game, ref)?.clue;
   session.dd = clue?.type === 'dailyDouble' ? { stage: 'splash', playerId: session.currentPickerId } : null;
+}
+
+// ---------- A clue's question slides ----------
+// A clue can have several question slides (a lead-in, then more…): the host steps through them, then reveals the answer.
+// The audience window shows the one the session is on. Buzzers aren't touched: the host opens them when they like.
+
+/** Which of the clue's question slides is on screen (kept within the ones it has, should the clue have changed). */
+export function clueSlideIndex(session: Session, clue: Clue): number {
+  const n = questionSlides(clue).length;
+  const i = session.slide ?? 0;
+  return Number.isInteger(i) ? Math.min(Math.max(0, i), n - 1) : 0;
+}
+
+/** The question slide on screen for the open clue. */
+export function shownQuestionSlide(session: Session, clue: Clue): Slide {
+  return questionSlides(clue)[clueSlideIndex(session, clue)];
+}
+
+/** The open clue's question slide position, for the host ("Slide 2 of 3"), or null without a clue or with one slide. */
+export function slidePosition(session: Session, game: Game): { at: number; of: number } | null {
+  const clue = session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue : undefined;
+  if (!clue) return null;
+  const of = questionSlides(clue).length;
+  return of > 1 ? { at: clueSlideIndex(session, clue) + 1, of } : null;
+}
+
+/**
+ * The next question slide of the open clue (`d` 1), or the one before (-1). Only while its question is up (not on a Daily
+ * Double's wager, nor with the answer showing). Returns whether it moved.
+ */
+export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
+  if (session.phase !== 'clue' || !session.currentClue || session.revealed || session.dd?.stage === 'splash') return false;
+  const clue = getClue(game, session.currentClue)?.clue;
+  if (!clue) return false;
+  const to = clueSlideIndex(session, clue) + d;
+  if (to < 0 || to >= questionSlides(clue).length) return false;
+  if (to) session.slide = to;
+  else delete session.slide;
+  return true;
 }
 
 export function reveal(session: Session): void {
@@ -317,7 +357,7 @@ export function blankSlide(slide: Slide): boolean {
 
 /** A wheel or dice tile with nothing to ask (no question or answer): the spin or roll is all there is to it. */
 export function toolOnlyClue(clue: Clue): boolean {
-  return (clue.type === 'wheel' || clue.type === 'dice') && blankSlide(clue.questionSlide) && blankSlide(clue.answerSlide);
+  return (clue.type === 'wheel' || clue.type === 'dice') && questionSlides(clue).every(blankSlide) && blankSlide(clue.answerSlide);
 }
 
 /** Points were given (and not undone) for this clue. */
@@ -352,6 +392,7 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
     session.lastClosed = closed;
   }
   session.currentClue = null;
+  delete session.slide;
   session.revealed = false;
   session.dd = null;
   session.phase = 'board';
@@ -430,6 +471,7 @@ function stashFinal(session: Session): void {
  */
 export function goToRound(session: Session, game: Game, index: number): void {
   session.currentClue = null;
+  delete session.slide;
   session.revealed = false;
   session.dd = null;
   if (session.phase === 'final') stashFinal(session);
@@ -479,6 +521,7 @@ export function backToLastRound(session: Session, game: Game): void {
   session.currentRound = last;
   session.intro = null;
   session.currentClue = null;
+  delete session.slide;
   session.revealed = false;
   session.dd = null;
   if (isFinal(round)) {

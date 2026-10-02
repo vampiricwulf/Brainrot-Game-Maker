@@ -9,7 +9,7 @@
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -53,6 +53,7 @@
     onright,
     onwrong,
     onreveal,
+    onslide,
     onback,
     oncancelclue,
     onreopen,
@@ -130,6 +131,8 @@
     onright: (playerId: string) => void;
     onwrong: (playerId: string) => void;
     onreveal: () => void;
+    /** A clue with several question slides: the next one (1) or the one before (-1). */
+    onslide: (d: 1 | -1) => void;
     /** Done with the clue: back to the board, tile used. */
     onback: () => void;
     /** Back to the board without using up the tile. */
@@ -227,6 +230,12 @@
   });
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
+  /** A clue with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
+  const slidePos = $derived(ddWager ? null : slidePosition(session, game));
+  /** More question slides to show before the answer. */
+  const moreSlides = $derived(!!slidePos && !session.revealed && slidePos.at < slidePos.of);
+  const nextSlide = () => onslide(1);
+  const openBuzzers = () => onopenbuzzers?.();
   const finalStepText = $derived({
     category: 'Category on screen',
     // Single window: viewers see this window, the wager boxes too.
@@ -362,7 +371,10 @@
     if (session.intro) return { label: introLabel, key: 'N', title: 'N (or click the screen)', run: onintronext };
     if (session.phase === 'clue' && info && !ddWager) {
       if (tieNames && onrolltie) return { label: '🎲 Roll for it', title: 'The tied players roll: the order they roll in is the order they answer in', run: onrolltie };
-      if (buzzClosed) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: () => onopenbuzzers?.() };
+      // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
+      if (moreSlides && slidePos)
+        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
+      if (buzzClosed) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
       if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
       return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: onback };
     }
@@ -425,6 +437,7 @@
           {dd.shown ? 'Hide wager' : 'Show wager'}
         </button>
       {/if}
+      {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted">·</span>
       {#if session.revealed}
         <span class="revealed">Answer is showing</span>
@@ -632,6 +645,14 @@
           <button class="ghost" onclick={onskipintro}>Skip intro</button>
         {/if}
         {#if session.phase === 'clue' && !ddWager}
+          {#if slidePos && !session.revealed}
+            <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
+            <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
+            {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
+          {/if}
+          {#if buzzClosed && next?.run !== openBuzzers && !tieNames}
+            <button onclick={openBuzzers} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
+          {/if}
           {#if !toolOnly && next?.run !== onreveal}
             <button onclick={onreveal} title="R (press again to hide)">
               {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
@@ -1005,6 +1026,14 @@
   .revealed {
     color: var(--good);
     font-weight: 600;
+  }
+  .slidepos {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
   }
   .hint {
     font-size: 12px;

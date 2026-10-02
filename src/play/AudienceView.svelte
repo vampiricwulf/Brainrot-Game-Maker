@@ -7,7 +7,7 @@
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, nameList, places, score, standings, tiedLeaders } from '../lib/session';
+  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
@@ -320,15 +320,19 @@
   {:else}
     <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown. -->
     {@const waiting = live.overlay?.kind === info.clue.type && !session.revealed}
-    {#key `${info.clue.id}-${session.revealed}-${waiting}`}
+    <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
+    {@const at = clueSlideIndex(session, info.clue)}
+    {@const quiet = session.revealed || at > 0}
+    {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
       <div
         class="full"
         class:clickable={!!onact}
         onclick={() => act(session.revealed ? 'back' : 'reveal')}
         role="presentation"
-        in:scale={{ start: session.revealed ? 0.98 : 0.15, duration: session.revealed ? 200 : 450 }}
+        data-slide={session.revealed ? 'answer' : at + 1}
+        in:scale={{ start: quiet ? 0.98 : 0.15, duration: quiet ? 200 : 450 }}
       >
-        {#if !waiting}<div class="slide-area" style:scale={bandScale}><SlideView slide={session.revealed ? info.clue.answerSlide : info.clue.questionSlide} {role} /></div>{/if}
+        {#if !waiting}<div class="slide-area" style:scale={bandScale}><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
       </div>
     {/key}
     {#if stream?.clueCaption && !waiting}

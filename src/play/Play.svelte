@@ -4,12 +4,12 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, type ClueRef } from '../lib/model';
+  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
-    blankSlide, toolOnlyClue, finalWagerProblems, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
+    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -975,6 +975,14 @@
     }
   }
 
+  /**
+   * A clue with several question slides: the next one (N, the main button, a click on the slide) or the one before
+   * (Shift+N, ◀ Slide). The buzzers stay as they are (the host opens them when they like). Returns whether it moved.
+   */
+  function slideStep(d: 1 | -1): boolean {
+    return stepSlide(session, game, d);
+  }
+
   // Host clicks on the stage. A short guard stops one double-click from both revealing and leaving the clue.
   let lastStageAct = 0;
   function stageAct(a: StageAction): void {
@@ -986,7 +994,8 @@
         intro();
         break;
       case 'reveal':
-        if (!answerShowing(session)) revealToggle();
+        // (A clue's next question slide first, then its answer.)
+        if (!answerShowing(session) && !slideStep(1)) revealToggle();
         break;
       case 'back':
         if (session.phase === 'clue') back();
@@ -1041,7 +1050,7 @@
     // A wheel/dice tile shows its question once the tool is closed, and its countdown starts. One with nothing to ask
     // is done: no empty slide, no countdown.
     if (toolOnlyClue(info.clue)) back();
-    else if (!blankSlide(info.clue.questionSlide)) autoTimer();
+    else if (!questionSlides(info.clue).every(blankSlide)) autoTimer();
   }
 
   function ddShow(playerId: string, wager: number): void {
@@ -2060,7 +2069,7 @@
         toggleScoreboard(app.live);
         break;
       case 'n':
-        // Shift+N goes the other way: the turn before, or the player before in the reveals.
+        // Shift+N goes the other way: the turn before, the player before in the reveals, or a clue's slide before.
         if (session.intro) {
           // The round's intro first (its title card, then a board's tiles and categories).
           if (!e.shiftKey) intro();
@@ -2068,6 +2077,9 @@
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
           if (e.shiftKey) finalBack(session);
           else finalRevealNext();
+        } else if (session.phase === 'clue') {
+          // A clue's question slides: the next one (Shift+N: the one before).
+          if (!slideStep(e.shiftKey ? -1 : 1)) break;
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         else if (session.phase === 'final') {
@@ -2420,6 +2432,7 @@
         onright={(id) => award(1, [id], session.dd?.wager ?? info?.value ?? 0)}
         onwrong={(id) => award(-1, [id], session.dd?.wager ?? info?.value ?? 0)}
         onreveal={revealToggle}
+        onslide={slideStep}
         onback={() => back()}
         oncancelclue={cancelClue}
         onreopen={toggleTile}

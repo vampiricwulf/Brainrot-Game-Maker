@@ -14,6 +14,15 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **Clues with several question slides**: lead in with a clue, show more on the next slide, then reveal the answer. In
+  the clue editor, **＋ Add slide** adds a question slide after the one open (in its look, empty); the tabs then read
+  Question 1 · Question 2 · … · Answer slide, and the open slide can be moved earlier or later (◀ ▶), duplicated (⧉) or
+  deleted (🗑), each one a step in 🕘 History. The board tile shows how many it has (▤ 3). When the clue is played, the
+  host's main button goes **Next slide ▶** (`N`) through them, then 👁 Reveal answer as before; **◀ Slide**
+  (`Shift+N`) goes back one, clicking the slide goes on to the next, and the status line says "Slide 2 of 3". The
+  audience window and the phones show the slide the host is on, and the buzzers stay as they are between slides (you
+  open them when you want). Daily Doubles play their slides after the wager. Games made before open and play exactly
+  as they did (a clue there has its one question slide). Final rounds and the tiebreaker keep one question slide.
 - **Version numbers and updates**: the app has a version (1.0.0 to start; every push to `main` is released as the
   next one, `MAJOR.MINOR.PATCH`), shown in ℹ About. When a newer version is out, the editor says so: the desktop app
   updates itself in place (⬆ Update: it downloads the new `.exe`, checks it's signed with the project's key, saves your

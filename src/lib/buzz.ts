@@ -3,7 +3,7 @@
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
 import { clip, type BuzzPhase, type HostState } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type Session, type Slide, type TextEl } from './model';
-import { currentClueInfo, currentFinal, score } from './session';
+import { currentClueInfo, currentFinal, score, shownQuestionSlide } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -126,7 +126,7 @@ export const SEAT_NAME_MAX = 40;
 
 /**
  * What the buzzer room gets: the players, scores and the buzzers' state, and while a clue is open its question's words
- * and caption. Built here only, from a whitelist: never answers, host notes, media or the game's other content.
+ * and caption (the question slide on screen). Built here only, from a whitelist: never answers, host notes, media or the game's other content.
  * `extra`: the phones' status line (phoneStatus) and 🔒 locked seats.
  */
 export function hostState(
@@ -144,7 +144,7 @@ export function hostState(
     allowNew: !!game.settings.phoneJoin,
     phase: b.phase,
     armId: b.armId,
-    clue: info ? { text: questionText(info.clue.questionSlide), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` } : null,
+    clue: info ? { text: questionText(shownQuestionSlide(session, info.clue)), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` } : null,
     answering: b.phase === 'answering' ? b.answering : null,
     ...(b.phase === 'answering' && b.rollOrder?.length ? { rollOrder: b.rollOrder.filter((id) => seats.some((s) => s.id === id)) } : {}),
     lockedOut: b.phase === 'lobby' ? [] : b.lockedOut.filter((id) => seats.some((s) => s.id === id)),

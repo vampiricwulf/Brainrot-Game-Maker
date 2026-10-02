@@ -193,8 +193,11 @@ export function resolve(game: Game, place: Place): Place | null {
           if (part.kind === 'category') return place;
           const clue = has(cat.clues, part.clue);
           if (!clue) return at({ kind: 'category', category: cat.id });
-          if (!part.element || inSlide(part.side === 'a' ? clue.answerSlide : clue.questionSlide, part.element)) return place;
-          return at({ kind: 'clue', category: cat.id, clue: clue.id, side: part.side });
+          // (An extra question slide taken out since: the clue, at its question.)
+          const extra = part.slide ? has(clue.extraSlides, part.slide) : undefined;
+          if (part.slide && !extra) return at({ kind: 'clue', category: cat.id, clue: clue.id, side: 'q' });
+          if (!part.element || inSlide(extra ?? (part.side === 'a' ? clue.answerSlide : clue.questionSlide), part.element)) return place;
+          return at({ kind: 'clue', category: cat.id, clue: clue.id, side: part.side, slide: part.slide });
         }
         case 'values':
           return r.mode === 'board' ? place : round;

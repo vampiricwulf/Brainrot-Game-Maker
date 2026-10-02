@@ -5,7 +5,7 @@
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, type BoardRound, type Clue } from '../lib/model';
+  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, slidesOfClue, type BoardRound, type Clue } from '../lib/model';
   import { placeNewPicture } from '../lib/editing';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
@@ -477,7 +477,7 @@
   // ---------- Rows ----------
 
   /** New clues (a category, a row) take the theme's clue text. */
-  const followTheme = () => followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap((cl) => [cl.questionSlide, cl.answerSlide])));
+  const followTheme = () => followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
 
   // Rows of clues go in, out and around anywhere; the row values stay by position (the top row is still the cheapest).
   function addRow(at: number): void {
@@ -748,6 +748,10 @@
             {#if clue.type === 'dailyDouble' && !clue.empty}<span class="dd" title="Daily Double">⭐ DD</span>{/if}
             {#if clue.type === 'wheel' && !clue.empty}<span class="dd" title="Wheel tile">🎡</span>{/if}
             {#if clue.type === 'dice' && !clue.empty}<span class="dd" title="Dice tile">🎲</span>{/if}
+            {#if clue.extraSlides?.length && !clue.empty}
+              {@const n = clue.extraSlides.length + 1}
+              <span class="dd" title="{n} question slides, shown in order before the answer">▤ {n}</span>
+            {/if}
           </span>
           {#if !clue.empty}
             <span class="q" class:missing={!q && !kinds.length}>{q || (kinds.length ? '' : 'No question yet')}</span>

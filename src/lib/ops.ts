@@ -1,10 +1,10 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, newTextEl, type Category, type Clue, type Game, type BoardRound, type ClueType, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type TextEl } from './model';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it). */
 export function clueHasContent(clue: Clue): boolean {
-  return slideHasContent(clue.questionSlide) || slideHasContent(clue.answerSlide) || !!clue.hostNotes?.trim() || !!clue.tileFace?.text || !!clue.tileFace?.image;
+  return questionSlides(clue).some(slideHasContent) || slideHasContent(clue.answerSlide) || !!clue.hostNotes?.trim() || !!clue.tileFace?.text || !!clue.tileFace?.image;
 }
 
 /** A category with clues, an image or its own name (not the "Category 3" it started with). */
@@ -58,7 +58,73 @@ export function copyClue(clue: Clue): Clue {
   const copy = clone(clue);
   copy.id = newId();
   for (const e of [...copy.questionSlide.elements, ...copy.answerSlide.elements]) e.id = newId();
+  for (const sl of copy.extraSlides ?? []) {
+    sl.id = newId();
+    for (const e of sl.elements) e.id = newId();
+  }
   return copy;
+}
+
+// ---------- A clue's question slides ----------
+// A clue shows its question slides in order (questionSlide, then extraSlides), then its answer. These work on that list
+// by position (0: the first question slide), keeping the first one in questionSlide and the others, with ids, after it.
+
+/** Put a clue's question slides back in this order (the first one is questionSlide). */
+function setQuestionSlides(clue: Clue, list: Slide[]): void {
+  const [first, ...rest] = list;
+  if ('id' in first) delete (first as Partial<ExtraSlide>).id;
+  if (clue.questionSlide !== first) clue.questionSlide = first;
+  for (const sl of rest as ExtraSlide[]) if (typeof sl.id !== 'string' || !sl.id) sl.id = newId();
+  if (rest.length) clue.extraSlides = rest as ExtraSlide[];
+  else delete clue.extraSlides;
+}
+
+/**
+ * A new question slide right after slide `at`, in the look of that one (its background, and its main text box where it
+ * was and as it was styled, empty). Returns where it is.
+ */
+export function addClueSlide(clue: Clue, at: number): number {
+  const list = questionSlides(clue);
+  const from = list[Math.min(Math.max(0, at), list.length - 1)];
+  const slide = textSlide();
+  slide.background = clone(from.background);
+  const main = from.elements.find((e): e is TextEl => e.kind === 'text');
+  if (main) slide.elements = [{ ...clone(main), id: newId(), text: '' }];
+  const i = list.indexOf(from) + 1;
+  list.splice(i, 0, slide);
+  setQuestionSlides(clue, list);
+  return i;
+}
+
+/** A copy of question slide `at` (with fresh ids), right after it. Returns where it is. */
+export function duplicateClueSlide(clue: Clue, at: number): number {
+  const list = questionSlides(clue);
+  if (!list[at]) return at;
+  const copy = clone(list[at]);
+  delete (copy as Partial<ExtraSlide>).id;
+  for (const e of copy.elements) e.id = newId();
+  list.splice(at + 1, 0, copy);
+  setQuestionSlides(clue, list);
+  return at + 1;
+}
+
+/** Take question slide `at` out (never the only one: a clue always has one). Returns the slide to show then. */
+export function deleteClueSlide(clue: Clue, at: number): number {
+  const list = questionSlides(clue);
+  if (list.length < 2 || !list[at]) return Math.min(at, list.length - 1);
+  list.splice(at, 1);
+  setQuestionSlides(clue, list);
+  return Math.min(at, list.length - 1);
+}
+
+/** Move question slide `at` one place earlier (-1) or later (1). Returns where it is now. */
+export function moveClueSlide(clue: Clue, at: number, d: -1 | 1): number {
+  const list = questionSlides(clue);
+  const to = at + d;
+  if (!list[at] || to < 0 || to >= list.length) return at;
+  [list[at], list[to]] = [list[to], list[at]];
+  setQuestionSlides(clue, list);
+  return to;
 }
 
 /** A slide with nothing on it, keeping the look of its main text (so a restyled board stays restyled). */
@@ -69,10 +135,11 @@ function clearSlide(slide: Slide): void {
   slide.background = {};
 }
 
-/** Take out what was written or added to a clue (both slides, host notes, tile face). Its type and value stay. */
+/** Take out what was written or added to a clue (its slides, host notes, tile face). Its type and value stay. */
 export function clearClue(clue: Clue): void {
   clearSlide(clue.questionSlide);
   clearSlide(clue.answerSlide);
+  delete clue.extraSlides;
   delete clue.hostNotes;
   delete clue.tileFace;
 }
@@ -215,7 +282,7 @@ export function textStyleTargets(game: Game, round: BoardRound | null, from: Tex
   const slides: Slide[] = [];
   for (const c of cats)
     for (const cl of c.clues) {
-      if (which.includes('q')) slides.push(cl.questionSlide);
+      if (which.includes('q')) slides.push(...questionSlides(cl));
       if (which.includes('a')) slides.push(cl.answerSlide);
     }
   if (where === 'game')
@@ -249,6 +316,10 @@ export function reidRound<R extends Round>(round: R): R {
         cl.id = newId();
         reSlide(cl.questionSlide);
         reSlide(cl.answerSlide);
+        for (const sl of cl.extraSlides ?? []) {
+          sl.id = newId();
+          reSlide(sl);
+        }
       }
     }
     for (const d of round.decor ?? []) d.id = newId();

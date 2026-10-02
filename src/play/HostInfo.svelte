@@ -1,7 +1,7 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
-  import { categoryLabel, finalName, formatPoints, slideText, type Game, type Session } from '../lib/model';
-  import { currentClueInfo, currentFinal, nameList, places, playerName, tiedLeaders } from '../lib/session';
+  import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
+  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, places, playerName, tiedLeaders } from '../lib/session';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -52,8 +52,15 @@
           : ' · waiting for the wager'}
       </div>
     {/if}
-    <div class="label">Question {session.revealed ? '' : '(on screen)'}</div>
-    <div class="q">{slideText(info.clue.questionSlide) || '—'}</div>
+    <!-- A clue with several question slides: the one on screen, and the next one coming. -->
+    {@const slides = questionSlides(info.clue)}
+    {@const at = clueSlideIndex(session, info.clue)}
+    <div class="label">Question{slides.length > 1 ? ` · slide ${at + 1} of ${slides.length}` : ''} {session.revealed ? '' : '(on screen)'}</div>
+    <div class="q">{slideText(slides[at]) || '—'}</div>
+    {#if !session.revealed && slides[at + 1]}
+      <div class="label">Next slide</div>
+      <div class="notes">{slideText(slides[at + 1]) || '—'}</div>
+    {/if}
     <div class="label">Answer {session.revealed ? '(on screen)' : '(hidden from viewers)'}</div>
     <div class="a">{slideText(info.clue.answerSlide) || '—'}</div>
     {#if info.clue.hostNotes}

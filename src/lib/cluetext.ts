@@ -1,6 +1,6 @@
 // The game's clue text default (🎨 Theme → Clue text): the font and colour of the main text of every question and
 // answer slide (board clues, Final rounds, the tiebreaker). A clue whose text was given a look of its own keeps it.
-import { isBoard, isFinal, newTextEl, type Game, type Slide, type TextEl } from './model';
+import { isBoard, isFinal, newTextEl, slidesOfClue, type Game, type Slide, type TextEl } from './model';
 
 const FACTORY = newTextEl();
 /** The font and colour a new text box has. */
@@ -11,7 +11,7 @@ export const FACTORY_COLOR = FACTORY.color;
 export function clueSlides(game: Game): Slide[] {
   const out: Slide[] = [];
   for (const r of game.rounds) {
-    if (isBoard(r)) for (const c of r.categories) for (const cl of c.clues) out.push(cl.questionSlide, cl.answerSlide);
+    if (isBoard(r)) for (const c of r.categories) for (const cl of c.clues) out.push(...slidesOfClue(cl));
     else if (isFinal(r)) out.push(r.questionSlide, r.answerSlide);
   }
   if (game.tiebreaker) out.push(game.tiebreaker.questionSlide, game.tiebreaker.answerSlide);
