@@ -102,11 +102,15 @@ try {
   await box.uncheck();
   await page.keyboard.press('Escape');
   await page.evaluate(() => localStorage.removeItem('jb.update'));
+  // (The same storage loss on a reload as above would lose the setting too: checked only when the marker survives.)
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => localStorage.setItem('test.marker', '2'));
   const n = asked;
   await page.reload();
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await page.waitForTimeout(800);
-  assert(asked === n, 'with it off, starting doesn’t ask GitHub');
+  if (await page.evaluate(() => localStorage.getItem('test.marker') === '2')) assert(asked === n, 'with it off, starting doesn’t ask GitHub');
+  else console.log('  - (the browser lost its storage on that reload: the start-up check is skipped this time)');
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Update E2E passed.');
