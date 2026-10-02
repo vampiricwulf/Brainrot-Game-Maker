@@ -1086,3 +1086,4 @@ Commits whose titles don't say what they contain:
 | 749aea4 | Merge branch 'worktree-agent-aca595146e0e3416f' | Brings in 3dde2ea (editor look and feel: one style for windows, pages, buttons, toasts and the pre-game screen) |
 | d5bbca3 | Merge branch 'worktree-agent-a65acfb86fee270b1' | Brings in 6d19748 (clues with several question slides) |
 | e8b6e1d | Merge branch 'worktree-agent-a60d194b8ff51af6d' | Brings in 42faaad (team buzzers: people join a team from their phone, anyone on it can buzz for it) |
+| a859105 | Merge branch 'worktree-agent-a35ba9cd7caa2c1b4' | Brings in a7234a0 (the Final goes from the category straight to one wager screen; wager limits off by default; wagers editable until shown) |
