@@ -4,6 +4,17 @@
   ✎ Edit screen to lay out its picture and objects. Screens drag to another cell (swapping with a screen there), to
   another map's tab, or past the map's edge (it grows); the grid keys like a spreadsheet.
 -->
+<script lang="ts" module>
+  /** Where each round was left (its map, the selected screens, the screen or look open): back there on coming back. */
+  interface Left {
+    map: string | null;
+    sel: string[];
+    look: string | null;
+    editing: boolean;
+  }
+  const left = new Map<string, Left>();
+</script>
+
 <script lang="ts">
   import Tips from '../Tips.svelte';
   import { tick, untrack } from 'svelte';
@@ -47,8 +58,11 @@
     editing = $bindable(false),
     start,
     onstart,
+    remember,
   }: {
     world: World;
+    /** Keep where this was left under this key (the round's id), to come back to it after another tab or a test play. */
+    remember?: string;
     /** A screen is open in the screen editor (the round's settings above step aside for it). */
     editing?: boolean;
     /** Where the party starts, and making a screen the start. */
@@ -64,6 +78,26 @@
   let musicFor = $state<'map' | 'screen' | null>(null);
   /** The cell with the keyboard focus: the grid is one tab stop, and the arrows move it. */
   let cursor = $state<[number, number]>([0, 0]);
+
+  /** Back where this round was left, if its map and screen are still there. */
+  function restore(): void {
+    const was = remember ? left.get(remember) : undefined;
+    const m = was && (was.map ? world.maps.find((x) => x.id === was.map) : world.maps[0]);
+    if (was && m) {
+      mapId = m.id;
+      selIds = was.sel.filter((id) => m.screens.some((s) => s.id === id));
+      const s = selIds.length === 1 ? m.screens.find((x) => x.id === selIds[0]) : undefined;
+      if (s) {
+        cursor = [s.col, s.row];
+        lookId = s.variants?.some((v) => v.id === was.look) ? was.look : null;
+        editing = was.editing;
+      }
+    }
+  }
+  restore();
+  $effect(() => {
+    if (remember) left.set(remember, { map: mapId, sel: [...selIds], look: lookId, editing });
+  });
 
   // An undo or redo in this world shows its map with the screen selected, or the screen (or look) being edited.
   const handled = { seq: 0 };
@@ -903,7 +937,7 @@
       <button onclick={() => (editing = false)} title="Esc">◀ Back to the map</button>
       <span class="muted small">{map.name} ·</span>
       <input class="se-name" bind:value={sel.name} aria-label="Screen name" />
-      <label class="small se-look">
+      <label class="small se-look" title="Other looks for the same place (the village, on fire): you switch between them in play">
         Look
         <select
           value={lookId ?? ''}
@@ -913,7 +947,7 @@
             lookId = v === '+' ? addLook(sel, look).id : v || null;
           }}
         >
-          <option value="">Own look</option>
+          <option value="">Normal look</option>
           {#each sel.variants ?? [] as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
           <option value="+">＋ Add look (a copy)</option>
         </select>
@@ -984,7 +1018,7 @@
 
     {#if map}
       <details class="settings">
-        <summary>Map settings: {map.name} ({map.cols}×{map.rows})</summary>
+        <summary title="Its name and size, what viewers see of it, how moving looks, its music">Map settings: {map.name} ({map.cols}×{map.rows}) <span class="muted small">· size, what viewers see, music</span></summary>
         <div class="grid">
           <label class="field">Name<input bind:value={map.name} /></label>
           <label class="field">
@@ -1216,7 +1250,7 @@
               <button class="ghost small" onclick={() => nudge([sel], 1, 0)} aria-label="Move right">▶</button>
               <span class="muted small">(swaps with a screen in the way)</span>
             </div>
-            <h4>Ways out</h4>
+            <h4>Ways out <span class="muted small">(where each side of this screen leads)</span></h4>
             <p class="muted small">
               By default each side leads to the screen next to it on the grid. Block a side (or click ⛔ between two screens on the map), or
               send it anywhere (another map too).

@@ -20,7 +20,7 @@ export function newStatField(name: string, type: StatField['type'] = 'number'): 
 /** Ready-made fields offered when a game has none yet. */
 export const STAT_PRESETS: { label: string; make: () => StatField }[] = [
   { label: '❤ HP (bar, 0–10)', make: () => ({ ...newStatField('HP'), start: 10, min: 0, max: 10, display: 'bar', color: '#e6194b' }) },
-  { label: '🪙 Gold (currency)', make: () => ({ ...newStatField('Gold'), start: 0, min: 0, currency: true, symbol: '🪙', color: '#ffcc00' }) },
+  { label: '🪙 Gold (currency)', make: () => ({ ...newStatField('Gold'), start: 10, min: 0, currency: true, symbol: '🪙', color: '#ffcc00' }) },
   { label: '💪 Power', make: () => ({ ...newStatField('Power'), start: 1 }) },
   { label: '🏷 Status (tags)', make: () => ({ ...newStatField('Status', 'tags'), audience: 'hud' }) },
   { label: '📝 Class (text)', make: () => ({ ...newStatField('Class', 'text'), audience: 'sheet' }) },

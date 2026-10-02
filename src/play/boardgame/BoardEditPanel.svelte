@@ -5,7 +5,8 @@
 -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
-  import { nameShown, spaceById } from '../../lib/boardgame';
+  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById } from '../../lib/boardgame';
+  import { numberStat } from '../../lib/rpgpresets';
   import type { BoardGameRound, BoardGameState, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
   import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart } from './boardedit.svelte';
@@ -111,6 +112,22 @@
         <input type="checkbox" data-show-name checked={nameShown(s)} onchange={(e) => editShowName(game, session, s.id, e.currentTarget.checked)} />
         Show name on the board
       </label>
+      <select
+        class="small"
+        data-space-kind
+        aria-label="Make it a…"
+        title="Fills in what landing on it does, its color and an emoji in it (its landing buttons are replaced: Ctrl+Z brings them back)"
+        onchange={(e) => {
+          const k = SPACE_KINDS.find((x) => x.kind === e.currentTarget.value);
+          e.currentTarget.value = '';
+          if (k) editSpace(game, session, s.id, `Made “${s.name}” a ${k.label.replace(/^\S+\s/, '')} space`, (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }));
+        }}
+      >
+        <option value="">✨ Make it a…</option>
+        {#each SPACE_KINDS as k (k.kind)}
+          <option value={k.kind} disabled={k.kind === 'shop' && !game.shops?.length} title={k.kind === 'shop' && !game.shops?.length ? 'The game has no shop yet (make one in 📊 Stats & Items)' : k.hint}>{k.label}</option>
+        {/each}
+      </select>
       <button class="small" onclick={() => (buttonsFor = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
       <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it Start</button>
       <span class="spacer"></span>

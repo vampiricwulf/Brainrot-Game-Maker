@@ -19,6 +19,7 @@
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { mediaDrop } from '../../lib/mediadrop';
   import ScreenPicker from './ScreenPicker.svelte';
+  import ShopSelect from './ShopSelect.svelte';
   import SlideModal from './SlideModal.svelte';
 
   let {
@@ -26,6 +27,7 @@
     world,
     objects = [],
     board,
+    addLabel = '＋ Add button',
   }: {
     actions: Action[] | undefined;
     /** For "Go to" (moves need a world). */
@@ -34,6 +36,8 @@
     objects?: SlideElement[];
     /** Board games: for "Send to a space / zone". */
     board?: BoardGameRound;
+    /** The add button's words, when two lists are side by side (a space's "when passed" and "when landed on"). */
+    addLabel?: string;
   } = $props();
 
   const game = $derived(editedGame());
@@ -351,12 +355,7 @@
             {#each objects as o (o.id)}<option value={o.id}>{o.name || o.kind}</option>{/each}
           </select>
         {:else if a.do === 'shop'}
-          <select bind:value={a.shop} aria-label="Shop">
-            {#if !game.shops?.some((s) => s.id === a.shop)}
-              <option value={a.shop}>{a.shop ? '⚠ Deleted shop — pick another' : game.shops?.length ? '— choose —' : 'Add a shop in 📊 Stats & Items'}</option>
-            {/if}
-            {#each game.shops ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
-          </select>
+          <span class="shop"><ShopSelect bind:value={() => a.shop || undefined, (v) => (a.shop = v ?? '')} /></span>
         {:else if a.do === 'timer'}
           <input type="number" min="1" bind:value={a.seconds} aria-label="Seconds" class="n" /> <span class="small muted">seconds</span>
         {:else if a.do === 'goto'}
@@ -425,7 +424,7 @@
     </div>
   {/each}
   <div class="row">
-    <button class="small" onclick={openMenu} aria-haspopup="menu">＋ Add button</button>
+    <button class="small" onclick={openMenu} aria-haspopup="menu">{addLabel}</button>
     <span class="spacer"></span>
     {#if actions?.length}
       <button class="ghost small" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>
@@ -472,6 +471,10 @@
   }
   .fields {
     margin-top: 4px;
+  }
+  /* Its hint line under the list of shops. */
+  .shop {
+    flex: 1 1 100%;
   }
   .fields input:not(.n) {
     flex: 1;

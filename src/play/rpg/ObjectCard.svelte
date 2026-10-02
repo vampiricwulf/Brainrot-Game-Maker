@@ -7,7 +7,7 @@
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
-  import { activeParty, audienceSees, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
+  import { activeParty, audienceSees, classLabel, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
   import { nameList } from '../../lib/session';
   import { blip } from '../../lib/live';
   import { formatStat, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
@@ -150,7 +150,7 @@
 <div class="card" role="dialog" aria-label="Object: {title}">
   <div class="row head">
     <b>{title}</b>
-    {#if role}<span class="cls">{role.class}</span>{/if}
+    {#if role}<span class="cls">{classLabel(role.class)}</span>{/if}
     <span class="vis" class:off={!seen}>{seen ? '👁 Viewers see it' : dual ? '🙈 Hidden from viewers' : '🙈 Not on the stage (viewers can see this card)'}</span>
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>

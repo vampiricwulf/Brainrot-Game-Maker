@@ -6,6 +6,7 @@
   import { step } from '../../lib/history.svelte';
   import { goTo } from '../../lib/nav.svelte';
   import { newId, newImageEl, newShapeEl, newTextEl, type ItemDef, type Screen, type Slide, type SlideElement, type World } from '../../lib/model';
+  import { enemyObject } from '../../lib/rpgpresets';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import ObjectPanel from './ObjectPanel.svelte';
 
@@ -55,6 +56,15 @@
     name?.select();
   }
 
+  /** An enemy (a character set up to fight) goes on to its name, typed over, like a character. */
+  async function addEnemy(add: (el: SlideElement) => void): Promise<void> {
+    add(enemyObject(game));
+    await tick();
+    const name = document.querySelector<HTMLInputElement>('input[data-field="object-name"]');
+    name?.focus();
+    name?.select();
+  }
+
   /** A new item in the catalog (“Item 1”), put on this screen in one step: its name and price are set in 📊 Stats & Items. */
   function newItemHere(add: (el: SlideElement) => void): void {
     const it: ItemDef = { id: newId(), name: `Item ${(game.items?.length ?? 0) + 1}`, stackable: true, price: 1 };
@@ -97,7 +107,8 @@
   {#snippet tools(add: (el: SlideElement) => void)}
     <button onclick={() => addDoorway(add)} title="Leads to another screen (any map): pick where in its settings">🚪 Doorway</button>
     <button onclick={() => addCharacter(add)} title="Someone to talk to: dialogue, own stats, maybe a shop">🧙 Character</button>
-    <button onclick={() => add(spawnPoint())} title="Where players appear when they arrive on this screen (never shown to viewers)">🚩 Arrival</button>
+    <button onclick={() => addEnemy(add)} title="Something to fight: a character with its own HP and Power, and buttons for the fight">👹 Enemy</button>
+    <button onclick={() => add(spawnPoint())} title="Where players appear when they arrive on this screen (never shown to viewers)">🚩 Arrival point</button>
     <button onclick={(e) => itemMenu(e, add)} aria-haspopup="menu" title="Put an item from the catalog on this screen">📦 Item ▾</button>
   {/snippet}
 </SlideEditor>

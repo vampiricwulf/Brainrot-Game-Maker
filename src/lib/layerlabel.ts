@@ -1,6 +1,7 @@
 // How the layers list, the right-click menu, the editors' notices and the undo history name slide items.
 import { embedName } from './links';
 import type { Game, SlideElement } from './model';
+import { classIcon } from './rpg';
 
 /** Where Align puts items: at the slide's edges or centred across (hcenter) or down (vcenter) it (several: lined up with each other), or spaced evenly (distribute). */
 export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' | 'hdistribute' | 'vdistribute';
@@ -20,6 +21,10 @@ export function lockedNote(n: number, noun = 'item'): string {
 }
 
 export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
+/** A layer's icon: what an RPG object is (🧙 a character, 📦 an item…), else what kind of item it is. */
+export function layerIcon(el: SlideElement): string {
+  return classIcon(el.role?.class) ?? LAYER_ICON[el.kind];
+}
 const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow', path: 'Drawing' };
 
 /** Text as a label shows it: its first line, 40 characters at most. */

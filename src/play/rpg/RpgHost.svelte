@@ -11,7 +11,7 @@
   import type { RunContext } from '../../lib/actions';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import {
-    activeParty, addScreenBeside, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, newVariant, screenElements, screenAt,
+    activeParty, addScreenBeside, classLabel, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, newVariant, screenElements, screenAt,
     screenSlide,
   } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
@@ -119,11 +119,28 @@
     ask = null;
   });
 
-  /** An object's card, once it opens: in sight, when the panel is short and the card would open below its fold. */
+  /**
+   * An object's card, once it opens: in sight, when the panel is short and the card would open below its fold, but
+   * never by scrolling the pad and the map (just above it) out of sight: they're what the host moves the party with.
+   */
   let cardEl = $state<HTMLElement>();
+  let mainEl = $state<HTMLElement>();
   $effect(() => {
     if (!obj?.el.id) return;
-    tick().then(() => cardEl?.scrollIntoView({ block: 'nearest' }));
+    tick().then(() => {
+      const card = cardEl;
+      const main = mainEl;
+      if (!card || !main) return;
+      let box: HTMLElement | null = card.parentElement;
+      while (box && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+      if (!box) return;
+      const view = box.getBoundingClientRect();
+      const c = card.getBoundingClientRect();
+      const below = c.bottom - view.bottom;
+      const above = c.top - view.top;
+      if (above < 0) box.scrollTop += above;
+      else if (below > 0) box.scrollTop += Math.min(below, Math.max(0, main.getBoundingClientRect().top - view.top));
+    });
   });
 
   /** An object in the list here, in or out of the selection (Shift/Ctrl+click, as on the stage). */
@@ -451,7 +468,9 @@
       {/key}
     {/if}
 
-    <div class="main">
+    <div class="main" bind:this={mainEl}>
+      <!-- With a card open, the pad and the map stay in sight (pinned at the top) while the panel scrolls to the card's foot. -->
+      <div class="nav" class:pinned={!!obj}>
       <div class="pad" role="group" aria-label="Move the party">
         {#each PAD as d, i (i)}
           {#if d && here}
@@ -487,6 +506,7 @@
           <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map">⤢{picked && pickedFound ? '' : ' Full map'}</button>
         </div>
         <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit near={{ cols: 7, rows: 5 }} {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} />
+      </div>
       </div>
 
       <div class="side">
@@ -525,7 +545,7 @@
                     }),
                   )}
               >
-                {el.name || el.role?.class}{el.role && el.name ? ` · ${el.role.class}` : ''}
+                {el.name || classLabel(el.role?.class)}{el.role && el.name ? ` · ${classLabel(el.role.class)}` : ''}
               </button>
             {:else}
               <span class="muted small">None on this screen.</span>
@@ -652,6 +672,23 @@
     flex-wrap: wrap;
     gap: 12px;
     align-items: flex-start;
+  }
+  .nav {
+    flex: 1 1 332px;
+    max-width: 552px;
+    min-width: 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  /* (The panel's own background, so the card scrolls out of sight under it.) */
+  .nav.pinned {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--panel);
+    padding-bottom: 6px;
+    box-shadow: 0 6px 6px -6px rgba(0, 0, 0, 0.6);
   }
   .pad {
     display: grid;

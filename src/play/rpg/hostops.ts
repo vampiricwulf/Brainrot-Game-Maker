@@ -4,7 +4,7 @@ import {
   type SlideElement, type World, type WorldState,
 } from '../../lib/model';
 import {
-  activeParty, allElements, audienceSees, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyOn, regroup, splitParty,
+  activeParty, allElements, audienceSees, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyOn, regroup, splitParty,
   step, worldById,
 } from '../../lib/rpg';
 import { nameList } from '../../lib/session';
@@ -208,7 +208,7 @@ export function moveGroup(game: Game, session: Session, players: Record<string, 
 }
 
 /** What an object is called on its card, in menus and in the log. */
-export const objectName = (el: SlideElement) => el.name || el.role?.class || 'Object';
+export const objectName = (el: SlideElement) => el.name || (el.role ? classLabel(el.role.class) : 'Object');
 
 /** Take an object off its screen (undoable). Returns what to tell the host. */
 export function removeObject(game: Game, session: Session, elId: string): string | null {

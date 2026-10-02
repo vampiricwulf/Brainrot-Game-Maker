@@ -36,7 +36,7 @@ describe('round templates', () => {
       expect(r.mode).toBe(t.mode);
       game.rounds.push(r);
       if (t.mode !== 'board') expect(validate(game).filter((p) => p.level === 'warn'), t.label).toEqual([]);
-      if (isRpg(r)) expect(game.worlds?.find((w) => w.id === r.world)?.maps[0].screens).toHaveLength(9);
+      if (isRpg(r)) expect(game.worlds?.find((w) => w.id === r.world)?.maps[0].screens).toHaveLength(t.label === 'Mini quest' ? 3 : 9);
     }
   });
 

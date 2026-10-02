@@ -13,7 +13,40 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## 2026-10-02
 
+### Added
+- **Board games: "Make it a…" kinds of space**: 🛒 Shop, 👹 Boss / fight, ❓ Question / clue, ⏭ Skip a turn, ↩ Back 3
+  spaces and ⭐ Star (bonus points), in the space's card, its right-click menu and ✎ Edit board during play. Each fills
+  in what landing on it does (replacing its landing buttons), a color and an emoji drawn in the circle; a space still
+  called "Space N" takes the kind's name. A Shop space opens the game's first shop, or makes one; a Boss fight rolls,
+  scores 200 for a win, and for a loss takes 1 HP (when the game has HP) and sends them back 2. One undo step each.
+- **Board games: ⑂ Add a fork here** on a picked space (its card, or right-click it): a new space beside the way on,
+  as a second way, that meets the first again a space later.
+- **RPG: 👹 Enemy** on a screen's tools: a character with its own HP and Power (viewers see them), a 🎲 roll button and,
+  when the game has HP, an HP −1 button for whoever fought; its host notes say how to fight it with Compare on its card.
+- **RPG: ＋ New shop… in a character's (or a shop object's) Shop box and an "Open a shop" button's**: it makes a shop
+  selling the whole catalog and picks it, and a line under the box says shops are set up in 📊 Stats & Items, with a link
+  there. The box used to offer only "—" when the game had no shop.
+- **＋ Add round → Mini quest**: a 3-screen adventure with a village shop (a Potion and a Sword), gold to find in the
+  forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
+
 ### Changed
+- **RPG rounds: the top of the round is plainer**: "Players start on" (was "Party starts at"), a line on how to add
+  and draw screens, and the world settings (World, World name, ＋ New world, ⋯) tucked under **⋯ Advanced: carry this
+  adventure into another round** (open when the game has more than one world or the world is shared). Map settings
+  say what's in them, Ways out says what it is, the screen tools say 🚩 Arrival point, and a screen's own look is
+  "Normal look".
+- **RPG: the editor comes back to the screen you were editing** after another tab (📊 Stats & Items…) or a test play,
+  not the map grid.
+- **RPG in play: an object's card says what it is in words** ("Character", "Doorway"), as does the list of objects
+  here ("Old Man · Character"), never codes like "npc".
+- **RPG in play: an object's card no longer scrolls the pad and the minimap away** on a short window: they stay
+  pinned at the top of the panel while it scrolls to the card's foot.
+- **Layers list: RPG objects show what they are** (🧙 a character, 📦 an item, 🚪 a doorway…) instead of 🅣.
+- **Board games: a space's two ＋ Add button say which they are**: "＋ Add button (when passed)" and "＋ Add button (when
+  landed on)".
+- **The 🪙 Gold stat preset starts at 10** (it was 0, so a shop couldn't be tried at once); games made before keep theirs.
+  The 20-space loop template gives 2 of the game's gold for passing Start when it has gold, and the sample game's board
+  game gives 2 Gold for passing Start.
 - **Board games: space names are hidden from viewers unless you tick "Show name on the board"** for that space, in
   the editor's space card or in ✎ Edit board during play (or right-click a space: 👁 Show name / ⊘ Hide name). This
   applies to games made before too, so their names disappear from the stage until you show them; **Names on the board:
@@ -44,6 +77,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Board games: arrowheads hidden under a space's name show again**: a link coming into a space from below (11 → 12
+  and 12 → Start on a new board) ended under the name, so it had no arrowhead; it now stops just past the name.
 - **Slide editor: Undo and the 🕘 History name what was done to the items**: a paste of a text box and two shapes was
   "Added 3 text boxes", a duplicate "Added shape", Cut "Deleted…", lining up "Moved shape" (just the one that moved),
   locking several "4 changes" and a restack "Restacked items". Now: "Pasted 3 items", "Duplicated shape “Star”", "Cut 2

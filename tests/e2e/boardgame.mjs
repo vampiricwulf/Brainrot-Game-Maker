@@ -95,6 +95,48 @@ try {
   await space('Detour').click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
   assert((await spaces.count()) === 12, 'and it can go again');
+
+  // Every arrowhead clears the name under the space it points at (11 → 12 and 12 → Start came in from below, under it).
+  const hiddenHeads = () =>
+    page.evaluate(() => {
+      const labels = [...document.querySelectorAll('.canvas .label')].map((l) => l.getBoundingClientRect());
+      return [...document.querySelectorAll('.canvas line.link')].filter((line) => {
+        const svg = line.ownerSVGElement;
+        const p = svg.createSVGPoint();
+        p.x = +line.getAttribute('x2');
+        p.y = +line.getAttribute('y2');
+        const s = p.matrixTransform(line.getScreenCTM());
+        return labels.some((r) => s.x > r.left && s.x < r.right && s.y > r.top && s.y < r.bottom);
+      }).length;
+    });
+  assert((await hiddenHeads()) === 0, 'no arrowhead is hidden under a space’s name');
+  // The two lists of buttons say which is which.
+  await space('Space 6').click();
+  const addLabels = await page.locator('.side .actions').getByRole('button', { name: /＋ Add button/ }).allInnerTexts();
+  assert(addLabels.join('|') === '＋ Add button (when passed)|＋ Add button (when landed on)', `the space’s two ＋ Add buttons say which they are (${addLabels.join(' | ')})`);
+  // Make it a…: a kind of space fills in its landing buttons, its color and an emoji in it.
+  await space('Space 6').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '⏭ Skip a turn' }).click();
+  assert((await undoTitle()).includes('Made “Space 6” a Skip a turn space'), `right-click → Make it a… ⏭ Skip a turn is one named step (${await undoTitle()})`);
+  assert((await page.getByLabel('Space name').inputValue()) === 'Skip a turn' && (await space('Skip a turn').locator('.mark').innerText()) === '⏭', 'it takes the kind’s name and shows ⏭ in its circle');
+  assert((await page.locator('.side .actions').nth(1).innerText()).includes('Skip'), 'and skipping a turn is its landing button');
+  await space('Space 8').click();
+  await page.locator('.side [data-space-kind]').selectOption('shop');
+  assert((await space('Shop').locator('.mark').innerText()) === '🛒', 'Make it a… 🛒 Shop in the space’s card');
+  const shopPicked = await page.locator('.side .actions').nth(1).getByLabel('Shop', { exact: true }).locator('option:checked').innerText();
+  assert(/^Shop \d/.test(shopPicked), `with no shop in the game, it makes one to open (${shopPicked})`);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-kinds.png` });
+  // ⑂ Add a fork here: a second way on, beside the first.
+  await space('Space 4').click();
+  await page.locator('.side').getByRole('button', { name: '⑂ Add a fork here' }).click();
+  assert((await spaces.count()) === 13 && (await page.getByLabel('Space name').inputValue()) === 'Space 13', '⑂ Add a fork here adds a space, picked');
+  assert((await page.locator('.side [data-leads]').innerText()).includes('→ Space 6') || (await page.locator('.side [data-leads]').innerText()).includes('→ Skip a turn'), 'that leads on to the space after the next one');
+  await space('Space 4').click();
+  assert((await page.locator('.side').innerText()).includes('A fork'), 'so Space 4 is a fork now');
+  assert((await hiddenHeads()) === 0, 'the fork’s arrowheads show too');
+  // (The game below has none of them.)
+  for (let i = 0; i < 3; i++) await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  assert((await spaces.count()) === 12 && (await page.locator('.canvas .space .mark').count()) === 0, 'Undo takes the fork and the kinds back');
   // Start gives points when passed.
   await space('Start').click();
   // Its name, shown on the board: the box in its card, one named step.
