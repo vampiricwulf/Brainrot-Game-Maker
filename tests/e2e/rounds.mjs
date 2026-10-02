@@ -48,8 +48,8 @@ try {
   // TV rule for this one: players with $0 sit it out.
   await page.getByLabel('Players with a score of 0 or less can play it').uncheck();
   await page.getByLabel('Category').fill('Snacks');
-  await page.getByRole('button', { name: '▲ Move up' }).click();
-  await page.getByRole('button', { name: '▲ Move up' }).click();
+  await page.getByRole('button', { name: '▲ Move round up' }).click();
+  await page.getByRole('button', { name: '▲ Move round up' }).click();
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'rounds can be moved (a Final in the middle of the game)');
   assert((await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'), 'the round bar shows the mode and position');
   await page.locator('.se .canvas .hit').first().click();

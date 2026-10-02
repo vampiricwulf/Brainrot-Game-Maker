@@ -47,6 +47,13 @@ try {
   assert((await page.locator('nav > button.round-tab').count()) === 0, 'Ctrl+Z takes the whole sample back');
   await page.keyboard.press('Control+y');
   assert((await page.locator('nav > button.round-tab').count()) === 4, 'and Ctrl+Y brings it back');
+  // Its board game's special spaces show their names on the board, and their card knows their kind.
+  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  const named = await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts();
+  assert(['Bonus', 'Go back', 'Nap time', 'Roll again'].every((n) => named.includes(n)) && !named.some((n) => /^Space \d/.test(n)), `the sample board game shows its special spaces’ names, not the plain ones’ (${named.join(', ')})`);
+  await page.locator('.canvas').getByRole('button', { name: 'Bonus', exact: true }).click();
+  const kind = await page.locator('.side [data-space-kind] option:checked').innerText();
+  assert(kind === '⭐ Star (bonus points)', `its Bonus space’s Make it a… box says ⭐ Star, from its +100 button (${kind})`);
   await page.locator('nav > button.round-tab').first().click();
 
   // ---------- Import clues ----------

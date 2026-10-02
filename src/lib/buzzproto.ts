@@ -19,9 +19,10 @@ export const BUZZ_PROTOCOL = 1;
 /**
  * What this room can do beyond protocol 1 (the welcome lists them; a room from before lists none). 'teams': seats can be
  * teams that several phones join (HostState.teams). 'wagers': players send their Daily Double or Final wager from
- * their phone (HostState.wager), and only the host hears the amount.
+ * their phone (HostState.wager), and only the host hears the amount. 'free': the host can free a seat without blocking
+ * anyone (kick with block: false), for a player who came back on another phone.
  */
-export const ROOM_FEATURES = ['teams', 'wagers'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
 /** The biggest wager a phone may send (and a seat's max the room passes on). */
@@ -97,6 +98,8 @@ export interface HostState {
    * Amounts stay between the host, the room and that seat's own phones: phoneView() gives each phone its own only.
    */
   wager?: WagerAsk | null;
+  /** The game is over (its final scores are up): phones say where they came (PhoneView.final). */
+  over?: boolean;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -160,6 +163,8 @@ export interface PhoneView {
   teams?: boolean;
   /** The host is taking wagers (HostState.wager), as this phone should see it. */
   wager?: PhoneWager;
+  /** The game is over (HostState.over): where this phone's seat came, by score (tied: others have the same score). */
+  final?: { place: number; tied?: boolean };
 }
 
 /**
@@ -220,7 +225,17 @@ export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | 
     ...(s.currency ? { currency: s.currency } : {}),
     ...(s.teams ? { teams: true } : {}),
     ...wagerView(s, seatId, me, sent, late),
+    ...finalView(s, seat?.id),
   };
+}
+
+/** Where a seat came when the game is over: 1 + how many scored more (equal scores share a place). */
+function finalView(s: HostState, seatId: string | undefined): Pick<PhoneView, 'final'> {
+  if (!s.over || !seatId) return {};
+  const mine = s.scores[seatId] ?? 0;
+  const others = s.seats.filter((x) => x.id !== seatId).map((x) => s.scores[x.id] ?? 0);
+  const tied = others.includes(mine);
+  return { final: { place: 1 + others.filter((x) => x > mine).length, ...(tied ? { tied: true } : {}) } };
 }
 
 /**
@@ -325,9 +340,11 @@ export type HostMsg =
   | { t: 'reject'; conn: string }
   /**
    * Take a seat back: its phone is told and its token stops working (it can claim a free seat again). Teams: member
-   * (added later) takes just that one person off the team; without it, everyone on the team.
+   * (added later) takes just that one person off the team; without it, everyone on the team. block (added later,
+   * 'free'): false frees the seat without keeping anyone off it (the player came back on another phone); left out,
+   * that phone (and its address) can't take it again for a while.
    */
-  | { t: 'kick'; seatId: string; member?: string }
+  | { t: 'kick'; seatId: string; member?: string; block?: boolean }
   /** Added later. Teams: put a team member (and their phone) on another team. */
   | { t: 'move'; member: string; seatId: string }
   | { t: 'close' }
@@ -411,8 +428,11 @@ export type RoomToPhone =
   | {
       t: 'seats';
       title: string;
-      /** members (teams): the names of the people on that team. */
-      seats: (Seat & { taken: boolean; members?: string[] })[];
+      /**
+       * members (teams): the names of the people on that team. away (added later): taken, but the phone that has it
+       * isn't connected (its player may be back on another phone: the host can free it).
+       */
+      seats: (Seat & { taken: boolean; members?: string[]; away?: boolean })[];
       allowNew: boolean;
       hostHere: boolean;
       locked?: boolean;
@@ -452,7 +472,8 @@ export type RoomToPhone =
       by?: string;
       byYou?: boolean;
     }
-  | { t: 'kicked' }
+  /** freed (added later): the host freed the seat (its player moved to another phone), rather than taking it back. */
+  | { t: 'kicked'; freed?: boolean }
   /** The host closed the room (or it expired). */
   | { t: 'closed' }
   | { t: 'pong'; at: number; serverNow: number }

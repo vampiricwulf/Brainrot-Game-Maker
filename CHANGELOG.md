@@ -30,6 +30,26 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **Phone buzzers: a player back on a new phone gets their seat back without a 2-minute block.** In the phones list, a
+  seat taken by a phone now has **Free seat** (for someone who moved to another phone or browser: it blocks nobody)
+  next to **✕ Kick** (which still keeps that phone, and others on the same Wi-Fi, off the seat for 2 minutes). On
+  the phone, a taken seat says "Taken · is this you on a new phone? Ask the host to free it", and says when the phone
+  that has it is away. Free seat needs the updated buzzer server; with an older one only ✕ Kick shows.
+- **With Teams on, the ▶ Play screen's list is 👥 Teams**: "＋ Add team", "each row is a team; people join it from
+  their phone", and who joined each team from their phone under its row.
+- **Phone, joining a team: the name box says "Your name (your team sees it)"** (e.g. Zoe), so it doesn't read like a
+  name for the team.
+- **Phones say where you came when the game ends**: "You came 1st" with "with $700 🎉" (or "tied for 2nd", "Your team
+  came 1st"), and it stays up when the host closes the room. Needs the updated buzzer server.
+- **Board games: making a space a kind (Shop, Boss, Star…) shows its name on the board**, and the space's card shows
+  which kind it is (worked out from its landing buttons, also for spaces made before). The sample game's and the
+  templates' special spaces (Bonus, Go back, Nap time, Roll again) show their names and an emoji, so viewers can tell
+  them apart.
+- **The sample game's players are red, green and yellow** (two of them were blues that looked alike on the blue theme).
+- **Small laptop screens**: a round's buttons at the top are shorter (▲, ▼, ⧉ Duplicate, 🗑 Delete) so its name stays
+  on one line; an adventure's host notes sit beside its name, and a board game's tips above the board take one line,
+  so the map and the board start higher up. In play on a short window, an adventure's movement pad and map come right
+  under the parties, ahead of the improvising tools.
 - **Opening a game over unsaved changes says what really happens**: the button is **Open anyway** (or **Reopen anyway**,
   **Start new anyway**), not "Discard", and the note says the game you leave is kept in this browser, where Open… →
   Recent games brings it back. With the browser's storage full it says going on loses it.
@@ -132,6 +152,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Adding a second adventure (the Mini quest template) opened ⋯ Advanced with its world settings.** It stays shut
+  now, with one line: "Its own world (separate from Adventure)".
 - **Randomize Daily Doubles' tooltip gave the wrong way to set one by hand**: it said to click a tile (that opens the
   clue); it now says right-click a tile → ⭐ Make it a Daily Double.
 - **Host panel: the status line during the category reveal said "Round intro"** with no progress; it now says

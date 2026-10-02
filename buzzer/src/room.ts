@@ -28,7 +28,9 @@
  * An early buzz (while 'closed') locks the seat, not the socket, so a reload doesn't clear it.
  *
  * Kicks: the kicked phone (its socket, its browser's device id and its address) can't take that seat again for
- * KICK_BLOCK_MS (it can take another free one). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
+ * KICK_BLOCK_MS (it can take another free one). Freeing a seat (kick with block: false, for a player back on another
+ * phone, maybe on the same Wi-Fi) keeps nobody off it. The seat list tells phones which taken seats are away (no
+ * connected phone has them). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
  *
  * Full rooms: phones without a seat that have done nothing for IDLE_MS (viewers who opened the link, extra tabs) don't
  * hold a place: when MAX_PHONES are connected, the oldest of them is turned away ('denied full', closed; it tries again
@@ -380,7 +382,7 @@ export class Room {
         if (typeof m.conn === 'string') this.reject(m.conn);
         break;
       case 'kick':
-        if (typeof m.seatId === 'string') this.kick(m.seatId, typeof m.member === 'string' ? m.member : undefined);
+        if (typeof m.seatId === 'string') this.kick(m.seatId, typeof m.member === 'string' ? m.member : undefined, m.block !== false);
         break;
       case 'move':
         if (typeof m.member === 'string' && typeof m.seatId === 'string') this.move(m.member, m.seatId);
@@ -510,13 +512,21 @@ export class Room {
     this.sync();
   }
 
-  /** Takes a seat back (teams: one member, or without `member` everyone on the team). */
-  private kick(seatId: string, member?: string): void {
+  /**
+   * Takes a seat back (teams: one member, or without `member` everyone on the team). block false: only frees it (the
+   * player came back on another phone, maybe on the same Wi-Fi): nobody is kept off it.
+   */
+  private kick(seatId: string, member?: string, block = true): void {
     const one = member !== undefined;
     if (one && this.s.members?.[member]?.seatId !== seatId) return;
     const holders = [...this.phones.values()].filter((p) => (one ? p.member === member : p.seatId === seatId));
     const members = Object.entries(this.s.members ?? {}).filter(([id, x]) => (one ? id === member : x.seatId === seatId));
     if (!this.s.tokens[seatId] && !holders.length && !members.length) return;
+    if (!block) {
+      if (one) this.dropMember(member, 'freed');
+      else this.freeSeat(seatId, 'freed');
+      return this.save();
+    }
     // The kicked phone can't just tap the same name again (a troll with the code from the stream).
     const conns = new Set(holders.map((p) => p.conn));
     if (!one && this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
@@ -534,8 +544,8 @@ export class Room {
       devices: [...new Set([...keep.devices, ...devices])],
       ips: [...new Set([...(keep.ips ?? []), ...ips])],
     };
-    if (one) this.dropMember(member, true);
-    else this.freeSeat(seatId, true);
+    if (one) this.dropMember(member, 'kicked');
+    else this.freeSeat(seatId, 'kicked');
     this.save();
   }
 
@@ -555,15 +565,15 @@ export class Room {
     this.save();
   }
 
-  /** Teams: forgets a member (left, kicked, their team gone); their phone is unseated (told 'kicked' when kicked). */
-  private dropMember(id: string, kicked = false): void {
+  /** Teams: forgets a member (left, kicked, their team gone); their phone is unseated (told so when kicked or freed). */
+  private dropMember(id: string, kicked?: Kicked): void {
     if (!this.s.members?.[id]) return;
     delete this.s.members[id];
     delete this.s.memberLocks?.[id];
     for (const p of this.phones.values()) {
       if (p.member !== id) continue;
       this.unseat(p);
-      if (kicked) this.deps.toPhone(p.conn, { t: 'kicked' });
+      if (kicked) this.deps.toPhone(p.conn, kickedMsg(kicked));
     }
   }
 
@@ -575,8 +585,8 @@ export class Room {
     this.deps.savePhone(strip(p));
   }
 
-  /** Revokes a seat's token (teams: its members') and unseats its phones (told 'kicked' when kick). */
-  private freeSeat(seatId: string, kicked = false): void {
+  /** Revokes a seat's token (teams: its members') and unseats its phones (told so when kicked or freed). */
+  private freeSeat(seatId: string, kicked?: Kicked): void {
     delete this.s.tokens[seatId];
     delete this.s.holders[seatId];
     delete this.s.seatedAt?.[seatId];
@@ -585,7 +595,7 @@ export class Room {
     for (const p of this.phones.values()) {
       if (p.seatId !== seatId) continue;
       this.unseat(p);
-      if (kicked) this.deps.toPhone(p.conn, { t: 'kicked' });
+      if (kicked) this.deps.toPhone(p.conn, kickedMsg(kicked));
     }
   }
 
@@ -1145,11 +1155,15 @@ export class Room {
     const st = this.s.state;
     const teams = !!st?.teams;
     const members = Object.entries(this.s.members ?? {});
+    /** Seats a connected phone holds (a taken seat without one is away). */
+    const held = new Set([...this.phones.values()].flatMap((p) => (p.seatId ? [p.seatId] : [])));
     const seatsMsg = JSON.stringify({
       t: 'seats',
       title: st?.title ?? '',
       seats: (st?.seats ?? []).map((x) =>
-        teams ? { ...x, taken: false, members: members.filter(([, m]) => m.seatId === x.id).map(([, m]) => m.name) } : { ...x, taken: !!this.s.tokens[x.id] },
+        teams
+          ? { ...x, taken: false, members: members.filter(([, m]) => m.seatId === x.id).map(([, m]) => m.name) }
+          : { ...x, taken: !!this.s.tokens[x.id], ...(this.s.tokens[x.id] && !held.has(x.id) ? { away: true } : {}) },
       ),
       allowNew: !teams && (st?.allowNew ?? false),
       hostHere: this.hostHere,
@@ -1225,6 +1239,10 @@ export class Room {
   }
 }
 
+/** How a phone lost its seat to the host: taken back (kick, with a block) or freed for its player's other phone. */
+type Kicked = 'kicked' | 'freed';
+const kickedMsg = (k: Kicked): RoomToPhone => (k === 'freed' ? { t: 'kicked', freed: true } : { t: 'kicked' });
+
 const strip = (p: Phone): PhoneSaved => ({
   conn: p.conn,
   seatId: p.seatId,
@@ -1293,6 +1311,7 @@ export function cleanState(x: unknown): HostState | null {
   if (typeof x.currency === 'string' && x.currency) extra.currency = clip(x.currency, 8);
   if (x.locked === true) extra.locked = true;
   if (x.teams === true) extra.teams = true;
+  if (x.over === true) extra.over = true;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);
     const wseats: WagerSeat[] = [];

@@ -12,6 +12,11 @@
   const game = $derived(app.game);
   const world = $derived(worldById(game, round.world));
   const sharing = $derived(rpgRounds(game).filter((r) => r.world === round.world && r.id !== round.id).length);
+  /**
+   * The other RPG rounds, which play other worlds: this round's adventure is separate from theirs (one line says so;
+   * the world settings stay under ⋯ Advanced).
+   */
+  const separate = $derived(rpgRounds(game).filter((r) => r.world !== round.world && r.id !== round.id).map((r) => r.name.trim() || 'another round'));
   /** A screen is open in the screen editor: it gets the room this round's settings take. */
   let editing = $state(false);
 
@@ -54,18 +59,25 @@
           />
         </label>
       {/if}
+      <!-- (Beside the name and the start, so the map starts higher up on a small screen.) -->
+      <label class="field notes">
+        Host notes (never shown on stream)
+        <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
+      </label>
     </div>
     <p class="muted small">
-      An adventure is a map of screens (places) the players walk between. Click ＋ on the map below to add a screen, then double-click it to draw
-      it and put characters, enemies, doors and items on it.
+      An adventure is a map of screens (places) the players walk between: ＋ on the map adds one, double-click it to draw it and fill it.
     </p>
     {#if sharing}
       <p class="muted small" data-world-shared>
         {sharing} other round{sharing === 1 ? '' : 's'} play{sharing === 1 ? 's' : ''} this adventure too: it carries on where it was left (the start only
         applies the first time).
       </p>
+    {:else if world && separate.length}
+      <p class="muted small" data-world-own>Its own world (separate from {[...new Set(separate)].join(', ')}).</p>
     {/if}
-    <details class="adv" open={(game.worlds?.length ?? 0) > 1 || sharing > 0 || !world}>
+    <!-- Open only when it matters here: another round plays this world, or this round has none. -->
+    <details class="adv" open={sharing > 0 || !world}>
       <summary>⋯ Advanced: carry this adventure into another round</summary>
       <p class="muted small">
         The maps and screens belong to a “world”. Another RPG round can play the same world, so the adventure carries on where it was left; or
@@ -112,10 +124,6 @@
         {/if}
       </div>
     </details>
-    <label class="field notes">
-      Host notes (never shown on stream)
-      <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
-    </label>
   {/if}
   {#if world}
     {#key world.id}<WorldEditor {world} bind:editing remember={round.id} start={startRef(world, round)} onstart={(ref) => (round.start = ref)} />{/key}
@@ -154,7 +162,12 @@
   .adv[open] summary {
     margin-bottom: 6px;
   }
+  .notes {
+    flex: 1 1 220px;
+    max-width: 640px;
+  }
   .notes textarea {
-    width: min(640px, 100%);
+    width: 100%;
+    resize: vertical;
   }
 </style>

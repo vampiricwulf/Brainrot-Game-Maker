@@ -108,7 +108,9 @@ try {
     await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
     await p.getByRole('button', { name: team }).click();
     await p.getByRole('heading', { name: `Join ${team}` }).waitFor();
-    await p.getByRole('textbox', { name: 'Name for your team' }).fill(name);
+    // (Your own name, not the team's: the box says so, and gives an example.)
+    if ((await p.getByRole('textbox', { name: 'Your name (your team sees it)' }).getAttribute('placeholder')) !== 'e.g. Zoe') throw new Error('the team name box has no example');
+    await p.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill(name);
     await p.getByRole('button', { name: 'Join the team' }).click();
     await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
     return p;
@@ -120,6 +122,12 @@ try {
   const list = card.locator('ul.phones');
   const listed = (await list.innerText()).replace(/\s+/g, ' ');
   assert(/Player 1 2 on it.*Ann ✔ joined.*Al ✔ joined.*Player 2 1 on it.*Bea ✔ joined/.test(listed), `two phones on one team, one on the other: the host sees who is on which team (${listed})`);
+  // The pre-game list is of teams now: its words say so, and who joined shows under each team.
+  const roster = host.locator('[data-place="play:players"]');
+  assert((await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams' && (await roster.getByRole('button', { name: '＋ Add team' }).isVisible()), 'with Teams on, the pre-game card is 👥 Teams, with ＋ Add team');
+  assert((await roster.locator('.hint').innerText()).startsWith('Each row is a team; people join it from their phone'), 'and says each row is a team that people join from their phone');
+  const onTeams = await roster.locator('.on-team').allInnerTexts();
+  assert(onTeams.join('|') === 'On it: Ann, Al|On it: Bea', `who is on each team shows under its row (${onTeams.join(' | ')})`);
 
   // A name someone has is taken; the seat list shows who is on each team.
   const zed = watch(await (await browser.newContext({ viewport: { width: 390, height: 760 } })).newPage(), 'zed');
@@ -132,11 +140,11 @@ try {
   await zed.getByRole('button', { name: 'Back' }).click();
   assert(true, 'the name form says who is on the team already ("On it: Bea")');
   await zed.getByRole('button', { name: 'Player 2' }).click();
-  await zed.getByRole('textbox', { name: 'Name for your team' }).fill('ann');
+  await zed.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill('ann');
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#team-err').getByText('Someone in the game already has that name').waitFor();
   assert(true, 'the team list shows who is on each team, and a name someone has is taken');
-  await zed.getByRole('textbox', { name: 'Name for your team' }).fill('Zed');
+  await zed.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill('Zed');
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#me').getByText('Zed · Player 2').waitFor();
 

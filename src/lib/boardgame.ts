@@ -499,7 +499,8 @@ export const SPACE_KINDS: { kind: SpaceKind; label: string; hint: string; name: 
 
 /**
  * Make a space a shop, a boss, a question…: its "When landed on" buttons (they replace the ones it had), its color and
- * the emoji drawn in it. A space still called "Space N" takes the kind's name.
+ * the emoji drawn in it. A space still called "Space N" takes the kind's name, and viewers see its name on the board
+ * (a special space with no name looks like any other).
  */
 export function applySpaceKind(s: BoardSpace, kind: SpaceKind, c: SpaceKindContext = {}): void {
   const k = SPACE_KINDS.find((x) => x.kind === kind);
@@ -508,6 +509,23 @@ export function applySpaceKind(s: BoardSpace, kind: SpaceKind, c: SpaceKindConte
   s.color = k.color;
   s.mark = k.mark;
   if (!s.name.trim() || spaceNumber(s.name)) s.name = k.name;
+  setNameShown(s, true);
+}
+
+/**
+ * The kind of space its landing buttons make it (a space made by hand or by a template counts too), or null: none, or
+ * buttons no kind has (a "Roll again"). A fight rolls dice; a star only scores.
+ */
+export function spaceKindOf(s: Pick<BoardSpace, 'onLand'>): SpaceKind | null {
+  const acts = s.onLand ?? [];
+  const has = (d: Action['do']) => acts.some((a) => a.do === d);
+  if (has('shop')) return 'shop';
+  if (has('question')) return 'question';
+  if (has('dice')) return 'boss';
+  if (has('skip')) return 'skip';
+  if (acts.some((a) => a.do === 'steps' && a.steps < 0)) return 'back';
+  if (acts.length && acts.every((a) => a.do === 'score' && a.amount > 0)) return 'star';
+  return null;
 }
 
 /**

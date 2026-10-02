@@ -33,6 +33,8 @@
     record = (_label, fn) => fn(),
     rowMenu = false,
     onraise,
+    teams = false,
+    members,
   }: {
     players: P[];
     max?: number;
@@ -49,7 +51,14 @@
     rowMenu?: boolean;
     /** At the most players: raise ⚖ Game rules › Most players by one (left out when it can't go higher). */
     onraise?: () => void;
+    /** Phone buzzer teams are on: each row is a team (the words say "team"). */
+    teams?: boolean;
+    /** Teams: the people on a team (joined from their phones), shown under its row. */
+    members?: (id: string) => string[];
   } = $props();
+  /** "Player" or "Team" (each row is a team when phone buzzer teams are on). */
+  const noun = $derived(teams ? 'Team' : 'Player');
+  const lower = $derived(noun.toLowerCase());
   let list = $state<HTMLElement>();
   /** The player whose avatar picker is open. */
   let picking = $state<string | null>(null);
@@ -57,7 +66,7 @@
   function add(): P | undefined {
     if (players.length >= max) return;
     const color = nextFreeColor(players.map((p) => p.color));
-    const p: P = { id: newId(), name: `Player ${players.length + 1}`, color };
+    const p: P = { id: newId(), name: `${noun} ${players.length + 1}`, color };
     if (showScores) p.startScore = 0;
     players.push(p);
     return p;
@@ -87,7 +96,7 @@
   function nameKey(e: KeyboardEvent): void {
     if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
-    if (players.length >= max) return void toast(`${max} players at most`);
+    if (players.length >= max) return void toast(`${max} ${lower}s at most`);
     addAndName();
   }
 
@@ -123,12 +132,12 @@
   function menu(e: MouseEvent, p: P, i: number): void {
     if (!rowMenu || isTextField(e.target)) return;
     showMenu(e, [
-      { heading: p.name || `Player ${i + 1}` },
+      { heading: p.name || `${noun} ${i + 1}` },
       { label: '✎ Rename', onclick: () => void editName(p) },
       { label: '▲ Move up', onclick: () => move(i, -1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => move(i, 1), disabled: i === players.length - 1, keys: 'Alt+↓' },
       { sep: true },
-      { label: `🗑 ${removeWord} player`, danger: true, onclick: () => remove(p) },
+      { label: `🗑 ${removeWord} ${lower}`, danger: true, onclick: () => remove(p) },
     ]);
   }
 
@@ -185,7 +194,7 @@
       <span class="btn">🗑</span>
     </div>
   {/if}
-  <div class="rows" role="list" aria-label="Players">
+  <div class="rows" role="list" aria-label="{noun}s">
   {#each players as p, i (p.id)}
     {@const line = rows.lineAt(p.id)}
     <div
@@ -242,8 +251,8 @@
         class="name"
         dir="auto"
         bind:value={p.name}
-        placeholder="Player {i + 1}"
-        aria-label="Player {i + 1} name"
+        placeholder="{noun} {i + 1}"
+        aria-label="{noun} {i + 1} name"
         style:border-color={p.color}
         onkeydown={nameKey}
       />
@@ -261,13 +270,17 @@
         aria-label="{removeWord} {p.name}"
         title={lastOne ? 'The game needs at least one player: add another first' : `${removeWord} ${p.name}`}
       >{inGame ? '−' : '🗑'}</button>
+      {#if members}
+        {@const on = members(p.id)}
+        <span class="on-team muted small" dir="auto">{on.length ? `On it: ${on.join(', ')}` : 'Nobody on it yet'}</span>
+      {/if}
     </div>
   {/each}
   </div>
   <div class="row">
-    <button class="add" onclick={addAndName} disabled={players.length >= max}>＋ Add player</button>
+    <button class="add" onclick={addAndName} disabled={players.length >= max}>＋ Add {lower}</button>
     <span class="muted">
-      {players.length}/{max} players · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
+      {players.length}/{max} {lower}s · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>
     {#if players.length >= max && onraise}
       <button class="small" onclick={onraise} title="⚖ Game rules › Most players">Raise Most players to {max + 1}</button>
@@ -318,6 +331,12 @@
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
+  }
+  /* Teams: who joined, under the team's row (lined up with its name). */
+  .on-team {
+    flex-basis: 100%;
+    padding-left: 30px;
+    margin-top: -4px;
   }
   .player.dragging {
     opacity: 0.5;

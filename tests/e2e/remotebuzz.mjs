@@ -49,7 +49,7 @@ await context.addInitScript(() => {
         if (this.readyState !== 0) return;
         this.readyState = 1;
         this.onopen?.({});
-        this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now() }) });
+        this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now(), ...(room.features ? { features: room.features } : {}) }) });
       }, 20);
     }
     send(d) {
@@ -303,8 +303,9 @@ try {
   assert((await chip.innerText()).startsWith('📱 1/4'), `the host panel shows how many phones joined (${await chip.innerText()})`);
   await chip.click();
   const pop = page.getByRole('region', { name: 'Phone buzzers' });
+  assert((await pop.getByRole('button', { name: /Free .* seat/ }).count()) === 0, 'a room from before Free seat offers only ✕ Kick');
   await pop.getByRole('button', { name: 'Take Player 1’s seat back from their phone' }).click();
-  await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id), seats[0].id);
+  await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === undefined), seats[0].id);
   assert(true, 'kick ✕ takes Player 1’s seat back');
   await say({ t: 'phones', phones: [{ conn: 'c5', seatId: null, pendingName: 'Amy', connected: true }] });
   await pop.getByText('Amy wants to join').waitFor();
@@ -318,12 +319,29 @@ try {
   assert((await page.locator('.stage-box .board').count()) === 0, 'the clue is still open');
 
   // ---------- A dropped connection: reconnect with the same code ----------
+  // (The room it comes back to can free a seat without blocking anyone.)
+  await page.evaluate(() => (window.__room.features = ['teams', 'wagers', 'free']));
   await page.evaluate(() => window.__drop());
   await page.waitForFunction(() => document.querySelector('.panel .chip')?.textContent.includes('⚠'));
   assert(true, 'a dropped connection shows ⚠ on the chip');
   await page.waitForFunction(() => window.__room.sockets.length === 2 && !document.querySelector('.panel .chip')?.textContent.includes('⚠'));
   assert((await page.evaluate(() => window.__room.sockets[1].url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'it reconnects to the same room');
   assert((await page.evaluate(() => window.__room.posts)) === 2, 'without making a new one');
+
+  // ---------- Free seat: a player back on a new phone (no block, unlike ✕ Kick) ----------
+  await say({ t: 'phones', phones: [{ conn: 'c9', seatId: seats[1].id, connected: false }] });
+  await chip.click();
+  const free = pop.getByRole('button', { name: 'Free Player 2’s seat (moved phone)' });
+  await free.waitFor();
+  assert(
+    (await pop.getByRole('button', { name: 'Take Player 2’s seat back from their phone' }).innerText()).includes('Kick') && (await free.innerText()) === 'Free seat',
+    'a seat whose phone is gone offers Free seat (moved phone) beside ✕ Kick',
+  );
+  await free.click();
+  await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === false), seats[1].id);
+  await page.locator('.toast', { hasText: 'seat is free' }).waitFor();
+  assert(true, 'Free seat tells the room to free it without a block, and says they can tap their name on the new phone');
+  await page.keyboard.press('Escape');
 
   // Back to the board: the lobby, nobody locked out.
   await page.keyboard.press('Escape');

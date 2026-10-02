@@ -375,6 +375,16 @@ try {
   assert(await page.getByText('Players start on').isVisible(), 'the round says where players start on');
   assert((await page.getByText('Party starts at').count()) === 0, 'not “Party starts at”');
   assert(!(await page.getByLabel('World', { exact: true }).isVisible()) && (await page.locator('summary', { hasText: 'Advanced: carry this adventure into another round' }).isVisible()), 'the world picker waits under ⋯ Advanced');
+  // A second adventure (the Mini quest template) has its own world: one line says so, and ⋯ Advanced stays shut.
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /Mini quest/ }).click();
+  await page.locator('[data-world-own]').waitFor();
+  assert(
+    (await page.locator('[data-world-own]').innerText()) === 'Its own world (separate from Adventure).' && !(await page.locator('details.adv').evaluate((d) => d.open)) && !(await page.getByLabel('World', { exact: true }).isVisible()),
+    'adding the Mini quest to a game with an adventure keeps ⋯ Advanced shut: “Its own world (separate from Adventure)”',
+  );
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
   // A character's Shop box makes a shop right there, and says where shops are set up.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();

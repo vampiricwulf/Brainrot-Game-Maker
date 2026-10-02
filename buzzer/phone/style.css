@@ -138,6 +138,7 @@ input:focus { outline: none; border-color: var(--accent); }
 .seat .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .seat .who .name { flex: none; }
 .seat .members { color: var(--muted); font-weight: 400; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seat .hint { white-space: normal; font-size: 14px; }
 #team-dot { display: inline-block; width: 22px; height: 22px; border-radius: 50%; vertical-align: -3px; margin-right: 8px; }
 .seat.new { justify-content: center; background: transparent; border-style: dashed; color: var(--accent); }
 

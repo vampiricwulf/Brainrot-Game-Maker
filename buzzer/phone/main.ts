@@ -286,10 +286,12 @@ function dropped(s: WebSocket, wait?: number): void {
 }
 
 function ended(): void {
+  // The game's end was on screen: where you came stays up ("You came 1st with $700 🎉").
+  const came = view?.final && view.you ? placeLine(view) : null;
   saveSeat(null);
   seatId = null;
   view = null;
-  notice = { title: 'The game is over', text: 'Thanks for playing!', final: true, button: { label: 'Join another game', run: () => location.assign('/') } };
+  notice = { title: came ? `${came.big} ${came.small}` : 'The game is over', text: 'Thanks for playing!', final: true, button: { label: 'Join another game', run: () => location.assign('/') } };
   ws?.close();
   render();
 }
@@ -381,11 +383,11 @@ function onMessage(m: RoomToPhone): void {
       seatId = null;
       view = null;
       saveSeat(null);
-      notice = {
-        title: team ? 'The host took you off the team' : 'The host took your seat back',
-        text: team ? 'You can pick a team again.' : 'You can pick a seat again.',
-        button: { label: team ? 'Pick a team' : 'Pick a seat', run: () => ((notice = null), render()) },
-      };
+      // Freed: the host gave the seat to the player's other phone (no block: this one can still take it back).
+      const [title, text] = m.freed
+        ? ['The host freed your seat', team ? 'So you can join from another phone. If that’s this one, pick your team again.' : 'So you can take it on another phone. If that’s this one, tap your name again.']
+        : [team ? 'The host took you off the team' : 'The host took your seat back', team ? 'You can pick a team again.' : 'You can pick a seat again.'];
+      notice = { title, text, button: { label: team ? 'Pick a team' : 'Pick a seat', run: () => ((notice = null), render()) } };
       break;
     }
     case 'closed':
@@ -430,7 +432,7 @@ function denied(reason: DenyReason): void {
   }
   seatsNote =
     {
-      taken: wasRejoin ? 'Your seat was given to someone else. Tap your name again.' : 'Someone already has that seat.',
+      taken: wasRejoin ? 'Your seat was given to someone else. Tap your name again.' : 'Someone already has that seat. If it’s you on a new phone, ask the host to free it.',
       'unknown-seat': "That player isn't in the game any more.",
       rejected: "The host didn't let you in.",
       'no-new': "The host isn't taking new players.",
@@ -698,11 +700,21 @@ function renderSeats(s: SeatsMsg): void {
         who.append(name, on);
         b.append(dot, who);
         b.setAttribute('aria-label', `${x.name}${x.members?.length ? `: ${x.members.join(', ')}` : ''}`);
+      } else if (x.taken) {
+        // Taken: maybe by this player's old phone (a new phone, another browser). The host can free it.
+        const who = document.createElement('span');
+        who.className = 'who';
+        const hint = document.createElement('span');
+        hint.className = 'members hint';
+        hint.textContent = `${x.away ? 'Taken (its phone is away)' : 'Taken'} · is this you on a new phone? Ask the host to free it`;
+        who.append(name, hint);
+        b.append(dot, who);
+        b.setAttribute('aria-label', `${x.name}: ${hint.textContent}`);
       } else b.append(dot, name);
-      if (x.taken || s.locked) {
+      if (s.locked && !x.taken) {
         const tag = document.createElement('span');
         tag.className = 'tag';
-        tag.textContent = x.taken ? 'taken' : '🔒';
+        tag.textContent = '🔒';
         b.append(tag);
       }
       b.addEventListener('click', () => {
@@ -778,6 +790,9 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['off', `${wager.who || 'Someone'} is wagering…`, 'Daily Double'];
   } else if (wager) {
     [cls, big, small] = ['off', 'You sit this one out', v.status || (team ? 'Your team isn’t in this one' : 'You’re not in this one')];
+  } else if (v.phase === 'lobby' && v.final) {
+    ({ big, small } = placeLine(v));
+    cls = 'off';
   } else if (v.phase === 'lobby') {
     big = you.name;
     small = v.status || 'Wait for the next clue';
@@ -891,6 +906,14 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   const hostGone = renderFoot(v, sym);
   say(sentences([connected ? '' : 'Reconnecting…', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, wagerErr, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
+}
+
+/** The game is over: "You came 1st" / "with $700 🎉" (teams: your team; a tie says so). */
+function placeLine(v: PhoneView): { big: string; small: string } {
+  const f = v.final!;
+  const who = v.teams ? 'Your team' : 'You';
+  const big = f.tied ? `${who} tied for ${ordinal(f.place)}` : `${who} came ${ordinal(f.place)}`;
+  return { big, small: `with ${money(v.you!.score, v.currency ?? '')}${f.place === 1 ? ' 🎉' : ''}` };
 }
 
 /** Points as the game shows them: a word like "pts" goes after the number, $ or 🧠 in front. */

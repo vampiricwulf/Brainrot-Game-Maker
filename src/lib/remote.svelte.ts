@@ -138,7 +138,13 @@ export function rejectPhone(conn: string): boolean {
   remote.answered = [...remote.answered, conn];
   return !!link?.send({ t: 'reject', conn });
 }
-export const kickSeat = (seatId: string) => !!link?.send({ t: 'kick', seatId });
+/**
+ * Take a seat back from its phone (it can't take it again for 2 minutes). free: only let go of it, blocking nobody (the
+ * player is back on another phone); a room without 'free' blocks anyway.
+ */
+export const kickSeat = (seatId: string, free = false) => !!link?.send(free ? { t: 'kick', seatId, block: false } : { t: 'kick', seatId });
+/** The room can free a seat without blocking anyone (an older buzzer server can only kick). */
+export const roomCanFree = (): boolean => remote.features.includes('free');
 /** Teams: take one person (their phone) off their team; they can't join it again for 2 minutes. */
 export const kickMember = (seatId: string, member: string) => !!link?.send({ t: 'kick', seatId, member });
 /** Teams: put one person (their phone) on another team. */

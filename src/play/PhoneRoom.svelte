@@ -33,7 +33,7 @@
     onstart: () => void;
     onadd: (conn: string, name: string) => void;
     onreject: (conn: string) => void;
-    onkick: (seatId: string) => void;
+    onkick: (seatId: string, free?: boolean) => void;
     /** ✕ Close the room: the phones are told the game is over. */
     onclose: () => void;
     onlock: (on: boolean) => void;

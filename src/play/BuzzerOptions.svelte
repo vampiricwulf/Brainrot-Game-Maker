@@ -23,7 +23,7 @@
     </select>
   </label>
   {#if !compact}
-    <label class="check" title="Each player is a team. On their phone people pick a team and type their own name; whoever on the team buzzes first answers for it, and a wrong answer locks out the whole team.">
+    <label class="check" title="Each row of the list becomes a team (👥 Teams). On their phone people pick a team and type their own name; whoever on the team buzzes first answers for it, and a wrong answer locks out the whole team.">
       <input
         type="checkbox"
         checked={!!settings.buzzTeams}
@@ -31,7 +31,7 @@
       />
       Teams: people join a team, anyone on it can buzz for it
     </label>
-    <label class="check" title={settings.buzzTeams ? 'With teams, people join a team you made (add teams as players)' : undefined}>
+    <label class="check" title={settings.buzzTeams ? 'With teams, people join a team you made (＋ Add team in 👥 Teams)' : undefined}>
       <input
         type="checkbox"
         checked={!!settings.phoneJoin && !settings.buzzTeams}

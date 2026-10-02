@@ -14,7 +14,7 @@
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, wagerAsk, whoBuzzed,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
   import { clip, type HostState, type WagerAsk } from '../lib/buzzproto';
@@ -905,9 +905,10 @@
     toast(`${who} joined from their phone`);
   }
 
-  function kickPhone(seatId: string): void {
-    if (!kickSeat(seatId)) return;
-    if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
+  function kickPhone(seatId: string, free = false): void {
+    if (!kickSeat(seatId, free)) return;
+    if (free) toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
+    else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
     else toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
   }
 
@@ -1903,6 +1904,10 @@
   /** A stream card's words changed, as the 🕘 History says it ("Cover card text “Snack break”"). */
   const cardLabel = (card: string, text: string) => (text.trim() ? `${card} card text “${text.trim().slice(0, 40)}”` : `${card} card text back to the default`);
 
+  /** Phone buzzer teams are on: the pre-game list is of teams (people join them from their phone). */
+  const pregameTeams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
+  /** Teams: the people who joined a team from their phone. */
+  const teamMembers = (id: string): string[] => remote.phones.filter((p) => p.seatId === id && p.member).map((p) => p.name ?? '');
   /** Minutes the "Starting soon" card counts down from. */
   let soonMinutes = $state(5);
   /** Seconds left on the "Starting soon" countdown, for the host (ticks only while there's one). */
@@ -2468,11 +2473,20 @@
     <div class="cols">
       <div class="col">
         <section class="part" data-place="play:players" aria-labelledby="pregame-players">
-          <h2 id="pregame-players">👥 Players</h2>
-          <p class="hint">
-            Who's playing{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and colors can still change during the
-            game.
-          </p>
+          {#if pregameTeams}
+            <!-- Phone buzzer teams: each row is a team, and people join it from their phone with their own name. -->
+            <h2 id="pregame-players">👥 Teams</h2>
+            <p class="hint">
+              Each row is a team; people join it from their phone{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and
+              colors can still change during the game.
+            </p>
+          {:else}
+            <h2 id="pregame-players">👥 Players</h2>
+            <p class="hint">
+              Who's playing{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and colors can still change during the
+              game.
+            </p>
+          {/if}
           <!-- Deleting is done at once: the note under the list offers Undo. -->
           <PlayerList
             bind:players={session.players}
@@ -2480,6 +2494,8 @@
             showScores
             avatars={!app.playerOnly}
             rowMenu
+            teams={pregameTeams}
+            members={pregameTeams && session.remote ? teamMembers : undefined}
             onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
           />
           {#if keyedOut.length && game.theme?.stageBg}

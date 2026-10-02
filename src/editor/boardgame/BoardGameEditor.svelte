@@ -15,7 +15,7 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -791,9 +791,9 @@
       {#if linking}
         <span class="warn small" role="status">Click the space {sel?.name} should lead to (again to disconnect), or go to it with the arrow keys and press Enter · Esc stops</span>
       {:else}
-        <span class="hint">
-          Ctrl+click or double-click adds a space (after the selected one) · Alt+drag or ⊕ connects · click a link to pick it · Shift+click or a box selects
-          several · right-click for more
+        <!-- One line (the panel beside the board says more), so the board starts higher up on a small screen. -->
+        <span class="hint" title="Ctrl+click or double-click adds a space (after the selected one) · Alt+drag or ⊕ connects · click a link to pick it · Shift+click or a box selects several · right-click for more">
+          Ctrl+click adds a space · Alt+drag connects · Shift+click selects several · right-click for more
         </span>
       {/if}
       <span class="spacer"></span>
@@ -945,13 +945,14 @@
               data-space-kind
               aria-label="Make it a…"
               title="Fills in what landing on it does, its color and an emoji in it (its landing buttons are replaced: Undo brings them back)"
+              value={spaceKindOf(sel) ?? ''}
               onchange={(e) => {
                 const v = e.currentTarget.value as SpaceKind | '';
-                e.currentTarget.value = '';
                 if (v) makeKind(sel, v);
               }}
             >
-              <option value="">✨ Choose a kind of space…</option>
+              <!-- A space with landing buttons no kind has (a "Roll again") says so rather than "Choose…". -->
+              <option value="" disabled={!!sel.onLand?.length}>{sel.onLand?.length ? '⚙ Its own landing buttons' : '✨ Choose a kind of space…'}</option>
               {#each SPACE_KINDS as k (k.kind)}<option value={k.kind} title={k.hint}>{k.label}</option>{/each}
             </select>
           </label>

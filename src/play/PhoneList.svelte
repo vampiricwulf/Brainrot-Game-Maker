@@ -5,7 +5,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Session } from '../lib/model';
-  import { FULL_SHOWN_MS, remote } from '../lib/remote.svelte';
+  import { FULL_SHOWN_MS, remote, roomCanFree } from '../lib/remote.svelte';
 
   let {
     session,
@@ -24,8 +24,11 @@
     /** Add the person waiting on this phone as a new player. */
     onadd: (conn: string, name: string) => void;
     onreject: (conn: string) => void;
-    /** Take a player's seat back from their phone (they can pick their name again). */
-    onkick: (seatId: string) => void;
+    /**
+     * Take a player's seat back from their phone (that phone can't take it again for 2 minutes). free: only let go of
+     * it, blocking nobody (they're back on a new phone, maybe on the same Wi-Fi).
+     */
+    onkick: (seatId: string, free?: boolean) => void;
     /** 🔒 Lock seats on or off. */
     onlock?: (on: boolean) => void;
     /** Teams: each player is a team that several phones join. */
@@ -106,7 +109,16 @@
         <span class="muted">waiting</span>
       {/if}
       {#if ph}
-        <button class="ghost small x" onclick={() => onkick(p.id)} aria-label="Take {p.name}’s seat back from their phone" title="Take the seat back: that phone can't take it again for 2 minutes (it can pick another free name)">✕</button>
+        {#if roomCanFree()}
+          <button
+            class="small free"
+            class:ghost={ph.connected}
+            onclick={() => onkick(p.id, true)}
+            aria-label="Free {p.name}’s seat (moved phone)"
+            title="They're on a new phone or browser: free the seat so they can tap their name there. Blocks nobody."
+          >Free seat</button>
+        {/if}
+        <button class="ghost small kick" onclick={() => onkick(p.id)} aria-label="Take {p.name}’s seat back from their phone" title="Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)">✕ Kick</button>
       {/if}
     </li>
     {/if}
@@ -176,8 +188,13 @@
   .away {
     color: var(--warn);
   }
-  .x {
+  .x,
+  .free,
+  .kick:first-of-type {
     margin-left: auto;
+  }
+  .free + .kick {
+    margin-left: 0;
   }
   .member {
     padding-left: 18px;

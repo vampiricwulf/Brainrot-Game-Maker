@@ -35,7 +35,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **Kicks and 🔒 locked seats**: a kick revokes the seat's token, and the kicked phone (its socket, the random
   `device` id its browser sends with a join, and its address, `CF-Connecting-IP`) can't take that seat again for 2
   minutes; it can take another free seat. (So another phone on the same Wi-Fi can't take that one seat for those 2
-  minutes either.)
+  minutes either.) **Freeing** a seat (`kick` with `block: false`, for a player back on another phone) revokes the
+  token the same way but blocks nobody. The seat list marks a taken seat `away` when no connected phone holds it.
   With `locked` in the host's state, only a seat's token gets a seat and nobody can ask to join.
 - **Teams** (`teams` in the host's state): each seat is a team. A phone joins one with its own name (`join` with
   `name`; 24 characters at most, cleaned as below, unique among people connected; a name only a phone gone quiet has is
@@ -91,7 +92,9 @@ queued buzz and a phone's `result`, the round-trip probe (room → phone `probe`
 `PhoneView.teams`, `you.member` and `answering.by/byYou`, `seats.teams` and each seat's `members`, `joined.name`, and
 the deny reason `need-name`; and wagers: `'wagers'` in `welcome.features`, `HostState.wager`, the phone → room
 `wager`, room → phone `wagered`, room → host `wager`, and `PhoneView.wager` (an app that doesn't see `'wagers'` lets
-the host type them, and says so). The old
+the host type them, and says so); and `'free'` in `welcome.features` with `kick.block` (an app that doesn't see it
+offers only the kick), `seats[].away`, `kicked.freed`, and `HostState.over` with `PhoneView.final` (where a phone's
+seat came when the game is over). The old
 phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
 
 ## Fair timing

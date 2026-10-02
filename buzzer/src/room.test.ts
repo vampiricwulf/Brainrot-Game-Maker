@@ -115,7 +115,7 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free'] });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -370,6 +370,64 @@ describe('seats', () => {
     const ann = g.phone('ann', '198.51.100.9');
     ann.send({ t: 'join', seatId: 'a', device: 'dev-ann' });
     expect(ann.last('joined')?.seatId).toBe('a');
+  });
+
+  it('freeing a seat (block: false) blocks nobody: the player takes it from a new phone on the same Wi-Fi', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    const old = g.phone('old', '203.0.113.5');
+    old.send({ t: 'join', seatId: 'a', device: 'dev-old' });
+    // Her old phone's socket is gone: the seat is taken but away, for the host and for other phones.
+    g.room.phoneClose('old');
+    expect(g.hostLast('phones')?.phones).toContainEqual({ conn: 'old', seatId: 'a', connected: false });
+    const fresh = g.phone('new', '203.0.113.5');
+    expect(fresh.last('seats')?.seats.find((x) => x.id === 'a')).toMatchObject({ taken: true, away: true });
+    expect(fresh.last('seats')?.seats.find((x) => x.id === 'b')).toEqual({ ...seats[1], taken: false });
+    fresh.send({ t: 'join', seatId: 'a', device: 'dev-new' });
+    expect(fresh.last('denied')?.reason).toBe('taken');
+    g.send({ t: 'kick', seatId: 'a', block: false });
+    expect(g.room.saved.blocks?.a).toBeUndefined();
+    expect(fresh.last('seats')?.seats.find((x) => x.id === 'a')).toEqual({ ...seats[0], taken: false });
+    fresh.send({ t: 'join', seatId: 'a', device: 'dev-new' });
+    expect(fresh.last('joined')?.seatId).toBe('a');
+    expect(fresh.last('seats')?.seats.find((x) => x.id === 'a')?.away).toBeUndefined();
+    // Even the old phone itself could take it back (nobody is blocked).
+    g.send({ t: 'kick', seatId: 'a', block: false });
+    expect(fresh.last('kicked')).toEqual({ t: 'kicked', freed: true });
+    const back = g.phone('old2', '203.0.113.5');
+    back.send({ t: 'join', seatId: 'a', device: 'dev-old' });
+    expect(back.last('joined')?.seatId).toBe('a');
+    // A kick (block left out) still blocks that address.
+    g.send({ t: 'kick', seatId: 'a' });
+    expect(back.last('kicked')).toEqual({ t: 'kicked' });
+    const again = g.phone('old3', '203.0.113.5');
+    again.send({ t: 'join', seatId: 'a', device: 'dev-old3' });
+    expect(again.last('denied')?.reason).toBe('blocked');
+  });
+
+  it('teams: freeing one member blocks nobody', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state({ teams: true }) });
+    const zoe = g.phone('z', '203.0.113.5');
+    zoe.send({ t: 'join', seatId: 'a', name: 'Zoe', device: 'dz' });
+    const id = Object.keys(g.room.saved.members ?? {})[0];
+    g.send({ t: 'kick', seatId: 'a', member: id, block: false });
+    expect(zoe.last('kicked')).toEqual({ t: 'kicked', freed: true });
+    expect(g.room.saved.blocks?.a).toBeUndefined();
+    zoe.send({ t: 'join', seatId: 'a', name: 'Zoe', device: 'dz' });
+    expect(zoe.last('joined')?.name).toBe('Zoe');
+  });
+
+  it('game over: each phone hears where its seat came', () => {
+    const g = game({ scores: { a: 300, b: 700, c: 300 }, over: true });
+    expect(g.room.saved.state?.over).toBe(true);
+    expect(g.pb.last('view')?.view.final).toEqual({ place: 1 });
+    expect(g.pa.last('view')?.view.final).toEqual({ place: 2, tied: true });
+    expect(g.pc.last('view')?.view.final).toEqual({ place: 2, tied: true });
+    g.send({ t: 'state', state: state({ scores: { a: 300, b: 700, c: 300 } }) });
+    expect(g.pb.last('view')?.view.final).toBeUndefined();
   });
 
   it('🔒 locked seats: only a seat token gets a seat; nobody new can ask', () => {
@@ -1174,7 +1232,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });

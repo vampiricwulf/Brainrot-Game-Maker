@@ -230,6 +230,7 @@ export function hostState(
     ...(extra.locked ? { locked: true } : {}),
     ...(teamsOn(game.settings) ? { teams: true } : {}),
     ...(extra.wager ? { wager: extra.wager } : {}),
+    ...(session.phase === 'end' ? { over: true } : {}),
   };
 }
 

@@ -119,10 +119,16 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '⏭ Skip a turn' }).click();
   assert((await undoTitle()).includes('Made “Space 6” a Skip a turn space'), `right-click → Make it a… ⏭ Skip a turn is one named step (${await undoTitle()})`);
   assert((await page.getByLabel('Space name').inputValue()) === 'Skip a turn' && (await space('Skip a turn').locator('.mark').innerText()) === '⏭', 'it takes the kind’s name and shows ⏭ in its circle');
+  assert(
+    (await page.locator('.side [data-show-name]').isChecked()) && (await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts()).includes('Skip a turn'),
+    'and its name shows on the board (“Show name on the board” ticked): viewers can tell what it is',
+  );
+  assert((await page.locator('.side [data-space-kind]').inputValue()) === 'skip', 'its card’s Make it a… box says which kind it is');
   assert((await page.locator('.side .actions').nth(1).innerText()).includes('Skip'), 'and skipping a turn is its landing button');
   await space('Space 8').click();
   await page.locator('.side [data-space-kind]').selectOption('shop');
   assert((await space('Shop').locator('.mark').innerText()) === '🛒', 'Make it a… 🛒 Shop in the space’s card');
+  assert((await page.locator('.side [data-space-kind]').inputValue()) === 'shop', 'and the box shows 🛒 Shop now');
   const shopPicked = await page.locator('.side .actions').nth(1).getByLabel('Shop', { exact: true }).locator('option:checked').innerText();
   assert(/^Shop \d/.test(shopPicked), `with no shop in the game, it makes one to open (${shopPicked})`);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-kinds.png` });

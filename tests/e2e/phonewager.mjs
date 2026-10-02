@@ -278,7 +278,7 @@ try {
     const p = await phonePage(code2, name);
     await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
     await p.getByRole('button', { name: team }).click();
-    await p.getByRole('textbox', { name: 'Name for your team' }).fill(name);
+    await p.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill(name);
     await p.getByRole('button', { name: 'Join the team' }).click();
     await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
     return p;
@@ -313,7 +313,7 @@ try {
   await cy.locator('#leave').click();
   await cy.getByRole('heading', { name: 'Pick your team' }).waitFor();
   await cy.getByRole('button', { name: 'Player 1' }).click();
-  await cy.getByRole('textbox', { name: 'Name for your team' }).fill('Spy');
+  await cy.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill('Spy');
   await cy.getByRole('button', { name: 'Join the team' }).click();
   await form(cy).waitFor();
   await cy.locator('#wager-state').getByText('wager is in with the host (not shown').waitFor();

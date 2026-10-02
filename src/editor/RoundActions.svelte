@@ -36,10 +36,11 @@
           >▶ Test this round</button
         >
       {/if}
-      <button class="ghost" disabled={index === 0} onclick={() => onmove(-1)} title="Play this round earlier (Alt+↑ on its tab)">▲ Move up</button>
-      <button class="ghost" disabled={index >= count - 1} onclick={() => onmove(1)} title="Play this round later (Alt+↓ on its tab)">▼ Move down</button>
-      <button class="ghost" onclick={onduplicate} title="A copy of this round, right after it">⧉ Duplicate round</button>
-      <button class="ghost danger" onclick={ondelete} title="Delete this round (Undo brings it back)">🗑 Delete round</button>
+      <!-- Short labels, so the round's name keeps its line on a small laptop (the full words are their names and tips). -->
+      <button class="ghost" disabled={index === 0} onclick={() => onmove(-1)} aria-label="▲ Move round up" title="Move up: play this round earlier (Alt+↑ on its tab)">▲</button>
+      <button class="ghost" disabled={index >= count - 1} onclick={() => onmove(1)} aria-label="▼ Move round down" title="Move down: play this round later (Alt+↓ on its tab)">▼</button>
+      <button class="ghost" onclick={onduplicate} aria-label="⧉ Duplicate round" title="Duplicate: a copy of this round, right after it">⧉ Duplicate</button>
+      <button class="ghost danger" onclick={ondelete} aria-label="🗑 Delete round" title="Delete this round (Undo brings it back)">🗑 Delete</button>
     {/snippet}
   </PageHeader>
 </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newTextEl, type BoardSpace, type Game } from './model';
-import { addFork, applySpaceKind, newBoardGameRound, SPACE_KINDS, spaceNumber } from './boardgame';
+import { addFork, applySpaceKind, nameShown, newBoardGameRound, SPACE_KINDS, spaceKindOf, spaceNumber } from './boardgame';
 import { enemyObject, enemyRole, newShop, numberStat, presetStat } from './rpgpresets';
 import { classIcon, classLabel } from './rpg';
 import { layerIcon } from './layerlabel';
@@ -97,6 +97,8 @@ describe('kinds of board space', () => {
     expect(spaceNumber(s.name)).toBe('4');
     applySpaceKind(s, 'skip');
     expect([s.name, s.mark, s.color]).toEqual(['Skip a turn', '⏭', '#911eb4']);
+    // Its name shows on the board: viewers can tell a special space from the rest.
+    expect(nameShown(s)).toBe(true);
     expect(s.onLand?.map((a) => a.do)).toEqual(['skip']);
     // A space with a name of its own keeps it.
     s.name = 'Nap';
@@ -114,6 +116,25 @@ describe('kinds of board space', () => {
     applySpaceKind(s, 'boss', { hp: 'f_hp' });
     expect(s.onLand?.map((a) => a.do)).toEqual(['dice', 'score', 'stat', 'steps']);
     expect(new Set(s.onLand?.map((a) => a.id)).size).toBe(4);
+  });
+
+  it('tells a space’s kind from its landing buttons (each kind, and ones made by hand)', () => {
+    const round = newBoardGameRound();
+    for (const k of SPACE_KINDS) {
+      const s = round.spaces[1];
+      applySpaceKind(s, k.kind, { shop: 'sh1', hp: 'f_hp' });
+      expect(spaceKindOf(s)).toBe(k.kind);
+    }
+    const s = round.spaces[2];
+    expect(spaceKindOf(s)).toBeNull();
+    s.onLand = [{ id: 'a', do: 'score', amount: 100, who: 'party' }];
+    expect(spaceKindOf(s)).toBe('star');
+    s.onLand = [{ id: 'a', do: 'again', who: 'party' }];
+    expect(spaceKindOf(s)).toBeNull();
+    s.onLand = [{ id: 'a', do: 'steps', steps: -2, who: 'party' }];
+    expect(spaceKindOf(s)).toBe('back');
+    s.onLand = [{ id: 'a', do: 'score', amount: -100, who: 'party' }];
+    expect(spaceKindOf(s)).toBeNull();
   });
 
   it('every kind makes a round with nothing to fix', () => {

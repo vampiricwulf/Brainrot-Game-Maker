@@ -33,7 +33,7 @@
     onstart: () => void;
     onadd: (conn: string, name: string) => void;
     onreject: (conn: string) => void;
-    onkick: (seatId: string) => void;
+    onkick: (seatId: string, free?: boolean) => void;
     onlock: (on: boolean) => void;
     /** Teams: take one person off their team / put them on another. */
     onkickmember: (seatId: string, member: string, name: string) => void;

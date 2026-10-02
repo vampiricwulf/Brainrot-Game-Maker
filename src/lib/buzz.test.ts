@@ -215,6 +215,10 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(phoneStatus(game, session)).toBeNull();
     session.phase = 'end';
     expect(phoneStatus(game, session)?.text).toBe('Game over: thanks for playing!');
+    // The game is over: the room is told (phones say where each came).
+    expect(hostState(game, session, newBuzz(), 0).over).toBe(true);
+    session.phase = 'board';
+    expect(hostState(game, session, newBuzz(), 0).over).toBeUndefined();
   });
 
   it('question text: text boxes top to bottom', () => {

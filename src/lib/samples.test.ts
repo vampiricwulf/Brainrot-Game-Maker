@@ -3,7 +3,7 @@ import { addSampleGame, TEMPLATES } from './samples';
 import { isBoardGame, isRpg, newGame } from './model';
 import { validate } from './validate';
 import { goToRound, newSession } from './session';
-import { movePlayer, startSpace, walk } from './boardgame';
+import { movePlayer, nameShown, spaceKindOf, startSpace, walk } from './boardgame';
 
 describe('the sample game', () => {
   it('is a complete game of every mode, with nothing to fix', () => {
@@ -25,6 +25,39 @@ describe('the sample game', () => {
     game.players = [{ id: 'a', name: 'Zed', color: '#000000' }];
     addSampleGame(game);
     expect([game.title, game.players.length]).toEqual(['My show', 1]);
+  });
+});
+
+describe('the sample game’s looks', () => {
+  it('its board game’s special spaces show their names and an emoji, and their kind', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const bg = game.rounds.find(isBoardGame)!;
+    const specials = bg.spaces.filter((s) => s.onLand?.length);
+    expect(specials.map((s) => s.name)).toEqual(['Bonus', 'Go back', 'Nap time', 'Roll again']);
+    expect(specials.every(nameShown)).toBe(true);
+    expect(specials.every((s) => !!s.mark)).toBe(true);
+    expect(specials.map(spaceKindOf)).toEqual(['star', 'back', 'skip', null]);
+    // Plain spaces keep their names off the board.
+    expect(bg.spaces.filter((s) => !s.onLand?.length && s !== bg.spaces[0]).some(nameShown)).toBe(false);
+  });
+
+  it('its players’ colors are far apart in hue (no two blues)', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const hue = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+      const max = Math.max(r, g, b);
+      const d = max - Math.min(r, g, b);
+      const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return (h * 60 + 360) % 360;
+    };
+    const hs = game.players.map((p) => hue(p.color));
+    for (let i = 0; i < hs.length; i++)
+      for (let j = i + 1; j < hs.length; j++) {
+        const gap = Math.abs(hs[i] - hs[j]);
+        expect(Math.min(gap, 360 - gap)).toBeGreaterThan(60);
+      }
   });
 });
 

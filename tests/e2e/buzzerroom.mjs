@@ -174,7 +174,7 @@ try {
   const dee = await phone('dee');
   await dee.goto(`${base}/${room.code}`);
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
-  await dee.getByLabel('Your name').fill('Dee');
+  await dee.getByLabel('Your name', { exact: true }).fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
   // She changes her mind (Cancel takes the request back: the host no longer sees it), then asks again.
@@ -185,7 +185,7 @@ try {
   await host.wait((m) => host.got.indexOf(m) >= before && m.t === 'phones' && !m.phones.some((p) => p.pendingName === 'Dee'), 'Dee no longer asking');
   assert(true, 'a phone waiting to be let in can cancel (the host stops seeing the request)');
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
-  await dee.getByLabel('Your name').fill('Dee');
+  await dee.getByLabel('Your name', { exact: true }).fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
   await shot(bob, 'lobby');
@@ -316,6 +316,29 @@ try {
   await bob.locator('#seats-note').getByText('The host took you off that seat').waitFor();
   assert(true, 'kicked: tapping the same name again is refused for a while ("The host took you off that seat…")');
 
+  // Mo moves to a new phone (same Wi-Fi: the same address): his seat is taken by his old one, which is gone. The
+  // seat says what to do; the host frees it (no block), and the new phone takes it.
+  setState({ seats: [...hs.seats, { id: 'm', name: 'Mo', color: '#0077aa' }] });
+  const oldMo = await phone('oldmo');
+  await oldMo.goto(`${base}/${room.code}`);
+  await oldMo.getByRole('button', { name: 'Mo' }).click();
+  await big(oldMo).getByText('Mo').waitFor();
+  await oldMo.context().close();
+  pages.splice(pages.findIndex(([, p]) => p === oldMo), 1);
+  const mo = await phone('mo');
+  await mo.goto(`${base}/${room.code}`);
+  const moSeat = mo.getByRole('button', { name: /^Mo:/ });
+  await moSeat.getByText('Taken (its phone is away) · is this you on a new phone? Ask the host to free it').waitFor();
+  assert(await moSeat.isDisabled(), 'a taken seat whose phone is gone says so: "is this you on a new phone? Ask the host to free it"');
+  await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.seatId === 'm' && !p.connected), 'Mo offline');
+  host.send({ t: 'kick', seatId: 'm', block: false });
+  await mo.getByRole('button', { name: 'Mo', exact: true }).click();
+  await big(mo).getByText('Mo').waitFor();
+  assert(true, 'the host frees it (no block): Mo takes his seat on the new phone, from the same address');
+  await mo.context().close();
+  pages.splice(pages.findIndex(([, p]) => p === mo), 1);
+  setState({ seats: hs.seats.filter((x) => x.id !== 'm') });
+
   // 🔒 Lock seats: nobody new gets a seat.
   setState({ locked: true });
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor();
@@ -370,7 +393,7 @@ try {
   const eve = await phone('eve');
   await eve.goto(`${base}/${room.code}`);
   await eve.getByRole('button', { name: "＋ I'm new" }).click();
-  await eve.getByLabel('Your name').fill('Eve');
+  await eve.getByLabel('Your name', { exact: true }).fill('Eve');
   await eve.getByRole('button', { name: 'Ask to join' }).click();
   const ask1 = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Eve'), 'Eve asking');
   const eveConn = ask1.phones.find((p) => p.pendingName === 'Eve').conn;
@@ -514,10 +537,18 @@ try {
   await small(ann).getByText('Wait for the next clue').waitFor();
   assert(true, 'the room carries on for everyone else');
 
+  // Game over: each phone says where it came.
+  setState({ over: true, currency: '$', scores: { a: 700, b: 400, c: 0, d: 100 }, status: { text: 'Game over: thanks for playing!' } });
+  await big(ann).getByText('You came 1st').waitFor();
+  assert((await small(ann).innerText()) === 'with $700 🎉', `game over: "You came 1st / with $700 🎉" (${await small(ann).innerText()})`);
+  await big(dee).getByText('You came 3rd').waitFor();
+  assert(true, 'and the others their own place ("You came 3rd")');
+
   // The host closes the room.
   host.send({ t: 'close' });
-  await ann.locator('main').getByText('The game is over').waitFor();
-  await dee.locator('main').getByText('The game is over').waitFor();
+  await ann.locator('main').getByText('You came 1st with $700 🎉').waitFor();
+  await dee.locator('main').getByText('You came 3rd with $100').waitFor();
+  assert(true, 'closed at the end, the place stays up ("You came 1st with $700 🎉")');
   assert((await fetch(`${base}/api/rooms/${room.code}`)).status === 404, 'closing ends the room for everyone');
 
   // New rooms are limited: 6 a minute from one address (here a made-up one: wrangler dev takes CF-Connecting-IP as

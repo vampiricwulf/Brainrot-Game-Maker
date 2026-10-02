@@ -1,6 +1,6 @@
 // The sample game (a small game of every mode, ready to play) and the starter templates under ＋ Add round.
 // Everything here is made fresh each time (new ids), and uses no media files.
-import { newBoardGameRound, newBoardSpace, SPACE_COLORS } from './boardgame';
+import { newBoardGameRound, newBoardSpace, setNameShown, SPACE_COLORS } from './boardgame';
 import { PLAYER_PALETTE } from './colors';
 import {
   newFinalRound,
@@ -174,19 +174,25 @@ function sampleWorld(game: Game): RpgRound {
 
 // ---------- Board games ----------
 
-/** Board-game spaces' actions: go back 3, skip a turn, roll again, +100 (named without numbers: a space shows the number in its name). */
-const SPECIAL: Record<string, { name: string; color: string; onLand: () => Action[] }> = {
-  back: { name: 'Go back', color: '#e6194b', onLand: () => [act({ do: 'steps', steps: -3, who: 'party' })] },
-  skip: { name: 'Nap time', color: '#911eb4', onLand: () => [act({ do: 'skip', turns: 1, who: 'party' })] },
-  again: { name: 'Roll again', color: '#3cb44b', onLand: () => [act({ do: 'again', who: 'party' })] },
-  bonus: { name: 'Bonus', color: '#ffcc00', onLand: () => [act({ do: 'score', amount: 100, who: 'party' })] },
+/**
+ * Board-game spaces' actions: go back 3, skip a turn, roll again, +100 (named without numbers: a space shows the number
+ * in its name), each with an emoji in its circle.
+ */
+const SPECIAL: Record<string, { name: string; color: string; mark: string; onLand: () => Action[] }> = {
+  back: { name: 'Go back', color: '#e6194b', mark: '↩', onLand: () => [act({ do: 'steps', steps: -3, who: 'party' })] },
+  skip: { name: 'Nap time', color: '#911eb4', mark: '😴', onLand: () => [act({ do: 'skip', turns: 1, who: 'party' })] },
+  again: { name: 'Roll again', color: '#3cb44b', mark: '🎲', onLand: () => [act({ do: 'again', who: 'party' })] },
+  bonus: { name: 'Bonus', color: '#ffcc00', mark: '⭐', onLand: () => [act({ do: 'score', amount: 100, who: 'party' })] },
 };
 
+/** A special space: its name shows on the board (viewers can tell what it does). */
 function special(s: BoardSpace, kind: keyof typeof SPECIAL): void {
   const k = SPECIAL[kind];
   s.name = k.name;
   s.color = k.color;
+  s.mark = k.mark;
   s.onLand = k.onLand();
+  setNameShown(s, true);
 }
 
 /**
@@ -299,8 +305,9 @@ export function addSampleGame(game: Game): number {
   const rpg = sampleWorld(game);
   const bg = sampleBoardGame(game);
   game.rounds.push(board, rpg, bg, final);
+  // Red, green and yellow: far apart in hue, so no two look alike (on the blue theme two blues did).
   if (!game.players.length)
-    game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: newId(), name, color: PLAYER_PALETTE[[0, 3, 1][i]] }));
+    game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: newId(), name, color: PLAYER_PALETTE[[0, 6, 2][i]] }));
   if (!game.title.trim() || game.title === 'Untitled Game') game.title = 'Sample game';
   return at;
 }

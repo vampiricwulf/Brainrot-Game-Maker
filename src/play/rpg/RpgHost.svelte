@@ -380,6 +380,8 @@
       <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="V: the map on screen">🗺 Map</button>
     </div>
 
+    <!-- (On a short window it goes under the pad and the map: see the style.) -->
+    <div class="improv-box">
     <div class="row improv">
       <span class="muted small">Improvise:</span>
       <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>
@@ -467,6 +469,7 @@
         {/if}
       {/key}
     {/if}
+    </div>
 
     <div class="main" bind:this={mainEl}>
       <!-- With a card open, the pad and the map stay in sight (pinned at the top) while the panel scrolls to the card's foot. -->
@@ -556,7 +559,7 @@
       </div>
     </div>
 
-    <div class="row">
+    <div class="row who">
       <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>
         {showPlayers ? '▾' : '▸'} Players: stats & inventory
       </button>
@@ -628,6 +631,25 @@
     flex-direction: column;
     gap: 8px;
     container-type: inline-size;
+  }
+  .improv-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* A short window (a small laptop at 125%): the pad and the map come first, right under the parties, so the host
+     moves the party without scrolling; the improvising tools follow them. */
+  @media (max-height: 720px) {
+    .main {
+      order: 1;
+    }
+    .improv-box {
+      order: 2;
+    }
+    .who,
+    .cards {
+      order: 3;
+    }
   }
   /* In a narrow panel the hint gives its line back (✏ Draw's tooltip says it too): the pad and the map stay higher up. */
   @container (width < 560px) {
