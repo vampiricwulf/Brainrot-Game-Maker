@@ -1,4 +1,4 @@
-<!-- A saved theme's name: asked when saving one (💾 Save as my theme…) or renaming it. -->
+<!-- A saved theme's name: asked when saving one (💾 Save as new theme…) or renaming it. -->
 <script lang="ts">
   import { modal } from '../lib/modal';
 
@@ -6,12 +6,15 @@
     title,
     value = '',
     ok,
+    note = 'Kept on this computer, for any game: its colors, fonts and layout (pictures stay with their game).',
     onname,
   }: {
     title: string;
     value?: string;
     /** The answer button ("Save", "Rename"). */
     ok: string;
+    /** A line under the name ('' for none). */
+    note?: string;
     /** The name (trimmed, never empty), or null when cancelled. */
     onname: (name: string | null) => void;
   } = $props();
@@ -44,7 +47,7 @@
         Theme name
         <input bind:value={name} maxlength="60" data-autofocus />
       </label>
-      <p class="hint">Kept on this computer, for any game. Its colors, fonts and layout are kept; pictures stay with their game.</p>
+      {#if note}<p class="hint">{note}</p>{/if}
       <div class="modal-foot">
         <button class="ghost" type="button" onclick={() => onname(null)}>Cancel</button>
         <button class="primary" type="submit" disabled={!name.trim()}>{ok}</button>

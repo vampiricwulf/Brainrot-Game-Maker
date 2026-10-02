@@ -14,6 +14,15 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **🎨 Theme: Save changes to a saved theme**: when the game's theme came from one of My themes and you've changed it,
+  **💾 Save changes to “Name”** puts the changes in that saved theme (it asks "Overwrite “Name” with this look?" first).
+  **💾 Save as new theme…** is always there. Built-in themes are never overwritten: from one of them only Save as new
+  theme… is offered (or **Save a copy as my theme…** from its menu).
+- **🎨 Theme: right-click menus**: on a built-in theme (use it, save a copy as my theme, export it, copy its code), on
+  one of My themes (use, save changes to it, rename, duplicate, export, copy its code, delete), and on the settings: a
+  color, a slider or a whole section can go back to the theme it came from ("↺ Reset to Party night", "↺ Reset Colors
+  to Classic"), and colors copy and paste between settings. **Shift+F10** or the menu key opens the same menu on the
+  card or setting in focus; the **⋯** buttons stay for touch.
 - **My themes**: on the 🎨 Theme page, **💾 Save as my theme…** keeps the game's look on this computer under a name
   (as many as you like; the one "my theme" saved before shows there as "My theme"). They sit under the presets, marked
   ★, and a click puts one on the game (one step: Ctrl+Z takes it back). Each one's **⋯** menu renames it, updates it
@@ -166,6 +175,12 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **🎨 Theme page, tidied**: a bar at the top (it stays in view as you scroll the settings) says which theme the game
+  uses and holds the save buttons; the cards are headed **Built-in themes** and **My themes**, each with a **⋯** menu;
+  an empty My themes says how to fill it; the share buttons sit in two labelled rows (This theme / Bring one in); the
+  Board section's pictures line up and both have the same ✕ to remove them, with no gaps between its settings; and the
+  long notes are shorter. **💾 Save as my theme…** is now **💾 Save as new theme…**, and the saved theme becomes the
+  game's theme.
 - **Host panel, buzzer mode**: the buzzers' own things (how they stand, "🔔 Al (Red team) buzzed", ⏭ Skip, → Next in
   line, the buzz order and ↺ Reset buzzers) have a row of their own above the Amount row, always the same height. The
   panel (and, in a single window, the stage viewers see) no longer changes size as people buzz, miss or tie, or as the
@@ -544,6 +559,11 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **🎨 Theme: a saved theme put on a game is the one marked**, not the built-in theme it was first made from: editing
+  it no longer shows "Classic (edited)" as the chosen card. The game remembers which theme it came from (a built-in one
+  or one of My themes) and the page marks exactly that card, with "· edited" once you change it. A built-in theme you
+  changed is outlined dashed as where it started, not shown as chosen. Older games are matched as before (a theme that
+  looks exactly like a built-in or a saved one shows as that one).
 - **The check for a newer version at start-up now really asks each time**: it went by what GitHub had said in the last
   six hours, and with a new version out every push, a start soon after a check (while that was the newest) never
   heard of the ones after it. Every start asks now (one small request), going by the last answer only when GitHub

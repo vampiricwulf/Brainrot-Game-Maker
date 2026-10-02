@@ -710,7 +710,7 @@ assert((await page.getByRole('button', { name: 'Tiebreaker (off)' }).count()) ==
 
 // Theme: Brainrot Neon with the score bar on top.
 await page.getByRole('button', { name: '🎨 Theme' }).click();
-await page.getByRole('button', { name: /Brainrot Neon/ }).click();
+await page.getByRole('button', { name: 'Brainrot Neon', exact: true }).click();
 await page.getByRole('combobox', { name: 'Score bar' }).selectOption('top');
 // The preview starts on the round last open (the Final), and shows any round.
 const previewing = await page.getByLabel('Preview', { exact: true }).evaluate((e) => e.selectedOptions[0].text);

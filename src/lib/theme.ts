@@ -5,6 +5,12 @@ import type { Id } from './model';
 
 export type ThemePreset = 'classic' | 'dark' | 'neon' | 'pastel';
 
+/**
+ * Which theme a game's theme was put on from: a built-in preset, or one of My themes (by its id on this computer).
+ * Edits keep it, so the 🎨 Theme page can say "edited" and offer to save the changes to a saved theme (themesource.ts).
+ */
+export type ThemeSource = { kind: 'preset'; id: ThemePreset } | { kind: 'mine'; id: string };
+
 export interface Theme {
   preset: ThemePreset;
   /** Tile / default slide background. */
@@ -76,6 +82,9 @@ export interface Theme {
   /** The board's background fades from the line color to this one (at `bgAngle`). */
   bgGradient?: string;
   bgAngle?: number;
+
+  /** The theme this one came from (older games have none: see themeOrigin). Not part of the look. */
+  source?: ThemeSource;
 }
 
 export type TilePattern = 'checker' | 'rows' | 'columns';

@@ -1,6 +1,8 @@
 // Themes: more looks (alternating tiles and category colors…) on the board, in the audience window and in an exported
 // HTML file; my themes saved on this computer (kept after a reload, used in another game, renamed, deleted); a theme
 // exported as a .brainrot-theme file and imported again; a theme code copied and pasted; and bad files and codes refused.
+// Which card is chosen (the saved theme put on, not the preset it was made from), Save changes to a saved theme (never
+// to a preset), and the right-click menus (and Shift+F10) on the cards and the settings.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -34,6 +36,10 @@ const preview = page.locator('.preview');
 const themePage = () => page.getByRole('button', { name: '🎨 Theme' }).click();
 const card = (name) => page.locator('.mine .card', { hasText: name });
 const lastToast = () => page.locator('.toast').last().innerText();
+const savebar = page.locator('.savebar');
+const menu = page.getByRole('menu');
+/** The Values color box (its value as #rrggbb). */
+const valuesBox = () => page.getByLabel('Values', { exact: true });
 /** Past the round's intro, to the board. */
 async function skipIntro(p) {
   await p.getByRole('button', { name: 'Skip intro' }).click();
@@ -84,17 +90,21 @@ try {
   assert((await page.getByRole('combobox', { name: 'Plate corners' }).inputValue()) === '', '↺ Plain score plates takes them back');
   await page.getByLabel('Glow on the leader').check();
   assert((await page.locator('summary', { hasText: 'Tiles' }).innerText()).includes('changed'), 'a section with looks of its own says it’s changed');
-  assert((await page.getByRole('button', { name: /Classic \(edited\)/ }).count()) === 1, 'and the preset shows as edited');
+  const classic = page.locator('.preset', { hasText: 'Classic' });
+  assert((await classic.innerText()).includes('· edited') && (await classic.getAttribute('aria-pressed')) === 'false', 'the preset it started from says “edited”, and isn’t shown as chosen');
+  assert((await savebar.innerText()).includes('Classic') && (await savebar.innerText()).includes('edited'), 'the bar says which theme it started from, edited');
+  assert((await savebar.getByRole('button', { name: /Save changes/ }).count()) === 0, 'from a built-in theme only Save as new theme… is offered (a preset is never overwritten)');
   await shot('1-theme-page');
 
-  // ---------- 💾 Save as my theme… ----------
-  await page.getByRole('button', { name: '💾 Save as my theme…' }).click();
-  const naming = page.getByRole('dialog', { name: '💾 Save as my theme' });
+  // ---------- 💾 Save as new theme… ----------
+  await page.getByRole('button', { name: '💾 Save as new theme…' }).click();
+  const naming = page.getByRole('dialog', { name: '💾 Save as new theme' });
   await naming.getByLabel('Theme name').fill('Checker party');
   await naming.getByRole('button', { name: 'Save', exact: true }).click();
   await card('Checker party').waitFor();
   assert(await card('Checker party').locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'a saved theme shows in My themes, marked as the one this game looks like');
   assert((await card('Checker party').locator('.tag').innerText()) === '★', 'marked as yours');
+  assert((await classic.getAttribute('aria-pressed')) === 'false' && !(await classic.innerText()).includes('edited'), 'and the game’s theme is that one now, not an edited Classic');
 
   // ---------- Kept after a reload, used in another game ----------
   await page.waitForTimeout(400);
@@ -121,6 +131,85 @@ try {
   await renaming.getByRole('button', { name: 'Rename' }).click();
   await card('Checkers').waitFor();
   assert((await page.locator('.mine .card').count()) === 1, 'rename keeps one theme, with its new name');
+
+  // ---------- The saved theme put on is the one chosen; Save changes ----------
+  const checkers = card('Checkers').locator('.use');
+  assert((await checkers.getAttribute('aria-pressed')) === 'true', 'a saved theme put on a game is the card chosen');
+  assert((await page.locator('.preset[aria-pressed="true"]').count()) === 0 && (await page.locator('.card.based').count()) === 0, 'not the preset it was made from');
+  const saveChanges = savebar.getByRole('button', { name: '💾 Save changes to “Checkers”' });
+  assert(await saveChanges.isDisabled(), 'Save changes waits for a change');
+  await valuesBox().fill('#00ffff');
+  assert((await savebar.innerText()).includes('edited') && (await card('Checkers').innerText()).includes('· edited'), 'changed: the bar and the card say “edited”');
+  assert((await checkers.getAttribute('aria-pressed')) === 'true', 'and it is still the theme chosen');
+  await saveChanges.click();
+  const overwrite = page.getByRole('alertdialog').filter({ hasText: 'Overwrite “Checkers” with this look?' });
+  await overwrite.waitFor();
+  await overwrite.getByRole('button', { name: 'Cancel' }).click();
+  const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('brainrot.myThemes')).map((m) => ({ name: m.name, value: m.theme.value })));
+  assert((await stored())[0].value === '#ffcc00', 'Save changes asks first (Cancel keeps the saved theme as it was)');
+  await saveChanges.click();
+  await overwrite.getByRole('button', { name: 'Overwrite' }).click();
+  await page.waitForFunction(() => !document.querySelector('.savebar')?.textContent?.includes('edited'));
+  const after = await stored();
+  assert(after.length === 1 && after[0].name === 'Checkers' && after[0].value === '#00ffff', 'Overwrite saves the changes into the same saved theme');
+  assert(await saveChanges.isDisabled(), 'and there is nothing left to save');
+  // A preset is never overwritten: put Classic on, change it, and only Save as new theme… is there.
+  await page.getByRole('button', { name: 'Classic', exact: true }).click();
+  assert((await valuesBox().inputValue()) === '#ffcc00', 'Classic is still Classic');
+  assert((await savebar.getByRole('button').allInnerTexts()).join('|') === '💾 Save as new theme…', 'from a preset, only Save as new theme…');
+  await valuesBox().fill('#123456');
+  assert((await page.locator('.card.based').count()) === 1 && (await savebar.getByRole('button', { name: /Save changes/ }).count()) === 0, 'changed: Classic is marked as where it started (dashed), still only Save as new theme…');
+  await page.keyboard.press('Control+z');
+  await checkers.click();
+
+  // ---------- Right-click menus ----------
+  await page.locator('.preset', { hasText: 'Dark' }).click({ button: 'right' });
+  await menu.waitFor();
+  const presetMenu = (await menu.innerText()).split('\n').map((l) => l.trim());
+  assert(presetMenu.includes('🎨 Use in this game') && presetMenu.includes('💾 Save a copy as my theme…') && presetMenu.includes('📋 Copy theme code'), `right-click on a built-in theme: use, save a copy, share (${presetMenu.join(' / ')})`);
+  assert(!presetMenu.some((l) => /Overwrite|Save changes|Delete|Rename/.test(l)), 'and no way to overwrite, rename or delete it');
+  await page.keyboard.press('Escape');
+  await checkers.click({ button: 'right' });
+  await menu.waitFor();
+  const mineMenu = (await menu.innerText()).split('\n').map((l) => l.trim());
+  assert(['🎨 Use in this game', '💾 Save changes to it…', '✏ Rename…', '⧉ Duplicate', '⬇ Export theme file', '🗑 Delete…'].every((l) => mineMenu.includes(l)), `right-click on one of My themes: its ⋯ menu (${mineMenu.join(' / ')})`);
+  assert(await menu.getByRole('menuitem', { name: '💾 Save changes to it…' }).isDisabled(), 'Save changes to it… waits for a change there too');
+  await page.keyboard.press('Escape');
+  // Shift+F10 on a focused card opens the same menu, and Esc gives the card the focus back.
+  await page.locator('.preset', { hasText: 'Pastel' }).focus();
+  await page.keyboard.press('Shift+F10');
+  await menu.waitFor();
+  assert((await menu.innerText()).includes('Pastel (built-in)') && (await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem', 'Shift+F10 on a focused card opens its menu, focus on the first item');
+  await page.keyboard.press('Escape');
+  assert(await page.locator('.preset', { hasText: 'Pastel' }).evaluate((e) => e === document.activeElement), 'Esc closes it, the focus back on the card');
+  await checkers.focus();
+  await page.keyboard.press('Shift+F10');
+  assert((await menu.innerText()).includes('★ Checkers'), 'and on one of My themes');
+  await page.keyboard.press('Escape');
+  // A color: reset to the theme it came from, copy and paste.
+  await valuesBox().fill('#00ff00');
+  await page.locator('label[data-k="value"]').click({ button: 'right' });
+  await menu.waitFor();
+  assert((await menu.innerText()).startsWith('Values'), 'right-click on a color: its menu, named');
+  await menu.getByRole('menuitem', { name: '↺ Reset to Checkers' }).click();
+  assert((await valuesBox().inputValue()) === '#00ffff', 'Reset to Checkers puts that color back as in the saved theme');
+  await page.locator('label[data-k="value"]').click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: '📋 Copy color' }).click();
+  await page.locator('label[data-k="boardText"]').click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: '📋 Paste color #00ffff' }).click();
+  assert((await page.getByLabel('Category names', { exact: true }).inputValue()) === '#00ffff', 'Copy color and Paste color');
+  // A section: reset it all.
+  await page.locator('details.sec[data-sec="colors"] > summary').click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: '↺ Reset Colors to Checkers' }).click();
+  assert((await page.getByLabel('Category names', { exact: true }).inputValue()) === '#ffffff' && !(await savebar.innerText()).includes('edited'), 'right-click a section: Reset Colors to Checkers');
+  // Shift+F10 on a setting.
+  await openSection('Score plates');
+  await page.getByRole('combobox', { name: 'Plate corners' }).focus();
+  await page.keyboard.press('Shift+F10');
+  await menu.waitFor();
+  assert((await menu.innerText()).includes('Plate corners') && (await menu.innerText()).includes('Reset Score plates to Checkers'), 'Shift+F10 on a setting opens its menu');
+  await page.keyboard.press('Escape');
+  await shot('1b-menus');
 
   // ---------- ⬇ Export theme / 📂 Import theme… ----------
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export theme' }).click()]);

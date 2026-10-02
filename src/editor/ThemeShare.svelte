@@ -1,7 +1,8 @@
 <!--
-  🎨 Theme › My themes: looks saved on this computer under a name (use one in any game, rename, update, delete), and
-  sharing a theme: a .brainrot-theme file (with its pictures and uploaded fonts), a text code (without), or another
-  game's theme.
+  🎨 Theme › the top of the settings: which theme this game uses (and its save buttons), the built-in themes, My themes
+  (looks saved on this computer under a name: use one in any game, rename, save changes to it, delete), and sharing a
+  theme: a .brainrot-theme file (with its pictures and uploaded fonts), a text code (without), or another game's theme.
+  Every card has a menu: its ⋯ button, a right-click, or Shift+F10 / the menu key on it.
 -->
 <script lang="ts">
   import { app, toast } from '../lib/app.svelte';
@@ -9,14 +10,14 @@
   import { safeFilename, pickFile, saveFile, savedWhere } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
   import { storedBlob } from '../lib/media.svelte';
-  import { dropMenu, type MenuEntry } from '../lib/menustate.svelte';
-  import type { Theme } from '../lib/theme';
+  import { dropMenu, keyMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { PRESETS, presetTheme, type Theme, type ThemePreset } from '../lib/theme';
+  import { sameLook, withPreset, type ThemeOrigin } from '../lib/themesource';
   import {
     addMyTheme,
     changeMyTheme,
     deleteMyTheme,
     freshThemeName,
-    loadMyThemes,
     missingFonts,
     themeFiles,
     themeMedia,
@@ -34,53 +35,109 @@
   import ThemeNameDialog from './ThemeNameDialog.svelte';
   import ThemeImportDialog from './ThemeImportDialog.svelte';
 
-  /** A theme file opened or dropped on the editor: shown first, like 📂 Import theme… (then back to null). */
-  let { incoming = $bindable(null) }: { incoming?: SharedTheme | null } = $props();
+  let {
+    incoming = $bindable(null),
+    list = $bindable(),
+    origin,
+  }: {
+    /** A theme file opened or dropped on the editor: shown first, like 📂 Import theme… (then back to null). */
+    incoming?: SharedTheme | null;
+    /** My themes (stored on this computer as they change). */
+    list: MyTheme[];
+    /** Where the game's theme came from (themesource.ts). */
+    origin: ThemeOrigin | null;
+  } = $props();
   $effect(() => {
     if (!incoming) return;
     importing = incoming;
     incoming = null;
   });
 
-  let list = $state.raw<MyTheme[]>(loadMyThemes());
   const game = $derived(app.game);
   const NOT_STORED = 'This browser won’t store it (storage is blocked or full)';
+  const now = () => $state.snapshot(game.theme) as Theme;
 
-  /** The saved theme this game looks like now (using it would change nothing), if any. */
-  const current = $derived.by(() => {
-    const now = $state.snapshot(game.theme) as Theme;
-    return list.find((m) => sameContent(withMyTheme(now, m.theme, game.media), now)) ?? null;
-  });
-  /** A name for this game's theme when it's shared. */
-  const shareName = $derived(current?.name ?? `${game.title.trim() || 'My'} theme`);
+  /** A name for this game's theme when it's shared or saved: its saved theme's, an untouched preset's, else the game's. */
+  const ownName = $derived(`${game.title.trim() || 'My'} theme`);
+  const shareName = $derived(origin && (origin.kind === 'mine' || !origin.edited) ? origin.name : ownName);
+  const PRESET_KEYS = Object.keys(PRESETS) as ThemePreset[];
 
-  let naming = $state<{ title: string; value: string; ok: string; done: (name: string) => void } | null>(null);
+  let naming = $state<{ title: string; value: string; ok: string; note?: string; done: (name: string) => void } | null>(null);
   /** A shared theme coming in: from a file, or 'code' while one is pasted. */
   let importing = $state.raw<SharedTheme | 'code' | null>(null);
 
-  function save(): void {
+  // ---------- Using a theme ----------
+
+  // A preset replaces every color and font (not the pictures or the layout), so the note at the bottom offers Undo.
+  function applyPreset(p: ThemePreset): void {
+    const next: Theme = { ...withPreset(now(), p), source: { kind: 'preset', id: p } };
+    if (sameContent(next, now())) return void toast(`This game already uses ${PRESETS[p].label}`);
+    step(`Theme preset: ${PRESETS[p].label}`, () => (game.theme = next), { notify: true });
+  }
+
+  function use(m: MyTheme): void {
+    const cur = now();
+    const next: Theme = { ...withMyTheme(cur, clone(m.theme), game.media), source: { kind: 'mine', id: m.id } };
+    const missing = missingFonts(m.theme, game.media).length;
+    const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
+    if (sameContent(next, cur)) return void toast(`This game already looks like “${m.name}”${note}`);
+    step(`Theme: “${m.name}”`, () => (game.theme = next), { notify: true });
+    if (note) toast(`Used “${m.name}”${note}`);
+  }
+
+  /** The game's theme now comes from saved theme `id` (it was saved there): one step, so Undo takes the link back too. */
+  function linkTo(id: string, label: string): void {
+    if (game.theme.source?.kind === 'mine' && game.theme.source.id === id) return;
+    step(label, () => (game.theme.source = { kind: 'mine', id }));
+  }
+
+  // ---------- Saving ----------
+
+  /** 💾 Save as new theme…: under a name, and the game's theme is that one from then on. */
+  function saveNew(): void {
     naming = {
-      title: '💾 Save as my theme',
-      value: freshThemeName(list, current ? `${current.name}` : `${game.title.trim() || 'My'} theme`),
+      title: '💾 Save as new theme',
+      value: freshThemeName(list, origin?.kind === 'mine' ? origin.name : ownName),
       ok: 'Save',
       done: (name) => {
-        const next = addMyTheme(list, name, $state.snapshot(game.theme) as Theme);
+        const next = addMyTheme(list, name, now());
         if (!next) return void toast(NOT_STORED);
         list = next;
+        const saved = next[next.length - 1];
+        linkTo(saved.id, `Saved the theme as “${saved.name}”`);
         const fonts = usesUploadedFonts(game.theme);
-        toast(`Saved “${next[next.length - 1].name}” to my themes: use it in any game on this computer (pictures${fonts ? ' and uploaded fonts' : ''} stay with this game)`);
+        toast(`Saved “${saved.name}” to My themes: use it in any game on this computer (pictures${fonts ? ' and uploaded fonts' : ''} stay with this game)`);
       },
     };
   }
 
-  function use(m: MyTheme): void {
-    const now = $state.snapshot(game.theme) as Theme;
-    const next = withMyTheme(now, clone(m.theme), game.media);
-    const missing = missingFonts(m.theme, game.media).length;
-    const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
-    if (sameContent(next, now)) return void toast(`This game already looks like “${m.name}”${note}`);
-    step(`Theme: ${m.name}`, () => (game.theme = next), { notify: true });
-    if (note) toast(`Used “${m.name}”${note}`);
+  /** Overwrite a saved theme with this game's look (it asks first: My themes aren't in the game's undo). */
+  async function saveTo(m: MyTheme): Promise<void> {
+    const ok = await ask(`Its colors, fonts and layout become this game’s. Games that already use it keep their own look.`, {
+      title: `Overwrite “${m.name}” with this look?`,
+      ok: 'Overwrite',
+    });
+    if (!ok) return;
+    const next = changeMyTheme(list, m.id, { theme: now() });
+    if (!next) return void toast(NOT_STORED);
+    list = next;
+    linkTo(m.id, `Saved the theme to “${m.name}”`);
+    toast(`Saved the changes to “${m.name}”`);
+  }
+
+  /** A built-in theme kept as one of My themes (with this game's layout), to change from there. */
+  function savePresetCopy(p: ThemePreset): void {
+    naming = {
+      title: `💾 Save a copy of ${PRESETS[p].label}`,
+      value: freshThemeName(list, `My ${PRESETS[p].label}`),
+      ok: 'Save',
+      done: (name) => {
+        const next = addMyTheme(list, name, withPreset(now(), p));
+        if (!next) return void toast(NOT_STORED);
+        list = next;
+        toast(`Saved “${next[next.length - 1].name}” to My themes`);
+      },
+    };
   }
 
   function rename(m: MyTheme): void {
@@ -88,6 +145,7 @@
       title: '✏ Rename theme',
       value: m.name,
       ok: 'Rename',
+      note: '',
       done: (name) => {
         const next = changeMyTheme(list, m.id, { name });
         if (!next) return void toast(NOT_STORED);
@@ -96,21 +154,22 @@
     };
   }
 
-  async function update(m: MyTheme): Promise<void> {
-    if (!(await ask(`Update “${m.name}” to look like this game’s theme? Its colors, fonts and layout are replaced.`, { ok: 'Update' }))) return;
-    const next = changeMyTheme(list, m.id, { theme: $state.snapshot(game.theme) as Theme });
+  function duplicate(m: MyTheme): void {
+    const next = addMyTheme(list, freshThemeName(list, m.name), m.theme as Theme);
     if (!next) return void toast(NOT_STORED);
     list = next;
-    toast(`Updated “${m.name}”`);
+    toast(`Saved a copy: “${next[next.length - 1].name}”`);
   }
 
   async function remove(m: MyTheme): Promise<void> {
-    if (!(await ask(`Delete “${m.name}” from my themes? Games that use it keep their look.`, { ok: 'Delete', danger: true }))) return;
+    if (!(await ask(`Delete “${m.name}” from My themes? Games that use it keep their look.`, { ok: 'Delete', danger: true }))) return;
     const next = deleteMyTheme(list, m.id);
     if (!next) return void toast(NOT_STORED);
     list = next;
     toast(`Deleted “${m.name}”`);
   }
+
+  // ---------- Sharing ----------
 
   /** Write a theme file: with the pictures and uploaded fonts of this game it uses (`withFiles`). */
   async function exportTheme(name: string, theme: Theme, withFiles: boolean): Promise<void> {
@@ -137,11 +196,34 @@
     await copyText(await themeCode(name, theme), `Theme code copied: paste it anywhere${pics ? ' (pictures and uploaded fonts don’t go in a code: export a theme file for those)' : ''}`);
   }
 
-  function items(m: MyTheme): MenuEntry[] {
+  // ---------- The cards' menus ----------
+
+  function presetItems(p: ThemePreset): MenuEntry[] {
+    const label = PRESETS[p].label;
     return [
+      { heading: `${label} (built-in)` },
+      { label: '🎨 Use in this game', onclick: () => applyPreset(p) },
+      { label: '💾 Save a copy as my theme…', onclick: () => savePresetCopy(p), hint: 'Built-in themes can’t be changed: a copy in My themes can' },
+      { sep: true },
+      { label: '⬇ Export theme file', onclick: () => void exportTheme(label, withPreset(now(), p), false) },
+      { label: '📋 Copy theme code', onclick: () => void copyCode(label, presetTheme(p)) },
+    ];
+  }
+
+  function mineItems(m: MyTheme): MenuEntry[] {
+    const fromIt = origin?.kind === 'mine' && origin.id === m.id;
+    const same = sameLook(game.theme, withMyTheme(game.theme, m.theme, game.media));
+    return [
+      { heading: `★ ${m.name}` },
       { label: '🎨 Use in this game', onclick: () => use(m) },
+      {
+        label: fromIt ? '💾 Save changes to it…' : '💾 Overwrite with this game’s look…',
+        disabled: same,
+        hint: same ? 'This game already looks like it' : 'Asks first',
+        onclick: () => void saveTo(m),
+      },
       { label: '✏ Rename…', onclick: () => rename(m) },
-      { label: '🔄 Update from this game’s theme…', onclick: () => void update(m) },
+      { label: '⧉ Duplicate', onclick: () => duplicate(m) },
       { sep: true },
       { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, false) },
       { label: '📋 Copy theme code', onclick: () => void copyCode(m.name, m.theme) },
@@ -149,6 +231,8 @@
       { label: '🗑 Delete…', danger: true, onclick: () => void remove(m) },
     ];
   }
+
+  // ---------- Bringing a theme in ----------
 
   async function importFile(): Promise<void> {
     const file = await pickFile(THEME_FILES);
@@ -160,19 +244,20 @@
     }
   }
 
-  /** A shared theme in this game: its files go in with it, in one undo step. */
+  /** A shared theme in this game: its files go in with it, in one undo step. It's a theme of its own (no source). */
   async function useShared(s: SharedTheme): Promise<void> {
     importing = null;
     const g = game;
     const { refs, ids } = await storeThemeFiles(s);
     const theme = renameThemeFiles(s.theme, ids);
-    const now = $state.snapshot(g.theme) as Theme;
+    const cur = $state.snapshot(g.theme) as Theme;
     // The files it brings that the theme uses (an uploaded font it doesn't use stays out).
     const add = themeFiles(theme, refs);
-    const next = withShared(now, theme, [...g.media, ...add]);
-    if (sameContent(next, now) && add.every((r) => g.media.some((m) => m.id === r.id))) return void toast(`This game already looks like “${s.name}”`);
+    const next = withShared(cur, theme, [...g.media, ...add]);
+    delete next.source;
+    if (sameContent(next, cur) && add.every((r) => g.media.some((m) => m.id === r.id))) return void toast(`This game already looks like “${s.name}”`);
     step(
-      `Theme: ${s.name}`,
+      `Theme: “${s.name}”`,
       () => {
         addMedia(g, add);
         g.theme = next;
@@ -186,7 +271,7 @@
     const next = addMyTheme(list, freshThemeName(list, s.name), s.theme);
     if (!next) return void toast(NOT_STORED);
     list = next;
-    toast(`Saved “${next[next.length - 1].name}” to my themes${s.media.length ? ' (without its pictures and fonts’ files: use it in a game to bring those in)' : ''}`);
+    toast(`Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts’ files: use it in a game to bring those in)' : ''}`);
   }
 
   async function fromGame(): Promise<void> {
@@ -200,36 +285,106 @@
   }
 </script>
 
+<!-- (Several top-level parts: the bar stays at the top of the settings column as it scrolls.) -->
+<div class="savebar" role="group" aria-label="This game’s theme">
+  <p class="now">
+    <span class="muted">Now:</span>
+    {#if origin?.kind === 'mine'}
+      <strong><span class="tag" aria-hidden="true">★</span> {origin.name}</strong>
+    {:else if origin}
+      <strong>{origin.name}</strong> <span class="muted">(built-in)</span>
+    {:else}
+      <strong>{ownName}</strong> <span class="muted">(not in My themes)</span>
+    {/if}
+    {#if origin?.edited}<span class="edited">· edited</span>{/if}
+  </p>
+  <div class="acts">
+    {#if origin?.kind === 'mine' && origin.mine}
+      {@const m = origin.mine}
+      <button
+        class="small"
+        class:primary={origin.edited}
+        disabled={!origin.edited}
+        onclick={() => saveTo(m)}
+        title={origin.edited ? `Put this look in “${m.name}” (asks first)` : `No changes since “${m.name}” was put on`}
+      >
+        💾 Save changes to “{m.name}”
+      </button>
+    {/if}
+    <button class="small" onclick={saveNew} title="Keep this look in My themes under a new name, to use in any game on this computer">💾 Save as new theme…</button>
+  </div>
+  {#if origin?.kind === 'preset' && origin.edited}
+    <p class="hint">Built-in themes stay as they are: Save as new theme… keeps this look in My themes.</p>
+  {/if}
+</div>
+
+<section aria-labelledby="builtin-heading">
+  <h3 id="builtin-heading">Built-in themes</h3>
+  <div class="cards">
+    {#each PRESET_KEYS as key}
+      {@const on = origin?.kind === 'preset' && origin.id === key}
+      {@const edited = on && origin!.edited}
+      <div class="card" class:based={edited}>
+        <button
+          class="use preset"
+          class:on={on && !edited}
+          aria-pressed={on && !edited}
+          onclick={() => applyPreset(key)}
+          oncontextmenu={(e) => showMenu(e, presetItems(key))}
+          onkeydown={(e) => keyMenu(e, presetItems(key))}
+          title={edited ? `This game’s theme started from ${PRESETS[key].label} and was changed: a click puts ${PRESETS[key].label} back` : `Use ${PRESETS[key].label} in this game`}
+        >
+          <ThemeSwatch theme={presetTheme(key)} />
+          <span class="nm">{PRESETS[key].label}{#if edited}&nbsp;<span class="edited">· edited</span>{/if}</span>
+        </button>
+        <button class="ghost tiny more" aria-label="More for {PRESETS[key].label}" title="Save a copy, export or copy its code" onclick={(e) => dropMenu(e, presetItems(key))}>⋯</button>
+      </div>
+    {/each}
+  </div>
+</section>
+
 <section class="mine" aria-labelledby="my-themes-heading">
   <h3 id="my-themes-heading">My themes <span class="where">· on this computer</span></h3>
   {#if list.length}
     <div class="cards">
       {#each list as m (m.id)}
-        <div class="card" class:on={current?.id === m.id}>
-          <button class="use" aria-pressed={current?.id === m.id} onclick={() => use(m)} title="Use “{m.name}” in this game">
+        {@const on = origin?.kind === 'mine' && origin.id === m.id}
+        <div class="card">
+          <button
+            class="use"
+            class:on
+            aria-pressed={on}
+            onclick={() => use(m)}
+            oncontextmenu={(e) => showMenu(e, mineItems(m))}
+            onkeydown={(e) => keyMenu(e, mineItems(m))}
+            title="Use “{m.name}” in this game"
+          >
             <ThemeSwatch theme={m.theme} />
-            <span class="nm"><span class="tag" title="Saved by you">★</span> {m.name}</span>
+            <span class="nm"><span class="tag" title="Saved by you">★</span> {m.name}{#if on && origin?.edited}&nbsp;<span class="edited">· edited</span>{/if}</span>
           </button>
-          <button class="ghost tiny more" aria-label="More for “{m.name}”" title="Rename, update, share or delete" onclick={(e) => dropMenu(e, items(m))}>⋯</button>
+          <button class="ghost tiny more" aria-label="More for “{m.name}”" title="Save changes, rename, share or delete" onclick={(e) => dropMenu(e, mineItems(m))}>⋯</button>
         </div>
       {/each}
     </div>
   {:else}
-    <p class="hint">Themes you save show here, to use in any game on this computer.</p>
+    <p class="empty">No saved themes yet. <strong>💾 Save as new theme…</strong> keeps this game’s look here, to use in any game on this computer.</p>
   {/if}
-  <div class="share">
-    <button class="small" onclick={save} title="Keep these colors, fonts and layout on this computer under a name, to use in other games">💾 Save as my theme…</button>
-    <button class="small" onclick={() => exportTheme(shareName, $state.snapshot(game.theme) as Theme, true)} title="A .brainrot-theme file to send: with this theme’s pictures and uploaded fonts">
-      ⬇ Export theme
-    </button>
-    <button class="small" onclick={() => copyCode(shareName, $state.snapshot(game.theme) as Theme)} title="A short code to paste in a chat: colors, fonts and layout (no pictures or uploaded fonts)">
-      📋 Copy theme code
-    </button>
+</section>
+
+<section class="share" aria-labelledby="share-heading">
+  <h3 id="share-heading">Share</h3>
+  <div class="row">
+    <span class="lbl">This theme</span>
+    <button class="small" onclick={() => exportTheme(shareName, now(), true)} title="A .brainrot-theme file to send: with this theme’s pictures and uploaded fonts">⬇ Export theme</button>
+    <button class="small" onclick={() => copyCode(shareName, now())} title="A short code to paste in a chat: colors, fonts and layout (no pictures or uploaded fonts)">📋 Copy theme code</button>
+  </div>
+  <div class="row">
+    <span class="lbl">Bring one in</span>
     <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📂 Import theme…</button>
     <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
     <button class="small" onclick={fromGame} title="Open a .brainrot game and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
   </div>
-  <p class="hint">A theme file carries its pictures and uploaded fonts. A theme code, and themes saved here, keep the colors, fonts and layout only.</p>
+  <p class="hint">A theme file carries its pictures and uploaded fonts; a code and My themes keep the colors, fonts and layout.</p>
 </section>
 
 {#if naming}
@@ -238,6 +393,7 @@
     title={n.title}
     value={n.value}
     ok={n.ok}
+    note={n.note}
     onname={(name) => {
       // (Read before the window goes: `n` goes with it.)
       const done = n.done;
@@ -251,8 +407,54 @@
 {/if}
 
 <style>
-  .mine {
-    margin-top: 12px;
+  /* Which theme this is, and saving it: kept in view at the top of the settings as they scroll. */
+  .savebar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 0 0 4px;
+    padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  /* (Covers the settings scrolling by in the page's padding above it.) */
+  .savebar::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    bottom: 100%;
+    height: 17px;
+    background: var(--bg);
+  }
+  .now {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .savebar .hint {
+    flex-basis: 100%;
+    margin: 0;
+  }
+  .edited {
+    color: var(--warn);
+    font-weight: 400;
+  }
+  section {
+    margin-top: 14px;
   }
   h3 {
     margin: 0 0 6px;
@@ -285,15 +487,21 @@
     gap: 6px;
     padding: 8px;
   }
-  .card.on .use {
+  .use.on {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
+  }
+  /* The built-in theme this one started from, changed since: marked, not chosen. */
+  .based .use {
+    border-style: dashed;
+    border-color: var(--accent);
   }
   .nm {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
     text-align: left;
-    padding-right: 18px;
+    padding-right: 22px;
   }
   .tag {
     color: var(--warn);
@@ -303,11 +511,25 @@
     right: 4px;
     bottom: 6px;
   }
-  .share {
+  .empty {
+    margin: 0;
+    padding: 12px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .share .row {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 6px;
+  }
+  .lbl {
+    width: 7.5em;
+    font-size: 12px;
+    color: var(--muted);
   }
   .hint {
     margin: 6px 0 0;

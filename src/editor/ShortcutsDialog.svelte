@@ -159,6 +159,8 @@
         ['Click / Ctrl+click / Shift+click', '🖼 Media: select files (Delete removes them, Esc deselects)'],
         ['Double-click or F2 a name', '🖼 Media: rename the file'],
         ['Drop a file on a card', '🖼 Media: replace it (everything that uses it follows)'],
+        ['Right-click or Shift+F10 a theme', '🎨 Theme: use it, save a copy or the changes, rename, share or delete it'],
+        ['Right-click or Shift+F10 a setting', '🎨 Theme: reset it (or its section) to the theme it came from; copy and paste a color'],
       ],
     ],
   ];
