@@ -93,14 +93,14 @@
     <h3>Where your data is saved</h3>
     {#if desktopApp}
       <p class="muted">
-        The desktop app keeps your autosave, the media you add and its settings in these folders on this PC. Nothing else
-        is written anywhere, except files you save or export yourself: those go in a <b>BrainrotSaves</b> folder next to the
-        app.
+        The desktop app keeps the game you’re editing, Recent games, the media you add and its settings in these folders on
+        this PC. Nothing else is written anywhere, except the files you save or export and the timed autosaves (⚙ Settings):
+        those go in a <b>BrainrotSaves</b> folder next to the app.
       </p>
       {#if folders}
         <div class="folder">
           <div>
-            <div class="what">Your saves (Save, Export JSON, Export HTML)</div>
+            <div class="what">Your saves (Save, Export JSON, Export HTML, autosaves)</div>
             <code>{folders.saves?.path ?? 'unknown'}</code>
             {#if !folders.saves?.exists}<div class="hint">Made the first time you save.</div>{/if}
             {#if folders.savesDocuments?.exists}
@@ -114,7 +114,7 @@
         </div>
         <div class="folder">
           <div>
-            <div class="what">Autosave, games in progress and media</div>
+            <div class="what">The game you’re editing, Recent games, a game in progress and media</div>
             <code>{folders.data.path ?? 'unknown'}</code>
           </div>
           <button class="small" disabled={!folders.data.exists} onclick={() => show('data')}>📂 Open folder</button>
@@ -123,7 +123,7 @@
           <div>
             <div class="what">Settings (Discord audio fix)</div>
             <code>{folders.settings.path ?? 'unknown'}</code>
-            {#if !folders.settings.exists}<div class="hint">Not created: it's only made if you change the Discord audio fix.</div>{/if}
+            {#if !folders.settings.exists}<div class="hint">Not made yet: it’s only made if you switch the Discord audio fix off.</div>{/if}
           </div>
           {#if folders.settings.exists}<button class="small" onclick={() => show('settings')}>📂 Open folder</button>{/if}
         </div>
@@ -144,8 +144,9 @@
           </div>
         {/if}
         <p class="hint">
-          Removing Brainrot Games Maker? Delete these folders too. Deleting them while the app is closed starts it fresh:
-          anything not saved as a .brainrot (or exported) is lost.
+          Removing Brainrot Games Maker? Delete the .exe and the last two folders. Keep BrainrotSaves (or copy it somewhere
+          else) if you want your saved games. Deleting the last two while the app is closed starts it fresh: anything not
+          saved as a .brainrot (or exported) is lost.
         </p>
       {:else}
         <p class="hint">Looking up the folders…</p>

@@ -73,6 +73,42 @@ pub fn may_fall_back(err: &io::Error) -> bool {
     matches!(err.kind(), io::ErrorKind::PermissionDenied | io::ErrorKind::ReadOnlyFilesystem)
 }
 
+/// Windows' error codes for a file another program has open (sharing and lock violations).
+const FILE_IN_USE: [i32; 2] = [32, 33];
+
+/// What went wrong with a file, in plain words: Windows' own message without its "(os error 32)" code, and for a
+/// file another program has open or a full disk, what to do about it. No full stop at the end (the caller adds it).
+pub fn plain_error(err: &io::Error) -> String {
+    let full = err.to_string();
+    let text = match full.rfind(" (os error ") {
+        Some(at) if full.ends_with(')') => &full[..at],
+        _ => full.as_str(),
+    };
+    let text = text.trim_end().trim_end_matches('.').to_string();
+    if cfg!(windows) && err.raw_os_error().is_some_and(|code| FILE_IN_USE.contains(&code)) {
+        format!("{text}. Close it in the other program and try again")
+    } else if err.kind() == io::ErrorKind::StorageFull {
+        format!("{text}. Free some space on the drive and try again")
+    } else {
+        text
+    }
+}
+
+/// What the app can be opened with ("Open with", a file dropped on the exe, a second launch): a game, a backup Save
+/// kept of one ("Game.brainrot.bak"), or a theme file (it opens on the 🎨 Theme page).
+pub fn is_openable(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with(".brainrot-theme") && lower.len() > ".brainrot-theme".len() {
+        return true;
+    }
+    // "Game.brainrot.bak", ".bak2"…: the game it's a backup of.
+    let game = match lower.rfind(".bak") {
+        Some(at) if lower[at + 4..].bytes().all(|b| b.is_ascii_digit()) => &lower[..at],
+        _ => lower.as_str(),
+    };
+    is_game(game)
+}
+
 /// Where the save about to be replaced waits (a second name for it) until the new one is in place.
 fn held_name(name: &str) -> String {
     format!(".{name}.prev")
@@ -335,7 +371,7 @@ mod tests {
         for v in ["1", "2", "3"] {
             write_save(&dir, "Game.brainrot", v.as_bytes(), BACKUPS).unwrap();
         }
-        let fail = |_: &Path, _: &Path| Err(io::Error::new(io::ErrorKind::Other, "the file is in use"));
+        let fail = |_: &Path, _: &Path| Err(io::Error::other("the file is in use"));
         assert!(write_save_with(&dir, "Game.brainrot", b"4", BACKUPS, fail).is_err());
         assert_eq!(read("Game.brainrot").as_deref(), Some("3"));
         assert_eq!(read("Game.brainrot.bak").as_deref(), Some("2"));
@@ -357,7 +393,7 @@ mod tests {
         assert!(may_fall_back(&io::Error::from(io::ErrorKind::PermissionDenied)));
         assert!(may_fall_back(&io::Error::from(io::ErrorKind::ReadOnlyFilesystem)));
         assert!(!may_fall_back(&io::Error::from(io::ErrorKind::StorageFull)));
-        assert!(!may_fall_back(&io::Error::new(io::ErrorKind::Other, "sharing violation")));
+        assert!(!may_fall_back(&io::Error::other("sharing violation")));
     }
 
     #[test]
@@ -422,6 +458,26 @@ mod tests {
         assert_eq!(read("Game.brainrot.bak2").as_deref(), Some("1"));
         assert!(!dir.join(".Game.brainrot.prev").exists());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn errors_are_said_in_plain_words() {
+        assert_eq!(plain_error(&io::Error::other("the file is in use")), "the file is in use");
+        let full = plain_error(&io::Error::from(io::ErrorKind::StorageFull));
+        assert!(full.ends_with("Free some space on the drive and try again"), "{full}");
+        let in_use = plain_error(&io::Error::from_raw_os_error(32));
+        assert!(!cfg!(windows) || in_use.ends_with("Close it in the other program and try again"), "{in_use}");
+        assert!(!in_use.contains("os error"), "{in_use}");
+    }
+
+    #[test]
+    fn the_app_opens_games_their_backups_and_themes() {
+        for name in ["Quiz.brainrot", "Quiz.HTML", "Old.jbr", "Quiz.brainrot.bak", "Quiz.json.BAK2", "Neon.brainrot-theme"] {
+            assert!(is_openable(name), "{name}");
+        }
+        for name in ["notes.txt", "Quiz.bak", "Quiz.brainrot.bakery", "Quiz.csv", ".brainrot-theme"] {
+            assert!(!is_openable(name), "{name}");
+        }
     }
 
     #[test]

@@ -45,7 +45,10 @@ pub fn replace_exe(exe: &Path, bytes: &[u8]) -> Result<(), String> {
     let new = beside(exe, ".new");
     let old = beside(exe, ".old");
     let cant = |err: std::io::Error| {
-        format!("Couldn't replace the app in its folder ({err}). Download the new version and put it there yourself.")
+        format!(
+            "Couldn't put the new version in place of this one ({}). Download it and put it in place of this .exe yourself.",
+            crate::saves::plain_error(&err)
+        )
     };
     fs::write(&new, bytes).map_err(cant)?;
     let _ = fs::remove_file(&old);
@@ -98,7 +101,7 @@ pub async fn install(exe_url: &str, signature_url: &str) -> Result<(), String> {
     let client = reqwest::Client::builder()
         .user_agent("Brainrot Games Maker updater")
         .build()
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| format!("Couldn't start the download ({err}). Download the new version instead."))?;
     let exe = download(&client, exe_url).await?;
     let signature = String::from_utf8(download(&client, signature_url).await?)
         .map_err(|_| "The update's signature isn't readable.".to_string())?;
@@ -106,7 +109,8 @@ pub async fn install(exe_url: &str, signature_url: &str) -> Result<(), String> {
     if !exe.starts_with(b"MZ") {
         return Err("The download isn't a Windows program: it wasn't installed.".into());
     }
-    let path = std::env::current_exe().map_err(|err| err.to_string())?;
+    let path = std::env::current_exe()
+        .map_err(|err| format!("Couldn't find where this app is ({err}). Download the new version instead."))?;
     replace_exe(&path, &exe)
 }
 

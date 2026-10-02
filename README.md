@@ -69,7 +69,9 @@ Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube
 
 **Keyboard and drag:** round tabs, clue tiles, categories, rows, list items and map screens can be dragged and have
 right-click menus; `Delete`, `F2`, `Ctrl+D` and `Ctrl+C` / `Ctrl+V` work on what's selected. Files drop onto the slot
-they belong in. Press `?` (or ⌨ next to ℹ About) for every editor shortcut.
+they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or ⌨ in the ⋯
+menu) for every editor shortcut. The longer help on the board, a slide, the RPG map and the board game page sits in a
+**💡 Tips** fold that stays as you left it.
 
 **Slide editor:** drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until
 it's selected), so a full-slide question doesn't move when you meant to select; `Alt`+drag always draws a box. Items
@@ -95,7 +97,9 @@ movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels &
 Other editor tabs:
 
 - 🔊 **Sounds**: the sounds played on stream (right, wrong, dice, wheel, buzz…): preview, replace or switch each off.
-- 🎨 **Theme**: presets, colors, fonts and background images.
+- 🎨 **Theme**: presets, colors, fonts and background images. **💾 Save as my theme…** keeps a look on this computer
+  for any game; **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import
+  theme…** / **⌨ Paste theme code…** show someone else's on your board before you use or keep it.
 - 🎡 **Wheels & Dice**: weighted wheels and custom dice. Each outcome can carry a score effect or action buttons.
 - 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
 
@@ -218,6 +222,8 @@ hidden objects. Use the separate audience window when that matters.
 - Player cards with stats and inventory.
 - Shops.
 - Live improvising: edit the screen, add text, or draw objects on a drawpad.
+- Select several players and objects (click avatars, `Shift`+click objects) and drag them together: the group keeps
+  its shape, and one drag is one undo step.
 
 **Board game rounds** have these controls (as in RPG rounds, the board is scaled into the room above the stats
 strip, so no space is ever under it):
@@ -226,6 +232,8 @@ strip, so no space is ever under it):
   came.
 - Send players to any space.
 - Each space's actions, for the player they're for (the one who landed there, or the ones picked on its card).
+- **✎ Edit board** (`E`) while you play: add, move, connect, rename and delete spaces (players on a deleted space go to
+  the one before it); `E` or `Esc` again goes back to playing.
 
 <table>
 <tr>
@@ -258,7 +266,7 @@ The main ones (press `?` during the game for all of them):
 | `R` | Reveal / hide the answer (the countdown stops) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
-| `N` | Next step (intro, a clue's next slide, Final, next turn) |
+| `N` / `Shift+N` | Next step (intro, a clue's next slide, Final, next turn) / the one before |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players) / scoreboard |
@@ -275,6 +283,8 @@ The main ones (press `?` during the game for all of them):
 | `J` / `V` / `G` (RPG) | Full map / map on screen / regroup everyone here |
 | `I` (RPG, board game) | Player sheet |
 | Numpad or `Alt`+arrows (RPG) | Move the party |
+| `E` (board game) | ✎ Edit board while you play |
+| `?` | Every key |
 
 ## Saving
 
@@ -287,7 +297,8 @@ The main ones (press `?` during the game for all of them):
   - Changes made while a save is being written aren't in it, so they still count as unsaved.
 - **Open…** lists your **Recent games** and, in the desktop app, BrainrotSaves. It also opens `.json` games, exported
   HTML files and the desktop app's `.bak` backups. Dropping a game file (`.brainrot`, `.zip`, `.json`, `.html`) on the
-  editor opens it, and the desktop app opens a game file you open it with.
+  editor opens it (a `.brainrot-theme` file opens on the 🎨 Theme page), and the desktop app opens a game, a `.bak` or
+  a theme file you open it with ("Open with", or dropped on the `.exe`).
   - **Recent games** keeps the last 8 games New or Open… replaced (about 1 GB of files at most), with their undo
     history. When one has to go to make room, the app says which. Two versions of one game are both kept. A game with
     only a title isn't kept. **🗑 Delete** asks first: it deletes the kept copy and its files.
@@ -333,9 +344,10 @@ button, a speaker picker (e.g. for a virtual cable into OBS), and step-by-step h
   mkdir "%APPDATA%\com.brainrotgames.maker" 2>nul & type nul > "%APPDATA%\com.brainrotgames.maker\discord-audio-fix-off"
   ```
 
-The desktop app keeps its data in `%LOCALAPPDATA%\com.brainrotgames.maker`: the game in progress and media. Settings go
-in `%APPDATA%\com.brainrotgames.maker`. **ℹ About** opens both folders. To uninstall, delete the `.exe` and those
-folders.
+The desktop app keeps its data in `%LOCALAPPDATA%\com.brainrotgames.maker`: the game you're editing, Recent games, a
+game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. Your saves, exports and autosaves are in
+**BrainrotSaves** next to the `.exe`. **ℹ About** shows and opens all three. To uninstall, delete the `.exe` and the two
+`com.brainrotgames.maker` folders; keep BrainrotSaves (or move it) if you want your saved games.
 
 ## Development
 

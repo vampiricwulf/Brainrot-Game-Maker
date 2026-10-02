@@ -322,6 +322,7 @@ export function openScoresWindow(): boolean {
 
 export function closeScoresWindow(): void {
   scoresWin?.close();
+  closeAudienceNative(true);
   scoresClosed();
 }
 

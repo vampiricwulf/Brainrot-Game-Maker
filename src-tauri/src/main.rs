@@ -96,6 +96,11 @@ fn is_audience(url: &Url) -> bool {
     url.fragment() == Some("audience")
 }
 
+/// The scores-only window (Shift+A): the score plates and the countdown, for a lower third.
+fn is_scores(url: &Url) -> bool {
+    url.fragment() == Some("audience-scores")
+}
+
 /// The app's settings folder, where the fix's files live.
 fn settings_dir(app: &AppHandle) -> Option<PathBuf> {
     app.path().app_config_dir().ok()
@@ -253,7 +258,7 @@ fn set_audio_fix(app: AppHandle, on: bool) -> Result<(), String> {
     // Switching it on is a fresh try: an earlier crash no longer keeps it off.
     let saved =
         save_fix_in(&dir, on).and_then(|()| if on { clear_crashed_in(&dir) } else { Ok(()) });
-    saved.map_err(|err| format!("Couldn't save the setting: {err}"))
+    saved.map_err(|err| format!("Couldn't save the setting: {}.", saves::plain_error(&err)))
 }
 
 /// Restart the app. It goes through the normal exit, so the single-instance lock is let go
@@ -267,7 +272,7 @@ async fn restart_app(app: AppHandle) {
 #[tauri::command]
 async fn retry_audio_fix(app: AppHandle) -> Result<(), String> {
     let dir = settings_dir(&app).ok_or("The app's settings folder wasn't found.")?;
-    clear_crashed_in(&dir).map_err(|err| format!("Couldn't save the setting: {err}"))?;
+    clear_crashed_in(&dir).map_err(|err| format!("Couldn't save the setting: {}.", saves::plain_error(&err)))?;
     app.request_restart();
     Ok(())
 }
@@ -317,6 +322,8 @@ fn data_folders(app: AppHandle) -> serde_json::Value {
 /// Before any window exists: move the folders the app had as Jeopardy Builder to the new names. If the
 /// old app is still running (its files are in use), ask to close it and retry; Cancel starts without
 /// the old data, which then stays where it is (ℹ About lists it).
+// (Only Windows asks to retry, so elsewhere the loop runs once.)
+#[cfg_attr(not(windows), allow(clippy::never_loop))]
 fn move_old_data(app: &AppHandle) {
     for which in ["data", "settings"] {
         let Some(new) = data_folder(app, which) else {
@@ -378,7 +385,7 @@ fn open_data_folder(app: AppHandle, which: String) -> Result<(), String> {
         .arg(&dir)
         .spawn()
         .map(|_| ())
-        .map_err(|err| format!("Couldn't open {}: {err}", dir.display()))
+        .map_err(|err| format!("Couldn't open {}: {}.", dir.display(), saves::plain_error(&err)))
 }
 
 /// Save a file (a .brainrot pack, a .json game or an exported .html) into BrainrotSaves next to the exe,
@@ -409,7 +416,9 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<s
         Some(Ok(path)) => return Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": false })),
         // Only a folder the app may not write in sends the save to Documents: a full disk or a file another
         // program holds open is said as it is (a save in Documents would leave versions in two folders).
-        Some(Err(err)) if !saves::may_fall_back(&err) => return Err(format!("Couldn't save {name}: {err}")),
+        Some(Err(err)) if !saves::may_fall_back(&err) => {
+            return Err(format!("Couldn't save {name}: {}.", saves::plain_error(&err)))
+        }
         Some(Err(err)) => Some(err),
         None => None,
     };
@@ -417,8 +426,11 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<s
     match write(&docs, &docs_name, docs_mode) {
         Ok(path) => Ok(serde_json::json!({ "path": path.display().to_string(), "fallback": true })),
         Err(err) => Err(format!(
-            "Couldn't save {name}: {}",
-            first_err.map_or_else(|| err.to_string(), |first| format!("{first}; and in Documents: {err}"))
+            "Couldn't save {name}: {}.",
+            first_err.map_or_else(
+                || saves::plain_error(&err),
+                |first| format!("{} (next to the app), and in Documents: {}", saves::plain_error(&first), saves::plain_error(&err))
+            )
         )),
     }
 }
@@ -471,7 +483,7 @@ async fn read_save(app: AppHandle, name: String, place: String) -> Result<tauri:
     off_main(move || {
         std::fs::read(dir.join(&name))
             .map(tauri::ipc::Response::new)
-            .map_err(|err| format!("Couldn't open {name}: {err}"))
+            .map_err(|err| format!("Couldn't open {name}: {}.", saves::plain_error(&err)))
     })
     .await
 }
@@ -488,7 +500,7 @@ fn delete_save(app: AppHandle, name: String, place: String) -> Result<(), String
     let name = saves::clean_name(&name)
         .filter(|name| saves::is_autosave(name))
         .ok_or("Only old autosaves can be deleted.")?;
-    remove_if_there(&saves_folder(&app, &place)?.join(&name)).map_err(|err| format!("Couldn't delete {name}: {err}"))
+    remove_if_there(&saves_folder(&app, &place)?.join(&name)).map_err(|err| format!("Couldn't delete {name}: {}.", saves::plain_error(&err)))
 }
 
 /// The game file the app was opened with ("Open with", or dropped on the exe), or that a second launch was
@@ -498,11 +510,11 @@ static OPENED: Mutex<Option<PathBuf>> = Mutex::new(None);
 /// Event for the host page: a second launch was given a game file to open (take_opened_file).
 const OPEN_EVENT: &str = "open-file";
 
-/// A launch argument that's a game file (relative to `cwd`).
+/// A launch argument that's a game file, a backup of one or a theme file (relative to `cwd`): see saves::is_openable.
 fn game_file_arg(arg: &OsStr, cwd: &Path) -> Option<PathBuf> {
     let path = Path::new(arg);
     let name = path.file_name()?.to_str()?;
-    saves::is_game(name).then(|| cwd.join(path)).filter(|p| p.is_file())
+    saves::is_openable(name).then(|| cwd.join(path)).filter(|p| p.is_file())
 }
 
 /// The first game file among the launch arguments (after the exe's own path).
@@ -533,7 +545,7 @@ async fn take_opened_file() -> Result<tauri::ipc::Response, String> {
     off_main(move || {
         std::fs::read(&path)
             .map(tauri::ipc::Response::new)
-            .map_err(|err| format!("Couldn't open {}: {err}", path.display()))
+            .map_err(|err| format!("Couldn't open {}: {}.", path.display(), saves::plain_error(&err)))
     })
     .await
 }
@@ -702,12 +714,14 @@ async fn install_update(exe_url: String, signature_url: String) -> Result<(), St
     update::install(&exe_url, &signature_url).await
 }
 
-/// Close the audience windows the page opened (Exit, Close audience window): a window opened through `window.open` may
-/// not close from the page's side, and after a reload of the host page it no longer has a handle on it at all.
+/// Close the audience windows the page opened (Exit, Close audience window), or with `scores`, the scores-only
+/// windows: a window opened through `window.open` may not close from the page's side, and after a reload of the host
+/// page it no longer has a handle on it at all.
 #[tauri::command]
-fn close_audience(app: AppHandle) {
+fn close_audience(app: AppHandle, scores: Option<bool>) {
+    let which = if scores == Some(true) { is_scores } else { is_audience };
     for (label, window) in app.webview_windows() {
-        if label.starts_with("popup-") && window.url().is_ok_and(|url| is_audience(&url)) {
+        if label.starts_with("popup-") && window.url().is_ok_and(|url| which(&url)) {
             let _ = window.close();
         }
     }
@@ -720,8 +734,11 @@ fn open_popup(
     features: NewWindowFeatures,
 ) -> NewWindowResponse<tauri::Wry> {
     let n = POPUPS.fetch_add(1, Ordering::SeqCst);
+    // (Until the page names it after the game.)
     let title = if is_audience(&url) {
         "Brainrot Games Maker · Audience".to_string()
+    } else if is_scores(&url) {
+        "Brainrot Games Maker · Scores".to_string()
     } else {
         url.to_string()
     };
@@ -1156,6 +1173,11 @@ mod tests {
         assert_eq!(opened_file_arg([exe.as_ref(), full.as_os_str()], Path::new("/elsewhere")), Some(full.clone()));
         assert_eq!(opened_file_arg([exe, "--no-audio-fix", "Quiz.brainrot"], &dir.0), Some(full));
         assert_eq!(opened_file_arg([exe, "Show.HTML"], &dir.0), Some(dir.0.join("Show.HTML")));
+        // A backup Save kept, and a shared theme, open too.
+        dir.touch("Quiz.brainrot.bak");
+        dir.touch("Neon.brainrot-theme");
+        assert_eq!(opened_file_arg([exe, "Quiz.brainrot.bak"], &dir.0), Some(dir.0.join("Quiz.brainrot.bak")));
+        assert_eq!(opened_file_arg([exe, "Neon.brainrot-theme"], &dir.0), Some(dir.0.join("Neon.brainrot-theme")));
         // Not a game, missing, or only the exe itself.
         assert_eq!(opened_file_arg([exe, "notes.txt"], &dir.0), None);
         assert_eq!(opened_file_arg([exe, "Gone.brainrot"], &dir.0), None);

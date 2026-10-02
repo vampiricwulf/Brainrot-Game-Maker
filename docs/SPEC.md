@@ -1,6 +1,6 @@
 # Brainrot Games Maker: Product & Technical Spec (Jeopardy modes)
 
-Status: **v1.5 (M1–M7 implemented)** · Last updated: 2026-09-29
+Status: **v1.5 (M1–M7 implemented)** · Last updated: 2026-10-02
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
@@ -33,7 +33,7 @@ decides who gets points, and controls media.
 | `brainrot-game-maker.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
 | Game pack `*.brainrot` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
 | Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB. | **P1** |
-| Desktop `.exe` / `.app` | Tauri wrapper around the same build. Adds native file dialogs and large-file handling. | **P2** |
+| Desktop `.exe` / `.app` | Tauri wrapper around the same build. Saves into a `BrainrotSaves` folder next to the exe (Open… lists it), writes big files natively, opens a game it's opened with, and updates itself in place from signed releases. | **P2** |
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.
 Everything must work from a `file://` URL with no server. The app itself makes no network requests (fonts and libraries are
@@ -298,12 +298,20 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   - Each round can have **free-placed images** anywhere on its board screen. Every image has an opacity, sits on top of
     or behind the tiles, and can be click-through (host clicks reach the tiles under it) or solid (it blocks them). They
     are edited over a live board preview with a layers list, and can be copied to every round.
-  - Images can be dropped straight onto categories and tiles in the round grid. Several files fill the next ones.
+  - Images can be dropped straight onto categories and tiles in the round grid. On a tile it asks where they go: in the
+    question (the default) or as the tile's face. Several files fill the next ones.
+
+- **My themes and sharing**: a theme can be saved on this computer under a name (colors, fonts and layout; not the
+  pictures) and put on any game, exported as a small `.brainrot-theme` file (with its pictures and uploaded fonts) or
+  copied as a short text code (`BRT1:…`). An imported theme is shown on the game's own board before it's used or kept.
 
 ### 5.8 Save / load / export
-- **Save** → download `.brainrot` (zip). **Open** → file picker or drag-drop.
+- **Save** → download `.brainrot` (zip); in the desktop app, into `BrainrotSaves` next to the exe (Documents when that
+  can't be written), replacing the game's last save and keeping two `.bak` backups. **Open** → Recent games (the last 8
+  games replaced, kept in the browser), the desktop app's BrainrotSaves, a file picker, or drag-drop.
 - **Export standalone HTML** (player only, embedded media) with a size warning.
-- **Autosave** of the editing session to IndexedDB every few seconds. On launch: "Restore unsaved game?"
+- **Autosave** of the editing session to IndexedDB after every change: the next launch opens where you left off (a game
+  in progress offers Resume game). The desktop app can also write timed autosaves into BrainrotSaves (⚙ Settings).
 - Import/export of plain `game.json` without media, for easy hand-editing or AI-assisted question writing.
 
 ---
@@ -312,30 +320,38 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 6.1 Launch
 1. Open a game (`.brainrot` or the embedded game in a standalone HTML).
-2. **Pre-game screen**: confirm or edit players (names, colors, starting scores), choose **Dual** or **Single**
-   display mode, and choose "Resume previous session" if a saved session exists.
+2. **Pre-game screen**: confirm or edit players (names, colors, pictures, starting scores), ⚖ Game rules, 📱 Phone
+   buzzers (with Teams) and On stream options, all saved with the game, and choose **Single window** or **📺 Separate
+   audience window**. A game in progress is picked up from the editor with **Resume game**.
 3. Start. The board is shown. The host can immediately run a **roll-off** (§6.6) to decide who picks first, or
    set the current picker by hand.
 
 ### 6.2 Display modes (toggleable live)
 The mode isn't saved with the game: it's dual while the audience window is open.
 
-- **Dual window (default for streaming)**
+- **Dual window** (📺 Separate audience window)
   - *Host window*: board, host-only info (answer preview, host notes, clue value, and type indicator,
     including Daily Doubles before they are revealed), scoring panel, media controls, timer controls, and tools.
   - *Audience window*: opened with a button. Clean, full-screen friendly, no controls, and never shows answers until the
     host reveals them. Meant to be captured in OBS (window capture). It mirrors state via `postMessage`.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.
-- **Single window**
-  - One view with the controls in a collapsible bottom drawer or on hover. Nothing answer-revealing is
-    rendered until the host clicks Reveal. A "hide all controls" key is available.
+- **Single window** (the default)
+  - One view: the stage, with the host panel under it (beside it in RPG and board-game rounds on a wide window).
+    Nothing answer-revealing is rendered until the host clicks Reveal. `H` (🙈 Hide) hides the host controls.
+- **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
+  chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
+  round navigation, then a fixed bar (Undo, Redo, Sound, keys, Log, Players, Rules, Cover, Hide, Audience, Exit).
+  Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
+  stage.
 
 ### 6.3 Game flow
 0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in
    randomly with a cascading animation → categories are revealed one at a time on each host click (or automatically).
 1. **Board**: category headers + tiles (value or custom face). Used tiles are dimmed or blank. The score bar shows each
    player's name, color, and score (up to 8 players, one row).
-2. Host clicks a tile. It zoom-transitions to the **Question slide**.
+2. Host clicks a tile. It zoom-transitions to the **Question slide**. A clue can have several question slides (a
+   lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
+   where they are.
    - *Daily Double*: DD splash, then a wager input for the chosen player (not limited by default; the host can turn on the max(score, highest round value) limit), then the question.
    - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
      so a tile can be purely "spin the punishment wheel" with no question at all.
@@ -360,15 +376,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    team: anyone on it) can send their wager from their phone until the question is shown; the amount goes to the host
    only (never to the audience window or other phones), and the host can still change it. A Daily Double's player can
    do the same before its question shows.
-3. Question slide + timer (default 30 s) + optional music file.
-4. Answer reveal.
-5. **Per-player reveal**, one at a time in an order the host chooses: show the wager, then mark ✔ / ✘, and the score animates.
-6. **Tie check**: if two or more players are tied for first, the host is offered:
+2. Question slide + timer (default 30 s) + optional music file.
+3. Answer reveal.
+4. **Per-player reveal**, one at a time in an order the host chooses: show the wager, then mark ✔ / ✘, and the score animates.
+5. **Tie check**: if two or more players are tied for first, the host is offered:
    - **Tiebreaker roll-off** between only the tied players (§6.6), or
    - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored). Scored with the normal scoring panel, or
    - **Declare co-winners**.
    The same tie check runs at the end of the game when Final Jeopardy is off.
-7. Winner screen: final standings with player colors. Confetti.
+6. Winner screen: final standings with player colors. Confetti.
 
 ### 6.5 Scores & players
 - Edit any player's score directly at any time (click the score, then type).
@@ -414,21 +430,25 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - On the stage, clicking a video or a sound's speaker icon plays or pauses it (in dual mode, in the audience window)
   instead of revealing the answer. The host sees ⏸ on a playing sound's icon; the audience sees the plain icon.
 
-### 6.8 Host keyboard shortcuts (defaults; rebindable later)
+### 6.8 Host keyboard shortcuts
+The full list, by round, is the in-game `?` sheet (`src/play/KeysHelp.svelte`); the main ones:
+
 | Key | Action |
 |---|---|
-| `1`–`9` | Toggle player N in the scoring panel |
-| `Enter` | Award selected players the current amount |
-| `Shift+Enter` | Deduct from selected players |
-| `R` | Reveal answer |
-| `Esc` / `B` | Back to board (marks tile used) |
-| `T` | Start/pause timer |
-| `D` | Dice roller · `W` wheel · `S` scoreboard overlay |
-| `O` | Roll-off (who goes first) |
+| `1`–`9` | Toggle player N in the scoring panel (buzzer mode, during a clue: player N answers) |
+| `0` | Everyone or no one (buzzer mode, during a clue: reset the buzzers) |
+| `Enter` / `Shift+Enter` | Award / deduct the current amount to the selected players |
+| `R` | Reveal (or hide) the answer |
+| `N` / `Shift+N` | Next step: the round intro, a clue's next slide, the Final, the next turn / the one before |
+| `Esc` / `Shift+Esc` | Back to board (marks the tile used) / cancel the clue (the tile stays playable) |
+| `K` or `B` | "Be right back" cover |
+| `T` / `Shift+T` | Start/pause the countdown / 10 more seconds |
+| `D` dice · `W` wheel · `O` roll-off · `S` scoreboard overlay | Tools |
+| `U` | Buzzer mode: open the buzzers |
 | `P`, then `1`–`9` | Set current picker to player N |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo score change |
-| `H` | Hide host controls (single-window mode) |
-| `F` | Full-screen |
+| `Ctrl+Z` / `Ctrl+Shift+Z` (`Ctrl+Y`) | Undo / redo (scores, moves, tiles, the Final…) |
+| `A` / `Shift+A` | Open or focus the audience window / the scores-only window |
+| `L` · `H` · `F` · `?` | Log · hide host controls · full-screen · the key list |
 
 ---
 

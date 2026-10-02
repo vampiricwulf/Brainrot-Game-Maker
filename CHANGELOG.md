@@ -28,6 +28,14 @@ in plain words for the people who make and host games. Anything committed but no
   board images.
 - **Slide editor: tooltips on 🖼 Image, 🎬 Video, 🔊 Audio, 📋 Copy slide and 📋 Paste slide** (a greyed-out Paste slide
   says to copy a slide first).
+- **Desktop app: save and open errors in plain words**: no more "(os error 32)" at the end, and a file another
+  program has open or a full disk says what to do ("Close it in the other program and try again", "Free some space on
+  the drive and try again"). The same for a failed ⬆ Update ("Download it and put it in place of this .exe yourself").
+- **⌨ Keyboard shortcuts lists the pre-game screen's keys** (`Ctrl+Enter` starts the game, `Ctrl+Z` / `Ctrl+Y`,
+  `Enter` in a player's name), `Home` / `End` on a clue's slide tabs, and `Shift+F10` for the slide's right-click menu.
+- **README and the spec brought up to date**: My themes and theme sharing, ✎ Edit board in play, dragging RPG players
+  and objects together, the host panel's layout, the simplified Final, the in-game keys (`Shift+N`, `E`, `?`), and
+  where the desktop app keeps what.
 
 ### Fixed
 - **Slide editor: Undo and the 🕘 History name what was done to the items**: a paste of a text box and two shapes was
@@ -36,6 +44,15 @@ in plain words for the people who make and host games. Anything committed but no
   shapes", "Lined up the top edges of 4 shapes", "Spaced 3 items evenly across", "Moved image “cat.png” to the slide's
   left edge", "Locked 4 shapes", "Sent shape “Star” to the back", and ▲ ▼ in the Layers list "Brought image “cat.png”
   forward".
+- **ℹ About no longer says to delete your saves when removing the desktop app**: "Delete these folders too" took in
+  BrainrotSaves, where your saved games are. It now says to delete the app's two data folders and keep BrainrotSaves,
+  and says the timed autosaves go there too.
+- **Desktop app: Exit closes the scores-only window (`Shift+A`) too**, also after the host page was reloaded (only the
+  audience window closed then).
+- **Desktop app: opening a `.bak` backup or a `.brainrot-theme` file with the app** ("Open with", or dropped on the
+  `.exe`) opens it, as Open… and dropping it on the editor do. It did nothing.
+- **⌨ Keyboard shortcuts said a picture dropped on a tile always becomes the tile's face**: it asks (in the question,
+  or the tile's face), as the 💡 Tips under the board say.
 
 ## 2026-10-01
 
