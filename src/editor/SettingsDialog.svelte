@@ -34,14 +34,15 @@
         file (Game (2).brainrot, Game (3).brainrot…).
       </p>
     {:else}
+      <!-- (Nothing to set in a browser: one line says how it works, instead of a section each.) -->
       <p class="hint">
-        In a browser, Save downloads the game as a .brainrot file, and the browser names it. How Save names files is a desktop
-        app setting.
+        In a browser the game is autosaved inside the browser after every change (Resume game), and Save downloads it as a
+        .brainrot file. Autosave files and how Save names files are desktop app settings.
       </p>
     {/if}
 
-    <h3>Autosave</h3>
     {#if desktop}
+      <h3>Autosave</h3>
       <label class="field inline">
         Save a copy of the game every
         <input type="number" min="0" max="240" class="n" bind:value={prefs.autosaveMinutes} onchange={savePrefs} aria-label="Autosave every (minutes)" />
@@ -56,11 +57,6 @@
         Autosaves go in BrainrotSaves next to the app as “Game (autosave 1, 3f9a1c).brainrot”, “(autosave 2, …)”… (the letters
         tell games with the same name apart). Only when the game changed since the last one; after you lower the number, the
         next autosave deletes the extra ones. Open… lists them with your saves.
-      </p>
-    {:else}
-      <p class="hint">
-        In a browser the game is autosaved inside the browser after every change (Resume game). Autosave files in a folder are
-        a desktop app feature.
       </p>
     {/if}
 

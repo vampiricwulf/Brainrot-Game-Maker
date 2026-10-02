@@ -186,6 +186,20 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **▶ Play's pre-game screen: two columns on a laptop too** (from 1200 px wide, so 1280×720 and 1366×768): the
+  players and phone buzzers on the left, ⚖ Game rules, 🖥 Display and 📺 On stream on the right, so the display choice
+  is in view without scrolling. Single window has its 🖥 icon like the audience window's 📺, and the Players card's
+  note is shorter.
+- **Ctrl+Enter starts the game** from anywhere on the pre-game screen (a name being typed in keeps its typing); Start
+  game ▶'s tooltip says so.
+- **Players sharing a name are pointed out** under the player list (before and during the game), as viewers can't tell
+  them apart on the scores. A name left blank shows "Player 2" (what it plays as) in its box.
+- **A board's Daily Doubles not placed yet are a note, not a warning**: Start game places them at random, so a new
+  board's checklist line says only "Jeopardy!: 30 clues to finish" (not "…, 1 more to fix"), and the note reads
+  "1 Daily Double not placed yet (Start game puts it on the board at random)". The pre-game ⚠ checks still list it,
+  with 🎲 Place now.
+- **⚙ Settings in a browser**: one line on how saving works there, instead of a Saving and an Autosave section that
+  each only said "this is a desktop app setting".
 - **RPG rounds: selected players and objects drag together** on the stage. Shift+click (or Ctrl+click) an object to
   select it (a plain click still opens its card; Esc takes the selected objects off, then the players); click avatars to
   select them as before. Dragging any one of the selection moves all of it on that screen by the same amount, keeping
@@ -582,6 +596,8 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **Start game ▶ stays at the right end of the pre-game bar**: with a note beside it (no players yet, a Daily Double
+  not placed), it dropped onto a line of its own under ◀ Back at 1280 px. The notes wrap in their own room now.
 - **Edits made just after New or Open… are no longer lost**: while the old game was being kept in Recent games (a
   moment on a slow disk), the editor still showed it and took edits, which then vanished when the new game arrived.
   The editor waits for the new game now.

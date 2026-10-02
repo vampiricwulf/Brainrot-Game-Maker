@@ -1692,13 +1692,14 @@
   /** Things worth fixing before going live (warnings only: Start still works). */
   const checks = $derived.by(() => {
     // (A board short of Daily Doubles gets a button to place them.)
+    // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
     return validate(game)
-      .filter((p) => p.level === 'warn')
       .map((p) => {
         const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
-        const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.endsWith(' placed');
-        return { text: p.text, ddRound: dd ? (p.tab as number) : undefined };
-      });
+        const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
+        return { text: p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined };
+      })
+      .filter((p) => p.level === 'warn' || p.ddRound !== undefined);
   });
 
   /**
@@ -1856,6 +1857,16 @@
    * own undo, which would change the last field typed in.
    */
   function pregameKey(e: KeyboardEvent): void {
+    // Ctrl+Enter starts the game from wherever the focus is on the page (not in a window over it).
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && !e.repeat && !e.defaultPrevented) {
+      const t = e.target instanceof Element ? e.target : null;
+      if (showSound || t?.closest('[role="dialog"], [role="menu"]')) return;
+      e.preventDefault();
+      if (!session.players.length) return void toast('Add players to start');
+      // (A field being typed in keeps what's in it: its change lands first.)
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      return start();
+    }
     const key = undoKeyOf(e);
     if (!key || e.defaultPrevented || fields.native(e, key)) return;
     e.preventDefault();
@@ -2327,8 +2338,8 @@
         <section class="part" data-place="play:players" aria-labelledby="pregame-players">
           <h2 id="pregame-players">👥 Players</h2>
           <p class="hint">
-            Who's playing: add, rename, recolor and reorder them here{app.playerOnly ? '' : ' (they’re kept with the game for next time)'}.
-            Names and colors can still change during the game.
+            Who's playing{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and colors can still change during the
+            game.
           </p>
           <!-- Deleting is done at once: the note under the list offers Undo. -->
           <PlayerList
@@ -2487,15 +2498,23 @@
     <!-- Always in view at the foot of the window, however long the page above gets. -->
     <div class="actions">
       <button class="ghost" onclick={backToEditor}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
-      <span class="spacer"></span>
-      {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
-      {#if unplacedDDs}
-        <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
-        <span class="muted small" title="Place them yourself in the editor, or with 🎲 Place now in the checks above">
-          ⭐ {unplacedDDs} Daily Double{unplacedDDs === 1 ? '' : 's'} not placed: Start puts {unplacedDDs === 1 ? 'it' : 'them'} on the board at random
-        </span>
-      {/if}
-      <button class="primary big" onclick={start} disabled={!session.players.length} title={session.players.length ? '' : 'Add players to start'}>
+      <!-- The notes wrap in their own room: Start stays at the right end of the bar, on its line. -->
+      <span class="notes">
+        {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
+        {#if unplacedDDs}
+          <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
+          <span class="muted small" title="Place them yourself in the editor, or with 🎲 Place now in the checks above">
+            ⭐ {unplacedDDs} Daily Double{unplacedDDs === 1 ? '' : 's'} not placed yet: Start puts {unplacedDDs === 1 ? 'it' : 'them'} on the board at random
+          </span>
+        {/if}
+      </span>
+      <button
+        class="primary big"
+        onclick={start}
+        disabled={!session.players.length}
+        aria-keyshortcuts="Control+Enter"
+        title={session.players.length ? 'Start the game (Ctrl+Enter)' : 'Add players to start'}
+      >
         Start game ▶
       </button>
     </div>
@@ -2776,8 +2795,9 @@
     flex-direction: column;
     gap: 14px;
   }
-  /* Wide windows: two columns, players and buzzers on the left; the rules, the display and on stream on the right. */
-  @media (min-width: 1400px) {
+  /* Wide windows (a 1280 or 1366 laptop too): two columns, players and buzzers on the left; the rules, the display and
+     on stream on the right, so the display choice is in view without scrolling. */
+  @media (min-width: 1200px) {
     .pregame {
       max-width: 1360px;
     }
@@ -2887,7 +2907,6 @@
     display: flex;
     gap: 8px;
     align-items: center;
-    flex-wrap: wrap;
     margin: 4px -20px 0;
     padding: 10px 20px;
     background: var(--bg);
@@ -2897,6 +2916,19 @@
   .big {
     font-size: 16px;
     padding: 10px 22px;
+  }
+  .actions > button {
+    flex: none;
+  }
+  /* Between ◀ Back and Start: the notes, right against Start, wrapping onto lines of their own when they're long. */
+  .actions .notes {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
   }
   .play {
     display: flex;

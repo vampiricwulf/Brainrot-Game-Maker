@@ -94,7 +94,15 @@ export function validate(game: Game): Problem[] {
     ).length;
     if (broken) out.push({ text: `${r.name}: ${plural(broken, 'wheel/dice tile')} with nothing chosen`, tab: i, level: 'warn' });
     const dds = dailyDoublesShort(round);
-    if (dds) out.push({ text: `${r.name}: ${dds.want} Daily Double${dds.want === 1 ? '' : 's'} wanted, ${dds.placed} placed`, tab: i, level: 'warn' });
+    // Not a problem: Start game puts the rest on the board at random (a new board wants 1 and has none).
+    if (dds) {
+      const n = dds.want - dds.placed;
+      out.push({
+        text: `${r.name}: ${n} Daily Double${n === 1 ? '' : 's'} not placed yet (Start game puts ${n === 1 ? 'it' : 'them'} on the board at random)`,
+        tab: i,
+        level: 'info',
+      });
+    }
     const over = dailyDoublesOver(round);
     if (over)
       out.push({

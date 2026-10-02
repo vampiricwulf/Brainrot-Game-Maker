@@ -14,7 +14,7 @@
 
 <div class="modes">
   <button class="mode" class:on={dual === false} aria-pressed={dual === null ? undefined : !dual} onclick={onsingle}>
-    <b>Single window</b>
+    <b>🖥 Single window</b>
     <span class="muted">Viewers see this window, everything on it. Press H to hide the host controls.</span>
   </button>
   <button class="mode" class:on={dual === true} aria-pressed={dual === null ? undefined : dual} onclick={onaudience}>

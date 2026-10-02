@@ -16,6 +16,10 @@ describe('the checklist in the sidebar', () => {
     game.rounds.push(newRound('Double Jeopardy!'));
     const lines = () => checklistLines(game, validate(game));
     const board = game.rounds[0] as BoardRound;
+    // A new board's Daily Double, not placed yet, isn't one more thing to fix: Start game places it.
+    board.dailyDoubleCount = 1;
+    board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
+    expect(lines().filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 30 clues to finish']);
     // (Daily Doubles: below.)
     board.dailyDoubleCount = 0;
     expect(lines().filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 30 clues to finish']);
@@ -43,7 +47,11 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
     board.dailyDoubleCount = 2;
     board.categories[1].clues[4].type = 'dailyDouble';
-    expect(checklistLines(game, validate(game)).filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 2 Daily Doubles wanted, 1 placed']);
+    expect(checklistLines(game, validate(game)).filter((l) => l.tab === 0).map((l) => l.text)).toEqual([
+      'Jeopardy!: 1 Daily Double not placed yet (Start game puts it on the board at random)',
+    ]);
+    // A note, not a warning.
+    expect(checklistLines(game, validate(game)).find((l) => l.tab === 0)?.level).toBe('info');
     board.categories[3].clues[2].type = 'dailyDouble';
     expect(checklistLines(game, validate(game)).filter((l) => l.tab === 0)).toEqual([]);
     // No more than the board has tiles for.

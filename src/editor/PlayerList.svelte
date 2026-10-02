@@ -154,6 +154,19 @@
   }
 
   const rows = new DragOrder();
+
+  /** Names more than one player has (ignoring case and spaces at the ends), as the first of them writes it. */
+  const sameNames = $derived.by(() => {
+    const seen = new Map<string, { name: string; n: number }>();
+    for (const p of players) {
+      const key = p.name.trim().toLocaleLowerCase();
+      if (!key) continue;
+      const s = seen.get(key);
+      if (s) s.n++;
+      else seen.set(key, { name: p.name.trim(), n: 1 });
+    }
+    return [...seen.values()].filter((s) => s.n > 1).map((s) => s.name);
+  });
 </script>
 
 <div class="players" bind:this={list}>
@@ -224,7 +237,16 @@
           {/if}
         </div>
       {/if}
-      <input class="name" dir="auto" bind:value={p.name} aria-label="Player {i + 1} name" style:border-color={p.color} onkeydown={nameKey} />
+      <!-- (A name left blank plays as "Player N": the placeholder says so.) -->
+      <input
+        class="name"
+        dir="auto"
+        bind:value={p.name}
+        placeholder="Player {i + 1}"
+        aria-label="Player {i + 1} name"
+        style:border-color={p.color}
+        onkeydown={nameKey}
+      />
       <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
         <input class="score" type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" />
@@ -251,6 +273,13 @@
       <button class="small" onclick={onraise} title="⚖ Game rules › Most players">Raise Most players to {max + 1}</button>
     {/if}
   </div>
+  {#if sameNames.length}
+    <!-- Allowed (it's their name), but the scoreboard and the log can't tell them apart. -->
+    <p class="warn small same" role="status">
+      ⚠ Players share a name ({sameNames.map((n) => `“${n}”`).join(', ')}): viewers can't tell them apart on the scores. Add an
+      initial?
+    </p>
+  {/if}
   {#if undone}
     <div class="undo-note" role="status">
       <span>Deleted <b>{undone.p.name}</b></span>
@@ -261,6 +290,11 @@
 </div>
 
 <style>
+  .same {
+    margin: 0;
+    color: var(--warn);
+    font-size: 12px;
+  }
   .undo-note {
     display: flex;
     gap: 8px;

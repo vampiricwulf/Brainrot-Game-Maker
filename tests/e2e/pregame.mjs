@@ -63,11 +63,15 @@ try {
   assert((await names()).join() === 'Bo,Cy', 'Enter in a name adds the next player, typing in their name');
   assert((await page.getByRole('button', { name: 'Move Bo down' }).count()) === 1 && (await page.getByRole('button', { name: 'Move Cy up' }).count()) === 1, '▲/▼ say whose they are');
   // Wide windows put the rules beside the players: a player's row still fits on one line there.
-  for (const width of [1400, 1920]) {
-    await page.setViewportSize({ width, height: 900 });
+  for (const [width, height] of [[1280, 720], [1366, 768], [1400, 900], [1920, 1080]]) {
+    await page.setViewportSize({ width, height });
     const nameBox = await page.getByLabel('Player 1 name').boundingBox();
     const del = await page.getByRole('button', { name: 'Delete Bo' }).boundingBox();
     assert(del.y < nameBox.y + nameBox.height, `at ${width}px a player's ▲ ▼ 🗑 stay on their row's line`);
+    // A laptop's window too: the display choice beside the players, in view without scrolling.
+    const players = await page.locator('[data-place="play:players"]').boundingBox();
+    const display = await page.locator('section[aria-labelledby="pregame-display"]').boundingBox();
+    assert(display.x > players.x + players.width && display.y + display.height <= height - 60, `at ${width}×${height} 🖥 Display is beside 👥 Players, in view`);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -81,6 +85,9 @@ try {
     return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button') === b;
   });
   assert(startBox.y + startBox.height <= 720 && onTop, 'Start game ▶ is in view at the foot of the window with the rules open');
+  // The notes beside it (a Daily Double not placed yet) wrap in their own room: Start stays at the right, on Back's line.
+  const backBox = await back.boundingBox();
+  assert(Math.abs(backBox.y + backBox.height / 2 - (startBox.y + startBox.height / 2)) < 4 && startBox.x + startBox.width > 1280 - 40, 'Start game ▶ stays at the right end of the bar, level with ◀ Back');
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scrolling');
 
   // ---------- Rules: whole-second countdown ----------
@@ -131,8 +138,25 @@ try {
   // ---------- A picture, kept through a rematch ----------
   await dropPicture(page.getByRole('button', { name: 'Picture for Bo' }), 'bo.png');
   await page.getByRole('button', { name: 'Picture for Bo' }).locator('img').waitFor();
-  await start.click();
+  // ---------- Names: a blank one says what it plays as; two the same are pointed out ----------
+  const cy = page.getByLabel('Player 2 name');
+  await cy.fill('');
+  assert((await cy.getAttribute('placeholder')) === 'Player 2', 'a name left blank shows what it plays as (Player 2)');
+  await cy.fill('bo ');
+  const same = page.locator('.pregame .same');
+  await same.waitFor();
+  assert((await same.innerText()).includes('“Bo”'), 'two players called Bo (whatever the case) are pointed out');
+  await cy.fill('Cy');
+  assert((await same.count()) === 0, 'and the note goes once they differ');
+  assert((await start.getAttribute('title')).includes('Ctrl+Enter'), 'Start game ▶ says its key, Ctrl+Enter');
+  // ---------- Ctrl+Enter starts the game, from a name being typed in (which keeps the typing) ----------
+  await cy.press('End');
+  await page.keyboard.type('z');
+  await page.keyboard.press('Control+Enter');
+  await page.getByRole('button', { name: 'Skip intro' }).waitFor();
+  assert(await page.locator('.pregame').count() === 0, 'Ctrl+Enter starts the game');
   await page.getByRole('button', { name: 'Skip intro' }).click();
+  assert((await page.locator('main.play').innerText()).includes('Cyz'), 'with the name just typed in (Cyz)');
 
   // ---------- ⚖ Game rules mid-game, and raising Most players from 👥 Players ----------
   await page.getByRole('button', { name: '⚖ Rules' }).click();
