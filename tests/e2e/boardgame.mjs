@@ -333,12 +333,10 @@ try {
   // One space a turn: the players pick the way (no dice).
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   await page.getByLabel('Move by').selectOption('step');
   await page.getByRole('button', { name: '▶ Play' }).click();
-  // The game left behind can still be resumed: the app asks (in its own window) before starting a new one.
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForTimeout(450);
@@ -362,7 +360,7 @@ try {
   // A game opened over the board (here an earlier save of it, with the same ids) brings back none of its undo steps.
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
   await page.getByRole('button', { name: /Board game/ }).click();

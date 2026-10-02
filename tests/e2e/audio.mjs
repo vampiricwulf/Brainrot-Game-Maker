@@ -210,14 +210,14 @@ try {
     await toPregame(page, fileUrl, { introSound: true });
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: /Separate audience window/ }).click()]);
     watch(aud, 'audience');
-    await aud.getByText('Click anywhere in this window once so it can play sound').waitFor();
+    await aud.getByText('🔊 Click to enable sound').waitFor();
     await page.getByText('Click the audience window once so it can play sound').waitFor();
     assert(true, "dual mode: the host warns that the audience window can't play sound yet, with no slide media");
     // Pre-game: viewers see a "Starting soon" card, not the board (it would give the categories away).
     assert((await aud.locator('.soon-text').count()) === 1 && (await aud.locator('.board').count()) === 0, 'pre-game: the audience window holds on a "Starting soon" card');
-    // The "click once" note hides when the mouse is still (off the stream), and comes back with the mouse.
+    // The "Click to enable sound" overlay stays until the window is clicked, the mouse still or not.
     await aud.waitForTimeout(1700);
-    assert((await aud.locator('.activate').count()) === 0, 'the audience window hides its "click once" note while the mouse is still');
+    assert((await aud.locator('.activate').count()) === 1, 'the audience window keeps its "Click to enable sound" overlay while the mouse is still');
     await aud.mouse.move(200, 200);
     await aud.mouse.move(220, 210);
     // Shift or Alt (e.g. Alt+Tab away from it) doesn't let a window play sound.

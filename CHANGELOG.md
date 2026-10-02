@@ -13,7 +13,37 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## 2026-10-02
 
+### Added
+- **▶ Test this round** in the editor (at the top of a round, and in a round tab's right-click menu): plays just that
+  round straight away, with the game's players (or three sample players), marked 🧪 Testing this round. Nothing is
+  kept: the game you left to resume stays as it was, and a buzzer room left open stays open. 🚪 Exit goes back to the
+  editor on that round.
+- **A short "✅ Going live?" checklist on the ▶ Play screen**: how the game is shown, whether the buzzer room is open
+  and how many phones joined, whether the audience window was clicked so it can play sound, and a link to test the
+  sound for Discord / OBS. Each line gets a ✓ as it's done; ✕ hides the list (🖥 Display shows it again).
+- **The game's name can be changed on the ▶ Play screen** (✎ Rename beside the title, which shows on stream), and a
+  game still called "Untitled Game" says so there and in the editor's checklist (a click there goes to the title box).
+- **⚙ Set up phone buzzers… on the ▶ Play screen's 📱 card**, when phone buzzers aren't set up yet: it opens ⚙
+  Settings right there, at the buzzer server's box, instead of sending you back to the editor. The card says it in
+  plain words.
+
 ### Changed
+- **The ▶ Play screen remembers how you show the game** (🖥 Single window or 📺 Separate audience window, kept on
+  this computer). With the audience window picked and not open yet, Start says **📺 Open audience window & start** and
+  opens it, so OBS has the right window to capture from the first second.
+- **Start game with Buzzer mode on but no buzzer room asks first**, in the bar at the foot of the screen: 📱 Start the
+  room first, Start without phones, or Back. It used to start a game no phone could join.
+- **Starting the buzzer room scrolls its card into view**, and the bar beside Start shows the room code and how many
+  have joined (at 1280×720 the code and the QR code were below the fold, under that bar).
+- **Leaving a game asks once: keep it to resume later, or discard it** (🚪 Exit › Keep & leave / Discard & leave).
+  A game kept is one line over the editor (Resume game, Resume with my edits, Discard, and ✕ to put the line away),
+  and ▶ Play no longer asks "Start a new game anyway?": the ▶ Play screen offers **▶ Resume it** (or Resume with my
+  edits) at the top, and Start game replaces it.
+- **The audience window says "🔊 Click to enable sound" over the picture until it's clicked** (browsers keep a new
+  window quiet until then), so it's seen in the window and in the OBS preview; the host's "Going live?" gets a ✓ once
+  it's clicked. It used to be a small note shown only while the mouse moved over the window.
+- **The host panel's "📱 Phones off" chip says "No buzzer room: click to start one"** when hovered (it said "who has
+  joined").
 - **Board games: space names are hidden from viewers unless you tick "Show name on the board"** for that space, in
   the editor's space card or in ✎ Edit board during play (or right-click a space: 👁 Show name / ⊘ Hide name). This
   applies to games made before too, so their names disappear from the stage until you show them; **Names on the board:

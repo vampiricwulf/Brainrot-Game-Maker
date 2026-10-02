@@ -218,7 +218,7 @@ try {
   // No Keep in game: the editor's game is as it was.
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   const edSpaces = page.locator('.canvas [data-space]');
   await edSpaces.first().waitFor();
@@ -282,7 +282,7 @@ try {
   }
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
-  await host.getByRole('button', { name: 'Leave', exact: true }).click();
+  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await host.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   const ed2 = host.locator('.canvas [data-space]');
   await ed2.first().waitFor();

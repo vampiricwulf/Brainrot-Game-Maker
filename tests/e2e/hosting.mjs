@@ -395,7 +395,7 @@ try {
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
   await page.getByRole('button', { name: '🚪 Exit' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.getByRole('button', { name: 'Resume game' }).click();
   const ask = page.locator('.mode-ask');
   await ask.waitFor();

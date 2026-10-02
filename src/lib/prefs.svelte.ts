@@ -19,11 +19,15 @@ export interface Prefs {
   buzzerServer: string;
   /** Ask GitHub whether a newer version is out when the app starts (update.svelte.ts). */
   checkUpdates: boolean;
+  /** How the last game was shown (the pre-game screen's 🖥 Display): one window, or a separate audience window. */
+  display: 'single' | 'audience';
+  /** The pre-game screen's short "Going live?" checklist shows (✕ hides it). */
+  liveChecklist: boolean;
   /** Which defaults the stored settings were made with (2: Save replaces by default). */
   v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', checkUpdates: true, v: 2 };
+export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', checkUpdates: true, display: 'single', liveChecklist: true, v: 2 };
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 
@@ -45,6 +49,7 @@ export const prefs = $state<Prefs>(load());
 export function savePrefs(): void {
   prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(Number(prefs.autosaveMinutes) || 0)));
   prefs.autosaveKeep = Math.max(1, Math.min(50, Math.round(Number(prefs.autosaveKeep) || 1)));
+  if (prefs.display !== 'audience') prefs.display = 'single';
   prefs.buzzerServer = String(prefs.buzzerServer ?? '').trim();
   prefs.undoSteps = Math.max(UNDO_STEPS.min, Math.min(UNDO_STEPS.max, Math.round(Number(prefs.undoSteps) || DEFAULT_PREFS.undoSteps)));
   try {

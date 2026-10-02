@@ -199,6 +199,116 @@ try {
   assert((await names()).join() === 'Bo,Cyd' && (await page.getByRole('button', { name: 'Picture for Bo' }).locator('img').count()) === 1, 'and the game keeps Bo’s picture after the rematch’s roster changes');
   await back.click();
 
+  // ---------- The game's name: a note in the editor's checklist, renamed right on the pre-game screen ----------
+  const untitledLine = page.locator('nav .problem', { hasText: 'still called “Untitled Game”' });
+  await untitledLine.waitFor();
+  assert(true, 'the editor\'s checklist notes a game still called “Untitled Game”');
+  await untitledLine.click();
+  assert(await page.locator('input[data-place="title"]').evaluate((e) => e === document.activeElement), 'its line goes to the title box');
+  await play.click();
+  await start.waitFor();
+  assert((await page.locator('[data-warn="untitled"]').count()) === 1, 'the pre-game screen asks for a name too (the title shows on stream)');
+  await page.getByRole('button', { name: '✎ Rename' }).click();
+  await page.getByLabel('Game title').fill('Meme Night');
+  await page.keyboard.press('Enter');
+  assert((await page.locator('.pregame h1').innerText()) === 'Meme Night' && (await page.locator('[data-warn="untitled"]').count()) === 0, '✎ Rename names the game right there');
+  await page.screenshot({ path: 'test-results/pregame-golive.png' });
+
+  // ---------- Going live? A short checklist, hidden with ✕ (and shown again from 🖥 Display) ----------
+  const live = page.locator('.live-check');
+  assert((await live.innerText()).includes('Single window') && (await live.getByRole('button', { name: 'Test the sound' }).count()) === 1, 'the “Going live?” checklist says the display and links the sound help');
+  await live.getByRole('button', { name: 'Hide the Going live checklist' }).click();
+  assert((await live.count()) === 0, '✕ hides it');
+  await page.getByRole('button', { name: '✅ Show the “Going live?” checklist' }).click();
+  assert((await live.count()) === 1, 'and 🖥 Display shows it again');
+
+  // ---------- The display picked is remembered: the audience window opens with Start ----------
+  const [aud1] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).display)) === 'audience', 'picking the audience window is remembered on this computer');
+  await aud1.getByText('🔊 Click to enable sound').waitFor();
+  assert((await page.locator('.live-check li[data-check="sound-click"]').getAttribute('class')).split(' ').every((c) => c !== 'done'), 'the checklist asks for a click in the audience window');
+  await aud1.mouse.click(300, 300);
+  await page.locator('.live-check li.done[data-check="sound-click"]').waitFor();
+  assert((await aud1.locator('.activate').count()) === 0, 'a click there takes its “Click to enable sound” away, and the host gets a ✓');
+  await back.click();
+  if (!aud1.isClosed()) await aud1.waitForEvent('close', { timeout: 3000 });
+  await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
+  await page.waitForTimeout(400);
+  await play.click();
+  const openAndStart = page.getByRole('button', { name: '📺 Open audience window & start' });
+  await openAndStart.waitFor();
+  assert((await page.locator('.mode.on', { hasText: 'Separate audience window' }).count()) === 1, 'the next ▶ Play has the audience window picked again');
+  const [aud2] = await Promise.all([page.waitForEvent('popup'), openAndStart.click()]);
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  await aud2.locator('.board').waitFor();
+  assert(true, '📺 Open audience window & start opens it and starts the game');
+
+  // ---------- Exit asks once: keep the game to resume, or discard it ----------
+  await page.getByRole('button', { name: /Exit/ }).first().click();
+  assert((await page.locator('.panel .confirm').innerText()).includes('keep it to resume later?'), 'Exit asks whether to keep the game to resume later');
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  const kept = page.locator('.resume.kept');
+  await kept.waitFor();
+  const keptBox = await kept.boundingBox();
+  assert(keptBox.height <= 44, `the game kept to resume is one line over the editor (${Math.round(keptBox.height)}px)`);
+  await kept.getByRole('button', { name: 'Hide this line' }).click();
+  assert((await kept.count()) === 0, '✕ puts that line away');
+  await play.click();
+  const resumeCard = page.locator('.resume-card');
+  await resumeCard.waitFor();
+  assert((await page.getByRole('alertdialog').count()) === 0 && (await resumeCard.innerText()).includes('Meme Night'), '▶ Play asks nothing: the pre-game screen offers the kept game');
+  // Back to single window for the rest.
+  await page.locator('.mode', { hasText: 'Single window' }).click();
+  await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
+  await page.locator('.board').waitFor();
+  assert((await page.locator('.board .tile.used').count()) === 0 && (await page.locator('.panel').count()) === 1, '▶ Resume it plays on with the kept game');
+  await page.getByRole('button', { name: /Exit/ }).first().click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Discard & leave', exact: true }).click();
+  await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
+  assert((await kept.count()) === 0, 'Discard & leave keeps nothing to resume');
+
+  // ---------- ▶ Test this round: just that round, nothing kept, back on it ----------
+  await play.click();
+  await start.click();
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  await page.locator('.board .tile').first().click();
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Exit/ }).first().click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await kept.waitFor();
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  await noDailyDoubles(page);
+  const second = page.locator('nav > button.round-tab').nth(1);
+  await second.click({ button: 'right' });
+  assert((await page.getByRole('menuitem', { name: '▶ Test this round' }).count()) === 1, 'a round tab\'s right-click menu has ▶ Test this round');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '▶ Test this round' }).click();
+  await page.locator('.rn .test').waitFor();
+  assert((await page.locator('.rn .test').innerText()).includes('Testing this round'), 'the round plays at once, marked 🧪 Testing this round');
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  await page.locator('.board').waitFor();
+  assert((await page.locator('.panel .p').count()) === 2, 'with the game\'s players');
+  await page.getByRole('button', { name: /Exit/ }).first().click();
+  assert((await page.locator('.panel .confirm').innerText()).includes('Nothing from this test is kept'), 'leaving a test says nothing is kept');
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
+  await kept.waitFor();
+  assert((await page.locator('nav > button.round-tab').nth(1).getAttribute('aria-current')) === 'page', 'Exit comes back to the editor on the round tested');
+  await kept.getByRole('button', { name: 'Resume game' }).click();
+  await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await page.locator('.board').waitFor();
+  assert((await page.locator('.board .tile.used').count()) === 1, 'the game kept to resume is as it was (the test never replaced it)');
+  await page.getByRole('button', { name: /Exit/ }).first().click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Discard & leave', exact: true }).click();
+  await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
+
   // ---------- A game saved with Buzzer mode on, in a copy without a buzzer server ----------
   const prefs = (server) =>
     page.evaluate((s) => {
@@ -209,14 +319,37 @@ try {
   await page.reload();
   await play.click();
   await page.getByLabel(/Buzzer mode/).check();
-  await back.click();
+  // Buzzer mode with no room: Start asks in its bar (start the room first, or play without phones).
+  await start.click();
+  const noRoom = page.locator('.actions .ia');
+  await noRoom.getByText("Buzzer mode is on, but the buzzer room isn't started").waitFor();
+  assert((await noRoom.getByRole('button', { name: '📱 Start the room first' }).count()) === 1 && (await noRoom.getByRole('button', { name: 'Start without phones' }).count()) === 1, 'Start with Buzzer mode on and no room asks: start the room first, or play without phones');
+  await noRoom.getByRole('button', { name: 'Back' }).click();
+  assert((await noRoom.count()) === 0 && (await start.count()) === 1, 'Back leaves things as they were');
+  await start.click();
+  await page.waitForTimeout(450);
+  await noRoom.getByRole('button', { name: 'Start without phones' }).click();
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  const phonesChip = page.locator('.panel .chip', { hasText: '📱 Phones off' });
+  await phonesChip.waitFor();
+  assert((await phonesChip.getAttribute('title')) === 'No buzzer room: click to start one', 'Start without phones plays on; the 📱 Phones off chip says “No buzzer room: click to start one”');
+  await page.getByRole('button', { name: /Exit/ }).first().click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Discard & leave', exact: true }).click();
+  await play.waitFor();
   // (Saved with the game a moment after.)
   await page.waitForTimeout(1500);
   await prefs('');
   await page.reload();
   await play.click();
   const phoneCard = page.locator('section[aria-label="Phone buzzers"]');
-  assert((await phoneCard.innerText()).includes("Phone buzzers aren't set up in this copy, so Buzzer mode is off here"), 'the 📱 card says Buzzer mode is off here (no buzzer server)');
+  assert((await phoneCard.innerText()).includes('once phone buzzers are set up. Until then you pick who answers'), 'the 📱 card says, in plain words, phones need setting up (you pick who answers)');
+  // ⚙ Set up phone buzzers… opens ⚙ Settings right here, at its phone buzzers.
+  await phoneCard.getByRole('button', { name: '⚙ Set up phone buzzers…' }).click();
+  const settingsDlg = page.getByRole('dialog', { name: 'Settings' });
+  await settingsDlg.waitFor();
+  assert(await settingsDlg.getByLabel('Buzzer server').evaluate((e) => e === document.activeElement), '⚙ Set up phone buzzers… opens Settings with the buzzer server box ready');
+  await settingsDlg.getByRole('button', { name: 'Done' }).click();
   await start.click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.locator('.board .tile').first().click();
@@ -228,7 +361,7 @@ try {
   await page.getByRole('button', { name: /Exit/ }).first().click();
   // (A question's buttons ignore clicks right after it appears.)
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.getByRole('button', { name: 'Export HTML' }).waitFor();
 
   // ---------- An exported player-only file: no pointer to the editor's settings ----------
@@ -242,7 +375,7 @@ try {
   await player.goto(pathToFileURL(exported).href);
   await player.getByRole('button', { name: '▶ Play' }).click();
   const card = await player.locator('section[aria-label="Phone buzzers"]').innerText();
-  assert(card.includes("Phone buzzers aren't set up in this copy") && !card.includes('Settings') && !card.includes('editor'), `the player-only file doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
+  assert(card.includes('once phone buzzers are set up') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'), `the player-only file doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
   await player.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

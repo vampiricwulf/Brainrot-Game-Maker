@@ -32,6 +32,11 @@ export const app = $state<{
   playerOnly: boolean;
   /** The part of the pre-game screen to show when it opens (History's Go there), then cleared. */
   pregameAt: PlayPart | null;
+  /**
+   * ▶ Test this round (the editor): the id of the round being tried out. The game in play is then a throwaway copy of
+   * that round alone: never saved, never replacing the game kept to resume.
+   */
+  test: string | null;
 }>({
   screen: 'editor',
   game: newGame(),
@@ -47,6 +52,7 @@ export const app = $state<{
   fileAutosave: null,
   playerOnly: false,
   pregameAt: null,
+  test: null,
 });
 
 /** The game the editing components change: the one being played while it's edited live, else the editor's. */

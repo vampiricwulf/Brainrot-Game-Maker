@@ -177,7 +177,8 @@
     /** ⚖ Game rules, mid-game (a window). */
     onrules: () => void;
     onhide: () => void;
-    onexit: () => void;
+    /** Leave the game: `keep`, it stays saved to resume later; else it's discarded. */
+    onexit: (keep: boolean) => void;
     /** Open the audience window, or close it (the panel has asked first). */
     onaudience: () => void;
     /** Open or close the scores-only window (a lower third for OBS). */
@@ -278,13 +279,27 @@
   });
   /** What the strip asks: leaving, closing the audience window, or what a part asked (Next round, Rematch…). */
   const ask = $derived.by((): HostAsk | null => {
-    if (askExit)
+    if (askExit && app.test)
+      // ▶ Test this round: nothing is kept, so nothing to ask but whether to stop.
+      return { text: 'Stop testing? Nothing from this test is kept.', ok: '◀ Back to editor', cancel: 'Stay', onok: () => onexit(false), oncancel: () => (askExit = false) };
+    if (askExit && session.phase === 'end')
       return {
-        text: session.phase === 'end' ? 'Leave the results screen? (Copy the standings first if you want to keep them.)' : `Leave this game? You can resume it from the ${app.playerOnly ? 'start screen' : 'editor'}.`,
+        text: 'Leave the results screen? (Copy the standings first if you want to keep them.)',
         ok: 'Leave',
         cancel: 'Stay',
         danger: true,
-        onok: onexit,
+        onok: () => onexit(false),
+        oncancel: () => (askExit = false),
+      };
+    // Asked once here: kept, the game waits to be resumed (from ▶ Play, or the line over the editor); discarded, it's gone.
+    if (askExit)
+      return {
+        text: 'Leave this game: keep it to resume later?',
+        ok: 'Keep & leave',
+        alt: 'Discard & leave',
+        cancel: 'Stay',
+        onok: () => onexit(true),
+        onalt: () => onexit(false),
         oncancel: () => (askExit = false),
       };
     if (askCloseAudience)
@@ -792,7 +807,7 @@
     <!-- Confirmations: one strip across the panel, right above the fixed bar (never squeezed into a row of buttons). -->
     <div class="confirm" role="alert">
       {#key ask}
-        <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
+        <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
       {/key}
     </div>
   {/if}

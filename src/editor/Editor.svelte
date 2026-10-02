@@ -75,10 +75,24 @@
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
-  let { onplay, checklist }: { onplay: () => void; checklist: ChecklistLine[] } = $props();
+  let {
+    onplay,
+    ontest,
+    checklist,
+    startRound = null,
+  }: {
+    onplay: () => void;
+    /** ▶ Test this round (its index). */
+    ontest?: (index: number) => void;
+    checklist: ChecklistLine[];
+    /** The round to open on (back from testing it). */
+    startRound?: string | null;
+  } = $props();
 
   // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
-  let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(0);
+  let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(
+    untrack(() => Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound))),
+  );
   const game = $derived(app.game);
   /** The round tab last open (🎨 Theme previews it). */
   let lastRound = $state(0);
@@ -297,6 +311,8 @@
    * a board game's space has the focus).
    */
   function goFix(line: ChecklistLine): void {
+    // The game's name: its box at the top, selected to type over.
+    if (line.place?.tab === 'title') return void document.querySelector<HTMLInputElement>('[data-place="title"]')?.select();
     // Players are set on the ▶ Play screen.
     if (line.tab === 'play') return onplay();
     tab = line.tab;
@@ -831,6 +847,7 @@
                 { label: '✎ Rename', onclick: () => (renamingRound = round.id), keys: 'F2 or double-click' },
                 { label: '▲ Move up', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
                 { label: '▼ Move down', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
+                ...(ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i), hint: 'Play just this round (nothing kept)' }] : []),
                 { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
                 { label: '📋 Copy round', onclick: () => copyRoundOf(game, i), hint: 'To paste in this game or another' },
                 {
@@ -922,6 +939,7 @@
               onmove={(d) => moveRound(i, i + d)}
               onduplicate={() => duplicateRound(i)}
               ondelete={() => removeRound(i)}
+              ontest={ontest && (() => ontest(i))}
             />
             {#if isBoard(round)}
               <RoundEditor {round} />

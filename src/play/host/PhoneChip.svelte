@@ -82,7 +82,11 @@
     aria-controls="phone-pop"
     bind:this={chip}
     onclick={toggle}
-    title={trouble ? 'The buzzer room isn’t reachable right now: phones can’t buzz' : 'Phone buzzers: who has joined'}
+    title={trouble
+      ? 'The buzzer room isn’t reachable right now: phones can’t buzz'
+      : remote.status === 'off'
+        ? 'No buzzer room: click to start one'
+        : 'Phone buzzers: who has joined'}
   >{label}</button>
   {#if open}
     <div

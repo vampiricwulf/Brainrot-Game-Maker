@@ -9,6 +9,7 @@
   import { isBoard, isFinal, playableClues, roundName, type Game, type Session } from '../../lib/model';
   import { ROUND_MODES } from '../../lib/modes';
   import { hostAsk, offerNext } from './slots.svelte';
+  import { app } from '../../lib/app.svelte';
 
   let {
     game,
@@ -92,7 +93,12 @@
 </script>
 
 <div class="rn">
-  <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
+  {#if app.test}
+    <!-- ▶ Test this round: one round, nothing kept (🚪 Exit goes back to the editor). -->
+    <span class="test" title="Only this round plays, and nothing is kept: 🚪 Exit goes back to the editor">🧪 Testing this round</span>
+  {:else}
+    <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
+  {/if}
   {#if ongoto && game.rounds.length > 2}
     <!-- Rounds can be played out of order: jump to any of them. -->
     <select class="pick" aria-label="Go to round" bind:this={picker} value={session.currentRound} onchange={(e) => goto(+e.currentTarget.value)}>
@@ -112,6 +118,14 @@
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+  .test {
+    font-size: 12px;
+    padding: 2px 8px;
+    border: 1px dashed var(--warn);
+    border-radius: 999px;
+    color: var(--warn);
+    white-space: nowrap;
   }
   .pick {
     max-width: 180px;

@@ -20,7 +20,7 @@
     type SavedPlay,
     type SavedRoom,
   } from './lib/persist';
-  import { closeRoom, endRoom, inRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
+  import { buzzerOn, closeRoom, endRoom, inRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
   import { setupState } from './lib/buzz';
   import { openPack } from './lib/pack';
   import { packInfo, unpackEmbedded } from './lib/export';
@@ -30,11 +30,12 @@
   import { hasWork } from './lib/recent';
   import { validate } from './lib/validate';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
-  import { migrateGame, newId } from './lib/model';
+  import { blankName, isBoard, migrateGame, newId } from './lib/model';
+  import { nextFreeColor } from './lib/colors';
   import { checkForUpdate } from './lib/update.svelte';
   import { audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
-  import { migrateSession, newSession, rebaseSession } from './lib/session';
+  import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
   import Editor from './editor/Editor.svelte';
@@ -220,7 +221,7 @@
     if (!editing) return;
     if (watch) commit();
     const { playGame, session } = app;
-    const playing = app.screen === 'play' && !app.pregame && playGame && session && playWatch && playWatched === playGame;
+    const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
     await Promise.all([saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover)]);
     editing = false;
     paused = true;
@@ -421,7 +422,8 @@
     // (The cover too: a game picked up after a reload comes back covered if it was.)
     const cover = !!app.live.cover;
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
-    if (loaded && !app.pregame && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover);
+    // (A ▶ Test this round is never written: the game kept to resume stays as it is.)
+    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
@@ -430,17 +432,9 @@
     // (A player-only file has no ＋ Add round: one with no rounds can only be exported again from the builder.)
     if (!app.game.rounds.length)
       return toast(playerOnly ? 'This game has no rounds to play: ask whoever made it for a new copy.' : 'Add a round first (＋ Add round)', 5000);
-    const saved = app.resumable;
-    if (
-      saved &&
-      saved.session.phase !== 'end' &&
-      !(await ask(
-        `A game in progress ("${saved.game.title}", saved ${savedTime(saved.savedAt)}) can still be resumed. ` +
-          'Start a new game anyway?\n\nThe saved game is replaced once you press "Start game".',
-        { ok: 'Start a new game', cancel: 'Keep it' },
-      ))
-    )
-      return;
+    // (A game kept to resume isn't asked about here: the pre-game screen offers ▶ Resume it, and Start replaces it.)
+    app.test = null;
+    backTo = null;
     mark('played', 'Played');
     saveEditorSoon.flush();
     app.playGame = clone(app.game);
@@ -466,6 +460,42 @@
     app.toast = '';
     app.screen = 'play';
   }
+
+  /**
+   * ▶ Test this round (the editor): just that round, in a throwaway copy of the game, straight onto the board (the
+   * game's players, or three sample players). Nothing is saved: the game kept to resume, and a buzzer room left open,
+   * stay as they are. Exit comes back to the editor on that round.
+   */
+  function testRound(index: number): void {
+    const round = app.game.rounds[index];
+    if (!round) return;
+    saveEditorSoon.flush();
+    const game = clone(app.game);
+    const r = game.rounds[index];
+    game.rounds = [r];
+    // (No tiebreaker after it, and no phones: the room, if one is open, waits for ▶ Play.)
+    delete game.tiebreaker;
+    game.settings.buzzer = undefined;
+    // Daily Doubles the board wants but hasn't got go in at random, in this copy only.
+    if (isBoard(r)) randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
+    const s = newSession(game);
+    if (!s.players.length)
+      for (const name of ['Alex', 'Sam', 'Jordan'].slice(0, Math.max(1, game.settings.maxPlayers)))
+        s.players.push({ id: newId(), name, color: nextFreeColor(s.players.map((p) => p.color)), startScore: 0 });
+    s.players.forEach((p, i) => blankName(p.name) && (p.name = `Player ${i + 1}`));
+    app.test = round.id;
+    app.playGame = game;
+    app.session = s;
+    app.live = newLive();
+    app.pregame = false;
+    if (isBoard(r)) startIntro(s, game);
+    else goToRound(s, game, 0);
+    app.toast = '';
+    app.screen = 'play';
+  }
+
+  /** The round the editor opens on when it's back (the one just tested). */
+  let backTo = $state<string | null>(null);
 
   /**
    * Resume game was pressed: a game in progress asks how it's shown first (one window, or the audience window to
@@ -500,7 +530,7 @@
    * Resume the saved game, optionally switching it to the editor's current version of the game. It's read again first:
    * another tab may have played on since this one started (the newer copy wins).
    */
-  async function resume(withEdits = false): Promise<void> {
+  async function resume(withEdits = false, room: SavedRoom['remote'] | null = null): Promise<void> {
     const shown = app.resumable;
     if (!shown) return;
     const stored = await loadPlay();
@@ -510,6 +540,13 @@
       game = clone(app.game);
       rebaseSession(saved.session, saved.game, game);
     }
+    // From the pre-game screen with its buzzer room open: the phones stay in it for the resumed game (when that one
+    // plays with phone buzzers and has no room of its own).
+    if (room) {
+      if (buzzerOn(game.settings) && !saved.session.remote) saved.session.remote = room;
+      else endRoom(room);
+    }
+    app.test = null;
     await loadGameMedia(game);
     app.playGame = game;
     app.session = saved.session;
@@ -520,7 +557,14 @@
     app.toast = '';
     app.screen = 'play';
     app.resumable = null;
+    // A fresh game screen (from the pre-game screen, the one there is replaced).
+    playKey++;
   }
+
+  /** Goes up to start the game screen afresh (resuming from the pre-game screen). */
+  let playKey = $state(0);
+  /** The one-line "game kept to resume" over the editor was closed (✕) for this visit. */
+  let resumeHidden = $state(false);
 
   async function discardResume(): Promise<void> {
     const saved = app.resumable;
@@ -540,17 +584,27 @@
     app.session = null;
     app.pregame = false;
     app.live = newLive();
+    app.test = null;
   }
 
-  /** Leave a game: it stays saved and can be resumed from the editor. A finished game is cleared. */
-  function exitPlay(): void {
+  /**
+   * Leave a game: kept (Exit › Keep & leave), it stays saved and can be resumed (▶ Play offers it); discarded, or
+   * finished, it's cleared. A ▶ Test this round leaves nothing: back to the editor, on that round.
+   */
+  function exitPlay(keep = true): void {
+    if (app.test) {
+      backTo = app.test;
+      return leavePlay();
+    }
     // Written now, so a finished game's clearPlay below comes after it.
     savePlaySoon.flush();
     const { playGame, session } = app;
+    resumeHidden = false;
     if (playGame && session && !app.pregame) {
-      if (session.phase === 'end') {
+      if (session.phase === 'end' || !keep) {
         app.resumable = null;
         clearPlay();
+        if (!keep && session.phase !== 'end') toast('Game discarded');
       } else
         app.resumable = {
           game: $state.snapshot(playGame),
@@ -603,33 +657,33 @@
   <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
 {:else if app.screen === 'editor'}
   {@render roomBar()}
-  {#if app.resumable}
+  {#if app.resumable && (!resumeHidden || resuming)}
     {@const saved = app.resumable}
     {@const ended = saved.session.phase === 'end'}
-    <div class="resume">
-      <span>
-        {ended ? 'A finished game was saved:' : 'A game in progress was found:'} <b>{saved.game.title}</b>
-        <span class="muted">(saved {savedTime(saved.savedAt)})</span>
-        {#if !ended}
-          <span class="muted small">Edits you make here don't change it unless you resume with them.</span>
-        {/if}
+    <!-- One line, ✕ to put it away (▶ Play offers to resume too). -->
+    <div class="resume kept" class:asking={!!resuming} role="region" aria-label={ended ? 'Finished game' : 'Game in progress'}>
+      <span class="what" title="Saved {savedTime(saved.savedAt)}{ended ? '' : ". Edits you make here don't change it unless you resume with them."}">
+        {ended ? '🏁 Finished game:' : '⏸ Kept to resume:'} <b>{saved.game.title}</b>
       </span>
       {#if resuming}
         {@render modeAsk()}
       {:else}
-        <button class="primary" onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
+        <button class="small primary" onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
         {#if !ended && saved.game.id === app.game.id}
-          <button onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+          <button class="small" onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
             Resume with my edits
           </button>
         {/if}
-        <button class="ghost" onclick={discardResume}>Discard</button>
+        <button class="small ghost" onclick={discardResume}>Discard</button>
+        <button class="small ghost x" onclick={() => (resumeHidden = true)} aria-label="Hide this line" title="Hide this line (the game stays kept: ▶ Play offers to resume it)">✕</button>
       {/if}
     </div>
   {/if}
-  <Editor onplay={startPlay} {checklist} />
+  <Editor onplay={startPlay} ontest={testRound} startRound={backTo} {checklist} />
 {:else}
-  <Play onexit={exitPlay} oncancel={leavePlay} gameRev={playRev} gameCopy={playCopy} />
+  {#key playKey}
+    <Play onexit={exitPlay} oncancel={leavePlay} onresume={(withEdits, room) => void resume(withEdits, room)} gameRev={playRev} gameCopy={playCopy} />
+  {/key}
 {/if}
 
 {#snippet modeAsk()}
@@ -687,12 +741,25 @@
   }
   .resume {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-    padding: 10px 16px;
+    padding: 4px 16px;
     background: #2a2410;
     border-bottom: 1px solid var(--warn);
+  }
+  .resume.kept:not(.asking) {
+    flex-wrap: nowrap;
+  }
+  .resume .what {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .resume .x {
+    margin-left: auto;
   }
   .small {
     font-size: 12px;
