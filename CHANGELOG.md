@@ -1070,3 +1070,4 @@ Commits whose titles don't say what they contain:
 | 8b0f1cd | Merge remote-tracking branch 'origin/main' | Brings in 60b4e38 (.gitignore: the signing key's folder) |
 | 749aea4 | Merge branch 'worktree-agent-aca595146e0e3416f' | Brings in 3dde2ea (editor look and feel: one style for windows, pages, buttons, toasts and the pre-game screen) |
 | d5bbca3 | Merge branch 'worktree-agent-a65acfb86fee270b1' | Brings in 6d19748 (clues with several question slides) |
+| e8b6e1d | Merge branch 'worktree-agent-a60d194b8ff51af6d' | Brings in 42faaad (team buzzers: people join a team from their phone, anyone on it can buzz for it) |
