@@ -32,7 +32,10 @@ try {
   // ---------- The sample game ----------
   await page.getByRole('button', { name: /Try a sample game/ }).click();
   await page.waitForTimeout(100);
-  assert(await page.evaluate(() => document.activeElement?.hasAttribute('data-round-name')), 'Try a sample game puts the focus on its first round’s name');
+  assert(
+    await page.evaluate(() => document.activeElement?.closest('nav')?.querySelector('[data-place^="round:"]') === document.activeElement && !document.activeElement.hasAttribute('data-round-name')),
+    'Try a sample game puts the focus on its first round’s tab (its name isn’t selected to type over)',
+  );
   // Its toast stays in the editor: it would cover ▶ Play's Start game.
   assert((await page.locator('.toast').count()) === 1, 'the sample game says what it added');
   await page.getByRole('button', { name: '▶ Play' }).click();

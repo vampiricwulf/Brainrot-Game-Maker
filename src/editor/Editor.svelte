@@ -198,11 +198,20 @@
     dropMenu(e, addRoundItems(game, addRound, showNew, importRounds));
   }
 
-  /** A round just added (a template, a pasted or imported round, the sample game): shown, with its name ready to type over. */
+  /** A round just added (a template, a pasted or imported round): shown, with its name ready to type over. */
   function showNew(at: number): void {
     tab = at;
     const id = game.rounds[at]?.id;
     if (id) focusRoundName(id);
+  }
+
+  /**
+   * The sample game: shown, the focus on its first round's tab (its rounds are named and filled in, so nothing is
+   * selected to type over by accident).
+   */
+  function showSample(): void {
+    tab = addSample(game);
+    focusRoundTab(game.rounds[tab]?.id);
   }
 
   /** Import rounds…: the other game, while its rounds are picked. */
@@ -987,7 +996,7 @@
           <div class="first-round">
             <h2>Add your first round</h2>
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
-            <button class="sample" onclick={() => showNew(addSample(game))}>
+            <button class="sample" onclick={showSample}>
               <span class="icon" aria-hidden="true">✨</span>
               <b>Try a sample game</b>
               <span class="muted small">A small board, an adventure, a board game and a Final, all filled in and ready to play</span>
