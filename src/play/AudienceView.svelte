@@ -872,6 +872,22 @@
   .lineup.small .lineup-name {
     font-size: 32px;
   }
+  /* With the phones' join code too, everything fits the stage's height: a smaller banner and lineup, closer together. */
+  .soon.has-room:has(.lineup) {
+    gap: 20px;
+  }
+  .soon.has-room .card-img {
+    max-height: 180px;
+  }
+  .soon.has-room .lineup li {
+    padding: 4px 20px;
+  }
+  .soon.has-room .lineup-name {
+    font-size: 32px;
+  }
+  .soon.has-room .lineup-members {
+    font-size: 20px;
+  }
   .soon-text,
   .soon-count {
     font-family: var(--board-font);

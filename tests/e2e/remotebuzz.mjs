@@ -195,6 +195,11 @@ try {
   assert((await aud.locator('.join-code').innerText()) === 'BCDF', 'viewers see the room code on the Starting soon card');
   assert((await aud.locator('.join-link').innerText()) === 'buzz.test/BCDF', 'and the link');
   assert((await aud.getByRole('img', { name: /QR code/ }).count()) === 1, 'and the QR code');
+  // Who's playing too (4 players), and all of it on the stage.
+  await aud.locator('.lineup li').nth(3).waitFor();
+  const soonBox = await aud.locator('.soon').boundingBox();
+  const stageBox = await aud.locator('.title-card').boundingBox();
+  assert(soonBox.y >= stageBox.y - 1 && soonBox.y + soonBox.height <= stageBox.y + stageBox.height + 1, `the card's lineup, code and QR code all fit on the stage (${Math.round(soonBox.height)} of ${Math.round(stageBox.height)} px)`);
   await shot('rb-2-soon', aud);
 
   // ---------- A clue: the host opens the buzzers, a phone buzzes ----------
