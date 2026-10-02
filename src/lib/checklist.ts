@@ -77,7 +77,8 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       const todo = unfinished(game, round);
       line.place = boardPlace(game, round) ?? line.place;
       if (line.details.length > 1) {
-        const others = line.details.length - line.details.filter((d) => /clues? with no (question|answer)|wheel\/dice tile/.test(d)).length;
+        // (Daily Doubles not placed yet aren't to fix: Start game places them. A new board says only its clues to finish.)
+        const others = line.details.length - line.details.filter((d) => /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet/.test(d)).length;
         line.text = !todo.length
           ? `${name}: ${plural(others, 'thing')} to fix`
           : `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`;
