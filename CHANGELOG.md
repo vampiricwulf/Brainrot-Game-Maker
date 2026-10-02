@@ -1556,3 +1556,5 @@ Commits whose titles don't say what they contain:
 | fe18f30 | Merge branch 'worktree-agent-aaf8c5a3577eb5b92' | Brings in 3415a8e (slide editor and media polish: undo names for items, tools for several items, Move to sits under Position, used-where on media) |
 | 34e1bb0 | Merge branch 'worktree-agent-ab6d5fd96a6ae417f' | Brings in 2d50bcd (RPG and board-game building: New shop in place, Enemy preset, space kinds, forks, Mini quest, plainer RPG round top) |
 | 068bece | Merge branch 'worktree-agent-af8c8c9e9235d3a87' | Brings in ff9dff4 (going live: remembered display choice, Open audience window & start, room-first question, Going live checklist, keep-or-discard on Exit, ▶ Test this round) |
+| 96b02e9 | Merge branch 'worktree-agent-a7ec9b00d4299f66c' | Brings in 74bc3f7 (host flow: Reveal after a right answer, Final reveals judge before moving on, N does the main thing, phone-offline badge, Buzz now cue) |
+| 379150e | Merge branch 'worktree-agent-a446c6c80be823102' | Brings in 2721dee (stream session: Keep & leave keeps the room, rooms carry to the next game, the audience window stays open, Next game…) |
