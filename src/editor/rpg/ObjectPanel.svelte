@@ -8,6 +8,7 @@
   import { currencyFields, itemDef, itemQty, MAX_UNSTACKED } from '../../lib/toolset';
   import ActionListEditor from './ActionListEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
+  import ShopSelect from './ShopSelect.svelte';
   import SlideModal from './SlideModal.svelte';
 
   /** `slide`: the one being edited (the screen's own, or one of its looks), where Reveal / Hide find the objects. */
@@ -138,14 +139,10 @@
       </div>
     {/if}
     {#if r.class === 'npc' || r.class === 'shop'}
-      <label class="field">
-        Shop
-        <select bind:value={r.shop} aria-label="Shop">
-          <option value={undefined}>—</option>
-          {#if r.shop && !game.shops?.some((s) => s.id === r.shop)}<option value={r.shop}>⚠ Deleted shop — pick another</option>{/if}
-          {#each game.shops ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
-        </select>
-      </label>
+      <div class="field">
+        {r.class === 'npc' ? 'Shop (its card in play gets a 🛒 Shop button)' : 'Shop'}
+        <ShopSelect bind:value={r.shop} none={r.class === 'npc' ? '— no shop —' : undefined} name={el.name?.trim() ? `${el.name.trim()}’s shop` : undefined} />
+      </div>
     {/if}
     {#if r.class !== 'spawn' && r.class !== 'blocker'}
       <div class="muted small">Buttons in play (you always confirm them):</div>

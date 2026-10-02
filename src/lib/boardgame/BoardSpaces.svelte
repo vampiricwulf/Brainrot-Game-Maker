@@ -48,13 +48,34 @@
   const number = (s: BoardSpace) => spaceNumber(s.name);
   const byId = $derived(new Map(round.spaces.map((s) => [s.id, s])));
 
-  /** A link from a to b, stopping at the edge of each circle. */
+  /** Whether a space's name shows under it here (viewers: when ticked; the host editing: always). */
+  const labelled = (s: BoardSpace) => !hidden(s) && (nameShown(s) || allNames);
+  /** The bottom of a space's name, below its center (board px). */
+  const LABEL_BOTTOM = 112;
+
+  /**
+   * How far from a space's center a link to or from it stops: at the edge of its circle, or, coming in from below,
+   * past the name under it (else the name hides the arrowhead). (ux, uy): the way from the space along the link.
+   */
+  function clear(s: BoardSpace, ux: number, uy: number): number {
+    const edge = R + 6;
+    if (!labelled(s) || uy <= 0) return edge;
+    // The name's box: about 16 board px a letter (Anton at 30px), from just under the circle down to LABEL_BOTTOM.
+    const half = (s.name.length * 16 + 40) / 2;
+    const t = Math.min(LABEL_BOTTOM / uy, Math.abs(ux) > 1e-6 ? half / Math.abs(ux) : Infinity);
+    return Math.max(edge, t + 4);
+  }
+
+  /** A link from a to b, stopping at the edge of each circle (or past a name in the way). */
   function line(a: BoardSpace, b: BoardSpace) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const d = Math.hypot(dx, dy) || 1;
-    const k = (R + 6) / d;
-    return { x1: a.x + dx * k, y1: a.y + dy * k, x2: b.x - dx * k, y2: b.y - dy * k };
+    const ux = dx / d;
+    const uy = dy / d;
+    const ka = Math.min(clear(a, ux, uy), d / 2 - 4);
+    const kb = Math.min(clear(b, -ux, -uy), d / 2 - 4);
+    return { x1: a.x + ux * ka, y1: a.y + uy * ka, x2: b.x - ux * kb, y2: b.y - uy * kb };
   }
 </script>
 
@@ -109,10 +130,12 @@
       <span class="q">?</span>
     {:else if s.icon && mediaUrls[s.icon]}
       <img src={mediaUrls[s.icon]} alt="" />
+    {:else if s.mark}
+      <span class="mark">{s.mark}</span>
     {:else if number(s)}
       <span class="n">{number(s)}</span>
     {/if}
-    {#if !h && (nameShown(s) || allNames)}
+    {#if labelled(s)}
       <!-- (Absolutely placed under the circle: a hidden name leaves the board as it is.) -->
       <span class="label" class:off={!nameShown(s)} data-name-hidden={nameShown(s) ? undefined : ''}>{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span>
     {/if}
@@ -192,6 +215,11 @@
   .n,
   .q {
     font-size: 48px;
+  }
+  .mark {
+    font-size: 60px;
+    line-height: 1;
+    font-family: system-ui, sans-serif;
   }
   img {
     width: 84px;

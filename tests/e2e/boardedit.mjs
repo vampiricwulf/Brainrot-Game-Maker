@@ -205,6 +205,15 @@ try {
   await page.locator('[data-board-editing] [data-show-name]').check();
   assert((await last(page)).includes('Showed the name of “Nap time”') && (await names(page)).join() === 'Nap time', `ticking “Show name on the board” shows its name (${await last(page)})`);
   if (shots) await page.screenshot({ path: `${shots}/names-editing.png` });
+  // Make it a… here too: one step, undone by Ctrl+Z (a shop needs a shop in the game: there's none).
+  const kinds = page.locator('[data-board-editing] [data-space-kind]');
+  assert(await kinds.locator('option[value="shop"]').isDisabled(), 'Make it a… 🛒 Shop waits for a shop in the game');
+  await kinds.selectOption('star');
+  assert((await last(page)).includes('Made “Nap time” a Star (bonus points) space'), `Make it a… ⭐ Star in ✎ Edit board is a step (${await last(page)})`);
+  assert((await stageSpaces(page).allInnerTexts()).some((t) => t.includes('⭐')), 'the star shows in its circle on the stage');
+  await kinds.blur();
+  await page.keyboard.press('Control+z');
+  assert(!(await stageSpaces(page).allInnerTexts()).some((t) => t.includes('⭐')), 'and Ctrl+Z takes it back');
   await page.locator('[data-board-editing] [data-show-name]').blur();
   // Esc lets go of what's picked, then ends editing.
   await page.keyboard.press('Escape');

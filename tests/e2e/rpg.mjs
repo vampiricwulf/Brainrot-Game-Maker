@@ -183,6 +183,19 @@ async function bigWorld() {
   await host.keyboard.press('Numpad2');
   await host.waitForTimeout(800);
   await host.locator('.rpg .hit[data-object="el_trap"]').click();
+  // At 1280×720 the card opens with the pad and the minimap still in sight, and they stay pinned scrolled to its foot.
+  const padSeen = () =>
+    host.locator('.rh .pad').evaluate((p) => {
+      let b = p.parentElement;
+      while (b && !(b.scrollHeight > b.clientHeight && /auto|scroll/.test(getComputedStyle(b).overflowY))) b = b.parentElement;
+      const v = b ? b.getBoundingClientRect() : { top: 0, bottom: innerHeight };
+      const r = p.getBoundingClientRect();
+      const m = document.querySelector('.rh .mapbox').getBoundingClientRect();
+      return r.top >= v.top - 1 && r.bottom <= v.bottom + 1 && m.top >= v.top - 1;
+    });
+  assert(await padSeen(), 'an object’s card opens with the pad and the minimap in sight');
+  await host.getByRole('dialog', { name: 'Object: Trap' }).getByRole('button', { name: '🗑 Remove' }).scrollIntoViewIfNeeded();
+  assert(await padSeen(), 'scrolled to the card’s foot, the pad and the minimap stay pinned in sight');
   await host.getByRole('dialog', { name: 'Object: Trap' }).getByRole('button', { name: 'HP −3' }).click();
   assert((await said()) === 'Trap: HP −3: Ann & Bob', `the Trap’s party button hurts the party at the Trap, not the one viewers follow (${await said()})`);
   await host.waitForTimeout(300);
@@ -233,6 +246,10 @@ try {
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
+  // Gold starts at 10, enough to try a shop; this game starts everyone broke (the shop below asks when they're short).
+  const goldStart = page.locator('label.field', { hasText: /^Start/ }).locator('input[type="number"]').last();
+  assert((await goldStart.inputValue()) === '10', `the Gold preset starts at 10 (${await goldStart.inputValue()})`);
+  await goldStart.fill('0');
   await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
   // Using it takes 1 HP (the first stat). A new item has its More open.
@@ -354,6 +371,38 @@ try {
   await page.keyboard.press('Delete');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
+  // The round's top: where players start, in plain words; the world (for carrying the adventure on) under Advanced.
+  assert(await page.getByText('Players start on').isVisible(), 'the round says where players start on');
+  assert((await page.getByText('Party starts at').count()) === 0, 'not “Party starts at”');
+  assert(!(await page.getByLabel('World', { exact: true }).isVisible()) && (await page.locator('summary', { hasText: 'Advanced: carry this adventure into another round' }).isVisible()), 'the world picker waits under ⋯ Advanced');
+  // A character's Shop box makes a shop right there, and says where shops are set up.
+  await page.getByRole('button', { name: 'Screen Start' }).click();
+  await page.getByRole('button', { name: '✎ Edit screen' }).click();
+  await page.getByRole('button', { name: '🧙 Character' }).click();
+  await page.getByPlaceholder('e.g. Old Man, Cave door').fill('Old Man');
+  assert((await page.locator('[data-shop-hint]').innerText()).includes('Stats & Items'), 'the Shop box says shops are set up in 📊 Stats & Items');
+  await page.getByLabel('Shop', { exact: true }).selectOption({ label: '＋ New shop…' });
+  const madeShop = await page.getByLabel('Shop', { exact: true }).locator('option:checked').innerText();
+  assert(madeShop === 'Old Man’s shop' && (await page.locator('[data-shop-hint]').innerText()).includes('Made “Old Man’s shop”, selling all 2 items'), `＋ New shop… makes one selling the catalog, and picks it (${madeShop})`);
+  // The Layers list shows what an object is by its icon.
+  const oldManIcon = await page.locator('.layers .row', { hasText: 'Old Man' }).locator('.ic').innerText();
+  assert(oldManIcon === '🧙', `Layers shows a character with 🧙, not 🅣 (${oldManIcon})`);
+  // 👹 Enemy: a character with HP and Power that viewers see, and buttons for the fight.
+  await page.getByRole('button', { name: '👹 Enemy' }).click();
+  assert((await page.getByLabel('Object class').inputValue()) === 'npc' && (await page.getByLabel('Stat name').evaluateAll((els) => els.map((e) => e.value))).join(',') === 'HP,Power', '👹 Enemy places a character with its own HP and Power');
+  assert((await page.locator('[data-action]').count()) === 2, 'with a roll and an HP −1 button for the fight');
+  // Leaving for 📊 Stats & Items and coming back opens the same screen again.
+  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  assert(await page.getByRole('button', { name: '◀ Back to the map' }).isVisible(), 'coming back to the round opens the screen being edited');
+  // (The game below has neither of them.)
+  for (const name of ['Enemy', 'Old Man']) {
+    await page.locator('.layers .row', { hasText: name }).locator('.txt').click();
+    await page.keyboard.press('Delete');
+  }
+  assert((await page.locator('.layers .row', { hasText: /Enemy|Old Man/ }).count()) === 0, 'they delete again');
+  await page.getByRole('button', { name: '◀ Back to the map' }).click();
+
   // Play it: two players, straight to the adventure.
   await playWithPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -399,8 +448,12 @@ try {
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'the secret Potion is not drawn for viewers');
 
   // The locked gate asks first (in its card), and only goes through on the answer.
+  const gateListed = await page.locator('.rh .objs').getByRole('button', { name: /Gate/ }).innerText();
+  assert(gateListed === 'Gate · Doorway', `the objects here are listed with what they are in words (${gateListed})`);
   await page.locator('.rh .objs').getByRole('button', { name: /Gate/ }).click();
   const gate = page.getByRole('dialog', { name: 'Object: Gate' });
+  const gateKind = await gate.locator('.cls').innerText();
+  assert(gateKind === 'Doorway', `the card says what it is in words (${gateKind}), never a code like “npc”`);
   await gate.getByRole('button', { name: '🚪 Go through (party)' }).click();
   await gate.getByText('Gate is locked. Go through anyway?').waitFor();
   await gate.getByRole('button', { name: 'Cancel' }).click();
@@ -511,7 +564,7 @@ try {
   await page.getByRole('dialog', { name: 'Object: Lava' }).getByLabel('Object class').selectOption('zone');
   const lava = page.getByRole('dialog', { name: 'Object: Lava' });
   await lava.getByRole('button', { name: '👁 Reveal to viewers' }).click();
-  assert((await lava.locator('.cls').innerText()) === 'zone', 'it can be named and made a zone');
+  assert((await lava.locator('.cls').innerText()) === 'Zone', 'it can be named and made a zone');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawn.png` });
   // Drag it on the stage: it stays where it's dropped.
   const hit = page.getByRole('button', { name: 'Object: Lava' });

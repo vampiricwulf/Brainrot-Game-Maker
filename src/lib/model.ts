@@ -1489,6 +1489,8 @@ export interface BoardSpace {
   color: string;
   /** An image drawn in the space (instead of its name). */
   icon?: Id;
+  /** An emoji drawn in the space when it has no image (🛒, 👹…: what "Make it a…" made it). */
+  mark?: string;
   /** Spaces a player can step to next; more than one is a fork (the host picks). */
   next: Id[];
   /** Run (host-confirmed) when a player passes over it, e.g. Start: +2 gold. */

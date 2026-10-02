@@ -15,13 +15,14 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { allNamesLabel, clampToBoard, linkName, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import { newId, SLIDE_H, SLIDE_W, textSlide, type BoardGameRound, type BoardSpace, type BoardZone } from '../../lib/model';
   import { clone } from '../../lib/ops';
   import SlideView from '../../lib/slide/SlideView.svelte';
+  import { newShop, numberStat } from '../../lib/rpgpresets';
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
   import SlideModal from '../rpg/SlideModal.svelte';
   import MediaPicker from '../slide/MediaPicker.svelte';
@@ -467,8 +468,12 @@
           ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => showName(s, false) }
           : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => showName(s, true) },
         { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
+        { label: '⑂ Add a fork here', onclick: () => fork(s), hint: 'A second way on from it: the host picks the way in play' },
         { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), keys: 'Ctrl+D' },
         { label: '📋 Copy space', onclick: () => copySpacesToClipboard([s]), keys: 'Ctrl+C' },
+        { sep: true },
+        { heading: 'Make it a…' },
+        ...SPACE_KINDS.map((k) => ({ label: k.label, hint: k.hint, onclick: () => makeKind(s, k.kind) })),
         { sep: true },
         { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s), keys: 'Delete' },
       ]);
@@ -612,6 +617,23 @@
 
   function makeStart(s: BoardSpace): void {
     step(`Made “${s.name}” Start`, () => (round.start = s.id));
+  }
+
+  /** Make it a shop, a boss, a question…: its landing buttons, color and emoji (a shop space opens a new shop if there's none). */
+  function makeKind(s: BoardSpace, kind: SpaceKind): void {
+    const k = SPACE_KINDS.find((x) => x.kind === kind);
+    if (!k) return;
+    step(`Made “${s.name}” a ${k.label.replace(/^\S+\s/, '')} space`, () => {
+      const shop = kind === 'shop' ? (game.shops?.[0] ?? newShop(game)).id : undefined;
+      applySpaceKind(s, kind, { shop, hp: numberStat(game, 'HP')?.id });
+    });
+  }
+
+  /** ⑂ A second way on from a space: a new space beside the first way, picked to set up. */
+  function fork(s: BoardSpace): void {
+    const f = step(`Added a fork at “${s.name}”`, () => addFork(round, s));
+    selectOnly(f.id);
+    refocus(f.id);
   }
 
   /** Show or hide one space's name on the board, as a named step. */
@@ -912,7 +934,27 @@
               {/if}
             </div>
             {#if sel.icon}<button class="ghost small" onclick={() => (sel.icon = undefined)}>No icon</button>{/if}
+            {#if sel.mark && !sel.icon}
+              <span class="muted small" title="Drawn in the circle">{sel.mark}</span>
+              <button class="ghost small" onclick={() => step(`Took the emoji off “${sel.name}”`, () => (sel.mark = undefined))}>No emoji</button>
+            {/if}
           </div>
+          <label class="field">
+            Make it a…
+            <select
+              data-space-kind
+              aria-label="Make it a…"
+              title="Fills in what landing on it does, its color and an emoji in it (its landing buttons are replaced: Undo brings them back)"
+              onchange={(e) => {
+                const v = e.currentTarget.value as SpaceKind | '';
+                e.currentTarget.value = '';
+                if (v) makeKind(sel, v);
+              }}
+            >
+              <option value="">✨ Choose a kind of space…</option>
+              {#each SPACE_KINDS as k (k.kind)}<option value={k.kind} title={k.hint}>{k.label}</option>{/each}
+            </select>
+          </label>
           {@const into = round.spaces.filter((x) => x.next.includes(sel.id) && !sel.next.includes(x.id))}
           <div class="row" data-leads>
             <span class="muted small">Leads to:</span>
@@ -959,11 +1001,14 @@
               {#each round.spaces.filter((x) => x.id !== sel.id && !sel.next.includes(x.id)) as x (x.id)}<option value={x.id}>{x.name}</option>{/each}
             </select>
           </div>
-          {#if sel.next.length > 1}<div class="muted small">A fork: the host picks the way in play.</div>{/if}
+          <div class="row">
+            <button class="small" onclick={() => fork(sel)} title="A new space beside the way on, as a second way: two or more ways make a fork (the host picks the way in play)">⑂ Add a fork here</button>
+            {#if sel.next.length > 1}<span class="muted small">A fork: the host picks the way in play.</span>{/if}
+          </div>
           <h5>When passed <span class="muted small">(e.g. Start: +2 gold)</span></h5>
-          <ActionListEditor bind:actions={sel.onPass} board={round} />
+          <ActionListEditor bind:actions={sel.onPass} board={round} addLabel="＋ Add button (when passed)" />
           <h5>When landed on</h5>
-          <ActionListEditor bind:actions={sel.onLand} board={round} />
+          <ActionListEditor bind:actions={sel.onLand} board={round} addLabel="＋ Add button (when landed on)" />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
           <label class="field">Host notes (never shown on stream)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">

@@ -7,7 +7,7 @@
   import { tick } from 'svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
-  import { itemsNamed, LAYER_ICON, layerLabel } from '../../lib/layerlabel';
+  import { itemsNamed, layerIcon, layerLabel } from '../../lib/layerlabel';
   import { offStage } from '../../lib/layers';
 
   let {
@@ -168,7 +168,7 @@
       <span class="grip" aria-hidden="true">⋮⋮</span>
       {#if renaming === el.id}
         <span class="name">
-          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <input
             value={el.name ?? layerLabel(el, game)}
             aria-label="Layer name"
@@ -191,7 +191,7 @@
           aria-pressed={isSel}
           title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down."
         >
-          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <span class="txt">{layerLabel(el, game)}</span>
           <!-- (Nowhere on the slide: this list is the only way to find it.) -->
           {#if offStage(el)}<span class="off-slide" title="Off the slide: players won't see it. Move it back with the X and Y fields.">⚠ off the slide</span>{/if}

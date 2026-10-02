@@ -478,6 +478,17 @@ export const OBJECT_CLASSES: [ObjectClass | '', string, string][] = [
   ['blocker', '⛔ No-go area', 'Arriving players aren’t placed here (never shown)'],
 ];
 
+/** A class as the host reads it, without its icon ("Character", not "npc"); "" is scenery. */
+export function classLabel(c: ObjectClass | '' | undefined): string {
+  const l = OBJECT_CLASSES.find(([v]) => v === (c ?? ''))?.[1];
+  return l ? l.replace(/^\S+\s/, '') : String(c ?? '');
+}
+
+/** A class's icon (🧙 for a character), for lists that name objects. */
+export function classIcon(c: ObjectClass | '' | undefined): string | undefined {
+  return c ? OBJECT_CLASSES.find(([v]) => v === c)?.[1].split(' ')[0] : undefined;
+}
+
 /** Visible to viewers? Secret objects, hotspots, spawn points and blockers are host-only unless revealed. */
 export function audienceSees(el: SlideElement, o: ObjectOverride | undefined): boolean {
   if (o?.taken) return false;

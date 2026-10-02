@@ -23,7 +23,8 @@ import {
   type World,
 } from './model';
 import { newScreen, newWorldMap } from './rpg';
-import { STAT_PRESETS } from './toolset';
+import { STAT_PRESETS, currencyFields } from './toolset';
+import { enemyObject, newShop, presetStat } from './rpgpresets';
 
 // ---------- Small helpers ----------
 
@@ -110,6 +111,46 @@ export function dungeonRound(game: Game, name = 'Dungeon'): RpgRound {
   return { id: newId(), name, mode: 'rpg', world: world.id, start: { map: map.id, screen: at(1, 2).id } };
 }
 
+/**
+ * A mini quest: buy gear in the village shop, pick up gold in the forest, beat the boss in its lair for the treasure.
+ * Adds the HP, Gold and Power stats it uses (when the game has none of those names), a Potion and a Sword, and the shop.
+ */
+export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
+  presetStat(game, 'HP');
+  const coin = presetStat(game, 'Gold');
+  const power = presetStat(game, 'Power');
+  const drink = potion(game);
+  let sword = game.items?.find((x) => x.name === 'Sword');
+  if (!sword) {
+    sword = { id: newId(), name: 'Sword', stackable: false, price: 8, description: 'A trusty blade for the boss fight.' };
+    game.items = [...(game.items ?? []), sword];
+  }
+  const shop = newShop(game, 'Village shop');
+  shop.currency = coin.id;
+  shop.stock = [
+    { item: drink.id, qty: null },
+    { item: sword.id, qty: 3 },
+  ];
+  const world = gridWorld(`${name} world`, 3, 1, (c) => ['Village', 'Forest', 'Boss lair'][c], (c) => ['#2f6b3a', '#1d4a26', '#3a1420'][c]);
+  const [village, forest, lair] = world.maps[0].screens;
+  village.slide.elements.push(
+    thing('🧑‍🌾', 'Shopkeeper', 850, 480, { class: 'npc', shop: shop.id, dialogue: textSlide('“Gear up! The boss is to the east.”') }),
+  );
+  village.hostNotes = 'Everyone starts with 10 gold: click the Shopkeeper and press 🛒 Shop. Then walk east.';
+  forest.slide.elements.push(thing('🪙', 'Gold coins', 850, 520, { class: 'currency', field: coin.id, amount: 5 }));
+  const boss = enemyObject(game, 'Boss', '👹', 8, 4);
+  // A win: the treasure (a secret until revealed) and points for whoever fought.
+  const chest = thing('💰', 'Treasure', 1400, 560, { class: 'item', item: drink.id, qty: 3 });
+  chest.secret = true;
+  boss.role!.actions = [...(boss.role!.actions ?? []), act({ do: 'reveal', object: chest.id }), act({ do: 'score', amount: 500, who: 'ask' })];
+  boss.x = 760;
+  boss.y = 420;
+  lair.slide.elements.push(boss, chest);
+  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power). Beaten: press Reveal for the treasure and +500.`;
+  game.worlds = [...(game.worlds ?? []), world];
+  return { id: newId(), name, mode: 'rpg', world: world.id, start: { map: world.maps[0].id, screen: village.id } };
+}
+
 /** The sample's little world: a village, a forest with a chest, and a cave with a talking cat. */
 function sampleWorld(game: Game): RpgRound {
   const coin = gold(game);
@@ -148,8 +189,11 @@ function special(s: BoardSpace, kind: keyof typeof SPECIAL): void {
   s.onLand = k.onLand();
 }
 
-/** A loop of 20 spaces round the edge of the board, with some "go back 3", "skip a turn" and "roll again" spaces. */
-export function loop20Round(name = 'Board game'): BoardGameRound {
+/**
+ * A loop of 20 spaces round the edge of the board, with some "go back 3", "skip a turn" and "roll again" spaces.
+ * Passing Start scores 200, and gives 2 of the game's currency (gold) when it has one.
+ */
+export function loop20Round(name = 'Board game', game?: Game): BoardGameRound {
   const r = newBoardGameRound(name);
   const pts: [number, number][] = [];
   // 7 across the top and bottom, 3 down each side: 20 spaces.
@@ -161,6 +205,11 @@ export function loop20Round(name = 'Board game'): BoardGameRound {
   r.spaces.forEach((s, i) => (s.next = [r.spaces[(i + 1) % r.spaces.length].id]));
   r.spaces[0].onPass = [act({ do: 'score', amount: 200, who: 'party' })];
   r.spaces[0].hostNotes = 'Passing Start: +200';
+  const money = game && currencyFields(game)[0];
+  if (money) {
+    r.spaces[0].onPass.push(act({ do: 'stat', field: money.id, op: 'add', amount: 2, who: 'party' }));
+    r.spaces[0].hostNotes = `Passing Start: +200 and +2 ${money.name}`;
+  }
   [4, 11, 17].forEach((i) => special(r.spaces[i], 'back'));
   special(r.spaces[8], 'skip');
   special(r.spaces[14], 'again');
@@ -189,10 +238,11 @@ export function raceRound(name = 'Race'): BoardGameRound {
 }
 
 /** The sample's board game: a loop of 12 with a bonus, a "go back 3", a nap and a roll again. */
-function sampleBoardGame(): BoardGameRound {
+function sampleBoardGame(game: Game): BoardGameRound {
   const r = newBoardGameRound('Board game');
-  r.spaces[0].onPass = [act({ do: 'score', amount: 100, who: 'party' })];
-  r.spaces[0].hostNotes = 'Passing Start: +100';
+  const coin = gold(game);
+  r.spaces[0].onPass = [act({ do: 'score', amount: 100, who: 'party' }), act({ do: 'stat', field: coin.id, op: 'add', amount: 2, who: 'party' })];
+  r.spaces[0].hostNotes = `Passing Start: +100 and +2 ${coin.name}`;
   special(r.spaces[3], 'bonus');
   special(r.spaces[5], 'back');
   special(r.spaces[8], 'skip');
@@ -216,8 +266,14 @@ export const TEMPLATES: Template[] = [
   { mode: 'board', label: 'Classic board, 6 × 5', hint: '$200 to $1,000', make: () => newRound('Jeopardy!', 6) },
   { mode: 'board', label: 'Double board, 6 × 5', hint: '$400 to $2,000', make: () => newRound('Double Jeopardy!', 6, [400, 800, 1200, 1600, 2000]) },
   { mode: 'board', label: 'Quick board, 4 × 3', hint: 'A short round: $100 to $300', make: () => newRound('Quick round', 4, [100, 200, 300]) },
+  { mode: 'rpg', label: 'Mini quest', hint: 'A village shop, gold to find and a boss to fight: everything an adventure needs, ready to play', make: (g) => miniQuestRound(g) },
   { mode: 'rpg', label: '3 × 3 dungeon', hint: 'Nine rooms, a treasure chest and a spider', make: (g) => dungeonRound(g) },
-  { mode: 'boardgame', label: '20-space loop', hint: 'Laps round the board, with “go back 3”, “skip a turn” and “roll again” spaces', make: () => loop20Round() },
+  {
+    mode: 'boardgame',
+    label: '20-space loop',
+    hint: 'Laps round the board, with “go back 3”, “skip a turn” and “roll again” spaces (passing Start: +200, and +2 gold if the game has gold)',
+    make: (g) => loop20Round('Board game', g),
+  },
   { mode: 'boardgame', label: 'Race to the finish', hint: 'A path from Start to Finish: first one there wins', make: () => raceRound() },
 ];
 
@@ -241,7 +297,7 @@ export function addSampleGame(game: Game): number {
   setSlideText(final.questionSlide, 'This word means talking to the chat while you play');
   setSlideText(final.answerSlide, 'Just chatting');
   const rpg = sampleWorld(game);
-  const bg = sampleBoardGame();
+  const bg = sampleBoardGame(game);
   game.rounds.push(board, rpg, bg, final);
   if (!game.players.length)
     game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: newId(), name, color: PLAYER_PALETTE[[0, 3, 1][i]] }));

@@ -51,8 +51,8 @@ describe('rounds between games', () => {
     addSampleGame(a);
     const bg = a.rounds.find((r) => r.mode === 'boardgame')!;
     const bundle = bundleRound(a, bg);
-    // The sample's board only changes the score: no stats.
-    expect(bundle.statFields).toEqual([]);
+    // The sample's board gives Gold for passing Start: Gold comes along (and no world).
+    expect(bundle.statFields?.map((f) => f.name)).toEqual(['Gold']);
     expect(bundle.worlds).toEqual([]);
   });
 

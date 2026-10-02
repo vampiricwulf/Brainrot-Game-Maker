@@ -2,6 +2,7 @@
 // spin or roll and step along them. Pure functions over Game + Session; the host's UI wraps changes in logged().
 import {
   isBoardGame,
+  type Action,
   newId,
   SLIDE_H,
   SLIDE_W,
@@ -453,6 +454,85 @@ export function spaceToward(round: BoardGameRound, from: BoardSpace, dx: number,
     if (!best || (inCone && !best.inCone) || (inCone === best.inCone && score < best.score)) best = { s, score, inCone };
   }
   return best?.s;
+}
+
+// ---------- Kinds of space ("Make it a…") ----------
+
+export type SpaceKind = 'shop' | 'boss' | 'question' | 'skip' | 'back' | 'star';
+
+/** What a space kind needs from the game: the shop it opens, the HP stat a fight takes from. */
+export interface SpaceKindContext {
+  shop?: Id;
+  hp?: Id;
+}
+
+/** The kinds of space a space can be made, for the editor's "Make it a…": label, hint, what it fills in. */
+export const SPACE_KINDS: { kind: SpaceKind; label: string; hint: string; name: string; mark: string; color: string; onLand: (c: SpaceKindContext) => Omit<Action, 'id'>[] }[] = [
+  { kind: 'shop', label: '🛒 Shop', hint: 'Landing opens a shop', name: 'Shop', mark: '🛒', color: '#3cb44b', onLand: (c) => [{ do: 'shop', shop: c.shop ?? '' }] },
+  {
+    kind: 'boss',
+    label: '👹 Boss / fight',
+    hint: 'Roll to fight: a win scores 200, a loss sends them back 2',
+    name: 'Boss',
+    mark: '👹',
+    color: '#e6194b',
+    onLand: (c) => [
+      { do: 'dice', dice: 'd6' },
+      { do: 'score', amount: 200, who: 'party' },
+      ...(c.hp ? [{ do: 'stat' as const, field: c.hp, op: 'add' as const, amount: -1, who: 'party' as const }] : []),
+      { do: 'steps', steps: -2, who: 'party' },
+    ],
+  },
+  {
+    kind: 'question',
+    label: '❓ Question / clue',
+    hint: 'Landing asks a question worth 100 (write it in its button)',
+    name: 'Question',
+    mark: '❓',
+    color: '#4363d8',
+    onLand: () => [{ do: 'question', question: textSlide('Write the question here'), answer: textSlide('The answer'), value: 100 }],
+  },
+  { kind: 'skip', label: '⏭ Skip a turn', hint: 'Landing misses the next turn', name: 'Skip a turn', mark: '⏭', color: '#911eb4', onLand: () => [{ do: 'skip', turns: 1, who: 'party' }] },
+  { kind: 'back', label: '↩ Back 3 spaces', hint: 'Landing moves them back 3 (change the number in its button)', name: 'Back 3', mark: '↩', color: '#f58231', onLand: () => [{ do: 'steps', steps: -3, who: 'party' }] },
+  { kind: 'star', label: '⭐ Star (bonus points)', hint: 'Landing scores 100', name: 'Star', mark: '⭐', color: '#ffcc00', onLand: () => [{ do: 'score', amount: 100, who: 'party' }] },
+];
+
+/**
+ * Make a space a shop, a boss, a question…: its "When landed on" buttons (they replace the ones it had), its color and
+ * the emoji drawn in it. A space still called "Space N" takes the kind's name.
+ */
+export function applySpaceKind(s: BoardSpace, kind: SpaceKind, c: SpaceKindContext = {}): void {
+  const k = SPACE_KINDS.find((x) => x.kind === kind);
+  if (!k) return;
+  s.onLand = k.onLand(c).map((a) => ({ id: newId(), ...a }) as Action);
+  s.color = k.color;
+  s.mark = k.mark;
+  if (!s.name.trim() || spaceNumber(s.name)) s.name = k.name;
+}
+
+/**
+ * ⑂ Add a fork here: a new space beside the way on from `from`, as a second way on. It leads where `from`'s first way
+ * leads to (so the two ways meet again there), or nowhere at the end of a path. Returns the new space.
+ */
+export function addFork(round: BoardGameRound, from: BoardSpace): BoardSpace {
+  const on = spaceById(round, from.next[0]);
+  const after = on ? spaceById(round, on.next[0]) : undefined;
+  // Halfway along the way on, pushed out to one side (at the end of a path: on past it).
+  const tx = on ? (from.x + on.x) / 2 : from.x + 200;
+  const ty = on ? (from.y + on.y) / 2 : from.y;
+  const dx = on ? on.x - from.x : 1;
+  const dy = on ? on.y - from.y : 0;
+  const d = Math.hypot(dx, dy) || 1;
+  let nx = on ? -dy / d : 0;
+  let ny = on ? dx / d : 0;
+  // Toward the middle of the board, so a loop's fork goes inside it.
+  if ((SLIDE_W / 2 - tx) * nx + (SLIDE_H / 2 - ty) * ny < 0) [nx, ny] = [-nx, -ny];
+  const p = clampToBoard(tx + nx * 200, ty + ny * 200);
+  const s = newBoardSpace(p.x, p.y, nextSpaceName(round), SPACE_COLORS[round.spaces.length % SPACE_COLORS.length]);
+  s.next = on ? [(after && after.id !== from.id ? after : on).id] : [];
+  from.next = [...from.next, s.id];
+  round.spaces.push(s);
+  return s;
 }
 
 /** Keep a space's center on the board. */

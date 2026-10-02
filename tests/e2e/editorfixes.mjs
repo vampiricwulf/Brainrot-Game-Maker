@@ -240,6 +240,8 @@ try {
 
   // ---------- RPG: doorways and characters ----------
   await addRound(/RPG/);
+  // (The world's settings wait under ⋯ Advanced.)
+  await page.locator('summary', { hasText: 'Advanced: carry this adventure into another round' }).click();
   await page.getByRole('button', { name: 'More for this world' }).click();
   assert(await page.getByRole('menuitem', { name: /Delete world/ }).isVisible(), 'Delete world is in the world\'s ⋯ menu');
   await page.keyboard.press('Escape');
