@@ -139,8 +139,6 @@ in plain words for the people who make and host games. Anything committed but no
 - **⚙ Set up phone buzzers… on the ▶ Play screen's 📱 card**, when phone buzzers aren't set up yet: it opens ⚙
   Settings right there, at the buzzer server's box, instead of sending you back to the editor. The card says it in
   plain words.
-
-### Changed
 - **The ▶ Play screen remembers how you show the game** (🖥 Single window or 📺 Separate audience window, kept on
   this computer). With the audience window picked and not open yet, Start says **📺 Open audience window & start** and
   opens it, so OBS has the right window to capture from the first second.
