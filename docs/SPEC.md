@@ -356,7 +356,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 1. Category slide and wager entry together: on one screen the host ticks who plays (players with ≤ 0 can be excluded or
    allowed, a setting of the round) and enters each player's wager in the host view only. Wagers are whole numbers,
    0 or more; the max(score, 0) limit is off by default and the host can turn it on. A wager stays editable until it's
-   revealed, and remembers whether the host or the player's phone entered it.
+   revealed, and remembers whether the host or the player's phone entered it. With phone buzzers, each player in it (a
+   team: anyone on it) can send their wager from their phone until the question is shown; the amount goes to the host
+   only (never to the audience window or other phones), and the host can still change it. A Daily Double's player can
+   do the same before its question shows.
 3. Question slide + timer (default 30 s) + optional music file.
 4. Answer reveal.
 5. **Per-player reveal**, one at a time in an order the host chooses: show the wager, then mark ✔ / ✘, and the score animates.

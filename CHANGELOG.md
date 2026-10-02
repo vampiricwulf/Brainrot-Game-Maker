@@ -37,6 +37,18 @@ in plain words for the people who make and host games. Anything committed but no
   **Move to…** puts someone on another team, ✕ takes one person off (or everyone, on the team's own ✕). Without Teams
   nothing changes. The buzzer server has to be updated for it (the 📱 card says so when it isn't); buzzers on keys
   were already gone, so teams are phones only.
+- **Wagers from phones**: players with a phone buzzer send their wager from it, and only the host sees how much. On a
+  Daily Double, once the host picks who found it, that player's phone shows a wager box with their score and max (held
+  to only if the host unticks "Ignore the limit"; then a wager over it is refused on the phone, saying the max); the
+  host's wager box fills in as they send, marked 📱 from phone, and the host can still type over it. The other phones
+  say "Ann is wagering…". On a Final's wager screen every player ticked in with a phone gets the box (those ticked out
+  see "You sit this one out"); the host's row says 📱 waiting… or 📱 $500 from phone ✔, each one sent is a step in 🕘
+  History ("Ann’s wager (from their phone): $500"), and players can change theirs until the host shows the question,
+  when their phone says "Wager locked: $500". A wager the host changes is the host's, and the phone shows the host's
+  amount. With Teams, anyone on a team sends the team's one wager, every member sees it, and the host sees who sent it
+  ("sent by Al"). Viewers never see the amounts: the audience window only gets a ✔ that a wager is in (and now gets no
+  wager amount at all until it's shown, typed or sent). A phone that reloads shows its own wager again. The buzzer
+  server has to be updated for it; with an older one the host types the wagers, and the wager screen says so.
 - **Version numbers and updates**: the app has a version (1.0.0 to start; every push to `main` is released as the
   next one, `MAJOR.MINOR.PATCH`), shown in ℹ About. When a newer version is out, the editor says so: the desktop app
   updates itself in place (⬆ Update: it downloads the new `.exe`, checks it's signed with the project's key, saves your

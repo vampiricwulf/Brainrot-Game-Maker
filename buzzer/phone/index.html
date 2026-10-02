@@ -75,6 +75,16 @@
           <p id="clue"></p>
           <p id="host-note" class="warn-note" hidden>The host's connection dropped. Hang on, they'll be back…</p>
         </div>
+        <!-- Wagers: this player's own box (the amount goes to the host only). -->
+        <form id="wager-form" novalidate hidden>
+          <h2 id="wager-head"></h2>
+          <label for="wager-in" id="wager-label">Your wager</label>
+          <input id="wager-in" type="number" inputmode="numeric" min="0" step="1" autocomplete="off" enterkeyhint="send" />
+          <button type="submit" class="primary" id="wager-send">Send wager</button>
+          <p id="wager-info" class="note"></p>
+          <p id="wager-state" class="note"></p>
+          <p id="wager-err" class="err" role="alert"></p>
+        </form>
         <button id="buzz" type="button"><span id="buzz-big"></span><span id="buzz-small"></span></button>
         <div class="side foot">
           <p id="me" dir="auto"></p>

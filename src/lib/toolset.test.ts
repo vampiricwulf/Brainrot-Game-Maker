@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newId, newTextEl, type BoardRound, type Game, type Session, type Shop } from './model';
-import { applyScore, backToBoard, finalJudge, finalNext, goToRound, newSession, openClue, redo, removePlayer, restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo } from './session';
+import { applyScore, backToBoard, finalJudge, finalNext, finalSetWager, goToRound, wagerFromPhone, wagerSentBy, newSession, openClue, redo, removePlayer, restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo } from './session';
 import { jeopardyGame } from './testgame';
 import { addScreenBeside, newWorld } from './rpg';
 import {
@@ -482,6 +482,20 @@ describe('the host’s own choices', () => {
     goToRound(session, game, 2);
     undoAction(session);
     expect(session.final!.players).toEqual(['a', 'b']);
+  });
+
+  it('puts back where a Final wager came from: a phone’s, then the host’s change', () => {
+    const { game, session } = show();
+    applyScore(session, game, ['a', 'b'], 300, 'x');
+    goToRound(session, game, 1);
+    const f = session.final!;
+    logged(session, 'Ann’s wager (from Al’s phone): $200', () => finalSetWager(session, 'a', 200, 'phone', 'Al'));
+    logged(session, 'Ann’s wager (from their phone): $200 → $100', () => finalSetWager(session, 'a', 100));
+    expect([f.wagers.a, wagerFromPhone(f, 'a'), wagerSentBy(f, 'a')]).toEqual([100, false, '']);
+    undoAction(session);
+    expect([f.wagers.a, wagerFromPhone(f, 'a'), wagerSentBy(f, 'a')]).toEqual([200, true, 'Al']);
+    undoAction(session);
+    expect([f.wagers.a, wagerFromPhone(f, 'a')]).toEqual([undefined, false]);
   });
 
   it('puts back the players: a rename, a new player, one removed and restored', () => {

@@ -6,6 +6,7 @@ import { BUZZ_PROTOCOL, isRoomCode, socketUrl, type HostMsg, type HostState, typ
 export type RoomStatus = 'off' | 'connecting' | 'online' | 'reconnecting' | 'error';
 export type RoomBuzz = Extract<RoomToHost, { t: 'buzz' }>;
 export type RoomQueue = Extract<RoomToHost, { t: 'queue' }>;
+export type RoomWager = Extract<RoomToHost, { t: 'wager' }>;
 
 /** What the link needs from a WebSocket (the browser's, or a test's fake). */
 export interface SocketLike {
@@ -34,6 +35,8 @@ export interface LinkEvents {
   onQueue?: (q: RoomQueue) => void;
   /** The room turned a phone away: too many phones are connected. */
   onFull?: () => void;
+  /** A player sent their wager from their phone. */
+  onWager?: (w: RoomWager) => void;
 }
 
 const OPEN = 1;
@@ -112,6 +115,10 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return isStr(m.message, 500) ? { t: 'error', message: m.message } : null;
     case 'full':
       return { t: 'full' };
+    case 'wager':
+      return isStr(m.id, 100) && m.id && isStr(m.seatId) && Number.isSafeInteger(m.amount) && (m.amount as number) >= 0 && Number.isSafeInteger(m.n) && (m.n as number) >= 1
+        ? { t: 'wager', id: m.id, seatId: m.seatId, amount: m.amount as number, n: m.n as number, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
+        : null;
     default:
       return null;
   }
@@ -378,6 +385,9 @@ export class RoomLink {
         return;
       case 'full':
         this.ev.onFull?.();
+        return;
+      case 'wager':
+        this.ev.onWager?.(m);
         return;
       case 'pong':
         return;

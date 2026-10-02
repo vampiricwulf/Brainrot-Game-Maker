@@ -9,8 +9,11 @@
  * ("Checking connection…") and starts again if no pong comes back in a couple of seconds. A press the room hasn't
  * answered is kept and sent again once back in the seat, if the buzzers are still open for that arm; otherwise the
  * phone says it didn't get through. One socket at a time: a new one replaces the old, whose events are ignored.
+ *
+ * Wagers: while the host takes them (a Daily Double, a Final), the player's own box replaces the buzzer; what they send
+ * goes to the host only. Their view says what's in (and once locked, what was locked in).
  */
-import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type RoomToPhone } from '../../src/lib/buzzproto';
+import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -84,6 +87,12 @@ let held: { armId: number; reactMs?: number; on: WebSocket | null } | null = nul
 let lostArm = -1;
 /** The last state cue (BUZZ! lit, you won) played, so each plays once. */
 let cued = '';
+/** Why the room didn't take the last wager sent ('' when it did, or none was sent). */
+let wagerErr = '';
+/** The wager round the box was last filled for, and the amount it showed then (a new one from the host fills it again). */
+let wagerFor = '';
+/** A wager sent that the room hasn't answered yet. */
+let wagerSending = false;
 
 // ---- saved seat (per room code) and this browser's id ----
 
@@ -344,6 +353,20 @@ function onMessage(m: RoomToPhone): void {
       if (m.outcome === 'first' && m.byYou !== false) vibrate([80, 50, 80]);
       else if (m.outcome === 'early') vibrate(250);
       break;
+    case 'wagered': {
+      wagerSending = false;
+      const sym = view?.currency ?? '';
+      wagerErr = m.ok
+        ? ''
+        : ({
+            closed: 'Wagers are closed right now.',
+            over: `That's over your max${m.max !== undefined ? ` of ${money(m.max, sym)}` : ''}.`,
+            bad: 'Type a whole number, 0 or more.',
+            slow: 'Too many tries: wait a few seconds.',
+          }[m.reason ?? 'bad'] ?? "That didn't work. Try again.");
+      if (m.ok) vibrate(40);
+      break;
+    }
     case 'kicked': {
       const team = !!view?.teams;
       seatId = null;
@@ -705,6 +728,15 @@ function renderBuzz(v: PhoneView): void {
       clue.append(c);
     }
   }
+  const sym = v.currency ?? '';
+  // Wagers: the player's own box instead of the buzzer (or what's locked in; someone else wagering; sitting out).
+  const wager = v.phase === 'lobby' && v.wager ? v.wager : null;
+  const boxUp = !!wager?.mine && wager.open;
+  $('wager-form').hidden = !boxUp;
+  b.hidden = boxUp;
+  if (boxUp) return renderWager(v, wager!, sym);
+  wagerFor = '';
+  wagerErr = '';
   const left = Math.ceil((lockedUntil - serverNow()) / 1000);
   const mine = result && result.armId === v.armId ? result : null;
   let cls = '';
@@ -716,7 +748,14 @@ function renderBuzz(v: PhoneView): void {
   const team = !!v.teams;
   /** Teams: a teammate's buzz holds your team's place (not yours). */
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
-  if (v.phase === 'lobby') {
+  if (wager?.mine) {
+    // Locked: the question is up.
+    [cls, big, small] = ['off', 'Wager locked', wager.amount !== undefined ? money(wager.amount, sym) : 'No wager sent: the host has it'];
+  } else if (wager?.kind === 'dd') {
+    [cls, big, small] = ['off', `${wager.who || 'Someone'} is wagering…`, 'Daily Double'];
+  } else if (wager) {
+    [cls, big, small] = ['off', 'You sit this one out', v.status || (team ? 'Your team isn’t in this one' : 'You’re not in this one')];
+  } else if (v.phase === 'lobby') {
     big = you.name;
     small = v.status || 'Wait for the next clue';
   } else if (v.phase === 'answering' && v.answering?.you && team && !v.answering.byYou) {
@@ -768,24 +807,68 @@ function renderBuzz(v: PhoneView): void {
   cued = cue || cued;
   b.className = cls;
   // A name may be one long word: it breaks anywhere rather than push the page sideways (status words stay whole).
-  const names = [you.name, you.member, v.answering?.name, v.answering?.by, v.done?.by?.name, mine?.behind, mate].filter((x): x is string => !!x);
+  const names = [you.name, you.member, v.answering?.name, v.answering?.by, v.done?.by?.name, mine?.behind, mate, wager?.who].filter((x): x is string => !!x);
   for (const [id, text] of [['buzz-big', big], ['buzz-small', small]] as const) {
     $(id).textContent = text;
     $(id).classList.toggle('name', names.some((n) => text.includes(n)));
   }
   b.setAttribute('aria-label', sentences([big, spoken ?? small]));
-  const sym = v.currency ?? '';
-  // (As the game shows it: a word like "pts" goes after the number, $ or 🧠 in front.)
-  const pts = Math.abs(you.score).toLocaleString();
-  $('me').textContent = `${team && you.member ? `${you.member} · ` : ''}${you.name} · ${you.score < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
-  $('leave').textContent = team ? 'Change team or name' : 'Not you? Change player';
-  const hostGone = v.hostHere === false;
-  $('host-note').hidden = !hostGone;
+  const hostGone = renderFoot(v, sym);
   say(sentences([connected ? '' : 'Reconnecting…', big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
   // Count the early lock down.
   clearTimeout(tick);
   if (left > 0) tick = window.setTimeout(render, 200);
+}
+
+/** The name and score line under the buzzer (and the wager box), and whether the host is gone. */
+function renderFoot(v: PhoneView, sym: string): boolean {
+  const you = v.you!;
+  const team = !!v.teams;
+  $('me').textContent = `${team && you.member ? `${you.member} · ` : ''}${you.name} · ${money(you.score, sym)}`;
+  $('leave').textContent = team ? 'Change team or name' : 'Not you? Change player';
+  const hostGone = v.hostHere === false;
+  $('host-note').hidden = !hostGone;
+  return hostGone;
+}
+
+/** The player's wager box: their score and max, what's in, and why the last one wasn't taken. */
+function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
+  const you = v.you!;
+  const team = !!v.teams;
+  const kind = w.kind === 'dd' ? 'Daily Double' : 'Final';
+  $('wager-head').textContent = `${kind}: ${team ? 'your team’s wager' : 'your wager'}`;
+  $('wager-label').textContent = `Wager (only the host sees it)`;
+  const inp = $<HTMLInputElement>('wager-in');
+  // Filled with what's in when the box comes up, or when what's in changes (a teammate, the host) while not typing.
+  const key = `${w.id} ${w.amount ?? ''}`;
+  if (key !== wagerFor && (document.activeElement !== inp || !wagerFor.startsWith(`${w.id} `))) {
+    inp.value = w.amount !== undefined ? String(w.amount) : '';
+    wagerFor = key;
+  }
+  inp.max = w.limit && w.max !== undefined ? String(w.max) : '';
+  const max = w.max !== undefined ? `Max ${money(w.max, sym)}${w.limit ? '' : ' (not enforced)'}` : '';
+  $('wager-info').textContent = [`Score ${money(you.score, sym)}`, max].filter(Boolean).join(' · ');
+  let state = '';
+  if (w.amount !== undefined) {
+    const amt = money(w.amount, sym);
+    if (w.host) state = `The host has your wager as ${amt}`;
+    else if (team && w.by) state = `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team`;
+    else if (w.sent) state = `✔ Sent: ${amt}`;
+    state += '. You can change it until the host locks the wagers.';
+  }
+  $('wager-state').textContent = wagerSending ? 'Sending…' : state;
+  $('wager-err').textContent = wagerErr;
+  $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
+  const hostGone = renderFoot(v, sym);
+  say(sentences([connected ? '' : 'Reconnecting…', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, wagerErr, hostGone ? ($('host-note').textContent ?? '') : '']));
+  show('s-buzz');
+}
+
+/** Points as the game shows them: a word like "pts" goes after the number, $ or 🧠 in front. */
+function money(n: number, sym: string): string {
+  const pts = Math.abs(n).toLocaleString();
+  return `${n < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
 }
 
 /** 0.04 s */
@@ -815,7 +898,13 @@ $('buzz').addEventListener('click', (e) => {
 });
 $('buzz').addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('keydown', (e) => {
-  if ((e.key === ' ' || e.key === 'Enter') && !e.repeat && !$('s-buzz').hidden && !(e.target instanceof HTMLButtonElement && e.target !== $('buzz'))) {
+  if (
+    (e.key === ' ' || e.key === 'Enter') &&
+    !e.repeat &&
+    !$('s-buzz').hidden &&
+    !(e.target instanceof HTMLButtonElement && e.target !== $('buzz')) &&
+    !(e.target instanceof HTMLInputElement)
+  ) {
     e.preventDefault();
     buzz(e.timeStamp);
   }
@@ -840,6 +929,26 @@ document.addEventListener('visibilitychange', () => {
   } else probe();
 });
 $('leave').addEventListener('click', leaveSeat);
+$('wager-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const w = view?.wager;
+  if (!w?.mine || !w.open) return;
+  const raw = $<HTMLInputElement>('wager-in').value.trim();
+  const amount = Number(raw);
+  if (!raw || !Number.isSafeInteger(amount) || amount < 0) {
+    wagerErr = 'Type a whole number, 0 or more.';
+    return render();
+  }
+  if (w.limit && w.max !== undefined && amount > w.max) {
+    wagerErr = `That's over your max of ${money(w.max, view?.currency ?? '')}.`;
+    return render();
+  }
+  wagerErr = '';
+  wagerSending = connected;
+  if (!connected) wagerErr = 'Not connected: try again in a moment.';
+  send({ t: 'wager', id: w.id, amount });
+  render();
+});
 $('sound').addEventListener('click', () => {
   soundOn = !soundOn;
   try {

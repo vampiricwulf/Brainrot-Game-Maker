@@ -10,20 +10,21 @@
     finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
+    finalSetWager, forViewers, wagerFromPhone,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, whoBuzzed,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
-  import { clip } from '../lib/buzzproto';
+  import { clip, type HostState, type WagerAsk } from '../lib/buzzproto';
   import {
-    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomBuzz, onRoomQueue, rejectPhone, rejoinRoom, remote, resendHostState,
-    roomLink, sendHostState, startRoom,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomBuzz, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
+    resendHostState, roomHasWagers, roomLink, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
-  import type { RoomBuzz, RoomQueue } from '../lib/roomlink';
+  import type { RoomBuzz, RoomQueue, RoomWager } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
@@ -213,7 +214,8 @@
     // The action log (the host's undo history) and the buzzer room's key stay here: viewers never need them.
     const { actionLog, actionRedo, remote, ...s } = session;
     if (viewers && !app.pregame) {
-      outSession = $state.snapshot(s);
+      // Nor wagers that aren't on screen yet (typed by the host or sent from a phone).
+      outSession = forViewers($state.snapshot(s));
       sendSoon();
     }
   });
@@ -389,6 +391,7 @@
     // Phone buzzers: a resumed game (after a reload or a crash) gets back into its room.
     const offBuzz = onRoomBuzz(roomBuzz);
     const offQueue = onRoomQueue(roomQueueIn);
+    const offWager = onRoomWager(roomWager);
     if (session.remote && phonesOn) rejoinRoom(session.remote);
     else if (session.remote) {
       // Buzzer mode was turned off (in the editor) while the room was left open: it's closed now.
@@ -412,6 +415,7 @@
       offKeys();
       offBuzz();
       offQueue();
+      offWager();
       // Leaving the game (Exit): the phones are told it's over. Not ◀ Back to editor from the pre-game screen: the room
       // stays open for ▶ Play (see backToEditor).
       if (!keepRoomOpen) closeRoom();
@@ -776,6 +780,64 @@
     s.remote = { ...room, armId: buzz.armId };
   }
 
+  /** What the buzzer room gets now: the game's state for the phones, their status line, 🔒, and the wagers they may send. */
+  function roomState(): HostState {
+    return hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked, wager: phoneWagerAsk() });
+  }
+
+  /** The wagers phones may send now (none before the game starts), with the ones already taken from them. */
+  function phoneWagerAsk(): WagerAsk | null {
+    if (app.pregame) return null;
+    const first = wagerAsk(game, session, wagerLimitsOff);
+    const got = first && session.remote?.wagerGot?.id === first.id ? session.remote.wagerGot.seats : {};
+    return first && Object.keys(got).length ? wagerAsk(game, session, wagerLimitsOff, got) : first;
+  }
+
+  /**
+   * A player sent their wager from their phone (the room checked it). It goes in their box, marked 📱 (the host can
+   * still type over it): a Daily Double's before its question shows; a Final's on its wager screen, as a step ("Ann’s
+   * wager (from their phone): $500"). One already taken (a room passing it on again after a reconnect) is skipped.
+   */
+  function roomWager(w: RoomWager): void {
+    const r = session.remote;
+    const ask = phonesOn && r ? phoneWagerAsk() : null;
+    const seat = ask?.open && ask.id === w.id ? ask.seats.find((x) => x.id === w.seatId) : undefined;
+    if (!r || !ask || !seat || w.n <= (seat.got ?? 0)) return;
+    if (ask.limit && w.amount > seat.max) return;
+    r.wagerGot = { id: ask.id, seats: { ...(r.wagerGot?.id === ask.id ? r.wagerGot.seats : {}), [w.seatId]: w.n } };
+    const name = playerName(session, w.seatId);
+    const by = w.by && game.settings.buzzTeams ? w.by : '';
+    if (ask.kind === 'dd' && session.dd) {
+      session.dd.draft = w.amount;
+      session.dd.draftFrom = 'phone';
+      if (by) session.dd.draftBy = by;
+      else delete session.dd.draftBy;
+      return;
+    }
+    const f = session.final;
+    if (ask.kind !== 'final' || !f) return;
+    const was = f.wagers[w.seatId];
+    if (was === w.amount && wagerFromPhone(f, w.seatId) && (f.wagerBy?.[w.seatId] ?? '') === by) return;
+    const sym = game.settings.currencySymbol;
+    const from = by ? `from ${by}’s phone` : 'from their phone';
+    const text = `${name}’s wager (${from}): ${typeof was === 'number' ? `${formatPoints(was, sym)} → ` : ''}${formatPoints(w.amount, sym)}`;
+    logged(session, text, () => finalSetWager(session, w.seatId, w.amount, 'phone', by || undefined));
+  }
+
+  /**
+   * Phone wagers: the players (teams) with a phone in the room now, who can send their wager from it ([] when the room
+   * can't take them: an older buzzer server, see wagerNote).
+   */
+  const wagerPhones = $derived(
+    phonesOn && remote.status === 'online' && roomHasWagers() ? [...new Set(remote.phones.filter((p) => p.connected && p.seatId).map((p) => p.seatId!))] : [],
+  );
+  /** An older buzzer server with phones in it: they can't send wagers, the host types them. */
+  const wagerNote = $derived(
+    phonesOn && remote.status === 'online' && !roomHasWagers() && remote.phones.some((p) => p.seatId)
+      ? 'This buzzer server can’t take wagers from phones (it’s an older one): type them in.'
+      : '',
+  );
+
   /** A buzz the room let through: the first one answers (unless the host picked someone already). */
   function roomBuzz(b: RoomBuzz): void {
     if (!phonesOn) return;
@@ -798,7 +860,7 @@
     if (app.pregame) session.players.push(p);
     else logged(session, `Added ${who} (from their phone)`, () => session.players.push(p));
     // The room has to know the seat before the phone takes it.
-    sendHostState(hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked }), true);
+    sendHostState(roomState(), true);
     acceptPhone(conn, p.id);
     toast(`${who} joined from their phone`);
   }
@@ -823,7 +885,7 @@
   let sentPhase = '';
   $effect(() => {
     if (!phonesOn || remote.status === 'off' || remote.status === 'error') return;
-    const st = hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked });
+    const st = roomState();
     // The buzzers opening goes at once (players are racing).
     const now = st.phase !== sentPhase && st.phase === 'armed';
     sentPhase = st.phase;
@@ -2449,6 +2511,8 @@
         bind:bgSpace
         bind:editingScore
         bind:wagerLimitsOff
+        {wagerPhones}
+        {wagerNote}
         bind:timerSeconds
         bind:bgSteps
         {undoText}

@@ -40,6 +40,8 @@
     bgSpace = $bindable(null),
     editingScore = $bindable(null),
     wagerLimitsOff = $bindable(true),
+    wagerPhones = [],
+    wagerNote = '',
     timerSeconds = $bindable(null),
     bgSteps = $bindable(null),
     undoText = null,
@@ -110,6 +112,10 @@
     editingScore?: string | null;
     /** Final wagers: "Ignore the limits" is ticked (the default). */
     wagerLimitsOff?: boolean;
+    /** Players (teams) with a phone in the buzzer room that can send their wager from it. */
+    wagerPhones?: string[];
+    /** Why phones can't send wagers ('' when they can, or there are none): an older buzzer server. */
+    wagerNote?: string;
     /** Seconds typed in the timer box (T uses them too). */
     timerSeconds?: number | null;
     /** Board-game rounds: the steps to move (Enter moves them too). */
@@ -601,14 +607,14 @@
 
       {#if ddWager}
         {#key info?.clue.id}
-          <DDControls {game} {session} {dual} onshow={onddshow} oncancel={oncancelclue} />
+          <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={onddshow} oncancel={oncancelclue} />
         {/key}
       {/if}
 
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->
       {#if session.phase === 'final' && session.intro?.stage !== 'title'}
         <div class="mode-host">
-          <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} onstep={onfinalstep} {onreveal} {onjudge} {onrevealnext} onback={onbackfromfinal} />
+          <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onstep={onfinalstep} {onreveal} {onjudge} {onrevealnext} onback={onbackfromfinal} />
         </div>
       {/if}
 

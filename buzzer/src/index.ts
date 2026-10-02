@@ -146,6 +146,7 @@ export class BuzzRoom extends DurableObject<Env> {
           phones.push({
             conn: a.conn,
             seatId: a.seatId,
+            ...(typeof a.member === 'string' ? { member: a.member } : {}),
             ...(a.pendingName !== undefined ? { pendingName: a.pendingName } : {}),
             ...(Array.isArray(a.rtts) ? { rtts: a.rtts } : {}),
             ...(typeof a.device === 'string' ? { device: a.device } : {}),
