@@ -53,7 +53,7 @@ async function crowd() {
     settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 12, stream: { clueCaption: true } },
     players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: COLORS[i], startScore: SCORES[i] })),
     rounds: [{
-      id: 'r_big', name: 'Big board', mode: 'board', values,
+      id: 'r_big', name: 'Big board', mode: 'board', values, dailyDoubleCount: 0,
       categories: CATS.map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] }, answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] } })) })),
     }],
     media: [], audio: {}, wheels: [], dice: [], theme: {},
