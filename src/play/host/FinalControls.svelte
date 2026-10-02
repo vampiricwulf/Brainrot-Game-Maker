@@ -3,14 +3,14 @@
   the question, the answer and a one-by-one reveal.
 -->
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
   import {
     currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
-    hasWager, nameList, score, wagerFromPhone,
+    hasWager, nameList, score, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { hostAsk, offerNext } from './slots.svelte';
@@ -21,6 +21,8 @@
     dual = false,
     armed = false,
     override = $bindable(false),
+    phones = [],
+    phoneNote = '',
     onstep,
     onreveal,
     onrevealnext,
@@ -35,6 +37,10 @@
     armed?: boolean;
     /** "Ignore the limits" is ticked (the default; bound, so N follows it too). */
     override?: boolean;
+    /** Players (teams) with a phone in the buzzer room: they can send their wager from it. */
+    phones?: string[];
+    /** Why phones can't send wagers here (an older buzzer server), or ''. */
+    phoneNote?: string;
     onstep: () => void;
     onreveal: () => void;
     /** N in the reveals: show the spotlit player's wager, then go on to the next player. */
@@ -133,6 +139,18 @@
     if (!w || !f) return;
     w.done(wagerText(w.id, w.was, f.wagers[w.id], w.wasPhone));
   }
+
+  // A wager sent from their phone while the host's focus is in that box: it's a step of its own ("Ann’s wager (from
+  // their phone): $500"), so the host's step starts again from it (leaving the box unchanged adds nothing).
+  $effect(() => {
+    const fs = f;
+    if (!fs) return;
+    void JSON.stringify([fs.wagers, fs.wagerFrom]);
+    untrack(() => {
+      const w = wagerStep;
+      if (w && wagerFromPhone(fs, w.id) && fs.wagers[w.id] !== w.was) wagerStep = { id: w.id, was: fs.wagers[w.id], wasPhone: true, done: startStep(session) };
+    });
+  });
 
   let orderEl = $state<HTMLElement>();
   const rows = new DragOrder();
@@ -318,7 +336,17 @@
                 onkeydown={(e) => e.key === 'Enter' && wagerEnter(p.id)}
                 data-wager={p.id}
               />
-              {#if phone}<span class="phone small" title="Sent from their phone. You can still change it.">📱 from phone</span>{/if}
+              {#if phone}
+                {@const by = wagerSentBy(f, p.id)}
+                <span class="phone small" title="Sent from their phone (only you see the amount). You can still change it." data-phone-wager={p.id}
+                  >📱 {formatPoints(w ?? 0, sym)} from phone ✔{by ? ` · sent by ${by}` : ''}</span
+                >
+              {:else if phones.includes(p.id)}
+                <!-- (One the host typed, or the 0 filled in for nothing to wager: their phone can still send another.) -->
+                <span class="muted small" data-phone-wager={p.id} title="Their phone can send their wager"
+                  >{w === undefined ? '📱 waiting…' : '📱 can still send'}</span
+                >
+              {/if}
               <span class="muted small">
                 {override ? `TV max ${formatPoints(cap, sym)}` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
               </span>
@@ -328,6 +356,11 @@
           </div>
         {/each}
       </div>
+      {#if phones.some((id) => f.players.includes(id))}
+        <span class="muted small">📱 Players with a phone can send their wager from it, and change it until you show the question.</span>
+      {:else if phoneNote}
+        <span class="muted small">{phoneNote}</span>
+      {/if}
       {#if !f.players.length}
         <!-- Nobody to wager or reveal: the button goes on to the next round (or the end). -->
         <span class="nobody" role="status">Nobody is playing this Final: tick a player to play it, or go on.</span>

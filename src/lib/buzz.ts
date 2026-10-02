@@ -1,9 +1,9 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { clip, type BuzzPhase, type HostState } from './buzzproto';
+import { clip, WAGER_MAX, type BuzzPhase, type HostState, type WagerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type Session, type Slide, type TextEl } from './model';
-import { currentClueInfo, currentFinal, score, shownQuestionSlide } from './session';
+import { currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -155,6 +155,41 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
   return null;
 }
 
+/**
+ * The wagers phones may send now (HostState.wager), or null: a Daily Double's player before the question shows (locked
+ * once it's up), the Final's players on its wager screen (locked through the question and the answer). Each with their
+ * max (held to it only when the host turned the limits on: `limitsOff` false), the wager the host has for them, and
+ * `got`: the last phone wager the host took for each (Session.remote.wagerGot).
+ */
+export function wagerAsk(game: Game, session: Session, limitsOff: boolean, got: Record<Id, number> = {}): WagerAsk | null {
+  const here = (id: Id | undefined): id is Id => !!id && session.players.some((p) => p.id === id);
+  const cap = (n: number) => Math.max(0, Math.min(WAGER_MAX, Math.floor(n)));
+  const seat = (id: Id, max: number, amount: number | undefined, fromHost: boolean) => ({
+    id,
+    max: cap(max),
+    ...(typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0 && amount <= WAGER_MAX ? { amount, ...(fromHost ? { fromHost: true } : {}) } : {}),
+    ...(got[id] ? { got: got[id] } : {}),
+  });
+  const limit = limitsOff ? {} : { limit: true };
+  if (session.phase === 'clue' && session.dd) {
+    const dd = session.dd;
+    const clue = currentClueInfo(session, game)?.clue.id;
+    if (!clue || !here(dd.playerId)) return null;
+    const open = dd.stage === 'splash';
+    const amount = open ? dd.draft : dd.wager;
+    return { id: `dd:${clue}:${dd.playerId}`, kind: 'dd', open, ...limit, seats: [seat(dd.playerId, ddCap(session, game, dd.playerId), amount, dd.draftFrom !== 'phone')] };
+  }
+  const f = session.final;
+  const r = currentFinal(session, game);
+  if (session.phase === 'final' && f && r && f.roundId === r.id && session.intro?.stage !== 'title') {
+    const step = session.finalStep ?? 'wagers';
+    if (step !== 'wagers' && step !== 'question' && step !== 'answer') return null;
+    const ids = f.players.filter(here);
+    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers', ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, id), f.wagers[id], !wagerFromPhone(f, id))) };
+  }
+  return null;
+}
+
 /** A player's name as the phones get it (the room takes 40 characters at most). */
 export const SEAT_NAME_MAX = 40;
 
@@ -168,7 +203,7 @@ export function hostState(
   session: Session,
   b: BuzzState,
   earlyLockMs: number,
-  extra: { status?: HostState['status']; locked?: boolean } = {},
+  extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null } = {},
 ): HostState {
   const info = b.phase !== 'lobby' && session.phase === 'clue' ? currentClueInfo(session, game) : null;
   const seats = session.players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color }));
@@ -191,6 +226,7 @@ export function hostState(
     ...(game.settings.currencySymbol ? { currency: game.settings.currencySymbol } : {}),
     ...(extra.locked ? { locked: true } : {}),
     ...(teamsOn(game.settings) ? { teams: true } : {}),
+    ...(extra.wager ? { wager: extra.wager } : {}),
   };
 }
 

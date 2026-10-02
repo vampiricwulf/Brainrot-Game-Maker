@@ -47,6 +47,15 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   person off a team (kept off that team for 2 minutes), without it everyone on the team. Turning teams on or off lets
   every seat and member go. Nobody asks to join as a new player in teams; at most 64 members are kept (those gone
   longest make room).
+- **Wagers** (`wager` in the host's state: a round id, `dd` or `final`, `open`, `limit`, and per seat its `max`, the
+  host's `amount`, `fromHost` and `got`): each seat in it sends its own wager from its phone (`wager` with the round id
+  and a whole number from 0 to 1,000,000,000; teams: anyone on the team, the newest counts). The room takes it only
+  while the round is `open` and the seat is in it, over the seat's max only without `limit`, at most 10 in 10 seconds
+  per phone, and answers the phone (`wagered`, with why not: `closed`, `over` and the max, `bad`, `slow`). It keeps it
+  per seat and tells the host (`wager` with a count `n` and, teams, `by`); one sent while the host is away comes when it
+  is back, unless the host's `got` says it took it. The amount goes to the host and to that seat's own phones (their
+  view's `wager`) only: never to another phone or in the seat list. Other phones only hear who is wagering (a Daily
+  Double) or that they sit it out (a Final). A new round id forgets what was sent.
 - **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`), but phones without a seat that have done nothing for
   10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
   with 4001; the phone page tries again after a few seconds, then less often) to let a newcomer in. With nobody idle,
@@ -80,7 +89,9 @@ queued buzz and a phone's `result`, the round-trip probe (room → phone `probe`
 `welcome.features` (`['teams']`; the app warns when a room doesn't list it), `HostState.teams`, `join.name`, the host's
 `move` and `kick.member`, `by` on `buzz`, queued buzzes and a phone's `result` (with `byYou`), `PhoneInfo.member/name`,
 `PhoneView.teams`, `you.member` and `answering.by/byYou`, `seats.teams` and each seat's `members`, `joined.name`, and
-the deny reason `need-name`. The old
+the deny reason `need-name`; and wagers: `'wagers'` in `welcome.features`, `HostState.wager`, the phone → room
+`wager`, room → phone `wagered`, room → host `wager`, and `PhoneView.wager` (an app that doesn't see `'wagers'` lets
+the host type them, and says so). The old
 phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
 
 ## Fair timing

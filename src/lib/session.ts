@@ -703,7 +703,7 @@ export function finalChoose(session: Session, playerId: string, plays: boolean):
  * Set a player's Final wager (undefined: none yet), saying where it came from. The host's own (a new one, or a change
  * to one a phone sent) is the host's; a phone's is marked so the host's field shows it.
  */
-export function finalSetWager(session: Session, playerId: string, wager: number | undefined, from: WagerSource = 'host'): void {
+export function finalSetWager(session: Session, playerId: string, wager: number | undefined, from: WagerSource = 'host', by?: string): void {
   const f = session.final;
   if (!f) return;
   if (wager === undefined) delete f.wagers[playerId];
@@ -713,6 +713,38 @@ export function finalSetWager(session: Session, playerId: string, wager: number 
     const { [playerId]: _, ...rest } = f.wagerFrom;
     f.wagerFrom = rest;
   }
+  // Teams: who on the team sent it (only for one from a phone).
+  if (from === 'phone' && wager !== undefined && by) f.wagerBy = { ...f.wagerBy, [playerId]: by };
+  else if (f.wagerBy?.[playerId]) {
+    const { [playerId]: _, ...rest } = f.wagerBy;
+    f.wagerBy = rest;
+  }
+}
+
+/** Teams: who on the team sent this wager from their phone ('' when the host typed it, or nobody said). */
+export function wagerSentBy(f: FinalState | null | undefined, playerId: string): string {
+  return (wagerFromPhone(f, playerId) && f?.wagerBy?.[playerId]) || '';
+}
+
+/**
+ * The session as viewers' windows get it: no wager that isn't on screen yet. A Final's wagers not shown (nor judged)
+ * read 0 (so a ✔ for "wager in" still shows), and where they came from goes; a Daily Double's wager goes until it's
+ * shown, and the one in the host's box before the question with it. (The host's undo log is left out by the caller.)
+ */
+export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd'>>(s: S): S {
+  const hide = (f: FinalState): FinalState => {
+    const { wagerFrom: _f, wagerBy: _b, ...rest } = f;
+    const wagers = Object.fromEntries(Object.entries(f.wagers).map(([id, v]) => [id, f.shown[id] || f.results[id] ? v : 0]));
+    return { ...rest, wagers };
+  };
+  const out = { ...s };
+  if (s.final) out.final = hide(s.final);
+  if (s.finals) out.finals = Object.fromEntries(Object.entries(s.finals).map(([id, x]) => [id, { ...x, state: hide(x.state) }]));
+  if (s.dd) {
+    const { draft: _d, draftFrom: _f, draftBy: _b, wager, ...dd } = s.dd;
+    out.dd = { ...dd, ...(dd.shown && wager !== undefined ? { wager } : {}) };
+  }
+  return out;
 }
 
 /** The wager came from the player's phone (and the host hasn't changed it since). */

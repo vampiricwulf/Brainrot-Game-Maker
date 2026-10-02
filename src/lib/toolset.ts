@@ -344,7 +344,7 @@ function capture(session: Session, game?: Game): Record<string, string> {
   for (const k of HOST) out[k] = JSON.stringify(session[k] ?? null);
   for (const id in session.used) out[`used:${id}`] = 'true';
   for (const f of finalStates(session))
-    out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers, chosen: f.chosen ?? {} });
+    out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers, chosen: f.chosen ?? {}, wagerFrom: f.wagerFrom ?? {}, wagerBy: f.wagerBy ?? {} });
   // The Final being played: its step (each step on from the wagers is an undoable step, so Undo goes back one).
   if (session.phase === 'final' && session.final?.roundId) out[`step:${session.final.roundId}`] = JSON.stringify(session.finalStep ?? null);
   for (const w of game?.worlds ?? [])
@@ -372,7 +372,7 @@ function restore(session: Session, json: string, game?: Game): void {
       Object.assign(session, { [k]: part });
     } else if ((HOST as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? undefined });
     else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);
-    else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers'> | null);
+    else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers' | 'wagerFrom' | 'wagerBy'> | null);
     else if (k.startsWith('step:')) putStep(session, k.slice(5), v as Session['finalStep'] | null);
     else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
   }
@@ -394,13 +394,15 @@ function putTile(session: Session, clueId: string, used: boolean): void {
 }
 
 /** Put back who plays a Final, its reveal order and its wagers. The spotlight moves on if its player is out. */
-function putFinal(session: Session, roundId: string, v: Pick<FinalState, 'players' | 'order' | 'wagers' | 'chosen'> | null): void {
+function putFinal(session: Session, roundId: string, v: Pick<FinalState, 'players' | 'order' | 'wagers' | 'chosen' | 'wagerFrom' | 'wagerBy'> | null): void {
   if (!v) return;
   for (const f of [session.final, ...Object.values(session.finals ?? {}).map((s) => s.state)]) {
     if (f?.roundId !== roundId) continue;
     Object.assign(f, { players: v.players, order: v.order, wagers: v.wagers });
-    // (Steps from before the host's ticks were kept have none.)
+    // (Steps from before the host's ticks were kept have none; nor do those from before phones sent wagers.)
     if (v.chosen) f.chosen = Object.keys(v.chosen).length ? v.chosen : undefined;
+    if (v.wagerFrom) f.wagerFrom = Object.keys(v.wagerFrom).length ? v.wagerFrom : undefined;
+    if (v.wagerBy) f.wagerBy = Object.keys(v.wagerBy).length ? v.wagerBy : undefined;
     if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
   }
 }

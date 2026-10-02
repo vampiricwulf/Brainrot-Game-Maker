@@ -4,7 +4,7 @@ import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzpro
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
-import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus } from './roomlink';
+import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus, type RoomWager } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
@@ -48,6 +48,7 @@ export const kept = $state<{ room: SavedRoom | null }>({ room: null });
 let link: RoomLink | null = null;
 const buzzWatchers = new Set<(b: RoomBuzz) => void>();
 const queueWatchers = new Set<(q: RoomQueue) => void>();
+const wagerWatchers = new Set<(w: RoomWager) => void>();
 /** For tests: the WebSocket, fetch and timers the link uses. */
 let deps: LinkDeps | undefined;
 export function setRemoteDeps(d: LinkDeps | undefined): void {
@@ -74,6 +75,7 @@ function newLink(base: string): RoomLink {
       onBuzz: (b) => buzzWatchers.forEach((fn) => fn(b)),
       onQueue: (q) => queueWatchers.forEach((fn) => fn(q)),
       onFull: () => (remote.fullAt = Date.now()),
+      onWager: (w) => wagerWatchers.forEach((fn) => fn(w)),
     },
     deps,
   );
@@ -92,6 +94,12 @@ export function onRoomBuzz(fn: (b: RoomBuzz) => void): () => void {
 export function onRoomQueue(fn: (q: RoomQueue) => void): () => void {
   queueWatchers.add(fn);
   return () => queueWatchers.delete(fn);
+}
+
+/** A player sent their wager from their phone. Returns the unsubscribe. */
+export function onRoomWager(fn: (w: RoomWager) => void): () => void {
+  wagerWatchers.add(fn);
+  return () => wagerWatchers.delete(fn);
 }
 
 /** Make a room on the buzzer server. Null (remote.error says why) when it couldn't. */
@@ -137,6 +145,8 @@ export const kickMember = (seatId: string, member: string) => !!link?.send({ t: 
 export const moveMember = (member: string, seatId: string) => !!link?.send({ t: 'move', member, seatId });
 /** The room this window is in knows teams (an older buzzer server doesn't: its phones join as players). */
 export const roomHasTeams = (): boolean => remote.features.includes('teams');
+/** The room this window is in takes wagers from phones (an older buzzer server doesn't: the host types them). */
+export const roomHasWagers = (): boolean => remote.features.includes('wagers');
 
 /** Close the room: the phones are told the game is over. */
 export function closeRoom(): void {

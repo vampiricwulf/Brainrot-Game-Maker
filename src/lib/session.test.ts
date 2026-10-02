@@ -8,7 +8,7 @@ import {
   applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
-  finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix,
+  finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList,
 } from './session';
 import { newRpgRound } from './rpg';
@@ -743,6 +743,42 @@ describe('final wagers', () => {
     expect([session.final!.wagers[a], wagerFromPhone(session.final, a)]).toEqual([250, false]);
     finalSetWager(session, b, undefined);
     expect(b in session.final!.wagers).toBe(false);
+  });
+
+  it('teams: says who sent a wager from their phone, until the host changes it', () => {
+    const { game, session, a } = setup();
+    applyScore(session, game, [a], 500, 'x');
+    goToRound(session, game, 1);
+    finalSetWager(session, a, 300, 'phone', 'Al');
+    expect(wagerSentBy(session.final, a)).toBe('Al');
+    finalSetWager(session, a, 200, 'phone');
+    expect(wagerSentBy(session.final, a)).toBe('');
+    finalSetWager(session, a, 250, 'phone', 'Al');
+    finalSetWager(session, a, 250);
+    expect([wagerSentBy(session.final, a), wagerFromPhone(session.final, a)]).toEqual(['', false]);
+  });
+
+  it('viewers get no wager that is not on screen yet', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 500, 'x');
+    goToRound(session, game, 1);
+    finalSetWager(session, a, 300, 'phone', 'Al');
+    finalSetWager(session, b, 222);
+    const v = forViewers(session);
+    // In (a ✔ on the plate) but not how much.
+    expect(v.final!.wagers).toEqual({ [a]: 0, [b]: 0 });
+    expect(v.final!.wagerFrom).toBeUndefined();
+    expect(v.final!.wagerBy).toBeUndefined();
+    expect(session.final!.wagers[a]).toBe(300);
+    finalNext(session, game);
+    finalNext(session, game);
+    finalNext(session, game);
+    finalShow(session, a);
+    expect(forViewers(session).final!.wagers).toEqual({ [a]: 300, [b]: 0 });
+    // A Daily Double's wager: not the host's box, not the wager until it's shown.
+    const dd = forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, draft: 900, draftFrom: 'phone' as const, draftBy: 'Al' } }).dd;
+    expect(dd).toEqual({ stage: 'question', playerId: a });
+    expect(forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, shown: true } }).dd).toEqual({ stage: 'question', playerId: a, wager: 900, shown: true });
   });
 
   it('keeps a wager editable until it is shown or judged', () => {

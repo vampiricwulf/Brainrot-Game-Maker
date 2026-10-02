@@ -42,6 +42,12 @@
  * member to another team or kick one (kick with member), or the whole team (kick without). Turning teams on or off
  * frees every seat and member: phones pick again.
  *
+ * Wagers (HostState.wager): while the host takes them, each seat in the wager round sends its own from its phone (teams:
+ * anyone on the team; the newest counts). The room checks it (a whole number up to WAGER_MAX, only while the round is
+ * open, over the seat's max only when the host doesn't hold to it, WAGER_RATE sends at most), keeps it per seat, and
+ * passes the amount to the host and to that seat's own phones only: never to another phone, never in the seat list.
+ * One sent while the host is away reaches it when it is back (unless it already took it: WagerSeat.got).
+ *
  * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
  * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and its address can't
  * connect again for FLOOD_BLOCK_MS.
@@ -49,6 +55,7 @@
 import {
   BUZZ_PROTOCOL,
   MEMBER_NAME_MAX,
+  WAGER_MAX,
   phoneView,
   ROOM_FEATURES,
   TIE_MS,
@@ -63,6 +70,9 @@ import {
   type RoomToHost,
   type RoomToPhone,
   type Seat,
+  type SentWager,
+  type WagerRefusal,
+  type WagerSeat,
 } from '../../src/lib/buzzproto';
 
 /** Phones connected at most, not counting idle ones without a seat (see Full rooms above). */
@@ -99,6 +109,9 @@ export const PHONE_BYTES = 16 * 1024;
 export const FLOOD_BLOCK_MS = 30_000;
 /** join / new attempts per phone per minute. */
 export const JOIN_RATE = 10;
+/** Wagers a phone may send per WAGER_WINDOW_MS (changing its mind a few times is fine; a script isn't). */
+export const WAGER_RATE = 10;
+export const WAGER_WINDOW_MS = 10_000;
 /** After the first buzz of an arm, the room waits at least this long for buzzes still on their way before deciding… */
 export const GRACE_MS = 250;
 /** …and at most this long, however slow the network of a phone that could still beat it (see graceEnd). */
@@ -164,6 +177,8 @@ export interface RoomSaved {
   members?: Record<string, Member>;
   /** Teams: member id → when their early-buzz lock ends (an early buzz locks the member, not the team). */
   memberLocks?: Record<string, number>;
+  /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat. */
+  wagers?: { id: string; seats: Record<string, SentWager> };
 }
 
 /** Someone on a team (teams). */
@@ -222,6 +237,8 @@ interface Phone extends PhoneSaved {
   active: number;
   /** Let in over MAX_PHONES: only a seat's token keeps it (see Full rooms). */
   hold?: boolean;
+  /** Wagers sent lately (WAGER_RATE). */
+  wagerRate?: Window;
 }
 
 interface Window {
@@ -321,6 +338,15 @@ export class Room {
       const by = race.queue.find((b) => b.seatId === race.winner)?.by;
       this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: race.winner, rank: 1, afterMs: 0, ...(by ? { by } : {}) });
     }
+    // Wagers sent while the host was away (those it hasn't taken yet).
+    const sent = this.s.wagers;
+    if (sent && st?.wager?.id === sent.id)
+      for (const [seatId, w] of Object.entries(sent.seats))
+        if (w.n > (st.wager.seats.find((x) => x.id === seatId)?.got ?? 0)) this.tellWager(sent.id, seatId, w);
+  }
+
+  private tellWager(id: string, seatId: string, w: SentWager): void {
+    if (this.hostHere) this.deps.toHost({ t: 'wager', id, seatId, amount: w.amount, n: w.n, ...(w.by ? { by: w.by } : {}) });
   }
 
   hostClose(): void {
@@ -407,6 +433,11 @@ export class Room {
     for (const id of Object.keys(this.s.earlyLocks)) if (!seatIds.has(id) || this.s.earlyLocks[id] <= now) delete this.s.earlyLocks[id];
     for (const id of Object.keys(this.s.memberLocks ?? {})) if (!this.s.members?.[id] || this.s.memberLocks![id] <= now) delete this.s.memberLocks![id];
     for (const id of Object.keys(this.s.blocks ?? {})) if (!seatIds.has(id) || this.s.blocks![id].until <= now) delete this.s.blocks![id];
+    // A new wager round (or none) forgets what phones sent; a seat taken out of it forgets its own.
+    const ask = next.wager;
+    if (!ask) delete this.s.wagers;
+    else if (this.s.wagers?.id !== ask.id) this.s.wagers = { id: ask.id, seats: {} };
+    else for (const id of Object.keys(this.s.wagers.seats)) if (!ask.seats.some((x) => x.id === id)) delete this.s.wagers.seats[id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
       for (const p of this.phones.values()) if (p.pendingName !== undefined) {
@@ -648,7 +679,7 @@ export class Room {
     this.settle();
     const m = parse(raw, PHONE_MSG_MAX);
     if (!m) return;
-    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave') p.active = this.deps.now();
+    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager') p.active = this.deps.now();
     if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
       p.device = m.device;
       this.deps.savePhone(strip(p));
@@ -680,6 +711,9 @@ export class Room {
           this.deps.savePhone(strip(p));
           this.sync();
         }
+        break;
+      case 'wager':
+        if (typeof m.id === 'string') this.wager(p, m.id, m.amount);
         break;
       case 'ping':
         if (typeof m.at === 'number') {
@@ -954,6 +988,29 @@ export class Room {
   }
 
   /**
+   * A phone sends its seat's wager for the host's wager round `id`. Taken: kept for the seat (teams: whoever on it sent
+   * it last), told to the host, and every phone of the seat sees it. The phone hears either way.
+   */
+  private wager(p: Phone, id: string, amount: unknown): void {
+    const st = this.s.state;
+    const ask = st?.wager;
+    const no = (reason: WagerRefusal, max?: number) =>
+      this.deps.toPhone(p.conn, { t: 'wagered', id: clip(id, 100), ok: false, reason, ...(max !== undefined ? { max } : {}) });
+    const seat: WagerSeat | undefined = p.seatId ? ask?.seats.find((x) => x.id === p.seatId) : undefined;
+    if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId) return no('closed');
+    if (!this.allow((p.wagerRate ??= { start: 0, count: 0 }), WAGER_RATE, WAGER_WINDOW_MS)) return no('slow');
+    if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0 || amount > WAGER_MAX) return no('bad');
+    if (ask.limit && amount > seat.max) return no('over', seat.max);
+    const sent = this.s.wagers?.id === id ? this.s.wagers : (this.s.wagers = { id, seats: {} });
+    const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
+    const w: SentWager = { amount, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
+    sent.seats[p.seatId] = w;
+    this.deps.toPhone(p.conn, { t: 'wagered', id, ok: true, amount });
+    this.tellWager(id, p.seatId, w);
+    this.save();
+  }
+
+  /**
    * When the grace window the first buzz (ranking key `key`) opens ends: once a phone that reacted as fast, on the
    * slowest network of the seated phones that could still buzz, has had time to get its buzz here. At least GRACE_MS
    * from now, at most MAX_GRACE_MS.
@@ -1093,7 +1150,8 @@ export class Room {
       if (p.seatId && st) {
         const m = p.member ? this.s.members?.[p.member] : undefined;
         const me: MemberRef | null = m && p.member ? { id: p.member, name: m.name } : null;
-        const view = { ...phoneView(st, p.seatId, me, by), hostHere: this.hostHere };
+        const sent = st.wager && this.s.wagers?.id === st.wager.id ? this.s.wagers.seats[p.seatId] : undefined;
+        const view = { ...phoneView(st, p.seatId, me, by, sent), hostHere: this.hostHere };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;
@@ -1218,6 +1276,18 @@ export function cleanState(x: unknown): HostState | null {
   if (typeof x.currency === 'string' && x.currency) extra.currency = clip(x.currency, 8);
   if (x.locked === true) extra.locked = true;
   if (x.teams === true) extra.teams = true;
+  if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
+    const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);
+    const wseats: WagerSeat[] = [];
+    for (const w of x.wager.seats.slice(0, 64)) {
+      if (!isObj(w) || typeof w.id !== 'string' || !ids.has(w.id) || wseats.some((o) => o.id === w.id)) continue;
+      const max = typeof w.max === 'number' && Number.isFinite(w.max) ? Math.max(0, Math.min(WAGER_MAX, Math.floor(w.max))) : 0;
+      const a = amount(w.amount);
+      const got = Number.isSafeInteger(w.got) && (w.got as number) > 0 ? (w.got as number) : undefined;
+      wseats.push({ id: w.id, max, ...(a !== undefined ? { amount: a } : {}), ...(w.fromHost === true ? { fromHost: true } : {}), ...(got ? { got } : {}) });
+    }
+    extra.wager = { id: x.wager.id, kind: x.wager.kind, open: x.wager.open === true, ...(x.wager.limit === true ? { limit: true } : {}), seats: wseats };
+  }
   return {
     title: clip(x.title, TITLE_MAX),
     seats,

@@ -164,7 +164,9 @@ and share the code, link or QR code (it's on the viewers' Starting soon card too
 phone, tap their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you
 allow it. With **Teams** on, each player is a team: people pick their team on their phone and type their own name, and
 whoever on it buzzes first answers for the team ("Ann (Red team)" in the buzz order); a wrong answer locks out the
-whole team. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
+whole team. On a Daily Double or a Final, players type their wager on their phone and send it: it fills in your
+wager box (marked 📱, and you can still change it), they can change it until you show the question, and only you see
+how much. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
 on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every buzz is listed in the host panel,
 fastest first: a wrong answer locks that player out and opens the buzzers for the rest, **→ Next in line** gives the
 answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a

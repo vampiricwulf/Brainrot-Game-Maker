@@ -271,3 +271,12 @@ input:focus { outline: none; border-color: var(--accent); }
   font-size: 24px;
   z-index: 10;
 }
+
+/* Wagers: the player's own box in place of the buzzer. */
+#wager-form { width: 100%; max-width: 420px; gap: 10px; }
+#wager-head { font-size: 22px; margin: 0; text-align: center; }
+#wager-in { text-align: center; font-size: 34px; font-weight: 800; }
+#wager-state { color: #6fdc8c; font-weight: 600; }
+@media (orientation: landscape) and (max-height: 600px) {
+  #wager-form { grid-area: buzz; align-self: center; }
+}

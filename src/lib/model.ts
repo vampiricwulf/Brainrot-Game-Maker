@@ -548,6 +548,8 @@ export interface FinalState {
    * A wager from a phone stays editable by the host until it's shown; the host's change makes it the host's.
    */
   wagerFrom?: Record<Id, WagerSource>;
+  /** Teams: who on the team sent its wager from their phone (left out when the host typed it). */
+  wagerBy?: Record<Id, string>;
   /** Order for the one-by-one reveal. */
   order: Id[];
   /** Wager shown on screen for this player. */
@@ -616,8 +618,12 @@ export interface Session {
   /** Round intro sequence in progress (spec §6.3 step 0). */
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
   /** Daily Double in progress for the open clue. */
-  /** `shown`: the host put the wager on screen (viewers don't see it until then, like Final wagers). */
-  dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number; shown?: boolean } | null;
+  /**
+   * `shown`: the host put the wager on screen (viewers don't see it until then, like Final wagers). `draft`: the wager
+   * in the host's box before the question shows; `draftFrom` 'phone' when the player sent it from their phone (and the
+   * host hasn't typed over it), `draftBy` who on the team did.
+   */
+  dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number; shown?: boolean; draft?: number; draftFrom?: WagerSource; draftBy?: string } | null;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
@@ -661,8 +667,18 @@ export interface Session {
    * audience window. `armId`: the last time the buzzers opened there (it only goes up). `locked`: 🔒 seats locked (no
    * new phones take a seat; players already in come back). `buzz`: the buzzers during the open clue (`clue`: its
    * round.cat.row; `floor`: the last opening before it), so a reload mid-clue keeps who's answering and who missed.
+   * `wagerGot`: the wagers sent from phones the host took in wager round `id` (each player's last count), so one isn't
+   * taken twice.
    */
-  remote?: { code: string; hostToken: string; base: string; armId?: number; locked?: boolean; buzz?: BuzzState & { clue: string; floor: number } } | null;
+  remote?: {
+    code: string;
+    hostToken: string;
+    base: string;
+    armId?: number;
+    locked?: boolean;
+    buzz?: BuzzState & { clue: string; floor: number };
+    wagerGot?: { id: string; seats: Record<Id, number> };
+  } | null;
 }
 
 // ---------- Toolset: stats, items, shops, actions (games-maker spec §5.1, §7.7–7.10) ----------

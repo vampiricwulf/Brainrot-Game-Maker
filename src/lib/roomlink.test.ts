@@ -107,6 +107,14 @@ describe('parseRoomMsg', () => {
     });
   });
 
+  it("takes a phone's wager (added later), checked: a whole number, 0 or more, and its count", () => {
+    expect(parseRoomMsg('{"t":"wager","id":"final:r1","seatId":"a","amount":500,"n":1}')).toEqual({ t: 'wager', id: 'final:r1', seatId: 'a', amount: 500, n: 1 });
+    expect(parseRoomMsg('{"t":"wager","id":"final:r1","seatId":"a","amount":0,"n":2,"by":"Al"}')).toEqual({ t: 'wager', id: 'final:r1', seatId: 'a', amount: 0, n: 2, by: 'Al' });
+    for (const bad of ['{"amount":-1,"n":1}', '{"amount":1.5,"n":1}', '{"amount":"5","n":1}', '{"amount":5,"n":0}', '{"amount":5}'])
+      expect(parseRoomMsg(JSON.stringify({ t: 'wager', id: 'x', seatId: 'a', ...JSON.parse(bad) }))).toBeNull();
+    expect(parseRoomMsg('{"t":"wager","id":"","seatId":"a","amount":5,"n":1}')).toBeNull();
+  });
+
   it('takes the teams fields (added later): what the room can do, who on a team buzzed, who is on which phone', () => {
     expect(parseRoomMsg(JSON.stringify({ ...welcome, features: ['teams', 7, 'x'.repeat(50)] }))).toEqual({ ...welcome, features: ['teams'] });
     expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"by":"Ann"}')).toMatchObject({ seatId: 'a', by: 'Ann' });

@@ -10,6 +10,9 @@
     game,
     session,
     dual = false,
+    override = $bindable(true),
+    phones = [],
+    phoneNote = '',
     onshow,
     oncancel,
   }: {
@@ -17,6 +20,12 @@
     session: Session;
     /** An audience window is open: viewers don't see this window. */
     dual?: boolean;
+    /** "Ignore the limit" is ticked (the default; bound, so a wager sent from a phone is held to the max only when it's off). */
+    override?: boolean;
+    /** Players (teams) with a phone in the buzzer room: theirs can send the wager from it. */
+    phones?: string[];
+    /** Why phones can't send wagers here (an older buzzer server), or ''. */
+    phoneNote?: string;
     onshow: (playerId: string, wager: number) => void;
     /** Back to the board, the tile kept (Esc, even in the wager box). */
     oncancel: () => void;
@@ -28,14 +37,36 @@
 
   /** Who found it: the splash on stage (and their phone) names them at once, not only once the question shows. */
   function pick(id: string): void {
+    // Someone else's turn: a wager their phone sent isn't this player's.
+    if (id !== playerId && session.dd?.draftFrom === 'phone') {
+      wager = null;
+      typed(null);
+    }
     playerId = id;
     if (session.dd) session.dd.playerId = id;
     // Their wager next: typed digits would otherwise select players.
     wagerBox?.focus();
   }
-  let wager = $state<number | null>(null);
-  // Wagers aren't held to the max unless the host turns the limit on (untick "Ignore the limit").
-  let override = $state(true);
+  // (Kept in the session as it's typed, so a wager sent from the player's phone can fill it, and a reload keeps it.)
+  let wager = $state<number | null>(untrack(() => session.dd?.draft ?? null));
+  /** The host typed (or picked) a wager: it's the host's now. */
+  function typed(v: number | null): void {
+    const dd = session.dd;
+    if (!dd) return;
+    if (v === null) delete dd.draft;
+    else dd.draft = v;
+    delete dd.draftFrom;
+    delete dd.draftBy;
+  }
+  // A wager sent from their phone fills the box (the host can type over it).
+  $effect(() => {
+    const d = session.dd?.draft;
+    untrack(() => {
+      if (d !== undefined && d !== wager) wager = d;
+    });
+  });
+  const fromPhone = $derived(session.dd?.draftFrom === 'phone' && wager === session.dd?.draft);
+  const hasPhone = $derived(!!playerId && phones.includes(playerId));
   let wagerBox = $state<HTMLInputElement>();
   const sym = $derived(game.settings.currencySymbol);
   const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
@@ -87,6 +118,7 @@
         min="0"
         bind:value={wager}
         bind:this={wagerBox}
+        oninput={(e) => typed(e.currentTarget.value === '' || !Number.isFinite(+e.currentTarget.value) ? null : +e.currentTarget.value)}
         autofocus
         onkeydown={(e) => {
           if (e.key === 'Enter') enter(e);
@@ -94,12 +126,24 @@
         }}
       />
     </label>
-    <button class="small ghost" onclick={() => (wager = cap)}>True Daily Double ({formatPoints(cap, sym)})</button>
+    {#if fromPhone}
+      <span class="phone small" title="Sent from their phone. You can still type over it." data-dd-phone
+        >📱 from phone{session.dd?.draftBy ? ` · sent by ${session.dd.draftBy}` : ''}</span
+      >
+    {:else if hasPhone && wager === null}
+      <span class="muted small" data-dd-phone>📱 waiting…</span>
+    {/if}
+    <button class="small ghost" onclick={() => ((wager = cap), typed(cap))}>True Daily Double ({formatPoints(cap, sym)})</button>
     <span class="muted small">{override ? 'TV max' : 'Max'} {formatPoints(cap, sym)} (their score or the round's top value){override ? ': not enforced' : ''}</span>
     <label class="check small">
       <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>
   </div>
+  {#if hasPhone}
+    <span class="muted small">Their phone can send the wager: it fills in here (only you see it).</span>
+  {:else if phoneNote}
+    <span class="muted small">{phoneNote}</span>
+  {/if}
   {#if !dual}
     <span class="exposed">⚠ Viewers can see this: they see this window, the wager as you type it too.</span>
   {/if}
@@ -127,6 +171,10 @@
   .exposed {
     color: var(--warn);
     font-size: 12px;
+  }
+  .phone {
+    color: var(--accent);
+    font-weight: 600;
   }
   input[type='number'] {
     width: 110px;

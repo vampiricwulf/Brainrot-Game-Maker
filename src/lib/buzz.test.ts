@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newTextEl, textSlide, type BoardRound } from './model';
-import { applyScore, newSession, openClue } from './session';
+import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, newSession, openClue } from './session';
 import {
-  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, whoBuzzed,
+  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, wagerAsk,
+  whoBuzzed,
 } from './buzz';
+import { phoneView } from './buzzproto';
 
 const P = ['a', 'b', 'c'];
 
@@ -221,5 +223,100 @@ describe('hostState (what the buzzer room is told)', () => {
     s.elements.push(newTextEl('first', { x: 0, y: 10, w: 100, h: 50 }));
     expect(questionText(s)).toBe('first\nsecond');
     expect(questionText(undefined)).toBe('');
+  });
+});
+
+describe('wagerAsk (the wagers phones may send)', () => {
+  function setup() {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#ff0000' },
+      { id: 'b', name: 'Bo', color: '#00ff00' },
+      { id: 'c', name: 'Cy', color: '#0000ff' },
+    ];
+    const r = game.rounds[0] as BoardRound;
+    r.categories[0].clues[0].type = 'dailyDouble';
+    const session = newSession(game);
+    session.phase = 'board';
+    session.intro = null;
+    return { game, session };
+  }
+
+  it('none on the board or during an ordinary clue', () => {
+    const { game, session } = setup();
+    expect(wagerAsk(game, session, true)).toBeNull();
+    openClue(session, { round: 0, cat: 1, row: 0 }, game);
+    expect(wagerAsk(game, session, true)).toBeNull();
+  });
+
+  it("a Daily Double: its player, their max, the host's box; locked once the question shows", () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['b'], 1500, 'x');
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    // Nobody picked yet: nobody is asked.
+    session.dd!.playerId = undefined;
+    expect(wagerAsk(game, session, true)).toBeNull();
+    session.dd!.playerId = 'b';
+    const ask = wagerAsk(game, session, true)!;
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0].id;
+    expect(ask).toEqual({ id: `dd:${clue}:b`, kind: 'dd', open: true, seats: [{ id: 'b', max: 1500 }] });
+    // The limit on: phones are held to it. The host typed 300: it's the host's.
+    session.dd!.draft = 300;
+    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'b', max: 1500, amount: 300, fromHost: true }] });
+    // From the phone (taken as count 2): not the host's.
+    Object.assign(session.dd!, { draft: 400, draftFrom: 'phone' });
+    expect(wagerAsk(game, session, true, { b: 2 })!.seats).toEqual([{ id: 'b', max: 1500, amount: 400, got: 2 }]);
+    ddShowQuestion(session, 'b', 400);
+    expect(wagerAsk(game, session, true)).toMatchObject({ open: false, seats: [{ id: 'b', amount: 400 }] });
+    // Another player picked: another round of wagers.
+    session.dd!.stage = 'splash';
+    session.dd!.playerId = 'a';
+    expect(wagerAsk(game, session, true)!.id).toBe(`dd:${clue}:a`);
+  });
+
+  it('a Final: the players in it on the wager screen; locked through the question and the answer; gone in the reveals', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a'], 500, 'x');
+    applyScore(session, game, ['b'], 200, 'x');
+    goToRound(session, game, 1);
+    session.intro = null;
+    // Cy (0) sits out under the TV rule unless the round lets them play; tick them out to be sure.
+    finalChoose(session, 'c', false);
+    finalSetWager(session, 'a', 100, 'phone');
+    finalSetWager(session, 'b', 50);
+    const id = `final:${game.rounds[1].id}`;
+    expect(wagerAsk(game, session, true)).toEqual({
+      id,
+      kind: 'final',
+      open: true,
+      seats: [
+        { id: 'a', max: 500, amount: 100 },
+        { id: 'b', max: 200, amount: 50, fromHost: true },
+      ],
+    });
+    finalNext(session, game);
+    expect(wagerAsk(game, session, true)).toMatchObject({ id, open: false });
+    finalNext(session, game);
+    expect(wagerAsk(game, session, true)).toMatchObject({ open: false });
+    finalNext(session, game);
+    expect(wagerAsk(game, session, true)).toBeNull();
+  });
+
+  it('goes to the room in the host state, and each phone sees only its own amount', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a', 'b'], 500, 'x');
+    goToRound(session, game, 1);
+    session.intro = null;
+    finalChoose(session, 'c', false);
+    finalSetWager(session, 'a', 4321);
+    finalSetWager(session, 'b', 1234);
+    const st = hostState(game, session, newBuzz(), 0, { wager: wagerAsk(game, session, true) });
+    expect(st.wager?.seats.map((x) => x.amount)).toEqual([4321, 1234]);
+    const ann = JSON.stringify(phoneView(st, 'a'));
+    expect(ann).toContain('4321');
+    expect(ann).not.toContain('1234');
+    expect(JSON.stringify(phoneView(st, 'c'))).not.toMatch(/4321|1234/);
+    expect(phoneView(st, 'c').wager).toMatchObject({ mine: false });
+    expect(hostState(game, session, newBuzz(), 0).wager).toBeUndefined();
   });
 });

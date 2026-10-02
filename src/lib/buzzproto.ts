@@ -18,10 +18,14 @@ export const BUZZ_PROTOCOL = 1;
 
 /**
  * What this room can do beyond protocol 1 (the welcome lists them; a room from before lists none). 'teams': seats can be
- * teams that several phones join (HostState.teams).
+ * teams that several phones join (HostState.teams). 'wagers': players send their Daily Double or Final wager from
+ * their phone (HostState.wager), and only the host hears the amount.
  */
-export const ROOM_FEATURES = ['teams'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
+
+/** The biggest wager a phone may send (and a seat's max the room passes on). */
+export const WAGER_MAX = 1_000_000_000;
 
 /** A team member's name, as typed on their phone (characters). */
 export const MEMBER_NAME_MAX = 24;
@@ -88,6 +92,45 @@ export interface HostState {
    * the team's first buzz counts (one place in the queue per team), a lock-out locks the whole team. allowNew is off.
    */
   teams?: boolean;
+  /**
+   * The host is taking wagers (a Daily Double, a Final): the seats in it can send theirs from their phone while `open`.
+   * Amounts stay between the host, the room and that seat's own phones: phoneView() gives each phone its own only.
+   */
+  wager?: WagerAsk | null;
+}
+
+/** HostState.wager: who is wagering, and on what. */
+export interface WagerAsk {
+  /** Names this round of wagers: a new id starts over (the room forgets what phones sent for another). */
+  id: string;
+  kind: 'dd' | 'final';
+  /** Phones may send (or change) their wager; false: locked (the question is up), phones see what was locked in. */
+  open: boolean;
+  /** The host holds wagers to each seat's max: a phone's wager over it is refused. Left out: the max is only shown. */
+  limit?: boolean;
+  seats: WagerSeat[];
+}
+
+export interface WagerSeat {
+  id: string;
+  /** Their max (shown on their phone; enforced only with `limit`). */
+  max: number;
+  /** Their wager as the host has it now (left out: none yet). */
+  amount?: number;
+  /** The host typed it, or changed the one their phone sent: their phone shows the host's amount. */
+  fromHost?: boolean;
+  /** The last phone wager (its `n`) the host took for this seat: one sent while the host was away comes again only if newer. */
+  got?: number;
+}
+
+/** A wager a phone sent, as the room keeps it (per seat: a team's newest, whoever on it sent it). */
+export interface SentWager {
+  amount: number;
+  /** Counts up per seat: the host takes each once (WagerSeat.got). */
+  n: number;
+  /** Teams: the member who sent it (id, not a credential) and their name. */
+  member?: string;
+  by?: string;
 }
 
 /** What one phone sees. Built by phoneView() only. */
@@ -113,6 +156,33 @@ export interface PhoneView {
   hostHere?: boolean;
   /** Seats are teams (HostState.teams). */
   teams?: boolean;
+  /** The host is taking wagers (HostState.wager), as this phone should see it. */
+  wager?: PhoneWager;
+}
+
+/**
+ * Wagers, as one phone sees them. mine: this phone's seat is wagering (its own max and amount only); otherwise who
+ * is (a Daily Double: `who`) or, in a Final, nothing: it sits this one out.
+ */
+export interface PhoneWager {
+  /** The wager round (WagerAsk.id): a phone's wager names it. */
+  id: string;
+  kind: 'dd' | 'final';
+  open: boolean;
+  mine: boolean;
+  /** Not mine, a Daily Double: the name(s) wagering. */
+  who?: string;
+  max?: number;
+  /** The max is enforced (else it's only shown). */
+  limit?: boolean;
+  /** This seat's wager as it stands. */
+  amount?: number;
+  /** It came from a phone of this seat (by: who on the team; byYou: this phone). */
+  sent?: boolean;
+  by?: string;
+  byYou?: boolean;
+  /** The host typed it (or changed the one sent). */
+  host?: boolean;
 }
 
 /** A team member as the room knows them: id (not a credential) and the name they joined with. */
@@ -125,7 +195,7 @@ export interface MemberRef {
  * `me`: this phone's team member (teams). `by`: the member whose buzz has the answering team answering (teams; null
  * when the host picked the team itself).
  */
-export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | null, by?: MemberRef | null): PhoneView {
+export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | null, by?: MemberRef | null, sent?: SentWager | null): PhoneView {
   const seat = seatId ? s.seats.find((x) => x.id === seatId) : undefined;
   const a = s.phase === 'answering' && s.answering ? s.seats.find((x) => x.id === s.answering) : undefined;
   return {
@@ -141,6 +211,37 @@ export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | 
     ...(s.status?.text ? { status: seatId && s.status.seatsText && s.status.seats?.includes(seatId) ? s.status.seatsText : s.status.text } : {}),
     ...(s.currency ? { currency: s.currency } : {}),
     ...(s.teams ? { teams: true } : {}),
+    ...wagerView(s, seatId, me, sent),
+  };
+}
+
+/**
+ * The wager part of a phone's view: its own seat's max and amount only, never another seat's. `sent`: what a phone of
+ * this seat sent (the room keeps it); the host's own amount wins once the host typed or changed it.
+ */
+function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, sent?: SentWager | null): Pick<PhoneView, 'wager'> {
+  const w = s.wager;
+  if (!w || !seatId || !s.seats.some((x) => x.id === seatId)) return {};
+  const own = w.seats.find((x) => x.id === seatId);
+  if (!own) {
+    const who = w.kind === 'dd' ? w.seats.map((x) => s.seats.find((y) => y.id === x.id)?.name).filter(Boolean).join(' & ') : '';
+    return { wager: { id: w.id, kind: w.kind, open: w.open, mine: false, ...(who ? { who } : {}) } };
+  }
+  const phone = !!sent && !own.fromHost;
+  const amount = phone ? sent.amount : own.amount;
+  return {
+    wager: {
+      id: w.id,
+      kind: w.kind,
+      open: w.open,
+      mine: true,
+      max: own.max,
+      ...(w.limit ? { limit: true } : {}),
+      ...(amount !== undefined ? { amount } : {}),
+      ...(phone || (amount !== undefined && !own.fromHost) ? { sent: true } : {}),
+      ...(phone && s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}),
+      ...(amount !== undefined && own.fromHost ? { host: true } : {}),
+    },
   };
 }
 
@@ -256,7 +357,12 @@ export type RoomToHost =
   | { t: 'pong'; at: number; serverNow: number }
   | { t: 'error'; message: string }
   /** Added later: a phone was turned away because the room is full (too many phones connected). */
-  | { t: 'full' };
+  | { t: 'full' }
+  /**
+   * Added later ('wagers'): a phone sent seatId's wager for the host's wager round `id`. n counts up per seat (the host
+   * says which it took: WagerSeat.got). by: teams, who on the team sent it. Only the host ever hears the amount.
+   */
+  | { t: 'wager'; id: string; seatId: string; amount: number; n: number; by?: string };
 
 /** A phone → room. */
 export type PhoneMsg =
@@ -274,7 +380,12 @@ export type PhoneMsg =
   | { t: 'leave' }
   | { t: 'ping'; at: number }
   /** Sent straight back on every probe, so the room can time the round trip itself (replaced pong → sync). */
-  | { t: 'echo'; id: number };
+  | { t: 'echo'; id: number }
+  /** Added later ('wagers'): this phone's seat's wager for the host's wager round `id` (a whole number, 0 or more). */
+  | { t: 'wager'; id: string; amount: number };
+
+/** Why the room didn't take a phone's wager: not taking one now, over the max (with the limit on), not a whole number, too many sends. */
+export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';
 
 /**
  * Added later: 'locked' (🔒 the host locked the seats), 'blocked' (kicked from that seat a moment ago), 'name-taken',
@@ -337,7 +448,9 @@ export type RoomToPhone =
   | { t: 'closed' }
   | { t: 'pong'; at: number; serverNow: number }
   /** Added later: echo this id at once (the room times this phone's round trip). */
-  | { t: 'probe'; id: number };
+  | { t: 'probe'; id: number }
+  /** Added later ('wagers'): the answer to this phone's wager (its view has the wager as it stands). */
+  | { t: 'wagered'; id: string; ok: boolean; amount?: number; reason?: WagerRefusal; max?: number };
 
 /** POST {base}/api/rooms → this. Then the host connects to {wss base}/ws/{code}?host={hostToken}; phones to /ws/{code}. */
 export interface NewRoom {
