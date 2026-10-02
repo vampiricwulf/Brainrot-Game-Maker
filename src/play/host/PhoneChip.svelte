@@ -1,11 +1,14 @@
 <!--
   Host panel: "📱 3/4", the phones joined. Click for the list (kick, people asking to join), the code and the link. It
-  opens downward over the host panel (which grows for it in a single window), never over the stage viewers see.
+  drops from the chip, always whole in the window and over everything else (see anchored.ts). In a single window it
+  stays in the host panel (which grows for it), scrolling if it must, so it doesn't cover the stage viewers see; with an
+  audience window it may go over the stage's preview.
 -->
 <script lang="ts">
-  import { tick } from 'svelte';
   import type { GameSettings, Session } from '../../lib/model';
   import { FULL_SHOWN_MS, remote, roomLink } from '../../lib/remote.svelte';
+  import { anchored } from '../../lib/anchored';
+  import { audience } from '../../lib/sync.svelte';
   import BuzzerOptions, { type SetBuzzSetting } from '../BuzzerOptions.svelte';
   import { copyText } from '../standings';
   import PhoneList from '../PhoneList.svelte';
@@ -38,18 +41,10 @@
   } = $props();
 
   let open = $state(false);
-  /** The height the list has under its chip, down to the host panel's foot. */
-  let room = $state<number>();
   let chip = $state<HTMLButtonElement>();
 
-  async function toggle(): Promise<void> {
+  function toggle(): void {
     open = !open;
-    if (!open) return;
-    // Measured once it's open: the panel grows to make room for it (see HostPanel).
-    await tick();
-    const panel = chip?.closest('.panel')?.getBoundingClientRect();
-    const b = chip?.getBoundingClientRect();
-    room = panel && b ? Math.max(160, panel.bottom - b.bottom - 12) : undefined;
   }
   const joined = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
   /** Teams: the people (phones) on a team. */
@@ -90,7 +85,13 @@
     title={trouble ? 'The buzzer room isn’t reachable right now: phones can’t buzz' : 'Phone buzzers: who has joined'}
   >{label}</button>
   {#if open}
-    <div class="pop" id="phone-pop" role="region" aria-label="Phone buzzers" style:max-height={room === undefined ? undefined : `${room}px`}>
+    <div
+      class="pop"
+      id="phone-pop"
+      role="region"
+      aria-label="Phone buzzers"
+      use:anchored={{ anchor: chip, align: 'end', gap: 6, within: audience.open ? null : '.panel' }}
+    >
       {#if remote.status === 'off'}
         <p class="muted small">No buzzer room is running.</p>
         <button class="small" onclick={onstart}>▶ Start the room</button>
@@ -126,11 +127,8 @@
   .chip.ask {
     border-color: var(--accent);
   }
+  /* Placed by anchored.ts (fixed to the window, over everything). */
   .pop {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    z-index: 40;
     width: 300px;
     max-height: 60vh;
     overflow: auto;

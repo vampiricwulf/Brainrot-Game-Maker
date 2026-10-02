@@ -2786,8 +2786,8 @@
     height: 100%;
   }
   /* One window: exactly the window's height, never scrolling (that would take the stage out of sight on a short or
-     scaled-up screen). The stage keeps its floor; the host panel under it scrolls instead. (With an audience window
-     the panel's menus pop up over the stage preview, so it isn't clipped there.) */
+     scaled-up screen). The stage keeps its floor; the host panel under it scrolls instead. (Its pop-ups are fixed to
+     the window, so its scrolling never cuts them off: see anchored.ts.) */
   .play:not(.dual) {
     overflow: hidden;
   }

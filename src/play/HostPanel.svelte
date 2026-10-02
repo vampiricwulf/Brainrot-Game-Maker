@@ -837,12 +837,14 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    /* No overflow clipping: tool menus pop upward out of the panel (over the stage only with an audience window). The
-       stage above shrinks instead, down to its floor, and the panel's tall parts scroll. */
+    /* Its pop-ups (🎲 / 🎡 / 🏁, the 📱 phones list) are fixed to the window (see anchored.ts): nothing here cuts them
+       off, and they show over the stage only with an audience window. The stage above shrinks instead, down to its
+       floor, and the panel's tall parts scroll. */
     min-height: 0;
   }
   /* Single window: an open 🎲 / 🎡 / 🏁 menu or the 📱 phones list may not cover the stage, so the panel grows to make
-     room for it (the stage shrinks, down to its floor) and the bottom rows move to its foot. */
+     room for it (the stage shrinks, down to its floor) and the bottom rows move to its foot. The pop-up stays inside
+     the panel, scrolling if it must (or, on a window too short for even that, goes where there's room). */
   .panel:not(.dual):has(:global(:is(.tl .menu, #phone-pop))) {
     min-height: min(62vh, 420px);
   }

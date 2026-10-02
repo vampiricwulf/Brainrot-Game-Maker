@@ -1,6 +1,7 @@
 <!-- Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6). -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
+  import { anchored } from '../../lib/anchored';
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, Session } from '../../lib/model';
   import { openPlayerWheel, openQuickWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
@@ -9,8 +10,6 @@
 
   let { game, session, onrolloff }: { game: Game; session: Session; onrolloff: (ids: string[], sides: number) => void } = $props();
   let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
-  /** Single window: the height an open menu has above its button, up to the host panel's top (viewers see the stage above). */
-  let room = $state<number>();
   let custom = $state('');
   let quickList = $state('');
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
@@ -23,16 +22,16 @@
   /** The button that opened the menu: Esc gives it the focus back. */
   let opener: HTMLElement | null = null;
 
-  /** Open (or close) a menu from its button: over the host panel only, unless there's an audience window. */
-  async function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): Promise<void> {
-    const b = e.currentTarget as HTMLElement;
+  /** Open (or close) a menu from its button. */
+  function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): void {
     menu = menu === m ? null : m;
-    opener = b;
-    // Measured once it's open: the host panel grows to make room for it (see HostPanel).
-    await tick();
-    const panel = b.closest('.panel')?.getBoundingClientRect();
-    room = audience.open || !panel ? undefined : Math.max(0, b.getBoundingClientRect().top - panel.top - 8);
+    opener = e.currentTarget as HTMLElement;
   }
+  /**
+   * Where a menu goes (see anchored.ts): up from its button, whole in the window and over everything else; in a single
+   * window inside the host panel (it grows for it), so it doesn't cover the stage viewers see.
+   */
+  const at = $derived({ side: 'above' as const, gap: 6, within: audience.open ? null : '.panel' });
 
   /**
    * Close the menu after picking from it: the focus goes back to its button (else it would drop to the page, and the
@@ -84,7 +83,7 @@
   <div class="pop">
     <button onclick={(e) => toggle('dice', e)} title="D rolls the last dice" aria-haspopup="dialog" aria-expanded={menu === 'dice'}>🎲 Dice</button>
     {#if menu === 'dice'}
-      <div class="menu" role="dialog" aria-label="Dice" style:max-height={room === undefined ? undefined : `${room}px`}>
+      <div class="menu" role="dialog" aria-label="Dice" use:anchored={at}>
         <div class="grid">
           {#each QUICK_DICE as q}<button class="small" onclick={() => dice(q.sides, q.count, q.label)}>{q.label}</button>{/each}
         </div>
@@ -104,7 +103,7 @@
   <div class="pop">
     <button onclick={(e) => toggle('wheel', e)} aria-haspopup="dialog" aria-expanded={menu === 'wheel'}>🎡 Wheel</button>
     {#if menu === 'wheel'}
-      <div class="menu" role="dialog" aria-label="Wheels" style:max-height={room === undefined ? undefined : `${room}px`}>
+      <div class="menu" role="dialog" aria-label="Wheels" use:anchored={at}>
         <div class="wl">
           <button
             class="small item"
@@ -143,7 +142,7 @@
   <div class="pop">
     <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone" aria-haspopup="dialog" aria-expanded={menu === 'rolloff'}>🏁 Who goes first</button>
     {#if menu === 'rolloff'}
-      <div class="menu" role="dialog" aria-label="Who goes first" style:max-height={room === undefined ? undefined : `${room}px`}>
+      <div class="menu" role="dialog" aria-label="Who goes first" use:anchored={at}>
         <div class="muted small">Everyone included rolls; tied leaders re-roll.</div>
         {#each session.players as p (p.id)}
           <label class="check small">
@@ -188,12 +187,8 @@
     position: relative;
     z-index: 61;
   }
+  /* Placed by anchored.ts (fixed to the window, over everything). */
   .menu {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    margin-bottom: 6px;
-    z-index: 60;
     width: 260px;
     display: flex;
     flex-direction: column;

@@ -1,7 +1,7 @@
 <!-- Popover: pick a file already in the game, upload a new one, or paste a link to one online. -->
 <script lang="ts">
+  import { anchored } from '../../lib/anchored';
   import { modal } from '../../lib/modal';
-  import { onMount } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
   import { ACCEPT, addMediaFile, formatBytes, imgFallback, mediaUrls } from '../../lib/media.svelte';
   import { pickFile } from '../../lib/fileio';
@@ -26,24 +26,9 @@
   } = $props();
   const items = $derived(editedGame().media.filter((m) => m.kind === kind));
 
-  // Fixed to the window, so no scrolling panel or dialog edge cuts it off: under the button (over it when
-  // there's more room above), and moved in from the window's edges. Placed as it mounts, before it's drawn
-  // (it isn't hidden meanwhile: its link field takes the focus as it opens).
-  let box = $state<HTMLDivElement>();
-  let place = $state<{ left: number; top?: number; bottom?: number; maxHeight: number }>();
-  function position(): void {
-    const a = (anchor ?? box?.parentElement)?.getBoundingClientRect();
-    if (!a || !box) return;
-    const left = Math.max(8, Math.min(a.left, innerWidth - box.offsetWidth - 8));
-    const below = innerHeight - a.bottom - 12;
-    const above = a.top - 12;
-    place =
-      below >= Math.min(box.scrollHeight, 420) || below >= above
-        ? { left, top: a.bottom + 4, maxHeight: Math.min(420, below) }
-        : { left, bottom: innerHeight - a.top + 4, maxHeight: Math.min(420, above) };
-  }
-  onMount(position);
-  const px = (n?: number) => (n === undefined ? undefined : `${n}px`);
+  // Fixed to the window, so no scrolling panel or dialog edge cuts it off (see anchored.ts): under the button (over it
+  // when there's more room above), moved in from the window's edges, and kept there as things scroll or resize. Placed
+  // as it mounts, before it's drawn (it isn't hidden meanwhile: its link field takes the focus as it opens).
 
   async function upload(): Promise<void> {
     const file = await pickFile(ACCEPT[kind]);
@@ -84,7 +69,6 @@
 
 <svelte:window
   onkeydown={(e) => e.key === 'Escape' && onclose()}
-  onresize={position}
   onpastecapture={(e) => take(Array.from(e.clipboardData?.files ?? []), e)}
 />
 
@@ -94,11 +78,7 @@
   class:media-drop={dropping}
   ondragover={over}
   {ondrop}
-  bind:this={box}
-  style:left={px(place?.left)}
-  style:top={px(place?.top)}
-  style:bottom={px(place?.bottom)}
-  style:max-height={px(place?.maxHeight)}
+  use:anchored={{ anchor }}
   role="dialog"
   aria-label="Choose {kind}"
   use:modal
@@ -135,9 +115,8 @@
     inset: 0;
     z-index: calc(var(--z-menu) - 1);
   }
+  /* Placed by anchored.ts (fixed to the window, over everything). */
   .picker {
-    position: fixed;
-    z-index: var(--z-menu);
     width: min(320px, calc(100vw - 16px));
     max-height: 420px;
     overflow: auto;
