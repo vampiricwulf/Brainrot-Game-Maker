@@ -84,7 +84,8 @@ try {
   await openSection('Score plates');
   await page.getByRole('combobox', { name: 'Plate corners' }).selectOption('pill');
   // A pill's round ends don't cut the names.
-  const namePad = await preview.locator('.plate .name').first().evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft));
+  // (The name strip's padding and the name's own, which leaves a slanted font's last letter room.)
+  const namePad = await preview.locator('.plate .name').first().evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft) + parseFloat(getComputedStyle(e.querySelector('.nm')).paddingLeft));
   assert(namePad >= 28, `pill plates keep the names clear of their round ends (${namePad}px)`);
   await page.getByRole('button', { name: '↺ Plain score plates' }).click();
   assert((await page.getByRole('combobox', { name: 'Plate corners' }).inputValue()) === '', '↺ Plain score plates takes them back');

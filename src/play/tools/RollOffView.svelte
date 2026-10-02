@@ -31,7 +31,8 @@
   }
 </script>
 
-<div class="wrap">
+<!-- Many players (who goes first with 12): smaller dice and names, so every row, the title and the result stay on the stage. -->
+<div class="wrap" class:many={round.players.length > 8}>
   <div class="title">
     {roundIdx === 0 ? (o.purpose === 'tiebreak' ? 'Tiebreaker roll-off!' : o.purpose === 'buzz' ? 'Tie! Roll for it' : 'Who goes first?') : 'Re-roll!'}
   </div>
@@ -39,17 +40,20 @@
     {#each round.players as pid, i (pid)}
       {@const p = byId[pid]}
       <div class="pl" class:lead={!rolling && round.rolls[pid] === top} class:out={!rolling && round.rolls[pid] !== top}>
-        <Die value={shown(pid, i)} sides={o.sides} color={p?.color ?? '#fff'} {rolling} size={round.players.length > 5 ? 160 : 200} label={false} />
-        <div class="nm" style:background={p?.color} style:color={p ? textOn(p.color) : undefined}>{p?.name ?? '?'}</div>
+        <Die value={shown(pid, i)} sides={o.sides} color={p?.color ?? '#fff'} {rolling} size={round.players.length > 8 ? 120 : round.players.length > 5 ? 160 : 200} label={false} />
+        <div class="nm" dir="auto" title={p?.name} style:background={p?.color} style:color={p ? textOn(p.color) : undefined}>{p?.name ?? '?'}</div>
       </div>
     {/each}
   </div>
-  {#if tied}<div class="msg">Tie! Re-rolling…</div>{/if}
-  {#if done && winner}
-    <div class="win" in:fly={{ y: 60, duration: 400 }}>
-      <span style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> {o.purpose === 'tiebreak' ? 'wins the game!' : o.purpose === 'buzz' ? 'answers first!' : 'goes first!'}
-    </div>
-  {/if}
+  <!-- The line under the dice keeps its room from the start: the dice don't jump up when the result comes. -->
+  <div class="foot">
+    {#if tied}<div class="msg">Tie! Re-rolling…</div>{/if}
+    {#if done && winner}
+      <div class="win" in:fly={{ y: 60, duration: 400 }}>
+        <span dir="auto" style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> {o.purpose === 'tiebreak' ? 'wins the game!' : o.purpose === 'buzz' ? 'answers first!' : 'goes first!'}
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -74,6 +78,18 @@
     gap: 50px;
     flex-wrap: wrap;
     justify-content: center;
+    /* Room at the sides for the leader's bigger die and name. */
+    max-width: 1760px;
+  }
+  .many {
+    gap: 36px;
+  }
+  .many .row {
+    gap: 28px 40px;
+  }
+  .many .nm {
+    font-size: 36px;
+    max-width: 380px;
   }
   .pl {
     display: flex;
@@ -98,6 +114,18 @@
     font-weight: 800;
     padding: 4px 20px;
     border-radius: 12px;
+    /* A long name ends in "…" rather than pushing the others off. */
+    max-width: 520px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .foot {
+    min-height: 130px;
+    max-width: 1800px;
+    display: grid;
+    place-items: center;
+    text-align: center;
   }
   .msg {
     font-size: 70px;
@@ -107,7 +135,7 @@
   }
   .win {
     font-family: var(--value-font);
-    font-size: 96px;
+    font-size: 84px;
     font-weight: 900;
     color: #fff;
     text-shadow: 6px 6px 0 #000;
@@ -116,5 +144,11 @@
     padding: 0 26px;
     border-radius: 16px;
     text-shadow: none;
+    /* A long name wraps instead of running off the stage. */
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .win {
+    line-height: 1.25;
   }
 </style>
