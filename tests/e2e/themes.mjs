@@ -5,12 +5,13 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, exportHtml, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const shots = process.env.SHOTS;
+// (CI sets SCREENSHOTS: a failure leaves its picture in the run's e2e-debug files.)
+const shots = process.env.SHOTS || process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
 const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
@@ -72,7 +73,15 @@ try {
   await page.getByLabel('Alternate colors').check();
   await page.getByLabel('Second category color').fill('#00ff00');
   assert((await headerBg(preview, 0)) === CLASSIC_TILE && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'alternating category colors');
+  // White names on bright green: a note says they're hard to read (under Categories, and under Colors).
+  assert((await page.getByRole('status').filter({ hasText: 'category names are hard to read' }).count()) === 2, 'category names too close to an alternate color: a note says so');
   await openSection('Score plates');
+  await page.getByRole('combobox', { name: 'Plate corners' }).selectOption('pill');
+  // A pill's round ends don't cut the names.
+  const namePad = await preview.locator('.plate .name').first().evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft));
+  assert(namePad >= 28, `pill plates keep the names clear of their round ends (${namePad}px)`);
+  await page.getByRole('button', { name: '↺ Plain score plates' }).click();
+  assert((await page.getByRole('combobox', { name: 'Plate corners' }).inputValue()) === '', '↺ Plain score plates takes them back');
   await page.getByLabel('Glow on the leader').check();
   assert((await page.locator('summary', { hasText: 'Tiles' }).innerText()).includes('changed'), 'a section with looks of its own says it’s changed');
   assert((await page.getByRole('button', { name: /Classic \(edited\)/ }).count()) === 1, 'and the preset shows as edited');
@@ -139,6 +148,24 @@ try {
   assert((await refused.innerText()).includes('no colors'), 'a bad theme file is refused, saying why');
   await refused.getByRole('button', { name: 'OK' }).click();
   assert((await bg(preview, 1, 0)) === RED, 'and the game keeps its look');
+  // A theme file dropped on the editor, or picked with Open…, shows on the Theme page first, like Import theme….
+  await page.locator('nav > button.round-tab').first().click();
+  const themeText = readFileSync(themePath, 'utf8');
+  const dt = await page.evaluateHandle((text) => {
+    const d = new DataTransfer();
+    d.items.add(new File([text], 'Checkers.brainrot-theme', { type: '' }));
+    return d;
+  }, themeText);
+  await page.locator('nav').dispatchEvent('drop', { dataTransfer: dt });
+  await imported.waitFor();
+  assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'a theme file dropped on the editor opens the Theme page');
+  assert((await bg(imported, 1, 0)) === RED, 'and previews the theme first');
+  await imported.getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('nav > button.round-tab').first().click();
+  await openGameFile(page, themePath);
+  await imported.waitFor();
+  assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'Open… with a theme file does the same (no “not a game” error)');
+  await imported.getByRole('button', { name: 'Cancel' }).click();
 
   // ---------- 📋 Copy theme code / ⌨ Paste theme code… ----------
   await page.getByRole('button', { name: '📋 Copy theme code' }).click();

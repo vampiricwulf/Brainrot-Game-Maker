@@ -161,7 +161,7 @@ try {
   const values = page.getByLabel('Values', { exact: true });
   const ownValue = await values.inputValue();
   await values.fill(await page.getByLabel('Tiles & slide background').inputValue());
-  assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 1, 'values the colour of the tiles warn that they are hard to read');
+  assert((await page.getByText(/The values are hard to read on the tiles/).count()) >= 1, 'values the colour of the tiles warn that they are hard to read');
   await values.fill(ownValue);
   assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 0, '…and the warning goes once they’re apart');
   assert((await page.getByLabel('Tile glow color').count()) === 1, 'the tile glow colour box has a name');

@@ -174,7 +174,8 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         }
         const side = path[6] === 'questionSlide' ? 'q' : path[6] === 'answerSlide' ? 'a' : null;
         if (!side) return;
-        at.crumbs.push(SIDE_NAME[side]);
+        // (A clue with more question slides: "Question 1".)
+        at.crumbs.push(side === 'q' && clue.extraSlides?.length ? `${SIDE_NAME.q} 1` : SIDE_NAME[side]);
         part({ kind: 'clue', category: cat.id, clue: clue.id, side });
         slide(clue[path[6] as 'questionSlide'], 7, (element) => ({ tab: 'round', round: id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, element } }), side);
       }

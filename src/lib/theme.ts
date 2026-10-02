@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { contrast, textOn } from './colors';
+import { contrast, textOn, toHex } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -164,6 +164,23 @@ export function tileBackground(t: Theme, row: number, col: number): string {
 export function headerBackground(t: Theme, col: number): string {
   const base = altHeader(t, col) ? t.header2! : color(t.headerBg, t.tile);
   return fill(base, t.headerGradient, lookNumber(t, 'tileAngle'));
+}
+
+/**
+ * How well the board's words read on what's behind them (WCAG contrast, 1 … 21; null where a color can't be read):
+ * the values on every tile color (the tile, the alternating one, the gradient's end), and the category names on every
+ * category color. Under 3 is hard to read on a stream.
+ */
+export function themeReadability(t: Theme): { values: number | null; names: number | null } {
+  const worst = (text: string | undefined, on: (string | undefined)[]): number | null => {
+    const fg = toHex(text);
+    const bgs = on.map(toHex).filter((c): c is string => !!c);
+    return fg && bgs.length ? Math.min(...bgs.map((c) => contrast(fg, c))) : null;
+  };
+  return {
+    values: worst(t.value, [t.tile, t.tilePattern ? t.tile2 : undefined, t.tileGradient]),
+    names: worst(t.boardText, [t.headerBg ?? t.tile, t.header2, t.headerGradient]),
+  };
 }
 
 /**

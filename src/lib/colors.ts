@@ -46,6 +46,38 @@ export function parseHex(c: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+/**
+ * Any CSS color a theme may hold as #rrggbb (its alpha left off), for a color box or a contrast check: #rgb(a),
+ * #rrggbb(aa), rgb()/rgba() with plain numbers or percentages, or a color name (in a browser). Null when it isn't one.
+ */
+export function toHex(c: string | undefined): string | null {
+  if (!c) return null;
+  const s = c.trim();
+  const short = /^#([0-9a-f]{3})[0-9a-f]?$/i.exec(s)?.[1];
+  if (short) return '#' + [...short].map((d) => d + d).join('').toLowerCase();
+  const long = /^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(s)?.[1];
+  if (long) return '#' + long.toLowerCase();
+  const rgb = /^rgba?\(\s*([\d.]+%?)[\s,]+([\d.]+%?)[\s,]+([\d.]+%?)\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i.exec(s);
+  if (rgb) {
+    const ch = (v: string) => Math.max(0, Math.min(255, Math.round(v.endsWith('%') ? (parseFloat(v) * 255) / 100 : parseFloat(v))));
+    return '#' + rgb.slice(1, 4).map((v) => ch(v).toString(16).padStart(2, '0')).join('');
+  }
+  // A name (or hsl()): as the browser reads it.
+  if (typeof document === 'undefined' || !/^[a-z]{3,24}$|^hsla?\(/i.test(s)) return null;
+  try {
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#010203';
+    ctx.fillStyle = s;
+    const out = String(ctx.fillStyle);
+    // (Not a color: the fill stays as it was.)
+    if (out === '#010203' && s.toLowerCase() !== '#010203') return null;
+    return out.startsWith('#') ? out : toHex(out);
+  } catch {
+    return null;
+  }
+}
+
 /** WCAG relative luminance (0 black … 1 white). */
 export function luminance(c: string): number {
   const rgb = parseHex(c);

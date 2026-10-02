@@ -58,7 +58,7 @@ try {
   await dialog.locator('[data-field="a"]').fill('Skibidi Toilet');
 
   await addSlide.click();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer slide (hidden until revealed)']), '＋ Add slide makes Question 1 · Question 2 · Answer');
+  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer']), '＋ Add slide makes Question 1 · Question 2 · Answer');
   assert((await tabs.getByRole('tab', { name: 'Question 2' }).getAttribute('aria-selected')) === 'true', 'the new slide is open');
   assert(await q.evaluate((e) => e === document.activeElement), 'its question field has the focus, ready to type');
   assert((await q.inputValue()) === '', 'the new slide starts empty');
@@ -101,6 +101,46 @@ try {
   await tabs.getByRole('tab', { name: 'Question 3' }).click();
   assert((await q.inputValue()) === 'Toilets with heads', 'the slide came back with its text');
 
+  // ---------- The tabs' keys ----------
+  const selected = () => tabs.locator('[role="tab"][aria-selected="true"]');
+  const focused = () => page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab' && document.activeElement.getAttribute('aria-selected') === 'true');
+  assert((await tabs.locator('[role="tab"][tabindex="0"]').count()) === 1, 'the tabs are one Tab stop (the open slide’s)');
+  await tabs.getByRole('tab', { name: 'Question 3' }).focus();
+  await page.keyboard.press('ArrowLeft');
+  assert((await selected().innerText()) === 'Question 2' && (await focused()) && (await q.inputValue()) === 'It is a YouTube series', '← opens the slide before, with the focus on its tab');
+  await page.keyboard.press('End');
+  assert((await selected().innerText()) === 'Answer', 'End: the answer');
+  await page.keyboard.press('Home');
+  await page.keyboard.press('ArrowRight');
+  assert((await selected().innerText()) === 'Question 2', 'Home, →: the second slide');
+  await page.keyboard.press('Alt+ArrowRight');
+  assert(
+    (await selected().innerText()) === 'Question 3' && (await q.inputValue()) === 'It is a YouTube series' && (await focused()),
+    'Alt+→ on a tab moves the slide later (it stays open, its tab in focus)',
+  );
+  assert((await dialog.locator('header .value').innerText()) === '$200', 'and stays on this clue (not the clue beside it)');
+  await undo();
+  await tabs.getByRole('tab', { name: 'Question 2' }).click();
+  assert((await q.inputValue()) === 'It is a YouTube series', 'Ctrl+Z puts it back');
+  await page.keyboard.press('Control+d');
+  assert((await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 3' && (await focused()), 'Ctrl+D on a tab duplicates the slide');
+  await page.keyboard.press('Delete');
+  assert((await tabs.getByRole('tab').count()) === 4 && (await focused()), 'Delete on a tab deletes the slide (the focus stays on the tabs)');
+  await page.locator('.toast', { hasText: 'Deleted question slide 3' }).waitFor({ timeout: 3000 });
+  assert(true, 'with a note saying so (Ctrl+Z brings it back)');
+  // Many slides: short tab names on one line.
+  await addSlide.click();
+  await addSlide.click();
+  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Answer']), 'five slides or more: short tab names (Q1, Q2…)');
+  assert((await tabs.getByRole('tab', { name: 'Question 5' }).count()) === 1, 'that still read “Question 5” to a screen reader');
+  const tops = await tabs.getByRole('tab').evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
+  assert(tops === 1, 'the tabs stay on one line');
+  await away();
+  await undo();
+  await undo();
+  assert((await tabs.getByRole('tab').count()) === 4, 'Ctrl+Z takes the added slides back');
+  await tabs.getByRole('tab', { name: 'Question 3' }).click();
+
   // The history names each step.
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
@@ -128,7 +168,7 @@ try {
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
   await page.locator('.tile').first().click();
   await dialog.waitFor();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Answer slide (hidden until revealed)']), 'the reopened pack has the clue’s three question slides');
+  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Answer']), 'the reopened pack has the clue’s three question slides');
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
 

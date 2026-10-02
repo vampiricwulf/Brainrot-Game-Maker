@@ -272,6 +272,8 @@ describe('what walks a game’s slides', () => {
     const hit = findAll(game, 'More').find((h) => h.icon === '❓');
     expect(hit?.where).toMatch(/› Question 2$/);
     expect(hit?.place).toMatchObject({ tab: 'round', part: { kind: 'clue', side: 'q', slide: clue.extraSlides![0].id } });
+    // The first slide, as its tab says: Question 1.
+    expect(findAll(game, 'Lead-in').find((h) => h.icon === '❓')?.where).toMatch(/› Question 1$/);
   });
 
   it('the undo history names and places a change on an extra slide', () => {
@@ -282,6 +284,10 @@ describe('what walks a game’s slides', () => {
     const d = describeStep(diff(game, after), game, after);
     expect(d.label).toBe('Edited question “Last, changed”');
     expect(d.where).toMatch(/› Question 3$/);
+    // (And on the first slide: Question 1.)
+    const first = structuredClone(game);
+    setSlideText(board(first).categories[0].clues[0].questionSlide, 'Lead-in, changed');
+    expect(describeStep(diff(game, first), game, first).where).toMatch(/› Question 1$/);
     expect(d.place).toMatchObject({ part: { kind: 'clue', side: 'q', slide: c.extraSlides![1].id, element: c.extraSlides![1].elements[0].id } });
 
     // Its background, as a slide's (not a text box's).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, nearKey, parseHex, PLAYER_PALETTE, textOn, type Vision } from './colors';
+import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, nearKey, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
 
 describe('contrast', () => {
   it('follows WCAG: black on white is 21, a color on itself is 1', () => {
@@ -78,5 +78,22 @@ describe('player colors near the chroma key', () => {
     }
     expect(nearKey('#3cb44b', '#ff00ff')).toBe(false);
     expect(nearKey('not a color', '#00ff00')).toBe(false);
+  });
+});
+
+describe('toHex', () => {
+  it('reads a theme color as #rrggbb for a color box', () => {
+    expect(toHex('#ABC')).toBe('#aabbcc');
+    expect(toHex('#11223344')).toBe('#112233');
+    expect(toHex('#fff8')).toBe('#ffffff');
+    expect(toHex('rgb(255, 0, 16)')).toBe('#ff0010');
+    expect(toHex('rgba(0 128 255 / 0.5)')).toBe('#0080ff');
+    expect(toHex('rgb(100%, 0%, 50%)')).toBe('#ff0080');
+  });
+  it('is null for what it can’t read (names need a browser)', () => {
+    expect(toHex(undefined)).toBeNull();
+    expect(toHex('none')).toBeNull();
+    expect(toHex('url(x)')).toBeNull();
+    expect(toHex('#12')).toBeNull();
   });
 });

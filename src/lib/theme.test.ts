@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrast } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, lookNumber, presetEdited, presetTheme, stageText, themeStyle, tileBackground, type Theme } from './theme';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, lookNumber, presetEdited, presetTheme, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 
@@ -151,5 +151,22 @@ describe('more looks', () => {
   it('the space between tiles changes how much room a category name has', () => {
     expect(categoryBox(6, 5, { ...presetTheme('classic'), tileGap: 0 }).w).toBeGreaterThan(categoryBox(6, 5, presetTheme('classic')).w);
     expect(categoryBox(6, 5, presetTheme('classic'))).toEqual(categoryBox(6, 5));
+  });
+});
+
+describe('readability', () => {
+  it('checks the values on every tile color and the names on every category color', () => {
+    const t = presetTheme('classic');
+    const plain = themeReadability(t);
+    expect(plain.values!).toBeGreaterThan(3);
+    expect(plain.names!).toBeGreaterThan(3);
+    // A second tile color close to the yellow values: the worst one counts.
+    expect(themeReadability({ ...t, tilePattern: 'rows', tile2: '#ffdd33' }).values!).toBeLessThan(1.5);
+    // (Only while tiles alternate.)
+    expect(themeReadability({ ...t, tile2: '#ffdd33' }).values!).toBeGreaterThan(3);
+    expect(themeReadability({ ...t, tileGradient: 'rgb(255, 210, 0)' }).values!).toBeLessThan(1.5);
+    expect(themeReadability({ ...t, header2: '#f0f0f0' }).names!).toBeLessThan(1.5);
+    expect(themeReadability({ ...t, headerBg: '#eeeeee' }).names!).toBeLessThan(1.5);
+    expect(themeReadability({ ...t, value: 'none' }).values).toBeNull();
   });
 });
