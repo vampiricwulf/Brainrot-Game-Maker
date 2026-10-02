@@ -631,6 +631,8 @@
      players' row below stays in sight. */
   .mapbox {
     flex: 1 1 200px;
+    /* A picked screen's buttons (Only selected too) never widen it, or wrap it under the pad: the map stays put. */
+    min-width: 0;
     max-width: 420px;
     height: clamp(110px, 20vh, 200px);
     display: flex;

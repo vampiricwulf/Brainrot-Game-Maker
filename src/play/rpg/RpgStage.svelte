@@ -1,8 +1,8 @@
 <!--
   What an RPG round shows (games-maker spec §10): the focused screen (or a 2×2 split view of every party), avatars,
   the stats strip and the map overlay, with a flip-screen transition when the party moves. The host's copy can click
-  objects and drag avatars (to another screen or party too); viewers never get secret objects, hotspots or host notes
-  drawn.
+  objects (Shift+click selects them) and drag avatars and objects, the selected ones together (avatars to another
+  screen or party too); viewers never get secret objects, hotspots or host notes drawn.
 -->
 <script lang="ts">
   import { getContext, onDestroy } from 'svelte';
@@ -15,7 +15,7 @@
   import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { wornItems } from '../../lib/toolset';
   import { dragGhost, dropHover, dropTarget } from '../dragdrop.svelte';
-  import { avatarSpot, wayOffEdge, type AvatarDrop } from './hostops';
+  import { avatarRange, avatarSpot, groupDelta, objectRange, wayOffEdge, type AvatarDrop, type GroupItem } from './hostops';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
@@ -26,24 +26,30 @@
     session,
     role,
     selected = [],
+    selectedObjects = [],
     onobject,
     onavatar,
     onobjectmove,
     onpickup,
+    ongroupmove,
   }: {
     game: Game;
     session: Session;
     role: MediaRole;
     /** Host: the selected players (ringed in the host's copy in dual mode, never on stream). */
     selected?: string[];
-    /** Host: an object on the stage was clicked. */
-    onobject?: (elId: string) => void;
+    /** Host: the objects selected on the stage (Shift/Ctrl+click), ringed in the host's copy. */
+    selectedObjects?: string[];
+    /** Host: an object on the stage was clicked (`toggle`: with Shift or Ctrl, in or out of the selection). */
+    onobject?: (elId: string, toggle?: boolean) => void;
     /** Host: an avatar was dragged somewhere (a spot, another screen, a party), or clicked (no drop). */
     onavatar?: (playerId: string, drop?: AvatarDrop) => void;
     /** Host: an object was dragged to a new spot on its screen. */
     onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
     /** Host: an item or currency object was dropped on a player (they pick it up). */
     onpickup?: (elId: string, playerId: string) => void;
+    /** Host: selected players and objects were dragged together to new spots on their screen (by id). */
+    ongroupmove?: (players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>) => void;
   } = $props();
 
   const round = $derived.by(() => {
@@ -120,21 +126,52 @@
     return { ...d, x: Math.round(d.ox + (e.clientX - d.sx) / s), y: Math.round(d.oy + (e.clientY - d.sy) / s), moved };
   }
 
-  /** An avatar being dragged by the host: where it is now on its screen. */
-  let drag = $state<{ id: string; sx: number; sy: number; ox: number; oy: number; x: number; y: number; moved: boolean } | null>(null);
+  /**
+   * What the host is dragging (an avatar or an object), where it is now on its screen, and what goes with it: pressed
+   * while it's selected, the rest of the selection on its screen (players and objects) moves with it by as much.
+   * `pick`: an item or currency dragged on its own, which can be dropped on a player.
+   */
+  type Drag = {
+    kind: 'avatar' | 'object';
+    id: string;
+    sx: number;
+    sy: number;
+    ox: number;
+    oy: number;
+    x: number;
+    y: number;
+    moved: boolean;
+    pick: boolean;
+    players: string[];
+    objects: string[];
+  };
+  let drag = $state<Drag | null>(null);
+  /** How far the dragged things have gone (the same for each of them). */
+  const dx = $derived(drag ? drag.x - drag.ox : 0);
+  const dy = $derived(drag ? drag.y - drag.oy : 0);
+  const groupOf = (d: Drag) => d.players.length + d.objects.length;
 
-  function avatarDown(e: PointerEvent, id: string, pos: Position): void {
+  /** The selected players and objects on a screen, when the thing pressed is one of them (else just it). */
+  function withGroup(screen: Screen, kind: 'avatar' | 'object', id: string): { players: string[]; objects: string[] } {
+    const inSel = kind === 'avatar' ? selected.includes(id) : selectedObjects.includes(id);
+    if (!inSel) return kind === 'avatar' ? { players: [id], objects: [] } : { players: [], objects: [id] };
+    const players = selected.filter((p) => st?.positions[p]?.screen === screen.id && !st.positions[p].hidden);
+    const here = new Set(screenElements(st, screen, !hostCopy).map((e) => e.id));
+    return { players, objects: selectedObjects.filter((o) => here.has(o)) };
+  }
+
+  function avatarDown(e: PointerEvent, id: string, pos: Position, screen: Screen): void {
     if (!onavatar || e.button !== 0) return;
     e.stopPropagation();
     capture(e);
-    drag = { id, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, x: pos.x, y: pos.y, moved: false };
+    drag = { kind: 'avatar', id, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, x: pos.x, y: pos.y, moved: false, pick: false, ...withGroup(screen, 'avatar', id) };
   }
 
   /** What a dragged avatar is over: a screen (on a map, or another split-view pane) or a party chip, else its own pane. */
   const avatarOver = (e: PointerEvent) => dropTarget(e.clientX, e.clientY, '[data-screen], [data-party]', e.currentTarget as Element);
 
   function avatarMove(e: PointerEvent): void {
-    if (!drag) return;
+    if (drag?.kind !== 'avatar') return;
     drag = dragged(drag, e);
     if (!drag.moved) return;
     const t = avatarOver(e);
@@ -147,19 +184,20 @@
     dragGhost.now = off && player ? { x: e.clientX, y: e.clientY, player } : null;
   }
 
-  /** The browser took the pointer away (a touch gesture, say): the avatar goes back where it was. */
-  function avatarCancel(): void {
+  /** The browser took the pointer away (a touch gesture, say): what was dragged goes back where it was. */
+  function dragCancel(): void {
     drag = null;
     dropHover.at = null;
     dragGhost.now = null;
   }
 
   function avatarUp(e: PointerEvent): void {
-    const d = drag;
-    avatarCancel();
+    const d = drag?.kind === 'avatar' ? drag : null;
+    dragCancel();
     const pos = d && st?.positions[d.id];
     if (!d || !pos || !world) return;
     if (!d.moved) return onavatar?.(d.id);
+    // Onto a party, another screen or through a way out, the selected players go with it (objects stay on their screen).
     const t = avatarOver(e);
     if (t?.dataset.party) return onavatar?.(d.id, { party: t.dataset.party });
     const screen = t?.dataset.screen;
@@ -176,52 +214,94 @@
     if ((t && screen && !pane) || !near) return;
     // Just past an edge of its screen: through the way out there, like the pad. Where there's none, it stays inside.
     const way = wayOffEdge(world, pos, d.x, d.y);
-    onavatar?.(d.id, way ?? { spot: spotOn((e.currentTarget as HTMLElement).closest('.pane'), d.x, d.y) });
+    const paneEl = (e.currentTarget as HTMLElement).closest('.pane');
+    if (way) return onavatar?.(d.id, way);
+    if (groupOf(d) > 1) return groupDrop(d, paneEl);
+    onavatar?.(d.id, { spot: spotOn(paneEl, d.x, d.y) });
+  }
+
+  /** The stats strip's edges in a pane's own 1920×1080 (in split view it only covers the panes along it). */
+  function stripBounds(pane: Element | null): { top: number; bottom: number } {
+    const r = pane?.getBoundingClientRect();
+    const s = stripEl?.getBoundingClientRect();
+    if (!r?.height || !s?.height) return { top: 0, bottom: SLIDE_H };
+    const k = SLIDE_H / r.height;
+    return bar === 'top' ? { top: Math.max(0, (s.bottom - r.top) * k), bottom: SLIDE_H } : { top: 0, bottom: Math.min(SLIDE_H, (s.top - r.top) * k) };
   }
 
   /** Where an avatar dropped at (x, y) on a pane's screen stands: all of it on the screen, clear of the stats strip. */
   function spotOn(pane: Element | null, x: number, y: number): { x: number; y: number } {
-    const r = pane?.getBoundingClientRect();
-    const s = stripEl?.getBoundingClientRect();
-    if (!r?.height || !s?.height) return avatarSpot(x, y);
-    // The strip's edge in the pane's own 1920×1080 (in split view it only covers the panes along it).
-    const k = SLIDE_H / r.height;
-    return bar === 'top' ? avatarSpot(x, y, Math.max(0, (s.bottom - r.top) * k)) : avatarSpot(x, y, 0, Math.min(SLIDE_H, (s.top - r.top) * k));
+    const b = stripBounds(pane);
+    return avatarSpot(x, y, b.top, b.bottom);
   }
 
-  /** An object being dragged by the host: where its box is now, and whether it can be picked up (dropped on a player). */
-  let objDrag = $state<{ id: string; sx: number; sy: number; ox: number; oy: number; x: number; y: number; moved: boolean; pick: boolean } | null>(null);
+  /** The objects on the stage now (where they stand, and their size), by id. */
+  function stageObject(id: string): SlideElement | undefined {
+    for (const ref of panes) {
+      const found = world && findIn(world, ref);
+      const el = found ? screenElements(st, found.screen, !hostCopy).find((x) => x.id === id) : undefined;
+      if (el) return el;
+    }
+    return undefined;
+  }
 
-  function objDown(e: PointerEvent, el: SlideElement): void {
+  /**
+   * A group dropped on its own screen: each moves by as much as the others, as far as keeps all of them on it (the
+   * avatars clear of the stats strip), so the group keeps its shape.
+   */
+  function groupDrop(d: Drag, pane: Element | null): void {
+    const b = stripBounds(pane);
+    const items: { id: string; player: boolean; at: GroupItem }[] = [];
+    for (const id of d.players) {
+      const p = st?.positions[id];
+      if (p) items.push({ id, player: true, at: avatarRange(p.x, p.y, b.top, b.bottom) });
+    }
+    for (const id of d.objects) {
+      const el = stageObject(id);
+      if (el) items.push({ id, player: false, at: objectRange(el.x, el.y, el.w, el.h) });
+    }
+    const g = groupDelta(
+      items.map((i) => i.at),
+      d.x - d.ox,
+      d.y - d.oy,
+    );
+    const players: Record<string, { x: number; y: number }> = {};
+    const objects: Record<string, { x: number; y: number }> = {};
+    for (const i of items) (i.player ? players : objects)[i.id] = { x: i.at.x + g.dx, y: i.at.y + g.dy };
+    ongroupmove?.(players, objects);
+  }
+
+  function objDown(e: PointerEvent, el: SlideElement, screen: Screen): void {
     e.stopPropagation();
     if (e.button !== 0) return;
     capture(e);
-    const pick = !!onpickup && (el.role?.class === 'item' || el.role?.class === 'currency');
-    objDrag = { id: el.id, sx: e.clientX, sy: e.clientY, ox: el.x, oy: el.y, x: el.x, y: el.y, moved: false, pick };
+    const group = withGroup(screen, 'object', el.id);
+    const pick = !!onpickup && (el.role?.class === 'item' || el.role?.class === 'currency') && group.players.length + group.objects.length === 1;
+    drag = { kind: 'object', id: el.id, sx: e.clientX, sy: e.clientY, ox: el.x, oy: el.y, x: el.x, y: el.y, moved: false, pick, ...group };
   }
 
   /** The player a dragged item or pile of currency is over (their avatar, or their card on the stats strip). */
-  const pickerOver = (e: PointerEvent) => (objDrag?.pick ? dropTarget(e.clientX, e.clientY, '[data-player-id]', e.currentTarget as Element)?.dataset.playerId : undefined);
+  const pickerOver = (e: PointerEvent) => (drag?.pick ? dropTarget(e.clientX, e.clientY, '[data-player-id]', e.currentTarget as Element)?.dataset.playerId : undefined);
 
   function objMove(e: PointerEvent): void {
-    if (!objDrag) return;
-    objDrag = dragged(objDrag, e);
-    const on = objDrag.moved ? pickerOver(e) : undefined;
+    if (drag?.kind !== 'object') return;
+    drag = dragged(drag, e);
+    const on = drag.moved ? pickerOver(e) : undefined;
     dropHover.at = on ? `player:${on}` : null;
   }
-  function objCancel(): void {
-    objDrag = null;
-    dropHover.at = null;
-  }
   function objUp(e: PointerEvent): void {
-    const d = objDrag;
+    const d = drag?.kind === 'object' ? drag : null;
     const on = d?.moved ? pickerOver(e) : undefined;
-    objDrag = null;
-    dropHover.at = null;
+    dragCancel();
     if (!d) return;
     if (on && onpickup) onpickup(d.id, on);
-    else if (d.moved && onobjectmove) onobjectmove(d.id, { x: d.x, y: d.y });
-    else onobject?.(d.id);
+    else if (d.moved && groupOf(d) > 1) groupDrop(d, (e.currentTarget as HTMLElement).closest('.pane'));
+    else if (d.moved && onobjectmove) {
+      // On its own, kept on its screen the same way.
+      const el = stageObject(d.id);
+      const g = el ? groupDelta([objectRange(d.ox, d.oy, el.w, el.h)], d.x - d.ox, d.y - d.oy) : { dx: d.x - d.ox, dy: d.y - d.oy };
+      onobjectmove(d.id, { x: d.ox + g.dx, y: d.oy + g.dy });
+    } else onobject?.(d.id, e.shiftKey || e.ctrlKey || e.metaKey);
   }
 
 </script>
@@ -240,30 +320,31 @@
   {#if onobject}
     <!-- Click targets over objects with a name or class (the host's copy only: viewers never get these). -->
     {#each els.filter((e) => e.role || e.name) as el (el.id)}
-      {@const d = objDrag?.id === el.id ? objDrag : null}
+      {@const d = drag?.objects.includes(el.id) ? drag : null}
       <button
         class="hit"
         class:dragging={!!d?.moved}
-        style:left="{d ? d.x : el.x}px"
-        style:top="{d ? d.y : el.y}px"
+        class:picked={hostCopy && selectedObjects.includes(el.id)}
+        style:left="{el.x + (d ? dx : 0)}px"
+        style:top="{el.y + (d ? dy : 0)}px"
         style:width="{el.w}px"
         style:height="{el.h}px"
         style:transform="rotate({el.rotation}deg)"
         data-object={el.id}
-        onpointerdown={(e) => objDown(e, el)}
+        onpointerdown={(e) => objDown(e, el, screen)}
         onpointermove={objMove}
         onpointerup={objUp}
-        onpointercancel={objCancel}
+        onpointercancel={dragCancel}
         onclick={(e) => e.stopPropagation()}
         onkeydown={(e) => e.key === 'Enter' && onobject(el.id)}
         aria-label="Object: {el.name || el.role?.class}"
-        title="{el.name || el.role?.class}: click for its card, drag to move it{el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}"
+        title="{el.name || el.role?.class}: click for its card, Shift+click to select it (selected players and objects drag together), drag to move it{el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}"
       ></button>
     {/each}
   {/if}
   {#each session.players.filter((p) => st?.positions[p.id]?.screen === ref.screen && !st?.positions[p.id]?.hidden) as p (p.id)}
     {@const pos = st!.positions[p.id]}
-    {@const d = drag?.id === p.id ? drag : null}
+    {@const d = drag?.players.includes(p.id) ? drag : null}
     <div
       class="avatar"
       data-player-id={p.id}
@@ -272,12 +353,12 @@
       class:dragging={!!d?.moved}
       class:picked={hostCopy && selected.includes(p.id)}
       class:drop-on={dropHover.at === `player:${p.id}`}
-      style:left="{d ? d.x : pos.x}px"
-      style:top="{d ? d.y : pos.y}px"
-      onpointerdown={(e) => avatarDown(e, p.id, pos)}
+      style:left="{pos.x + (d ? dx : 0)}px"
+      style:top="{pos.y + (d ? dy : 0)}px"
+      onpointerdown={(e) => avatarDown(e, p.id, pos, screen)}
       onpointermove={avatarMove}
       onpointerup={avatarUp}
-      onpointercancel={avatarCancel}
+      onpointercancel={dragCancel}
       role="presentation"
     >
       <AvatarToken player={p} size={120} worn={wornItems(game, session, p.id)} />
@@ -395,6 +476,11 @@
   .hit.dragging {
     outline: 3px dashed #ffcc00;
     cursor: grabbing;
+  }
+  /* Selected (Shift/Ctrl+click): it drags with the rest of the selection. */
+  .hit.picked {
+    outline: 4px solid #ffcc00;
+    box-shadow: 0 0 18px #ffcc00;
   }
   .hit:hover {
     outline: 3px solid rgba(255, 204, 0, 0.8);

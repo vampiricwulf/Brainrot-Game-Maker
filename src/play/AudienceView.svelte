@@ -45,10 +45,12 @@
     onavatar,
     onobjectmove,
     onpickup,
+    ongroupmove,
     ontoken,
     onspace,
     onshopbuy,
     selected = [],
+    selectedObjects = [],
   }: {
     game: Game;
     session: Session;
@@ -63,14 +65,16 @@
     onspotlight?: (id: string) => void;
     /** Host clicked the stage (only passed in the host's window, never the audience window). */
     onact?: (a: StageAction) => void;
-    /** RPG rounds, host only: an object on the stage was clicked. */
-    onobject?: (elId: string) => void;
+    /** RPG rounds, host only: an object on the stage was clicked (`toggle`: with Shift or Ctrl, to select it). */
+    onobject?: (elId: string, toggle?: boolean) => void;
     /** RPG rounds, host only: an avatar was dragged (to a spot, another screen or a party), or clicked. */
     onavatar?: (playerId: string, drop?: AvatarDrop) => void;
     /** RPG rounds, host only: an object was dragged to a new spot. */
     onobjectmove?: (elId: string, at: { x: number; y: number }) => void;
     /** RPG rounds, host only: an item or currency object was dropped on a player. */
     onpickup?: (elId: string, playerId: string) => void;
+    /** RPG rounds, host only: selected players and objects were dragged together to new spots. */
+    ongroupmove?: (players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>) => void;
     /** Board-game rounds, host only: a token was clicked, or dragged onto a space or a zone. */
     ontoken?: (playerId: string, to?: { space?: string; zone?: string }) => void;
     /** Board-game rounds, host only: a space was clicked. */
@@ -79,6 +83,8 @@
     onshopbuy?: (itemId: string) => void;
     /** Host only: the selected players (the host's copy in dual mode rings them). */
     selected?: string[];
+    /** RPG rounds, host only: the objects selected on the stage. */
+    selectedObjects?: string[];
   } = $props();
   const act = (a: StageAction) => onact?.(a);
 
@@ -403,7 +409,7 @@
     </div>
   {/key}
 {:else if session.phase === 'rpg'}
-  <RpgStage {game} {session} {role} {selected} {onobject} {onavatar} {onobjectmove} {onpickup} />
+  <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} />
 {:else if session.phase === 'boardgame'}
   <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}

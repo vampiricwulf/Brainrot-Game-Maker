@@ -54,7 +54,7 @@
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
-    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, stepParty, toggleMap,
+    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, stepParty, toggleMap,
     type AvatarDrop, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
@@ -140,6 +140,8 @@
   let timerSeconds = $state<number | null>(null);
   /** RPG rounds: the object whose card is open in the host panel. */
   let rpgObject = $state<string | null>(null);
+  /** RPG rounds: the objects selected on the stage (Shift/Ctrl+click): they drag with the selected players. */
+  let rpgSelObjects = $state<string[]>([]);
   /** RPG rounds: the host's full map is open (J). */
   let rpgMap = $state(false);
   /** RPG rounds: a name or text the host panel is asking for (right-clicking the stage asks for text there). */
@@ -354,6 +356,7 @@
     void session.currentRound;
     rpgAsk = null;
     rpgObject = null;
+    rpgSelObjects = [];
     bgSpace = null;
     untrack(() => {
       const k = app.live.overlay?.kind;
@@ -1447,12 +1450,19 @@
     }
   }
 
-  /** An object on the stage was dragged: it stays there (undoable). */
+  /** An object on the stage was dragged on its own: it stays there (undoable), and it's what's selected now. */
   function objectMoved(id: string, at: { x: number; y: number }): void {
     const { st } = rpgNow(game, session);
     if (!st) return;
     const name = objectAt(game, session, id)?.el.name || 'object';
     logged(session, `Move ${name}`, () => Object.assign(override(st, id), at));
+    if (!rpgSelObjects.includes(id)) [selected, rpgSelObjects] = [[], [id]];
+  }
+
+  /** An object on the stage was clicked: its card, or with Shift or Ctrl, in or out of the selection. */
+  function objectClicked(id: string, toggle?: boolean): void {
+    if (!toggle) return void (rpgObject = id);
+    rpgSelObjects = rpgSelObjects.includes(id) ? rpgSelObjects.filter((x) => x !== id) : [...rpgSelObjects, id];
   }
 
   /** An item or a pile of currency on the stage was dropped on a player: they pick it up. */
@@ -1614,8 +1624,10 @@
   function avatarAct(id: string, drop?: AvatarDrop): void {
     const { st } = rpgNow(game, session);
     if (!drop || !st?.positions[id]) return void toggleSelect(id);
-    if ('spot' in drop) return logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], drop.spot));
+    // Dragged while not selected: it goes on its own, and it's what's selected now.
     const who = selected.includes(id) ? selected.filter((x) => st.positions[x]) : [id];
+    if (!selected.includes(id)) [selected, rpgSelObjects] = [[id], []];
+    if ('spot' in drop) return logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], drop.spot));
     const said = 'party' in drop ? joinPartyNow(game, session, who, drop.party) : sendPlayers(game, session, who, drop.to, drop);
     if (said) toast(said, 3000);
   }
@@ -2117,6 +2129,7 @@
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
         else if (rpgObject) rpgObject = null;
+        else if (rpgSelObjects.length) rpgSelObjects = [];
         else if (bgSpace) bgSpace = null;
         // Shift+Esc cancels: back to the board without using up the tile.
         else if (session.phase === 'clue' && e.shiftKey) cancelClue();
@@ -2475,10 +2488,12 @@
             onpicker={(id) => setPicker(session, session.currentPickerId === id ? undefined : id)}
             onspotlight={spotlight}
             onact={stageAct}
-            onobject={(id) => (rpgObject = id)}
+            onobject={objectClicked}
             onavatar={avatarAct}
             onobjectmove={objectMoved}
             onpickup={objectPicked}
+            ongroupmove={(players, objects) => moveGroup(game, session, players, objects)}
+            selectedObjects={rpgSelObjects}
             ontoken={tokenAct}
             onspace={spaceAct}
             {selected}

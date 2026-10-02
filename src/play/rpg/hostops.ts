@@ -158,6 +158,55 @@ export function avatarSpot(x: number, y: number, top = 0, bottom = SLIDE_H): { x
   return { x: fit(x, HALF, SLIDE_W - HALF), y: fit(y, top + HALF, bottom - HALF) };
 }
 
+/** Something dragged along in a group: where it is, and the range its own x and y may go in (to stay on its screen). */
+export type GroupItem = { x: number; y: number; minX: number; maxX: number; minY: number; maxY: number };
+
+/** The range an avatar standing on a screen may go in: all of it on the screen, between `top` and `bottom`. */
+export const avatarRange = (x: number, y: number, top = 0, bottom = SLIDE_H): GroupItem => ({
+  x, y, minX: HALF, maxX: SLIDE_W - HALF, minY: top + HALF, maxY: Math.max(top + HALF, bottom - HALF),
+});
+
+/** The range an object (its box, `w`×`h` at x, y) may go in: all of it on the screen. */
+export const objectRange = (x: number, y: number, w: number, h: number): GroupItem => ({ x, y, minX: 0, maxX: SLIDE_W - w, minY: 0, maxY: SLIDE_H - h });
+
+/**
+ * How far a group dragged by (dx, dy) moves: the same for everything in it (they keep their places), but no further than
+ * keeps every one of them on its screen. One already past an edge isn't pulled back (it only can't go further out).
+ */
+export function groupDelta(items: GroupItem[], dx: number, dy: number): { dx: number; dy: number } {
+  const axis = (d: number, at: (i: GroupItem) => number, lo: (i: GroupItem) => number, hi: (i: GroupItem) => number) => {
+    let min = -Infinity;
+    let max = Infinity;
+    for (const i of items) {
+      min = Math.max(min, Math.min(0, lo(i) - at(i)));
+      max = Math.min(max, Math.max(0, hi(i) - at(i)));
+    }
+    return Math.round(Math.max(min, Math.min(max, d)));
+  };
+  return { dx: axis(dx, (i) => i.x, (i) => i.minX, (i) => i.maxX), dy: axis(dy, (i) => i.y, (i) => i.minY, (i) => i.maxY) };
+}
+
+/**
+ * Players and objects on the stage dragged together to new spots (by id), as one undo step named after them all
+ * ("Move Ann, Bob & Chest"). Returns that name.
+ */
+export function moveGroup(game: Game, session: Session, players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>): string | null {
+  const { st } = rpgNow(game, session);
+  if (!st) return null;
+  const who = Object.keys(players).filter((id) => st.positions[id]);
+  const what = Object.keys(objects).flatMap((id) => {
+    const found = objectAt(game, session, id);
+    return found ? [{ id, name: objectName(found.el) }] : [];
+  });
+  if (!who.length && !what.length) return null;
+  const text = `Move ${nameList([...who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?'), ...what.map((o) => o.name)])}`;
+  logged(session, text, () => {
+    for (const id of who) Object.assign(st.positions[id], players[id]);
+    for (const o of what) Object.assign(override(st, o.id), objects[o.id]);
+  });
+  return text;
+}
+
 /** What an object is called on its card, in menus and in the log. */
 export const objectName = (el: SlideElement) => el.name || el.role?.class || 'Object';
 
