@@ -324,6 +324,11 @@
     const text = joinPartyNow(game, session, withSelected(id), pt.id);
     if (text) toast(text);
   }
+  /** The minimap box's width, and its map's width over height: its height follows (see .mapbox). */
+  let mapW = $state(0);
+  let mapRatio = $state(0);
+  /** The minimap's head row and the map's title above the cells (px). */
+  const MAP_HEAD = 46;
 </script>
 
 {#if world && st}
@@ -495,7 +500,8 @@
         {/each}
       </div>
 
-      <div class="mapbox">
+      <!-- No taller than the map needs (a small world left an empty band under it), at most its usual height. -->
+      <div class="mapbox" bind:clientWidth={mapW} style:height={mapRatio && mapW ? `min(clamp(110px, 20vh, 200px), ${Math.round(mapW / mapRatio) + MAP_HEAD}px)` : undefined}>
         <!-- A picked screen's buttons go up here, beside ⤢ Full map: the map keeps its size, so both clicks of a double-click land on the same screen. -->
         <div class="row mini-head" class:pick={!!(picked && pickedFound)}>
           {#if picked && pickedFound}
@@ -508,7 +514,7 @@
           <!-- With a screen picked, just ⤢: its buttons need the room. -->
           <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map">⤢{picked && pickedFound ? '' : ' Full map'}</button>
         </div>
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit near={{ cols: 7, rows: 5 }} {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} />
+        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit near={{ cols: 7, rows: 5 }} {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} bind:ratio={mapRatio} />
       </div>
       </div>
 
@@ -548,7 +554,10 @@
                     }),
                   )}
               >
-                {el.name || classLabel(el.role?.class)}{el.role && el.name ? ` · ${classLabel(el.role.class)}` : ''}
+                <!-- (Its kind after its name, unless the name says it already: "Arrival point", not "Arrival point · Arrival point".) -->
+                {el.name || classLabel(el.role?.class)}{el.role && el.name && el.name.trim().toLowerCase() !== classLabel(el.role.class).toLowerCase()
+                  ? ` · ${classLabel(el.role.class)}`
+                  : ''}
               </button>
             {:else}
               <span class="muted small">None on this screen.</span>

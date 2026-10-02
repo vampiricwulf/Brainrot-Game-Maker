@@ -25,6 +25,7 @@
     near,
     onmenu,
     onmove,
+    ratio = $bindable(0),
   }: {
     world: World;
     st: WorldState | undefined;
@@ -46,6 +47,8 @@
     onmenu?: (e: MouseEvent, ref: ScreenRef, screen: Screen) => void;
     /** Host: the players on a screen were dragged onto another one. */
     onmove?: (from: ScreenRef, to: ScreenRef) => void;
+    /** Out: the first map's width over its height as drawn (the host's minimap box fits its height to it). */
+    ratio?: number;
   } = $props();
 
   const maps = $derived((audience ? world.maps.filter((m) => mapVisible(st, m)) : world.maps).filter((m) => !only || m.id === only));
@@ -56,6 +59,10 @@
   const cells = $derived(new Map(maps.map((m) => [m.id, new Map(m.screens.map((s) => [`${s.col},${s.row}`, s]))])));
   /** The cells each map draws: viewers see the part they know (and a cell around it), the host all of it. */
   const areas = $derived(new Map(maps.map((m) => [m.id, (audience ? mapCrop(st, m) : nearby(m)) ?? { col: 0, row: 0, cols: m.cols, rows: m.rows }])));
+  $effect(() => {
+    const b = maps[0] && areas.get(maps[0].id);
+    ratio = b ? (b.cols * 16) / (b.rows * 9) : 0;
+  });
 
   /** The minimap's window on a big map: `near` cells around the party's screen, kept on the map. */
   function nearby(m: WorldMap) {
@@ -299,6 +306,9 @@
   }
   .fit .map {
     height: 100%;
+    /* The whole width of the box (else it shrank to a narrow column, the cells drawn small). */
+    flex: 1 1 0;
+    min-width: 0;
   }
   .fit .area {
     flex: 1;

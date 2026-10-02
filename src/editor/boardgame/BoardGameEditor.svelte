@@ -1006,7 +1006,7 @@
             <button class="small" onclick={() => fork(sel)} title="A new space beside the way on, as a second way: two or more ways make a fork (the host picks the way in play)">⑂ Add a fork here</button>
             {#if sel.next.length > 1}<span class="muted small">A fork: the host picks the way in play.</span>{/if}
           </div>
-          <h5>When passed <span class="muted small">(or landed on: e.g. Start, +2 gold)</span></h5>
+          <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
           <ActionListEditor bind:actions={sel.onPass} board={round} addLabel="＋ Add button (when passed)" />
           <h5>When landed on</h5>
           <ActionListEditor bind:actions={sel.onLand} board={round} addLabel="＋ Add button (when landed on)" />

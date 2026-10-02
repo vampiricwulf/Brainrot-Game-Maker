@@ -45,7 +45,7 @@
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="body">
-      <h5>When passed <span class="muted small">(or landed on: e.g. Start, +2 gold)</span></h5>
+      <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
       <ActionListEditor bind:actions={space.onPass} board={round} addLabel="＋ Add button (when passed)" />
       <h5>When landed on</h5>
       <ActionListEditor bind:actions={space.onLand} board={round} addLabel="＋ Add button (when landed on)" />

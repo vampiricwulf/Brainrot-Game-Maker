@@ -49,7 +49,7 @@ in plain words for the people who make and host games. Anything committed but no
 - **The Final's wager step says it once**: under "Category on screen · taking wagers (only you see them)" the panel now
   just says "Tick who plays and enter each wager."
 - **Board games: landing on a space counts as passing it** — the host gets its "when passed" buttons too ("Landed on
-  Start (counts as passing): +$100"), so landing on Start still pays. The editor says so beside "When passed".
+  Start (counts as passing): +$100"), so landing on Start still pays. The editor says so beside "When passed" ("landing on it counts too").
 - **Board games: no numbers in the spaces' circles** (a space called "Space 4" no longer shows a 4); a space shows its
   kind's emoji, its picture, or nothing, and its name under it when ticked.
 - **Phones, wagers**: the wager box is headed "Your wager" under the Final's name or "Daily Double — you're up!" (it
@@ -212,6 +212,9 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **RPG host panel: the minimap is no taller than its map**, so a small world no longer leaves an empty band under it;
+  and the objects here don't repeat a kind their name already says ("Arrival point", not "Arrival point · Arrival
+  point").
 - **The host's notes during a Daily Double's wager** say the question is "(not shown yet)" (they said "(on screen)" while
   viewers still see the Daily Double splash).
 - **↺ Reset in a wheel's ✎ edit box** brings back the slices switched off on a quick, ready-made or category wheel
