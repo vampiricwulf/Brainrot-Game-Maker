@@ -56,7 +56,7 @@ export function setTurn(game: Game, session: Session, playerId: string): void {
   const { bs } = boardNow(game, session);
   const i = bs?.order.indexOf(playerId) ?? -1;
   if (!bs || i < 0 || i === bs.turn) return;
-  logged(session, `${playerName(session, playerId)}'s turn`, () => {
+  logged(session, `${playerName(session, playerId)}’s turn`, () => {
     bs.turn = i;
     bs.fork = undefined;
   });
@@ -90,12 +90,12 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
 export function turnNow(game: Game, session: Session, delta = 1): void {
   const { bs } = boardNow(game, session);
   if (!bs) return;
-  // The log says whose turn it is now ("Ann's turn"), as Make it their turn does.
+  // The log says whose turn it is now (“Ann’s turn”), as Make it their turn does.
   const after = { ...bs };
   const skipped = nextTurn(after, delta);
   const again = delta > 0 && bs.again && currentPlayer(after) === bs.again ? ' again' : '';
   const skips = skipped.length ? ` (${nameList(skipped.map((id) => playerName(session, id)))} ${skipped.length === 1 ? 'skips' : 'skip'} a turn)` : '';
-  logged(session, `${playerName(session, currentPlayer(after))}'s turn${again}${skips}`, () => {
+  logged(session, `${playerName(session, currentPlayer(after))}’s turn${again}${skips}`, () => {
     nextTurn(bs, delta);
     bs.last = undefined;
   });

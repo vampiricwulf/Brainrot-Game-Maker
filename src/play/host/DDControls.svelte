@@ -94,7 +94,7 @@
 
 <div class="dd">
   <b>Daily Double!</b>
-  <span class="muted">Who found it?{#if !playerId}<span class="warn"> Pick a player.</span>{/if}</span>
+  <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a player.</span>{/if}</span>
   <div class="row">
     {#each session.players as p (p.id)}
       <button
@@ -126,21 +126,35 @@
         }}
       />
     </label>
-    {#if fromPhone}
-      <span class="phone small" title="Sent from their phone. You can still type over it." data-dd-phone
-        >📱 from phone{session.dd?.draftBy ? ` · sent by ${session.dd.draftBy}` : ''}</span
-      >
-    {:else if hasPhone && wager === null}
-      <span class="muted small" data-dd-phone>📱 waiting…</span>
-    {/if}
-    <button class="small ghost" onclick={() => ((wager = cap), typed(cap))}>True Daily Double ({formatPoints(cap, sym)})</button>
-    <span class="muted small">{override ? 'TV max' : 'Max'} {formatPoints(cap, sym)} (their score or the round's top value){override ? ': not enforced' : ''}</span>
+    <!-- Next to the box it's about, in the same place whatever the wager or the player (it never jumps). -->
     <label class="check small">
       <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>
+    <button class="small ghost" disabled={!playerId} onclick={() => ((wager = cap), typed(cap))} title={playerId ? undefined : 'Pick who found it first'}
+      >True Daily Double{playerId ? ` (${formatPoints(cap, sym)})` : ''}</button
+    >
+    {#if playerId}
+      <span class="muted small">{override ? 'TV max' : 'Max'} {formatPoints(cap, sym)} (their score or the round's top value){override ? ': not enforced' : ''}</span>
+    {/if}
   </div>
-  {#if hasPhone}
-    <span class="muted small">Their phone can send the wager: it fills in here (only you see it).</span>
+  <!-- The phones' line: there from the start when anyone has one (the box doesn't grow as a wager comes in). -->
+  {#if phones.length}
+    <span class="small" data-dd-phones>
+      {#if fromPhone}
+        <span class="phone" title="Sent from their phone. You can still type over it." data-dd-phone
+          >📱 from phone{session.dd?.draftBy ? ` · sent by ${session.dd.draftBy}` : ''}</span
+        >
+        <span class="muted">· you can still type over it (only you see it).</span>
+      {:else if hasPhone}
+        <span class="muted"
+          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}Their phone can send the wager: it fills in here (only you see it).</span
+        >
+      {:else if playerId}
+        <span class="muted">📱 No phone for this player: type their wager.</span>
+      {:else}
+        <span class="muted">📱 Once you pick them, a player with a phone can send their wager from it.</span>
+      {/if}
+    </span>
   {:else if phoneNote}
     <span class="muted small">{phoneNote}</span>
   {/if}

@@ -156,6 +156,11 @@ try {
   const dd = host.locator('.panel .dd', { hasText: 'Who found it?' });
   await dd.waitFor();
   assert((await form(ann).isHidden()) && (await form(bo).isHidden()), 'nobody picked for the Daily Double yet: no phone has a wager box');
+  assert((await dd.innerText()).includes('Who found it? Pick a player.'), 'the host is asked “Who found it? Pick a player.”');
+  assert(await dd.getByRole('button', { name: 'True Daily Double' }).isDisabled(), 'True Daily Double is off (with no amount) until a player is picked');
+  assert((await dd.locator('[data-dd-phones]').innerText()).includes('Once you pick them'), 'the phones’ line is there from the start (the box doesn’t grow as a wager comes in)');
+  const ddBox = async () => Math.round((await dd.boundingBox()).height);
+  const ddH = await ddBox();
   await dd.locator('.chip', { hasText: 'Player 1' }).click();
   await form(ann).waitFor();
   assert((await ann.locator('#wager-head').innerText()) === 'Daily Double: your wager', 'the player who found it gets a wager box on their phone');
@@ -177,6 +182,7 @@ try {
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
   await dd.getByText('📱 from phone').waitFor();
   assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone says “✔ Sent: $777”');
+  assert((await ddBox()) === ddH, `the Daily Double box keeps its height from the pick to the phone’s wager (${ddH}px)`);
   await shot('pw-1-dd-host', host);
   await shot('pw-2-dd-phone', ann);
   assert(await noneOf(aud, [777]), 'the audience window has no sign of the amount');

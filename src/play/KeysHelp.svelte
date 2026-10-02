@@ -55,6 +55,7 @@
         ['R', 'Reveal the answer (again: hide it); the countdown stops'],
         ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
+        ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
         ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
         ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
       ],
@@ -72,6 +73,7 @@
       title: 'Final',
       keys: [
         ['N', 'Title card: start the round; then the next step; in the reveals: show the wager, then the next player'],
+        ['Enter in a wager box', 'The next wager still to type in; with every wager in, show the question'],
         ['Shift+N', 'Reveals: back to the player before'],
         ['R', 'The question: reveal the answer (again: hide it); the countdown stops'],
         ['1 – 9', 'Reveals: spotlight the Nth player'],

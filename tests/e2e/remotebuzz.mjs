@@ -191,6 +191,10 @@ try {
   const closed = await state();
   assert(closed.clue.caption.includes('$200'), `the room gets the clue's caption (${closed.clue.caption})`);
   assert(await page.locator('.panel button.primary', { hasText: '🔔 Open the buzzers' }).isVisible(), 'the buzzers start closed: the host panel offers to open them');
+  // The buzzers' things are on a row of their own, one height whatever it says: the panel (and the stage over it) keeps
+  // its height as people buzz, miss and tie.
+  const panelH = () => page.locator('.panel').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const heights = { closed: await panelH() };
   await page.keyboard.press('u');
   await stateIs((s, a) => s.phase === 'armed' && s.armId > a, closed.armId);
   const armed = await state();
@@ -209,6 +213,14 @@ try {
   assert(rows.join(' | ') === '1. Player 2 | 2. Player 3 +0.12 s', `the host panel lists the buzzes fastest first (${rows.join(' | ')})`);
   await stateIs((s, id) => s.phase === 'answering' && s.answering === id, seats[1].id);
   await shot('rb-3-answering');
+  heights.answering = await panelH();
+  assert(
+    await page.locator('.panel [data-buzzrow]').evaluate((row) => {
+      const award = document.querySelector('.panel .award');
+      return !!row.querySelector('[aria-label="Buzz order"]') && !!award && row.getBoundingClientRect().bottom <= award.getBoundingClientRect().top;
+    }),
+    'the buzz order, who buzzed and ⏭ Skip are on the buzzers’ row, above the Amount row',
+  );
 
   // Wrong: Player 2 is locked out, and Player 3, next in the buzz order, answers at once (the same opening: there's no
   // new one for a later buzz to jump the queue with).
@@ -221,6 +233,7 @@ try {
   });
   assert((await pressed())[0].includes('Player 3'), 'a wrong answer locks Player 2 out, and Player 3, next in the buzz order, answers (no re-opening)');
   await page.getByText('Missed: Player 2').waitFor();
+  heights.missed = await panelH();
   assert((await queue.locator('li.out', { hasText: 'Player 2' }).count()) === 1, 'the queue stays, Player 2 struck out');
   // A buzz from a phone meanwhile doesn't take the turn.
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[0].id, rank: 3, afterMs: 200 });
@@ -256,6 +269,8 @@ try {
   await say({ t: 'queue', armId: tieArm, queue: [{ seatId: seats[0].id, afterMs: 0 }, { seatId: seats[1].id, afterMs: 4 }], tie: [seats[0].id, seats[1].id] });
   await page.getByText('Tie: Player 1 & Player 2').waitFor();
   assert((await pressed()).length === 0, 'a tie: nobody is picked, the host panel says "Tie: Player 1 & Player 2"');
+  heights.tie = await panelH();
+  assert(new Set(Object.values(heights)).size === 1, `the host panel keeps its height through the buzzes (${JSON.stringify(heights)})`);
   await shot('rb-3b-tie');
   await page.getByRole('button', { name: '🎲 Roll for it' }).click();
   await aud.getByText('Tie! Roll for it').waitFor();

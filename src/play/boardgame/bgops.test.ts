@@ -92,7 +92,7 @@ describe('board game: the host’s moves on the stage', () => {
     const { game, session, bs } = playing();
     setTurn(game, session, 'c');
     expect(bs().order[bs().turn]).toBe('c');
-    expect(session.actionLog?.at(-1)?.text).toBe("Cat's turn");
+    expect(session.actionLog?.at(-1)?.text).toBe('Cat’s turn');
     reorderTurns(game, session, 2, 0);
     expect(bs().order).toEqual(['c', 'a', 'b']);
     expect(bs().order[bs().turn]).toBe('c');
@@ -104,11 +104,11 @@ describe('board game: the host’s moves on the stage', () => {
   it('says whose turn it is in the history, going on or back', () => {
     const { game, session, bs } = playing();
     turnNow(game, session);
-    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['b', "Bob's turn"]);
+    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['b', 'Bob’s turn']);
     turnNow(game, session, -1);
     turnNow(game, session, -1);
     // Back from the first player: the last one's turn.
-    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', "Cat's turn"]);
+    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', 'Cat’s turn']);
   });
 
   it('runs a space’s landing actions for some players as one step', () => {
@@ -148,7 +148,7 @@ describe('board game: the host’s moves on the stage', () => {
     expect(run({ id: '4', do: 'skip', who: 'ask' }, ['b'])).toBe('Skip next turn: Bob');
     turnNow(game, session);
     expect(bs().order[bs().turn]).toBe('c');
-    expect(session.actionLog?.at(-1)?.text).toBe("Cat's turn (Bob skips a turn)");
+    expect(session.actionLog?.at(-1)?.text).toBe('Cat’s turn (Bob skips a turn)');
     expect(bs().skips).toBeUndefined();
     // Undoing the turn puts the skip back.
     undoAction(session, game);
@@ -158,7 +158,7 @@ describe('board game: the host’s moves on the stage', () => {
     // Cat rolls again: Next turn stays with her, once.
     expect(run({ id: '5', do: 'again' })).toBe('Roll again: Cat');
     turnNow(game, session);
-    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', "Cat's turn again"]);
+    expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', 'Cat’s turn again']);
     turnNow(game, session);
     expect(bs().order[bs().turn]).toBe('a');
   });

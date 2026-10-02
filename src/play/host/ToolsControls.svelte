@@ -20,6 +20,7 @@
   import { setPicker } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
+  import { boardNow, moverResult } from '../boardgame/bgops';
   import { offerNext } from './slots.svelte';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
@@ -107,6 +108,9 @@
       };
     if (o.kind === 'dice' && !landed) return { label: o.roll ? 'Roll again' : 'Roll!', key: 'D', disabled: busy, run: () => rollDice(app.live, session, o.preset) };
     if (o.kind === 'popup' && o.answer && !o.revealed) return { label: '👁 Reveal answer', key: 'R', run: () => (o.revealed = true) };
+    // A board game's own roll (or spin) that came up: moving is next (▶ Move, Enter, which closes it), not Close.
+    const { round } = boardNow(game, session);
+    if (round && moverResult(game, round, o) !== null) return null;
     return { label: tileDone ? 'Close ▶ board' : 'Close', key: 'Esc', run: onclose };
   });
 

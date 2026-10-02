@@ -6,7 +6,7 @@
 <script lang="ts">
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
-  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
@@ -335,6 +335,13 @@
         {#if !waiting}<div class="slide-area" style:scale={bandScale}><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
       </div>
     {/key}
+    <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
+    {@const of = questionSlides(info.clue).length}
+    {#if of > 1 && !session.revealed && !waiting}
+      <div class="pips" role="img" aria-label="Slide {at + 1} of {of}" data-slide-pips>
+        {#each { length: of } as _, i (i)}<span class:on={i <= at}></span>{/each}
+      </div>
+    {/if}
     {#if stream?.clueCaption && !waiting}
       <div class="caption">{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
     {/if}
@@ -978,6 +985,30 @@
   .on-bar.bar-top .pop.anchored {
     top: 0;
     bottom: auto;
+  }
+  .pips {
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 15;
+    display: flex;
+    gap: 14px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+  }
+  .pips span {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    opacity: 0.8;
+  }
+  .pips span.on {
+    background: #fff;
+    opacity: 1;
   }
   .caption {
     position: absolute;

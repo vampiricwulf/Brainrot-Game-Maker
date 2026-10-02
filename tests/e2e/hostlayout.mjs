@@ -2,7 +2,10 @@
 // clue, a Daily Double, the Final, an RPG and a board-game round and the end screen; there's never more than one main
 // (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (the
 // panel grows by that strip, nothing overlaps); and beside the stage (RPG and board-game rounds on a wide window) the
-// fixed bar is a grid with 🚪 Exit in its bottom-right cell.
+// fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
+// the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
+// button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
+// on a narrow window the fixed bar stays on one line (🚪 Exit at the right).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -31,7 +34,7 @@ const board = {
   categories: cats.map((c, ci) => ({
     id: `cat${ci}`,
     title: c,
-    clues: [0, 1, 2, 3, 4].map((ri) => (ci === 4 && ri === 0 ? clue('A Daily Double', 'Its answer', { type: 'dailyDouble' }) : clue(`${c} ${ri}`, `Answer ${ci}.${ri}`))),
+    clues: [0, 1, 2, 3, 4].map((ri) => (ci === 4 && ri === 0 ? clue('A Daily Double', 'Its answer', { type: 'dailyDouble', extraSlides: [2, 3].map((k) => ({ id: `dx${k}`, ...slide(`dxs${k}`, `Daily Double slide ${k}`) })) }) : clue(`${c} ${ri}`, `Answer ${ci}.${ri}`))),
   })),
 };
 const screens = [0, 1].map((c) => ({ id: `sc_${c}`, name: `Field ${c}`, col: c, row: 0, slide: { background: { color: '#553322' }, elements: [] } }));
@@ -100,6 +103,13 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   states.clue = await look();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'in a clue the main button is 👁 Reveal answer');
+  // ✔ greys out once pressed: the focus goes on to the main button, not lost to the page.
+  await page.getByRole('button', { name: /^Right: Ann/ }).click();
+  await page.waitForTimeout(100);
+  assert(await mainButton(page).evaluate((b) => b === document.activeElement), '✔ pressed (it greys out): the focus goes to the main button');
+  await page.keyboard.press('Control+z');
+  // (Undone: the scores are tied again, as the end of this test wants.)
+  await page.waitForFunction(() => document.querySelector('.panel .fixed button')?.title === 'Nothing to undo');
   await page.keyboard.press('1');
   states.answering = await look();
   assert((await page.locator('.panel .award button.primary').innerText()).includes('Award Ann'), 'someone answering: ＋ Award is the main button (the NEXT cell goes quiet)');
@@ -110,12 +120,28 @@ try {
   await page.locator('.stage-box .board .tile').nth(4).click();
   await page.locator('.dd input[type=number]').waitFor();
   states.ddWager = await look();
+  assert((await page.locator('.panel .status').innerText()).includes('Daily Double: who found it, and their wager'), 'the status line says what the Daily Double screen wants (no lone “·”)');
   assert((await mainLabel(page)) === 'Show question ▶' && (await mainButton(page).isDisabled()), 'the Daily Double’s main button is Show question ▶, off until there’s a wager');
   await page.locator('.dd .chip', { hasText: 'Bob' }).click();
   await page.locator('.dd input[type=number]').fill('100');
   await mainButton(page).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
   states.ddQuestion = await look();
+  // Its player is picked (＋ Award Bob is ready), but there are slides still to show: Next slide ▶ is the main button.
+  assert(
+    (await mainLabel(page)) === 'Next slide ▶' && (await mainButton(page).evaluate((b) => b.classList.contains('primary'))),
+    'a Daily Double with three slides: Next slide ▶ is the main button, its player picked or not',
+  );
+  const pips = page.locator('.stage-box [data-slide-pips]');
+  assert((await pips.getAttribute('aria-label')) === 'Slide 1 of 3', 'viewers see where the clue is (Slide 1 of 3, as dots)');
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Slide 3 of 3'));
+  assert((await pips.getAttribute('aria-label')) === 'Slide 3 of 3', 'the dots follow the slides');
+  assert((await page.locator('.panel .award button.primary').innerText()).includes('Award Bob'), 'on its last slide ＋ Award is the main button');
+  await page.keyboard.press('r');
+  await pips.waitFor({ state: 'detached' });
+  assert(true, 'the dots go when the answer shows');
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
 
@@ -141,12 +167,22 @@ try {
   await page.locator('.panel .status', { hasText: 'Board game' }).waitFor();
   states.boardgame = await look();
   assert((await mainLabel(page)) === 'Next turn ▶', 'a board-game round’s main button is Next turn ▶');
+  // Its own roll (D) is the round's: ▶ Move (Enter) is next, so its dice don't take the main button with a Close.
+  await page.keyboard.press('d');
+  await page.locator('.panel [data-tool-controls]').waitFor();
+  await page.waitForTimeout(1500);
+  assert((await mainLabel(page)) === 'Next turn ▶', `the round’s own roll keeps the main button the round’s (${await mainLabel(page)})`);
+  await page.keyboard.press('Escape');
   // Leaving an RPG or board-game round always asks (nothing to count there), quietly.
   await page.waitForTimeout(450);
   const leave = page.locator('.rn button', { hasText: '▶' });
   assert(!(await leave.evaluate((b) => b.classList.contains('primary'))), 'its Next round ▶ is a quiet button');
   await leave.click();
   assert((await confirmStrip(page).innerText()).includes('Leave Board game?'), 'and leaving it asks first (“Leave Board game?”)');
+  assert(
+    (await page.locator('.panel button.primary:visible').count()) === 1 && (await confirmStrip(page).locator('button.primary').count()) === 1,
+    'while it asks, its answer is the one main button (Next turn ▶ goes quiet)',
+  );
   await page.waitForTimeout(450);
   await confirmStrip(page).getByRole('button', { name: 'Yes', exact: true }).click();
   await page.locator('.fj').waitFor();
@@ -212,6 +248,29 @@ try {
   assert(inBg.right - inBg.x < 4 && inBg.bottom - inBg.y < 4, 'in the fixed bar’s bottom-right cell');
   await p2Next('Final');
   assert((await p2.locator('.play.side').count()) === 0, 'the Final uses the panel under the stage');
+  // A narrow, short window (1024×600): the fixed bar on one line, 🚪 Exit at its right, on the board and in a clue.
+  console.log('A narrow window:');
+  const narrow = await browser.newContext({ viewport: { width: 1024, height: 600 } });
+  const p3 = await narrow.newPage();
+  p3.on('pageerror', (e) => errors.push(e.message));
+  await p3.goto(pathToFileURL(file).href);
+  await openGameFile(p3, gameFile);
+  await p3.getByText(/^Opened “/).waitFor();
+  await p3.getByRole('button', { name: '▶ Play' }).click();
+  await p3.getByRole('button', { name: 'Start game ▶' }).click();
+  await p3.locator('.panel').waitFor();
+  if (await p3.getByRole('button', { name: 'Skip intro' }).count()) await p3.getByRole('button', { name: 'Skip intro' }).click();
+  const oneLine = async (where) => {
+    const bar = p3.locator('.panel .fixed');
+    const u = await bar.getByRole('button', { name: '↶ Undo' }).boundingBox();
+    const e = await bar.getByRole('button', { name: '🚪 Exit' }).boundingBox();
+    const f = await bar.boundingBox();
+    assert(Math.abs(u.y - e.y) < 2 && f.x + f.width - (e.x + e.width) < 2, `${where}: ↶ Undo and 🚪 Exit on one line, Exit at the right`);
+  };
+  await oneLine('on the board');
+  await p3.locator('.stage-box .board .tile').first().click();
+  await p3.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+  await oneLine('in a clue');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Host layout e2e passed');
 } finally {

@@ -166,6 +166,31 @@ in plain words for the people who make and host games. Anything committed but no
   arrived late" in the host panel's buzz order and on that phone) instead of "0.00 s behind".
 
 ### Changed
+- **Host panel, buzzer mode**: the buzzers' own things (how they stand, "🔔 Al (Red team) buzzed", ⏭ Skip, → Next in
+  line, the buzz order and ↺ Reset buzzers) have a row of their own above the Amount row, always the same height. The
+  panel (and, in a single window, the stage viewers see) no longer changes size as people buzz, miss or tie, or as the
+  host steps through a clue's slides.
+- **A Daily Double with several question slides**: **Next slide ▶** stays the main button until its last slide, even
+  though its player is already picked (＋ Award was lit from the first slide). Then ＋ Award is, as before.
+- **Viewers see where a clue with several slides is**: small dots at the foot of the stage (● ● ○), until the answer
+  shows.
+- **The Daily Double wager screen keeps still**: "Ignore the limit" sits next to the wager box, and the phones' line
+  (📱 waiting…, 📱 from phone · sent by Al) is there from the start, so nothing moves or grows as a player is picked or
+  a phone sends the wager. True Daily Double is greyed out until a player is picked (it said "$0" before), and the
+  status line says "Daily Double: who found it, and their wager" (it ended in a lone "·").
+- **One main button while the panel asks**: with "Leave this round?" (or Exit's question) up, its answer is the only
+  lit button; the main button beside it goes quiet.
+- **Board games**: rolling the round's own dice (D) no longer turns the main button into the dice's Close: moving (▶ Move,
+  Enter) is next, and the main button stays the round's.
+- **Beside the stage** (RPG and board-game rounds): the round's how-to goes under its name and the 📱 / ⏱ chips (one
+  line less), and Amount, ＋ Award and − Deduct fit on one line.
+- **On a narrow window** (about 1180 pixels or less) the fixed bar's and the action row's buttons are a little smaller,
+  so 🚪 Exit stays at the right of the bar instead of wrapping under ↶ Undo.
+- **The Final's wager screen says why someone sits out** when it's their score ("sits out: no points to wager (tick to
+  let them play)").
+- **⌨ Keyboard shortcuts** lists Enter in the Daily Double's wager box (show the question) and in the Final's wager
+  boxes (the next wager to type, then show the question).
+- A board game's history says "Ann’s turn" with the same apostrophe as everywhere else.
 - **The Final goes straight to its wagers**: there's no "Lock category, take wagers" step any more. When the Final
   starts, its category is on screen ("Make your wagers…") and the host panel shows one wager screen: a row for each
   player with a tick for whether they play (players at $0 or less are ticked out when the round says so) and their
@@ -495,6 +520,11 @@ in plain words for the people who make and host games. Anything committed but no
   of jumping back to its arrival time (a 0.15–0.9 s penalty before).
 
 ### Fixed
+- **✔ / ✘ on a player chip** no longer drop the keyboard focus (the button greys out once pressed): it goes on to the
+  main button.
+- **＋ Award and − Deduct, greyed out, say why** in their tooltip ("Pick who answered first (1–3)", "Type an amount
+  first").
+- "Who found it?Pick a player." on the Daily Double screen has its space back.
 - **Pop-ups are always whole on screen and on top**: the 📱 phones list could run off the top or the bottom of the
   window, or be cut off by the host panel as if hidden under the stage (when the window was resized, or the panel
   scrolled), and beside the stage (RPG and board-game rounds) it hung over the stage viewers see. It now drops from its

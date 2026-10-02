@@ -351,7 +351,8 @@
                 {override ? `TV max ${formatPoints(cap, sym)}` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
               </span>
             {:else}
-              <span class="muted small">sits out</span>
+              <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
+              <span class="muted small">{f.chosen?.[p.id] === false || score(session, p.id) > 0 ? 'sits out' : 'sits out: no points to wager (tick to let them play)'}</span>
             {/if}
           </div>
         {/each}

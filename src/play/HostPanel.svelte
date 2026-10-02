@@ -26,7 +26,7 @@
   import { app } from '../lib/app.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
   import { scoresWindow } from '../lib/sync.svelte';
-  import { onMount, untrack, type Snippet } from 'svelte';
+  import { onMount, tick, untrack, type Snippet } from 'svelte';
 
   let {
     game,
@@ -255,6 +255,8 @@
   /** 0 is an amount too: a Daily Double wagered at 0 (a 0 result), the tiebreaker's winner (no points). */
   const zeroOk = $derived(amount === 0 && ((session.phase === 'clue' && session.dd?.stage === 'question') || session.phase === 'tiebreaker'));
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
+  /** Why ＋ Award and − Deduct are off (their tooltip). */
+  const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who answered first (1–${Math.min(9, session.players.length) || 9})`);
   const awardLabel = $derived.by(() => {
     if (selected.length !== 1) return `＋ Award${selected.length ? ` (${selected.length})` : ''}`;
     const p = session.players.find((x) => x.id === selected[0]);
@@ -355,6 +357,13 @@
     queueMicrotask(() => document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true }));
   });
   const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, markSince) : {});
+  /** ✔ / ✘ pressed: that button is off now, so the focus goes on to the main button (not lost to the page). */
+  function judged(): void {
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body || (a as HTMLButtonElement).disabled) document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true });
+    });
+  }
 
   /**
    * The quick ✔/✘ buttons: clue phase only (not on a wheel/dice tile with nothing to judge), and during a Daily Double
@@ -367,7 +376,8 @@
   /** Buzzer mode: the buzzers are closed, nobody answering or picked. */
   const buzzClosed = $derived(buzzing && buzz?.phase !== 'armed' && buzz?.phase !== 'answering' && !selected.length);
   /** Someone is answering (picked, or the buzz): ＋ Award is the main button then, and the NEXT cell goes quiet. */
-  const answering = $derived(session.phase === 'clue' && !ddWager && !!selected.length && canAward);
+  // (Not while a Daily Double has question slides still to show: its player hasn't heard it all, Next slide ▶ is next.)
+  const answering = $derived(session.phase === 'clue' && !ddWager && !!selected.length && canAward && !(session.dd && moreSlides));
   /**
    * This moment's own main button, by priority: a buzzer tie's 🎲 Roll for it, 🔔 Open the buzzers, then 👁 Reveal
    * answer, then ▦ Done ▶ board. (A part's offer comes first: a tool on screen, the Daily Double's wager, the Final…)
@@ -448,7 +458,9 @@
         <span class="revealed">Answer is showing</span>
       {:else if toolOnly}
         <span class="muted">No question on this tile</span>
-      {:else if !ddWager}
+      {:else if ddWager}
+        <span class="muted">Daily Double: who found it, and their wager</span>
+      {:else}
         <span class="muted">Answer hidden</span>
       {/if}
       {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes: viewers can see them in this window">📝 {info.clue.hostNotes}</span>{/if}
@@ -578,7 +590,7 @@
             {@const was = marks[p.id]?.right}
             <button
               class="small quick right"
-              onclick={() => onright(p.id)}
+              onclick={() => (onright(p.id), judged())}
               disabled={was === true}
               aria-label="Right: {p.name} +{formatPoints(quickValue, sym)}"
               title={was === true ? `${p.name} is marked right on this clue (＋ Award gives more)` : `Correct: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
@@ -586,7 +598,7 @@
             >
             <button
               class="small quick wrong"
-              onclick={() => onwrong(p.id)}
+              onclick={() => (onwrong(p.id), judged())}
               disabled={was === false}
               aria-label="Wrong: {p.name} −{formatPoints(quickValue, sym)}"
               title={was === false ? `${p.name} is marked wrong on this clue (− Deduct takes more)` : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
@@ -683,6 +695,30 @@
       {/if}
 
       {#if showAward}
+        {#if buzzing}
+          <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. The buzzers'
+               own things go together on a row of their own above the Amount row, one height whatever it says (the stage
+               doesn't resize as people buzz or the slides change): how they stand, who buzzed, ⏭ Skip, → Next in line,
+               the order, then ↺ Reset at the end. -->
+          <div class="row buzzrow" data-buzzrow>
+            {#if phonesDown && !selected.length && buzz?.phase !== 'answering'}
+              <span class="phones-down" role="status">{phonesDown}</span>
+            {/if}
+            {#if tieNames}
+              <span class="tie" role="status">Tie: {tieNames} <span class="muted hint">· 🎲 Roll for it, or pick one (1–{Math.min(9, session.players.length) || 9})</span></span>
+            {:else if buzz?.phase === 'armed' && !selected.length}
+              {#if !phonesDown}
+                <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
+              {/if}
+            {:else if buzzClosed}
+              <span class="muted hint">Buzzers closed (number keys still pick)</span>
+            {/if}
+            {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
+            {@render buzzExtra?.()}
+            <span class="spacer"></span>
+            <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
+          </div>
+        {/if}
         <div class="row award">
           <label class="check">
             Amount
@@ -699,37 +735,18 @@
             />
           </label>
           <!-- Someone answering: ＋ Award is the main button (green). -->
-          <button class="good" class:primary={answering} disabled={!canAward} onclick={() => onaward(1)} title="Enter">
+          <button class="good" class:primary={answering} disabled={!canAward} onclick={() => onaward(1)} title={canAward ? 'Enter' : awardWhyNot}>
             {awardLabel} <kbd aria-hidden="true">⏎</kbd>
           </button>
-          <button class="bad" disabled={!canAward || (session.phase === 'tiebreaker' && !amount)} onclick={() => onaward(-1)} title="Shift+Enter">
+          <button class="bad" disabled={!canAward || (session.phase === 'tiebreaker' && !amount)} onclick={() => onaward(-1)} title={canAward ? 'Shift+Enter' : awardWhyNot}>
             − Deduct <kbd aria-hidden="true">⇧⏎</kbd>
           </button>
-          {#if buzzing}
-            <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. The buzzers'
-                 own buttons go together after a divider: ⏭ Skip, → Next in line, the order, then ↺ Reset at the end. -->
-            <span class="divider" aria-hidden="true"></span>
-            {#if phonesDown && !selected.length && buzz?.phase !== 'answering'}
-              <span class="phones-down" role="status">{phonesDown}</span>
-            {/if}
-            {#if tieNames}
-              <span class="tie" role="status">Tie: {tieNames} <span class="muted hint">· 🎲 Roll for it, or pick one (1–{Math.min(9, session.players.length) || 9})</span></span>
-            {:else if buzz?.phase === 'armed' && !selected.length}
-              {#if !phonesDown}
-                <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
-              {/if}
-            {:else if buzzClosed}
-              <span class="muted hint">Buzzers closed (number keys still pick)</span>
-            {/if}
-            {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
-            {@render buzzExtra?.()}
-            <span class="divider" aria-hidden="true"></span>
-            <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
-          {:else if selected.length}
+          <!-- (Buzzer mode: the buzzers' own things are on their row, above.) -->
+          {#if selected.length && !buzzing}
             <button class="ghost" onclick={() => (selected = [])} title="Esc">Clear selection</button>
           {:else if session.phase === 'board'}
             <button class="ghost" onclick={() => (adjust = false)}>Done</button>
-          {:else if !toolOnly}
+          {:else if !toolOnly && !buzzing}
             <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}, 0 for everyone)</span>
           {/if}
           <span class="spacer"></span>
@@ -741,8 +758,8 @@
     {#if next}
       {@const n = next}
       <div class="next">
-        <!-- The one main button (quiet while someone answers: ＋ Award is the main one then). -->
-        <button class:primary={!answering} data-next disabled={n.disabled} onclick={() => n.run()} title={n.title ?? n.key}>
+        <!-- The one main button (quiet while someone answers: ＋ Award is the main one then; and while the strip asks). -->
+        <button class:primary={!answering && !ask} data-next disabled={n.disabled} onclick={() => n.run()} title={n.title ?? n.key}>
           {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
         </button>
       </div>
@@ -896,6 +913,10 @@
   .flow {
     min-height: 32px;
   }
+  /* The buzzers' row keeps one height (a button's) when it only has a hint in it. */
+  .buzzrow {
+    min-height: 32px;
+  }
   .next {
     display: flex;
     justify-content: flex-end;
@@ -1003,6 +1024,35 @@
   }
   .side .award .hint {
     display: none;
+  }
+  /* (Amount, ＋ Award and − Deduct on one line in the column: their keys are in their tooltips.) */
+  .side .award input {
+    width: 80px;
+  }
+  .side .award kbd {
+    display: none;
+  }
+  /* The round's how-to under its name and the chips, not between them (one line less in the column). */
+  .side > .status > .hint {
+    order: 1;
+    flex-basis: 100%;
+  }
+  /* A narrow window under the stage: the fixed bar's buttons a little smaller, so 🚪 Exit stays on its line at the right
+     instead of wrapping to the left under ↶ Undo, and the Amount row's too, so a clue's buttons stay on one line. */
+  @media (max-width: 1180px) {
+    .panel:not(.side) > .act :global(button) {
+      padding: 5px 9px;
+    }
+    .panel:not(.side) .award input {
+      width: 80px;
+    }
+    .panel:not(.side) > .fixed :global(button) {
+      padding: 5px 8px;
+      font-size: 13px;
+    }
+    .panel:not(.side) > .fixed > .divider {
+      margin: 0;
+    }
   }
   /* The player cards (RPG and board games) take the column's width and height: the round's box scrolls instead. */
   .side .mode-host :global(.cards) {
