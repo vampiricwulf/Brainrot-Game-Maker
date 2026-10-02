@@ -865,7 +865,6 @@
         title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ Redo</button
       >
       <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
-      {#if onkeys}<button class="ghost" onclick={onkeys} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>{/if}
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-lists">
@@ -907,7 +906,9 @@
       >
     </span>
     <span class="spacer"></span>
+    <!-- ⌨ beside 🚪 Exit: in the side column, Undo, Redo and Sound fill their cell (⌨ there would wrap to a row alone). -->
     <span class="group g-exit">
+      {#if onkeys}<button class="ghost" onclick={onkeys} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>{/if}
       <button class="ghost exit" onclick={() => (askExit = true)}>🚪 Exit</button>
     </span>
   </div>
