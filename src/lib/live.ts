@@ -139,6 +139,8 @@ export interface Live {
   soonAt?: number;
   /** The pre-game screen is a rematch's: the "Starting soon" card says "Rematch!". */
   rematch?: boolean;
+  /** Who's playing, on the "Starting soon" card (teams: the members who joined from their phones). */
+  lineup?: { name: string; color: string; members?: string[] }[];
   /**
    * Buzzer mode during a clue: open or not, who is answering, who already missed it. Outside buzzer mode `answering` is
    * the one player selected during a clue. Viewers see "🔔 Ann is answering".

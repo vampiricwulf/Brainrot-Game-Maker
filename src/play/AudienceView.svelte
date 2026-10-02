@@ -266,6 +266,17 @@
       <div class="round-name">{game.title}</div>
       <div class="soon-text">{live.rematch ? 'Rematch! ' : ''}{stream?.soonText?.trim() || 'Starting soon…'}</div>
       {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
+      {#if live.lineup?.length}
+        <!-- Who's playing (teams: with the members who joined from their phones). -->
+        <ul class="lineup" class:small={live.lineup.length > 6}>
+          {#each live.lineup as p, i (i)}
+            <li style:--c={p.color}>
+              <span class="lineup-name">{p.name}</span>
+              {#if p.members?.length}<span class="lineup-members">{p.members.join(', ')}</span>{/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
       {#if live.room}
         <!-- Phone buzzers: viewers who play join from their phone. -->
         <div class="join">
@@ -819,6 +830,47 @@
   }
   .join-link {
     font-size: 36px;
+  }
+  .lineup {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 18px;
+    max-width: 1700px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .lineup li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 520px;
+    padding: 8px 26px;
+    border-radius: 14px;
+    border-bottom: 6px solid var(--c);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-family: var(--board-font);
+  }
+  .lineup-name {
+    font-size: 44px;
+    font-weight: 800;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lineup-members {
+    font-size: 26px;
+    opacity: 0.85;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lineup.small .lineup-name {
+    font-size: 32px;
   }
   .soon-text,
   .soon-count {

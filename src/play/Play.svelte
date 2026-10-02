@@ -12,7 +12,7 @@
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
     finalSetWager, forViewers, wagerFromPhone,
   } from '../lib/session';
-  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
@@ -242,10 +242,17 @@
       sendSoon();
     }
   });
+  /** The players (teams with the members who joined) for the "Starting soon" card. */
+  function lineup(): NonNullable<Live['lineup']> {
+    return session.players.map((p) => {
+      const members = pregameTeams && session.remote ? teamMembers(p.id).filter(Boolean) : [];
+      return { name: p.name, color: p.color, ...(members.length ? { members } : {}) };
+    });
+  }
   $effect(() => {
     const l = $state.snapshot(app.live);
     if (viewers) {
-      outLive = app.pregame ? { ...l, pregame: true } : l;
+      outLive = app.pregame ? { ...l, pregame: true, lineup: lineup() } : l;
       sendSoon();
     }
   });

@@ -248,6 +248,8 @@ try {
   const [aud1] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).display)) === 'audience', 'picking the audience window is remembered on this computer');
   await aud1.getByText('🔊 Click to enable sound').waitFor();
+  const lineup = await aud1.locator('.lineup .lineup-name').allInnerTexts();
+  assert(lineup.length > 0 && JSON.stringify(lineup) === JSON.stringify(await names()), `the Starting soon card on stream lists who's playing (${lineup.join(', ')})`);
   assert((await page.locator('.live-check li[data-check="sound-click"]').getAttribute('class')).split(' ').every((c) => c !== 'done'), 'the checklist asks for a click in the audience window');
   await aud1.mouse.click(300, 300);
   await page.locator('.live-check li.done[data-check="sound-click"]').waitFor();

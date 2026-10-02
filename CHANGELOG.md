@@ -14,6 +14,8 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-02
 
 ### Added
+- **The "Starting soon" card on stream lists who's playing**: each player (team) in their color, with a team's members
+  who joined from their phones under its name.
 - **Board games: "Make it a…" kinds of space**: 🛒 Shop, 👹 Boss / fight, ❓ Question / clue, ⏭ Skip a turn, ↩ Back 3
   spaces and ⭐ Star (bonus points), in the space's card, its right-click menu and ✎ Edit board during play. Each fills
   in what landing on it does (replacing its landing buttons), a color and an emoji drawn in the circle; a space still
