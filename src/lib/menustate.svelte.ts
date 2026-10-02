@@ -31,6 +31,22 @@ export function dropMenu(e: MouseEvent, items: MenuEntry[]): void {
   showMenu(new MouseEvent('click', { clientX: r.left, clientY: r.bottom + 2 }), items, from);
 }
 
+/** Is this the keyboard's way to open a right-click menu (Shift+F10, or the menu key)? */
+export const isMenuKey = (e: KeyboardEvent): boolean =>
+  e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey);
+
+/**
+ * Shift+F10 or the menu key on a focused item (a theme card…): its right-click menu, under it, and Esc gives it the
+ * focus back. True when it was that key (handled). `from`: what it drops from (the element the key was pressed on).
+ */
+export function keyMenu(e: KeyboardEvent, items: MenuEntry[], from = e.currentTarget as HTMLElement): boolean {
+  if (!isMenuKey(e)) return false;
+  const r = from.getBoundingClientRect();
+  showMenu(new MouseEvent('contextmenu', { clientX: r.left + 8, clientY: r.bottom + 2 }), items, from);
+  e.preventDefault();
+  return true;
+}
+
 export function closeMenu(): void {
   contextMenu.open = null;
 }

@@ -145,15 +145,16 @@ try {
 
   // ---------- Theme: my theme ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
-  await page.getByRole('button', { name: /Brainrot Neon/ }).click();
-  await page.getByRole('button', { name: '💾 Save as my theme…' }).click();
-  const naming = page.getByRole('dialog', { name: '💾 Save as my theme' });
+  await page.getByRole('button', { name: 'Brainrot Neon', exact: true }).click();
+  await page.getByRole('button', { name: '💾 Save as new theme…' }).click();
+  const naming = page.getByRole('dialog', { name: '💾 Save as new theme' });
   await naming.getByLabel('Theme name').fill('Neon nights');
   await naming.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: /^Classic/ }).click();
   const mine = page.locator('.mine .card', { hasText: 'Neon nights' }).locator('.use');
   await mine.click();
-  assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'using my saved theme puts its look back');
+  assert(await mine.evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'using my saved theme puts it back (it is the theme chosen)');
+  assert(await page.getByRole('button', { name: 'Brainrot Neon', exact: true }).evaluate((b) => !b.classList.contains('on')), 'not the preset it was saved from');
   await mine.click();
   await page.getByText('This game already looks like “Neon nights”').waitFor({ timeout: 3000 });
   assert(true, 'using it again says nothing changed');
@@ -234,11 +235,13 @@ try {
   assert(true, 'a world changed in the file comes in as a copy, and the toast says so');
   await page.keyboard.press('Control+z');
   await page.getByRole('button', { name: '🎨 Theme' }).click();
-  await page.getByRole('button', { name: /Pastel/ }).click();
+  await page.getByRole('button', { name: 'Pastel', exact: true }).click();
   const [chooser2] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: /Use a theme from another game/ }).click()]);
   await chooser2.setFiles(other);
   await page.waitForTimeout(300);
-  assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use a theme from another game takes its theme');
+  // (That game's theme came from “Neon nights”, saved on this computer: that card is the one chosen, as it was there.)
+  assert(await page.locator('.mine .card', { hasText: 'Neon nights' }).locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'Use a theme from another game takes its theme');
+  assert((await page.getByRole('button', { name: 'Pastel', exact: true }).getAttribute('aria-pressed')) === 'false', 'and Pastel is no longer chosen');
 
   // ---------- Pre-game: ⚖ Game rules › Most players ----------
   await page.getByRole('button', { name: '▶ Play' }).click();

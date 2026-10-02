@@ -1104,7 +1104,7 @@ export function newGame(): Game {
     audio: {},
     wheels: [],
     dice: [],
-    theme: presetTheme('classic'),
+    theme: { ...presetTheme('classic'), source: { kind: 'preset', id: 'classic' } },
   };
 }
 
@@ -1234,6 +1234,8 @@ export function migrateGame(input: Game): Game {
   g.wheels ??= [];
   g.dice ??= [];
   g.theme = { ...d.theme, ...(data.theme ?? {}) };
+  // Where the theme came from is the game's own (an older game has none: the Theme page matches it instead).
+  if (!data.theme?.source) delete g.theme.source;
   g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
   repairGame(g);
   return g;

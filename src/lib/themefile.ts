@@ -102,9 +102,9 @@ export function sanitizeTheme(raw: unknown): Theme | null {
   return t;
 }
 
-/** A theme without its unset fields (what's written to a file or a code). */
+/** A theme without its unset fields, or where the game's theme came from (what's written to a file or a code). */
 export function compactTheme(t: Theme): Theme {
-  return Object.fromEntries(Object.entries(t).filter(([, v]) => v !== undefined && v !== null)) as unknown as Theme;
+  return Object.fromEntries(Object.entries(t).filter(([k, v]) => k !== 'source' && v !== undefined && v !== null)) as unknown as Theme;
 }
 
 // ---------- Files ----------

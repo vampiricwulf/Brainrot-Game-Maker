@@ -587,6 +587,7 @@ const THEME_FIELDS: Record<string, string> = {
   leaderGlow: 'leader glow',
   bgGradient: 'background gradient',
   bgAngle: 'background gradient direction',
+  source: 'saved theme',
 };
 const themeField = (k: Seg | undefined) => (k === undefined ? 'theme' : (THEME_FIELDS[k] ?? fieldName(k)));
 

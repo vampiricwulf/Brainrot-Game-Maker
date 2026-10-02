@@ -14,8 +14,8 @@ const LIST_KEY = 'brainrot.myThemes';
 /** The one "my theme" kept before there could be several (it becomes the first saved theme). */
 const OLD_KEY = 'brainrot.myTheme';
 
-/** What's kept: everything but the pictures (they belong to their game). */
-export type SavedTheme = Omit<Theme, 'boardImage' | 'banner'>;
+/** What's kept: everything but the pictures (they belong to their game) and where the game's theme came from. */
+export type SavedTheme = Omit<Theme, 'boardImage' | 'banner' | 'source'>;
 
 export interface MyTheme {
   id: string;
@@ -25,9 +25,9 @@ export interface MyTheme {
   saved: number;
 }
 
-/** A theme without its pictures. */
+/** A theme without its pictures (or where it came from). */
 export function toSaved(theme: Theme): SavedTheme {
-  const { boardImage: _b, banner: _n, ...rest } = theme;
+  const { boardImage: _b, banner: _n, source: _s, ...rest } = theme;
   return JSON.parse(JSON.stringify(rest));
 }
 
@@ -107,7 +107,8 @@ export function freshThemeName(list: readonly MyTheme[], base: string): string {
 /**
  * A saved theme on a game's theme: its colors, fonts and layout; the game's own pictures stay. The clue text look, the
  * text on slides & scores, the stage background and the other looks (alternating tiles, gradients…) are the saved
- * theme's too, even when it has none (they'd otherwise linger from the game's).
+ * theme's too, even when it has none (they'd otherwise linger from the game's). The game's `source` stays as it was:
+ * the caller says where the theme came from.
  */
 export function withMyTheme(current: Theme, mine: SavedTheme, media?: readonly MediaRef[]): Theme {
   const t: Theme = {
