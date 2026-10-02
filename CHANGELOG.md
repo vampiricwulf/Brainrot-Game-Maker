@@ -1281,3 +1281,4 @@ Commits whose titles don't say what they contain:
 | 2b0c71c | Merge branch 'worktree-agent-aab086842683332f6' | Brings in d5815e5 (RPG: selected players and objects drag together) |
 | 7294085 | Merge branch 'worktree-agent-a51eab17137bfd25d' | Brings in 2b00fce (theme settings: a game's theme knows the theme it came from, Save changes to a saved theme, right-click menus, polish) |
 | de0cc94 | Merge branch 'worktree-agent-a0507afcdb7b51df0' | Brings in 3baa022 (board game: edit the board during play; Roll, Move and Next turn as the main button with Previous turn beside it) |
+| efe84a3 | Merge branch 'worktree-agent-a505055b32929844f' | Brings in 9ffa095 (pre-game polish: two columns on laptops, Start level with Back, Ctrl+Enter starts, same-name note) |
