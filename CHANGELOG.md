@@ -32,6 +32,9 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **Slides: Ctrl+arrows resize the selected items** from the keyboard (Ctrl+Shift+arrows: 10 pixels at a time):
+  → and ↓ make them bigger, ← and ↑ smaller; pictures and videos keep their shape. Listed in ⌨ Shortcuts.
+- The image editor's hint beside **Stickers** is no longer in shouted capitals.
 - **Phone buzzers: a player back on a new phone gets their seat back without a 2-minute block.** In the phones list, a
   seat taken by a phone now has **Free seat** (for someone who moved to another phone or browser: it blocks nobody)
   next to **✕ Kick** (which still keeps that phone, and others on the same Wi-Fi, off the seat for 2 minutes). On

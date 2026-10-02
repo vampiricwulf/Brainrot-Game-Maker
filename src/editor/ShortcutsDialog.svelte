@@ -67,6 +67,7 @@
         ['Type, Enter or F2', 'Edit the selected text box’s text'],
         ['Right-click or Shift+F10', 'Cut, copy, paste, restack, align, lock, hide or delete; on an empty spot: paste there, select all, add text, background'],
         ['Arrows / Shift+arrows', 'Nudge the selection 1 / 10 pixels'],
+        ['Ctrl+arrows / Ctrl+Shift+arrows', 'Resize the selection 1 / 10 pixels (→ ↓ bigger, ← ↑ smaller; pictures keep their shape)'],
         ['Shift while dragging', 'Move along one axis only (while rotating: snap to 15°)'],
         ['Alt while moving or resizing', 'No snapping to the slide and other items'],
         ['Ctrl+] / Ctrl+[', 'Bring forward / send backward'],

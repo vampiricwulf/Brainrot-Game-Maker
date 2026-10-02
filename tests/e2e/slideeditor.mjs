@@ -271,6 +271,16 @@ try {
   assert(orig.w === editPic.w && orig.h === editPic.h, `Use original brings back its size from before (${orig.w}×${orig.h})`);
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
+  // Ctrl+arrows resize from the keyboard (Shift: 10 pixels); a picture keeps its shape.
+  const before = (await drawn()).find((e) => e.id === editPic.id);
+  await click(before.x + before.w / 2, before.y + before.h / 2);
+  await page.keyboard.press('Control+Shift+ArrowRight');
+  await page.waitForTimeout(100);
+  const bigger = (await drawn()).find((e) => e.id === editPic.id);
+  assert(bigger.w === before.w + 10 && Math.abs(bigger.w / bigger.h - before.w / before.h) < 0.05 && bigger.x === before.x, `Ctrl+Shift+→ makes the picture 10 pixels wider, keeping its shape (${before.w}×${before.h} → ${bigger.w}×${bigger.h})`);
+  await page.keyboard.press('Control+Shift+ArrowLeft');
+  await page.waitForTimeout(100);
+  assert((await drawn()).find((e) => e.id === editPic.id).w === before.w, 'and Ctrl+Shift+← narrows it back');
 
   // ---------- The History names these ----------
   await clue.getByRole('button', { name: /Background ▾/ }).click();

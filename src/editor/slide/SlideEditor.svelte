@@ -616,6 +616,9 @@
     }
   }
 
+  /** Pictures and videos keep their shape when resized (as dragging a corner does). */
+  const keepsShape = (el: SlideElement): boolean => el.kind === 'image' || el.kind === 'video' || (el.kind === 'embed' && el.embedKind !== 'remoteAudio');
+
   function onkey(e: KeyboardEvent): void {
     // The Shape menu keys itself (Esc closes just the menu).
     if (!inCharge() || menu || shapeMenu) return;
@@ -697,6 +700,24 @@
     } else if (k === 'escape' && selected.length) {
       e.stopImmediatePropagation();
       selected = [];
+    } else if (mod && k.startsWith('arrow') && selected.length && !e.altKey && !(e.target as HTMLElement)?.closest?.('[role="list"]')) {
+      // Resize from the keyboard: Ctrl+→/← widen/narrow, Ctrl+↓/↑ taller/shorter (Shift: 10 pixels). Pictures and videos
+      // keep their shape (→ and ↓ grow them, ← and ↑ shrink them), as dragging a corner does.
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const { free, locked } = selection();
+      if (!free.length) tell(lockedNote(locked));
+      for (const el of free) {
+        const grow = k === 'arrowright' || k === 'arrowdown' ? step : -step;
+        if (keepsShape(el)) {
+          const ratio = el.w / el.h;
+          const w = Math.max(20, el.w + grow, Math.ceil(20 * ratio));
+          el.h = Math.max(20, Math.round(w / ratio));
+          el.w = w;
+        } else if (k === 'arrowright' || k === 'arrowleft') el.w = Math.max(20, el.w + grow);
+        else el.h = Math.max(20, el.h + grow);
+        keepOnStage(el, SLIDE_W, SLIDE_H);
+      }
     } else if (k.startsWith('arrow') && selected.length && !e.altKey && !(e.target as HTMLElement)?.closest?.('[role="list"]')) {
       // Nudge (arrows in the Layers list move through the list instead). Locked items stay put; the
       // notice shows only when nothing can move, as a nudge is recorded after a pause, which hides it.

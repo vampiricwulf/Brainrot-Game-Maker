@@ -701,6 +701,12 @@
     letter-spacing: 0.08em;
     color: var(--muted);
   }
+  /* A hint beside a heading reads as a hint, not shouted in capitals. */
+  h4 .small {
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: normal;
+  }
   .adjust summary {
     cursor: pointer;
     color: var(--muted);
