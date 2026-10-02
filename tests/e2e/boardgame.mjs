@@ -339,6 +339,13 @@ try {
   await page.keyboard.press('Control+z'); // the move
   await page.waitForTimeout(300);
   assert((await page.locator('.last').innerText()).includes('Player 2 →'), 'undo steps back through the log');
+  // Landing on Start counts as passing it.
+  await page.getByLabel('Steps').fill('1');
+  await page.getByRole('button', { name: /^▶ Move Player 2/ }).click();
+  await page.locator('.acts').getByRole('button', { name: '+$100' }).waitFor();
+  assert((await page.locator('.acts').innerText()).includes('Landed on Start (counts as passing)'), 'landing on Start offers its passing button too (“counts as passing”)');
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(300);
 
   // The Shadow Realm.
   await page.getByLabel('Send to').selectOption({ label: '🌀 Shadow Realm' });
@@ -475,8 +482,8 @@ try {
   await page.locator('.bh').waitFor();
   if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
   assert(
-    (await page.locator('.stage [data-space="b3"] .n').count()) === 0 && (await page.locator('.stage [data-space="b1"] .n').innerText()) === '2',
-    'only spaces named “Space N” draw a number (not “Move +3”)',
+    (await page.locator('.stage [data-space] .n').count()) === 0,
+    'no space draws a number in its circle',
   );
   assert((await page.getByRole('button', { name: 'Ann later in the turn order' }).count()) === 1, 'the turn order’s arrows say whose they are');
   // One press spins the movement wheel, and its slice fills in the steps.

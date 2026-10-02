@@ -359,7 +359,11 @@
           {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
         {/each}
         {#if landed}
-          <span class="muted small">Landed on <b>{landed.name}</b>{landed.onLand?.length ? ':' : '.'}</span>
+          <!-- Landing on a space counts as passing it too (landing on Start still pays). -->
+          <span class="muted small"
+            >Landed on <b>{landed.name}</b>{landed.onPass?.length ? ' (counts as passing)' : ''}{landed.onLand?.length || landed.onPass?.length ? ':' : '.'}</span
+          >
+          {#each landed.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
           {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
           {#if landed.secret && !bs.revealed?.includes(landed.id)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
           {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}

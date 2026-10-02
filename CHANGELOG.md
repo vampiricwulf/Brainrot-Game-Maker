@@ -42,6 +42,10 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **Board games: landing on a space counts as passing it** — the host gets its "when passed" buttons too ("Landed on
+  Start (counts as passing): +$100"), so landing on Start still pays. The editor says so beside "When passed".
+- **Board games: no numbers in the spaces' circles** (a space called "Space 4" no longer shows a 4); a space shows its
+  kind's emoji, its picture, or nothing, and its name under it when ticked.
 - **Phones, wagers**: the wager box is headed "Your wager" under the Final's name or "Daily Double — you're up!" (it
   said "Final Jeopardy!: time to wager" and then "Final: your wager"), and a wager sent says it can change "until the question shows" (there's
   no separate lock step any more).

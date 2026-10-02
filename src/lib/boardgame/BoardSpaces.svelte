@@ -8,7 +8,7 @@
   import { mediaUrls } from '../media.svelte';
   import type { BoardGameRound, BoardSpace } from '../model';
   import { SLIDE_H, SLIDE_W } from '../model';
-  import { nameShown, spaceNumber } from '../boardgame';
+  import { nameShown } from '../boardgame';
 
   let {
     round,
@@ -41,11 +41,6 @@
 
   const R = 58;
   const hidden = (s: BoardSpace) => audience && !!s.secret && !revealed.includes(s.id);
-  /**
-   * The number in a numbered space's name ("Space 4" → 4), drawn in it: its place in the list would disagree after a
-   * delete. Other names keep their numbers to themselves ("Move +3" isn't space 3).
-   */
-  const number = (s: BoardSpace) => spaceNumber(s.name);
   const byId = $derived(new Map(round.spaces.map((s) => [s.id, s])));
 
   /** Whether a space's name shows under it here (viewers: when ticked; the host editing: always). */
@@ -132,9 +127,8 @@
       <img src={mediaUrls[s.icon]} alt="" />
     {:else if s.mark}
       <span class="mark">{s.mark}</span>
-    {:else if number(s)}
-      <span class="n">{number(s)}</span>
     {/if}
+    <!-- (No numbers in the circles: a board's spaces aren't counted out loud; their names show when ticked.) -->
     {#if labelled(s)}
       <!-- (Absolutely placed under the circle: a hidden name leaves the board as it is.) -->
       <span class="label" class:off={!nameShown(s)} data-name-hidden={nameShown(s) ? undefined : ''}>{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span>
@@ -212,7 +206,6 @@
     outline-offset: 6px;
     animation: none;
   }
-  .n,
   .q {
     font-size: 48px;
   }
