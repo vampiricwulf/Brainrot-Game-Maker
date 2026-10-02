@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadMyTheme, missingFonts, saveMyTheme, themeMedia, usesUploadedFonts, withMyTheme } from './mytheme';
+import { addMyTheme, changeMyTheme, deleteMyTheme, freshThemeName, loadMyThemes, missingFonts, themeMedia, usesUploadedFonts, withMyTheme, type SavedTheme } from './mytheme';
+import type { Theme } from './theme';
 import { uploadedFamily } from './fonts';
 import { newGame } from './model';
 import { presetTheme } from './theme';
+
+/** The old one-theme helpers, on the list: save as the only theme, load the first. */
+const saveMyTheme = (t: Theme): boolean => !!addMyTheme([], 'Mine', t);
+const loadMyTheme = (): SavedTheme | null => loadMyThemes()[0]?.theme ?? null;
 
 describe('my theme', () => {
   beforeEach(() => {
@@ -10,6 +15,7 @@ describe('my theme', () => {
     (globalThis as { localStorage?: unknown }).localStorage = {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
     };
   });
   afterEach(() => {
@@ -86,5 +92,84 @@ describe('my theme', () => {
     // In a game that has that font, it's used.
     expect(missingFonts(mine, [font])).toEqual([]);
     expect(withMyTheme(here, mine, [font]).boardFont).toBe(t.boardFont);
+  });
+});
+
+describe('my themes (several, named)', () => {
+  let store: Map<string, string>;
+  let full = false;
+  beforeEach(() => {
+    store = new Map();
+    full = false;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        if (full) throw new DOMException('full', 'QuotaExceededError');
+        store.set(k, v);
+      },
+      removeItem: (k: string) => void store.delete(k),
+    };
+  });
+  afterEach(() => {
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+  });
+
+  it('saves, renames, updates and deletes, kept across loads', () => {
+    let list = addMyTheme([], 'Neon night', presetTheme('neon'))!;
+    list = addMyTheme(list, '  Pastel   party ', { ...presetTheme('pastel'), tilePattern: 'checker', tile2: '#ffffff' })!;
+    expect(loadMyThemes().map((m) => m.name)).toEqual(['Neon night', 'Pastel party']);
+    expect(loadMyThemes()[1].theme).toMatchObject({ tilePattern: 'checker', tile2: '#ffffff' });
+    list = changeMyTheme(list, list[0].id, { name: 'Neon' })!;
+    list = changeMyTheme(list, list[0].id, { theme: presetTheme('dark') })!;
+    expect(loadMyThemes()[0]).toMatchObject({ name: 'Neon', theme: { tile: presetTheme('dark').tile } });
+    list = deleteMyTheme(list, list[1].id)!;
+    expect(loadMyThemes().map((m) => m.name)).toEqual(['Neon']);
+  });
+
+  it('never keeps the pictures', () => {
+    addMyTheme([], 'Pics', { ...presetTheme('neon'), boardImage: 'img', banner: 'ban' });
+    const mine = loadMyThemes()[0].theme;
+    expect('boardImage' in mine || 'banner' in mine).toBe(false);
+  });
+
+  it('a full or blocked storage says so and changes nothing', () => {
+    const list = addMyTheme([], 'One', presetTheme('neon'))!;
+    full = true;
+    expect(addMyTheme(list, 'Two', presetTheme('dark'))).toBeNull();
+    expect(changeMyTheme(list, list[0].id, { name: 'X' })).toBeNull();
+    expect(deleteMyTheme(list, list[0].id)).toBeNull();
+    expect(loadMyThemes().map((m) => m.name)).toEqual(['One']);
+  });
+
+  it('the one “my theme” from before becomes the first saved theme', () => {
+    const { boardImage: _b, ...old } = { ...presetTheme('neon'), boardImage: 'x', value: '#123456' };
+    store.set('brainrot.myTheme', JSON.stringify(old));
+    const list = loadMyThemes();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ name: 'My theme', theme: { value: '#123456', tile: old.tile } });
+    expect(store.has('brainrot.myTheme')).toBe(false);
+    // (Moved once: the same one next time.)
+    expect(loadMyThemes()[0].id).toBe(list[0].id);
+  });
+
+  it('damaged entries are left out, the rest load', () => {
+    store.set('brainrot.myThemes', JSON.stringify([{ id: 'a', name: 'ok', theme: presetTheme('dark') }, { id: 'b', theme: { tile: 'red; background: url(x)' } }, 'junk', null]));
+    expect(loadMyThemes().map((m) => m.name)).toEqual(['ok']);
+    store.set('brainrot.myThemes', '{not json');
+    expect(loadMyThemes()).toEqual([]);
+  });
+
+  it('a new name none has yet', () => {
+    const list = addMyTheme(addMyTheme([], 'Neon', presetTheme('neon'))!, 'Neon 2', presetTheme('neon'))!;
+    expect(freshThemeName(list, 'neon')).toBe('neon 3');
+    expect(freshThemeName(list, 'Fresh')).toBe('Fresh');
+  });
+
+  it('a saved theme brings its own looks, or takes the game’s off', () => {
+    const game = { ...presetTheme('classic'), tilePattern: 'rows' as const, tile2: '#111111', leaderGlow: true };
+    const plain = withMyTheme(game, presetTheme('dark'));
+    expect([plain.tilePattern, plain.tile2, plain.leaderGlow]).toEqual([undefined, undefined, undefined]);
+    const fancy = withMyTheme(presetTheme('classic'), { ...presetTheme('dark'), tilePattern: 'checker', tile2: '#222222', tileRadius: 12 });
+    expect(fancy).toMatchObject({ tilePattern: 'checker', tile2: '#222222', tileRadius: 12 });
   });
 });

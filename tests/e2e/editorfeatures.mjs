@@ -146,13 +146,17 @@ try {
   // ---------- Theme: my theme ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   await page.getByRole('button', { name: /Brainrot Neon/ }).click();
-  await page.getByRole('button', { name: '💾 Save as my theme' }).click();
-  await page.getByRole('button', { name: /Classic/ }).click();
-  await page.getByRole('button', { name: '🎨 Use my theme' }).click();
-  assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'Use my theme puts the saved theme back');
-  await page.getByRole('button', { name: '🎨 Use my theme' }).click();
-  await page.getByText('This game already looks like my theme').waitFor({ timeout: 3000 });
-  assert(true, 'Use my theme again says nothing changed');
+  await page.getByRole('button', { name: '💾 Save as my theme…' }).click();
+  const naming = page.getByRole('dialog', { name: '💾 Save as my theme' });
+  await naming.getByLabel('Theme name').fill('Neon nights');
+  await naming.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: /^Classic/ }).click();
+  const mine = page.locator('.mine .card', { hasText: 'Neon nights' }).locator('.use');
+  await mine.click();
+  assert(await page.getByRole('button', { name: /Brainrot Neon/ }).evaluate((b) => b.classList.contains('on')), 'using my saved theme puts its look back');
+  await mine.click();
+  await page.getByText('This game already looks like “Neon nights”').waitFor({ timeout: 3000 });
+  assert(true, 'using it again says nothing changed');
   // Values the colour of the tiles can't be read: a warning says so (and goes once they're apart again).
   const values = page.getByLabel('Values', { exact: true });
   const ownValue = await values.inputValue();

@@ -35,6 +35,17 @@
   // Few players: wider plates, so long names fit. A long name shrinks a little (never below a size that reads on a
   // scaled-down stream), then ends in "…": one line, whole words, the same height on every plate.
   const wide = $derived(session.players.length <= 4);
+  /**
+   * The theme's leader glow: the players with the top score, when it's above 0 and someone has less (nobody leads
+   * while everyone's level).
+   */
+  const leaders = $derived.by(() => {
+    if (!game.theme?.leaderGlow || session.players.length < 2) return new Set<string>();
+    const scores = session.players.map((p) => score(session, p.id));
+    const top = Math.max(...scores);
+    if (top <= 0 || scores.every((s) => s === top)) return new Set<string>();
+    return new Set(session.players.filter((_, i) => scores[i] === top).map((p) => p.id));
+  });
   const NAME = 36;
   const NAME_MIN = 28;
 </script>
@@ -45,6 +56,7 @@
     <button
       class="plate"
       class:picker={litId === p.id}
+      class:lead={leaders.has(p.id)}
       class:wide
       style:--c={p.color}
       data-player-id={host ? p.id : undefined}
@@ -82,7 +94,7 @@
     flex-direction: column;
     padding: 0;
     border: 4px solid var(--c);
-    border-radius: 14px;
+    border-radius: var(--plate-radius, 14px);
     overflow: hidden;
     background: var(--tile);
     cursor: pointer;
@@ -98,6 +110,13 @@
   .plate.picker {
     box-shadow: 0 0 0 6px #fff, 0 0 40px 12px var(--c);
     transform: translateY(-6px);
+  }
+  /* The theme's leader glow, in the value color. */
+  .plate.lead {
+    box-shadow: 0 0 0 4px var(--value), 0 0 44px 14px var(--value);
+  }
+  .plate.lead.picker {
+    box-shadow: 0 0 0 6px #fff, 0 0 40px 12px var(--c), 0 0 70px 24px var(--value);
   }
   /* One line, the same height on every plate: the scores line up. */
   .name {

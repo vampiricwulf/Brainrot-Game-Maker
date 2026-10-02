@@ -14,6 +14,25 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-01
 
 ### Added
+- **My themes**: on the 🎨 Theme page, **💾 Save as my theme…** keeps the game's look on this computer under a name
+  (as many as you like; the one "my theme" saved before shows there as "My theme"). They sit under the presets, marked
+  ★, and a click puts one on the game (one step: Ctrl+Z takes it back). Each one's **⋯** menu renames it, updates it
+  from the game's theme, shares it, or deletes it (it asks first). A saved theme keeps the colors, fonts and layout, not
+  the pictures: they stay with their game (pictures would soon fill this small storage).
+- **Share a theme as a file or a code**: **⬇ Export theme** writes a small `.brainrot-theme` file, with the background
+  picture, banner and uploaded fonts the theme uses (up to 8 MB; it says which were left out). **📋 Copy theme code**
+  puts a short code (`BRT1:…`) on the clipboard to paste in a chat: colors, fonts and layout, no pictures or fonts'
+  files. **📂 Import theme…** and **⌨ Paste theme code…** show the theme on your board first, then **Use in this game**
+  or **Save to my themes**. A damaged or unknown file or code is refused with a message saying why, and the game stays
+  as it was.
+- **More theme looks**, in folding sections on the 🎨 Theme page (each one is off until you set it, so games look as
+  they always did): **Tiles**: alternating colors (checkerboard, by row or by column, with a second color), a
+  gradient and its direction, border color and width, rounded corners, glow size, a drop shadow, the values' shadow
+  (hard, soft or none) and how played tiles look (used-tile color, dimmed, or hidden). **Categories**: their own color,
+  alternating colors, a gradient, and the line under them (any color, or none). **Score plates**: rounded, square or
+  pill corners, and a glow on the player in the lead. **Board**: a background gradient and the space between tiles.
+  They show the same on the stage, in the audience window, the scores window and an exported HTML game; a preset takes
+  them off, and ↺ Plain tiles / ↺ Plain categories do too.
 - **💡 Tips**: the long help on the board, a slide, Board images, the RPG map and the board game page folds into a
   Tips line under one short hint. Open it once and it stays open (on this computer) until you close it.
 - **An empty Tiebreaker page explains itself**: with no tiebreaker, the page says what one is for, with the switch to

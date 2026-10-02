@@ -1,14 +1,12 @@
 // How big the board's words can be, so they stay readable once the stream is scaled down (720p, 480p in Discord).
-import { boardLayout, type Theme } from './theme';
+import { boardLayout, lookNumber, type Theme } from './theme';
 
 /** Category names never shrink below this (stage px): about 13px tall at 480p. Longer words are hyphenated instead. */
 export const CAT_MIN = 30;
 /** Only a name too long for its cell even then goes smaller, down to this (the editor's checklist says to shorten it). */
 export const CAT_FLOOR = 20;
 
-/** The board's padding and gaps, and a cell's padding (Board.svelte). */
-const PAD = 10;
-const GAP = 10;
+/** A cell's padding (Board.svelte). The board's padding and gaps are the theme's space between tiles (10 by default). */
 const CELL_PAD = 12;
 /** Roughly how wide the board fonts are per character, for their size (upper case, a narrow display font). */
 const CHAR = 0.55;
@@ -17,6 +15,8 @@ const LINE = 1.05;
 /** A category cell's room for its name (stage px) on a board of `cols` × `rows`. */
 export function categoryBox(cols: number, rows: number, theme?: Theme, hasBanner = !!theme?.banner): { w: number; h: number } {
   const board = boardLayout(theme, hasBanner).board.height;
+  const PAD = lookNumber(theme, 'tileGap');
+  const GAP = PAD;
   const w = (1920 - 2 * PAD - GAP * (cols - 1)) / Math.max(1, cols) - 2 * CELL_PAD;
   const h = ((board - 2 * PAD - GAP * rows) * 1.35) / (1.35 + rows) - 2 * CELL_PAD - 6;
   return { w, h };

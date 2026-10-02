@@ -612,7 +612,7 @@
     left: 0;
     width: 1920px;
     z-index: 0;
-    background: var(--board-image, none) center / cover no-repeat, var(--board-gap);
+    background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
   }
   .layer {
     position: absolute;

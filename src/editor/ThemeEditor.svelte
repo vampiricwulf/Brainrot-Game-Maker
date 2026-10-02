@@ -2,22 +2,36 @@
 <script lang="ts">
   import PageHeader from './PageHeader.svelte';
   import { app } from '../lib/app.svelte';
-  import { contrast, parseHex } from '../lib/colors';
+  import { contrast, mixHex, parseHex } from '../lib/colors';
   import { step } from '../lib/history.svelte';
   import { untrack } from 'svelte';
   import { fontChoices } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
-  import { isBoard, isFinal, newId, newRound, roundName } from '../lib/model';
-  import { goToRound, newSession, openClue } from '../lib/session';
+  import { isBoard, newRound, roundName } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
   import { FACTORY_COLOR, FACTORY_FONT, setClueText } from '../lib/cluetext';
-  import { BANNER_DEFAULT, BANNER_MAX, BANNER_MIN, PRESETS, presetEdited, presetTheme, stageText, type ThemePreset } from '../lib/theme';
+  import {
+    BANNER_DEFAULT,
+    BANNER_MAX,
+    BANNER_MIN,
+    LOOK_RANGES,
+    lookNumber,
+    PRESETS,
+    presetEdited,
+    presetTheme,
+    stageText,
+    type Ranged,
+    type Theme,
+    type ThemePreset,
+  } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import ThemeShare from './ThemeShare.svelte';
+  import ThemeSwatch from './ThemeSwatch.svelte';
+  import { themeDemo } from './themedemo';
 
   /** `round`: the round last open in the editor, which the preview starts on. */
   let { round: lastRound }: { round?: number } = $props();
@@ -36,25 +50,7 @@
   const view = $derived(previewing === 'clue' ? (firstBoard >= 0 ? 'clue' : 0) : Math.min(previewing, shown.rounds.length - 1));
 
   // A pretend game in progress for the preview.
-  const demo = $derived.by(() => {
-    const s = newSession(shown);
-    if (!s.players.length)
-      s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({ id: newId(), name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: [1200, 400, -200][i] }));
-    s.currentPickerId = s.players[0]?.id;
-    const at = view === 'clue' ? firstBoard : view;
-    goToRound(s, shown, at);
-    s.intro = null;
-    const r = shown.rounds[at];
-    if (isBoard(r)) r.categories.forEach((c, ci) => ci % 2 === 0 && c.clues[0] && (s.used[c.clues[0].id] = true));
-    if (isBoard(r) && view === 'clue') {
-      const cat = r.categories.findIndex((c) => c.clues.some((cl) => !cl.empty));
-      if (cat >= 0) openClue(s, { round: at, cat, row: r.categories[cat].clues.findIndex((cl) => !cl.empty) });
-      s.dd = null;
-    }
-    // A Final shows its question (the clue text).
-    if (isFinal(r)) s.finalStep = 'question';
-    return s;
-  });
+  const demo = $derived(themeDemo(shown, view === 'clue' ? firstBoard : view, view === 'clue'));
 
   /** The game's clue text: a font or color for the main text of every question and answer (the note offers Undo). */
   function clueText(key: 'font' | 'color', to: string | undefined): void {
@@ -73,7 +69,11 @@
   }
 
   /** Values on tiles too close in color to read (under 3:1), or null. */
-  const valueContrast = $derived(parseHex(t.value) && parseHex(t.tile) ? contrast(t.value, t.tile) : null);
+  const valueContrast = $derived.by(() => {
+    // The tiles, and the alternating ones when there are.
+    const on = [t.tile, ...(t.tilePattern && t.tile2 ? [t.tile2] : [])].filter((c) => parseHex(c));
+    return parseHex(t.value) && on.length ? Math.min(...on.map((c) => contrast(t.value, c))) : null;
+  });
 
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],
@@ -84,6 +84,29 @@
     ['stageText', 'Text on slides & scores'],
     ['scoreBarBg', 'Score bar'],
   ];
+
+  /** Set a theme field (undefined: back to its default). */
+  function set<K extends keyof Theme>(k: K, v: Theme[K]): void {
+    t[k] = v;
+  }
+  /** A slider's number, or its default (unset) at the default. */
+  function setNumber(k: Ranged, v: number): void {
+    set(k, v === LOOK_RANGES[k].def ? undefined : v);
+  }
+  /** A color for a color box (a theme color that isn't #rrggbb shows as the fallback). */
+  const hex = (c: string | undefined, fallback: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : fallback);
+  /** A second color to start from: the first one, a little lighter (or darker on a light one). */
+  const near = (c: string) => mixHex(hex(c, '#000000'), contrast(hex(c, '#000000'), '#000') > 10 ? '#000000' : '#ffffff', 0.22);
+  const set2 = (keys: (keyof Theme)[]) => keys.some((k) => t[k] !== undefined);
+  /** Take a section's looks back to the plain ones. */
+  function plain(keys: (keyof Theme)[]): void {
+    for (const k of keys) if (t[k] !== undefined) set(k, undefined);
+  }
+  const TILE_LOOKS: (keyof Theme)[] = ['tilePattern', 'tile2', 'tileGradient', 'tileAngle', 'tileBorder', 'tileBorderWidth', 'tileRadius', 'glowSize', 'tileShadow', 'valueShadow', 'usedLook'];
+  const HEADER_LOOKS: (keyof Theme)[] = ['headerBg', 'header2', 'headerGradient', 'headerLine'];
+  const PLATE_LOOKS: (keyof Theme)[] = ['plateShape', 'leaderGlow'];
+  /** Sections with looks of their own start open (then they open and close as the host likes). */
+  const opened = $state(untrack(() => ({ tiles: set2(TILE_LOOKS), headers: set2(HEADER_LOOKS), plates: set2(PLATE_LOOKS) })));
 </script>
 
 <PageHeader title="Theme" sub="How the board, the slides and the scores look on stream, in every round." />
@@ -92,14 +115,15 @@
     <div class="presets">
       {#each Object.entries(PRESETS) as [key, p]}
         <button class="preset" class:on={t.preset === key} aria-pressed={t.preset === key} onclick={() => applyPreset(key as ThemePreset)}>
-          <span class="sw" aria-hidden="true" style:background={p.theme.tile} style:color={p.theme.value} style:font-family={p.theme.valueFont}>$400</span>
+          <ThemeSwatch theme={presetTheme(key as ThemePreset)} />
           {p.label}{t.preset === key && presetEdited(t) ? ' (edited)' : ''}
         </button>
       {/each}
     </div>
     <ThemeShare />
 
-    <h3>Colors</h3>
+    <details class="sec" open>
+    <summary>Colors</summary>
     <div class="grid">
       {#each COLORS as [key, label]}
         <label class="check">
@@ -116,8 +140,10 @@
     {#if valueContrast !== null && valueContrast < 3}
       <p class="warn small" role="status">⚠ The values are hard to read on the tiles ({valueContrast.toFixed(1)}:1): pick colors further apart.</p>
     {/if}
+    </details>
 
-    <h3>Fonts</h3>
+    <details class="sec" open>
+    <summary>Fonts</summary>
     <div class="grid">
       <label class="field">
         Category names
@@ -134,8 +160,10 @@
         </select>
       </label>
     </div>
+    </details>
 
-    <h3>Clue text</h3>
+    <details class="sec" open>
+    <summary>Clue text</summary>
     <div class="grid">
       <label class="field">
         Font
@@ -160,8 +188,10 @@
       The main text of every question and answer (board clues, Final rounds, the tiebreaker), and of new ones. A clue whose text
       you styled yourself keeps its look. Without a font here, new text uses {FACTORY_FONT.split(',')[0].replace(/'/g, '')}.
     </p>
+    </details>
 
-    <h3>Board</h3>
+    <details class="sec" open>
+    <summary>Board</summary>
     <div class="grid">
       <div class="row pop">
         <span>Background image</span>
@@ -213,12 +243,158 @@
           <option value="magenta">Chroma magenta</option>
         </select>
       </label>
+      <label class="check" title="The board's background fades from the line color (in Colors) to this one">
+        <input type="checkbox" checked={!!t.bgGradient} onchange={(e) => set('bgGradient', e.currentTarget.checked ? near(t.boardGap) : undefined)} />
+        Background gradient
+        {#if t.bgGradient}<input type="color" value={hex(t.bgGradient, '#000000')} oninput={(e) => set('bgGradient', e.currentTarget.value)} aria-label="Background gradient color" />{/if}
+      </label>
+      {#if t.bgGradient}
+        <label class="field">
+          Background direction ({lookNumber(t, 'bgAngle')}°)
+          <input type="range" min="0" max="360" step="15" value={lookNumber(t, 'bgAngle')} oninput={(e) => setNumber('bgAngle', +e.currentTarget.value)} />
+        </label>
+      {:else}<span></span>{/if}
+      <label class="field">
+        Space between tiles ({lookNumber(t, 'tileGap')})
+        <input type="range" min={LOOK_RANGES.tileGap.min} max={LOOK_RANGES.tileGap.max} step="1" value={lookNumber(t, 'tileGap')} oninput={(e) => setNumber('tileGap', +e.currentTarget.value)} />
+      </label>
     </div>
+
     <p class="muted small">
       Question and answer slides use the tile color as their background unless a slide sets its own. Any text box's font and
       effects can be set in the slide editor ("Use this style elsewhere" copies a look to other clues). Category images and
       free-placed board images are set per round in each round's tab.
     </p>
+    </details>
+
+    <details class="sec" bind:open={opened.tiles}>
+    <summary>Tiles{#if set2(TILE_LOOKS)}<span class="changed"> · changed</span>{/if}</summary>
+    <div class="grid">
+      <label class="field">
+        Alternating tiles
+        <select
+          value={t.tilePattern ?? ''}
+          onchange={(e) => {
+            const v = (e.currentTarget.value || undefined) as Theme['tilePattern'];
+            step(`Alternating tiles: ${v ?? 'off'}`, () => {
+              set('tilePattern', v);
+              if (v && !t.tile2) set('tile2', near(t.tile));
+            });
+          }}
+        >
+          <option value="">Off</option>
+          <option value="checker">Checkerboard</option>
+          <option value="rows">By row</option>
+          <option value="columns">By column</option>
+        </select>
+      </label>
+      {#if t.tilePattern}
+        <label class="check">
+          <input type="color" value={hex(t.tile2, near(t.tile))} oninput={(e) => set('tile2', e.currentTarget.value)} />
+          Second tile color
+        </label>
+      {:else}<span></span>{/if}
+      <label class="check">
+        <input type="checkbox" checked={!!t.tileGradient} onchange={(e) => set('tileGradient', e.currentTarget.checked ? near(t.tile) : undefined)} />
+        Gradient
+        {#if t.tileGradient}<input type="color" value={hex(t.tileGradient, '#000000')} oninput={(e) => set('tileGradient', e.currentTarget.value)} aria-label="Tile gradient color" />{/if}
+      </label>
+      {#if t.tileGradient || t.headerGradient}
+        <label class="field">
+          Gradient direction ({lookNumber(t, 'tileAngle')}°)
+          <input type="range" min="0" max="360" step="15" value={lookNumber(t, 'tileAngle')} oninput={(e) => setNumber('tileAngle', +e.currentTarget.value)} />
+        </label>
+      {:else}<span></span>{/if}
+      <label class="check">
+        <input type="color" value={hex(t.tileBorder, '#000000')} oninput={(e) => set('tileBorder', e.currentTarget.value)} />
+        Border color
+        {#if t.tileBorder}<button class="small ghost" onclick={() => set('tileBorder', undefined)} title="Back to the plain dark edge" aria-label="Border color back to the plain one">↺</button>{/if}
+      </label>
+      <label class="field">
+        Border width ({lookNumber(t, 'tileBorderWidth')})
+        <input type="range" min="0" max={LOOK_RANGES.tileBorderWidth.max} step="1" value={lookNumber(t, 'tileBorderWidth')} oninput={(e) => setNumber('tileBorderWidth', +e.currentTarget.value)} />
+      </label>
+      <label class="field">
+        Rounded corners ({lookNumber(t, 'tileRadius')})
+        <input type="range" min="0" max={LOOK_RANGES.tileRadius.max} step="2" value={lookNumber(t, 'tileRadius')} oninput={(e) => setNumber('tileRadius', +e.currentTarget.value)} />
+      </label>
+      {#if t.glow !== 'none'}
+        <label class="field">
+          Glow size ({lookNumber(t, 'glowSize')})
+          <input type="range" min="0" max={LOOK_RANGES.glowSize.max} step="2" value={lookNumber(t, 'glowSize')} oninput={(e) => setNumber('glowSize', +e.currentTarget.value)} />
+        </label>
+      {:else}
+        <span class="hint glow-hint">Tile glow: in Colors</span>
+      {/if}
+      <label class="check">
+        <input type="checkbox" checked={!!t.tileShadow} onchange={(e) => set('tileShadow', e.currentTarget.checked || undefined)} />
+        Drop shadow
+      </label>
+      <label class="field">
+        Value shadow
+        <select value={t.valueShadow ?? ''} onchange={(e) => set('valueShadow', (e.currentTarget.value || undefined) as Theme['valueShadow'])}>
+          <option value="">Hard</option>
+          <option value="soft">Soft</option>
+          <option value="none">None</option>
+        </select>
+      </label>
+      <label class="field">
+        Played tiles
+        <select value={t.usedLook ?? ''} onchange={(e) => set('usedLook', (e.currentTarget.value || undefined) as Theme['usedLook'])}>
+          <option value="">Used-tile color</option>
+          <option value="dim">Dimmed</option>
+          <option value="hidden">Hidden</option>
+        </select>
+      </label>
+    </div>
+    <button class="small ghost reset" disabled={!set2(TILE_LOOKS)} onclick={() => step('Theme: plain tiles', () => plain(TILE_LOOKS), { notify: true })}>↺ Plain tiles</button>
+    </details>
+
+    <details class="sec" bind:open={opened.headers}>
+    <summary>Categories{#if set2(HEADER_LOOKS)}<span class="changed"> · changed</span>{/if}</summary>
+    <div class="grid">
+      <label class="check">
+        <input type="color" value={hex(t.headerBg, hex(t.tile, '#000000'))} oninput={(e) => set('headerBg', e.currentTarget.value)} />
+        Category color
+        {#if t.headerBg}<button class="small ghost" onclick={() => set('headerBg', undefined)} title="Back to the tile color" aria-label="Category color back to the tile color">↺</button>{/if}
+      </label>
+      <label class="check">
+        <input type="checkbox" checked={!!t.header2} onchange={(e) => set('header2', e.currentTarget.checked ? near(t.headerBg ?? t.tile) : undefined)} />
+        Alternate colors
+        {#if t.header2}<input type="color" value={hex(t.header2, '#000000')} oninput={(e) => set('header2', e.currentTarget.value)} aria-label="Second category color" />{/if}
+      </label>
+      <label class="check">
+        <input type="checkbox" checked={!!t.headerGradient} onchange={(e) => set('headerGradient', e.currentTarget.checked ? near(t.headerBg ?? t.tile) : undefined)} />
+        Gradient
+        {#if t.headerGradient}<input type="color" value={hex(t.headerGradient, '#000000')} oninput={(e) => set('headerGradient', e.currentTarget.value)} aria-label="Category gradient color" />{/if}
+      </label>
+      <label class="check">
+        <input type="checkbox" checked={t.headerLine !== 'none'} onchange={(e) => set('headerLine', e.currentTarget.checked ? undefined : 'none')} />
+        Line under them
+        {#if t.headerLine !== 'none'}<input type="color" value={hex(t.headerLine, '#000000')} oninput={(e) => set('headerLine', e.currentTarget.value)} aria-label="Line under the categories color" />{/if}
+      </label>
+    </div>
+    <p class="muted small">The names' color and font are in Colors and Fonts; a gradient goes the tiles' direction.</p>
+    <button class="small ghost reset" disabled={!set2(HEADER_LOOKS)} onclick={() => step('Theme: plain categories', () => plain(HEADER_LOOKS), { notify: true })}>↺ Plain categories</button>
+    </details>
+
+    <details class="sec" bind:open={opened.plates}>
+    <summary>Score plates{#if set2(PLATE_LOOKS)}<span class="changed"> · changed</span>{/if}</summary>
+    <div class="grid">
+      <label class="field">
+        Plate corners
+        <select value={t.plateShape ?? ''} onchange={(e) => set('plateShape', (e.currentTarget.value || undefined) as Theme['plateShape'])}>
+          <option value="">Rounded</option>
+          <option value="square">Square</option>
+          <option value="pill">Pill</option>
+        </select>
+      </label>
+      <label class="check" title="The plate of the player with the most points glows in the value color">
+        <input type="checkbox" checked={!!t.leaderGlow} onchange={(e) => set('leaderGlow', e.currentTarget.checked || undefined)} />
+        Glow on the leader
+      </label>
+    </div>
+    </details>
   </div>
 
   <div class="side">
@@ -238,12 +414,28 @@
 </div>
 
 <style>
-  h3 {
-    margin: 16px 0 6px;
+  /* Folding sections: the summary reads like a heading. */
+  .sec {
+    margin-top: 14px;
+  }
+  .sec > summary {
+    cursor: pointer;
+    width: fit-content;
+    margin-bottom: 6px;
     font-size: 12px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
+  }
+  .changed {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  .reset {
+    margin-top: 6px;
   }
   .layout {
     display: grid;
@@ -266,14 +458,6 @@
   .preset.on {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
-  }
-  .sw {
-    display: grid;
-    place-items: center;
-    height: 50px;
-    border-radius: 4px;
-    font-size: 26px;
-    text-shadow: 2px 2px 0 #000;
   }
   /* Two columns that never grow past the controls' width (a long option in a select would push them out). */
   .grid {
