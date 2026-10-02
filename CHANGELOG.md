@@ -33,6 +33,9 @@ in plain words for the people who make and host games. Anything committed but no
   forest and a boss guarding a hidden treasure, with the HP, Gold and Power stats it uses.
 
 ### Changed
+- **Phones, the Final's wagers**: the wager box is headed "Your wager" under the Final's name (it said "Final Jeopardy!:
+  time to wager" and then "Final: your wager"), and a wager sent says it can change "until the question shows" (there's
+  no separate lock step any more).
 - **Try a sample game no longer selects its first round's name**: the focus goes to the round's tab, so a key
   pressed next doesn't type over "Jeopardy!".
 - **Host panel: ⌨ (keyboard shortcuts) sits beside 🚪 Exit**, so with the controls beside the stage it no longer wraps

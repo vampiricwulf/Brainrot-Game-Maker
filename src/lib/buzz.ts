@@ -145,7 +145,8 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
       // Its category is on screen from the wagers on, so the phones say it too.
       const cat = f?.category?.trim();
       if (cat) return { text: `${n} · ${cat}` };
-      return { text: session.finalStep === 'wagers' ? `${n}: time to wager` : n };
+      // (During the wagers each phone in it shows its wager box under this, which says so.)
+      return { text: n };
     }
     case 'rpg':
     case 'boardgame':

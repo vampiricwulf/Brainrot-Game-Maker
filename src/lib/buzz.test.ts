@@ -341,6 +341,6 @@ describe('wagerAsk (the wagers phones may send)', () => {
     f.category = '  US Presidents ';
     expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)} · US Presidents`);
     f.category = '';
-    expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)}: time to wager`);
+    expect(phoneStatus(game, session)?.text).toBe(finalName(f));
   });
 });

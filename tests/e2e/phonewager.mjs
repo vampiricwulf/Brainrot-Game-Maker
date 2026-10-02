@@ -216,7 +216,7 @@ try {
   const box = (name) => row(name).locator('input[data-wager]');
   await form(ann).waitFor();
   await form(bo).waitFor();
-  assert((await ann.locator('#wager-head').innerText()) === 'Final: your wager', 'the Final’s wager screen: every phone in it gets its wager box');
+  assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the Final’s wager screen (“Your wager”, under the Final’s name): every phone in it gets its wager box');
   await row('Player 1').getByText('📱 waiting…').waitFor();
   assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
   assert(
@@ -299,7 +299,7 @@ try {
   const rows2 = host2.locator('.fj .wagers');
   await rows2.waitFor();
   await form(al).waitFor();
-  assert((await al.locator('#wager-head').innerText()) === 'Final: your team’s wager', 'teams: every member’s phone gets the team’s wager box');
+  assert((await al.locator('#wager-head').innerText()) === 'Your team’s wager', 'teams: every member’s phone gets the team’s wager box');
   await sendWager(al, 300);
   await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 $300 from phone ✔ · sent by Al').waitFor();
   await amy.locator('#wager-state').getByText('✔ Al sent $300 for your team').waitFor();

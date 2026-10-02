@@ -874,8 +874,9 @@ function renderFoot(v: PhoneView, sym: string): boolean {
 function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   const you = v.you!;
   const team = !!v.teams;
-  const kind = w.kind === 'dd' ? 'Daily Double' : 'Final';
-  $('wager-head').textContent = `${kind}: ${team ? 'your team’s wager' : 'your wager'}`;
+  // (A Final's name is in the line above already.)
+  const what = team ? 'your team’s wager' : 'your wager';
+  $('wager-head').textContent = w.kind === 'dd' ? `Daily Double: ${what}` : what[0].toUpperCase() + what.slice(1);
   $('wager-label').textContent = `Wager (only the host sees it)`;
   const inp = $<HTMLInputElement>('wager-in');
   // Filled with what's in when the box comes up, or when what's in changes (a teammate, the host) while not typing.
@@ -893,7 +894,7 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
     if (w.host) state = `The host has your wager as ${amt}`;
     else if (team && w.by) state = `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team`;
     else if (w.sent) state = `✔ Sent: ${amt}`;
-    state += '. You can change it until the host locks the wagers.';
+    state += '. You can change it until the question shows.';
   } else if (w.hidden) {
     // Seated after the wagers began: one is in, but this phone isn't shown it.
     state = `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.`;
