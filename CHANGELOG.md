@@ -212,6 +212,9 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **▶ Test this round's end screen has no 🔁 Rematch either** (it kept the test as the game to resume, too).
+- **The ▶ Play screen's ▶ Resume it opens the audience window** when that's the display picked, as Start does (the
+  game resumed in a single window, answers and host notes on stream).
 - **▶ Test this round's end screen no longer offers ▶ Next game…**: it kept the throwaway test as the game to resume,
   in place of your real one (🚪 Exit goes back to the tested round, as before).
 - **Phones list: "📵 offline" times stay right on the ▶ Play screen** before a game and after a rematch (they only

@@ -96,7 +96,8 @@
   <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
   <span class="spacer"></span>
   <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
-  {#if !asking}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
+  <!-- (Not after ▶ Test this round either: a rematch would keep the throwaway test as the game to resume.) -->
+  {#if !asking && !app.test}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
   <!-- (Not after ▶ Test this round: nothing of a test is kept, and 🚪 Exit goes back to the tested round.) -->
   {#if nextGame && !asking && !app.test}
     <button onclick={nextGame} title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor.">

@@ -1851,7 +1851,9 @@
   const editsDiffer = $derived(!!app.resumable && !sameGame($state.snapshot(app.game), app.resumable.game));
 
   /** The pre-game's ▶ Resume: the game kept to resume plays on, in the display picked here (and its room, if open). */
-  function resumeKept(withEdits: boolean): void {
+  async function resumeKept(withEdits: boolean): Promise<void> {
+    // Like Start: with the audience window picked (🖥 Display), it opens now, from the click (answers and notes stay off stream).
+    if (wantAudience && !dual && !(await openAudience())) return;
     const r = session.remote;
     const room = r && phonesOn && inRoom(r.code) ? $state.snapshot(r) : null;
     // The room goes on with the resumed game: leaving this screen mustn't close it.
@@ -2536,9 +2538,9 @@
             ⏸ A game in progress is kept: <b>{kept.game.title}</b>
             <span class="muted small">(saved {new Date(kept.savedAt).toLocaleString()})</span>
           </span>
-          <button class="primary" onclick={() => resumeKept(false)}>▶ Resume it</button>
+          <button class="primary" onclick={() => void resumeKept(false)}>▶ Resume it</button>
           {#if !app.playerOnly && kept.game.id === app.game.id && editsDiffer}
-            <button onclick={() => resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+            <button onclick={() => void resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
               Resume with my edits
             </button>
           {/if}
