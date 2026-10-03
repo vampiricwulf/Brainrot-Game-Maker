@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Phone buzzers: a phone whose seat was freed while it slept** shows the seat list when it reconnects ("Your seat was
+  given…"), not its old buzzer that no longer did anything.
+- **Phone buzzers: "Tap your name to take it back here" works**: the seat another tab or phone took back is tappable
+  on this one ("Yours, on another tab or phone"), and takes it back with no name to give again (teams too).
 - **Importing an items CSV keeps the worn look** (picture and place on the avatar) of items already in the game; only
   the slot comes from the file.
 - **Changing a stat's type resets its start** (and the players' own starts) to the new type's default: Gold starting at

@@ -296,6 +296,18 @@ try {
   await ann.reload();
   await big(ann).getByText('Ann').waitFor();
   assert(await ann.getByRole('heading', { name: 'Tap your name' }).isHidden(), 'after a reload Ann is straight back in her seat (token)');
+  // A second tab of Ann's takes the seat (same browser, same token): the first tab can take it back with a tap.
+  const ann2 = await ann.context().newPage();
+  ann2.on('pageerror', (e) => errors.push(`[ann2] ${e.message}`));
+  await ann2.goto(`${base}/${room.code}`);
+  await big(ann2).getByText('Ann').waitFor();
+  await ann.locator('main').getByText('Your seat moved to another tab or phone. Tap your name to take it back here.').waitFor();
+  const annSeat = ann.getByRole('button', { name: /^Ann/ });
+  assert(await annSeat.isEnabled(), 'the seat moved to another tab: Ann’s own seat is still tappable here');
+  await annSeat.click();
+  await big(ann).getByText('Ann').waitFor();
+  assert(true, 'and tapping it takes it back here (with the token: no "taken")');
+  await ann2.close();
 
   // Kick Bob: his phone says so and he can pick again.
   const key = `brainrot-buzzer:${room.code}`;

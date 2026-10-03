@@ -309,8 +309,10 @@ function onMessage(m: RoomToPhone): void {
           ? wasTeams
             ? 'Your team left the game. Pick another one.'
             : 'The host took you out of the game.'
-          : m.teams || wasTeams
+          : !!m.teams !== wasTeams
             ? 'You’re not on a team on this phone any more. Pick your team.'
+            : m.teams
+            ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
             : 'Your seat moved to another tab or phone. Tap your name to take it back here.';
         if (!m.seats.some((x) => x.id === seatId) || !!m.teams !== wasTeams) saveSeat(null);
         seatId = null;
@@ -427,7 +429,13 @@ function denied(reason: DenyReason): void {
     seatsNote = 'Too many tries: wait a minute, then try again.';
     return;
   }
-  if (wasRejoin || reason === 'bad-token') saveSeat(null);
+  if (wasRejoin || reason === 'bad-token') {
+    saveSeat(null);
+    // Its old buzzer goes too: the seat list (sent while it was rejoining) is what's on screen now.
+    seatId = null;
+    view = null;
+    result = null;
+  }
   pendingName = null;
   newForm = false;
   // Teams: a name someone else has, or a missing one, keeps the name form up to try again.
@@ -687,11 +695,14 @@ function renderSeats(s: SeatsMsg): void {
   const teams = !!s.teams;
   $('seats-title').textContent = teams ? 'Pick your team' : 'Tap your name';
   const list = $('seat-list');
+  // The seat this phone still holds a claim to (another tab or phone took it back): tapping it takes it back here.
+  const saved = loadSeat();
   list.replaceChildren(
     ...s.seats.map((x) => {
+      const mine = saved?.seatId === x.id;
       const b = document.createElement('button');
       b.className = 'seat';
-      b.disabled = x.taken || !!s.locked;
+      b.disabled = !mine && (x.taken || !!s.locked);
       const dot = document.createElement('span');
       dot.className = 'dot';
       dot.style.background = x.color;
@@ -708,6 +719,15 @@ function renderSeats(s: SeatsMsg): void {
         who.append(name, on);
         b.append(dot, who);
         b.setAttribute('aria-label', `${x.name}${x.members?.length ? `: ${x.members.join(', ')}` : ''}`);
+      } else if (x.taken && mine) {
+        const who = document.createElement('span');
+        who.className = 'who';
+        const hint = document.createElement('span');
+        hint.className = 'members hint';
+        hint.textContent = 'Yours, on another tab or phone · tap to take it back here';
+        who.append(name, hint);
+        b.append(dot, who);
+        b.setAttribute('aria-label', `${x.name}: ${hint.textContent}`);
       } else if (x.taken) {
         // Taken: maybe by this player's old phone (a new phone, another browser). The host can free it.
         const who = document.createElement('span');
@@ -728,6 +748,12 @@ function renderSeats(s: SeatsMsg): void {
       b.addEventListener('click', () => {
         seatsNote = '';
         unlockAudio();
+        // Its own seat (or team place) back, with the token it holds: no name to give again.
+        if (mine && saved) {
+          rejoining = true;
+          send({ t: 'join', seatId: saved.seatId, token: saved.token, device });
+          return render();
+        }
         // Teams: then your name (the room needs it to put you on the team).
         if (teams) {
           teamPick = x;
