@@ -212,6 +212,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Going back to a Final whose reveals had started (◀ Back from a later round) opens the reveals**, not the wager
+  screen, where a player the Final took to $0 was over their cap and dropped from the Final on the next visit.
 - **Opening a layer's rename and leaving it as it was changes nothing**: no undo step, and the layer keeps following its
   text or file name (it used to be pinned to the label it had then).
 - **Desktop app on Windows: retitling a game only in case** ("my quiz" → "My Quiz") no longer deletes the autosave just

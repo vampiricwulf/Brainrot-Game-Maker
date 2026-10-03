@@ -582,6 +582,23 @@ describe('final reveal with N', () => {
     backToLastRound(session, game);
     expect([session.finalStep, session.final!.players, session.final!.order, session.final!.results]).toEqual(['reveal', players, order, results]);
   });
+
+  it('back from another round mid-reveals: the reveals again (not the wagers), every time', () => {
+    const { game, session, a, b } = setup(2);
+    applyScore(session, game, [a], 1000, 'x');
+    applyScore(session, game, [b], 600, 'x');
+    goToRound(session, game, 1);
+    session.final!.wagers[a] = 1000;
+    session.final!.wagers[b] = 0;
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    finalJudge(session, game, a, false);
+    const { players, results } = structuredClone(session.final!);
+    for (let trip = 0; trip < 2; trip++) {
+      goToRound(session, game, 0);
+      goToRound(session, game, 1);
+      expect([session.finalStep, session.final!.players, session.final!.results]).toEqual(['reveal', players, results]);
+    }
+  });
 });
 
 describe('final wagers', () => {

@@ -640,6 +640,8 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
   // $0 can still be judged again.
   if (prev && saved?.step === 'reveal') {
     session.final = prev;
+    // Back at the reveals, not the wagers (whose caps now count this Final's results).
+    session.finalStep = 'reveal';
     return;
   }
   // Players the host ticked in or sat out stay that way; the others play if their score lets them (newcomers too).
