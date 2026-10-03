@@ -4,17 +4,28 @@
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { setSlideText, slideText, type FinalRound, type TextEl } from '../lib/model';
+  import { questionSlides, setSlideText, slideText, type FinalRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
+  import SlideTabs, { slideKeyOf } from './SlideTabs.svelte';
 
   let { round }: { round: FinalRound } = $props();
   let side = $state<'q' | 'a'>('q');
+  // Like a board clue, it can have several question slides, shown in order before the answer.
+  /** The question slide open (0: the first), kept while the Answer tab is open. */
+  let qi = $state(0);
+  const qslides = $derived(questionSlides(round));
+  const at = $derived(Math.min(qi, Math.max(0, qslides.length - 1)));
+  const qslide = $derived(qslides[at]);
+  const slideKey = $derived(slideKeyOf(side === 'q' ? qslide : undefined));
 
   // An undo or redo here shows the side it changed.
   const handled = { seq: 0 };
   $effect(() => {
     const place = take(handled);
-    if (place?.tab === 'round' && place.round === untrack(() => round.id) && place.part?.kind === 'final' && place.part.side) side = place.part.side;
+    if (place?.tab !== 'round' || place.round !== untrack(() => round.id) || place.part?.kind !== 'final' || !place.part.side) return;
+    side = place.part.side;
+    const slide = place.part.slide;
+    if (side === 'q') qi = slide ? Math.max(0, (untrack(() => round.extraSlides)?.findIndex((s) => s.id === slide) ?? -1) + 1) : 0;
   });
 
   // There is no "this round" of clues here, so round scopes cover the whole game.
@@ -40,8 +51,8 @@
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
 <div class="quick">
   <label class="field">
-    Question
-    <textarea rows="2" data-field="q" placeholder="Type the final question…" value={slideText(round.questionSlide)} oninput={(e) => setSlideText(round.questionSlide, e.currentTarget.value)}></textarea>
+    {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
+    <textarea rows="2" data-field="q" placeholder="Type the final question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value)}></textarea>
   </label>
   <label class="field">
     Answer (hidden until revealed)
@@ -52,13 +63,10 @@
     <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
   </label>
 </div>
-<div class="tabs" role="tablist">
-  <button role="tab" class:on={side === 'q'} aria-selected={side === 'q'} onclick={() => (side = 'q')}>Question slide</button>
-  <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} onclick={() => (side = 'a')}>Answer slide (hidden until revealed)</button>
-</div>
-{#key `${round.id}-${side}`}
+<SlideTabs holder={round} bind:side bind:qi what="Final" />
+{#key `${round.id}-${slideKey}`}
   <SlideEditor
-    slide={side === 'q' ? round.questionSlide : round.answerSlide}
+    slide={side === 'q' ? qslide : round.answerSlide}
     styletargets={styleTargets}
     placeholder={side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
     badge={side === 'a' ? 'ANSWER' : undefined}
@@ -97,19 +105,5 @@
   }
   .grid .check {
     align-self: end;
-  }
-  .tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
-  }
-  .tabs button {
-    border-radius: 6px 6px 0 0;
-  }
-  .tabs button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
   }
 </style>

@@ -692,7 +692,7 @@
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->
       {#if session.phase === 'final' && session.intro?.stage !== 'title'}
         <div class="mode-host">
-          <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onstep={onfinalstep} {onreveal} {onjudge} {onrevealnext} onback={onbackfromfinal} />
+          <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onstep={onfinalstep} {onreveal} {onjudge} {onrevealnext} onback={onbackfromfinal} {onslide} />
         </div>
       {/if}
 

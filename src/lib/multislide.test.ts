@@ -2,9 +2,9 @@
 // operations, playing through them, and everything that walks a clue's slides.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { migrateGame, newId, newImageEl, questionSlides, setSlideText, slideText, slidesOfClue, textSlide, type BoardRound, type Clue, type Game, type TextEl } from './model';
+import { migrateGame, newFinalRound, newId, newImageEl, questionSlides, setSlideText, slideText, slidesOfClue, textSlide, type BoardRound, type Clue, type Game, type TextEl } from './model';
 import { addClueSlide, clearClue, clone, clueHasContent, copyClue, deleteClueSlide, duplicateClueSlide, moveClueSlide, reidRound, textStyleTargets } from './ops';
-import { backToBoard, clueSlideIndex, newSession, openClue, reveal, shownQuestionSlide, slidePosition, startTiebreaker, stepSlide, toolOnlyClue, unreveal } from './session';
+import { backToBoard, clueSlideIndex, finalNext, newSession, openClue, reveal, shownQuestionSlide, slidePosition, startTiebreaker, stepSlide, toolOnlyClue, unreveal } from './session';
 import { allSlides, mediaUsage } from './usage';
 import { diff } from './historyops';
 import { describe as describeStep, itemPlace, placeAt } from './historylabel';
@@ -364,6 +364,37 @@ describe('the tiebreaker’s question slides', () => {
     expect(findAll(game, 'the question').some((h) => h.where === 'Tiebreaker › Question 2')).toBe(true);
     const id = tb.extraSlides![0].elements[0].id;
     expect(itemPlace(game, id)).toMatchObject({ tab: 'tiebreaker', side: 'q', slide: tb.extraSlides![0].id });
+  });
+});
+
+describe('a Final’s question slides', () => {
+  it('are stepped through while its question is up, from the first each time; a copied round gets its own ids', () => {
+    const game = jeopardyGame();
+    const final = newFinalRound();
+    setSlideText(final.questionSlide, 'Lead-in');
+    addClueSlide(final, 0);
+    setSlideText(questionSlides(final)[1], 'The question');
+    game.rounds.push(final);
+    const session = newSession(game);
+    session.currentRound = game.rounds.length - 1;
+    session.phase = 'final';
+    session.finalStep = 'wagers';
+    session.final = { roundId: final.id, players: [], wagers: {}, order: [], shown: {}, results: {} };
+    session.slide = 1;
+    // On the wager screen the slides don't move.
+    expect(stepSlide(session, game, 1)).toBe(false);
+    session.final.players = ['p1'];
+    session.final.wagers = { p1: 0 };
+    finalNext(session, game);
+    expect(session.finalStep).toBe('question');
+    expect(slideText(shownQuestionSlide(session, final))).toBe('Lead-in');
+    expect(slidePosition(session, game)).toEqual({ at: 1, of: 2 });
+    expect(stepSlide(session, game, 1)).toBe(true);
+    expect(slideText(shownQuestionSlide(session, final))).toBe('The question');
+    expect(stepSlide(session, game, 1)).toBe(false);
+    const copy = reidRound(clone(final));
+    expect(copy.extraSlides![0].id).not.toBe(final.extraSlides![0].id);
+    expect(allSlides(game).some((s) => s.where.endsWith('(question slide 2)'))).toBe(true);
   });
 });
 

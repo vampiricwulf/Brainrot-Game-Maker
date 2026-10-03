@@ -43,7 +43,8 @@ export type RoundPart =
   /** `slide`: one of the clue's extra question slides (its id; none: the first question slide). */
   | { kind: 'clue'; category: string; clue: string; side?: Side; slide?: string; element?: string; onBoard?: boolean }
   | { kind: 'decor'; element?: string }
-  | { kind: 'final'; side?: Side; element?: string }
+  /** `slide`: a question slide after the first (its id). */
+  | { kind: 'final'; side?: Side; slide?: string; element?: string }
   | { kind: 'space'; space: string }
   | { kind: 'backdrop'; element?: string }
   | { kind: 'zone'; zone: string; inSlide?: boolean; element?: string }
@@ -181,9 +182,22 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         slide(clue[path[6] as 'questionSlide'], 7, (element) => ({ tab: 'round', round: id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, element } }), side);
       }
     } else if (r.mode === 'final') {
+      if (path[2] === 'extraSlides') {
+        // One of its extra question slides ("Question 2").
+        at.crumbs.push(SIDE_NAME.q);
+        part({ kind: 'final', side: 'q' });
+        const n = r.extraSlides?.findIndex((s) => s.id === path[3]) ?? -1;
+        if (n < 0) return;
+        const sl = r.extraSlides![n];
+        at.crumbs[at.crumbs.length - 1] = `${SIDE_NAME.q} ${n + 2}`;
+        reached(4, 'slide', `question slide ${n + 2}`, undefined, false);
+        part({ kind: 'final', side: 'q', slide: sl.id });
+        slide(sl, 4, (element) => ({ tab: 'round', round: id, part: { kind: 'final', side: 'q', slide: sl.id, element } }), 'q');
+        return;
+      }
       const side = path[2] === 'questionSlide' ? 'q' : path[2] === 'answerSlide' ? 'a' : null;
       if (!side) return;
-      at.crumbs.push(SIDE_NAME[side]);
+      at.crumbs.push(side === 'q' && r.extraSlides?.length ? `${SIDE_NAME.q} 1` : SIDE_NAME[side]);
       part({ kind: 'final', side });
       slide(r[path[2] as 'questionSlide'], 3, (element) => ({ tab: 'round', round: id, part: { kind: 'final', side, element } }), side);
     } else if (r.mode === 'boardgame') {
@@ -366,6 +380,8 @@ export function itemPlace(game: Game, id: string): Place | null {
     if (r.mode === 'final') {
       const side = sides.find((k) => on(r[k]));
       if (side) return placeAt(game, ['rounds', r.id, side, 'elements', id]).place;
+      const extra = r.extraSlides?.find(on);
+      if (extra) return placeAt(game, ['rounds', r.id, 'extraSlides', extra.id, 'elements', id]).place;
     }
   }
   const tb = game.tiebreaker;

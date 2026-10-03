@@ -10,7 +10,7 @@
   import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
   import {
     currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
-    hasWager, nameList, score, wagerFromPhone, wagerSentBy,
+    hasWager, nameList, score, slidePosition, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { hostAsk, offerNext } from './slots.svelte';
@@ -28,6 +28,7 @@
     onrevealnext,
     onjudge,
     onback,
+    onslide,
   }: {
     game: Game;
     session: Session;
@@ -49,7 +50,12 @@
     onjudge: (id: string, right: boolean) => void;
     /** Back to the round before this Final (who plays and the wagers entered so far are kept). */
     onback: () => void;
+    /** Its question slides (several): the next one (1) or the one before (-1). */
+    onslide?: (d: 1 | -1) => void;
   } = $props();
+  /** A question with several slides, while it's up: which one is on screen ("Slide 2 of 3"). */
+  const slidePos = $derived(slidePosition(session, game));
+  const moreSlides = $derived(!!slidePos && slidePos.at < slidePos.of);
   const f = $derived(session.final);
   const sym = $derived(game.settings.currencySymbol);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
@@ -306,6 +312,9 @@
     if (session.finalStep === 'reveal' && unjudged)
       return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
     const step = session.finalStep ?? 'wagers';
+    // Its question slides first, then the answer.
+    if (step === 'question' && moreSlides && slidePos && onslide)
+      return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: () => onslide(1) };
     return {
       label: labels[step],
       key: 'N',
@@ -490,6 +499,11 @@
       {#if session.finalStep === 'answer'}
         <button onclick={onreveal} title="R">🙈 Hide answer</button>
       {:else if session.finalStep === 'question'}
+        {#if slidePos}
+          <span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>
+          <button class="ghost" onclick={() => onslide?.(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
+          {#if moreSlides}<button onclick={onreveal} title="R">👁 Reveal answer</button>{/if}
+        {/if}
         <span class="muted small">Tip: click the screen to continue</span>
       {:else if session.finalStep === 'wagers' && !wagersOk}
         <span class="muted small">{waitingOn}</span>
@@ -510,6 +524,14 @@
 {/if}
 
 <style>
+  .slidepos {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
   .fj {
     display: flex;
     flex-direction: column;

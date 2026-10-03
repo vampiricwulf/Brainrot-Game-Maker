@@ -229,6 +229,16 @@ try {
   await key('Control+z');
   assert((await page.getByPlaceholder('Type the answer…').inputValue()) === '' && (await page.getByRole('tab', { name: /Answer slide/ }).getAttribute('aria-selected')) === 'true', 'undoing the answer shows the answer slide');
   await shot('final-1280');
+  // The Final can have more question slides too: ＋ Add slide, typed on with the quick field, then deleted.
+  await page.getByRole('tab', { name: /Question slide/ }).click();
+  await page.getByRole('button', { name: '＋ Add slide' }).click();
+  await page.getByRole('tab', { name: 'Question 2' }).waitFor();
+  assert((await undoTitle()).startsWith('Undo: Added Final question slide 2'), `＋ Add slide on the Final is one named step (${await undoTitle()})`);
+  await page.getByPlaceholder('Type the final question…').fill('Then the real question');
+  assert(await slideShows('Then the real question'), "the Final's quick field writes on its second question slide");
+  await page.getByRole('button', { name: '🗑 Delete slide' }).click();
+  await page.getByRole('tab', { name: 'Question slide' }).waitFor();
+  assert(await slideShows('Best meme of 2020?'), '🗑 Delete slide leaves the first question slide as it was');
   // A key on a round's tab is the tab's alone, even with a slide item selected.
   await page.getByRole('tab', { name: /Question slide/ }).click();
   await page.locator('.canvas .hit').first().click();

@@ -290,7 +290,7 @@ export function textStyleTargets(game: Game, round: BoardRound | null, from: Tex
     }
   if (where === 'game')
     for (const r of [...game.rounds.filter(isFinal), ...(game.tiebreaker ? [game.tiebreaker] : [])]) {
-      if (which.includes('q')) slides.push(...('extraSlides' in r ? questionSlides(r) : [r.questionSlide]));
+      if (which.includes('q')) slides.push(...questionSlides(r));
       if (which.includes('a')) slides.push(r.answerSlide);
     }
   const out: TextEl[] = [];
@@ -328,6 +328,10 @@ export function reidRound<R extends Round>(round: R): R {
     for (const d of round.decor ?? []) d.id = newId();
   } else if (isFinal(round)) {
     reSlide(round.questionSlide);
+    for (const sl of round.extraSlides ?? []) {
+      sl.id = newId();
+      reSlide(sl);
+    }
     reSlide(round.answerSlide);
   } else if (isBoardGame(round)) {
     // A copy gets its own spaces and zones (and its own board state in play); links and Send to buttons follow the new

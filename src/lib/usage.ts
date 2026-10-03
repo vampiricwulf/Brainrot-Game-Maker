@@ -21,6 +21,7 @@ export function allSlides(game: Game): SlideRef[] {
         });
     else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
+      r.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (question slide ${j + 2})` }));
       out.push({ slide: r.answerSlide, where: `${roundName(r, ri)} (answer)` });
     }
   });

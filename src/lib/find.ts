@@ -63,7 +63,8 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       }
     } else if (r.mode === 'final') {
       look('🏆', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="final-category"]');
-      look('❓', slideWords(r.questionSlide), `${rn} › Question`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
+      look('❓', slideWords(r.questionSlide), `${rn} › Question${r.extraSlides?.length ? ' 1' : ''}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
+      r.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${rn} › Question ${j + 2}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q', slide: sl.id } }, 'main [data-field="q"]'));
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
     } else if (r.mode === 'boardgame') {
       for (const s of r.spaces) {

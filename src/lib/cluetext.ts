@@ -13,7 +13,7 @@ export function clueSlides(game: Game): Slide[] {
   const out: Slide[] = [];
   for (const r of game.rounds) {
     if (isBoard(r)) for (const c of r.categories) for (const cl of c.clues) out.push(...slidesOfClue(cl));
-    else if (isFinal(r)) out.push(r.questionSlide, r.answerSlide);
+    else if (isFinal(r)) out.push(...slidesOfClue(r));
   }
   if (game.tiebreaker) out.push(...slidesOfClue(game.tiebreaker));
   return out;

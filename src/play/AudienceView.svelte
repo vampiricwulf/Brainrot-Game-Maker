@@ -407,7 +407,17 @@
         <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
         <div class="score-area"><ScoreBar {game} {session} host={!!onact} lit={null} ticks={wagersIn} /></div>
       {:else if session.finalStep === 'question'}
-        {#if finalRound}<div class="slide-area" style:scale={bandScale}><SlideView slide={finalRound.questionSlide} {role} /></div>{/if}
+        {#if finalRound}
+          {@const fAt = clueSlideIndex(session, finalRound)}
+          {@const fOf = questionSlides(finalRound).length}
+          <div class="slide-area" style:scale={bandScale} data-slide={fAt + 1}><SlideView slide={shownQuestionSlide(session, finalRound)} {role} /></div>
+          <!-- Several question slides: where it is (● ○), as on a clue. -->
+          {#if fOf > 1}
+            <div class="pips" role="img" aria-label="Slide {fAt + 1} of {fOf}" data-slide-pips>
+              {#each { length: fOf } as _, i (i)}<span class:on={i <= fAt}></span>{/each}
+            </div>
+          {/if}
+        {/if}
       {:else if session.finalStep === 'answer'}
         {#if finalRound}<div class="slide-area" style:scale={bandScale}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
       {:else if session.finalStep === 'reveal'}

@@ -275,9 +275,10 @@ export function shownQuestionSlide(session: Session, clue: Pick<Clue, 'questionS
   return questionSlides(clue)[clueSlideIndex(session, clue)];
 }
 
-/** The clue whose question slides are being stepped through: the open clue, or the tiebreaker while it's played. */
+/** The clue whose question slides are being stepped through: the open clue, the Final's question, or the tiebreaker. */
 function slidesOnShow(session: Session, game: Game): Pick<Clue, 'questionSlide' | 'extraSlides'> | undefined {
   if (session.phase === 'tiebreaker') return game.tiebreaker;
+  if (session.phase === 'final') return session.finalStep === 'question' ? (currentFinal(session, game) ?? undefined) : undefined;
   return session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue : undefined;
 }
 
@@ -294,7 +295,7 @@ export function slidePosition(session: Session, game: Game): { at: number; of: n
  * Double's wager, nor with the answer showing). Returns whether it moved.
  */
 export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
-  if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase !== 'clue' || session.revealed || session.dd?.stage === 'splash') return false;
+  if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase === 'final' ? session.finalStep !== 'question' : session.phase !== 'clue' || session.revealed || session.dd?.stage === 'splash') return false;
   const clue = slidesOnShow(session, game);
   if (!clue) return false;
   const to = clueSlideIndex(session, clue) + d;
@@ -828,6 +829,8 @@ export function finalNext(session: Session, game: Game): void {
       // Everyone sat out: nothing to wager or reveal, so on to the next round (or the end).
       if (f && !f.players.length) return goToRound(session, game, session.currentRound + 1);
       session.finalStep = 'question';
+      // (From its first question slide.)
+      delete session.slide;
       break;
     case 'question':
       session.finalStep = 'answer';

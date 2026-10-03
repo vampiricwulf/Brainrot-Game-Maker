@@ -69,8 +69,19 @@
     {/if}
   {:else if session.phase === 'final' && finalRound}
     <div class="meta"><span class="cat">{finalName(finalRound)}{finalRound.category ? ` · ${finalRound.category}` : ''}</span></div>
-    <div class="label">Question</div>
-    <div class="q">{slideText(finalRound.questionSlide) || '—'}</div>
+    {@const slides = questionSlides(finalRound)}
+    {@const at = clueSlideIndex(session, finalRound)}
+    <div class="label">Question{slides.length > 1 && session.finalStep === 'question' ? ` · slide ${at + 1} of ${slides.length}` : ''}</div>
+    <div class="q">{slideText(session.finalStep === 'question' ? slides[at] : slides[0]) || '—'}</div>
+    {#if session.finalStep === 'question' && slides[at + 1]}
+      <div class="label">Next slide</div>
+      <div class="notes">{slideText(slides[at + 1]) || '—'}</div>
+    {:else if session.finalStep !== 'question' && slides.length > 1}
+      {#each slides.slice(1) as s, i (i)}
+        <div class="label">Question slide {i + 2}</div>
+        <div class="notes">{slideText(s) || '—'}</div>
+      {/each}
+    {/if}
     <div class="label">Answer</div>
     <div class="a">{slideText(finalRound.answerSlide) || '—'}</div>
     {#if finalRound.hostNotes}

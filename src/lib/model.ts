@@ -477,6 +477,8 @@ export interface FinalRound {
   mode: 'final';
   category: string;
   questionSlide: Slide;
+  /** More question slides, shown in order before the answer (left out: just the one). */
+  extraSlides?: ExtraSlide[];
   answerSlide: Slide;
   timerSeconds: number;
   /**
@@ -1417,6 +1419,7 @@ function repairGame(g: Game): void {
     } else if (isFinal(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);
+      repairExtraSlides(r);
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
       if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
     } else if (isBoardGame(r)) {

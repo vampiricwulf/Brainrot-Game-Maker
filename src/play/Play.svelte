@@ -2416,6 +2416,8 @@
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
           if (e.shiftKey) finalBack(session);
           else finalRevealNext();
+        } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
+          // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
         } else if (session.phase === 'clue') {
           // Shift+N: a clue's question slide before. N: whatever the host panel's main button shows (the next slide,
           // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…).

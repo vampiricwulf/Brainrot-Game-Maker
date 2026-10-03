@@ -47,7 +47,7 @@ const game = {
     board,
     { id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' },
     { id: 'r_bg', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] }, spaces: [sp('b0', 'Start', 300, 300, ['b1']), sp('b1', 'Middle', 900, 300, ['b2']), sp('b2', 'Finish', 1500, 300, [])], mover: { kind: 'dice', dice: 'dp1' }, zones: [] },
-    { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Internet History', questionSlide: slide('fq', 'The first video'), answerSlide: slide('fa', 'Me at the zoo'), timerSeconds: 30, allowNonPositive: true },
+    { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Internet History', questionSlide: slide('fq', 'The first video'), extraSlides: [{ id: 'fx2', ...slide('fq2', 'Uploaded in 2005') }], answerSlide: slide('fa', 'Me at the zoo'), timerSeconds: 30, allowNonPositive: true },
   ],
   media: [], audio: {}, theme: {}, wheels: [],
   dice: [{ id: 'dp1', name: 'Move die', dice: [{ id: 'd1', sides: 6, count: 1 }], showTotal: true }],
@@ -229,8 +229,15 @@ try {
   assert((await mainLabel(page)) === 'Show question ▶', `the Final opens on its wager screen, Show question its main button (${await mainLabel(page)})`);
   const wagers = page.locator('.fj .wagers input[data-wager]');
   for (let i = 0; i < (await wagers.count()); i++) await wagers.nth(i).fill('0');
-  for (const label of ['Show question ▶', 'Reveal answer ▶', 'Start player reveals ▶']) {
+  // (Its question has two slides: Next slide ▶ first, viewers see where it is.)
+  for (const label of ['Show question ▶', 'Next slide ▶', 'Reveal answer ▶', 'Start player reveals ▶']) {
     await page.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l), label);
+    if (label === 'Next slide ▶')
+      assert(
+        (await page.locator('.stage-box [data-slide-pips]').getAttribute('aria-label')) === 'Slide 1 of 2' && (await page.locator('.stage-box').innerText()).includes('The first video'),
+        "a Final with two question slides shows its first, Next slide ▶ the main button (● ○ on stream)",
+      );
+    if (label === 'Reveal answer ▶') assert((await page.locator('.stage-box').innerText()).includes('Uploaded in 2005'), 'then its second slide, then Reveal answer ▶');
     await mainButton(page).click();
   }
   await page.locator('.fj .pl').first().waitFor();

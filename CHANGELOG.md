@@ -14,6 +14,10 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-03
 
 ### Added
+- **A Final round's question can have several slides**, like the tiebreaker's and a board clue's: ＋ Add slide in the
+  Final's editor (◀ Earlier, Later ▶, ⧉ Duplicate, 🗑 Delete slide). In play, after the wagers, N (or Next slide ▶, or a
+  click on the slide) shows the next one and Shift+N the one before, viewers see where it is (● ○), and the host's notes
+  show the slide on screen and the next one; then Reveal answer ▶ as before.
 - **The tiebreaker clue can have several question slides**, like a board clue: ＋ Add slide in its editor (with ◀ Earlier,
   Later ▶, ⧉ Duplicate and 🗑 Delete slide, and the same keys on the tabs). In play, N (or the main button, or a click on
   the slide) shows the next one and Shift+N the one before, viewers see where it is (● ○), and the host's notes show
