@@ -212,6 +212,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **The Final's wager screen: Enter and the first focus go down the rows in the order they're shown**, also after a
+  player is unticked and ticked back in (they followed the reveal order, jumping around).
 - **Phone wagers: a wager the host took from a phone and then cleared** (an emptied box, an undo) no longer still says
   "✔ Sent: $500" on the phone; the player can send one again. Needs the updated buzzer server.
 - **Phone wagers with teams: someone who joins a team after the wagers began** no longer sees a teammate's wager

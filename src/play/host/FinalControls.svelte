@@ -74,12 +74,16 @@
         : `Over the max: ${names(problems.over)}`,
   );
 
+  /** Who plays, in the rows' order (the players' order: the reveal order, lowest score first, isn't the screen's). */
+  const rowOrder = () => session.players.map((p) => p.id).filter((id) => !!f?.players.includes(id));
+
   /** Enter in a wager box: show the question once every wager is fine, else go to the next box that needs one. */
   function wagerEnter(id: string): void {
     if (!f) return;
     if (wagersOk) return next();
-    const i = f.players.indexOf(id);
-    const after = [...f.players.slice(i + 1), ...f.players.slice(0, i + 1)];
+    const rows = rowOrder();
+    const i = rows.indexOf(id);
+    const after = [...rows.slice(i + 1), ...rows.slice(0, i + 1)];
     const todo = after.find(needsWager);
     if (todo) wagerBox(todo)?.focus();
   }
@@ -94,7 +98,7 @@
       if (!fs || session.finalStep !== 'wagers') return;
       // Phones send the wagers: the keys stay the host's (N goes on once they're all in), no box to type in.
       if (phones.some((id) => fs.players.includes(id))) return;
-      const todo = fs.players.find(needsWager);
+      const todo = rowOrder().find(needsWager);
       if (todo) wagerBox(todo)?.focus();
     });
   });
