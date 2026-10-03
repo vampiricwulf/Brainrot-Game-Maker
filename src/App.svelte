@@ -242,6 +242,8 @@
     // The phones stay in the room: the tab taking over picks it up again.
     if (kept.room || (app.screen === 'play' && app.session?.remote)) leaveRoom();
     kept.room = null;
+    // (Leaving the game screen below mustn't forget the saved room the other tab picks up.)
+    kept.handedOff = true;
     // The audience window goes with this tab (the one taking over opens its own).
     closeAudienceWindow();
     if (app.screen !== 'play') return;
@@ -610,7 +612,12 @@
         saved.session.remote = own?.code === open.code ? { ...open, armId: Math.max(own.armId ?? 0, open.armId ?? 0) } : open;
         kept.room = null;
         void clearRoom();
-      } else if (room) endRoom(room);
+      } else if (room) {
+        // The pre-game screen's room, for a game that plays without buzzers: closed, and forgotten (a reload mid-game
+        // would go back to the pre-game screen with it).
+        endRoom(room);
+        void clearRoom();
+      }
       // (A room kept in the editor that this game doesn't use stays kept: the game mustn't close it on its way in.)
       else if (own?.code === open.code) saved.session.remote = null;
     }

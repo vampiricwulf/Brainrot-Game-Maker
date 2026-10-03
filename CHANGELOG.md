@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Phone buzzers: "Edit here instead" in another tab keeps the buzzer room** for that tab to pick up, instead of
+  forgetting it (the phones were left in a room nobody came back to).
+- **Phone buzzers: resuming a game without buzzers from the pre-game screen forgets the pre-game room it closed**: a
+  reload mid-game no longer sends the host back to the pre-game screen.
 - **Phone buzzers: picking a second player while one is answering** (to give both points) no longer opens the buzzers
   again on every phone.
 - **Phone buzzers: undoing Buzzer mode on the pre-game screen closes its room for good**: a reload no longer brings back

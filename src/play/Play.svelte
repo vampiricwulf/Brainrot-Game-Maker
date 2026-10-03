@@ -478,7 +478,7 @@
       // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
       // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
       // Its saved copy goes too (a room out of reach, left with ◀ Back to editor, would pull a reload back into it).
-      if (!keepRoomOpen && !app.test && !(kept.room && inRoom(kept.room.remote.code))) {
+      if (!keepRoomOpen && !app.test && !kept.handedOff && !(kept.room && inRoom(kept.room.remote.code))) {
         closeRoom();
         void clearRoom();
       }

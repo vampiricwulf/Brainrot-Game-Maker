@@ -43,7 +43,11 @@ export const FULL_SHOWN_MS = 2 * 60_000;
  * A room left open while the host went back to the editor from the pre-game screen (◀ Back to editor): ▶ Play picks
  * it up again (same code, phones stay joined). Saved too (persist.ts saveRoom), so a reload keeps it.
  */
-export const kept = $state<{ room: SavedRoom | null }>({ room: null });
+/**
+ * `handedOff`: another tab took over editing (this one paused): the room and its saved copy are that tab's now, and
+ * nothing here closes or forgets them.
+ */
+export const kept = $state<{ room: SavedRoom | null; handedOff?: boolean }>({ room: null });
 
 let link: RoomLink | null = null;
 const buzzWatchers = new Set<(b: RoomBuzz) => void>();
