@@ -14,6 +14,10 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-03
 
 ### Fixed
+- **Media: Shift+click with a filter on picks only the cards on show**, so "Delete selected" no longer takes hidden
+  files with it.
+- **Media: an uploaded font used as the theme's Clue text font counts as used**, so "Delete unused" keeps it.
+- **On stream, a long clue caption stops short of the slide dots** instead of running under them.
 - **Importing clues no longer hides them on wheel and dice tiles**: filling a board leaves its 🎡/🎲 tiles as they
   are (they already have something on them), and replacing a board or pasting a column makes a wheel or dice tile it
   writes into a question tile. Before, the clue went on the tile but play spun the wheel or rolled the dice instead.

@@ -105,8 +105,9 @@
   function pick(e: MouseEvent, m: MediaRef): void {
     // Not a click on the card's own buttons, player or name box.
     if ((e.target as HTMLElement).closest('button, input, audio, video, a')) return;
-    if (e.shiftKey && anchor && game.media.some((x) => x.id === anchor)) {
-      const ids = game.media.map((x) => x.id);
+    // (Only the cards on show: a filter's hidden cards are never picked.)
+    if (e.shiftKey && anchor && shown.some((x) => x.id === anchor)) {
+      const ids = shown.map((x) => x.id);
       const [a, b] = [ids.indexOf(anchor), ids.indexOf(m.id)].sort((x, y) => x - y);
       picked = [...new Set([...picked, ...ids.slice(a, b + 1)])];
     } else if (e.ctrlKey || e.metaKey) {

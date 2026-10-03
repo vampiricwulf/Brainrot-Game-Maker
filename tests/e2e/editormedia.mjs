@@ -130,6 +130,14 @@ try {
   await cards.nth(0).locator('.meta').click();
   await cards.nth(2).locator('.meta').click({ modifiers: ['Shift'] });
   assert((await page.locator('.card.picked').count()) === 3, 'click, then Shift+click selects the run');
+  // A filter's hidden cards are never taken into a Shift+click run.
+  await cards.nth(0).locator('.meta').click();
+  await page.getByRole('searchbox', { name: 'Filter files' }).fill('pasted');
+  await cards.nth(0).locator('.meta').click({ modifiers: ['Shift'] });
+  await page.getByRole('searchbox', { name: 'Filter files' }).fill('');
+  assert((await page.locator('.card.picked').count()) === 1, 'a Shift+click with a filter on picks no hidden card');
+  await cards.nth(0).locator('.meta').click();
+  await cards.nth(2).locator('.meta').click({ modifiers: ['Shift'] });
   await cards.nth(1).locator('.meta').click({ modifiers: ['Control'] });
   assert((await page.locator('.card.picked').count()) === 2, 'Ctrl+click takes one away');
   await shot('em-2-media');

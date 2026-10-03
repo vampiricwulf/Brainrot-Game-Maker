@@ -11,11 +11,12 @@ const css = (id: string) => `'${uploadedFamily(id)}', sans-serif`;
 describe('media usage', () => {
   it('counts uploaded fonts the theme uses, so Remove unused keeps them', () => {
     const game = jeopardyGame();
-    game.media.push(font('board0001'), font('value0001'), font('spare0001'));
+    game.media.push(font('board0001'), font('value0001'), font('clue00001'), font('spare0001'));
     game.theme.boardFont = css('board0001');
     game.theme.valueFont = css('value0001');
+    game.theme.clueFont = css('clue00001');
     const used = mediaUsage(game);
-    expect([used.get('board0001'), used.get('value0001'), used.get('spare0001')]).toEqual([1, 1, undefined]);
+    expect([used.get('board0001'), used.get('value0001'), used.get('clue00001'), used.get('spare0001')]).toEqual([1, 1, 1, undefined]);
   });
 
   it('counts fonts of text drawn onto pictures', () => {

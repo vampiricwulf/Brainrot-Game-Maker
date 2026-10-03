@@ -41,7 +41,7 @@ const screens = [0, 1].map((c) => ({ id: `sc_${c}`, name: `Field ${c}`, col: c, 
 const sp = (id, name, x, y, next) => ({ id, name, x, y, color: '#4363d8', next });
 const game = {
   id: 'g_layout', version: 2, title: 'Layout Night',
-  settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+  settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8, stream: { clueCaption: true } },
   players: ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: 500 })),
   rounds: [
     board,
@@ -162,6 +162,14 @@ try {
   );
   const pips = page.locator('.stage-box [data-slide-pips]');
   assert((await pips.getAttribute('aria-label')) === 'Slide 1 of 3', 'viewers see where the clue is (Slide 1 of 3, as dots)');
+  // A long clue caption stops short of the dots instead of running under them.
+  const capGap = await page.evaluate(() => {
+    const cap = document.querySelector('.stage-box .caption');
+    if (!cap) return null;
+    cap.textContent = 'A VERY LONG CATEGORY NAME FOR THE CAPTION · '.repeat(4);
+    return document.querySelector('.stage-box [data-slide-pips]').getBoundingClientRect().left - cap.getBoundingClientRect().right;
+  });
+  assert(capGap !== null && capGap > 0, `a long clue caption ends before the slide dots (gap ${capGap}px)`);
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Slide 3 of 3'));

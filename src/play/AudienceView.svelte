@@ -381,7 +381,8 @@
       </div>
     {/if}
     {#if stream?.clueCaption && !waiting}
-      <div class="caption">{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
+      <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap.) -->
+      <div class="caption" style:max-width={of > 1 && !session.revealed ? `${960 - (50 * of + 22) / 2 - 24 - 44 - 16}px` : undefined}>{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
     {/if}
     {#if session.dd?.stage === 'question' && ddPlayer}
       <div class="dd-badge" style:border-color={ddPlayer.color}>
