@@ -179,9 +179,13 @@ try {
 
   // A second launch given a game file: the running app opens it.
   await d.locator('input.title').fill('From a second launch');
+  // (The game just opened: let the title settle before exporting under it.)
+  await d.waitForTimeout(300);
   await d.getByRole('button', { name: /^More:/ }).click();
   await d.getByRole('menuitem', { name: /Export JSON/ }).click();
-  await d.waitForFunction(() => window.__saves.has('From-a-second-launch.json'), null, { polling: 100 });
+  await d.waitForFunction(() => window.__saves.has('From-a-second-launch.json'), null, { polling: 100 }).catch(async (e) => {
+    throw new Error(`Export JSON wrote no From-a-second-launch.json (saved: ${await d.evaluate(() => [...window.__saves.keys()].join(', '))}; title: ${await d.locator('input.title').inputValue()})\n${e.message}`);
+  });
   await d.locator('input.title').fill('Before');
   await d.evaluate(() => {
     window.__opened = { name: 'From-a-second-launch.json', bytes: window.__saves.get('From-a-second-launch.json').bytes };
