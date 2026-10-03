@@ -45,13 +45,22 @@ function load(): Prefs {
 
 export const prefs = $state<Prefs>(load());
 
+/** The numbers last kept: a box emptied (to type another) keeps its number instead of saving 0 or 1. */
+const numberOr = (v: unknown, was: number) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? was : Number(v));
+let kept = {
+  autosaveMinutes: numberOr(prefs.autosaveMinutes, DEFAULT_PREFS.autosaveMinutes),
+  autosaveKeep: numberOr(prefs.autosaveKeep, DEFAULT_PREFS.autosaveKeep),
+  undoSteps: numberOr(prefs.undoSteps, DEFAULT_PREFS.undoSteps),
+};
+
 /** Keep the current preferences (the settings dialog calls this on every change). */
 export function savePrefs(): void {
-  prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(Number(prefs.autosaveMinutes) || 0)));
-  prefs.autosaveKeep = Math.max(1, Math.min(50, Math.round(Number(prefs.autosaveKeep) || 1)));
+  prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(numberOr(prefs.autosaveMinutes, kept.autosaveMinutes))));
+  prefs.autosaveKeep = Math.max(1, Math.min(50, Math.round(numberOr(prefs.autosaveKeep, kept.autosaveKeep))));
   if (prefs.display !== 'audience') prefs.display = 'single';
   prefs.buzzerServer = String(prefs.buzzerServer ?? '').trim();
-  prefs.undoSteps = Math.max(UNDO_STEPS.min, Math.min(UNDO_STEPS.max, Math.round(Number(prefs.undoSteps) || DEFAULT_PREFS.undoSteps)));
+  prefs.undoSteps = Math.max(UNDO_STEPS.min, Math.min(UNDO_STEPS.max, Math.round(numberOr(prefs.undoSteps, kept.undoSteps) || DEFAULT_PREFS.undoSteps)));
+  kept = { autosaveMinutes: prefs.autosaveMinutes, autosaveKeep: prefs.autosaveKeep, undoSteps: prefs.undoSteps };
   try {
     localStorage.setItem(KEY, JSON.stringify($state.snapshot(prefs)));
   } catch {

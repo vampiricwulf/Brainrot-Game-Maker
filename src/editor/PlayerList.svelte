@@ -122,8 +122,12 @@
       (dels?.[Math.min(at, dels.length - 1)] ?? list?.querySelector<HTMLButtonElement>('button.add'))?.focus();
     });
   }
+  // Brought back another way (Ctrl+Z): the note goes, so its Undo can't add them twice.
+  $effect(() => {
+    if (undone && players.some((x) => x.id === undone?.p.id)) undone = null;
+  });
   function undoRemove(): void {
-    if (!undone || players.length >= max) return;
+    if (!undone || players.length >= max || players.some((x) => x.id === undone?.p.id)) return void (undone = null);
     players.splice(Math.min(undone.at, players.length), 0, undone.p);
     undone = null;
   }

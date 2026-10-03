@@ -20,6 +20,11 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Settings: emptying a number box to type another keeps its number**: an emptied "Keep N autosaves" no longer saved
+  1 (and the next autosave deleted the game's older ones), and an emptied "every N minutes" no longer turned autosave off.
+- **Phone buzzers: emptying "A phone that buzzes too early waits" keeps the wait** instead of setting it to 0.
+- **Players: the "Deleted … ↶ Undo" note goes once Ctrl+Z has brought the player back**, so it can't add them twice.
+- **Settings: "Back to the defaults" clears the buzzer server's old Test result.**
 - **Final: a 0 filled in for a player with nothing to wager goes when they have points to wager again** (given in the
   round before, after going back), so they can wager them instead of the question showing with their 0.
 - **Final (teams): "sent by" stays on a phone's wager after leaving the wager screen and coming back.**

@@ -49,6 +49,8 @@
         step="0.25"
         value={settings.earlyBuzzLock ?? 1}
         onchange={(e) => {
+          // Emptied (to type another): the wait stays as it was.
+          if (!e.currentTarget.value.trim()) return void (e.currentTarget.value = String(settings.earlyBuzzLock ?? 1));
           const n = Math.max(0, Math.min(5, Number(e.currentTarget.value)));
           onset('earlyBuzzLock', Number.isFinite(n) && n !== 1 ? n : undefined, 'Early buzz wait');
           e.currentTarget.value = String(settings.earlyBuzzLock ?? 1);
