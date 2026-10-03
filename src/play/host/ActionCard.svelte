@@ -30,16 +30,24 @@
     untrack(() => (defaultTargets.length ? [...defaultTargets] : session.currentPickerId ? [session.currentPickerId] : []).slice(0, one ? 1 : undefined)),
   );
   let source = $state<string | undefined>(undefined);
+  // Until the host picks here, it's for whoever the spin is tagged for ("This was for" can change after it lands).
+  let touched = false;
+  $effect(() => {
+    const d = defaultTargets;
+    if (!touched && d.length) untrack(() => (targets = [...d].filter((x) => x !== source).slice(0, one ? 1 : undefined)));
+  });
   const deltas = $derived(actionDeltas(session, action, targets, source, rollTotal));
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const ready = $derived(targets.length > 0 && (!needsSource(action) || !!source) && Object.keys(deltas).length > 0);
 
   function toggle(id: string): void {
+    touched = true;
     targets = targets.includes(id) ? targets.filter((x) => x !== id) : one ? [id] : [...targets, id];
   }
 
   /** The player stolen from (or swapped with) isn't one it's for. */
   function pickSource(id: string): void {
+    touched = true;
     source = id;
     targets = targets.filter((x) => x !== id);
   }

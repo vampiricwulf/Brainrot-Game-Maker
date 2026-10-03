@@ -4,6 +4,7 @@
   import type { Overlay } from '../../lib/live';
   import type { Game } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
+  import { rollOutcome } from '../../lib/tools';
   import Die from './Die.svelte';
   import OutcomeCard from './OutcomeCard.svelte';
 
@@ -30,8 +31,8 @@
     }
     return d.face?.label ?? String(d.value);
   };
-  const faceOutcome = $derived(o.roll?.dice.find((d) => d.face && (d.face.details || d.face.media))?.face);
-  const outcome = $derived(o.roll?.totalOutcome ?? faceOutcome);
+  // (The same one the host's card acts on.)
+  const outcome = $derived(o.roll ? rollOutcome(o.roll).main : undefined);
 </script>
 
 <div class="wrap">

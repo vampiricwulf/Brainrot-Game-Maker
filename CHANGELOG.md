@@ -24,6 +24,11 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Wheels & Dice in play: a score card follows "This was for"**: tagging a player after the spin lands makes its
+  Confirm score them (it kept scoring the picker), until you pick on the card itself.
+- **Custom dice: the host's card acts on the face viewers see**, and every other die whose face has an effect gets its
+  own buttons and score card (two dice with score effects no longer drop the second one).
+- **A 🎯 Pick a player wheel spun with others keeps the player it picked** when the spin is tagged for someone else.
 - **Under the cover (K/B), a video or sound that starts on its own waits too** (an answer revealed meanwhile whose slide
   autoplays a song), and plays when the cover comes off, like the ones already playing.
 - **An audience window opening or coming back shows the cover (or Starting soon) at once**, never the stage under it

@@ -203,7 +203,8 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   w.rotation = to;
   w.result = index;
   const seg = w.segments[index];
-  logRoll(session, 'wheel', w.name, sliceLabel(seg, index), w.players ? [seg.id] : undefined);
+  const logged = logRoll(session, 'wheel', w.name, sliceLabel(seg, index), w.players ? [seg.id] : undefined);
+  if (w.players) logged.picked = true;
   if (preset?.removeAfterLanding) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];
@@ -229,7 +230,8 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   const seg = o.segments[index];
   // The player wheel's result is a player: the roll log says who it was for.
   o.tagged = o.players ? [seg.id] : undefined;
-  logRoll(session, 'wheel', o.name, sliceLabel(seg, index), o.players ? [seg.id] : undefined);
+  const logged = logRoll(session, 'wheel', o.name, sliceLabel(seg, index), o.players ? [seg.id] : undefined);
+  if (o.players) logged.picked = true;
   if (preset?.removeAfterLanding) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];

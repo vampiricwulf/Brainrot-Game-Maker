@@ -192,6 +192,20 @@ export function rollPreset(p: DicePreset, rand = random): DiceRoll {
   return { dice, total, totalOutcome };
 }
 
+/** A custom face with something to show or do: details, a picture or sound, a score effect, a countdown or buttons. */
+const faceHasMore = (f: Outcome | undefined): f is Outcome => !!f && !!(f.details || f.media || f.scoreAction || f.timerSeconds || f.actions?.length);
+
+/**
+ * What a roll comes to: its total's outcome, else the first die whose custom face has more than a label. Viewers see
+ * it and the host's card acts on it (the same one in both); `others` are the other dice whose faces have effects.
+ */
+export function rollOutcome(r: DiceRoll): { main?: Outcome; others: { i: number; face: Outcome }[] } {
+  const faces = r.dice.map((d, i) => ({ i, face: d.face })).filter((x): x is { i: number; face: Outcome } => faceHasMore(x.face));
+  if (r.totalOutcome) return { main: r.totalOutcome, others: [] };
+  const [first, ...rest] = faces;
+  return { main: first?.face, others: rest.filter((x) => x.face.scoreAction || x.face.timerSeconds || x.face.actions?.length) };
+}
+
 export function describeRoll(r: DiceRoll): string {
   const faces = r.dice.map((d) => d.face?.label ?? String(d.value));
   const main = r.dice.length > 1 && r.dice.every((d) => !d.face) ? `${faces.join(' + ')} = ${r.total}` : faces.join(', ');

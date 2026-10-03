@@ -9,7 +9,7 @@
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
   import { addWheel, removeWheel, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
-  import { rollResult, sliceLabel } from '../../lib/tools';
+  import { rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
@@ -40,7 +40,7 @@
 
   const outcome = $derived.by((): Outcome | undefined => {
     if (o?.kind === 'wheel' && o.result !== null && o.spin) return o.segments[o.result];
-    if (o?.kind === 'dice' && o.roll) return o.roll.totalOutcome ?? o.roll.dice.find((d) => d.face?.scoreAction || d.face?.timerSeconds || d.face?.actions?.length)?.face;
+    if (o?.kind === 'dice' && o.roll) return rollOutcome(o.roll).main;
     return undefined;
   });
   /** What the outcome is called: a slice left blank is "Slice 3". */
@@ -58,6 +58,10 @@
   /** This spin's roll-log entries (one per wheel spun together: a spent one, or one added since, didn't spin). */
   const spunExtras = $derived(o?.kind === 'wheel' && o.spin ? (o.extra ?? []).filter((w) => w.spin && w.spin.startedAt >= o.spin!.startedAt).length : 0);
   const spinRolls = $derived(spunExtras ? (session.rollLog ?? []).slice(-(1 + spunExtras)) : lastRoll ? [lastRoll] : []);
+  /** The spin's entry the "This was for" chips show and set (not a 🎯 Pick a player wheel's, whose result is a player). */
+  const tagRoll = $derived([...spinRolls].reverse().find((r) => !r.picked) ?? lastRoll);
+  /** The other dice whose faces have effects (the first one's is `outcome`): each gets its buttons and score card. */
+  const otherFaces = $derived(o?.kind === 'dice' && o.roll ? rollOutcome(o.roll).others : []);
   /** The other wheels spun with this one, once they've landed. */
   const extraResults = $derived(
     o?.kind === 'wheel' ? (o.extra ?? []).flatMap((w) => (w.spin && w.result !== null && w.segments[w.result] ? [{ w, seg: w.segments[w.result] }] : [])) : [],
@@ -77,7 +81,7 @@
    */
   const chosen = $derived.by(() => {
     const fromWheel = extraResults.find((r) => r.w.players)?.seg.id;
-    return picked ? [picked.id] : lastRoll?.playerIds?.length ? lastRoll.playerIds : fromWheel ? [fromWheel] : [];
+    return picked ? [picked.id] : tagRoll?.playerIds?.length ? tagRoll.playerIds : fromWheel ? [fromWheel] : [];
   });
 
   /** A slice's action button: for the players it was for (see `chosen`), else the selected. `from` names it in the log. */
@@ -116,11 +120,11 @@
   });
 
   function tag(id: string): void {
-    if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !lastRoll) return;
-    const cur = lastRoll.playerIds ?? [];
+    if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !tagRoll) return;
+    const cur = tagRoll.playerIds ?? [];
     const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-    // Every wheel spun together goes in the log for the same players.
-    for (const r of spinRolls) r.playerIds = next;
+    // Every wheel spun together goes in the log for the same players (a 🎯 wheel's keeps the player it picked).
+    for (const r of spinRolls) if (!r.picked) r.playerIds = next;
     o.tagged = next;
   }
 </script>
@@ -213,6 +217,28 @@
       </div>
     {/if}
     {#if !busy}
+      {#each otherFaces as f (f.i)}
+        {@const label = f.face.label || `Die ${f.i + 1}`}
+        {@const diceName = o.kind === 'dice' ? o.name : ''}
+        <div class="row">
+          <span class="muted small">Die {f.i + 1} → {label}:</span>
+          {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a)}</button>{/each}
+          {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
+        </div>
+        {#if f.face.scoreAction && !doneKeys.includes(`${actionKey}-die${f.i}`)}
+          {#key `${actionKey}-die${f.i}`}
+            <ActionCard
+              action={f.face.scoreAction}
+              {game}
+              {session}
+              reason={`Dice: ${diceName} → ${label}`}
+              rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
+              defaultTargets={chosen}
+              ondone={() => (doneKeys = [...doneKeys, `${actionKey}-die${f.i}`])}
+            />
+          {/key}
+        {/if}
+      {/each}
       {#each extraResults as r (r.w.key)}
         {@const label = sliceLabel(r.seg, r.w.result ?? 0)}
         {#if r.seg.actions?.length || r.seg.scoreAction || r.seg.timerSeconds}
@@ -261,7 +287,7 @@
       <div class="row">
         <span class="muted small">This was for (optional, goes in the roll log):</span>
         {#each session.players as p (p.id)}
-          {@const on = lastRoll?.playerIds?.includes(p.id)}
+          {@const on = tagRoll?.playerIds?.includes(p.id)}
           <button
             class="chip"
             style:border-color={p.color}

@@ -606,6 +606,8 @@ export interface RollEvent {
   result: string;
   /** Optional "who this was for" tag. */
   playerIds?: Id[];
+  /** The 🎯 Pick a player wheel's: its result is the player (tagging the spin doesn't change it). */
+  picked?: boolean;
 }
 
 export interface ClueRef {

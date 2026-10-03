@@ -207,3 +207,15 @@ describe('what a result is called', () => {
     expect(rollResult({ dice: [{ sides: 20, value: 7 }], total: 7 })).toBe('7');
   });
 });
+
+describe('what a roll comes to', () => {
+  it('the total’s outcome, else the first die whose face has more than a label; the other dice with effects too', async () => {
+    const { rollOutcome } = await import('./tools');
+    const truth = { label: 'Truth', details: 'Tell us a secret' };
+    const minus = { label: '-200', scoreAction: { kind: 'add' as const, amount: -200 } };
+    const plain = { label: 'Blank' };
+    const r = { dice: [{ sides: 6, value: 1, face: plain }, { sides: 6, value: 2, face: truth }, { sides: 6, value: 3, face: minus }], total: 6 };
+    expect(rollOutcome(r)).toEqual({ main: truth, others: [{ i: 2, face: minus }] });
+    expect(rollOutcome({ ...r, totalOutcome: plain })).toEqual({ main: plain, others: [] });
+  });
+});
