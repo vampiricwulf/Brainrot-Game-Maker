@@ -1658,6 +1658,12 @@ describe('wagers', () => {
     const spy = join('spy', 'a', 'Bea');
     expect(spy.last('view')!.view.wager).toMatchObject({ mine: true, hidden: true });
     expect(said(spy.msgs())).not.toContain('4747');
+    // Nor what Ann sends after Bea joined (it's still a teammate's, not hers).
+    g.t.now += 1000;
+    ann.send({ t: 'wager', id: 'final:r9', amount: 999 });
+    expect(ann.last('view')!.view.wager).toMatchObject({ amount: 999 });
+    expect(spy.last('view')!.view.wager).toMatchObject({ mine: true, hidden: true });
+    expect(said(spy.msgs())).not.toContain('999');
     // Ann (on it before) still sees it; what the newcomer sends herself, she sees.
     spy.send({ t: 'wager', id: 'final:r9', amount: 12 });
     expect(spy.last('view')!.view.wager).toMatchObject({ amount: 12, byYou: true });

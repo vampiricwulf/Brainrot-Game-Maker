@@ -1181,7 +1181,9 @@ export class Room {
         // Seated (teams: on the team) since the round began: only what it sent itself (see Wagers above).
         const since = m ? m.at : this.s.seatedAt?.[p.seatId];
         const late = round?.at !== undefined && since !== undefined && since > round.at;
-        if (late && sent && !(sent.at !== undefined && sent.at >= since)) sent = undefined;
+        // (Teams: by who sent it, not when: a teammate's wager changed after they joined stays hidden from them too.)
+        const own = m ? sent?.member === p.member : sent?.at !== undefined && sent.at >= (since ?? 0);
+        if (late && sent && !own) sent = undefined;
         const view = { ...phoneView(st, p.seatId, me, by, sent, late), hostHere: this.hostHere };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {

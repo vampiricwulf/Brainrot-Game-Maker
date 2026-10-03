@@ -212,6 +212,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Phone wagers with teams: someone who joins a team after the wagers began** no longer sees a teammate's wager
+  changed after they joined (only one they send themselves). Needs the updated buzzer server.
 - **Board games: Esc while ✎ Edit board is on** closes the 📜 Log or a dice or wheel first, as anywhere, instead of ending
   the edit.
 - **Board games with one player (or after 🔁 Roll again)**: the next turn offers 🎲 Roll again, instead of staying on
