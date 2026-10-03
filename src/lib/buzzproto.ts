@@ -250,7 +250,9 @@ function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, s
     const who = w.kind === 'dd' ? w.seats.map((x) => s.seats.find((y) => y.id === x.id)?.name).filter(Boolean).join(' & ') : '';
     return { wager: { id: w.id, kind: w.kind, open: w.open, mine: false, ...(who ? { who } : {}) } };
   }
-  const phone = !!sent && !own.fromHost;
+  // A phone's wager the host took, then cleared (an emptied box, an undo): gone, not still "sent".
+  const cleared = !!sent && own.got !== undefined && sent.n <= own.got && own.amount === undefined;
+  const phone = !!sent && !own.fromHost && !cleared;
   const amount = phone ? sent.amount : late ? undefined : own.amount;
   return {
     wager: {

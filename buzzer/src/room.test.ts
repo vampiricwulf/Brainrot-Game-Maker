@@ -1554,6 +1554,21 @@ describe('wagers', () => {
     expect(g.pa.last('wagered')).toMatchObject({ ok: true });
   });
 
+  it('a phone wager the host took, then cleared (an emptied box, an undo), no longer shows on the phone', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ wager: final() }) });
+    g.pa.send({ t: 'wager', id: 'final:r9', amount: 500 });
+    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 1000, amount: 500, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    expect(g.pa.last('view')!.view.wager).toMatchObject({ amount: 500, sent: true });
+    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 1000, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    const w = g.pa.last('view')!.view.wager!;
+    expect(w.amount).toBeUndefined();
+    expect(w.sent).toBeUndefined();
+    // Sending one again counts.
+    g.pa.send({ t: 'wager', id: 'final:r9', amount: 300 });
+    expect(g.pa.last('view')!.view.wager).toMatchObject({ amount: 300, sent: true });
+  });
+
   it("the host's own amount wins on the phone once the host changed it; a new round forgets what was sent", () => {
     const g = game();
     g.send({ t: 'state', state: state({ wager: final() }) });
