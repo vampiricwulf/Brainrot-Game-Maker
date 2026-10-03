@@ -12,12 +12,33 @@ import { nameList } from './session';
 export function addLiveSpace(round: BoardGameRound, at: { x: number; y: number }, after?: BoardSpace): BoardSpace {
   const p = clampToBoard(at.x, at.y);
   const s = newBoardSpace(p.x, p.y, nextSpaceName(round), SPACE_COLORS[round.spaces.length % SPACE_COLORS.length]);
-  if (after && spaceById(round, after.id)) {
-    s.next = [...after.next];
-    after.next = [s.id];
-  }
+  if (after && spaceById(round, after.id)) linkAfter(round, after, s);
   round.spaces.push(s);
   return s;
+}
+
+/**
+ * Put `s` after `after` on the path: it takes over the ways on, and `after` leads to it. A both-ways link stays both
+ * ways (Z ⇄ A ⇄ B with a space put after A: Z ⇄ A ⇄ new ⇄ B), never a fork that jumps back to Z.
+ */
+export function linkAfter(round: BoardGameRound, after: BoardSpace, s: BoardSpace): void {
+  const both = after.next.filter((n) => spaceById(round, n)?.next.includes(after.id));
+  const oneWay = after.next.filter((n) => !both.includes(n));
+  if (oneWay.length) {
+    s.next = oneWay;
+    after.next = [...both, s.id];
+  } else if (both.length) {
+    // A path walked both ways: the new space goes between it and its first way on (the one it was linked to first,
+    // the path's way forward), both ways.
+    const b = both[0];
+    const far = spaceById(round, b)!;
+    s.next = [b, after.id];
+    after.next = [...both.slice(1), s.id];
+    far.next = far.next.map((n) => (n === after.id ? s.id : n));
+  } else {
+    s.next = [];
+    after.next = [s.id];
+  }
 }
 
 /** Link `from` → `to` (one way). False when it already leads there, or it's the same space. */
@@ -103,8 +124,10 @@ export function deleteLiveSpace(session: Session, round: BoardGameRound, bs: Boa
   let bridged = false;
   for (const p of previousOf(round, id)) {
     p.next = p.next.filter((n) => n !== id);
-    if (s.next.length === 1 && s.next[0] !== p.id && !p.next.includes(s.next[0])) {
-      p.next = [...p.next, s.next[0]];
+    // One way on, not counting the way back (A ⇄ B ⇄ C, B deleted: A ⇄ C).
+    const on = s.next.filter((n) => n !== p.id);
+    if (on.length === 1 && !p.next.includes(on[0])) {
+      p.next = [...p.next, on[0]];
       bridged = true;
     }
   }

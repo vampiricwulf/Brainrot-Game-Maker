@@ -36,6 +36,24 @@ describe('editing a board during play: the operations', () => {
     expect(id('Space 14')).toBeTruthy();
   });
 
+  it('a space put after one on a both-ways path keeps the path both ways (no fork back), and deleting it joins the path up', () => {
+    const { round, session, bs, id } = setup();
+    const [a, b, c] = ['Space 4', 'Space 5', 'Space 6'].map((n) => round.spaces.find((s) => s.name === n)!);
+    connectSpaces(round, b.id, a.id);
+    connectSpaces(round, c.id, b.id);
+    // Space 4 ⇄ Space 5 ⇄ Space 6: a space after Space 5 goes between it and Space 6, both ways.
+    const n = addLiveSpace(round, { x: 900, y: 500 }, b);
+    expect(names(round, b.next).sort()).toEqual(['Space 13', 'Space 4']);
+    expect(names(round, n.next).sort()).toEqual(['Space 5', 'Space 6']);
+    expect(names(round, c.next)).toContain('Space 13');
+    expect(names(round, c.next)).not.toContain('Space 5');
+    // Deleting the new space: Space 5 ⇄ Space 6 again (not two dead ends).
+    deleteLiveSpace(session, round, bs, n.id);
+    expect(names(round, b.next).sort()).toEqual(['Space 4', 'Space 6']);
+    expect(names(round, c.next)).toContain('Space 5');
+    expect(id('Space 6')).toBe(c.id);
+  });
+
   it('connects and disconnects spaces, both ways or one, and reverses a link', () => {
     const { round, id } = setup();
     expect(connectSpaces(round, id('Space 3'), id('Space 7'))).toBe(true);

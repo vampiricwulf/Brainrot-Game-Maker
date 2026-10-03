@@ -16,7 +16,7 @@
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
   import { addFork, allNamesLabel, applySpaceKind, clampToBoard, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
-  import { addLiveSpace, connectSpaces, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
+  import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import { newId, SLIDE_H, SLIDE_W, textSlide, type BoardGameRound, type BoardSpace, type BoardZone } from '../../lib/model';
@@ -347,11 +347,11 @@
   /** A copy of a space (its look, buttons, secret and notes), next to it and after it on the path. */
   function duplicateSpace(s: BoardSpace): void {
     const at = clampToBoard(s.x + 160, s.y);
-    const copy: BoardSpace = { ...$state.snapshot(s), id: newId(), name: nextSpaceName(round), x: at.x, y: at.y, next: [...s.next] };
+    const copy: BoardSpace = { ...$state.snapshot(s), id: newId(), name: nextSpaceName(round), x: at.x, y: at.y, next: [] };
     if (s.onPass) copy.onPass = copyActions(s.onPass);
     if (s.onLand) copy.onLand = copyActions(s.onLand);
     step(`Duplicated space “${s.name}”`, () => {
-      s.next = [copy.id];
+      linkAfter(round, s, copy);
       round.spaces.splice(round.spaces.indexOf(s) + 1, 0, copy);
     });
     selectOnly(copy.id);
@@ -602,10 +602,12 @@
     // Done at once: the note at the bottom offers Undo.
     step(list.length === 1 ? `Deleted space “${what}”` : `Deleted ${what}`, () => {
       for (const s of list) {
-        // Spaces that led here now lead where it led (when it had one way on).
+        // Spaces that led here now lead where it led (when it had one way on, not counting the way back: a space in the
+        // middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C).
         for (const p of previousOf(round, s.id)) {
           p.next = p.next.filter((n) => n !== s.id);
-          if (s.next.length === 1 && s.next[0] !== p.id && !p.next.includes(s.next[0])) p.next.push(s.next[0]);
+          const on = s.next.filter((n) => n !== p.id);
+          if (on.length === 1 && !p.next.includes(on[0])) p.next.push(on[0]);
         }
         round.spaces = round.spaces.filter((x) => x.id !== s.id);
         if (round.start === s.id) round.start = undefined;

@@ -473,6 +473,10 @@
   /** '🎯 Pick on the map': the next screen clicked (any map) is where that side leads. */
   let picking = $state<{ map: string; screen: string; dir: Dir8 } | null>(null);
   const pickFrom = $derived(picking && world.maps.find((m) => m.id === picking!.map)?.screens.find((s) => s.id === picking!.screen));
+  // The screen picking started from was deleted (or undone away): picking stops too (its note went with it).
+  $effect(() => {
+    if (picking && !pickFrom) picking = null;
+  });
 
   function pickTarget(to: Screen): void {
     const p = picking;

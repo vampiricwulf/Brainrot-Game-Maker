@@ -212,6 +212,14 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Board games: deleting a space in the middle of a both-ways path joins the path up** (A ⇄ B ⇄ C leaves A ⇄ C), in
+  the editor and in ✎ Edit board, instead of leaving two dead ends.
+- **Board games: Duplicate and "＋ Add a space after it" on a both-ways path keep it both ways**, instead of a fork whose
+  other way jumps back.
+- **RPG: changing an object's class drops the old class's settings**: a character turned into a doorway no longer keeps
+  💬 Talk and 🛒 Shop on its card in play.
+- **RPG world editor: deleting the screen "🎯 Pick on the map" started from stops picking**, instead of leaving clicks on
+  the map doing nothing with no note saying why.
 - **Slide editor: Duplicate and Paste keep how the items are stacked** (a caption over a picture sent to the back stays
   over the copied picture, instead of going under it).
 - **Slide editor: Esc closes the Background ▾ box** first, instead of closing the clue or only deselecting.

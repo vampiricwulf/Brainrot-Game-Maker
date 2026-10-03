@@ -17,13 +17,25 @@
   let dialogueOpen = $state(false);
 
   const CLASSES = OBJECT_CLASSES;
+  /** The settings each class uses (see ObjectRole). */
+  const CLASS_KEYS: Partial<Record<ObjectClass, string[]>> = {
+    doorway: ['to', 'arrive', 'locked'],
+    item: ['item', 'qty'],
+    currency: ['field', 'amount'],
+    npc: ['shop', 'stats', 'statsShown', 'dialogue'],
+    shop: ['shop'],
+  };
 
   function setClass(c: string): void {
     if (!c) {
       el.role = undefined;
       return;
     }
-    el.role = { ...(el.role ?? {}), class: c as ObjectClass };
+    // Only what the new class uses carries over: a character turned into a doorway mustn't keep its 💬 Talk and 🛒 Shop
+    // (hidden here, still on its card in play). Buttons stay, but for spawn points and no-go areas, which have none.
+    const keep = new Set<string>([...(c === 'spawn' || c === 'blocker' ? [] : ['actions']), ...(CLASS_KEYS[c as ObjectClass] ?? [])]);
+    const old = (el.role ?? {}) as Record<string, unknown>;
+    el.role = { ...Object.fromEntries(Object.entries(old).filter(([k]) => keep.has(k))), class: c as ObjectClass };
     if (c === 'item' && !el.role.item) el.role.item = game.items?.[0]?.id;
     if (c === 'item') el.role.qty ??= 1;
     if (c === 'currency') {
