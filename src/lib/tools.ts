@@ -389,7 +389,8 @@ export function sliceLabel(seg: WheelSegment | undefined, i: number): string {
  */
 export function initials(name: string): string {
   const words = name.split(/[\s_.-]+/).filter(Boolean);
-  if (words.length < 2) return Array.from(name).slice(0, 5).join('') + '…';
+  // (A name that fits, "Al", stays whole: no "…" for nothing cut.)
+  if (words.length < 2) return Array.from(name).length > 5 ? Array.from(name).slice(0, 5).join('') + '…' : name;
   const last = words.at(-1)!;
   const num = /\d/.test(last) ? last : '';
   return words.slice(0, num ? -1 : undefined).slice(0, 3).map((w) => Array.from(w)[0].toUpperCase()).join('') + num;

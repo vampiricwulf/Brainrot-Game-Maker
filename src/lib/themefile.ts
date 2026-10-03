@@ -250,16 +250,50 @@ export async function themeCode(name: string, theme: Theme): Promise<string> {
   return packed ? CODE_PREFIX + toBase64Url(packed) : PLAIN_PREFIX + toBase64Url(json);
 }
 
-/** Is there a theme code in this text (it may have words around it, or be split over lines)? */
+/**
+ * The theme code in this text (it may have words around it, or be split over lines): each way it may go on over the
+ * lines after it, longest first (a line's leading letters are code, or the start of the next sentence: "have fun").
+ */
+export function findCodes(text: string): { plain: boolean; body: string }[] {
+  const m = /BRT1(P?):\s*([A-Za-z0-9_-]*)/.exec(text);
+  if (!m) return [];
+  const plain = m[1] === 'P';
+  const lines = text.slice(m.index + m[0].length).split(/\r?\n/);
+  let body = m[2];
+  const found = [body];
+  // Only a line it fills to its end goes on to the next one.
+  for (let i = 0; i < lines.length - 1 && lines[i].trim() === ''; ) {
+    const run = /^\s*([A-Za-z0-9_-]+)/.exec(lines[++i])?.[1];
+    if (!run) break;
+    body += run;
+    found.push(body);
+    if (lines[i].trim() !== run) break;
+  }
+  return found.reverse().map((b) => ({ plain, body: b }));
+}
+
+/** The longest reading of the theme code in this text (see findCodes). */
 export function findCode(text: string): { plain: boolean; body: string } | null {
-  const m = /BRT1(P?):\s*([A-Za-z0-9_\-\r\n]+)/.exec(text);
-  return m ? { plain: m[1] === 'P', body: m[2].replace(/\s+/g, '') } : null;
+  return findCodes(text)[0] ?? null;
 }
 
 /** A pasted theme code, checked. Throws a ThemeError saying what's wrong. */
 export async function parseThemeCode(text: string): Promise<SharedTheme> {
-  const code = findCode(text);
-  if (!code || !code.body) throw new ThemeError('That isn’t a theme code: a theme code starts with “BRT1:”.');
+  const codes = findCodes(text);
+  if (!codes.length || !codes[0].body) throw new ThemeError('That isn’t a theme code: a theme code starts with “BRT1:”.');
+  let first: unknown;
+  // The longest reading first; words after it on the next line make it unreadable, so a shorter one is tried.
+  for (const code of codes) {
+    try {
+      return await readCode(code);
+    } catch (e) {
+      first ??= e;
+    }
+  }
+  throw first;
+}
+
+async function readCode(code: { plain: boolean; body: string }): Promise<SharedTheme> {
   if (code.body.length > MAX_CODE_CHARS) throw new ThemeError('That code is too long to be a theme code.');
   let bytes: Uint8Array | null;
   try {

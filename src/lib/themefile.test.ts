@@ -76,6 +76,12 @@ describe('theme codes', () => {
     expect((await parseThemeCode(pasted)).theme.tile).toBe(presetTheme('pastel').tile);
   });
 
+  it('stop at words on the line after them', async () => {
+    const code = await themeCode('X', presetTheme('pastel'));
+    expect((await parseThemeCode(`${code}\nhave fun`)).theme.tile).toBe(presetTheme('pastel').tile);
+    expect((await parseThemeCode(`${code.slice(0, 30)}\n${code.slice(30)}\nthanks`)).theme.tile).toBe(presetTheme('pastel').tile);
+  });
+
   it('a plain (uncompressed) code reads too', async () => {
     const json = JSON.stringify({ format: THEME_FORMAT, version: 1, name: 'Plain', theme: presetTheme('dark') });
     const back = await parseThemeCode(PLAIN_PREFIX + b64(json));

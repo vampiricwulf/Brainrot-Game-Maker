@@ -169,6 +169,20 @@ describe('several wheels at once', () => {
     removeWheel(live, o.extra![0].key);
     expect(o.extra).toBeUndefined();
   });
+
+  it('an extra "land once" wheel whose slices have all landed stays put (no starting over on used slices)', () => {
+    const { game, session, live } = withPlayers();
+    const main = newWheel('Main');
+    const once = newWheel('Once', ['A', 'B']);
+    once.removeAfterLanding = true;
+    game.wheels = [main, once];
+    openWheel(live, session, main);
+    addWheel(live, session, game, once.id);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    for (let i = 0; i < 3; i++) spinWheel(live, session, game);
+    expect(session.rollLog?.filter((r) => r.name === 'Once').map((r) => r.result).sort()).toEqual(['A', 'B']);
+  });
 });
 
 describe('roll-off die', () => {

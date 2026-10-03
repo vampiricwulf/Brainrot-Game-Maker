@@ -195,6 +195,8 @@ describe('what a result is called', () => {
     expect(initials('Bartholomew The Magnificent 2/3')).toBe('BTM2/3');
     expect(initials('TheRealMcCoy Bartholomew')).toBe('TB');
     expect(initials('Supercalifragilistic')).toBe('Super…');
+    expect(initials('Al')).toBe('Al');
+    expect(initials('Sally')).toBe('Sally');
     expect(uniqueLabels(['TB', 'Ann', 'TB', 'TB'])).toEqual(['TB', 'Ann', 'TB 2', 'TB 3']);
   });
 

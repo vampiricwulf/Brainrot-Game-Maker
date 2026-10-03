@@ -185,6 +185,8 @@ export function removeWheel(live: Live, key: string): void {
 
 /** Spin one extra wheel (no per-run edits: those are for the main wheel). */
 function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: number): void {
+  // Every slice of a "land once" wheel has landed: it stays put (as the main wheel does), not starting over.
+  if (wheelSpentUp(w, session, game)) return;
   const preset = w.wheelId ? game.wheels.find((x) => x.id === w.wheelId) : undefined;
   w.segments = spinSegments(w, session, game);
   if (!w.segments.length) return;

@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **A pasted theme code followed by words on the next line** ("have fun") reads, instead of "damaged or cut off".
+- **An extra "land once" wheel whose slices have all landed stays put** when the wheels spin, instead of starting over
+  on slices that already landed.
+- **Short names on a crowded player wheel stay whole** ("Al", not "Al…").
 - **A tiebreaker winner who's no longer first shares their place again**: after a later score fix put someone else on
   top, the winner and the player they'd beaten showed as 2nd and 3rd instead of both 2nd.
 - **RPG: giving a single stackable item** joins it to the other player's stack (one "Potion × 2"), instead of a second
