@@ -212,6 +212,9 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **A double-click on the host's main button can't put the answer on stream**: its second click no longer lands on the
+  👁 Reveal answer the button just turned into (after "Show question ▶" on a Daily Double, or 🔔 Open the buzzers).
+- **Questions that quote a name with a dot in it** ("Forget “St. Patrick’s Day”?") keep the name whole in their title.
 - **The clue editor opens another clue at its first question slide** (from Find or an undo), not at the slide number
   the last clue was on.
 - **The Final's wager screen: Enter and the first focus go down the rows in the order they're shown**, also after a

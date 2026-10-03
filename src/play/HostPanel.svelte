@@ -277,6 +277,18 @@
   const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
   // The NEXT cell and the confirmation strip, filled by the parts in here too (see slots).
   const slots = hostSlots();
+  /**
+   * The main button stays one button while its job changes: the second click of a double-click on "Show question ▶" (or
+   * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream.
+   */
+  let lastNext = { label: '', at: 0 };
+  function clickNext(e: MouseEvent, n: { label: string; run: () => void }): void {
+    const now = Date.now();
+    if (e.detail >= 2 && now - lastNext.at < 600 && lastNext.label !== n.label) return;
+    lastNext = { label: n.label, at: now };
+    n.run();
+  }
+
   /** Exit was pressed: it asks in the strip (a browser dialog would show on stream). */
   let askExit = $state(false);
   /** 📺 Audience was pressed with the window open: it asks too (it's usually the stream capture). */
@@ -818,7 +830,7 @@
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
-        <button class:primary={!answering && !ask} data-next disabled={n.disabled} onclick={() => n.run()} title={n.title ?? n.key}>
+        <button class:primary={!answering && !ask} data-next disabled={n.disabled} onclick={(e) => clickNext(e, n)} title={n.title ?? n.key}>
           {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
         </button>
       </div>

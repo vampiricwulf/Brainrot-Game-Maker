@@ -54,7 +54,12 @@ export function splitAsk(a: Pick<Ask, 'text' | 'title'>): { title: string; body:
   // Its sentences (each ends at . ? or !, a closing quote may follow, before a space) and line breaks.
   const parts: string[] = [];
   let start = 0;
+  // Inside “…” (a quoted name, “St. Patrick’s Day”), a dot doesn't end the sentence.
+  let quoted = 0;
   for (let i = 0; i < text.length; i++) {
+    if (text[i] === '“') quoted++;
+    else if (text[i] === '”') quoted = Math.max(0, quoted - 1);
+    if (quoted && text[i] !== '\n') continue;
     if (text[i] === '\n') {
       parts.push(text.slice(start, i), '\n');
       start = i + 1;
