@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Board games: Esc while ✎ Edit board is on** closes the 📜 Log or a dice or wheel first, as anywhere, instead of ending
+  the edit.
+- **Board games with one player (or after 🔁 Roll again)**: the next turn offers 🎲 Roll again, instead of staying on
+  Next turn ▶ for good.
 - **History names an RPG round's start in its own words** ("Changed where the party starts in round “Adventure”"),
   not as a board game's ("Made “?” Start").
 - **🕘 History's filter can always be cleared**: with a filter typed, its box and ✕ Show all stay even when only one

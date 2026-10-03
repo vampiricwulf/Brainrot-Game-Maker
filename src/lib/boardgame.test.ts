@@ -39,6 +39,15 @@ describe('board game: moving', () => {
     expect(currentPlayer(bs)).toBe('b');
   });
 
+  it("counts a move for its turn only: a lone player's next turn (or 🔁 Roll again) has its move to make", () => {
+    const { game, round } = setup();
+    const bs = ensureBoard(newSession(game), game, round);
+    movePlayer(round, bs, 'a', 2);
+    expect(bs.last?.turn).toBe(bs.turns ?? 0);
+    nextTurn(bs);
+    expect(bs.last?.turn).not.toBe(bs.turns);
+  });
+
   it('steps along the loop, remembering the spaces passed and the one landed on', () => {
     const { game, round, ids } = setup();
     const session = newSession(game);
@@ -46,7 +55,7 @@ describe('board game: moving', () => {
     // Start is the 12th step around: from space 10, 4 steps pass 11, 12 and Start, and land on space 2.
     sendTo(bs, ['a'], { space: ids[9] });
     expect(movePlayer(round, bs, 'a', 4)).toBe('Landed on Space 2');
-    expect(bs.last).toEqual({ playerId: 'a', passed: [ids[10], ids[11], ids[0]], landed: ids[1] });
+    expect(bs.last).toEqual({ playerId: 'a', passed: [ids[10], ids[11], ids[0]], landed: ids[1], turn: 0 });
     expect(bs.hop?.path).toEqual([ids[9], ids[10], ids[11], ids[0], ids[1]]);
   });
 
@@ -61,7 +70,7 @@ describe('board game: moving', () => {
     expect(movePlayer(round, bs, 'a', bs.fork!.stepsLeft, cut.id)).toBe('Landed on Space 7');
     expect(bs.fork).toBeUndefined();
     // Passed on the whole move: Space 2, Space 3 (the fork), the Shortcut, Space 6.
-    expect(bs.last).toEqual({ playerId: 'a', passed: [ids[1], ids[2], cut.id, ids[5]], landed: ids[6] });
+    expect(bs.last).toEqual({ playerId: 'a', passed: [ids[1], ids[2], cut.id, ids[5]], landed: ids[6], turn: 0 });
   });
 
   it('going back into a space two ways lead to, asks which way back and goes that way', () => {

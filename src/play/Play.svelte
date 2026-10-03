@@ -2219,6 +2219,8 @@
       return true;
     }
     if (k === 'e' && !e.shiftKey) setEditing(false);
+    // Esc closes the 📜 Log or a dice/wheel overlay first, as anywhere (the board stays in edit mode).
+    else if (k === 'escape' && (showLog || app.live.overlay)) return false;
     else if (k === 'escape') {
       if (boardEdit.sel || boardEdit.link || boardEdit.adding || boardEdit.connecting) {
         if (boardEdit.adding || boardEdit.connecting) [boardEdit.adding, boardEdit.connecting] = [false, false];

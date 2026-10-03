@@ -67,7 +67,7 @@
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
   const showPlayers = $derived(cardsShown());
   /** This turn's move is made (or there's nothing to roll: a one-space board, a fork to pick). */
-  const moved = $derived(!!bs && (!!bs.fork || round?.mover.kind === 'step' || (!!last && last.playerId === turnId)));
+  const moved = $derived(!!bs && (!!bs.fork || round?.mover.kind === 'step' || (!!last && last.playerId === turnId && (last.turn ?? 0) === (bs.turns ?? 0))));
   /**
    * The round's main button, in the host panel's main cell: 🎲 Roll (D), then ▶ Move (Enter), then Next turn ▶ (N), with
    * ◀ Previous turn (Shift+N) right beside it (and Next turn ▶ too while the main button rolls or moves). While the

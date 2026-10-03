@@ -173,6 +173,8 @@ export function currentPlayer(bs: BoardGameState): Id | undefined {
 export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   const n = bs.order.length;
   bs.fork = undefined;
+  // A new turn, even for the same player (one player, 🔁 Roll again): its move is still to make.
+  bs.turns = (bs.turns ?? 0) + 1;
   if (!n) return [];
   const at = (i: number) => ((i % n) + n) % n;
   if (delta <= 0) {
@@ -315,7 +317,7 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   // A fork's space counts as passed, since the walk goes on from it. A space passed twice (round a small loop) gets
   // its buttons once.
   const passed = [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])];
-  bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1) };
+  bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1), turn: bs.turns ?? 0 };
   const name = (id?: Id) => spaceById(round, id)?.name ?? '?';
   if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;
   if (!w.path.length) return 'Nowhere to go from here';

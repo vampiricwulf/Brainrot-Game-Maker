@@ -1548,8 +1548,10 @@ export interface BoardGameState {
   prev?: Record<Id, Id>;
   /** A move stopped at a fork: the host picks the way, then it goes on (the same way: negative steps go back). */
   fork?: { playerId: Id; at: Id; stepsLeft: number };
-  /** Spaces passed and landed on in the last move, for their action buttons. */
-  last?: { playerId: Id; passed: Id[]; landed?: Id };
+  /** Spaces passed and landed on in the last move, for their action buttons; `turn`: the turn (`turns`) it was made in. */
+  last?: { playerId: Id; passed: Id[]; landed?: Id; turn?: number };
+  /** How many times the turn has changed (Next turn, Previous turn): a move counts for the turn it was made in. */
+  turns?: number;
   /** The zone on screen instead of the board (null: the board). */
   zoneShown?: Id | null;
   /** Secret spaces the host revealed. */
