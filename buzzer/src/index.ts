@@ -151,6 +151,7 @@ export class BuzzRoom extends DurableObject<Env> {
             ...(Array.isArray(a.rtts) ? { rtts: a.rtts } : {}),
             ...(typeof a.device === 'string' ? { device: a.device } : {}),
             ...(typeof a.ip === 'string' ? { ip: a.ip } : {}),
+            ...(a.flooded === true ? { flooded: true } : {}),
           });
         else if (a?.role === 'host' && s.readyState === OPEN) hostHere = true;
       }
@@ -237,12 +238,12 @@ export class BuzzRoom extends DurableObject<Env> {
       this.touchHost();
       this.room.hostOpen();
     } else {
-      // Cloudflare sets it (the Worker passes the request on as it came): kicks and floods keep an address out a while.
+      // Cloudflare sets it (the Worker passes the request on as it came): kicks and floods keep an address out a while
+      // (after a flood, a phone from it may only take back a seat it holds: see the room).
       const ip = request.headers.get('CF-Connecting-IP') ?? undefined;
-      if (this.room.floodBlocked(ip)) return refuse(4008, 'too many messages');
       const conn = randomToken(9);
       this.ctx.acceptWebSocket(server, [conn]);
-      server.serializeAttachment({ role: 'phone', conn, seatId: null, ...(ip ? { ip } : {}) } satisfies Attachment);
+      server.serializeAttachment({ role: 'phone', conn, seatId: null, ...(ip ? { ip } : {}), ...(this.room.floodBlocked(ip) ? { flooded: true } : {}) } satisfies Attachment);
       if (!this.room.phoneOpen(conn, ip)) {
         server.send(JSON.stringify({ t: 'denied', reason: 'full' } satisfies RoomToPhone));
         server.close(4001, 'full');

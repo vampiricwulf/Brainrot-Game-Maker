@@ -212,6 +212,9 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Phone buzzers on one Wi-Fi no longer suffer for one phone's kick or flood**: a kick keeps the kicked phone off that
+  seat but not the other players already in the room from the same house; after a phone floods the room, a seated
+  player on the same network who reconnects gets their seat back at once (new joins from there still wait 30 seconds).
 - **A game file whose category has fewer clues than the board has rows** opens with empty tiles in the gap, as meant,
   not blank clues that showed on the board, held the round open until played, and could be picked for a Daily Double.
 - **Release notes no longer repeat an older change** when only its changelog line was edited (its commit hashes added),

@@ -28,7 +28,8 @@
  * An early buzz (while 'closed') locks the seat, not the socket, so a reload doesn't clear it.
  *
  * Kicks: the kicked phone (its socket, its browser's device id and its address) can't take that seat again for
- * KICK_BLOCK_MS (it can take another free one). Freeing a seat (kick with block: false, for a player back on another
+ * KICK_BLOCK_MS (it can take another free one); the other phones already in the room at its address (the same house's
+ * Wi-Fi) are spared. Freeing a seat (kick with block: false, for a player back on another
  * phone, maybe on the same Wi-Fi) keeps nobody off it. The seat list tells phones which taken seats are away (no
  * connected phone has them). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
  *
@@ -54,8 +55,9 @@
  * told one is in, and can still send its own.
  *
  * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
- * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and its address can't
- * connect again for FLOOD_BLOCK_MS.
+ * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and for FLOOD_BLOCK_MS a
+ * phone from its address may only come back to a seat it holds (a join with its token, not the flooder's): phones on one
+ * Wi-Fi share an address, and a seated player reconnecting there isn't the flood. Anything else from it is closed.
  */
 import {
   BUZZ_PROTOCOL,
@@ -177,7 +179,7 @@ export interface RoomSaved {
   /** Seat id → when its early-buzz lock ends. */
   earlyLocks: Record<string, number>;
   /** Seat id → the phones kicked from it (sockets, device ids, addresses) and until when they can't take it again. */
-  blocks?: Record<string, { until: number; conns: string[]; devices: string[]; ips?: string[] }>;
+  blocks?: Record<string, { until: number; conns: string[]; devices: string[]; ips?: string[]; spared?: string[] }>;
   /** Teams: member id → their team (seat id), name, token and the conn that last held it. */
   members?: Record<string, Member>;
   /** Teams: member id → when their early-buzz lock ends (an early buzz locks the member, not the team). */
@@ -211,6 +213,8 @@ export interface PhoneSaved {
   device?: string;
   /** Its address (CF-Connecting-IP; kept for kicks and floods). */
   ip?: string;
+  /** It connected from an address that flooded a moment ago: it may only take back a seat it holds (see floods). */
+  flooded?: boolean;
 }
 
 export interface RoomDeps {
@@ -299,7 +303,8 @@ export class Room {
   /** The last probe id (see rtt). */
   private probeN = 0;
   /** Addresses closed for flooding → until when they can't connect (kept in memory only: it's brief). */
-  private floodBlocks = new Map<string, number>();
+  /** Addresses that flooded a moment ago: until when, and the seat tokens the flooding phone held (not taken back). */
+  private floodBlocks = new Map<string, { until: number; tokens: string[] }>();
 
   constructor(
     private code: string,
@@ -532,17 +537,21 @@ export class Room {
     if (!one && this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
     for (const [, x] of members) if (x.conn) conns.add(x.conn);
     const devices = new Set(holders.flatMap((p) => (p.device ? [p.device] : [])));
-    // Its address too: a new device id is one cleared localStorage away.
+    // Its address too: a new device id is one cleared localStorage away. But phones on one Wi-Fi share an address: the
+    // others already here (another player in the same house) are spared.
     const ips = new Set(holders.flatMap((p) => (p.ip ? [p.ip] : [])));
+    const spared = [...this.phones.values()].flatMap((p) => (p.device && !conns.has(p.conn) && !devices.has(p.device) ? [p.device] : []));
     // A team's block adds up: kicking a second member doesn't let the first back on.
     const now = this.deps.now();
     const was = this.s.blocks?.[seatId];
-    const keep = was && was.until > now ? was : { conns: [], devices: [], ips: [] };
+    const keep = was && was.until > now ? was : { conns: [], devices: [], ips: [], spared: [] };
+    const blocked = new Set([...keep.devices, ...devices]);
     (this.s.blocks ??= {})[seatId] = {
       until: now + KICK_BLOCK_MS,
       conns: [...new Set([...keep.conns, ...conns])],
       devices: [...new Set([...keep.devices, ...devices])],
       ips: [...new Set([...(keep.ips ?? []), ...ips])],
+      spared: [...new Set([...(keep.spared ?? []), ...spared])].filter((d) => !blocked.has(d)),
     };
     if (one) this.dropMember(member, 'kicked');
     else this.freeSeat(seatId, 'kicked');
@@ -610,6 +619,7 @@ export class Room {
       return false;
     }
     const p: Phone = { conn, seatId: null, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, probes: [], strikes: 0, active: now, ...(ip ? { ip } : {}) };
+    if (this.floodBlocked(ip)) p.flooded = true;
     if (this.countedPhones() >= MAX_PHONES) p.hold = true;
     this.phones.set(conn, p);
     this.deps.savePhone(strip(p));
@@ -671,13 +681,28 @@ export class Room {
     this.sync();
   }
 
-  /** An address closed for flooding a moment ago: the caller turns it away (4008) before it is a phone here. */
+  /** An address closed for flooding a moment ago (a phone from it may only take back a seat it holds). */
   floodBlocked(ip: string | null | undefined): boolean {
-    const until = ip ? this.floodBlocks.get(ip) : undefined;
-    if (until === undefined) return false;
-    if (until > this.deps.now()) return true;
+    return !!this.floodBlock(ip);
+  }
+
+  private floodBlock(ip: string | null | undefined): { until: number; tokens: string[] } | undefined {
+    const b = ip ? this.floodBlocks.get(ip) : undefined;
+    if (!b) return undefined;
+    if (b.until > this.deps.now()) return b;
     this.floodBlocks.delete(ip!);
-    return false;
+    return undefined;
+  }
+
+  /** The seat token a phone holds its seat (or its team place) with. */
+  private tokenOf(p: Phone): string | undefined {
+    if (p.member) return this.s.members?.[p.member]?.token;
+    return p.seatId && this.s.holders[p.seatId] === p.conn ? this.s.tokens[p.seatId] : undefined;
+  }
+
+  /** A token that holds a seat or a team place now. */
+  private holdsSeat(token: string): boolean {
+    return Object.values(this.s.tokens).includes(token) || Object.values(this.s.members ?? {}).some((m) => m.token === token);
   }
 
   /** Returns 'close' when the phone is flooding: it is forgotten here, and the caller closes its socket (4008). */
@@ -687,7 +712,11 @@ export class Room {
     // Counted and checked before anything else (no parsing, no deciding a race), so a flood costs the room little.
     if (this.flooding(p, raw)) {
       this.phones.delete(conn);
-      if (p.ip) this.floodBlocks.set(p.ip, this.deps.now() + FLOOD_BLOCK_MS);
+      if (p.ip) {
+        const was = this.floodBlock(p.ip)?.tokens ?? [];
+        const token = this.tokenOf(p);
+        this.floodBlocks.set(p.ip, { until: this.deps.now() + FLOOD_BLOCK_MS, tokens: token ? [...new Set([...was, token])] : was });
+      }
       this.sync();
       return 'close';
     }
@@ -695,6 +724,19 @@ export class Room {
     this.settle();
     const m = parse(raw, PHONE_MSG_MAX);
     if (!m) return;
+    if (p.flooded) {
+      // From an address that flooded: only a phone taking back the seat it holds (a reconnect) gets in.
+      const b = this.floodBlock(p.ip);
+      const back = m.t === 'join' && typeof m.token === 'string' && this.holdsSeat(m.token) && !b?.tokens.includes(m.token);
+      if (b && !back) {
+        if (m.t !== 'join' && m.t !== 'new') return;
+        this.phones.delete(conn);
+        this.sync();
+        return 'close';
+      }
+      delete p.flooded;
+      this.deps.savePhone(strip(p));
+    }
     if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager') p.active = this.deps.now();
     if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
       p.device = m.device;
@@ -819,7 +861,7 @@ export class Room {
     if (held) return deny('taken');
     if (this.s.state.locked) return deny('locked');
     const block = this.s.blocks?.[seatId];
-    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip)));
+    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device))));
     if (kicked && block.until > this.deps.now()) return deny('blocked');
     if (this.turnedAway(p)) return;
     if (p.seatId) this.freeSeat(p.seatId);
@@ -852,7 +894,7 @@ export class Room {
     if (p.member && members[p.member]?.seatId === seatId && members[p.member].name === name) return; // already there
     if (st.locked) return deny('locked');
     const block = this.s.blocks?.[seatId];
-    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip)));
+    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device))));
     if (kicked && block.until > this.deps.now()) return deny('blocked');
     const key = (a: string) => a.toLocaleLowerCase().replace(/\s+/g, '');
     const here = (id: string) => [...this.phones.values()].some((o) => o.member === id);
@@ -1253,6 +1295,7 @@ const strip = (p: Phone): PhoneSaved => ({
   ...(p.rtts?.length ? { rtts: p.rtts } : {}),
   ...(p.device ? { device: p.device } : {}),
   ...(p.ip ? { ip: p.ip } : {}),
+  ...(p.flooded ? { flooded: true } : {}),
 });
 
 // ---- checking untrusted messages ----

@@ -518,7 +518,8 @@ try {
   assert((await hal.locator('#live').innerText()) === "Get ready… Don't buzz yet.", 'no "Get ready…." doubled stop');
   setState({ phase: 'lobby', clue: null });
 
-  // A socket that floods the room is closed (4008), and its address can't come straight back.
+  // A socket that floods the room is closed (4008), and its address can't come straight back (only a phone taking back
+  // a seat it holds may: others on that Wi-Fi).
   const flood = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}`);
   const floodClosed = new Promise((ok) => flood.addEventListener('close', (e) => ok(e.code)));
   await new Promise((ok) => flood.addEventListener('open', ok, { once: true }));
@@ -531,9 +532,10 @@ try {
   const again = await new Promise((ok) => {
     const w = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}`);
     w.addEventListener('close', (e) => ok(e.code));
+    w.addEventListener('open', () => w.send('{"t":"new","name":"Flood","device":"dev-flood"}'), { once: true });
     setTimeout(() => ok('open'), 3000);
   });
-  assert(again === 4008, `and its address is turned away for a while (${again})`);
+  assert(again === 4008, `and from its address, a phone asking to join is turned away for a while (${again})`);
   await small(ann).getByText('Wait for the next clue').waitFor();
   assert(true, 'the room carries on for everyone else');
 

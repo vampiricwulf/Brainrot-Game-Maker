@@ -372,6 +372,34 @@ describe('seats', () => {
     expect(ann.last('joined')?.seatId).toBe('a');
   });
 
+  it('a kick spares the other phones already in the room on the same Wi-Fi: Bob takes his own seat', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    const bob = g.phone('bob', '203.0.113.5');
+    // Bob is in the room, on the seat list (his browser told it its device id with a join).
+    bob.send({ t: 'join', seatId: 'a', device: 'dev-bob' });
+    bob.send({ t: 'leave' });
+    const ann = g.phone('ann', '203.0.113.5');
+    ann.send({ t: 'join', seatId: 'b', device: 'dev-ann' }); // Ann taps Bob's name by mistake
+    g.send({ t: 'kick', seatId: 'b' });
+    bob.send({ t: 'join', seatId: 'b', device: 'dev-bob' });
+    expect(bob.last('joined')?.seatId).toBe('b');
+    // Bob's phone reloads (a new socket, same browser): still spared.
+    bob.send({ t: 'leave' });
+    const bob2 = g.phone('bob2', '203.0.113.5');
+    bob2.send({ t: 'join', seatId: 'b', device: 'dev-bob' });
+    expect(bob2.last('joined')?.seatId).toBe('b');
+    // Ann (or a new device id at that address, after the kick) is still kept off it.
+    bob2.send({ t: 'leave' });
+    const fresh = g.phone('fresh', '203.0.113.5');
+    fresh.send({ t: 'join', seatId: 'b', device: 'dev-new' });
+    expect(fresh.last('denied')?.reason).toBe('blocked');
+    const ann2 = g.phone('ann2', '198.51.100.9');
+    ann2.send({ t: 'join', seatId: 'b', device: 'dev-ann' });
+    expect(ann2.last('denied')?.reason).toBe('blocked');
+  });
+
   it('freeing a seat (block: false) blocks nobody: the player takes it from a new phone on the same Wi-Fi', () => {
     const g = setup();
     g.room.hostOpen();
@@ -1176,6 +1204,41 @@ describe('untrusted input', () => {
     const got: unknown[] = [];
     for (let i = 0; i <= FLOOD_BURST; i++) got.push(burst.send({ t: 'ping', at: i }));
     expect(got.indexOf('close')).toBe(FLOOD_BURST);
+  });
+
+  it('after a flood, a seated player on the same Wi-Fi reconnects to their seat; new joins and the flooder stay out', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state({ allowNew: true }) });
+    const ip = '203.0.113.7';
+    const bob = g.phone('bob', ip);
+    bob.send({ t: 'join', seatId: 'a', device: 'dev-bob' });
+    const bobToken = bob.last('joined')!.token;
+    const troll = g.phone('troll', ip);
+    troll.send({ t: 'join', seatId: 'b', device: 'dev-troll' });
+    const trollToken = troll.last('joined')!.token;
+    const got: unknown[] = [];
+    for (let i = 0; i <= FLOOD_BURST; i++) got.push(troll.send({ t: 'ping', at: i }));
+    expect(got).toContain('close');
+    // Bob's phone drops (it went to the background) and comes back: its seat, as before.
+    g.room.phoneClose('bob');
+    const bobBack = g.phone('bob-back', ip);
+    expect(bobBack.send({ t: 'join', seatId: 'a', token: bobToken, device: 'dev-bob' })).toBeUndefined();
+    expect(bobBack.last('joined')?.seatId).toBe('a');
+    g.t.now += 1000;
+    expect(bobBack.send({ t: 'ping', at: 1 })).toBeUndefined();
+    expect(bobBack.last('pong')).toBeTruthy();
+    // The flooder with its own token, a new join and a join with no token: closed.
+    expect(g.phone('troll-back', ip).send({ t: 'join', seatId: 'b', token: trollToken, device: 'dev-troll' })).toBe('close');
+    expect(g.phone('new', ip).send({ t: 'new', name: 'Zed', device: 'dev-z' })).toBe('close');
+    expect(g.phone('tap', ip).send({ t: 'join', seatId: 'c', device: 'dev-t' })).toBe('close');
+    // Elsewhere, or once the block is over: in as usual.
+    const elsewhere = g.phone('far', '198.51.100.2');
+    elsewhere.send({ t: 'join', seatId: 'c', device: 'dev-far' });
+    expect(elsewhere.last('joined')?.seatId).toBe('c');
+    g.t.now += FLOOD_BLOCK_MS;
+    const later = g.phone('later', ip);
+    expect(later.send({ t: 'new', name: 'Zed', device: 'dev-z' })).toBeUndefined();
   });
 
   it('too many bytes in a second closes a phone at once, before any of it is read', () => {
