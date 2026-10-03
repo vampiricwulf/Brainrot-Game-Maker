@@ -11,6 +11,79 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-03
+
+### Fixed
+- **Final: a player put back in during the reveals can still have their wager typed** once their spot comes up, instead
+  of "wager undefined" with no box and no way to judge them.
+- **Wheels & Dice: after a 🎡 Test spin or 🎲 Test roll, the preview follows your edits** (slices, names, colors, sides,
+  faces) instead of staying on the test, and clicking a slice finds the right row.
+- **Wheels & Dice: an emptied score or range box keeps its number**: a blank "Multiply score ×" no longer set the score to
+  0 in play, and a blank From/To no longer caught every total (or none).
+- **Wheels & Dice: Custom faces can be turned off on a die with more than 100 sides.**
+- **Wheels & Dice: new and copied wheels and dice get names nobody has** (no second "Wheel 3", "Wheel 1 (copy 2)"
+  instead of a second "(copy)").
+- **Phone buzzers: "Edit here instead" in another tab keeps the buzzer room** for that tab to pick up, instead of
+  forgetting it (the phones were left in a room nobody came back to).
+- **Phone buzzers: resuming a game without buzzers from the pre-game screen forgets the pre-game room it closed**: a
+  reload mid-game no longer sends the host back to the pre-game screen.
+- **Phone buzzers: picking a second player while one is answering** (to give both points) no longer opens the buzzers
+  again on every phone.
+- **Phone buzzers: undoing Buzzer mode on the pre-game screen closes its room for good**: a reload no longer brings back
+  the closed room with Buzzer mode on again.
+- **Desktop app: ⬇ Export theme works** (the app refused to save a .brainrot-theme file: "That isn't a file name the
+  app can save").
+- **Desktop app: a game saved as a new file is remembered as that game's**, so a later Save of another game with the same
+  title (with "replace the last save" back on) never replaces it.
+- **On stream, a clue slide's pictures stay under the join code, the "Buzz now!" frame, captions, pops and tools**: a
+  picture stacked high in the editor could cover them (until a countdown started).
+- **The Starting soon countdown no longer flashes a wrong time** (the time since the audience window opened) as it starts.
+- **Board games: deleting a space in the middle of a both-ways path joins the path up** (A ⇄ B ⇄ C leaves A ⇄ C), in
+  the editor and in ✎ Edit board, instead of leaving two dead ends.
+- **Board games: Duplicate and "＋ Add a space after it" on a both-ways path keep it both ways**, instead of a fork whose
+  other way jumps back.
+- **RPG: changing an object's class drops the old class's settings**: a character turned into a doorway no longer keeps
+  💬 Talk and 🛒 Shop on its card in play.
+- **RPG world editor: deleting the screen "🎯 Pick on the map" started from stops picking**, instead of leaving clicks on
+  the map doing nothing with no note saying why.
+- **Slide editor: Duplicate and Paste keep how the items are stacked** (a caption over a picture sent to the back stays
+  over the copied picture, instead of going under it).
+- **Slide editor: Esc closes the Background ▾ box** first, instead of closing the clue or only deselecting.
+- **Slide editor: a file uploaded through the wrong button** (an .mp4 through 🖼 Image) goes on the slide as what it is,
+  not as a broken picture; Replace… with another kind of file says so instead of breaking the item.
+- **RPG: ＋ New look… starts its objects as they are by now**: a key already picked up stays picked up (it can't be
+  picked up twice), a moved chest stays where it was moved.
+- **RPG: ✎ Edit screen keeps objects dropped in play on every look**, not only the one on screen while editing (a
+  dropped sword no longer vanishes when the host switches back to the original look).
+- **RPG: a tag typed twice** ("poisoned, poisoned") is kept once, so the stats strip draws it once and doesn't break.
+- **Phone buzzers: a phone whose seat was freed while it slept** shows the seat list when it reconnects ("Your seat was
+  given…"), not its old buzzer that no longer did anything.
+- **Phone buzzers: "Tap your name to take it back here" works**: the seat another tab or phone took back is tappable
+  on this one ("Yours, on another tab or phone"), and takes it back with no name to give again (teams too).
+- **Importing an items CSV keeps the worn look** (picture and place on the avatar) of items already in the game; only
+  the slot comes from the file.
+- **Changing a stat's type resets its start** (and the players' own starts) to the new type's default: Gold starting at
+  10, turned into a Yes/no, no longer starts every player ticked.
+- **A shop buys back at 100% at most**: a typed 150% let players sell an item for more than they paid.
+- **⚙ Settings' "Back to the defaults" leaves how games are shown alone** (the audience window, the Going live?
+  checklist), which the dialog doesn't show.
+- **Esc closes the clue from its Type, Value, Countdown and Tile shows fields**, as from the quick fields.
+- **A double-click on ◀ Prev round goes back one round**, not two (its second click landed on the new round's ◀ Prev
+  round).
+- **A Daily Double wager is whole points** (150.5 becomes 151), like the Amount box and Final wagers.
+- **A spent "land once" extra wheel has no result on the next spin**: its last slice's score card no longer comes back
+  to be confirmed twice, and tagging who the spin was for no longer re-tags an older 📜 Log line.
+- **A pasted theme code followed by words on the next line** ("have fun") reads, instead of "damaged or cut off".
+- **An extra "land once" wheel whose slices have all landed stays put** when the wheels spin, instead of starting over
+  on slices that already landed.
+- **Short names on a crowded player wheel stay whole** ("Al", not "Al…").
+- **A tiebreaker winner who's no longer first shares their place again**: after a later score fix put someone else on
+  top, the winner and the player they'd beaten showed as 2nd and 3rd instead of both 2nd.
+- **RPG: giving a single stackable item** joins it to the other player's stack (one "Potion × 2"), instead of a second
+  row of one.
+- **A copied board-game round gets its own zones**: renaming a zone in the copy renames it on that round's Send to
+  buttons and in the log, not just in the editor.
+
 ## 2026-10-02
 
 ### Added
@@ -212,75 +285,6 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
-- **Final: a player put back in during the reveals can still have their wager typed** once their spot comes up, instead
-  of "wager undefined" with no box and no way to judge them.
-- **Wheels & Dice: after a 🎡 Test spin or 🎲 Test roll, the preview follows your edits** (slices, names, colors, sides,
-  faces) instead of staying on the test, and clicking a slice finds the right row.
-- **Wheels & Dice: an emptied score or range box keeps its number**: a blank "Multiply score ×" no longer set the score to
-  0 in play, and a blank From/To no longer caught every total (or none).
-- **Wheels & Dice: Custom faces can be turned off on a die with more than 100 sides.**
-- **Wheels & Dice: new and copied wheels and dice get names nobody has** (no second "Wheel 3", "Wheel 1 (copy 2)"
-  instead of a second "(copy)").
-- **Phone buzzers: "Edit here instead" in another tab keeps the buzzer room** for that tab to pick up, instead of
-  forgetting it (the phones were left in a room nobody came back to).
-- **Phone buzzers: resuming a game without buzzers from the pre-game screen forgets the pre-game room it closed**: a
-  reload mid-game no longer sends the host back to the pre-game screen.
-- **Phone buzzers: picking a second player while one is answering** (to give both points) no longer opens the buzzers
-  again on every phone.
-- **Phone buzzers: undoing Buzzer mode on the pre-game screen closes its room for good**: a reload no longer brings back
-  the closed room with Buzzer mode on again.
-- **Desktop app: ⬇ Export theme works** (the app refused to save a .brainrot-theme file: "That isn't a file name the
-  app can save").
-- **Desktop app: a game saved as a new file is remembered as that game's**, so a later Save of another game with the same
-  title (with "replace the last save" back on) never replaces it.
-- **On stream, a clue slide's pictures stay under the join code, the "Buzz now!" frame, captions, pops and tools**: a
-  picture stacked high in the editor could cover them (until a countdown started).
-- **The Starting soon countdown no longer flashes a wrong time** (the time since the audience window opened) as it starts.
-- **Board games: deleting a space in the middle of a both-ways path joins the path up** (A ⇄ B ⇄ C leaves A ⇄ C), in
-  the editor and in ✎ Edit board, instead of leaving two dead ends.
-- **Board games: Duplicate and "＋ Add a space after it" on a both-ways path keep it both ways**, instead of a fork whose
-  other way jumps back.
-- **RPG: changing an object's class drops the old class's settings**: a character turned into a doorway no longer keeps
-  💬 Talk and 🛒 Shop on its card in play.
-- **RPG world editor: deleting the screen "🎯 Pick on the map" started from stops picking**, instead of leaving clicks on
-  the map doing nothing with no note saying why.
-- **Slide editor: Duplicate and Paste keep how the items are stacked** (a caption over a picture sent to the back stays
-  over the copied picture, instead of going under it).
-- **Slide editor: Esc closes the Background ▾ box** first, instead of closing the clue or only deselecting.
-- **Slide editor: a file uploaded through the wrong button** (an .mp4 through 🖼 Image) goes on the slide as what it is,
-  not as a broken picture; Replace… with another kind of file says so instead of breaking the item.
-- **RPG: ＋ New look… starts its objects as they are by now**: a key already picked up stays picked up (it can't be
-  picked up twice), a moved chest stays where it was moved.
-- **RPG: ✎ Edit screen keeps objects dropped in play on every look**, not only the one on screen while editing (a
-  dropped sword no longer vanishes when the host switches back to the original look).
-- **RPG: a tag typed twice** ("poisoned, poisoned") is kept once, so the stats strip draws it once and doesn't break.
-- **Phone buzzers: a phone whose seat was freed while it slept** shows the seat list when it reconnects ("Your seat was
-  given…"), not its old buzzer that no longer did anything.
-- **Phone buzzers: "Tap your name to take it back here" works**: the seat another tab or phone took back is tappable
-  on this one ("Yours, on another tab or phone"), and takes it back with no name to give again (teams too).
-- **Importing an items CSV keeps the worn look** (picture and place on the avatar) of items already in the game; only
-  the slot comes from the file.
-- **Changing a stat's type resets its start** (and the players' own starts) to the new type's default: Gold starting at
-  10, turned into a Yes/no, no longer starts every player ticked.
-- **A shop buys back at 100% at most**: a typed 150% let players sell an item for more than they paid.
-- **⚙ Settings' "Back to the defaults" leaves how games are shown alone** (the audience window, the Going live?
-  checklist), which the dialog doesn't show.
-- **Esc closes the clue from its Type, Value, Countdown and Tile shows fields**, as from the quick fields.
-- **A double-click on ◀ Prev round goes back one round**, not two (its second click landed on the new round's ◀ Prev
-  round).
-- **A Daily Double wager is whole points** (150.5 becomes 151), like the Amount box and Final wagers.
-- **A spent "land once" extra wheel has no result on the next spin**: its last slice's score card no longer comes back
-  to be confirmed twice, and tagging who the spin was for no longer re-tags an older 📜 Log line.
-- **A pasted theme code followed by words on the next line** ("have fun") reads, instead of "damaged or cut off".
-- **An extra "land once" wheel whose slices have all landed stays put** when the wheels spin, instead of starting over
-  on slices that already landed.
-- **Short names on a crowded player wheel stay whole** ("Al", not "Al…").
-- **A tiebreaker winner who's no longer first shares their place again**: after a later score fix put someone else on
-  top, the winner and the player they'd beaten showed as 2nd and 3rd instead of both 2nd.
-- **RPG: giving a single stackable item** joins it to the other player's stack (one "Potion × 2"), instead of a second
-  row of one.
-- **A copied board-game round gets its own zones**: renaming a zone in the copy renames it on that round's Send to
-  buttons and in the log, not just in the editor.
 - **Going back to a Final whose reveals had started (◀ Back from a later round) opens the reveals**, not the wager
   screen, where a player the Final took to $0 was over their cap and dropped from the Final on the next visit.
 - **Opening a layer's rename and leaving it as it was changes nothing**: no undo step, and the layer keeps following its
