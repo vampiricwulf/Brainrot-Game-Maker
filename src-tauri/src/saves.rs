@@ -9,8 +9,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub const FOLDER: &str = "BrainrotSaves";
 
-/// What can be saved: game packs, plain JSON games, playable HTML files, item lists (CSV).
-const EXTENSIONS: [&str; 5] = ["brainrot", "jbr", "json", "html", "csv"];
+/// What can be saved: game packs, plain JSON games, playable HTML files, item lists (CSV), themes.
+const EXTENSIONS: [&str; 6] = ["brainrot", "jbr", "json", "html", "csv", "brainrot-theme"];
 
 /// What Open lists and opens: games, including exported .html files (the game pack inside them opens).
 pub const GAMES: [&str; 4] = ["brainrot", "jbr", "json", "html"];
@@ -305,6 +305,7 @@ mod tests {
         assert_eq!(clean_name("My Game.brainrot").as_deref(), Some("My Game.brainrot"));
         assert_eq!(clean_name(" Quiz.HTML ").as_deref(), Some("Quiz.HTML"));
         assert_eq!(clean_name("Quiz-items.csv").as_deref(), Some("Quiz-items.csv"));
+        assert_eq!(clean_name("Neon.brainrot-theme").as_deref(), Some("Neon.brainrot-theme"));
         // 60 letters of any language fit, with " (autosave 12, 1a2b3c).brainrot" after them.
         let long = format!("{} (autosave 12, 1a2b3c).brainrot", "𝒜".repeat(60));
         assert_eq!(clean_name(&long).as_deref(), Some(long.as_str()));

@@ -73,8 +73,14 @@ export async function saveFile(filename: string, blob: Blob, gameId?: string): P
     return null;
   }
   // ⚙ Settings: replace the game's last save (keeping it as .bak), or keep it and make "Game (2).brainrot".
-  if (!prefs.overwriteSave) return saveToSaves(filename, blob, 'new');
   const owners = readOwners();
+  if (!prefs.overwriteSave) {
+    // Kept as a new file: still noted as this game's, so a later Save of another game with the same title (its old note
+    // pointing at this name) never replaces it.
+    const saved = await saveToSaves(filename, blob, 'new');
+    if (gameId) writeOwners({ ...owners, [saved.path]: gameId });
+    return saved;
+  }
   const [saves, folders] = await Promise.all([listSaves(), dataFolders()]);
   const names = (place: string) => saves.filter((s) => s.place === place).map((s) => s.name);
   // Where it goes next to the app, and in Documents if that folder can't be written.
