@@ -105,7 +105,9 @@
   function rename(el: SlideElement, name: string | null): void {
     renaming = null;
     const want = name?.trim() || undefined;
-    if (name !== null && want !== el.name) edit(() => (el.name = want));
+    // The box opens on the label shown: left as it was, an unnamed item keeps following its text or file (no step).
+    const unchanged = want === el.name || (el.name === undefined && want === layerLabel(el, game));
+    if (name !== null && !unchanged) edit(() => (el.name = want));
     tick().then(() => listEl?.querySelector<HTMLElement>(`[data-layer="${el.id}"] .name`)?.focus());
   }
   const focusAll = (input: HTMLInputElement) => {

@@ -237,6 +237,11 @@ try {
   await layerName.fill('Not this');
   await layerName.press('Escape');
   assert((await second.count()) === 1 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 1, 'Esc cancels (and leaves the clue open)');
+  const lastStep = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  const stepBefore = await lastStep();
+  await second.locator('.name').dblclick();
+  await layerName.press('Enter');
+  assert((await second.count()) === 1 && (await lastStep()) === stepBefore, 'opening the rename and pressing Enter changes nothing: no step, and it keeps its automatic label');
 
   // ---------- A picture copied on a slide pastes onto the board images ----------
   await page.getByRole('button', { name: '🖼 Image' }).click();

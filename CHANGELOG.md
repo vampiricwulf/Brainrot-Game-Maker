@@ -212,6 +212,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Opening a layer's rename and leaving it as it was changes nothing**: no undo step, and the layer keeps following its
+  text or file name (it used to be pinned to the label it had then).
 - **Desktop app on Windows: retitling a game only in case** ("my quiz" → "My Quiz") no longer deletes the autosave just
   written (Windows sees the old and new names as one file).
 - **Recent games no longer loses newer entries after storage was full**: a game that couldn't be kept isn't written
