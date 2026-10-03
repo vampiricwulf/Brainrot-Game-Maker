@@ -36,7 +36,9 @@ export function planAutosave(game: Pick<Game, 'title' | 'id'>, saves: SaveEntry[
   while (slot <= keep && slots.has(slot)) slot++;
   if (slot > keep) slot = [...slots].sort((a, b) => a[1] - b[1])[0][0];
   const name = autosaveName(game, slot);
-  return { name, drop: mine.filter((x) => x.n > keep || (x.n === slot && x.s.name !== name)).map((x) => x.s) };
+  // (Windows file names ignore case: "my quiz (…)" after a retitle to "My Quiz" is the file just written, not an old one.)
+  const same = (a: string) => a.toLowerCase() === name.toLowerCase();
+  return { name, drop: mine.filter((x) => x.n > keep || (x.n === slot && !same(x.s.name))).map((x) => x.s) };
 }
 
 /** Write one autosave. Returns where it went. */

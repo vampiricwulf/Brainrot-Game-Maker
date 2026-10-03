@@ -4,7 +4,6 @@
 import { del, get, set } from 'idb-keyval';
 import type { SavedHistory, StoredStep } from './history.svelte';
 import { newGame, newId, type Game } from './model';
-import { write } from './persist';
 
 const LIST_KEY = 'recentGames';
 const gameKey = (key: string) => `recentGame:${key}`;
@@ -129,12 +128,20 @@ export async function keepRecent(draft: Game, history: RecentGame['history'], sp
   };
   const old = await listRecent();
   const { list, gone } = planRecent(old, entry, spare);
-  // The game first, then the list that points at it: a failure leaves the list as it was.
-  const ok = await write(gameKey(entry.key), async () => {
+  // The game first, then the list that points at it: a failure leaves the list as it was. Once, not queued to try
+  // again (the caller asks what to do, and a later try would write this list over a newer one); and other writes
+  // still failing (the draft, with storage full) don't make this one a failure.
+  let ok = true;
+  try {
     await set(gameKey(entry.key), { draft, history } satisfies RecentGame);
     await set(LIST_KEY, list);
-    for (const e of gone) await del(gameKey(e.key));
-  });
+  } catch (err) {
+    console.warn('Could not keep the game in Recent games:', err);
+    await del(gameKey(entry.key)).catch(() => {});
+    ok = false;
+  }
+  // (The games that left the list: they're no longer pointed at, so one not deleted is only wasted space.)
+  if (ok) for (const e of gone) await del(gameKey(e.key)).catch(() => {});
   // (A copy of the same game that gave way isn't gone: this one is it.)
   const dropped = gone.filter((e) => !(e.gameId === entry.gameId && e.sig === entry.sig)).map((e) => e.title);
   return ok ? { key: entry.key, dropped } : null;

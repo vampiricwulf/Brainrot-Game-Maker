@@ -32,6 +32,12 @@ describe('autosave slots', () => {
     expect(plan.drop.map((s) => s.name)).toEqual([slot(1)]);
   });
 
+  it('a title changed only in case keeps its slot file (Windows sees one name, not an old copy to delete)', () => {
+    const lower = { ...game, title: 'my game!' };
+    const plan = planAutosave(game, [save(slot(1, lower), 100)], 1);
+    expect(plan).toEqual({ name: slot(1), drop: [] });
+  });
+
   it('past the number kept are deleted (when it was lowered)', () => {
     const saves = [1, 2, 3, 4].map((n) => save(slot(n), n * 100));
     const plan = planAutosave(game, saves, 2);

@@ -212,6 +212,11 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Desktop app on Windows: retitling a game only in case** ("my quiz" → "My Quiz") no longer deletes the autosave just
+  written (Windows sees the old and new names as one file).
+- **Recent games no longer loses newer entries after storage was full**: a game that couldn't be kept isn't written
+  again later over the newer list, and keeping one is no longer reported as failed because another save is still
+  waiting (so "Reopen previous game" shows when it should).
 - **A buzzer room that couldn't be reached no longer pulls a reload back into the pre-game screen** after ◀ Back to
   editor (or takes the room back from the window that hosts it now).
 - **A phone asking to join always gets an answer**: a name of only invisible characters asks for a real one, and too
