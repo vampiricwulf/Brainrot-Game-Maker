@@ -137,4 +137,15 @@ describe('rounds between games', () => {
     expect(game.media[1].id).toBe('f2');
     expect(store.map(([id]) => id)).toEqual([f1, 'f3']);
   });
+
+  it('an uploaded font that comes in under a new id is named by its new family where it’s used', async () => {
+    const { uploadedFamily } = await import('./fonts');
+    const other = newGame();
+    other.media = [{ id: 'font0001abc', name: 'f.ttf', mime: 'font/ttf', size: 3, kind: 'font' }];
+    other.theme.boardFont = `'${uploadedFamily('font0001abc')}', sans-serif`;
+    const { game } = await settleFiles(other, new Map([['font0001abc', new Blob(['new'])]]), () => new Blob(['old']));
+    const id = game.media[0].id;
+    expect(id).not.toBe('font0001abc');
+    expect(game.theme.boardFont).toBe(`'${uploadedFamily(id)}', sans-serif`);
+  });
 });

@@ -3,6 +3,7 @@
 // objects and spaces point at, and the files it all shows), and the game it goes into adds the ones it hasn't got.
 import { clipboard, mediaShownBy, type RoundBundle } from './clipboard.svelte';
 import { uniqueMediaName } from './medianame';
+import { uploadedFamily } from './fonts';
 import { isRpg, newId, roundName, type Game, type MediaRef, type Round } from './model';
 import { clone, reidRound } from './ops';
 
@@ -171,6 +172,8 @@ export async function settleFiles(
     if (await sameBytes(ours, blob)) continue;
     const id = newId();
     json = json.split(JSON.stringify(ref.id)).join(JSON.stringify(id));
+    // An uploaded font is also named by its family in the CSS font lists that use it ('jb-…', sans-serif).
+    if (ref.kind === 'font') json = json.split(uploadedFamily(ref.id)).join(uploadedFamily(id));
     store.push([id, blob]);
     copies.add(id);
   }

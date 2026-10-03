@@ -14,6 +14,13 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-03
 
 ### Fixed
+- **Theme: using a whole theme (one of My themes, a theme file or code, another game's) restyles the clue text** as
+  its Clue text font and color say, like ↺ Reset to… does, instead of changing only clues added later.
+- **Theme: "Use in this game" says so when the theme's pictures and fonts can't be stored** (storage full or blocked),
+  instead of closing with nothing changed.
+- **A theme or rounds from another game keep their uploaded fonts** when this game has a different file under the
+  same id (one replaced since): the text shows the incoming font, not this game's or a fallback.
+- **Image editor: ↺ Reset all (or undoing past a crop) leaves the Crop tool**, so clicks on the picture work again.
 - **Media: Shift+click with a filter on picks only the cards on show**, so "Delete selected" no longer takes hidden
   files with it.
 - **Media: an uploaded font used as the theme's Clue text font counts as used**, so "Delete unused" keeps it.

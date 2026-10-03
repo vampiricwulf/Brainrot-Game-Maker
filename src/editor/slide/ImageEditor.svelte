@@ -324,6 +324,11 @@
     selectedId = null;
   }
 
+  // The crop box gone (↺ Reset all, or undone past the crop): out of the Crop tool, so clicks on the picture work again.
+  $effect(() => {
+    if (tool === 'crop' && !edits.crop) tool = 'move';
+  });
+
   function resetAll(): void {
     commit();
     edits = { ...defaultEdits(), v: 2 };

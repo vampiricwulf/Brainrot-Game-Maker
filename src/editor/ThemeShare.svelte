@@ -26,6 +26,7 @@
     type MyTheme,
   } from '../lib/mytheme';
   import { storeThemeFiles, renameThemeFiles, withShared } from '../lib/themeapply';
+  import { setTheme } from '../lib/cluetext';
   import { parseThemeFile, THEME_EXT, THEME_FILES, themeCode, themeFileText, ThemeError, type SharedTheme, type ThemeMediaFile } from '../lib/themefile';
   import { clone } from '../lib/ops';
   import { addMedia, sameContent } from '../lib/roundcopy';
@@ -82,7 +83,7 @@
     const missing = missingFonts(m.theme, game.media).length;
     const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
     if (sameContent(next, cur)) return void toast(`This game already looks like “${m.name}”${note}`);
-    step(`Theme: “${m.name}”`, () => (game.theme = next), { notify: true });
+    step(`Theme: “${m.name}”`, () => setTheme(game, next), { notify: true });
     if (note) toast(`Used “${m.name}”${note}`);
   }
 
@@ -255,7 +256,13 @@
   async function useShared(s: SharedTheme): Promise<void> {
     importing = null;
     const g = game;
-    const { refs, ids } = await storeThemeFiles(s);
+    let stored: Awaited<ReturnType<typeof storeThemeFiles>>;
+    try {
+      stored = await storeThemeFiles(s);
+    } catch (e) {
+      return void tell(`“${s.name}” couldn’t be used: its pictures and fonts couldn’t be stored (${(e as Error).message || 'storage is full or blocked'}).`);
+    }
+    const { refs, ids } = stored;
     const theme = renameThemeFiles(s.theme, ids);
     const cur = $state.snapshot(g.theme) as Theme;
     // The files it brings that the theme uses (an uploaded font it doesn't use stays out).
@@ -267,7 +274,7 @@
       `Theme: “${s.name}”`,
       () => {
         addMedia(g, add);
-        g.theme = next;
+        setTheme(g, next);
       },
       { notify: true },
     );
@@ -287,7 +294,7 @@
     const g = game;
     step(`Theme from “${other.title}”`, () => {
       addMedia(g, themeMedia(other));
-      g.theme = clone(other.theme);
+      setTheme(g, clone(other.theme));
     }, { notify: true });
   }
 </script>

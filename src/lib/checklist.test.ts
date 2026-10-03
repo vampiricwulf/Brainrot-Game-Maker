@@ -6,7 +6,7 @@ import { checklistLines } from './checklist';
 import { newRpgRound, newScreen } from './rpg';
 import { raceRound } from './samples';
 import { STD_DICE, tileDice } from './tools';
-import { FACTORY_FONT, followClueText, setClueText } from './cluetext';
+import { FACTORY_FONT, followClueText, setClueText, setTheme } from './cluetext';
 
 const fill = (r: BoardRound) => r.categories.forEach((c) => c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A'))));
 
@@ -117,5 +117,17 @@ describe('the clue text default', () => {
     setClueText(game, 'font', undefined);
     expect(main(0).font).toBe(FACTORY_FONT);
     expect(game.theme.clueFont).toBeUndefined();
+  });
+
+  it('a whole theme used in the game restyles the clue text as the Clue text box would', () => {
+    const game = jeopardyGame();
+    const board = game.rounds[0] as BoardRound;
+    const main = () => board.categories[0].clues[0].questionSlide.elements[0] as { font: string; color: string };
+    setTheme(game, { ...game.theme, clueFont: "'Oswald', sans-serif", clueColor: '#ffcc00', value: '#123456' });
+    expect([main().font, main().color, game.theme.value, game.theme.clueFont]).toEqual(["'Oswald', sans-serif", '#ffcc00', '#123456', "'Oswald', sans-serif"]);
+    // One with each clue's own look: the clues go back to a new text box's look.
+    setTheme(game, { ...game.theme, clueFont: undefined, clueColor: undefined });
+    expect(main().font).toBe(FACTORY_FONT);
+    expect(game.theme.clueColor).toBeUndefined();
   });
 });
