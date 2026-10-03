@@ -212,6 +212,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **The clue editor opens another clue at its first question slide** (from Find or an undo), not at the slide number
+  the last clue was on.
 - **The Final's wager screen: Enter and the first focus go down the rows in the order they're shown**, also after a
   player is unticked and ticked back in (they followed the reveal order, jumping around).
 - **Phone wagers: a wager the host took from a phone and then cleared** (an emptied box, an undo) no longer still says

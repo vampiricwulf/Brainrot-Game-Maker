@@ -144,6 +144,16 @@
     tool = { kind, id: item.id };
   }
 
+  // Another clue (a Find hit, an undo on another tile): it opens at its first question slide, not the last one's number.
+  // (Before the effect below, which can still pick one of its slides.)
+  let qiClue = untrack(() => clue?.id);
+  $effect(() => {
+    const id = clue?.id;
+    if (id === qiClue) return;
+    qiClue = id;
+    qi = 0;
+  });
+
   // An undo or redo on this clue shows the side it changed.
   const handled = { seq: 0 };
   $effect(() => {
