@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **▶ Test this round's end screen no longer offers ▶ Next game…**: it kept the throwaway test as the game to resume,
+  in place of your real one (🚪 Exit goes back to the tested round, as before).
+- **Phones list: "📵 offline" times stay right on the ▶ Play screen** before a game and after a rematch (they only
+  counted during a game, so a phone back since could still say "offline 3:12").
 - **Ctrl+arrows on a picture keep its shape exactly**, however many presses (its shape slowly drifted).
 - **Board games: a space landed on after going round a loop** shows its passing buttons once, not twice (once as
   "Passed", once as "Landed on"), so they can't be pressed twice by mistake.

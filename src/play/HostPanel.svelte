@@ -8,7 +8,7 @@
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
-  import { phoneAwaySince, watchPhonesAway } from './host/phoneaway.svelte';
+  import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
@@ -275,8 +275,6 @@
   const deductLabel = $derived(scoreLabel('− Deduct', '−'));
 
   const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
-  // Phone buzzers: a 📵 on the chip of a player whose phone dropped.
-  watchPhonesAway();
   // The NEXT cell and the confirmation strip, filled by the parts in here too (see slots).
   const slots = hostSlots();
   /** Exit was pressed: it asks in the strip (a browser dialog would show on stream). */

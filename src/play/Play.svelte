@@ -94,6 +94,7 @@
   import { NEXT_GAME } from './host/nextgame';
   import { sameGame } from '../lib/samegame';
   import { MediaQuery } from 'svelte/reactivity';
+  import { watchPhonesAway } from './host/phoneaway.svelte';
 
   let {
     onexit,
@@ -1058,6 +1059,9 @@
     }
     onexit(keep);
   }
+
+  // Whose phone dropped, and since when: kept up to date on the pre-game screen too (its phones list shows it).
+  watchPhonesAway();
 
   /** Game over › ▶ Next game…: the room (and its players) stays open for the stream's next game. */
   function nextGame(): void {

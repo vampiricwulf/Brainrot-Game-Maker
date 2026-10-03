@@ -325,6 +325,13 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.locator('.board').waitFor();
   assert((await page.locator('.panel .p').count()) === 2, 'with the game\'s players');
+  // Its end screen has no ▶ Next game… (that would keep the throwaway test as the game to resume).
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'End game ▶' }).click();
+  await page.waitForTimeout(450);
+  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  await page.getByRole('button', { name: '🔁 Rematch' }).waitFor();
+  assert((await page.getByRole('button', { name: '▶ Next game…' }).count()) === 0, 'a tested round’s end screen has no ▶ Next game…');
   await page.getByRole('button', { name: /Exit/ }).first().click();
   assert((await page.locator('.panel .confirm').innerText()).includes('Nothing from this test is kept'), 'leaving a test says nothing is kept');
   await page.waitForTimeout(450);
