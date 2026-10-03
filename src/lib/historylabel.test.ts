@@ -245,6 +245,13 @@ describe('step labels', () => {
     expect(step((g) => (screens(g)[1].slide.elements[1].role!.dialogue = undefined)).label).toBe('Changed dialogue of object “Old Man”');
   });
 
+  it("says where an RPG round's party starts in its own words (not a board game's Start)", () => {
+    const rpg = (g: Game) => g.rounds.find((r) => r.mode === 'rpg') as Extract<Game['rounds'][number], { mode: 'rpg' }>;
+    const label = step((g) => (rpg(g).start = { map: g.worlds![0].maps[0].id, screen: screens(g)[1].id })).label;
+    expect(label).toMatch(/^Changed where the party starts in /);
+    expect(label).not.toContain('Start”');
+  });
+
   it("names an object's class", () => {
     const el = (g: Game) => screens(g)[1].slide.elements;
     expect(step((g) => (el(g)[0].role = { class: 'doorway' })).label).toBe('Made “Welcome” a doorway');

@@ -735,7 +735,12 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     const r = byId<Round>(after.rounds, op.p[1]) ?? byId<Round>(before.rounds, op.p[1]);
     return (r?.mode === 'boardgame' && r.spaces.find((s) => s.id === id)?.name) || '?';
   };
-  if (own && at.noun === 'round' && k === 'start') return v ? `Made “${spaceName(v)}” Start` : 'Made the first space Start';
+  if (own && at.noun === 'round' && k === 'start') {
+    const r = byId<Round>(after.rounds, op.p[1]) ?? byId<Round>(before.rounds, op.p[1]);
+    // (An RPG round's start is a screen, not a space.)
+    if (r?.mode === 'rpg') return v ? `Changed where the party starts in ${what(at)}` : `The party starts on the first screen in ${what(at)}`;
+    return v ? `Made “${spaceName(v)}” Start` : 'Made the first space Start';
+  }
   if (own && at.noun === 'space' && k === 'next' && Array.isArray(v) && Array.isArray((op as Op & { t: 'set' }).b)) {
     const was = (op as Op & { t: 'set' }).b as Json[];
     const added = v.filter((x) => !was.includes(x));

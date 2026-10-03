@@ -325,6 +325,8 @@
 
   /** Double-click: on the empty board, a space there (after the space selected before); on a space, rename it. */
   function boardDbl(e: MouseEvent): void {
+    // (Two quick Ctrl+clicks already added a space each: the double-click adds no third.)
+    if (e.ctrlKey || e.metaKey) return;
     const el = e.target as HTMLElement;
     if (el.closest('[data-space]')) return openPanel(true);
     if (e.target !== e.currentTarget && !el.closest('.backdrop')) return;

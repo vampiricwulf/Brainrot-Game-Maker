@@ -187,7 +187,8 @@
       <button class="ghost danger" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)">🗑 Clear history…</button>
     {/snippet}
   </PageHeader>
-  {#if history.entries.length > 1}
+  <!-- (Also while a filter is typed, with fewer steps: it still hides them, so its box and ✕ Show all stay.) -->
+  {#if history.entries.length > 1 || words.length}
     <div class="filter">
       <input
         type="search"

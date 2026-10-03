@@ -75,6 +75,8 @@
   }
 
   function dbl(e: MouseEvent): void {
+    // (Two quick Ctrl+clicks, or clicks while ＋ adding, already added a space each: no third.)
+    if (boardEdit.adding || e.ctrlKey || e.metaKey) return;
     const p = toBoard(e);
     if (!spaceAt(p) && !linkAt(round, p)) editAdd(game, session, p);
   }

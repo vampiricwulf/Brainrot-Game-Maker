@@ -212,6 +212,12 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **History names an RPG round's start in its own words** ("Changed where the party starts in round “Adventure”"),
+  not as a board game's ("Made “?” Start").
+- **🕘 History's filter can always be cleared**: with a filter typed, its box and ✕ Show all stay even when only one
+  step is left (it went on hiding steps with no way to clear it).
+- **Board games: two quick Ctrl+clicks add two spaces**, not three (the double-click added one more), in the editor and
+  in ✎ Edit board during play.
 - **▶ Test this round's end screen has no 🔁 Rematch either** (it kept the test as the game to resume, too).
 - **The ▶ Play screen's ▶ Resume it opens the audience window** when that's the display picked, as Start does (the
   game resumed in a single window, answers and host notes on stream).
