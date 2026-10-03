@@ -201,8 +201,9 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    // Esc closes from anywhere but the slide editor's own fields (the quick fields save as you type).
-    const quick = !!(e.target as HTMLElement)?.closest?.('.quick');
+    // Esc closes from anywhere but the slide editor's own fields (the quick fields, and the Type, Value, Countdown and
+    // Tile shows row, save as you type).
+    const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts');
     // (A wheel or dice open over the clue has the keys.)
     if (tool) return;
     if (e.key === 'Escape' && (!typing(e) || quick) && !facePicker) onclose();

@@ -135,7 +135,8 @@
       <button
         class="ghost"
         onclick={() => {
-          Object.assign(prefs, DEFAULT_PREFS);
+          // Only what this dialog shows: how games are shown on ▶ Play and the Going live? checklist are chosen there.
+          Object.assign(prefs, { ...DEFAULT_PREFS, display: prefs.display, liveChecklist: prefs.liveChecklist });
           savePrefs();
           keepLimits();
         }}>Back to the defaults</button

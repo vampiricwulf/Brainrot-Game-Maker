@@ -266,7 +266,8 @@
         const it: ItemDef = existing ?? { id: newId(), name, stackable: true };
         if (!isNaN(price) && r[col('price')] !== undefined && r[col('price')] !== '') it.price = price;
         if (col('stackable') >= 0) it.stackable = !/^(no|false|0)$/i.test(r[col('stackable')]?.trim() ?? '');
-        if (slot === 'head' || slot === 'hand' || slot === 'body' || slot === 'badge') it.wearable = { slot };
+        // (Its worn look, picture and place on the avatar, stays: only the slot is the file's.)
+        if (slot === 'head' || slot === 'hand' || slot === 'body' || slot === 'badge') it.wearable = { ...it.wearable, slot };
         if (col('description') >= 0 && r[col('description')]) it.description = r[col('description')];
         if (!existing) {
           game.items = [...(game.items ?? []), it];
@@ -275,6 +276,17 @@
       }
     });
     toast(`Imported ${rows.length - start} item row(s): ${added} new`);
+  }
+
+  /**
+   * A stat's type changed: its start, and the players' own starts, were of the old type (10 gold would start every
+   * player ticked as a Yes/no), so they go back to the new type's default.
+   */
+  function setStatType(f: StatField, type: StatField['type']): void {
+    if (type === f.type) return;
+    f.type = type;
+    delete f.start;
+    for (const p of game.players) if (p.stats && f.id in p.stats) delete p.stats[f.id];
   }
 </script>
 
@@ -328,7 +340,7 @@
       >
         {@render grip('stat', f.id, 'stats')}
         <input class="name" bind:value={f.name} aria-label="Stat name" />
-        <select bind:value={f.type} aria-label="{f.name} type">
+        <select bind:value={() => f.type, (v) => setStatType(f, v)} aria-label="{f.name} type">
           <option value="number">Number</option>
           <option value="text">Text</option>
           <option value="checkbox">Yes/no</option>
@@ -593,7 +605,7 @@
               max="100"
               value={s.buysBack ? Math.round(s.buysBack.rate * 100) : ''}
               placeholder="—"
-              oninput={(e) => (s.buysBack = e.currentTarget.value === '' ? undefined : { rate: Math.max(0, +e.currentTarget.value) / 100 })}
+              oninput={(e) => (s.buysBack = e.currentTarget.value === '' ? undefined : { rate: Math.min(100, Math.max(0, +e.currentTarget.value || 0)) / 100 })}
             />
           </label>
           <span class="spacer"></span>

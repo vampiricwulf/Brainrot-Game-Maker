@@ -212,6 +212,14 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Importing an items CSV keeps the worn look** (picture and place on the avatar) of items already in the game; only
+  the slot comes from the file.
+- **Changing a stat's type resets its start** (and the players' own starts) to the new type's default: Gold starting at
+  10, turned into a Yes/no, no longer starts every player ticked.
+- **A shop buys back at 100% at most**: a typed 150% let players sell an item for more than they paid.
+- **⚙ Settings' "Back to the defaults" leaves how games are shown alone** (the audience window, the Going live?
+  checklist), which the dialog doesn't show.
+- **Esc closes the clue from its Type, Value, Countdown and Tile shows fields**, as from the quick fields.
 - **A double-click on ◀ Prev round goes back one round**, not two (its second click landed on the new round's ◀ Prev
   round).
 - **A Daily Double wager is whole points** (150.5 becomes 151), like the Amount box and Final wagers.

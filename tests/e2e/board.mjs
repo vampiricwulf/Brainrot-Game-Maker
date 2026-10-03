@@ -314,7 +314,10 @@ try {
   };
   assert((await typed(secs, '-5')) === '1' && (await typed(secs, '2.4')) === '2' && (await typed(secs, '0')) === '0', "a clue's countdown can't be negative or a fraction (0 stays: no countdown)");
   assert((await typed(clueDlg.getByLabel('Value'), '-300')) === '0' && (await clueDlg.locator('header .value').innerText()) === '$0', "a clue's value can't be negative");
+  // Those fields save as they're typed in: Esc in one closes the clue, as from the quick fields.
+  await clueDlg.getByLabel('Value').focus();
   await key('Escape');
+  assert((await clueDlg.count()) === 0, 'Esc in the Value box closes the clue');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');
