@@ -460,7 +460,8 @@
     // Time's up watcher (the host is the single source of truth for expiry).
     const id = setInterval(() => {
       const t = app.live.timer;
-      if (t && !t.expired && t.startedAt !== null && timerRemaining(t) <= 0) {
+      // (Paused too: −10 can take the last seconds off while it's paused.)
+      if (t && !t.expired && timerRemaining(t) <= 0) {
         t.elapsed = t.total;
         t.startedAt = null;
         t.expired = true;
@@ -491,6 +492,8 @@
 
   /** Seconds for the open clue's countdown: its own setting, else the game default (0/blank = none). */
   function clueTimer(): number | null {
+    // In a Final, its own think time.
+    if (session.phase === 'final') return currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30;
     const c = currentClueInfo(session, game)?.clue;
     const t = c?.timerSeconds ?? game.settings.defaultTimerSeconds;
     return t && t > 0 ? t : null;

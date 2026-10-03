@@ -8,6 +8,14 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('the countdown', () => {
+  it('remembers the seconds it was started with, for ↺ Restart, whatever +10/−10 did since', () => {
+    const live = newLive();
+    startTimer(live, 30);
+    addTime(live, 10);
+    addTime(live, 10);
+    expect([live.timer!.total, live.timer!.start]).toEqual([50, 30]);
+  });
+
   it('gets more or less time without restarting, paused or not', () => {
     const live = newLive();
     startTimer(live, 30);

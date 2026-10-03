@@ -28,6 +28,8 @@ export interface TimerState {
   /** Seconds already elapsed before the current run. */
   elapsed: number;
   expired: boolean;
+  /** The seconds it was started with (↺ Restart goes back to them, whatever +10/−10 did since). */
+  start?: number;
 }
 
 /** A game sound to play on the audience side (DD sting, time's up, think music…). */
@@ -189,7 +191,7 @@ export function timerRemaining(t: TimerState, now = Date.now()): number {
 }
 
 export function startTimer(live: Live, seconds: number): void {
-  live.timer = { total: seconds, startedAt: Date.now(), elapsed: 0, expired: false };
+  live.timer = { total: seconds, startedAt: Date.now(), elapsed: 0, expired: false, start: seconds };
 }
 
 export function toggleTimer(live: Live): void {

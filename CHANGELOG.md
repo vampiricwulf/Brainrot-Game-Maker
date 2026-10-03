@@ -24,6 +24,10 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Countdown: ↺ Restart goes back to the time it was started with**, not that time plus the +10s added since.
+- **Countdown: −10 taking the last seconds off a paused countdown runs it out** (Time's up on the host panel and its
+  sound), instead of the stream saying TIME'S UP! while the panel waited at 0s.
+- **Final: T and the panel's Start button start the Final's own think time**, not the board's default.
 - **A stat a shop took past its min or max isn't pulled back by the next change**: gold at −2 after "Buy anyway" went to
   0 on the next − (the log said −1), and gold over its max after a sale lost the extra on the next +. Now a change
   moves it by that much (never further past the limit).
