@@ -212,6 +212,9 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **On stream, a clue slide's pictures stay under the join code, the "Buzz now!" frame, captions, pops and tools**: a
+  picture stacked high in the editor could cover them (until a countdown started).
+- **The Starting soon countdown no longer flashes a wrong time** (the time since the audience window opened) as it starts.
 - **Board games: deleting a space in the middle of a both-ways path joins the path up** (A ⇄ B ⇄ C leaves A ⇄ C), in
   the editor and in ✎ Edit board, instead of leaving two dead ends.
 - **Board games: Duplicate and "＋ Add a space after it" on a both-ways path keep it both ways**, instead of a fork whose

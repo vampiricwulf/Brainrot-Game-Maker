@@ -117,6 +117,10 @@
     const id = setInterval(() => live.soonAt && (clock = Date.now()), 250);
     return () => clearInterval(id);
   });
+  // A countdown just started: the clock catches up before it's drawn (not the time since the window opened, for a beat).
+  $effect.pre(() => {
+    if (live.soonAt) untrack(() => (clock = Date.now()));
+  });
   const soonLeft = $derived(live.soonAt ? Math.max(0, Math.ceil((live.soonAt - clock) / 1000)) : null);
   const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
   const sym = $derived(game.settings.currencySymbol);
@@ -764,6 +768,9 @@
   .slide-area {
     position: absolute;
     inset: 0;
+    /* Its own layer: however high a slide item is stacked, it stays under the stream's join code, Buzz now! frame,
+       caption, pops, tools and cover (as it does while shifted down). */
+    isolation: isolate;
     transform-origin: 50% 100%;
     transition: scale 0.3s ease;
   }
