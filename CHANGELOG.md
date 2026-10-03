@@ -212,6 +212,8 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Final: a player put back in during the reveals can still have their wager typed** once their spot comes up, instead
+  of "wager undefined" with no box and no way to judge them.
 - **Wheels & Dice: after a 🎡 Test spin or 🎲 Test roll, the preview follows your edits** (slices, names, colors, sides,
   faces) instead of staying on the test, and clicking a slice finds the right row.
 - **Wheels & Dice: an emptied score or range box keeps its number**: a blank "Multiply score ×" no longer set the score to

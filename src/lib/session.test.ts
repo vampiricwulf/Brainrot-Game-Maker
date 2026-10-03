@@ -823,6 +823,18 @@ describe('final wagers', () => {
     expect([finalWagerEditable(session, a), finalWagerEditable(session, b)]).toEqual([false, false]);
   });
 
+  it('a player shown in the reveals with no wager yet (put back in late) can still have one typed', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 1);
+    session.final!.wagers[b] = 200;
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    finalShow(session, a);
+    expect(finalWagerEditable(session, a)).toBe(true);
+    finalSetWager(session, a, 100);
+    expect(finalWagerEditable(session, a)).toBe(false);
+  });
+
   it('carries the old game setting over to each Final round', () => {
     const old = jeopardyGame();
     for (const r of old.rounds) if (r.mode === 'final') delete r.allowNonPositive;

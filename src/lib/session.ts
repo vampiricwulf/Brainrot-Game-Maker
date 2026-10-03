@@ -762,7 +762,9 @@ export function finalWagerEditable(session: Session, playerId: string): boolean 
   const f = session.final;
   if (!f || !f.players.includes(playerId)) return false;
   if (session.finalStep === 'wagers') return true;
-  return session.finalStep === 'reveal' && !f.shown[playerId] && !f.results[playerId];
+  // (A player put back in during the reveals has no wager yet: it can be typed even once their spot is shown, or they
+  // could never be judged.)
+  return session.finalStep === 'reveal' && !f.results[playerId] && (!f.shown[playerId] || typeof f.wagers[playerId] !== 'number');
 }
 
 export function finalWagerCap(session: Session, playerId: string): number {
