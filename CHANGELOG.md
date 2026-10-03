@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Phone buzzers: picking a second player while one is answering** (to give both points) no longer opens the buzzers
+  again on every phone.
+- **Phone buzzers: undoing Buzzer mode on the pre-game screen closes its room for good**: a reload no longer brings back
+  the closed room with Buzzer mode on again.
 - **Desktop app: ⬇ Export theme works** (the app refused to save a .brainrot-theme file: "That isn't a file name the
   app can save").
 - **Desktop app: a game saved as a new file is remembered as that game's**, so a later Save of another game with the same

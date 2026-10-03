@@ -672,6 +672,7 @@
   // picked (or let go) by hand, a number key or a click in the host panel, answers (or the buzzers open again for the rest).
   $effect(() => {
     const one = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
+    const none = !selected.length;
     const on = buzzing;
     untrack(() => {
       const b = app.live.buzz;
@@ -681,7 +682,8 @@
       }
       if (!b) return;
       if (one && one !== b.answering) setBuzz(buzzTake(b, one, true)!);
-      else if (!one && b.answering) setBuzz(buzzArm({ ...b, answering: null }, playerIds()));
+      // Let go (nobody picked): the buzzers open again. A second player picked (to give both points) isn't letting go.
+      else if (none && b.answering) setBuzz(buzzArm({ ...b, answering: null }, playerIds()));
     });
   });
 
@@ -2078,7 +2080,12 @@
       if (v === undefined) delete to[k];
       else to[k] = v;
     }
-    if (!buzzerOn(game.settings)) closeRoom();
+    // Buzzer mode undone off: the room closes as the 📱 card's switch closes it (its saved copy too, or a reload would
+    // bring the closed room back).
+    if (!buzzerOn(game.settings)) {
+      if (session.remote) closePhoneRoom();
+      else closeRoom();
+    }
     // Daily Doubles placed here (🎲 Place now).
     for (const r of game.rounds) {
       const e = src.rounds.find((x) => x.id === r.id);

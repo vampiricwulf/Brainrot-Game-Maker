@@ -185,6 +185,13 @@ try {
   const queue = host.getByRole('list', { name: 'Buzz order' });
   await queue.locator('li', { hasText: 'Player 1' }).waitFor();
   assert((await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1', 'the host panel lists both, fastest first');
+  // The host picks Player 1 too (to give both points): that's not letting Player 2 go, so the buzzers stay shut.
+  await host.keyboard.press('1');
+  await host.waitForFunction(() => document.querySelectorAll('.panel .p .sel[aria-pressed="true"]').length === 2);
+  await host.waitForTimeout(600);
+  assert((await big(p2).innerText()) === "You're answering!" && !(await big(p1).innerText()).includes('BUZZ'), 'picking a second player while one answers doesn’t open the buzzers again');
+  await host.keyboard.press('1');
+  await host.waitForFunction(() => document.querySelectorAll('.panel .p .sel[aria-pressed="true"]').length === 1);
 
   // Wrong: Player 2 is locked out, and Player 1, next in the buzz order, answers at once (no new opening that a later
   // buzz could jump).
