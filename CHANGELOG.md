@@ -212,6 +212,13 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Wheels & Dice: after a 🎡 Test spin or 🎲 Test roll, the preview follows your edits** (slices, names, colors, sides,
+  faces) instead of staying on the test, and clicking a slice finds the right row.
+- **Wheels & Dice: an emptied score or range box keeps its number**: a blank "Multiply score ×" no longer set the score to
+  0 in play, and a blank From/To no longer caught every total (or none).
+- **Wheels & Dice: Custom faces can be turned off on a die with more than 100 sides.**
+- **Wheels & Dice: new and copied wheels and dice get names nobody has** (no second "Wheel 3", "Wheel 1 (copy 2)"
+  instead of a second "(copy)").
 - **Phone buzzers: "Edit here instead" in another tab keeps the buzzer room** for that tab to pick up, instead of
   forgetting it (the phones were left in a room nobody came back to).
 - **Phone buzzers: resuming a game without buzzers from the pre-game screen forgets the pre-game room it closed**: a

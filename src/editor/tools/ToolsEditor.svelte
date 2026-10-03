@@ -9,7 +9,8 @@
   import { take } from '../../lib/nav.svelte';
   import { step } from '../../lib/history.svelte';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { copyActions, copySegment, moveTo } from '../../lib/listedit';
+  import { copyActions, copyName, copySegment, moveTo } from '../../lib/listedit';
+  import { freeName } from './ToolPopup.svelte';
   import { dropMenu, showMenu } from '../../lib/menustate.svelte';
   import { uniqueName } from '../../lib/roundcopy';
   import { WHEEL_TEMPLATES, wheelFromTemplate, type WheelTemplate } from '../../lib/wheeltemplates';
@@ -43,7 +44,7 @@
     const list = listOf(kind);
     const copy = JSON.parse(JSON.stringify(item)) as Tool;
     copy.id = newId();
-    copy.name += ' (copy)';
+    copy.name = copyName(item.name, list.map((x) => x.name));
     if ('segments' in copy) copy.segments = copy.segments.map(copySegment);
     else
       for (const d of copy.dice) {
@@ -116,7 +117,7 @@
   const drags: Record<Kind, DragOrder> = { wheel: new DragOrder(), dice: new DragOrder() };
 
   function add(kind: Kind): void {
-    const item = kind === 'wheel' ? newWheel(`Wheel ${game.wheels.length + 1}`) : newDice(`Dice ${game.dice.length + 1}`);
+    const item = kind === 'wheel' ? newWheel(freeName('Wheel', game.wheels)) : newDice(freeName('Dice', game.dice));
     if (kind === 'wheel') game.wheels.push(item as WheelPreset);
     else game.dice.push(item as DicePreset);
     sel = item.id;

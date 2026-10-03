@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { keepNum, shown } from './numbox';
   import { newId, type DicePreset, type Die } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
   import { diceCount, rollPreset } from '../../lib/tools';
@@ -12,6 +14,11 @@
 
   let { preset }: { preset: DicePreset } = $props();
   let test = $state<Extract<Overlay, { kind: 'dice' }> | null>(null);
+  // An edit after a test roll: the preview shows the dice as they are now, not that roll.
+  $effect(() => {
+    void JSON.stringify([preset.name, preset.dice, preset.showTotal]);
+    untrack(() => (test = null));
+  });
 
   function setCustom(d: Die, on: boolean): void {
     d.customFaces = on ? Array.from({ length: Math.min(d.sides, 100) }, (_, i) => ({ label: String(i + 1) })) : undefined;
@@ -82,7 +89,7 @@
             /></label
           >
           <label class="check" title="Give each side its own label, details or effect (up to 100 sides)">
-            <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
+            <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100 && !d.customFaces} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
           </label>
           <span class="spacer"></span>
           <button class="ghost small danger" onclick={() => preset.dice.splice(i, 1)} disabled={preset.dice.length <= 1}>🗑 Delete die</button>
@@ -121,12 +128,19 @@
     {#each preset.totalOutcomes ?? [] as t, i (t.id)}
       <div class="face">
         <!-- From above To: they swap round (a range 9–4 is 4–9). -->
-        <input type="number" bind:value={t.min} class="n" aria-label="From" onchange={() => t.min > t.max && ([t.min, t.max] = [t.max, t.min])} />–<input
+        <!-- (Emptied, a box keeps its number: a blank From would catch every total, a blank To none.) -->
+        <input
           type="number"
-          bind:value={t.max}
+          bind:value={() => t.min, (v) => keepNum(v, (n) => (t.min = n))}
+          class="n"
+          aria-label="From"
+          onchange={(e) => (t.min > t.max && ([t.min, t.max] = [t.max, t.min]), shown(e, t.min))}
+        />–<input
+          type="number"
+          bind:value={() => t.max, (v) => keepNum(v, (n) => (t.max = n))}
           class="n"
           aria-label="To"
-          onchange={() => t.min > t.max && ([t.min, t.max] = [t.max, t.min])}
+          onchange={(e) => (t.min > t.max && ([t.min, t.max] = [t.max, t.min]), shown(e, t.max))}
         />
         <OutcomeEditor outcome={t.outcome} placeholder="What happens" />
         <button class="ghost small" onclick={() => preset.totalOutcomes?.splice(i, 1)} aria-label="Delete this total" title="Delete">🗑</button>

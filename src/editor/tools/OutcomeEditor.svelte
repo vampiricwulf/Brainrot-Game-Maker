@@ -1,5 +1,6 @@
 <!-- Edit what a wheel slice / die face means: label, and optionally details, media, a timer and a score effect. -->
 <script lang="ts">
+  import { keepNum, shown } from './numbox';
   import { app } from '../../lib/app.svelte';
   import { imgFallback, mediaUrls } from '../../lib/media.svelte';
   import type { MediaKind, Outcome, ScoreAction } from '../../lib/model';
@@ -102,11 +103,11 @@
             {#each ACTIONS as [k, l]}<option value={k}>{l}</option>{/each}
           </select>
           {#if a.kind === 'addPoints' || a.kind === 'setScore'}
-            <input type="number" class="n2" bind:value={a.amount} />
+            <input type="number" class="n2" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} />
           {:else if a.kind === 'addRollTimes'}
-            × <input type="number" class="n2" bind:value={a.multiplier} />
+            × <input type="number" class="n2" bind:value={() => a.multiplier, (v) => keepNum(v, (n) => (a.multiplier = n))} onchange={(e) => shown(e, a.multiplier)} />
           {:else if a.kind === 'multiplyScore'}
-            × <input type="number" step="0.5" class="n2" bind:value={a.factor} />
+            × <input type="number" step="0.5" class="n2" bind:value={() => a.factor, (v) => keepNum(v, (n) => (a.factor = n))} onchange={(e) => shown(e, a.factor)} />
           {:else if a.kind === 'steal'}
             <input
               type="number"

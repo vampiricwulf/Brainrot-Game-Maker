@@ -3,7 +3,7 @@
   test-spins. A click on a slice of the preview goes to its row.
 -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { WheelPreset, WheelSegment } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
   import { MIN_WEIGHT, newSegment, parseQuickWheel, segmentAngles, sliceWeight, spinSeconds, spinTarget, weightedIndex } from '../../lib/tools';
@@ -23,6 +23,11 @@
   const pct = $derived(segmentAngles(wheel.segments).map((a) => ((a.end - a.start) / 360) * 100));
   let paste = $state('');
   let test = $state<Extract<Overlay, { kind: 'wheel' }> | null>(null);
+  // An edit after a test spin: the preview shows the wheel as it is now (its slices, names, colors), not the spin.
+  $effect(() => {
+    void JSON.stringify([wheel.name, wheel.segments]);
+    untrack(() => (test = null));
+  });
 
   function testSpin(): void {
     const segments = JSON.parse(JSON.stringify(wheel.segments));

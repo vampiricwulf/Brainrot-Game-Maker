@@ -12,7 +12,15 @@
   export function newTool(kind: 'wheel'): WheelPreset;
   export function newTool(kind: 'dice'): DicePreset;
   export function newTool(kind: 'wheel' | 'dice'): WheelPreset | DicePreset {
-    return kind === 'wheel' ? newWheel(`Wheel ${app.game.wheels.length + 1}`) : newDice(`Dice ${app.game.dice.length + 1}`);
+    return kind === 'wheel' ? newWheel(freeName('Wheel', app.game.wheels)) : newDice(freeName('Dice', app.game.dice));
+  }
+
+  /** "Wheel 4": the first number from the count up that no wheel (or dice) has yet (one deleted mustn't make a twin). */
+  export function freeName(word: string, list: readonly { name: string }[]): string {
+    const names = new Set(list.map((x) => x.name));
+    let n = list.length + 1;
+    while (names.has(`${word} ${n}`)) n++;
+    return `${word} ${n}`;
   }
 </script>
 
