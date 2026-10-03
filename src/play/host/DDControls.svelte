@@ -2,7 +2,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { textOn } from '../../lib/colors';
-  import { formatPoints, type Game, type Session } from '../../lib/model';
+  import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
   import { offerNext } from './slots.svelte';
 
@@ -116,9 +116,9 @@
       <input
         type="number"
         min="0"
-        bind:value={wager}
+        bind:value={() => wager, (v) => (wager = wholePoints(v))}
         bind:this={wagerBox}
-        oninput={(e) => typed(e.currentTarget.value === '' || !Number.isFinite(+e.currentTarget.value) ? null : +e.currentTarget.value)}
+        oninput={(e) => typed(e.currentTarget.value === '' ? null : wholePoints(+e.currentTarget.value))}
         autofocus
         onkeydown={(e) => {
           if (e.key === 'Enter') enter(e);

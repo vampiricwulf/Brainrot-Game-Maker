@@ -55,8 +55,9 @@
   });
   const actionKey = $derived(o && 'nonce' in o ? `${o.nonce}-${o.kind === 'wheel' ? o.spin?.startedAt : o.kind === 'dice' ? o.startedAt : ''}` : '');
   const lastRoll = $derived(session.rollLog?.at(-1));
-  /** This spin's roll-log entries (one per wheel spun together). */
-  const spinRolls = $derived(o?.kind === 'wheel' && o.extra?.length ? (session.rollLog ?? []).slice(-(1 + o.extra.length)) : lastRoll ? [lastRoll] : []);
+  /** This spin's roll-log entries (one per wheel spun together: a spent one, or one added since, didn't spin). */
+  const spunExtras = $derived(o?.kind === 'wheel' && o.spin ? (o.extra ?? []).filter((w) => w.spin && w.spin.startedAt >= o.spin!.startedAt).length : 0);
+  const spinRolls = $derived(spunExtras ? (session.rollLog ?? []).slice(-(1 + spunExtras)) : lastRoll ? [lastRoll] : []);
   /** The other wheels spun with this one, once they've landed. */
   const extraResults = $derived(
     o?.kind === 'wheel' ? (o.extra ?? []).flatMap((w) => (w.spin && w.result !== null && w.segments[w.result] ? [{ w, seg: w.segments[w.result] }] : [])) : [],

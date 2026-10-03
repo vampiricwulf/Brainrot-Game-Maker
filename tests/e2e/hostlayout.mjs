@@ -275,6 +275,13 @@ try {
   const inBg = await exitIn();
   assert(inRpg.x === inBg.x && inRpg.y === inBg.y, `🚪 Exit is in the same place in RPG and board-game rounds (${inRpg.x},${inRpg.y})`);
   assert(inBg.right - inBg.x < 4 && inBg.bottom - inBg.y < 4, 'in the fixed bar’s bottom-right cell');
+  // A double-click on ◀ Prev round goes back one round, not two (its second click lands on the new ◀ Prev round).
+  await p2.waitForTimeout(450);
+  await p2.getByRole('button', { name: '◀ Prev round' }).dblclick();
+  await p2.locator('.panel .status', { hasText: 'Adventure' }).waitFor();
+  await p2.waitForTimeout(500);
+  assert((await p2.locator('.panel .status', { hasText: 'Adventure' }).count()) === 1, 'a double-click on ◀ Prev round goes back one round (Adventure), not two');
+  await p2Next('Board game');
   await p2Next('Final');
   assert((await p2.locator('.play.side').count()) === 0, 'the Final uses the panel under the stage');
   // A narrow, short window (1024×600): the fixed bar on one line, 🚪 Exit at its right, on the board and in a clue.

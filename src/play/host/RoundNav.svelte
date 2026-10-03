@@ -51,6 +51,12 @@
     ask('next');
   }
 
+  /** ◀ Prev round goes at once: the second click of a double-click (on the new round's ◀ Prev round) isn't a second step. */
+  function prev(e: MouseEvent): void {
+    if (e.detail >= 2 || Date.now() - shownAt < GUARD_MS) return;
+    onprev();
+  }
+
   /** A round picked in Go to round: at once when this one is played out, else asked like Next round. */
   function goto(i: number): void {
     if (i === session.currentRound) return;
@@ -97,7 +103,7 @@
     <!-- ▶ Test this round: one round, nothing kept (🚪 Exit goes back to the editor). -->
     <span class="test" title="Only this round plays, and nothing is kept: 🚪 Exit goes back to the editor">🧪 Testing this round</span>
   {:else}
-    <button class="ghost" onclick={onprev} disabled={session.currentRound === 0}>◀ Prev round</button>
+    <button class="ghost" onclick={prev} disabled={session.currentRound === 0}>◀ Prev round</button>
   {/if}
   {#if ongoto && game.rounds.length > 2}
     <!-- Rounds can be played out of order: jump to any of them. -->

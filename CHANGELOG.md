@@ -212,6 +212,11 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **A double-click on ◀ Prev round goes back one round**, not two (its second click landed on the new round's ◀ Prev
+  round).
+- **A Daily Double wager is whole points** (150.5 becomes 151), like the Amount box and Final wagers.
+- **A spent "land once" extra wheel has no result on the next spin**: its last slice's score card no longer comes back
+  to be confirmed twice, and tagging who the spin was for no longer re-tags an older 📜 Log line.
 - **A pasted theme code followed by words on the next line** ("have fun") reads, instead of "damaged or cut off".
 - **An extra "land once" wheel whose slices have all landed stays put** when the wheels spin, instead of starting over
   on slices that already landed.

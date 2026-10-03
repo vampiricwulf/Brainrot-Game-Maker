@@ -182,6 +182,8 @@ describe('several wheels at once', () => {
     if (o.kind !== 'wheel') throw new Error('no wheel');
     for (let i = 0; i < 3; i++) spinWheel(live, session, game);
     expect(session.rollLog?.filter((r) => r.name === 'Once').map((r) => r.result).sort()).toEqual(['A', 'B']);
+    // And it has no result this spin (its last one isn't counted again).
+    expect([o.extra![0].spin, o.extra![0].result]).toEqual([null, null]);
   });
 });
 
