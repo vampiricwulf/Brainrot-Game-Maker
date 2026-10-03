@@ -243,7 +243,7 @@ try {
   await player.goto(pathToFileURL(exported).href);
   await player.getByRole('button', { name: '▶ Play' }).waitFor();
   const home = await player.locator('.home').innerText();
-  assert(home.includes("host's copy") && home.includes('1 board · 30 clues') && !home.includes('editor'), 'the player file says it is the host’s copy, and counts its rounds');
+  assert(home.includes("host's copy") && home.includes('1 board · 22 clues') && !home.includes('editor'), 'the player file says it is the host’s copy, and counts its rounds (22 clues: the short categories’ empty tiles aren’t clues)');
   if (process.env.SHOTS) await player.screenshot({ path: `${process.env.SHOTS}/datasafety-player.png` });
   await player.close();
   await page.reload();

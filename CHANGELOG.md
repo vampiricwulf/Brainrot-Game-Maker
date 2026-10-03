@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **A game file whose category has fewer clues than the board has rows** opens with empty tiles in the gap, as meant,
+  not blank clues that showed on the board, held the round open until played, and could be picked for a Daily Double.
+- **Release notes no longer repeat an older change** when only its changelog line was edited (its commit hashes added),
+  and such an edit no longer makes a fixes-only release a bigger version step.
 - **A double-click on the host's main button can't put the answer on stream**: its second click no longer lands on the
   👁 Reveal answer the button just turned into (after "Show question ▶" on a Daily Double, or 🔔 Open the buzzers).
 - **Questions that quote a name with a dot in it** ("Forget “St. Patrick’s Day”?") keep the name whole in their title.

@@ -82,7 +82,8 @@ if (cmd === 'next') {
   const last = lastReleaseTag(own);
   const lines = read('CHANGELOG.md').split('\n');
   // The first release: everything in the changelog so far is what it brings (the notes say so briefly instead).
-  const entries = last ? addedEntries(lines, addedLines(last, 'CHANGELOG.md')) : [];
+  // (An entry the last release had, only edited since, isn't new: see addedEntries.)
+  const entries = last ? addedEntries(lines, addedLines(last, 'CHANGELOG.md'), git('show', `${last}:CHANGELOG.md`).split('\n')) : [];
   const version = own ? own.replace(/^v/, '') : nextVersion(last, base, entries);
   if (arg) {
     const notes = last ? releaseNotes(entries) || '_Behind-the-scenes changes only._' : 'The first numbered release. See CHANGELOG.md for everything so far.';

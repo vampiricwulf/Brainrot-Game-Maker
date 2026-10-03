@@ -92,9 +92,25 @@ export function nextVersion(last: string | null, base: string, entries: readonly
 /**
  * The changelog entries a diff of CHANGELOG.md adds: `lines` is the file as it is now, `added` the (1-based) numbers
  * of the lines the diff adds. Each added "- " bullet (with the lines that continue it) is filed under the "### "
- * heading above it; the "Notes on the history" table and anything outside a section are left out.
+ * heading above it; the "Notes on the history" table and anything outside a section are left out. `before` is the file
+ * at the last release: an entry it already had, only edited since (its commit hashes added, say), isn't new.
  */
-export function addedEntries(lines: readonly string[], added: ReadonlySet<number>): ChangeEntry[] {
+export function addedEntries(lines: readonly string[], added: ReadonlySet<number>, before: readonly string[] = []): ChangeEntry[] {
+  const known = new Set(before.length ? addedEntries(before, new Set(before.map((_, i) => i + 1))).map((e) => entryKey(e.text)) : []);
+  return bulletsIn(lines, added).filter((e) => !known.has(entryKey(e.text)));
+}
+
+/** An entry's words, without its commit hashes, line breaks or Markdown emphasis (what an edit to it may change). */
+function entryKey(text: string): string {
+  return text
+    .replace(/\(\s*(?:[0-9a-f]{7,40}[,;\s]*)+\)/g, '')
+    .replace(/[*_`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function bulletsIn(lines: readonly string[], added: ReadonlySet<number>): ChangeEntry[] {
   const out: ChangeEntry[] = [];
   let section = '';
   let current: ChangeEntry | null = null;

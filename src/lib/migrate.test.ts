@@ -176,6 +176,8 @@ describe('hand-edited games', () => {
     expect(r.categories.map((c) => c.clues.length)).toEqual(r.categories.map(() => r.values.length));
     expect(r.categories[0].clues[0].id).toBe(kept);
     expect(r.categories[1].clues.every((c) => c.questionSlide && c.answerSlide)).toBe(true);
+    expect(r.categories[1].clues.every((c) => c.empty)).toBe(true);
+    expect(r.categories[0].clues.slice(2).every((c) => c.empty) && !r.categories[0].clues[0].empty).toBe(true);
     expect(gameProblem(migrateGame(g))).toBeNull();
     expect(() => validate(migrateGame(g))).not.toThrow();
   });

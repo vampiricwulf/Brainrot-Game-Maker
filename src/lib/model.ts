@@ -1402,7 +1402,7 @@ function repairGame(g: Game): void {
         const [a, b] = [r.values[r.values.length - 2] ?? 0, r.values[r.values.length - 1] ?? 0];
         r.values.push(b + (b > a ? b - a : 200));
       }
-      for (const c of cats) while (c.clues.length < rows) c.clues.push(newClue());
+      for (const c of cats) while (c.clues.length < rows) c.clues.push({ ...newClue(), empty: true });
     } else if (isFinal(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);

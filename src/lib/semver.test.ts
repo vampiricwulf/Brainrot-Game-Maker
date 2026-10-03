@@ -64,4 +64,10 @@ describe('changelog entries added since the last release', () => {
     ]);
     expect(releaseNotes(got)).toBe('### Added\n- **New**: a thing\n  that wraps.\n\n### Fixed\n- A fix');
   });
+  it('leaves out an entry that was there at the last release and was only edited (its commit hashes added)', () => {
+    const was = file.filter((l) => l !== '- **New**: a thing' && l !== '  that wraps.').map((l) => (l === '- A fix' ? '- A fix (abc1234)' : l));
+    // Since then: "New" was added, "Old thing" reworded, and "A fix" got another hash (only an edit).
+    const now = file.map((l) => (l === '- A fix' ? '- A fix (abc1234, 0f0f0f0)' : l === '- Old thing' ? '- Old thing, reworded' : l));
+    expect(addedEntries(now, new Set([6, 7, 8, 11]), was).map((e) => e.text)).toEqual(['- **New**: a thing\n  that wraps.', '- Old thing, reworded']);
+  });
 });
