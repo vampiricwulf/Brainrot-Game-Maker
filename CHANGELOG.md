@@ -24,6 +24,13 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **A stat a shop took past its min or max isn't pulled back by the next change**: gold at −2 after "Buy anyway" went to
+  0 on the next − (the log said −1), and gold over its max after a sale lost the extra on the next +. Now a change
+  moves it by that much (never further past the limit).
+- **The Log's Scores tab no longer undoes points spent or earned in a shop on their own** (the item and the stock
+  stayed): those say "in a step", and 🕘 History undoes the whole purchase or sale.
+- **Taking an item takes a copy that isn't being worn first** (the worn sword stays on the avatar).
+- **A player card's emptied stat box keeps the stat** instead of setting it to 0 as a step.
 - **Settings: emptying a number box to type another keeps its number**: an emptied "Keep N autosaves" no longer saved
   1 (and the next autosave deleted the game's older ones), and an emptied "every N minutes" no longer turned autosave off.
 - **Phone buzzers: emptying "A phone that buzzes too early waits" keeps the wait** instead of setting it to 0.

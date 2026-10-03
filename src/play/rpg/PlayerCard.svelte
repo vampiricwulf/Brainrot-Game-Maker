@@ -274,7 +274,8 @@
               aria-label="{p.name} {f.name}"
               title={f.max === undefined ? undefined : `Up to ${f.max}`}
               onchange={(e) => {
-                set(f.id, e.currentTarget.value);
+                // Emptied (to type another): the stat stays as it was.
+                if (e.currentTarget.value.trim()) set(f.id, e.currentTarget.value);
                 // Kept within min and max: the box shows what it became (even when that's what it was).
                 e.currentTarget.value = String(statValue(game, session, p.id, f));
               }}

@@ -73,6 +73,17 @@ describe('stats', () => {
     // What a typed value becomes, so the log and the box can say so.
     expect([clampStat(hp, 25), clampStat(gold, -5), clampStat(hp, 'x')]).toEqual([10, 0, 0]);
   });
+
+  it('one already past its min or max moves by a change, never back into range in one jump nor further out', () => {
+    const { game, session } = setup();
+    const gold = game.statFields![1];
+    // "Buy anyway" took Ann's gold below its min (0).
+    session.stats = { a: { gold: -2 } };
+    expect(addStat(game, session, 'a', gold, -1)).toBe(0);
+    expect(statValue(game, session, 'a', gold)).toBe(-2);
+    expect(addStat(game, session, 'a', gold, 1)).toBe(1);
+    expect(statValue(game, session, 'a', gold)).toBe(-1);
+  });
 });
 
 describe('inventory', () => {
@@ -88,6 +99,12 @@ describe('inventory', () => {
       ['sword', 1],
       ['A very suspicious rock', 1],
     ]);
+    // Taking a sword takes one not being worn.
+    inventory(session, 'a').filter((e) => e.item === 'sword')[1].equipped = true;
+    expect(takeItem(session, 'a', 'sword', 1)).toBe(1);
+    expect(inventory(session, 'a').filter((e) => e.item === 'sword').map((e) => !!e.equipped)).toEqual([true]);
+    giveItem(game, session, 'a', 'sword', 1);
+    inventory(session, 'a').splice(1, 0, inventory(session, 'a').pop()!);
     expect(takeItem(session, 'a', 'potion', 5)).toBe(3);
     expect(countItem(session, 'a', 'potion')).toBe(0);
     const rock = inventory(session, 'a').find((e) => !e.item)!;

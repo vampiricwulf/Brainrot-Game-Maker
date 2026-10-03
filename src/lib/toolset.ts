@@ -63,11 +63,21 @@ export function setStat(session: Session, playerId: string, field: StatField, va
   session.stats[playerId][field.id] = v;
 }
 
-/** Add to a number stat (clamped to its min/max). Returns the change actually made. */
+/**
+ * Add to a number stat (clamped to its min/max). One already past them (a shop's "Buy anyway" took it below its min,
+ * a sale above its max) isn't pulled back by a change the other way: it moves by the change, just never further out.
+ * Returns the change actually made.
+ */
 export function addStat(game: Game, session: Session, playerId: string, field: StatField, delta: number): number {
   const before = statNumber(game, session, playerId, field);
-  setStat(session, playerId, field, before + delta);
-  return statNumber(game, session, playerId, field) - before;
+  if (field.type !== 'number') return 0;
+  const lo = Math.min(field.min ?? -Infinity, before);
+  const hi = Math.max(field.max ?? Infinity, before);
+  const after = Math.min(hi, Math.max(lo, before + (Number(delta) || 0)));
+  session.stats ??= {};
+  session.stats[playerId] ??= {};
+  session.stats[playerId][field.id] = after;
+  return after - before;
 }
 
 /** How much a player's number stat can still go up before its max (Infinity with no max). */
@@ -135,18 +145,22 @@ export function giveItem(game: Game, session: Session, playerId: string, item: s
   for (let i = 0; i < qty; i++) list.push({ id: newId(), item, qty: 1 });
 }
 
-/** Take up to `qty` of an item from a player. Returns how many were taken. */
+/** Take up to `qty` of an item from a player (one being worn last). Returns how many were taken. */
 export function takeItem(session: Session, playerId: string, item: string | null, qty = 1, name?: string): number {
   const list = inv(session, playerId);
   let left = qty;
-  for (let i = list.length - 1; i >= 0 && left > 0; i--) {
-    const e = list[i];
+  // The copies not worn first, from the newest; the worn ones only when they're all that's left.
+  const order = [...list].reverse().sort((a, b) => Number(!!a.equipped) - Number(!!b.equipped));
+  const gone = new Set<(typeof list)[number]>();
+  for (const e of order) {
+    if (left <= 0) break;
     if (e.item !== item || (!item && e.name !== name)) continue;
     const n = Math.min(e.qty, left);
     e.qty -= n;
     left -= n;
-    if (e.qty <= 0) list.splice(i, 1);
+    if (e.qty <= 0) gone.add(e);
   }
+  for (let i = list.length - 1; i >= 0; i--) if (gone.has(list[i])) list.splice(i, 1);
   return qty - left;
 }
 

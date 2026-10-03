@@ -37,6 +37,8 @@
   const byId = $derived(Object.fromEntries([...(session.removedPlayers ?? []), ...session.players].map((p) => [p.id, p])));
   const removed = $derived(new Set((session.removedPlayers ?? []).map((p) => p.id)));
   // One row per award: the events of a multi-player award (or a swap) are grouped, newest first.
+  /** Points spent or earned inside a step (a purchase, a sale): that step undoes them, with its item and stock. */
+  const inStep = $derived(new Set((session.actionLog ?? []).flatMap((a) => a.score?.map((e) => e.id) ?? [])));
   const steps = $derived.by(() => {
     const out: { key: string; events: ScoreEvent[] }[] = [];
     for (const e of session.scoreLog) {
@@ -209,7 +211,11 @@
             <span class="who">{name(first.playerId)}</span>
             <span class="delta" class:neg={first.delta < 0}>{amount(first.delta)}</span>
             <span class="why muted">{first.reason}{judged(first)} · {time(first.ts)}</span>
-            <button class="small ghost" onclick={() => toggleEvent(session, first.id)}>{first.undone ? 'Restore' : 'Undo'}</button>
+            {#if inStep.has(first.id)}
+              <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
+            {:else}
+              <button class="small ghost" onclick={() => toggleEvent(session, first.id)}>{first.undone ? 'Restore' : 'Undo'}</button>
+            {/if}
           </div>
         {:else}
           <div class="ev" class:undone={allUndone}>
@@ -221,7 +227,11 @@
             </button>
             <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
             <span class="why muted">{nameList(step.events.map((e) => name(e.playerId)))} · {first.reason} · {time(first.ts)}</span>
-            <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? 'Restore all' : 'Undo all'}</button>
+            {#if step.events.some((e) => inStep.has(e.id))}
+              <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
+            {:else}
+              <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? 'Restore all' : 'Undo all'}</button>
+            {/if}
           </div>
           {#if expanded[step.key]}
             {#each step.events as e (e.id)}
@@ -230,7 +240,7 @@
                 <span class="dot" style:background={p?.color ?? '#666'}></span>
                 <span class="who">{name(e.playerId)}</span>
                 <span class="delta" class:neg={e.delta < 0}>{amount(e.delta)}</span>
-                <button class="small ghost" onclick={() => toggleEvent(session, e.id)}>{e.undone ? 'Restore' : 'Undo'}</button>
+                {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)}>{e.undone ? 'Restore' : 'Undo'}</button>{/if}
               </div>
             {/each}
           {/if}
