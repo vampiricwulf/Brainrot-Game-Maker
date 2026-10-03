@@ -54,3 +54,26 @@ describe('the checklist', () => {
     expect(validate(game).find((p) => p.text === 'Two players share a color')).toMatchObject({ tab: 'play', level: 'warn' });
   });
 });
+
+describe('buttons on items, wheels and dice', () => {
+  it('says which one points at something deleted, and goes there', async () => {
+    const { newWheel, newDice } = await import('./tools');
+    const game = jeopardyGame();
+    const potion = { id: 'potion', name: 'Potion', stackable: true, onUse: [{ id: 'a1', do: 'shop' as const, shop: 'gone' }] };
+    game.items = [potion];
+    const wheel = newWheel('Chaos');
+    wheel.segments[1].actions = [{ id: 'a2', do: 'item', item: '', qty: 1, op: 'give' }];
+    game.wheels = [wheel];
+    const dice = newDice('Fate');
+    dice.totalOutcomes = [{ id: 't1', min: 1, max: 6, outcome: { label: 'Spin', actions: [{ id: 'a3', do: 'wheel', wheel: 'nope' }] } }];
+    game.dice = [dice];
+    const ps = validate(game);
+    expect(ps).toContainEqual({ text: 'Item “Potion”: a Use button points nowhere (its shop no longer exists)', tab: 'stats', level: 'warn', place: { tab: 'stats', item: 'potion' } });
+    expect(ps).toContainEqual({ text: 'Wheel “Chaos”: a slice\'s button points nowhere (no item chosen)', tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: wheel.id } });
+    expect(ps).toContainEqual({ text: 'Dice “Fate”: a button points nowhere (its wheel no longer exists)', tab: 'tools', level: 'warn', place: { tab: 'tools', dice: dice.id } });
+    potion.onUse = [];
+    wheel.segments[1].actions = [];
+    dice.totalOutcomes = [];
+    expect(validate(game).some((p) => p.text.includes('points nowhere'))).toBe(false);
+  });
+});

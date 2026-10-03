@@ -337,8 +337,8 @@
     // (The line is worked out a moment after changes stop: a board's first tile to finish is looked up now.)
     const round = typeof line.tab === 'number' ? game.rounds[line.tab] : undefined;
     const place = (round && isBoard(round) && boardPlace(game, round)) || line.place;
-    // A stat or a shop in 📊 Stats & Items: it flashes there.
-    if (place?.tab === 'stats') return void goTo(place);
+    // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels & Dice: it flashes there.
+    if (place?.tab === 'stats' || place?.tab === 'tools') return void goTo(place);
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;

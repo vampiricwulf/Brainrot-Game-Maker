@@ -70,7 +70,8 @@ export interface ChangeEntry {
  * step; anything added, changed or removed, a minor one; only fixes (or nothing in the changelog), a patch.
  */
 export function bumpFor(entries: readonly ChangeEntry[]): Bump {
-  if (entries.some((e) => /\*\*breaking\*\*|\bBREAKING\b/i.test(e.text))) return 'major';
+  // The marker only: **Breaking** (any case) or BREAKING in capitals, never the word "breaking" in a sentence.
+  if (entries.some((e) => /\*\*breaking\*\*/i.test(e.text) || /\bBREAKING\b/.test(e.text))) return 'major';
   if (entries.some((e) => e.section !== 'Fixed')) return 'minor';
   return 'patch';
 }

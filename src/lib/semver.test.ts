@@ -30,6 +30,9 @@ describe('the next release', () => {
     expect(bumpFor([fix])).toBe('patch');
     expect(bumpFor([fix, add])).toBe('minor');
     expect(bumpFor([{ section: 'Changed', text: '- **Breaking**: older versions can’t open new saves' }])).toBe('major');
+    expect(bumpFor([{ section: 'Changed', text: '- BREAKING: a new save format' }])).toBe('major');
+    expect(bumpFor([{ section: 'Fixed', text: '- **Replace** says so instead of breaking the item.' }])).toBe('patch');
+    expect(bumpFor([{ section: 'Changed', text: '- Breaking news ticker style' }])).toBe('minor');
     expect(nextVersion('v1.4.2', '1.0.0', [fix])).toBe('1.4.3');
     expect(nextVersion('v1.4.2', '1.0.0', [add, fix])).toBe('1.5.0');
   });

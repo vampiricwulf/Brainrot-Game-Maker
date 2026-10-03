@@ -2,7 +2,7 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type BoardRound, type Game } from './model';
+import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type Action, type BoardRound, type Game } from './model';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
@@ -10,6 +10,7 @@ import { tileDice } from './tools';
 import type { Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
 import { statsProblems } from './toolset';
+import { actionProblem } from './refs';
 
 export interface Problem {
   text: string;
@@ -115,7 +116,7 @@ export function validate(game: Game): Problem[] {
       });
   });
 
-  out.push(...statsProblems(game));
+  out.push(...statsProblems(game), ...toolButtonProblems(game));
 
   const known = new Set(game.media.map((m) => m.id));
   const missing = new Set([...[...mediaUsage(game).keys()].filter((id) => !known.has(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
@@ -136,5 +137,33 @@ export function validate(game: Game): Problem[] {
   const temporary = life.filter((l) => l === 'temporary').length;
   if (expired) out.push({ text: `${plural(expired, 'online link')} expired: add ${expired === 1 ? 'that file' : 'those files'} again`, tab: 'media', level: 'warn' });
   if (temporary) out.push({ text: `${plural(temporary, 'online link')} ${temporary === 1 ? 'stops' : 'stop'} working soon (temporary upload sites): save a copy or add the files`, tab: 'media', level: 'warn' });
+  return out;
+}
+
+/**
+ * Items' Use buttons, wheel slices' and dice's buttons that point at something deleted (a shop, a stat, an item, a
+ * wheel) or at nothing: in play they only say why they can't. (RPG objects' and board spaces' are their rounds'.)
+ */
+export function toolButtonProblems(game: Game): Problem[] {
+  const out: Problem[] = [];
+  const why = (list: (Action[] | undefined)[]): string | null => {
+    for (const a of list.flatMap((l) => l ?? [])) {
+      const p = actionProblem(game, a);
+      if (p) return p.replace(/^That /, 'its ').replace(/^No /, 'no ');
+    }
+    return null;
+  };
+  for (const it of game.items ?? []) {
+    const p = why([it.onUse]);
+    if (p) out.push({ text: `Item “${it.name}”: a Use button points nowhere (${p})`, tab: 'stats', level: 'warn', place: { tab: 'stats', item: it.id } });
+  }
+  for (const w of game.wheels) {
+    const p = why(w.segments.map((s) => s.actions));
+    if (p) out.push({ text: `Wheel “${w.name}”: a slice's button points nowhere (${p})`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: w.id } });
+  }
+  for (const d of game.dice) {
+    const p = why([...d.dice.flatMap((x) => (x.customFaces ?? []).map((f) => f.actions)), ...(d.totalOutcomes ?? []).map((t) => t.outcome.actions)]);
+    if (p) out.push({ text: `Dice “${d.name}”: a button points nowhere (${p})`, tab: 'tools', level: 'warn', place: { tab: 'tools', dice: d.id } });
+  }
   return out;
 }

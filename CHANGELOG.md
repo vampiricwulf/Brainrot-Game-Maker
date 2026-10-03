@@ -14,6 +14,11 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-03
 
 ### Fixed
+- **The checklist warns about item, wheel and dice buttons that point nowhere**: an item's Use button whose shop,
+  stat, item or wheel was deleted (or with nothing chosen), and the same on a wheel's slices and on dice. Clicking the
+  line opens that item, wheel or dice. Before, it said ✓ Ready to play, and the button only failed in the game.
+- **Release numbers: a changelog line that only uses the word "breaking" no longer makes a major release.** v2.0.0
+  was one of those (a slide-editor fix): nothing in it changed saves, and every older save still opens.
 - **Final: a player put back in during the reveals can still have their wager typed** once their spot comes up, instead
   of "wager undefined" with no box and no way to judge them.
 - **Wheels & Dice: after a 🎡 Test spin or 🎲 Test roll, the preview follows your edits** (slices, names, colors, sides,
