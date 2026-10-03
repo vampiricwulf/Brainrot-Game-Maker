@@ -163,6 +163,15 @@ describe('editing question slides', () => {
     expect(targets).toContain(clue.extraSlides![1].elements[0]);
     expect(textStyleTargets(game, board(game), from, 'cat-a', board(game).categories[0])).not.toContain(clue.extraSlides![1].elements[0]);
   });
+
+  it('“Everything in the whole game” includes the tiebreaker', () => {
+    const { game } = threeSlides();
+    game.tiebreaker = { questionSlide: textSlide('tb q'), answerSlide: textSlide('tb a') };
+    const from = board(game).categories[1].clues[0].questionSlide.elements[0] as TextEl;
+    const targets = textStyleTargets(game, board(game), from, 'game-qa');
+    expect(targets).toContain(game.tiebreaker.questionSlide.elements[0]);
+    expect(targets).toContain(game.tiebreaker.answerSlide.elements[0]);
+  });
 });
 
 describe('playing through the slides', () => {

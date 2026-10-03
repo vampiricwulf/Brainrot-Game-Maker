@@ -29,6 +29,8 @@ export interface RoundBundle {
   round: Round;
   /** The game it came from, for messages. */
   from: string;
+  /** Its name as its game showed it ("Round 2" for one with none), for messages. */
+  label?: string;
   worlds: World[];
   wheels: WheelPreset[];
   dice: DicePreset[];

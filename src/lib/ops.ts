@@ -286,7 +286,7 @@ export function textStyleTargets(game: Game, round: BoardRound | null, from: Tex
       if (which.includes('a')) slides.push(cl.answerSlide);
     }
   if (where === 'game')
-    for (const r of game.rounds.filter(isFinal)) {
+    for (const r of [...game.rounds.filter(isFinal), ...(game.tiebreaker ? [game.tiebreaker] : [])]) {
       if (which.includes('q')) slides.push(r.questionSlide);
       if (which.includes('a')) slides.push(r.answerSlide);
     }

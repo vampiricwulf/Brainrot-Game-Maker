@@ -72,6 +72,7 @@
   import FindDialog from './FindDialog.svelte';
   import RoundImport from './RoundImport.svelte';
   import { clipboard } from '../lib/clipboard.svelte';
+  import { bundleName } from '../lib/roundcopy';
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
@@ -884,7 +885,7 @@
                 { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
                 { label: '📋 Copy round', onclick: () => copyRoundOf(game, i), hint: 'To paste in this game or another' },
                 {
-                  label: clipboard.round ? `📋 Paste round “${roundName(clipboard.round.round)}” after it` : '📋 Paste round after it',
+                  label: clipboard.round ? `📋 Paste round “${bundleName(clipboard.round)}” after it` : '📋 Paste round after it',
                   disabled: !clipboard.round,
                   onclick: () => {
                     const at = pasteRound(game, i);

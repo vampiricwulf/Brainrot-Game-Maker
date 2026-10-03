@@ -14,6 +14,13 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-03
 
 ### Fixed
+- **A pasted or imported round brings everything its buttons lead to**: a wheel, dice, item, shop or stat that only an
+  item's Use button, a wheel slice or a dice face points at comes along too, instead of being left pointing nowhere.
+- **Wheels, dice, items, shops and stats that come in as copies are named apart** ("Potion (copy)") from this game's
+  own, like worlds already were.
+- **A round with no name keeps the name it showed when copied or imported** ("Round 2", not "Round") in the Paste
+  menus and the History step.
+- **"Use this style elsewhere › Everything in the whole game" includes the tiebreaker clue.**
 - **Theme: using a whole theme (one of My themes, a theme file or code, another game's) restyles the clue text** as
   its Clue text font and color say, like ↺ Reset to… does, instead of changing only clues added later.
 - **Theme: "Use in this game" says so when the theme's pictures and fonts can't be stored** (storage full or blocked),

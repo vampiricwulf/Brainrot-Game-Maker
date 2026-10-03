@@ -15,19 +15,25 @@ const used = <T extends { id: string }>(list: readonly T[] | undefined, json: st
 export function bundleRound(game: Game, round: Round): RoundBundle {
   const r = clone(round);
   const worlds = clone(isRpg(r) ? (game.worlds ?? []).filter((w) => w.id === r.world) : []);
-  // Twice: shops point at items and stats, wheels' slices at items…
-  let json = JSON.stringify([r, worlds]);
-  const wheels = clone(used(game.wheels, json));
-  const dice = clone(used(game.dice, json));
-  json = JSON.stringify([r, worlds, wheels, dice]);
-  const shops = clone(used(game.shops, json));
-  json = JSON.stringify([r, worlds, wheels, dice, shops]);
-  const items = clone(used(game.items, json));
-  json = JSON.stringify([r, worlds, wheels, dice, shops, items]);
-  const statFields = clone(used(game.statFields, json));
+  // Until nothing more comes in: shops point at items and stats, items' buttons at wheels, shops and other items,
+  // wheels' slices at items and other wheels…
+  const pick = (json: string) => ({
+    wheels: used(game.wheels, json),
+    dice: used(game.dice, json),
+    shops: used(game.shops, json),
+    items: used(game.items, json),
+    statFields: used(game.statFields, json),
+  });
+  let found = pick(JSON.stringify([r, worlds]));
+  const size = (f: typeof found) => Object.values(f).reduce((n, l) => n + l.length, 0);
+  for (let more = pick(JSON.stringify([r, worlds, found])); size(more) > size(found); more = pick(JSON.stringify([r, worlds, found]))) found = more;
+  const { wheels, dice, shops, items, statFields } = clone(found);
   const media = clone(mediaShownBy([r, worlds, wheels, dice, shops, items, statFields], game.media));
-  return { round: r, from: game.title, worlds, wheels, dice, statFields, items, shops, media };
+  return { round: r, from: game.title, label: roundName(round, game.rounds.indexOf(round)), worlds, wheels, dice, statFields, items, shops, media };
 }
+
+/** A bundled round's name for messages: as its game showed it. */
+export const bundleName = (b: RoundBundle): string => b.label ?? roundName(b.round);
 
 /** Copy round: to the in-app clipboard, with its files kept while it's there. */
 export function copyRound(game: Game, round: Round): void {
@@ -115,8 +121,8 @@ export function addBundledRound(game: Game, bundle: RoundBundle, at = game.round
     for (const x of extra)
       if (changed.has(x.id)) {
         copied?.push(`“${x.name}” ${word}`);
-        // Two worlds of one name would be hard to tell apart in the world list.
-        if (kind === 'worlds') x.name = uniqueName(list.map((y) => y.name), x.name);
+        // Two of one name (this game's and the copy) would be hard to tell apart in their list.
+        x.name = uniqueName(list.map((y) => y.name), x.name);
       }
     (game as Record<Kind, Named[]>)[kind] = [...list, ...extra];
   }

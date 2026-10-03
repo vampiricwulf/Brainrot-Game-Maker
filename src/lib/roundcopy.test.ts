@@ -56,6 +56,24 @@ describe('rounds between games', () => {
     expect(bundle.worlds).toEqual([]);
   });
 
+  it('takes along what its things point at, however far: a wheel only an item’s Use button spins', () => {
+    const a = newGame();
+    const tile = newWheel('Tile');
+    const prize = newWheel('Prize');
+    a.wheels.push(tile, prize, newWheel('Unused'));
+    a.items = [{ id: 'key', name: 'Key', stackable: false, onUse: [{ id: 'u1', do: 'wheel', wheel: prize.id }] }];
+    tile.segments[0].actions = [{ id: 's1', do: 'item', item: 'key', qty: 1, op: 'give' }];
+    const r = newRound('', 1);
+    r.categories[0].clues[0].type = 'wheel';
+    r.categories[0].clues[0].wheelId = tile.id;
+    a.rounds.push(newRound('First', 1), r);
+    const b = bundleRound(a, r);
+    expect(b.wheels.map((w) => w.name)).toEqual(['Tile', 'Prize']);
+    expect(b.items?.map((i) => i.name)).toEqual(['Key']);
+    // Its name as its game showed it, for messages.
+    expect(b.label).toBe('Round 2');
+  });
+
   it('puts a new round before the Final at the end, unless it is a Final', () => {
     const g = newGame();
     g.rounds.push(newRound('A'), newFinalRound());
@@ -86,6 +104,8 @@ describe('rounds between games', () => {
     expect(b.items).toHaveLength(a.items!.length + 1);
     const potion2 = b.items![b.items!.length - 1];
     expect(potion2.price).toBe(potion.price);
+    // (Named apart from this game's own potion.)
+    expect(potion2.name).toBe('Potion (copy)');
     expect(JSON.stringify(copy)).toContain(potion2.id);
     expect(JSON.stringify(copy)).not.toContain(`"${potion.id}"`);
     expect(copied).toEqual([`“${world.name}” world`, '“Potion” item']);

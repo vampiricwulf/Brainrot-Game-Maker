@@ -8,7 +8,7 @@ import { nameStep, step } from '../lib/history.svelte';
 import { ROUND_MODES } from '../lib/modes';
 import { roundName, type Game } from '../lib/model';
 import { readGameFile, storeFiles } from '../lib/pack';
-import { addBundledRound, copiesMessage, copyRound, placeFor, uniqueName } from '../lib/roundcopy';
+import { addBundledRound, bundleName, copiesMessage, copyRound, placeFor, uniqueName } from '../lib/roundcopy';
 import { addSampleGame, TEMPLATES, type Template } from '../lib/samples';
 import { validate } from '../lib/validate';
 import type { MenuEntry } from '../lib/menustate.svelte';
@@ -43,7 +43,7 @@ export function pasteRound(game: Game, after?: number): number | null {
   const b = clipboard.round;
   if (!b) return null;
   const copied: string[] = [];
-  const at = step(`Pasted round “${roundName(b.round)}”`, () => {
+  const at = step(`Pasted round “${bundleName(b)}”`, () => {
     const at = after === undefined ? placeFor(game, b.round) : after + 1;
     const r = addBundledRound(game, b, at, copied);
     return game.rounds.indexOf(r);
@@ -92,7 +92,7 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
     { sep: true },
     { label: '📂 Import rounds…', hint: 'From another game’s .brainrot file, with their worlds, wheels, items and files', onclick: importRounds },
     {
-      label: b ? `📋 Paste round “${roundName(b.round)}”` : '📋 Paste round',
+      label: b ? `📋 Paste round “${bundleName(b)}”` : '📋 Paste round',
       hint: b ? undefined : 'Copy a round first (right-click its tab)',
       disabled: !b,
       onclick: () => {

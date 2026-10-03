@@ -26,7 +26,7 @@
     // The rounds share the copies they bring.
     const ids: CopyIds = new Map();
     const media = new Map<string, { id: string; name: string }>();
-    step(`Imported ${rounds.length === 1 ? `round “${roundName(rounds[0])}”` : `${rounds.length} rounds`} from “${source.title}”`, () => {
+    step(`Imported ${rounds.length === 1 ? `round “${roundName(rounds[0], source.rounds.indexOf(rounds[0]))}”` : `${rounds.length} rounds`} from “${source.title}”`, () => {
       for (const r of rounds) {
         const b = bundleRound(source, r);
         for (const m of b.media) media.set(m.id, m);
