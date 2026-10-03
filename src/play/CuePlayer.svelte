@@ -2,7 +2,7 @@
   The sounds that go with what's on screen, in the window that plays the game's sound: dice rattling, a wheel ticking
   as its slices pass the pointer and its landing, and a board game's token stepping from space to space. They're timed
   from the same timestamps as the animations, so they match the picture in every window. Also the short cues for what
-  the host does (an RPG step, a pick-up, coins: live.blip), over any other sound. Draws nothing.
+  the host does (an RPG step, a pick-up, coins: live.blip), over any other sound. None under ⏸ Cover. Draws nothing.
 -->
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
@@ -21,6 +21,8 @@
   /** A few players per sound, reused: wheel ticks come fast. */
   const pools = new Map<string, { els: HTMLAudioElement[]; next: number }>();
   function play(key: CueKey, report = false): void {
+    // ⏸ Cover: viewers see only the cover card, and hear nothing new under it (a step, coins, a roll the host makes).
+    if (live.cover) return;
     const url = soundUrl(cueHere(game, key));
     if (!url) return;
     let pool = pools.get(url);

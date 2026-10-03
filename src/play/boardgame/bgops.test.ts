@@ -185,6 +185,9 @@ describe('board game: what fills the Steps box', () => {
     // A space's "Roll d20", or the Pick-a-player wheel landing on "Player 3": not a move.
     rollDice(live, session, quickDice(20, 1, 'd20'));
     expect(moverResult(game, round, live.overlay)).toBeNull();
+    // Nor a space's "Roll 2d6" with the same dice as the movement roll.
+    rollDice(live, session, quickDice(6, 2, '2d6'));
+    expect(moverResult(game, round, live.overlay)).toBeNull();
     game.players.push({ id: 'b', name: 'Player 3', color: '#000' });
     openPlayerWheel(live, session);
     if (live.overlay?.kind === 'wheel') Object.assign(live.overlay, { spin: { from: 0, to: 1, startedAt: 0, duration: 1 }, result: 1 });

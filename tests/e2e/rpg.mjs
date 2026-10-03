@@ -146,6 +146,17 @@ async function bigWorld() {
   const lowest = Math.max(...(await host.locator('.rpg .avatar[data-player-id]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom))));
   assert((await there()).includes('Village') && lowest <= stripTop, `arriving from the south they stand above the stats strip (${Math.round(lowest)} ≤ ${Math.round(stripTop)})`);
   assert((await cues(aud)).includes('step'), 'a step plays the Step sound on stream');
+  // Under ⏸ Cover, viewers hear nothing new: a step there and back makes no sound on stream.
+  await host.keyboard.press('b');
+  await aud.locator('.cover').waitFor();
+  const heard = (await cues(aud)).length;
+  await host.keyboard.press('Numpad2');
+  await host.waitForTimeout(400);
+  await host.keyboard.press('Numpad8');
+  await host.waitForTimeout(800);
+  assert((await cues(aud)).length === heard, `under the cover the party’s steps make no sound on stream (${(await cues(aud)).slice(heard).join(', ')})`);
+  await host.keyboard.press('b');
+  await aud.locator('.cover').waitFor({ state: 'detached' });
   await host.keyboard.press('Numpad6');
   await host.waitForTimeout(300);
   await host.keyboard.press('Numpad6');

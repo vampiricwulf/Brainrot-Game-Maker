@@ -243,10 +243,11 @@ export function openDice(live: Live, preset: DicePreset): void {
   live.overlay = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll: null, startedAt: 0, duration: 1300 };
 }
 
-export function rollDice(live: Live, session: Session, preset: DicePreset): void {
+/** mover: a board game's movement roll (see the overlay's mover). */
+export function rollDice(live: Live, session: Session, preset: DicePreset, mover = false): void {
   const p = JSON.parse(JSON.stringify(preset)) as DicePreset;
   const roll = rollPreset(p);
-  live.overlay = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll, startedAt: Date.now(), duration: 1300 };
+  live.overlay = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll, startedAt: Date.now(), duration: 1300, ...(mover ? { mover } : {}) };
   logRoll(session, 'dice', p.name, describeRoll(roll));
 }
 

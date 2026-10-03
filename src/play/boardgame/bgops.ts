@@ -114,7 +114,7 @@ export function moverDiceName(game: Game, round: BoardGameRound): string | undef
  */
 export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay']): number | null {
   const m = round.mover;
-  if (o?.kind === 'dice' && o.roll && m.kind === 'dice' && o.name === moverDiceName(game, round)) return o.roll.total;
+  if (o?.kind === 'dice' && o.roll && o.mover && m.kind === 'dice') return o.roll.total;
   if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) {
     const n = parseInt(o.segments[o.result]?.label.match(/-?\d+/)?.[0] ?? '', 10);
     return Number.isFinite(n) ? n : null;
@@ -142,10 +142,10 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
   }
   if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
   const preset = moverPreset(game, round);
-  if (preset) rollDice(live, session, preset);
+  if (preset) rollDice(live, session, preset, true);
   else {
     const d = parseDice(m.dice) ?? { sides: 6, count: 1 };
-    rollDice(live, session, quickDice(d.sides, d.count, moverDiceName(game, round)));
+    rollDice(live, session, quickDice(d.sides, d.count, moverDiceName(game, round)), true);
   }
   return null;
 }

@@ -80,6 +80,8 @@ export type Overlay =
       startedAt: number;
       duration: number;
       tagged?: Id[];
+      /** A board game's movement roll (its result fills Steps; a space's own "Roll d6" with the same dice doesn't). */
+      mover?: boolean;
     }
   | {
       kind: 'rolloff';

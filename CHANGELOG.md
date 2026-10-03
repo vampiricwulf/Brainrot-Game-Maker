@@ -212,6 +212,10 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **⏸ Cover keeps the stream quiet**: the party's steps, pick-ups, coins, damage, a roll or a spin the host makes under
+  the cover no longer play on stream (viewers see only the cover card).
+- **Board games: a space's own "Roll 2d6"** no longer fills the Steps box when the board moves with the same dice; only
+  the movement roll does (Roll again on it too).
 - **Desktop app: a second click on ✕ while a save is being written** no longer closes the window when the first click's
   wait runs out; it closes once the save is written, as the first click asked.
 - **Saving a very big game in Chrome or Edge** downloads it when the pack took too long to build for the browser to

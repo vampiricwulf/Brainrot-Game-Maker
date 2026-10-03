@@ -106,7 +106,7 @@
         disabled: busy,
         run: () => spinWheel(app.live, session, game),
       };
-    if (o.kind === 'dice' && !landed) return { label: o.roll ? 'Roll again' : 'Roll!', key: 'D', disabled: busy, run: () => rollDice(app.live, session, o.preset) };
+    if (o.kind === 'dice' && !landed) return { label: o.roll ? 'Roll again' : 'Roll!', key: 'D', disabled: busy, run: () => rollDice(app.live, session, o.preset, o.mover) };
     if (o.kind === 'popup' && o.answer && !o.revealed) return { label: '👁 Reveal answer', key: 'R', run: () => (o.revealed = true) };
     // A board game's own roll (or spin) that came up: moving is next (▶ Move, Enter, which closes it), not Close.
     const { round } = boardNow(game, session);
@@ -171,7 +171,7 @@
         {/if}
       {:else if o.kind === 'dice'}
         <b>🎲 {o.name}</b>
-        {#if landed}<button onclick={() => rollDice(app.live, session, o.preset)} title="D">Roll again</button>{/if}
+        {#if landed}<button onclick={() => rollDice(app.live, session, o.preset, o.mover)} title="D">Roll again</button>{/if}
       {:else if o.kind === 'rolloff'}
         <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
         {#if !busy && o.purpose === 'buzz'}
