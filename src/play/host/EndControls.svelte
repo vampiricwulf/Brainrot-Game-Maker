@@ -4,7 +4,7 @@
   import { getContext, onDestroy } from 'svelte';
   import { NEXT_GAME } from './nextgame';
   import { isFinal, roundName, type Game, type Session } from '../../lib/model';
-  import { nameList, tiedLeaders } from '../../lib/session';
+  import { nameList, tiedForFirst, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
   import { hostAsk, offerNext } from './slots.svelte';
@@ -31,6 +31,8 @@
     onrematch: () => void;
   } = $props();
   const ties = $derived(session.coWinners ? [] : tiedLeaders(session));
+  /** Level on the top score, settled or not (a settled tie says how, while there still is one). */
+  const level = $derived(tiedForFirst(session));
   const lastIndex = $derived(game.rounds.length - 1);
   const last = $derived(game.rounds[lastIndex]);
 
@@ -79,13 +81,13 @@
       >
     </div>
   </div>
-{:else if session.rollOffWinner && session.players.some((p) => p.id === session.rollOffWinner)}
+{:else if level.some((p) => p.id === session.rollOffWinner)}
   <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
   <div class="muted">
     {session.tiebreakClue ? '❓' : '🎲'}
     {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker {session.tiebreakClue ? 'clue' : 'roll-off'}.
   </div>
-{:else if session.coWinners}
+{:else if session.coWinners && level.length}
   <div class="muted">🤝 Co-winners declared.</div>
 {/if}
 <!-- The way back quiet on the left, the rematch (it clears the results) at the far end. -->

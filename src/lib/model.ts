@@ -539,7 +539,8 @@ export interface Game {
 export type FinalStep = 'wagers' | 'question' | 'answer' | 'reveal';
 
 /** Where a Final wager came from: typed by the host, or sent from the player's phone buzzer (the host can still change it). */
-export type WagerSource = 'host' | 'phone';
+/** Who gave a Final wager: the host, a phone, or the game ('auto': a 0 for a player with nothing to wager). */
+export type WagerSource = 'host' | 'phone' | 'auto';
 
 export interface FinalState {
   /** The Final round this is for (absent in games saved before Final became a round). */

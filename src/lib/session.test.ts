@@ -721,6 +721,24 @@ describe('final wagers', () => {
     expect(session.final!.wagers[b]).toBe(50);
   });
 
+  it('drops a filled-in 0 when the player has something to wager after going back a round; keeps who sent a wager', () => {
+    const { game, session, a, b, c } = setup();
+    for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
+    applyScore(session, game, [a], 1000, 'x');
+    goToRound(session, game, 1);
+    expect(session.final!.wagers[b]).toBe(0);
+    finalSetWager(session, c, 0);
+    finalSetWager(session, a, 300, 'phone', 'Al');
+    // Back to the round before: b gets points, then the Final again.
+    goToRound(session, game, 0);
+    applyScore(session, game, [b], 400, 'x');
+    goToRound(session, game, 1);
+    expect(session.final!.wagers[b]).toBeUndefined();
+    // (A 0 the host typed stays; so does who on the team sent theirs.)
+    expect(session.final!.wagers[c]).toBe(0);
+    expect(wagerSentBy(session.final, a)).toBe('Al');
+  });
+
   it('takes the wagers as soon as the Final starts: no step before them', () => {
     const { game, session, a, b } = setup();
     applyScore(session, game, [a, b], 500, 'x');

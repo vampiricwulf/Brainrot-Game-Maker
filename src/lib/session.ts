@@ -664,12 +664,21 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     players: eligible,
     wagers: keep(prev?.wagers),
     ...(prev?.wagerFrom ? { wagerFrom: keep(prev.wagerFrom) } : {}),
+    ...(prev?.wagerBy ? { wagerBy: keep(prev.wagerBy) } : {}),
     order,
     shown: keep(prev?.shown),
     results: keep(prev?.results),
     current,
     ...(chosen ? { chosen } : {}),
   };
+  // A 0 filled in for nothing to wager goes when there's something to wager now (points given since, in a round before).
+  const f = session.final;
+  for (const id of eligible)
+    if (f.wagerFrom?.[id] === 'auto' && finalWagerCap(session, id) > 0) {
+      delete f.wagers[id];
+      const { [id]: _, ...rest } = f.wagerFrom;
+      f.wagerFrom = rest;
+    }
   fillNothingToWager(session);
 }
 
@@ -679,7 +688,12 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
  */
 function fillNothingToWager(session: Session): void {
   const f = session.final;
-  if (f) for (const id of f.players) if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, id) === 0) f.wagers[id] = 0;
+  if (f)
+    for (const id of f.players)
+      if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, id) === 0) {
+        f.wagers[id] = 0;
+        f.wagerFrom = { ...f.wagerFrom, [id]: 'auto' };
+      }
 }
 
 /**
@@ -907,11 +921,16 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
 
 /** Players tied for the lead (empty if there's a single leader). */
 export function tiedLeaders(session: Session): Player[] {
-  const ranked = standings(session);
-  if (ranked.length < 2 || ranked[0].score !== ranked[1].score) return [];
-  const tied = ranked.filter((r) => r.score === ranked[0].score).map((r) => r.player);
+  const tied = tiedForFirst(session);
   // Settled by the tiebreaker roll-off or clue (only while its winner is still one of the tied leaders).
   return tied.some((p) => p.id === session.rollOffWinner) ? [] : tied;
+}
+
+/** The players level on the top score (none when one player is ahead), settled or not. */
+export function tiedForFirst(session: Session): Player[] {
+  const ranked = standings(session);
+  if (ranked.length < 2 || ranked[0].score !== ranked[1].score) return [];
+  return ranked.filter((r) => r.score === ranked[0].score).map((r) => r.player);
 }
 
 /**

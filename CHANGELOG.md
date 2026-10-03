@@ -20,6 +20,11 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Final: a 0 filled in for a player with nothing to wager goes when they have points to wager again** (given in the
+  round before, after going back), so they can wager them instead of the question showing with their 0.
+- **Final (teams): "sent by" stays on a phone's wager after leaving the wager screen and coming back.**
+- **End screen: "Co-winners declared" and "… won the tiebreaker roll-off" only show while there's still a tie**, not
+  after a re-judged reveal left one player first.
 - **A pasted or imported round brings everything its buttons lead to**: a wheel, dice, item, shop or stat that only an
   item's Use button, a wheel slice or a dice face points at comes along too, instead of being left pointing nowhere.
 - **Wheels, dice, items, shops and stats that come in as copies are named apart** ("Potion (copy)") from this game's
