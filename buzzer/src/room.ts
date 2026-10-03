@@ -745,11 +745,14 @@ export class Room {
     switch (m.t) {
       case 'join':
         if (typeof m.seatId !== 'string' || (m.token !== undefined && typeof m.token !== 'string') || (m.name !== undefined && typeof m.name !== 'string')) return;
+        // (Too many tries: told so, not left waiting for an answer that never comes.)
         if (this.allow(p.joins, JOIN_RATE, 60_000)) this.join(p, m.seatId, m.token, m.name);
+        else this.deps.toPhone(p.conn, { t: 'denied', reason: 'slow-down' });
         break;
       case 'new':
         if (typeof m.name !== 'string') return;
         if (this.allow(p.joins, JOIN_RATE, 60_000)) this.askNew(p, m.name);
+        else this.deps.toPhone(p.conn, { t: 'denied', reason: 'slow-down' });
         break;
       case 'buzz':
         if (typeof m.armId === 'number') this.buzz(p, m.armId, typeof m.reactMs === 'number' ? m.reactMs : undefined);
@@ -961,8 +964,10 @@ export class Room {
 
   private askNew(p: Phone, raw: string): void {
     const name = cleanName(raw, NAME_MAX);
-    if (!name || p.seatId) return;
+    if (p.seatId) return;
     const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
+    // Only invisible characters: no name (the phone asks for one, instead of waiting for the host).
+    if (!name) return deny('need-name');
     const st = this.s.state;
     if (st?.locked) return deny('locked');
     if (!st?.allowNew || st.teams) return deny('no-new');

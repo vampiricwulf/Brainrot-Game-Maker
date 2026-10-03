@@ -73,8 +73,9 @@
           max={MAX_PLAYERS}
           value={s.maxPlayers}
           onchange={(e) => {
-            // Never fewer than the players already listed.
-            const n = mostPlayers(Math.round(+e.currentTarget.value) || 0, players);
+            // Never fewer than the players already listed; emptied (or not a number), it keeps the last value.
+            const v = e.currentTarget.value.trim() === '' ? NaN : +e.currentTarget.value;
+            const n = Number.isFinite(v) ? mostPlayers(Math.round(v), players) : s.maxPlayers;
             if (n !== s.maxPlayers) s.maxPlayers = n;
             e.currentTarget.value = String(s.maxPlayers);
           }}

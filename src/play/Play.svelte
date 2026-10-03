@@ -477,7 +477,11 @@
       // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
       // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
       // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
-      if (!keepRoomOpen && !app.test && !(kept.room && inRoom(kept.room.remote.code))) closeRoom();
+      // Its saved copy goes too (a room out of reach, left with ◀ Back to editor, would pull a reload back into it).
+      if (!keepRoomOpen && !app.test && !(kept.room && inRoom(kept.room.remote.code))) {
+        closeRoom();
+        void clearRoom();
+      }
       // The scores window belongs to this game (the audience window stays up between games: App shows its card).
       closeScoresWindow();
       for (const t of pending) clearTimeout(t);

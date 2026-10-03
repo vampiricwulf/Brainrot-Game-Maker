@@ -260,6 +260,9 @@ try {
   await page.getByLabel('Most players').press('Tab');
   assert((await page.locator('.pregame .players').innerText()).includes('3/12 players'), 'Most players raises the cap');
   assert((await page.getByText('only the first 9 players').count()) === 1, 'with a note on the 1–9 keys');
+  await page.getByLabel('Most players').fill('');
+  await page.getByLabel('Most players').press('Tab');
+  assert((await page.getByLabel('Most players').inputValue()) === '12', 'emptied, it keeps its last value (12), not the players listed');
   await page.getByLabel('Most players').fill('1');
   await page.getByLabel('Most players').press('Tab');
   assert((await page.getByLabel('Most players').inputValue()) === '3', 'never fewer than the players listed');

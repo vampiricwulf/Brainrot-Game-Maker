@@ -419,6 +419,14 @@ function denied(reason: DenyReason): void {
     if (ws) dropped(ws);
     return;
   }
+  if (reason === 'slow-down') {
+    // Not a no: the seat this phone holds (if any) stays saved for the next try.
+    pendingName = null;
+    newForm = false;
+    teamAsked = false;
+    seatsNote = 'Too many tries: wait a minute, then try again.';
+    return;
+  }
   if (wasRejoin || reason === 'bad-token') saveSeat(null);
   pendingName = null;
   newForm = false;
@@ -440,7 +448,7 @@ function denied(reason: DenyReason): void {
       locked: 'The host has locked the seats.',
       blocked: seats?.teams ? 'The host took you off that team. Pick another one, or ask the host.' : 'The host took you off that seat. Pick another one, or ask the host.',
       'name-taken': 'A player already has that name. If it’s you, tap it; if not, pick another name.',
-      'need-name': 'Pick your team, then type your name.',
+      'need-name': seats?.teams ? 'Pick your team, then type your name.' : 'Type a name with letters in it.',
     }[reason] ?? "That didn't work. Try again.";
 }
 

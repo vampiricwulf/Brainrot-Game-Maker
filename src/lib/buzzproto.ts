@@ -417,9 +417,10 @@ export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';
 
 /**
  * Added later: 'locked' (🔒 the host locked the seats), 'blocked' (kicked from that seat a moment ago), 'name-taken',
- * 'need-name' (teams: joining a team takes your name).
+ * 'need-name' (joining a team takes your name; so does asking to join, a name of only invisible characters isn't one),
+ * 'slow-down' (too many tries to join in a minute).
  */
-export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken' | 'need-name';
+export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken' | 'need-name' | 'slow-down';
 
 /** The room → a phone. */
 export type RoomToPhone =

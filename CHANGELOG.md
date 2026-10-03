@@ -212,6 +212,12 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **A buzzer room that couldn't be reached no longer pulls a reload back into the pre-game screen** after ◀ Back to
+  editor (or takes the room back from the window that hosts it now).
+- **A phone asking to join always gets an answer**: a name of only invisible characters asks for a real one, and too
+  many tries in a minute says to wait, instead of "Waiting for the host…" with nothing on the host's side.
+- **Emptying 📋 Most players keeps its last value**, instead of dropping it to the players listed (which turned new
+  players and phone join requests away as a full game).
 - **⏸ Cover keeps the stream quiet**: the party's steps, pick-ups, coins, damage, a roll or a spin the host makes under
   the cover no longer play on stream (viewers see only the cover card).
 - **Board games: a space's own "Roll 2d6"** no longer fills the Steps box when the board moves with the same dice; only

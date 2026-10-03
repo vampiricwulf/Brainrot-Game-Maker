@@ -7,6 +7,7 @@ import {
   FLOOD_BURST,
   GRACE_MS,
   IDLE_MS,
+  JOIN_RATE,
   KICK_BLOCK_MS,
   lowRtt,
   MAX_GRACE_MS,
@@ -483,6 +484,22 @@ describe('seats', () => {
     expect(p.last('denied')?.reason).toBe('name-taken');
     p.send({ t: 'new', name: ' D\u200bee\u0007  \u{1F468}\u200d\u{1F469}\u200d\u{1F467} ' });
     expect(g.hostLast('phones')?.phones.find((x) => x.conn === 'p')?.pendingName).toBe('Dee \u{1F468}\u200d\u{1F469}\u200d\u{1F467}');
+  });
+
+  it('a request to join is always answered: a name of only invisible characters, or too many tries in a minute', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state({ allowNew: true }) });
+    const p = g.phone('p');
+    p.send({ t: 'new', name: '\u200b\u200d ' });
+    expect(p.last('denied')?.reason).toBe('need-name');
+    for (let i = 0; i < JOIN_RATE; i++) p.send({ t: 'join', seatId: 'nope' });
+    p.clear();
+    p.send({ t: 'new', name: 'Zed' });
+    expect(p.last('denied')?.reason).toBe('slow-down');
+    p.send({ t: 'join', seatId: 'a' });
+    expect(p.last('denied')?.reason).toBe('slow-down');
+    expect(p.last('joined')).toBeUndefined();
   });
 
   it('names keep whole characters: a family emoji counts as one and is never cut apart, and flags keep their tags', () => {
@@ -1268,7 +1285,10 @@ describe('untrusted input', () => {
       g.t.now += 100;
       p.send({ t: 'join', seatId: 'a', token: 'guess' + i });
     }
-    expect(p.msgs().filter((m) => m.t === 'denied')).toHaveLength(10);
+    // Ten tries are looked at; the rest are only told to slow down (no token is checked).
+    const denied = p.msgs().flatMap((m) => (m.t === 'denied' ? [m.reason] : []));
+    expect(denied.filter((r) => r !== 'slow-down')).toHaveLength(10);
+    expect(denied.filter((r) => r === 'slow-down')).toHaveLength(5);
   });
 });
 
