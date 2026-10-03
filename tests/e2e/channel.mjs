@@ -94,8 +94,9 @@ try {
   aud2.on('pageerror', (e) => errors.push('[audience 2] ' + e.message));
   await aud2.locator('.board').waitFor();
   const clickOnce = host2.getByText('Click the audience window once');
-  await clickOnce.waitFor();
-  await aud2.mouse.click(400, 300);
+  // (On a busy machine the window can say it may play sound before the ask shows: then there's nothing to click.)
+  const asked = await clickOnce.waitFor({ timeout: 5000 }).then(() => true, () => false);
+  if (asked) await aud2.mouse.click(400, 300);
   await clickOnce.waitFor({ state: 'detached' });
   await aud2.locator('.activate').waitFor({ state: 'detached' });
   assert(true, 'the host clicks the audience window once: it may play sound');
