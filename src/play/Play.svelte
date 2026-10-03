@@ -1759,8 +1759,17 @@
   function avatarAct(id: string, drop?: AvatarDrop): void {
     const { st } = rpgNow(game, session);
     if (!drop || !st?.positions[id]) return void toggleSelect(id);
-    // Dragged while not selected: it goes on its own, and it's what's selected now.
-    const who = selected.includes(id) ? selected.filter((x) => st.positions[x]) : [id];
+    // Dragged while not selected: it goes on its own, and it's what's selected now. Selected, the others selected go
+    // with it only from the same screen (not someone elsewhere), and to another screen only from the same party (a
+    // drop onto a party takes them all into it).
+    const at = st.positions[id];
+    const party = (p: string) => st.parties.find((x) => x.members.includes(p))?.id;
+    const who = selected.includes(id)
+      ? selected.filter((x) => {
+          const pos = st.positions[x];
+          return pos && pos.map === at.map && pos.screen === at.screen && ('party' in drop || party(x) === party(id));
+        })
+      : [id];
     if (!selected.includes(id)) [selected, rpgSelObjects] = [[id], []];
     if ('spot' in drop) return logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], drop.spot));
     const said = 'party' in drop ? joinPartyNow(game, session, who, drop.party) : sendPlayers(game, session, who, drop.to, drop);
@@ -2215,6 +2224,13 @@
       toast(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
       return true;
     }
+    // D then Enter at once: the dice (or the wheel) are still going on screen, and the move would end them early (the
+    // count isn't in the Steps box until they've landed).
+    const o = app.live.overlay;
+    if (round.mover.kind !== 'step' && (o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) {
+      toast(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: Enter again once it lands`);
+      return true;
+    }
     let steps = bgSteps;
     let way: string | undefined;
     if (round.mover.kind === 'step') {
@@ -2225,12 +2241,6 @@
       [steps, way] = [1, ways[0]];
     }
     if (!steps) return false;
-    // D then Enter at once: the dice (or the wheel) are still going on screen, and the move would end them early.
-    const o = app.live.overlay;
-    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) {
-      toast(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: Enter again once it lands`);
-      return true;
-    }
     toast(moveNow(game, session, steps, way), 3000);
     app.live.overlay = null;
     bgSteps = null;

@@ -24,6 +24,14 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Board games: the Steps box fills once the dice (or the movement wheel) have landed on stream**, so ▶ Move can't end
+  the roll early; a move pressed while it's still rolling waits ("Still rolling…").
+- **Board games moving one space at a time: while someone is at a fork, the turn's way buttons step aside** for the
+  fork's own (which go on with its steps left), instead of moving the fork's player 1 space and dropping the rest.
+- **Board games: "Move ±N spaces" for several players keeps the first fork to pick and the mover's own landing
+  buttons**, instead of the last player moved taking them over.
+- **RPG: dragging a selected avatar takes along only the selected players on the same screen** (and, to another screen,
+  the same party), not ones elsewhere or out of their own party.
 - **Wheels & Dice in play: a score card follows "This was for"**: tagging a player after the spin lands makes its
   Confirm score them (it kept scoring the picker), until you pick on the card itself.
 - **Custom dice: the host's card acts on the face viewers see**, and every other die whose face has an effect gets its

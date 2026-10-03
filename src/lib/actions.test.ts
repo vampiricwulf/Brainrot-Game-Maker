@@ -81,6 +81,15 @@ describe('who “the party” is', () => {
     expect(targets(ctx, 'party')).toEqual(['a']);
   });
 
+  it('moving everyone keeps the mover’s last move (their landing buttons) and the board otherwise as it was', () => {
+    const { round, bs, ctx } = board();
+    // Ann moved and landed; then one of her landing buttons moves everyone 2 spaces.
+    bs.last = { playerId: 'a', passed: [], landed: round.spaces[0].id, turn: bs.turns ?? 0 };
+    runAction(ctx, { id: '3', do: 'steps', steps: 2, who: 'all' });
+    expect([bs.positions.a.space, bs.positions.b.space]).toEqual([round.spaces[2].id, round.spaces[2].id]);
+    expect(bs.last?.playerId).toBe('a');
+  });
+
   it('in an RPG, is the party standing where the object is (not the one viewers follow)', () => {
     const game = newGame();
     game.players = ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: 'abc'[i], name, color: '#e6194b' }));

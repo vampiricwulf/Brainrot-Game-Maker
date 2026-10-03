@@ -243,11 +243,32 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const { board, bs } = ctx;
       let said = '';
       logged(session, `${text} (${names(ctx, who)})`, () => {
-        if (a.do === 'steps') said = who.map((id) => movePlayer(board, bs, id, Math.round(a.steps) || 0)).at(-1) ?? '';
+        if (a.do === 'steps') said = moveEach(board, bs, who, Math.round(a.steps) || 0);
         else if (a.do === 'skip') skipTurns(bs, who, a.turns ?? 1);
         else bs.again = who[0];
       });
       return `${text}: ${names(ctx, who)}${said ? ` · ${said}` : ''}`;
     }
   }
+}
+
+/**
+ * Move each of `who` (a "Move ±N spaces" for several players). One at a time, but the board's shared state stays right:
+ * the first fork any of them stopped at is the one to pick (a later move doesn't drop it), and the last move shown (the
+ * mover's landing buttons, Roll again) stays the mover's, now made if they moved too. Returns the line for the log.
+ */
+function moveEach(board: BoardGameRound, bs: BoardGameState, who: string[], steps: number): string {
+  if (who.length === 1) return movePlayer(board, bs, who[0], steps);
+  const before = bs.last;
+  let fork = bs.fork;
+  const lastOf: Record<string, BoardGameState['last']> = {};
+  const said = who.map((id) => {
+    const line = movePlayer(board, bs, id, steps);
+    lastOf[id] = bs.last;
+    fork ??= bs.fork;
+    return line;
+  });
+  bs.fork = fork;
+  bs.last = before ? (lastOf[before.playerId] ?? before) : bs.last;
+  return said.join(' · ');
 }

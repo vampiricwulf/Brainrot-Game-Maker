@@ -13,6 +13,7 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
+  import { overlayDoneAt } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
   import { boardNow, busyZones, moveNow, moverDiceName, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
@@ -96,10 +97,16 @@
   /** The number the round's dice or movement wheel just gave, to fill in the steps (no other dice or wheel). */
   const rolled = $derived(round ? moverResult(game, round, app.live.overlay) : null);
   $effect(() => {
-    // Every roll or spin, even one that comes up the same as the last (a new turn has emptied the box since).
+    // Every roll or spin, even one that comes up the same as the last (a new turn has emptied the box since). Once it
+    // has landed on stream: the count shows (and can move) no sooner than viewers see it.
     const o = app.live.overlay;
     void (o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null);
-    if (rolled !== null) steps = rolled;
+    const r = rolled;
+    if (r === null) return;
+    const wait = o && (o.kind === 'dice' || o.kind === 'wheel') ? overlayDoneAt(o) - Date.now() : 0;
+    if (wait <= 0) return void (steps = r);
+    const t = setTimeout(() => (steps = r), wait);
+    return () => clearTimeout(t);
   });
 
   function roll(): void {
@@ -107,11 +114,13 @@
     if (why) toast(why);
   }
 
-  function move(n: number | null, choose?: string): void {
+  function move(n: number | null, choose?: string, who?: string): void {
     // A whole number, at most MAX_STEPS (a typo of 100000 isn't walked).
     n = n === null ? null : clampSteps(n);
     if (!n) return void toast('How many spaces? Roll first, or type a number');
-    toast(moveNow(game, session, n, choose), 3000);
+    const o = app.live.overlay;
+    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void toast('Still rolling…');
+    toast(moveNow(game, session, n, choose, who), 3000);
     app.live.overlay = null;
     // Moved: the count is used up (a fork goes on with the steps left, not these).
     steps = null;
@@ -244,12 +253,15 @@
       <b>🎲 {turnName}’s turn</b>
       {#if round.mover.kind === 'step'}
         <!-- One space per turn: the player picks which way. -->
-        {#if !stepWays.length}
+        {#if fork}
+          <!-- (A move that stopped at a fork goes on with its own steps: its ways are below.) -->
+          <span class="muted small">{playerName(session, fork.playerId)} is at a fork: pick the way below first.</span>
+        {:else if !stepWays.length}
           <span class="muted small">{turnSpace ? 'No way on from here.' : `${turnName} isn’t on the board.`}</span>
         {:else}
           <span class="muted small">{stepWays.length > 1 ? 'Which way?' : 'Move to:'}</span>
           {#each stepWays as w (w)}
-            <button class="good" onclick={() => move(1, w)}>→ {spaceById(round, w)?.name}</button>
+            <button class="good" onclick={() => move(1, w, turnId)}>→ {spaceById(round, w)?.name}</button>
           {/each}
         {/if}
       {:else}

@@ -177,10 +177,12 @@ try {
   await page.locator('.stage-box .sheet').waitFor({ state: 'detached', timeout: 3000 }).catch(() => {});
   assert((await page.locator('.stage-box .sheet').count()) === 0, "a player's sheet doesn't follow into the next round");
   await page.keyboard.press('d');
-  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await page.waitForTimeout(250);
+  // (The count isn't in the Steps box until the dice have landed on stream.)
+  assert(!(await page.locator('.bh input[aria-label="Steps"]').inputValue()), 'the Steps box stays empty while the dice roll');
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Still rolling') && (await page.locator('.stage-box .ov').count()) === 1, 'Enter while the dice still roll waits for them');
-  await page.waitForTimeout(1400);
+  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Alice: Landed on'), 'Enter with nobody selected moves the rolled steps');
   await page.keyboard.press('n');
