@@ -289,7 +289,7 @@
               value={Array.isArray(v) ? v.join(', ') : ''}
               placeholder="tag, tag"
               aria-label="{p.name} {f.name}"
-              onchange={(e) => set(f.id, e.currentTarget.value.split(',').map((t) => t.trim()).filter(Boolean))}
+              onchange={(e) => set(f.id, [...new Set(e.currentTarget.value.split(',').map((t) => t.trim()).filter(Boolean))])}
             />
           {:else}
             <input class="txt" value={String(v)} aria-label="{p.name} {f.name}" onchange={(e) => set(f.id, e.currentTarget.value)} />

@@ -534,18 +534,26 @@ export function allElements(st: WorldState | undefined, screen: Screen): SlideEl
 export function adoptAdded(st: WorldState, screen: Screen, slide: Slide): void {
   const added = st.added[screen.id];
   if (!added?.length) return;
-  const ids = new Set(slide.elements.map((e) => e.id));
-  const top = Math.max(0, ...slide.elements.map((e) => e.zIndex));
-  added.forEach((e, i) => {
-    if (ids.has(e.id)) return;
-    // Where it was dragged to in play is where it goes.
+  // Into every look of the screen, not only the one being edited: a sword Bob dropped stays there when the host
+  // switches back from "On fire" (one object, the same id: picked up in one look, it's gone from all of them).
+  const slides = [...new Set([slide, screen.slide, ...(screen.variants ?? []).map((v) => v.slide)])];
+  for (const sl of slides) {
+    const ids = new Set(sl.elements.map((e) => e.id));
+    const top = Math.max(0, ...sl.elements.map((e) => e.zIndex));
+    added.forEach((e, i) => {
+      if (ids.has(e.id)) return;
+      // Where it was dragged to in play is where it goes.
+      const o = st.objects[e.id];
+      sl.elements.push({ ...JSON.parse(JSON.stringify(e)), x: o?.x ?? e.x, y: o?.y ?? e.y, zIndex: Math.max(e.zIndex, top + 1 + i) } as SlideElement);
+    });
+  }
+  for (const e of added) {
     const o = st.objects[e.id];
-    slide.elements.push({ ...e, x: o?.x ?? e.x, y: o?.y ?? e.y, zIndex: Math.max(e.zIndex, top + 1 + i) } as SlideElement);
     if (o) {
       delete o.x;
       delete o.y;
     }
-  });
+  }
   delete st.added[screen.id];
 }
 
@@ -557,9 +565,21 @@ export function screenSlide(st: WorldState | undefined, screen: Screen): Slide {
 
 /** A new look for a screen, copied from the one showing now. */
 export function newVariant(st: WorldState | undefined, screen: Screen, name: string): ScreenVariant {
-  const v: ScreenVariant = { id: newId(), name, slide: JSON.parse(JSON.stringify(screenSlide(st, screen))) };
-  freshObjectIds([v.slide]);
-  return v;
+  return copyLook(st, screen, name).look;
+}
+
+/** A new look, and each copied object's new id by its old one (see carryObjects). */
+export function copyLook(st: WorldState | undefined, screen: Screen, name: string): { look: ScreenVariant; ids: Map<string, string> } {
+  const look: ScreenVariant = { id: newId(), name, slide: JSON.parse(JSON.stringify(screenSlide(st, screen))) };
+  return { look, ids: freshObjectIds([look.slide]) };
+}
+
+/**
+ * A look made during play: its copies of the objects start as the originals are by now (a Key already picked up stays
+ * picked up, a moved chest where it was moved), not as the game was made.
+ */
+export function carryObjects(st: WorldState, ids: Map<string, string>): void {
+  for (const [from, to] of ids) if (st.objects[from]) st.objects[to] = JSON.parse(JSON.stringify(st.objects[from]));
 }
 
 /**

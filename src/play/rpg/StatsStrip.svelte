@@ -69,7 +69,7 @@
                 {'♥'.repeat(Math.max(0, Math.min(20, Number(v))))}{f.max ? '♡'.repeat(Math.max(0, Math.min(20, f.max) - Math.max(0, Number(v)))) : ''}
               </span>
             {:else if f.type === 'tags'}
-              {#each Array.isArray(v) ? v : [] as tag (tag)}<span class="tag">{tag}</span>{/each}
+              {#each Array.isArray(v) ? [...new Set(v)] : [] as tag (tag)}<span class="tag">{tag}</span>{/each}
             {:else if f.type === 'checkbox'}
               {#if v}<span class="tag">{f.name}</span>{/if}
             {:else if v !== '' && v !== undefined}

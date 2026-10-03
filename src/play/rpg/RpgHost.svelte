@@ -11,7 +11,7 @@
   import type { RunContext } from '../../lib/actions';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import {
-    activeParty, addScreenBeside, classLabel, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, newVariant, screenElements, screenAt,
+    activeParty, addScreenBeside, classLabel, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,
     screenSlide,
   } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
@@ -180,13 +180,14 @@
     ask = null;
     if (!here || !st) return;
     const screen = here.screen;
-    const look = newVariant(st, screen, name);
+    const { look, ids } = copyLook(st, screen, name);
     // One step: undoing it takes the new look away again, not only back to the old one.
     logged(
       session,
       `${screen.name}: new look “${name}”`,
       () => {
         screen.variants = [...(screen.variants ?? []), look];
+        carryObjects(st, ids);
         st.variant ??= {};
         st.variant[screen.id] = look.id;
       },

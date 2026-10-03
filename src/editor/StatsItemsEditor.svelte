@@ -80,7 +80,7 @@
   }
 
   /** Tags are typed as a list, "poisoned, cursed" (read when the field is left, so a comma being typed stays put). */
-  const tagList = (v: string) => v.split(',').map((t) => t.trim()).filter(Boolean);
+  const tagList = (v: string) => [...new Set(v.split(',').map((t) => t.trim()).filter(Boolean))];
 
   /** Whether a shop has items left to sell (each item once, with its own price and stock). */
   function unstocked(s: Shop): boolean {

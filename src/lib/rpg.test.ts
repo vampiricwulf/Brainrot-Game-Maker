@@ -5,6 +5,10 @@ import {
   audienceSees,
   keepScreen,
   newVariant,
+  adoptAdded,
+  override,
+  copyLook,
+  carryObjects,
   screenSlide,
   ensureWorld,
   exitOf,
@@ -222,6 +226,38 @@ describe('RPG: improvising', () => {
     st.variant = { [a1.id]: fire.id };
     expect(screenSlide(st, a1)).toBe(fire.slide);
     expect(screenElements(st, a1, true)[0].id).toBe(fire.slide.elements[0].id);
+  });
+
+  it('a look made during play starts its objects as they are by now (a key already picked up stays picked up)', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const a1 = world.maps[0].screens[0];
+    const key = newTextEl('Key');
+    a1.slide.elements.push(key);
+    override(st, key.id).taken = true;
+    const { look, ids } = copyLook(st, a1, 'On fire');
+    carryObjects(st, ids);
+    const copy = look.slide.elements[0];
+    expect(copy.id).not.toBe(key.id);
+    expect(st.objects[copy.id]).toEqual({ taken: true });
+    // Its own copy: taking it back on the new look doesn't change the original's.
+    st.objects[copy.id].taken = false;
+    expect(st.objects[key.id].taken).toBe(true);
+  });
+
+  it('editing a look live keeps objects dropped in play on every look (not only the one being edited)', () => {
+    const { game, session, world, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const a1 = world.maps[0].screens[0];
+    const fire = newVariant(st, a1, 'On fire');
+    a1.variants = [fire];
+    st.variant = { [a1.id]: fire.id };
+    const sword = newTextEl('Sword');
+    st.added[a1.id] = [sword];
+    adoptAdded(st, a1, fire.slide);
+    expect(fire.slide.elements.some((e) => e.id === sword.id)).toBe(true);
+    st.variant = {};
+    expect(screenElements(st, a1, true).some((e) => e.id === sword.id)).toBe(true);
   });
 
   it('points a copied look’s Reveal and Hide buttons at its own copies', () => {

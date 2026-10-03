@@ -212,6 +212,11 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **RPG: ＋ New look… starts its objects as they are by now**: a key already picked up stays picked up (it can't be
+  picked up twice), a moved chest stays where it was moved.
+- **RPG: ✎ Edit screen keeps objects dropped in play on every look**, not only the one on screen while editing (a
+  dropped sword no longer vanishes when the host switches back to the original look).
+- **RPG: a tag typed twice** ("poisoned, poisoned") is kept once, so the stats strip draws it once and doesn't break.
 - **Phone buzzers: a phone whose seat was freed while it slept** shows the seat list when it reconnects ("Your seat was
   given…"), not its old buzzer that no longer did anything.
 - **Phone buzzers: "Tap your name to take it back here" works**: the seat another tab or phone took back is tappable
