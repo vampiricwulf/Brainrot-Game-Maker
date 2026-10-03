@@ -144,8 +144,11 @@ try {
   });
   assert(ddScore >= 4.5, `the Daily Double's picked player chip shows their score at ${ddScore.toFixed(2)}:1`);
   await page.locator('.dd input[type=number]').fill('100');
-  await mainButton(page).click();
+  // A double-click on Show question ▶: its second click doesn't land on the Reveal answer it turns into.
+  await mainButton(page).dblclick();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
+  await page.waitForTimeout(200);
+  assert(/Reveal answer/.test(await mainLabel(page)), `a double-click on Show question ▶ doesn't reveal the answer too (main button: ${await mainLabel(page)})`);
   assert((await page.getByRole('button', { name: /^− Deduct Bob/ }).count()) === 1, '− Deduct names the player, like ＋ Award (− Deduct Bob)');
   states.ddQuestion = await look();
   // Its player is picked (＋ Award Bob is ready), but there are slides still to show: Next slide ▶ is the main button.
