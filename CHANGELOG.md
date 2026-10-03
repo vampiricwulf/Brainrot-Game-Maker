@@ -212,6 +212,12 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Desktop app: a second click on ✕ while a save is being written** no longer closes the window when the first click's
+  wait runs out; it closes once the save is written, as the first click asked.
+- **Saving a very big game in Chrome or Edge** downloads it when the pack took too long to build for the browser to
+  open its "Save as" window, instead of saying "Save failed" and saving nothing.
+- **Turning Buzzer mode off in the editor (with an undo) closes the buzzer room waiting for ▶ Play**, as turning it off
+  on the Play screen does; ▶ Play no longer goes back into the room with Buzzer mode on again.
 - **Phone buzzers on one Wi-Fi no longer suffer for one phone's kick or flood**: a kick keeps the kicked phone off that
   seat but not the other players already in the room from the same house; after a phone floods the room, a seated
   player on the same network who reconnects gets their seat back at once (new joins from there still wait 30 seconds).

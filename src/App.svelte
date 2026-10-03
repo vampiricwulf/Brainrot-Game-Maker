@@ -201,6 +201,19 @@
     sendHostState(setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked));
   }
 
+  // Buzzer mode turned off in the editor (an undo, say) while its room waits: the room closes, as on the Play screen
+  // (▶ Play would otherwise go back into it with Buzzer mode on again). Only a change made here: a quick reload can
+  // come back before the editor's copy of the setting was written, and that mustn't close the room.
+  let buzzerWas: { id: string; on: boolean } | null = null;
+  $effect(() => {
+    const now = { id: app.game.id, on: !!app.game.settings.buzzer };
+    untrack(() => {
+      const was = buzzerWas;
+      buzzerWas = now;
+      if (was?.id === now.id && was.on && !now.on && app.screen === 'editor' && kept.room?.gameId === now.id) void closeKeptRoom();
+    });
+  });
+
   /** ✕ Close the room (the bar over the editor): phones are told the game is over. */
   async function closeKeptRoom(quiet = false): Promise<void> {
     const r = kept.room;

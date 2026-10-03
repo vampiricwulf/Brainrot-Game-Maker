@@ -596,9 +596,10 @@ fn wait_for_page_on_close() -> Option<usize> {
 }
 
 /// After CLOSE_WAIT: close the window, unless the page held it open since that click (a save is being written,
-/// and the page answered: it's alive and closes the window itself).
+/// and the page answered: it's alive and closes the window itself). A later click it answered counts too: the first
+/// click's wait running out mustn't close the window in the middle of the save.
 fn close_after_wait(click: usize) -> bool {
-    CLOSE_HELD.load(Ordering::SeqCst) != click
+    CLOSE_HELD.load(Ordering::SeqCst) < click
 }
 
 /// The project's own pages (ℹ About's links); `open_link` opens nothing else.
@@ -1159,6 +1160,8 @@ mod tests {
         assert!(close_after_wait(second));
         hold_this_close();
         assert!(!close_after_wait(second));
+        // The first click's wait running out after the page answered the second doesn't close the window either.
+        assert!(!close_after_wait(first));
     }
 
     #[test]

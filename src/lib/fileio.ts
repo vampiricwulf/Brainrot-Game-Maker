@@ -34,12 +34,21 @@ type SavePicker = (opts: { suggestedName: string }) => Promise<{ name: string; c
 
 /**
  * A big file, through the browser's save picker (where there is one), written to disk as it's read: a download of
- * hundreds of MB can fail with the page none the wiser. Null: no picker here. Throws an AbortError when it's closed.
+ * hundreds of MB can fail with the page none the wiser. Null: no picker here (or it can't open now: a download).
+ * Throws an AbortError when it's closed.
  */
 async function pickAndWrite(filename: string, blob: Blob): Promise<SavedFile | null> {
   const pick = (globalThis as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
   if (!pick || !usePicker(blob.size, true)) return null;
-  const handle = await pick({ suggestedName: filename });
+  let handle: Awaited<ReturnType<SavePicker>>;
+  try {
+    handle = await pick({ suggestedName: filename });
+  } catch (e) {
+    // Building a big pack can take longer than the browser lets a click open its picker for (a SecurityError): it
+    // downloads instead. Closing the picker still calls the save off.
+    if (isCancel(e)) throw e;
+    return null;
+  }
   const out = await handle.createWritable();
   try {
     await blob.stream().pipeTo(out);
