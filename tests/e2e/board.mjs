@@ -242,6 +242,17 @@ try {
   await page.getByLabel('Include a tiebreaker clue').check();
   await page.getByPlaceholder('Type the tiebreaker question…').fill('How many rizz?');
   assert(await slideShows('How many rizz?'), "the Tiebreaker's quick field writes on its slide");
+  // Like a clue, the tiebreaker can have more question slides: ＋ Add slide opens a second one, its quick field types on it.
+  await page.getByRole('button', { name: '＋ Add slide' }).click();
+  await page.getByRole('tab', { name: 'Question 2' }).waitFor();
+  assert((await undoTitle()).startsWith('Undo: Added tiebreaker question slide 2'), `＋ Add slide on the tiebreaker is one named step (${await undoTitle()})`);
+  await page.getByPlaceholder('Type the tiebreaker question…').fill('Second clue line');
+  assert(await slideShows('Second clue line'), "the quick field writes on the open (second) question slide");
+  await page.getByRole('tab', { name: 'Question 1' }).click();
+  assert(await slideShows('How many rizz?'), 'its first question slide keeps its words');
+  await page.getByRole('tab', { name: 'Question 2' }).click();
+  await page.getByRole('button', { name: '🗑 Delete slide' }).click();
+  assert((await page.getByRole('tab', { name: 'Question slide' }).count()) === 1, '🗑 Delete slide takes it out (back to one question slide)');
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await tabs.nth(0).click();

@@ -70,7 +70,10 @@ export function copyClue(clue: Clue): Clue {
 // by position (0: the first question slide), keeping the first one in questionSlide and the others, with ids, after it.
 
 /** Put a clue's question slides back in this order (the first one is questionSlide). */
-function setQuestionSlides(clue: Clue, list: Slide[]): void {
+/** A board clue or the tiebreaker: question slides (the first, then more), then the answer. */
+export type SlideHolder = Pick<Clue, 'questionSlide' | 'extraSlides'>;
+
+function setQuestionSlides(clue: SlideHolder, list: Slide[]): void {
   const [first, ...rest] = list;
   if ('id' in first) delete (first as Partial<ExtraSlide>).id;
   if (clue.questionSlide !== first) clue.questionSlide = first;
@@ -83,7 +86,7 @@ function setQuestionSlides(clue: Clue, list: Slide[]): void {
  * A new question slide right after slide `at`, in the look of that one (its background, and its main text box where it
  * was and as it was styled, empty). Returns where it is.
  */
-export function addClueSlide(clue: Clue, at: number): number {
+export function addClueSlide(clue: SlideHolder, at: number): number {
   const list = questionSlides(clue);
   const from = list[Math.min(Math.max(0, at), list.length - 1)];
   const slide = textSlide();
@@ -97,7 +100,7 @@ export function addClueSlide(clue: Clue, at: number): number {
 }
 
 /** A copy of question slide `at` (with fresh ids), right after it. Returns where it is. */
-export function duplicateClueSlide(clue: Clue, at: number): number {
+export function duplicateClueSlide(clue: SlideHolder, at: number): number {
   const list = questionSlides(clue);
   if (!list[at]) return at;
   const copy = clone(list[at]);
@@ -109,7 +112,7 @@ export function duplicateClueSlide(clue: Clue, at: number): number {
 }
 
 /** Take question slide `at` out (never the only one: a clue always has one). Returns the slide to show then. */
-export function deleteClueSlide(clue: Clue, at: number): number {
+export function deleteClueSlide(clue: SlideHolder, at: number): number {
   const list = questionSlides(clue);
   if (list.length < 2 || !list[at]) return Math.min(at, list.length - 1);
   list.splice(at, 1);
@@ -118,7 +121,7 @@ export function deleteClueSlide(clue: Clue, at: number): number {
 }
 
 /** Move question slide `at` one place earlier (-1) or later (1). Returns where it is now. */
-export function moveClueSlide(clue: Clue, at: number, d: -1 | 1): number {
+export function moveClueSlide(clue: SlideHolder, at: number, d: -1 | 1): number {
   const list = questionSlides(clue);
   const to = at + d;
   if (!list[at] || to < 0 || to >= list.length) return at;
@@ -287,7 +290,7 @@ export function textStyleTargets(game: Game, round: BoardRound | null, from: Tex
     }
   if (where === 'game')
     for (const r of [...game.rounds.filter(isFinal), ...(game.tiebreaker ? [game.tiebreaker] : [])]) {
-      if (which.includes('q')) slides.push(r.questionSlide);
+      if (which.includes('q')) slides.push(...('extraSlides' in r ? questionSlides(r) : [r.questionSlide]));
       if (which.includes('a')) slides.push(r.answerSlide);
     }
   const out: TextEl[] = [];

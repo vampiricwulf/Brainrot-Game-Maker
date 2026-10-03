@@ -20,7 +20,8 @@ export type Place =
   | { tab: 'tools'; wheel?: string; dice?: string }
   | { tab: 'stats'; stat?: string; item?: string; shop?: string }
   | { tab: 'media'; media?: string }
-  | { tab: 'tiebreaker'; side?: Side; element?: string }
+  /** `slide`: a question slide after the first (its id). */
+  | { tab: 'tiebreaker'; side?: Side; slide?: string; element?: string }
   | { tab: 'round'; round: string; part?: RoundPart }
   | { tab: 'world'; world: string; map?: string; screen?: string; look?: string; inSlide?: boolean; element?: string }
   | { tab: 'history' }
@@ -324,11 +325,25 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       at.crumbs.push('Tiebreaker');
       at.icon = '🏁';
       go({ tab: 'tiebreaker' });
+      const tb = game.tiebreaker;
+      if (path[1] === 'extraSlides' && tb) {
+        // One of its extra question slides ("Question 2").
+        at.crumbs.push(SIDE_NAME.q);
+        go({ tab: 'tiebreaker', side: 'q' });
+        const n = tb.extraSlides?.findIndex((s) => s.id === path[2]) ?? -1;
+        if (n < 0) break;
+        const sl = tb.extraSlides![n];
+        at.crumbs[at.crumbs.length - 1] = `${SIDE_NAME.q} ${n + 2}`;
+        reached(3, 'slide', `question slide ${n + 2}`, undefined, false);
+        go({ tab: 'tiebreaker', side: 'q', slide: sl.id });
+        slide(sl, 3, (element) => ({ tab: 'tiebreaker', side: 'q', slide: sl.id, element }), 'q');
+        break;
+      }
       const side = path[1] === 'questionSlide' ? 'q' : path[1] === 'answerSlide' ? 'a' : null;
-      if (!side || !game.tiebreaker) break;
-      at.crumbs.push(SIDE_NAME[side]);
+      if (!side || !tb) break;
+      at.crumbs.push(side === 'q' && tb.extraSlides?.length ? `${SIDE_NAME.q} 1` : SIDE_NAME[side]);
       go({ tab: 'tiebreaker', side });
-      slide(game.tiebreaker[path[1] as 'questionSlide'], 2, (element) => ({ tab: 'tiebreaker', side, element }), side);
+      slide(tb[path[1] as 'questionSlide'], 2, (element) => ({ tab: 'tiebreaker', side, element }), side);
       break;
     }
   }
@@ -355,7 +370,9 @@ export function itemPlace(game: Game, id: string): Place | null {
   }
   const tb = game.tiebreaker;
   const side = tb && sides.find((k) => on(tb[k]));
-  return side ? placeAt(game, ['tiebreaker', side, 'elements', id]).place : null;
+  if (side) return placeAt(game, ['tiebreaker', side, 'elements', id]).place;
+  const extra = tb?.extraSlides?.find(on);
+  return extra ? placeAt(game, ['tiebreaker', 'extraSlides', extra.id, 'elements', id]).place : null;
 }
 
 // ---------- Labels ----------

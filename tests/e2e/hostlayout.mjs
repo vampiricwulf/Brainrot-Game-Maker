@@ -52,6 +52,8 @@ const game = {
   media: [], audio: {}, theme: {}, wheels: [],
   dice: [{ id: 'dp1', name: 'Move die', dice: [{ id: 'd1', sides: 6, count: 1 }], showTotal: true }],
   statFields: [], items: [],
+  // A tiebreaker with two question slides (a lead-in, then the question).
+  tiebreaker: { questionSlide: slide('tq1', 'Tiebreaker lead-in'), extraSlides: [{ id: 'tx2', ...slide('tq2', 'Tiebreaker question') }], answerSlide: slide('ta', 'Tiebreaker answer') },
   worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Overworld', cols: 2, rows: 1, screens, visibility: 'discovered', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut' }] }],
 };
 mkdirSync(resolve('test-results'), { recursive: true });
@@ -237,7 +239,25 @@ try {
   await mainButton(page).click();
   await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
   states.end = await look();
-  assert((await mainLabel(page)) === '❓ Tiebreaker clue' || (await mainLabel(page)) === '🎲 Tiebreaker roll-off', `a tie for first: settling it is the main button (${await mainLabel(page)})`);
+  assert((await mainLabel(page)) === '❓ Tiebreaker clue', `a tie for first: settling it is the main button (${await mainLabel(page)})`);
+  // The tiebreaker's question slides come one at a time (N), as on a clue, then the answer.
+  await mainButton(page).click();
+  const tbPips = page.locator('.stage-box [data-slide-pips]');
+  await tbPips.waitFor();
+  assert(
+    (await tbPips.getAttribute('aria-label')) === 'Slide 1 of 2' && (await page.locator('.stage-box').innerText()).includes('Tiebreaker lead-in') && (await mainLabel(page)) === 'Next slide ▶',
+    'a tiebreaker with two question slides opens on its first, Next slide ▶ the main button (viewers see ● ○)',
+  );
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.stage-box [data-slide-pips]')?.getAttribute('aria-label') === 'Slide 2 of 2');
+  assert((await page.locator('.stage-box').innerText()).includes('Tiebreaker question') && (await mainLabel(page)) === '👁 Reveal answer', 'N shows its second slide, then 👁 Reveal answer is the main button');
+  await page.keyboard.press('Shift+N');
+  await page.waitForFunction(() => document.querySelector('.stage-box [data-slide-pips]')?.getAttribute('aria-label') === 'Slide 1 of 2');
+  assert(true, 'Shift+N goes back a slide');
+  await page.keyboard.press('n');
+  await page.keyboard.press('r');
+  await tbPips.waitFor({ state: 'detached' });
+  assert((await page.locator('.stage-box').innerText()).includes('Tiebreaker answer'), 'R reveals its answer (the dots go)');
 
   for (const what of ['exit', 'undo', 'log']) {
     const at = Object.entries(states).map(([k, v]) => `${k} ${v[what].x},${v[what].y}`);

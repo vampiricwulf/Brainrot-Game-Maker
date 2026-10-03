@@ -337,6 +337,15 @@ export interface ExtraSlide extends Slide {
 
 export type ClueType = 'standard' | 'dailyDouble' | 'wheel' | 'dice';
 
+/** The tiebreaker clue: like a board clue's slides (more question slides after the first, then the answer). */
+export interface Tiebreaker {
+  questionSlide: Slide;
+  /** More question slides, shown in order before the answer (left out: just the one). */
+  extraSlides?: ExtraSlide[];
+  answerSlide: Slide;
+  hostNotes?: string;
+}
+
 export interface Clue {
   id: Id;
   /** Overrides round.values[row]; null means inherit. */
@@ -518,7 +527,7 @@ export interface Game {
   /** RPG worlds (maps of screens). Rounds in RPG mode play one of them. */
   worlds?: World[];
   /** Optional clue used to break a tie at the end. */
-  tiebreaker?: { questionSlide: Slide; answerSlide: Slide; hostNotes?: string };
+  tiebreaker?: Tiebreaker;
 }
 
 // ---------- Runtime session ----------
@@ -1304,6 +1313,18 @@ function objects<T>(v: unknown): T[] {
 }
 const fixId = (o: { id: Id }) => typeof o.id === 'string' && o.id ? o.id : (o.id = newId());
 
+/** More question slides (left out: just the one). Each needs an id, and its parts what any slide needs. */
+function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }): void {
+  if (o.extraSlides === undefined) return;
+  const extra = objects<ExtraSlide>(o.extraSlides);
+  if (!extra.length) return void delete o.extraSlides;
+  if (extra !== o.extraSlides) o.extraSlides = extra;
+  for (const sl of extra) {
+    fixId(sl);
+    repairSlide(sl);
+  }
+}
+
 function repairSlide(s: unknown): Slide {
   if (!isObj(s)) return textSlide();
   const slide = s as unknown as Slide;
@@ -1376,18 +1397,7 @@ function repairGame(g: Game): void {
           cl.type ??= 'standard';
           cl.questionSlide = repairSlide(cl.questionSlide);
           cl.answerSlide = repairSlide(cl.answerSlide);
-          // More question slides (left out: just the one). Each needs an id, and its parts what any slide needs.
-          if (cl.extraSlides !== undefined) {
-            const extra = objects<ExtraSlide>(cl.extraSlides);
-            if (!extra.length) delete cl.extraSlides;
-            else {
-              if (extra !== cl.extraSlides) cl.extraSlides = extra;
-              for (const sl of extra) {
-                fixId(sl);
-                repairSlide(sl);
-              }
-            }
-          }
+          repairExtraSlides(cl);
         }
       }
       // No row values: the usual 200, 400… for as many rows as the board has.
@@ -1419,6 +1429,7 @@ function repairGame(g: Game): void {
     else {
       g.tiebreaker.questionSlide = repairSlide(g.tiebreaker.questionSlide);
       g.tiebreaker.answerSlide = repairSlide(g.tiebreaker.answerSlide);
+      repairExtraSlides(g.tiebreaker);
     }
   }
   const media = objects<MediaRef>(g.media).filter((m) => typeof m.id === 'string' && m.id);

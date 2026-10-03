@@ -446,18 +446,28 @@
 {:else if session.phase === 'boardgame'}
   <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} />
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
-  {#key session.tiebreakerRevealed}
+  {@const tb = game.tiebreaker}
+  {@const tbAt = clueSlideIndex(session, tb)}
+  {@const tbOf = questionSlides(tb).length}
+  {#key `${session.tiebreakerRevealed}-${tbAt}`}
     <div
       class="full"
       class:clickable={!!onact && !session.tiebreakerRevealed}
       onclick={() => !session.tiebreakerRevealed && act('reveal')}
       role="presentation"
+      data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
       in:fade={{ duration: 300 }}
     >
-      <div class="slide-area" style:scale={bandScale}><SlideView slide={session.tiebreakerRevealed ? game.tiebreaker.answerSlide : game.tiebreaker.questionSlide} {role} /></div>
+      <div class="slide-area" style:scale={bandScale}><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
       <div class="final-label small">TIEBREAKER</div>
     </div>
   {/key}
+  <!-- Several question slides: where it is (● ● ○), as on a clue. -->
+  {#if tbOf > 1 && !session.tiebreakerRevealed}
+    <div class="pips" role="img" aria-label="Slide {tbAt + 1} of {tbOf}" data-slide-pips>
+      {#each { length: tbOf } as _, i (i)}<span class:on={i <= tbAt}></span>{/each}
+    </div>
+  {/if}
 {:else if session.phase === 'end'}
   {@const ranked = places(session)}
   <!-- Everything's at full size while it fits (6 places); with more, it shrinks just enough for the last one to show. -->

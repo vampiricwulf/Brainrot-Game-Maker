@@ -98,8 +98,14 @@
     {/if}
   {:else if session.phase === 'tiebreaker' && game.tiebreaker}
     <div class="meta"><span class="cat">Tiebreaker</span></div>
-    <div class="label">Question</div>
-    <div class="q">{slideText(game.tiebreaker.questionSlide) || '—'}</div>
+    {@const slides = questionSlides(game.tiebreaker)}
+    {@const at = clueSlideIndex(session, game.tiebreaker)}
+    <div class="label">Question{slides.length > 1 ? ` · slide ${at + 1} of ${slides.length}` : ''}</div>
+    <div class="q">{slideText(slides[at]) || '—'}</div>
+    {#if !session.tiebreakerRevealed && slides[at + 1]}
+      <div class="label">Next slide</div>
+      <div class="notes">{slideText(slides[at + 1]) || '—'}</div>
+    {/if}
     <div class="label">Answer</div>
     <div class="a">{slideText(game.tiebreaker.answerSlide) || '—'}</div>
   {:else if session.phase === 'rpg' && rpg.round}

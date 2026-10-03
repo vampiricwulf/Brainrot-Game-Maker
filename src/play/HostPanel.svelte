@@ -244,10 +244,10 @@
   });
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
-  /** A clue with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
+  /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(ddWager ? null : slidePosition(session, game));
   /** More question slides to show before the answer. */
-  const moreSlides = $derived(!!slidePos && !session.revealed && slidePos.at < slidePos.of);
+  const moreSlides = $derived(!!slidePos && !answerShowing(session) && slidePos.at < slidePos.of);
   const nextSlide = () => onslide(1);
   const openBuzzers = () => onopenbuzzers?.();
   const finalStepText = $derived({
@@ -435,10 +435,13 @@
       if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
       return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: onback };
     }
-    if (session.phase === 'tiebreaker')
+    if (session.phase === 'tiebreaker') {
+      if (moreSlides && slidePos)
+        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
       return answerShowing(session)
         ? { label: '🏁 Back to results', run: ontiebreakerdone }
         : { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)', run: onreveal };
+    }
     return null;
   });
   const next = $derived(slots.offers.tool?.() ?? flow ?? slots.next());
@@ -543,6 +546,7 @@
       </span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
+      {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted">Select the winner and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
     {:else}
       <b>Game over</b>
@@ -743,6 +747,11 @@
             <button onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
           {/if}
         {:else if session.phase === 'tiebreaker'}
+          {#if slidePos && !answerShowing(session)}
+            <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
+            {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
+            {#if next?.run !== onreveal}<button onclick={onreveal} title="R (press again to hide)">👁 Reveal answer</button>{/if}
+          {/if}
           {#if answerShowing(session)}
             <button onclick={onreveal} title="R (press again to hide)">🙈 Hide answer</button>
           {:else}

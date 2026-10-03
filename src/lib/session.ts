@@ -264,20 +264,26 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
 // The audience window shows the one the session is on. Buzzers aren't touched: the host opens them when they like.
 
 /** Which of the clue's question slides is on screen (kept within the ones it has, should the clue have changed). */
-export function clueSlideIndex(session: Session, clue: Clue): number {
+export function clueSlideIndex(session: Session, clue: Pick<Clue, 'questionSlide' | 'extraSlides'>): number {
   const n = questionSlides(clue).length;
   const i = session.slide ?? 0;
   return Number.isInteger(i) ? Math.min(Math.max(0, i), n - 1) : 0;
 }
 
 /** The question slide on screen for the open clue. */
-export function shownQuestionSlide(session: Session, clue: Clue): Slide {
+export function shownQuestionSlide(session: Session, clue: Pick<Clue, 'questionSlide' | 'extraSlides'>): Slide {
   return questionSlides(clue)[clueSlideIndex(session, clue)];
 }
 
-/** The open clue's question slide position, for the host ("Slide 2 of 3"), or null without a clue or with one slide. */
+/** The clue whose question slides are being stepped through: the open clue, or the tiebreaker while it's played. */
+function slidesOnShow(session: Session, game: Game): Pick<Clue, 'questionSlide' | 'extraSlides'> | undefined {
+  if (session.phase === 'tiebreaker') return game.tiebreaker;
+  return session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue : undefined;
+}
+
+/** The open clue's (or the tiebreaker's) question slide position, for the host ("Slide 2 of 3"), or null with one slide. */
 export function slidePosition(session: Session, game: Game): { at: number; of: number } | null {
-  const clue = session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue : undefined;
+  const clue = slidesOnShow(session, game);
   if (!clue) return null;
   const of = questionSlides(clue).length;
   return of > 1 ? { at: clueSlideIndex(session, clue) + 1, of } : null;
@@ -288,8 +294,8 @@ export function slidePosition(session: Session, game: Game): { at: number; of: n
  * Double's wager, nor with the answer showing). Returns whether it moved.
  */
 export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
-  if (session.phase !== 'clue' || !session.currentClue || session.revealed || session.dd?.stage === 'splash') return false;
-  const clue = getClue(game, session.currentClue)?.clue;
+  if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase !== 'clue' || session.revealed || session.dd?.stage === 'splash') return false;
+  const clue = slidesOnShow(session, game);
   if (!clue) return false;
   const to = clueSlideIndex(session, clue) + d;
   if (to < 0 || to >= questionSlides(clue).length) return false;
@@ -919,6 +925,8 @@ export function winnerKnown(session: Session): boolean {
 export function startTiebreaker(session: Session): void {
   session.phase = 'tiebreaker';
   session.tiebreakerRevealed = false;
+  // (From its first question slide.)
+  delete session.slide;
 }
 
 export function currentClueInfo(session: Session, game: Game) {

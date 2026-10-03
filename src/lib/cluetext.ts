@@ -15,7 +15,7 @@ export function clueSlides(game: Game): Slide[] {
     if (isBoard(r)) for (const c of r.categories) for (const cl of c.clues) out.push(...slidesOfClue(cl));
     else if (isFinal(r)) out.push(r.questionSlide, r.answerSlide);
   }
-  if (game.tiebreaker) out.push(game.tiebreaker.questionSlide, game.tiebreaker.answerSlide);
+  if (game.tiebreaker) out.push(...slidesOfClue(game.tiebreaker));
   return out;
 }
 

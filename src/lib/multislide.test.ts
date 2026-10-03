@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, newId, newImageEl, questionSlides, setSlideText, slideText, slidesOfClue, textSlide, type BoardRound, type Clue, type Game, type TextEl } from './model';
 import { addClueSlide, clearClue, clone, clueHasContent, copyClue, deleteClueSlide, duplicateClueSlide, moveClueSlide, reidRound, textStyleTargets } from './ops';
-import { backToBoard, clueSlideIndex, newSession, openClue, reveal, shownQuestionSlide, slidePosition, stepSlide, toolOnlyClue, unreveal } from './session';
+import { backToBoard, clueSlideIndex, newSession, openClue, reveal, shownQuestionSlide, slidePosition, startTiebreaker, stepSlide, toolOnlyClue, unreveal } from './session';
 import { allSlides, mediaUsage } from './usage';
 import { diff } from './historyops';
 import { describe as describeStep, itemPlace, placeAt } from './historylabel';
@@ -332,3 +332,38 @@ describe('a copied board-game round', () => {
     expect(round.spaces[0].onLand?.[0]).toMatchObject({ zone: 'jail' });
   });
 });
+
+describe('the tiebreaker’s question slides', () => {
+  function tiebreakerGame() {
+    const game = jeopardyGame();
+    game.tiebreaker = { questionSlide: textSlide('Lead-in'), answerSlide: textSlide('Answer') };
+    addClueSlide(game.tiebreaker, 0);
+    setSlideText(questionSlides(game.tiebreaker)[1], 'The question');
+    return { game, tb: game.tiebreaker };
+  }
+
+  it('are stepped through in play like a clue’s, then the answer', () => {
+    const { game, tb } = tiebreakerGame();
+    const session = newSession(game);
+    session.slide = 1;
+    startTiebreaker(session);
+    expect(slideText(shownQuestionSlide(session, tb))).toBe('Lead-in');
+    expect(slidePosition(session, game)).toEqual({ at: 1, of: 2 });
+    expect(stepSlide(session, game, 1)).toBe(true);
+    expect(slideText(shownQuestionSlide(session, tb))).toBe('The question');
+    expect(stepSlide(session, game, 1)).toBe(false);
+    reveal(session);
+    expect(stepSlide(session, game, -1)).toBe(false);
+  });
+
+  it('are kept by a saved game, found by Find and counted for media and the clue text', () => {
+    const { game, tb } = tiebreakerGame();
+    const back = migrateGame(JSON.parse(JSON.stringify(game))) as Game;
+    expect(questionSlides(back.tiebreaker!).map(slideText)).toEqual(['Lead-in', 'The question']);
+    expect(allSlides(game).some((s) => s.where === 'Tiebreaker (question 2)')).toBe(true);
+    expect(findAll(game, 'the question').some((h) => h.where === 'Tiebreaker › Question 2')).toBe(true);
+    const id = tb.extraSlides![0].elements[0].id;
+    expect(itemPlace(game, id)).toMatchObject({ tab: 'tiebreaker', side: 'q', slide: tb.extraSlides![0].id });
+  });
+});
+

@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, categoryLabel, isBoard, isBoardGame, isFinal, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
+import { boardRounds, categoryLabel, isBoard, isBoardGame, isFinal, questionSlides, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -47,7 +47,8 @@ export function allSlides(game: Game): SlideRef[] {
   for (const { name, outcome: o } of allOutcomes(game)) for (const s of actionSlides(o.actions)) out.push({ slide: s, where: `${name}: ${o.label}` });
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
   if (game.tiebreaker) {
-    out.push({ slide: game.tiebreaker.questionSlide, where: 'Tiebreaker (question)' });
+    const qs = questionSlides(game.tiebreaker);
+    qs.forEach((slide, i) => out.push({ slide, where: qs.length > 1 ? `Tiebreaker (question ${i + 1})` : 'Tiebreaker (question)' }));
     out.push({ slide: game.tiebreaker.answerSlide, where: 'Tiebreaker (answer)' });
   }
   return out;

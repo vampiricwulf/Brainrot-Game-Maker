@@ -2422,6 +2422,9 @@
           if (e.shiftKey) slideStep(-1);
           else if (hostNext && !hostNext.disabled) hostNext.run();
           else slideStep(1);
+        } else if (session.phase === 'tiebreaker') {
+          // The tiebreaker's question slides: N the next, Shift+N the one before.
+          slideStep(e.shiftKey ? -1 : 1);
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         else if (session.phase === 'final') {

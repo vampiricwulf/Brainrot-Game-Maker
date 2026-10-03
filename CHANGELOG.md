@@ -13,6 +13,12 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## 2026-10-03
 
+### Added
+- **The tiebreaker clue can have several question slides**, like a board clue: ＋ Add slide in its editor (with ◀ Earlier,
+  Later ▶, ⧉ Duplicate and 🗑 Delete slide, and the same keys on the tabs). In play, N (or the main button, or a click on
+  the slide) shows the next one and Shift+N the one before, viewers see where it is (● ○), and the host's notes show
+  the slide on screen and the next one; then 👁 Reveal answer.
+
 ### Fixed
 - **A pasted or imported round brings everything its buttons lead to**: a wheel, dice, item, shop or stat that only an
   item's Use button, a wheel slice or a dice face points at comes along too, instead of being left pointing nowhere.

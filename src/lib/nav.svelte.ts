@@ -176,7 +176,10 @@ export function resolve(game: Game, place: Place): Place | null {
       const tb = game.tiebreaker;
       if (!place.side) return place;
       if (!tb) return { tab: 'tiebreaker' };
-      return !place.element || inSlide(place.side === 'q' ? tb.questionSlide : tb.answerSlide, place.element) ? place : { tab: 'tiebreaker', side: place.side };
+      const extra = place.slide ? tb.extraSlides?.find((s) => s.id === place.slide) : undefined;
+      if (place.slide && !extra) return { tab: 'tiebreaker', side: place.side };
+      const slide = place.side === 'a' ? tb.answerSlide : (extra ?? tb.questionSlide);
+      return !place.element || inSlide(slide, place.element) ? place : { tab: 'tiebreaker', side: place.side, slide: place.slide };
     }
     case 'round': {
       const r = has(game.rounds, place.round);
