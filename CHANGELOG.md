@@ -212,6 +212,12 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **A tiebreaker winner who's no longer first shares their place again**: after a later score fix put someone else on
+  top, the winner and the player they'd beaten showed as 2nd and 3rd instead of both 2nd.
+- **RPG: giving a single stackable item** joins it to the other player's stack (one "Potion × 2"), instead of a second
+  row of one.
+- **A copied board-game round gets its own zones**: renaming a zone in the copy renames it on that round's Send to
+  buttons and in the log, not just in the editor.
 - **Going back to a Final whose reveals had started (◀ Back from a later round) opens the reveals**, not the wager
   screen, where a player the Final took to $0 was over their cap and dropped from the Final on the next visit.
 - **Opening a layer's rename and leaving it as it was changes nothing**: no undo step, and the layer keeps following its

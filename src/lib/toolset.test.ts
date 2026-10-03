@@ -94,6 +94,14 @@ describe('inventory', () => {
     transferEntry(session, 'a', 'b', rock.id);
     expect(inventory(session, 'b').map((e) => e.name)).toEqual(['A very suspicious rock']);
     expect(inventory(session, 'a').some((e) => !e.item)).toBe(false);
+    // A single stackable item joins the other player's stack of one; a non-stackable one stays its own row.
+    giveItem(game, session, 'a', 'potion', 1);
+    giveItem(game, session, 'b', 'potion', 1);
+    transferEntry(session, 'a', 'b', inventory(session, 'a').find((e) => e.item === 'potion')!.id, undefined, game);
+    expect(inventory(session, 'b').filter((e) => e.item === 'potion').map((e) => e.qty)).toEqual([2]);
+    giveItem(game, session, 'b', 'sword', 1);
+    transferEntry(session, 'a', 'b', inventory(session, 'a').find((e) => e.item === 'sword')!.id, undefined, game);
+    expect(inventory(session, 'b').filter((e) => e.item === 'sword').map((e) => e.qty)).toEqual([1, 1]);
   });
 });
 

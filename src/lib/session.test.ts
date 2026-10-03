@@ -425,6 +425,16 @@ describe('host panel rules', () => {
     expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[c, 1], [a, 2], [b, 2]]);
   });
 
+  it('a tiebreaker winner who is no longer first shares their place again', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b], 1000, 'x');
+    session.rollOffWinner = b;
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[b, 1], [a, 2], [c, 3]]);
+    // A score fixed later puts C ahead of both.
+    applyScore(session, game, [c], 1200, 'x');
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[c, 1], [a, 2], [b, 2]]);
+  });
+
   it('names image-only categories for the host', () => {
     const { game } = setup();
     const cat = board(game, 0).categories[0];

@@ -310,3 +310,16 @@ describe('what walks a game’s slides', () => {
     expect(d.undoPlace).toMatchObject({ tab: 'round', part: { kind: 'clue', clue: board(game).categories[0].clues[0].id } });
   });
 });
+
+describe('a copied board-game round', () => {
+  it('gets its own zones: its Send to buttons point at them, so a zone renamed in the copy is named so there', async () => {
+    const { newBoardGameRound } = await import('./boardgame');
+    const round = newBoardGameRound('Board');
+    round.zones.push({ id: 'jail', name: 'Jail', slide: textSlide('Jail') });
+    round.spaces[0].onLand = [{ id: newId(), do: 'goto', zone: 'jail' }];
+    const copy = reidRound(clone(round));
+    expect(copy.zones[0].id).not.toBe('jail');
+    expect(copy.spaces[0].onLand?.[0]).toMatchObject({ do: 'goto', zone: copy.zones[0].id });
+    expect(round.spaces[0].onLand?.[0]).toMatchObject({ zone: 'jail' });
+  });
+});

@@ -1027,16 +1027,25 @@ export function migrateSession(session: Session, game: Game): Session {
 
 /** Players ranked by score, highest first. */
 export function standings(session: Session): { player: Player; score: number }[] {
-  const won = session.rollOffWinner;
-  return session.players
-    .map((player) => ({ player, score: score(session, player.id) }))
-    .sort((a, b) => b.score - a.score || (b.player.id === won ? 1 : 0) - (a.player.id === won ? 1 : 0));
+  const ranked = session.players.map((player) => ({ player, score: score(session, player.id) }));
+  const won = tieWinner(session, ranked);
+  return ranked.sort((a, b) => b.score - a.score || (b.player.id === won ? 1 : 0) - (a.player.id === won ? 1 : 0));
+}
+
+/**
+ * The tiebreaker's winner, while it still settles a tie for first (their score is the top one). A score fixed later
+ * that takes them out of first leaves them sharing their place like anyone else.
+ */
+function tieWinner(session: Session, ranked: { player: Player; score: number }[]): string | undefined {
+  const won = ranked.find((r) => r.player.id === session.rollOffWinner);
+  return won && ranked.every((r) => r.score <= won.score) ? won.player.id : undefined;
 }
 
 /** Standings with each player's place, equal scores sharing one ("1, 1, 3"). */
 export function places(session: Session): { player: Player; score: number; place: number }[] {
   const ranked = standings(session);
   // The tiebreaker roll-off's winner has first place alone; the players they were tied with share the next one.
-  const won = (id: string) => id === session.rollOffWinner;
+  const winner = tieWinner(session, ranked);
+  const won = (id: string) => id === winner;
   return ranked.map((r) => ({ ...r, place: ranked.findIndex((x) => x.score === r.score && won(x.player.id) === won(r.player.id)) + 1 }));
 }

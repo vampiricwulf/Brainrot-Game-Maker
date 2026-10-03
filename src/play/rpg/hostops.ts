@@ -262,7 +262,7 @@ export function giveEntry(game: Game, session: Session, from: string, to: string
   const e = inventory(session, from).find((x) => x.id === entryId);
   if (!e || from === to || !session.players.some((p) => p.id === to)) return null;
   const text = `${names(session, [from])} gives ${count(n, entryName(game, e))} to ${names(session, [to])}`;
-  logged(session, text, () => transferEntry(session, from, to, entryId, n));
+  logged(session, text, () => transferEntry(session, from, to, entryId, n, game));
   return text;
 }
 

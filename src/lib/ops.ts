@@ -327,14 +327,18 @@ export function reidRound<R extends Round>(round: R): R {
     reSlide(round.questionSlide);
     reSlide(round.answerSlide);
   } else if (isBoardGame(round)) {
-    // A copy gets its own spaces (and its own board state in play); links follow the new ids.
+    // A copy gets its own spaces and zones (and its own board state in play); links and Send to buttons follow the new
+    // ids (a zone renamed in the copy is named so there, not by the original's name).
     const ids = new Map(round.spaces.map((sp) => [sp.id, newId()]));
+    const zones = new Map(round.zones.map((z) => [z.id, newId()]));
+    for (const z of round.zones) z.id = zones.get(z.id)!;
     for (const sp of round.spaces) {
       sp.id = ids.get(sp.id)!;
       sp.next = sp.next.map((n) => ids.get(n) ?? n);
       for (const a of [...(sp.onPass ?? []), ...(sp.onLand ?? [])]) {
         a.id = newId();
         if (a.do === 'goto' && a.space) a.space = ids.get(a.space) ?? a.space;
+        if (a.do === 'goto' && a.zone) a.zone = zones.get(a.zone) ?? a.zone;
       }
     }
     if (round.start) round.start = ids.get(round.start) ?? round.start;

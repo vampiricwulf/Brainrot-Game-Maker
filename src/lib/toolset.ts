@@ -150,8 +150,11 @@ export function takeItem(session: Session, playerId: string, item: string | null
   return qty - left;
 }
 
-/** Move one inventory entry (or part of a stack) to another player. */
-export function transferEntry(session: Session, from: string, to: string, entryId: string, qty?: number): void {
+/**
+ * Move one inventory entry (or part of a stack) to another player. With the game, an item stacks with theirs as its
+ * settings say (Stackable), as giveItem does; without it, as the stacks look.
+ */
+export function transferEntry(session: Session, from: string, to: string, entryId: string, qty?: number, game?: Game): void {
   const src = inv(session, from);
   const i = src.findIndex((e) => e.id === entryId);
   if (i < 0) return;
@@ -159,7 +162,8 @@ export function transferEntry(session: Session, from: string, to: string, entryI
   const n = Math.min(qty ?? e.qty, e.qty);
   const dest = inv(session, to);
   const same = dest.find((d) => d.item === e.item && (e.item || d.name === e.name) && !d.equipped);
-  if (same && (e.qty > 1 || same.qty > 1 || !e.item)) same.qty += n;
+  const stacks = !e.item || (game ? !!itemDef(game, e.item)?.stackable : e.qty > 1 || (same?.qty ?? 0) > 1);
+  if (same && stacks) same.qty += n;
   else dest.push({ ...e, id: newId(), qty: n, equipped: false });
   e.qty -= n;
   if (e.qty <= 0) src.splice(i, 1);
