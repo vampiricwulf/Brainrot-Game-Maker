@@ -574,7 +574,7 @@
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
       <div class="cover-card"><span class="pause" aria-hidden="true"></span>{stream?.coverText?.trim() || 'Be right back'}</div>
       {#if live.room && !stream?.hideJoinCode}
-        <div class="cover-join">📱 Buzz from your phone: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div>
+        <div class="cover-join">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz from your phone'}: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div>
       {/if}
     </div>
   </div>

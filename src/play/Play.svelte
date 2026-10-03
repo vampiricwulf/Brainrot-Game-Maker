@@ -374,6 +374,21 @@
       }
     });
   });
+  // Under the cover, media that starts on its own (a slide's autoplay: an answer revealed meanwhile) waits too.
+  $effect(() => {
+    if (!app.live.cover) return;
+    const map = dual ? remoteMedia : localMedia;
+    const playing = Object.entries(map)
+      .filter(([, m]) => !m.paused && m.kind !== 'external' && (dual || (m as { role?: string }).role !== 'mirror'))
+      .map(([id]) => id);
+    untrack(() => {
+      if (!coverHeld) return;
+      for (const id of playing) {
+        mediaCommand({ el: id, op: 'pause' });
+        if (!coverHeld.media.includes(id)) coverHeld.media.push(id);
+      }
+    });
+  });
   // "Ignore the limits" is for the wagers being entered now: the next Final starts with them off again (the default).
   $effect(() => {
     void session.phase;

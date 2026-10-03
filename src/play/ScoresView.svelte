@@ -22,8 +22,9 @@
 
 <!-- data-stage: viewers see it, so ⚙ Settings › Reduce motion on stream calms it like the stage (app.css). -->
 <div class="frame" data-stage bind:clientWidth={w} bind:clientHeight={h} style:background={keyColor ?? '#000'}>
-  <!-- Nothing before the game starts (the host is on the pre-game screen). -->
-  {#if session && !live.pregame && session.players.length}
+  <!-- Nothing before the game starts (the host is on the pre-game screen), nor under the cover (scores changing behind
+       it would give the judging away). -->
+  {#if session && !live.pregame && !live.cover && session.players.length}
     <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
       <!-- In a Final nobody picks: the spotlit player in its reveals is lit, else nobody (as on the stage). -->
       <div class="plates">

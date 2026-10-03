@@ -24,6 +24,12 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Under the cover (K/B), a video or sound that starts on its own waits too** (an answer revealed meanwhile whose slide
+  autoplays a song), and plays when the cover comes off, like the ones already playing.
+- **An audience window opening or coming back shows the cover (or Starting soon) at once**, never the stage under it
+  for a moment.
+- **The scores-only window hides the plates under the cover**, so judging the Final behind it doesn't show on stream.
+- **The cover card says "📱 Players' buzzers" when the room takes no new players**, not "Buzz from your phone".
 - **Countdown: ↺ Restart goes back to the time it was started with**, not that time plus the +10s added since.
 - **Countdown: −10 taking the last seconds off a paused countdown runs it out** (Time's up on the host panel and its
   sound), instead of the stream saying TIME'S UP! while the panel waited at 0s.

@@ -138,12 +138,14 @@ function resendAll(): void {
   sentMedia.clear();
   // First, so sounds in the state below already start on the right device.
   post({ type: 'audio-out', deviceId: audioOut.deviceId, label: audioOut.label });
+  // The overlays (the cover, Starting soon) before the game and the session, so a window opening or coming back never
+  // shows the stage under them for a moment.
+  if (last.live) post({ type: 'live', live: last.live });
   if (last.game) {
     sendMedia(last.game);
     post({ type: 'game', game: last.game });
   }
   if (last.session) post({ type: 'session', session: last.session });
-  if (last.live) post({ type: 'live', live: last.live });
 }
 
 function onSound(ev: SoundReport): void {
@@ -305,6 +307,8 @@ function fromScores(msg: AudienceMsg): void {
   if (msg?.type === 'hello') {
     // Everything it needs, to it alone: the files (fonts, avatars) too.
     const to = (m: HostMsg) => scoresWin?.postMessage(m, '*');
+    // (The overlays first, as for the audience window.)
+    if (last.live) to({ type: 'live', live: last.live });
     if (last.game) {
       const items = last.game.media.flatMap((ref) => {
         const blob = ref.url ? undefined : getBlob(ref.id);
@@ -314,7 +318,6 @@ function fromScores(msg: AudienceMsg): void {
       to({ type: 'game', game: last.game });
     }
     if (last.session) to({ type: 'session', session: last.session });
-    if (last.live) to({ type: 'live', live: last.live });
   } else if (msg?.type === 'key') keyHandler?.(msg.key);
   else if (msg?.type === 'bye') scoresClosed();
 }
