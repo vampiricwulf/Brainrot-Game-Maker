@@ -307,11 +307,15 @@
   }
 
   async function picked(id: string): Promise<void> {
-    const kind = picker!;
+    // What the file is, not which button picked it (an .mp4 uploaded through 🖼 Image is a video).
+    const own = game.media.find((m) => m.id === id)?.kind;
+    const kind = own && own !== 'font' && picker !== 'font' ? own : picker!;
     picker = null;
     if (replacing) {
       const el = slide.elements.find((e) => e.id === replacing);
       replacing = null;
+      if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') && kind !== el.kind)
+        return void toast(`That file is ${KIND_WORD[kind] ?? 'another kind of file'}: Replace takes ${KIND_WORD[el.kind]} (add it as its own item instead)`, 4000);
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio'))
         edit(() => {
           el.media = id;
@@ -325,6 +329,8 @@
     }
     await addMedia(kind, id);
   }
+
+  const KIND_WORD: Partial<Record<MediaKind, string>> = { image: 'a picture', video: 'a video', audio: 'a sound' };
 
   /** A finished freehand stroke (slide coordinates) becomes a 'path' shape sized to fit it. */
   function addDrawing(pts: [number, number][], closed: boolean): void {
@@ -447,9 +453,11 @@
     const from = slide.elements.filter((e) => selected.includes(e.id));
     if (!from.length) return;
     undoApi.step(`Duplicated ${named(from)}`, () => {
-      const copies = from.map((e) => ({ ...clone(e), id: newId(), x: e.x + 30, y: e.y + 30 }));
-      for (const c of copies) {
-        c.zIndex = topZ();
+      // On top of the rest, stacked among themselves as the originals are (a caption stays over its picture).
+      const copies = [...from].sort((a, b) => a.zIndex - b.zIndex).map((e) => ({ ...clone(e), id: newId(), x: e.x + 30, y: e.y + 30 }));
+      const z = topZ();
+      for (const [i, c] of copies.entries()) {
+        c.zIndex = z + i;
         // (A copy of an item at the bottom-right edge stays partly on the slide.)
         keepOnStage(c, SLIDE_W, SLIDE_H);
       }
@@ -630,8 +638,9 @@
     if (!inCharge() || menu || shapeMenu) return;
     // Esc first closes whatever is open over the slide (the link box, a file picker) or stops drawing, and
     // goes no further (in the clue editor, it would close the whole clue).
-    if (e.key === 'Escape' && (linkBox || drawing || picker)) {
+    if (e.key === 'Escape' && (linkBox || drawing || picker || bgMenu)) {
       e.stopImmediatePropagation();
+      bgMenu = false;
       linkBox = null;
       drawing = false;
       picker = null;
@@ -789,8 +798,9 @@
         c.y += k * 30;
       }
     }
+    // On top, stacked among themselves as they were copied (a caption stays over its picture).
     const z = topZ();
-    copies.forEach((c, i) => (c.zIndex = z + i));
+    copies.sort((a, b) => a.zIndex - b.zIndex).forEach((c, i) => (c.zIndex = z + i));
     undoApi.step(`Pasted ${named(copies)}`, () => {
       slide.elements.push(...copies);
       selected = copies.map((c) => c.id);

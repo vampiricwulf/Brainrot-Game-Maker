@@ -212,6 +212,11 @@ in plain words for the people who make and host games. Anything committed but no
   where the desktop app keeps what.
 
 ### Fixed
+- **Slide editor: Duplicate and Paste keep how the items are stacked** (a caption over a picture sent to the back stays
+  over the copied picture, instead of going under it).
+- **Slide editor: Esc closes the Background ▾ box** first, instead of closing the clue or only deselecting.
+- **Slide editor: a file uploaded through the wrong button** (an .mp4 through 🖼 Image) goes on the slide as what it is,
+  not as a broken picture; Replace… with another kind of file says so instead of breaking the item.
 - **RPG: ＋ New look… starts its objects as they are by now**: a key already picked up stays picked up (it can't be
   picked up twice), a moved chest stays where it was moved.
 - **RPG: ✎ Edit screen keeps objects dropped in play on every look**, not only the one on screen while editing (a
