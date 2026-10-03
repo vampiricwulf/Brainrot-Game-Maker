@@ -11,6 +11,8 @@ export interface ChecklistLine {
   tab: Problem['tab'];
   /** Every problem it stands for (its tooltip). */
   details: string[];
+  /** A round's line: the round's id (it's found by that, as rounds may have moved since the line was worked out). */
+  round?: string;
   /** The first thing to finish in it (a board's first unfinished tile, an RPG's screen, a board game's space). */
   place?: Place;
 }
@@ -65,7 +67,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       if (p.level === 'warn') line.level = 'warn';
     } else {
       // An RPG's or a board game's problem says where it is (the screen, the space): the line goes there.
-      const fresh: ChecklistLine = { text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place ?? { tab: 'round', round: round.id } };
+      const fresh: ChecklistLine = { text: p.text, level: p.level, tab: p.tab, details: [p.text], round: round.id, place: p.place ?? { tab: 'round', round: round.id } };
       byRound.set(p.tab as number, fresh);
       lines.push(fresh);
     }

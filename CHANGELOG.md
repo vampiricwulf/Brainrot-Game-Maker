@@ -14,6 +14,11 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-03
 
 ### Fixed
+- **Importing clues no longer hides them on wheel and dice tiles**: filling a board leaves its 🎡/🎲 tiles as they
+  are (they already have something on them), and replacing a board or pasting a column makes a wheel or dice tile it
+  writes into a question tile. Before, the clue went on the tile but play spun the wheel or rolled the dice instead.
+- **A checklist line clicked right after moving or deleting a round opens the right round** (or nothing, if it was
+  deleted), instead of the round now in its old place or an empty editor.
 - **The checklist warns about item, wheel and dice buttons that point nowhere**: an item's Use button whose shop,
   stat, item or wheel was deleted (or with nothing chosen), and the same on a wheel's slices and on dice. Clicking the
   line opens that item, wheel or dice. Before, it said ✓ Ready to play, and the button only failed in the game.

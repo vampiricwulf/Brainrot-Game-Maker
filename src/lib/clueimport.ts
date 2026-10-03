@@ -118,6 +118,12 @@ export function groupByCategory(clues: ImportedClue[]): { name: string; clues: I
 function write(round: BoardRound, row: number, clue: Clue, c: ImportedClue): void {
   clearClue(clue);
   clue.empty = undefined;
+  // A wheel or dice tile would spin or roll in play and never show the question: it becomes a question tile.
+  if (clue.type === 'wheel' || clue.type === 'dice') {
+    clue.type = 'standard';
+    delete clue.wheelId;
+    delete clue.diceId;
+  }
   setSlideText(clue.questionSlide, c.question);
   setSlideText(clue.answerSlide, c.answer);
   // Its own value only when it differs from the row's.
@@ -217,7 +223,7 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
       used.add(cat.id);
       if (name) cat.title = name;
       const c = cat;
-      for (const [row, ic] of rowsFor(g.clues, round.values, (r) => !c.clues[r].empty && !clueHasContent(c.clues[r]))) put(row, c.clues[row], ic);
+      for (const [row, ic] of rowsFor(g.clues, round.values, (r) => !c.clues[r].empty && !clueHasContent(c.clues[r]) && c.clues[r].type !== 'wheel' && c.clues[r].type !== 'dice')) put(row, c.clues[row], ic);
     }
   }
   return { round, placed, left: clues.length - placed, filled };

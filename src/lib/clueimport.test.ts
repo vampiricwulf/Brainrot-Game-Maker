@@ -61,6 +61,17 @@ describe('clue import: onto a board', () => {
     expect([plan.placed, plan.left]).toEqual([3, 0]);
   });
 
+  it('leaves wheel and dice tiles alone when filling, and makes a replaced one a question tile', () => {
+    const round = newRound('R', 3);
+    round.categories[0].title = 'Geo';
+    Object.assign(round.categories[0].clues[0], { type: 'wheel', wheelId: 'w1' });
+    const plan = planImport(round, cluesFromTable(parseTable(table)), 'fill');
+    const geo = plan.round.categories[0].clues;
+    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), plan.placed]).toEqual(['wheel', '', 'G2', 3]);
+    const replaced = planImport(round, cluesFromTable(parseTable(table)), 'replace').round.categories[0].clues[0];
+    expect([replaced.type, replaced.wheelId, slideText(replaced.questionSlide)]).toEqual(['standard', undefined, 'G1']);
+  });
+
   it('replaces the board with the imported categories and rows', () => {
     const round = newRound('R', 6);
     const id = round.categories[0].id;

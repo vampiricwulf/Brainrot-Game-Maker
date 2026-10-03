@@ -333,9 +333,12 @@
     if (line.place?.tab === 'title') return void document.querySelector<HTMLInputElement>('[data-place="title"]')?.select();
     // Players are set on the ▶ Play screen.
     if (line.tab === 'play') return onplay();
-    tab = line.tab;
-    // (The line is worked out a moment after changes stop: a board's first tile to finish is looked up now.)
-    const round = typeof line.tab === 'number' ? game.rounds[line.tab] : undefined;
+    // (The line is worked out a moment after changes stop: its round is found by id, as rounds may have moved or gone
+    // since, and a board's first tile to finish is looked up now.)
+    const at = line.round ? game.rounds.findIndex((r) => r.id === line.round) : -1;
+    if (line.round && at < 0) return;
+    tab = line.round ? at : line.tab;
+    const round = line.round ? game.rounds[at] : undefined;
     const place = (round && isBoard(round) && boardPlace(game, round)) || line.place;
     // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels & Dice: it flashes there.
     if (place?.tab === 'stats' || place?.tab === 'tools') return void goTo(place);
