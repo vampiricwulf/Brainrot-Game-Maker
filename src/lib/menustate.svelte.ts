@@ -20,8 +20,11 @@ export function showMenu(e: MouseEvent, items: MenuEntry[], from?: HTMLElement):
   if (!shown.some((i) => 'label' in i)) return;
   e.preventDefault();
   e.stopPropagation();
-  const focused = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
-  const clicked = e.target instanceof Element ? e.target.closest<HTMLElement>(FOCUSABLE) : null;
+  // (Where there's a page: not in a unit test.)
+  const page = typeof document !== 'undefined';
+  const active = page ? document.activeElement : null;
+  const focused = page && active instanceof HTMLElement && active !== document.body ? active : null;
+  const clicked = page && e.target instanceof Element ? e.target.closest<HTMLElement>(FOCUSABLE) : null;
   contextMenu.open = { x: e.clientX, y: e.clientY, items: shown, from, back: from ?? clicked ?? focused ?? undefined };
 }
 
