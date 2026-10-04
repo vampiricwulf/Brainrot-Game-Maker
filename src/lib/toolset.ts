@@ -190,12 +190,24 @@ function stockKey(shop: Shop): string {
   return shop.pool?.trim() ? `pool:${shop.pool.trim()}` : shop.id;
 }
 
-/** How many of an item a shop has left (null = unlimited, 0 = sold out). */
-export function stockLeft(session: Session, shop: Shop, itemId: string): number | null {
+/**
+ * How many of an item a shop has left (null = unlimited, 0 = sold out). Shops sharing a pool (`game` given) start from
+ * the pool's stock: the first number any of them has for it (unlimited only when none has one), whichever is visited.
+ */
+export function stockLeft(session: Session, shop: Shop, itemId: string, game?: Game): number | null {
   const kept = session.stock?.[stockKey(shop)]?.[itemId];
   if (kept !== undefined) return kept;
   const entry = shop.stock.find((s) => s.item === itemId);
-  return entry ? entry.qty : 0;
+  if (!entry) return 0;
+  const pool = shop.pool?.trim();
+  if (pool && game) {
+    const start = (game.shops ?? [])
+      .filter((x) => x.pool?.trim() === pool)
+      .map((x) => x.stock.find((e) => e.item === itemId)?.qty)
+      .find((q): q is number => typeof q === 'number');
+    if (start !== undefined) return start;
+  }
+  return entry.qty;
 }
 
 export function setStock(session: Session, shop: Shop, itemId: string, qty: number | null): void {
@@ -300,7 +312,7 @@ export function buy(
   { price, allowShort = false }: { price?: number; allowShort?: boolean } = {},
 ): { ok: true; text: string } | { ok: false; error: string } {
   const cost = price ?? shopPrice(game, shop, itemId);
-  const left = stockLeft(session, shop, itemId);
+  const left = stockLeft(session, shop, itemId, game);
   if (left !== null && left <= 0) return { ok: false, error: 'Sold out' };
   const name = itemDef(game, itemId)?.name ?? 'an item';
   if (cost) {
@@ -336,7 +348,7 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
   e.qty -= 1;
   if (e.qty <= 0) list.splice(list.indexOf(e), 1);
   if (price) pay(game, session, shop, playerId, -price, `Sold ${entryName(game, e)} (${shop.name})`);
-  const left = stockLeft(session, shop, e.item!);
+  const left = stockLeft(session, shop, e.item!, game);
   if (left !== null && shop.stock.some((x) => x.item === e.item)) setStock(session, shop, e.item!, left + 1);
   const who = session.players.find((p) => p.id === playerId)?.name ?? 'Someone';
   return { ok: true, text: `${who} sold ${entryName(game, e)}${price ? ` for ${formatPrice(game, shop, price)}` : ''}` };

@@ -60,6 +60,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheel slices and dice faces: the Steal amount keeps its number when emptied to retype (it saved Steal 0) and can't be negative, and a Timer below 0 means no timer (it offered "Start -5s").
 - Dice with custom faces have at most 100 sides (the faces past 100 rolled with no label or effect), and lowering the sides says which faces went (Ctrl+Z brings them back).
 - Wheels: unticking "Each slice can only land once" mid-game puts the slices that landed back on the wheel, and the Restore count no longer counts slices deleted since.
+- Shops sharing a stock pool really share it from the start: the stock begins at the number any of them has, wherever the first sale is (a shop left at ∞ sold the pool's item without end, and each shop counted down from its own number).
 
 ## 2026-10-03
 

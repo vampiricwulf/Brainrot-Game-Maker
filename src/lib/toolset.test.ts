@@ -159,6 +159,16 @@ describe('shops', () => {
     expect(buy(game, session, realm, 'a', 'sword')).toEqual({ ok: false, error: 'Sold out' });
   });
 
+  it('a pool starts from the stock any of its shops has, even where the shop visited has it unlimited', () => {
+    const { game, session } = setup();
+    const village = shop('village', 'shared');
+    const realm = { ...shop('realm', 'shared'), stock: shop('realm', 'shared').stock.map((e) => ({ ...e, qty: null })) };
+    game.shops = [village, realm];
+    expect(stockLeft(session, realm, 'sword', game)).toBe(1);
+    buy(game, session, realm, 'a', 'sword');
+    expect(stockLeft(session, village, 'sword', game)).toBe(0);
+  });
+
   it('buys things back for a share of the price, and restocks them', () => {
     const { game, session } = setup();
     const s = { ...shop('village'), buysBack: { rate: 0.5 } };

@@ -32,7 +32,7 @@
       <!-- (An item listed twice, in a save from before the editor prevented it, shows once.) -->
       {#each shop.stock as s, i (i)}
         {@const def = itemDef(game, s.item)}
-        {@const left = stockLeft(session, shop, s.item)}
+        {@const left = stockLeft(session, shop, s.item, game)}
         {#if def && shop.stock.findIndex((x) => x.item === s.item) === i}
           {@const out = left !== null && left <= 0}
           <svelte:element

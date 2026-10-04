@@ -627,7 +627,7 @@
               {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
             </select>
           </label>
-          <label class="field" title="Shops with the same pool name share their stock">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>
+          <label class="field" title="Shops with the same pool name share their stock: it starts from the In stock number any of them has (unlimited only if none has one)">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>
           <label class="field" title="Players can sell items here for this share of the price (blank: it doesn't buy things back)">
             Buys back at (%)
             <input
