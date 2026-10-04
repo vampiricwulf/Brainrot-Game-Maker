@@ -87,6 +87,14 @@
           <p id="wager-state" class="note"></p>
           <p id="wager-err" class="err" role="alert"></p>
         </form>
+        <!-- A ✍ clue: everyone types an answer (only the host sees it). -->
+        <form id="answer-form" novalidate hidden>
+          <label for="answer-in" id="answer-label">Your answer (only the host sees it)</label>
+          <textarea id="answer-in" rows="2" maxlength="200" autocomplete="off" enterkeyhint="send" dir="auto"></textarea>
+          <button type="submit" class="primary" id="answer-send">Send answer</button>
+          <p id="answer-state" class="note"></p>
+          <p id="answer-err" class="err" role="alert"></p>
+        </form>
         <button id="buzz" type="button"><span id="buzz-big"></span><span id="buzz-small"></span></button>
         <div class="side foot">
           <p id="me" dir="auto"></p>

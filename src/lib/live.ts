@@ -152,6 +152,8 @@ export interface Live {
   lineup?: { name: string; color: string; members?: string[]; phone?: boolean }[];
   /** Phone buzzers: the players (or teams) with a phone connected now; their plates show 📱. */
   phones?: string[];
+  /** A ✍ clue: everyone answers on their phone; `in`: the players whose answer is in (never the words). */
+  answers?: { in: string[] };
   /**
    * Buzzer mode during a clue: open or not, who is answering, who already missed it. Outside buzzer mode `answering` is
    * the one player selected during a clue. Viewers see "🔔 Ann is answering".

@@ -21,13 +21,16 @@ export const BUZZ_PROTOCOL = 1;
  * teams that several phones join (HostState.teams). 'wagers': players send their Daily Double or Final wager from
  * their phone (HostState.wager), and only the host hears the amount. 'free': the host can free a seat without blocking
  * anyone (kick with block: false), for a player who came back on another phone. 'color': a seated phone asks for another
- * colour (PhoneMsg 'color'), passed on to the host, which takes it when it's free (HostState.colorPick).
+ * colour (PhoneMsg 'color'), passed on to the host, which takes it when it's free (HostState.colorPick). 'answers':
+ * everyone types an answer to the clue on their phone, and only the host sees it (HostState.answers).
  */
-export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
 /** The biggest wager a phone may send (and a seat's max the room passes on). */
 export const WAGER_MAX = 1_000_000_000;
+/** The longest answer a phone may type (characters). */
+export const ANSWER_MAX = 200;
 
 /** A team member's name, as typed on their phone (characters). */
 export const MEMBER_NAME_MAX = 24;
@@ -105,6 +108,43 @@ export interface HostState {
   colorPick?: boolean;
   /** The clue's answer is on screen: no more buzzes, not even to get in line. */
   answerShown?: boolean;
+  /**
+   * Everyone answers this clue on their phone (a ✍ clue): the seats in it type theirs while `open`. The words go to the
+   * host only: phoneView() gives each phone its own seat's.
+   */
+  answers?: AnswerAsk | null;
+}
+
+/** HostState.answers: whose answers are taken, for which clue. */
+export interface AnswerAsk {
+  /** Names this round of answers: a new id starts over (the room forgets what phones sent for another). */
+  id: string;
+  /** Phones may send (or change) theirs; false: locked (the answer is on screen). */
+  open: boolean;
+  /** got: the last answer (its `n`) the host took from this seat: one sent while the host was away comes again only if newer. */
+  seats: { id: string; got?: number }[];
+}
+
+/** An answer a phone sent, as the room keeps it (per seat: a team's newest, whoever on it sent it). */
+export interface SentAnswer {
+  text: string;
+  /** Counts up per seat: the host takes each once. */
+  n: number;
+  /** Teams: the member who sent it (id) and their name. */
+  member?: string;
+  by?: string;
+}
+
+/** Answers, as one phone sees them: its own seat's only. */
+export interface PhoneAnswer {
+  id: string;
+  open: boolean;
+  /** This phone's seat is in it. */
+  mine: boolean;
+  /** What this seat sent (teams: whoever on it sent it last). */
+  text?: string;
+  by?: string;
+  byYou?: boolean;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -174,6 +214,8 @@ export interface PhoneView {
   colorPick?: { taken: string[] };
   /** Someone else is answering and a buzz from this phone would still get in line behind them (the room adds it). */
   canQueue?: boolean;
+  /** Everyone answers this clue on their phone (HostState.answers), as this phone should see it. */
+  answer?: PhoneAnswer;
 }
 
 /**
@@ -217,14 +259,22 @@ export interface MemberRef {
  * when the host picked the team itself). `late`: this phone took its seat (or joined its team) after the wager round
  * began, so it isn't told the wager the host has (the room passes only what it sent itself as `sent`).
  */
-export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | null, by?: MemberRef | null, sent?: SentWager | null, late = false): PhoneView {
+export function phoneView(
+  s: HostState,
+  seatId: string | null,
+  me?: MemberRef | null,
+  by?: MemberRef | null,
+  sent?: SentWager | null,
+  late = false,
+  answer?: SentAnswer | null,
+): PhoneView {
   const seat = seatId ? s.seats.find((x) => x.id === seatId) : undefined;
   const a = s.phase === 'answering' && s.answering ? s.seats.find((x) => x.id === s.answering) : undefined;
   return {
     title: s.title,
     phase: s.phase,
     armId: s.armId,
-    clue: s.phase === 'lobby' ? null : s.clue ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) } : null,
+    clue: s.phase === 'lobby' && !s.answers ? null : s.clue ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) } : null,
     answering: a ? { name: a.name, color: a.color, you: a.id === seatId, ...(s.teams && by ? { by: by.name, byYou: !!me && me.id === by.id } : {}) } : null,
     you: seat
       ? { id: seat.id, name: seat.name, color: seat.color, score: s.scores[seat.id] ?? 0, lockedOut: s.lockedOut.includes(seat.id), ...(s.teams && me ? { member: me.name } : {}) }
@@ -236,6 +286,22 @@ export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | 
     ...wagerView(s, seatId, me, sent, late),
     ...finalView(s, seat?.id),
     ...(s.colorPick && seat && !s.teams ? { colorPick: { taken: s.seats.filter((x) => x.id !== seat.id).map((x) => x.color.toLowerCase()) } } : {}),
+    ...answerView(s, seat?.id, me, answer),
+  };
+}
+
+/** The answers part of a phone's view: its own seat's words only. */
+function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | null, sent?: SentAnswer | null): Pick<PhoneView, 'answer'> {
+  const a = s.answers;
+  if (!a || !seatId) return {};
+  const mine = a.seats.some((x) => x.id === seatId);
+  return {
+    answer: {
+      id: a.id,
+      open: a.open,
+      mine,
+      ...(mine && sent ? { text: sent.text, ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
+    },
   };
 }
 
@@ -402,7 +468,9 @@ export type RoomToHost =
    */
   | { t: 'wager'; id: string; seatId: string; amount: number; n: number; by?: string }
   /** Added later ('color'): a seated phone asks for this colour (#rrggbb) for its player. */
-  | { t: 'color'; seatId: string; color: string };
+  | { t: 'color'; seatId: string; color: string }
+  /** Added later ('answers'): a phone sent seatId's answer for the answer round `id` (n counts up per seat). */
+  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string };
 
 /** A phone → room. */
 export type PhoneMsg =
@@ -424,7 +492,9 @@ export type PhoneMsg =
   /** Added later ('wagers'): this phone's seat's wager for the host's wager round `id` (a whole number, 0 or more). */
   | { t: 'wager'; id: string; amount: number }
   /** Added later ('color'): this phone's player wants this colour (#rrggbb); the host takes it if it's free. */
-  | { t: 'color'; color: string };
+  | { t: 'color'; color: string }
+  /** Added later ('answers'): this phone's seat's answer for the answer round `id`. */
+  | { t: 'answer'; id: string; text: string };
 
 /** Why the room didn't take a phone's wager: not taking one now, over the max (with the limit on), not a whole number, too many sends. */
 export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';
@@ -497,7 +567,9 @@ export type RoomToPhone =
   /** Added later: echo this id at once (the room times this phone's round trip). */
   | { t: 'probe'; id: number }
   /** Added later ('wagers'): the answer to this phone's wager (its view has the wager as it stands). */
-  | { t: 'wagered'; id: string; ok: boolean; amount?: number; reason?: WagerRefusal; max?: number };
+  | { t: 'wagered'; id: string; ok: boolean; amount?: number; reason?: WagerRefusal; max?: number }
+  /** Added later ('answers'): the answer to this phone's answer (its view has it as it stands). */
+  | { t: 'answered'; id: string; ok: boolean; reason?: 'closed' | 'bad' | 'slow' };
 
 /** POST {base}/api/rooms → this. Then the host connects to {wss base}/ws/{code}?host={hostToken}; phones to /ws/{code}. */
 export interface NewRoom {

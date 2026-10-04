@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { clip, WAGER_MAX, type BuzzPhase, type HostState, type WagerAsk } from './buzzproto';
+import { clip, WAGER_MAX, type BuzzPhase, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type Session, type Slide, type TextEl } from './model';
 import { currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, wagerFromPhone } from './session';
 
@@ -208,9 +208,9 @@ export function hostState(
   session: Session,
   b: BuzzState,
   earlyLockMs: number,
-  extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null } = {},
+  extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null; answers?: AnswerAsk | null } = {},
 ): HostState {
-  const info = b.phase !== 'lobby' && session.phase === 'clue' ? currentClueInfo(session, game) : null;
+  const info = (b.phase !== 'lobby' || extra.answers) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
   const seats = session.players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color }));
   return {
     title: clip(game.title, 200),
@@ -232,6 +232,7 @@ export function hostState(
     ...(extra.locked ? { locked: true } : {}),
     ...(teamsOn(game.settings) ? { teams: true } : {}),
     ...(extra.wager ? { wager: extra.wager } : {}),
+    ...(extra.answers ? { answers: extra.answers } : {}),
     ...(session.phase === 'end' ? { over: true } : {}),
     ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
     ...(info && session.revealed ? { answerShown: true } : {}),

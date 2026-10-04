@@ -371,6 +371,11 @@ export interface Clue {
   tileFace?: { text?: string; image?: Id };
   /** Blank tile, not playable. */
   empty?: boolean;
+  /**
+   * Everyone answers (a standard clue, with phone buzzers): no buzzing; each player types an answer on their phone, only
+   * the host sees them, and judges each.
+   */
+  everyone?: boolean;
 }
 
 // ---------- Wheels & dice (spec §4, §5.6) ----------
@@ -707,7 +712,7 @@ export interface Session {
    * new phones take a seat; players already in come back). `buzz`: the buzzers during the open clue (`clue`: its
    * round.cat.row; `floor`: the last opening before it), so a reload mid-clue keeps who's answering and who missed.
    * `wagerGot`: the wagers sent from phones the host took in wager round `id` (each player's last count), so one isn't
-   * taken twice.
+   * taken twice. `answers`: the answers phones sent to the ✍ clue `id` (only the host sees them).
    */
   remote?: {
     code: string;
@@ -717,6 +722,7 @@ export interface Session {
     locked?: boolean;
     buzz?: BuzzState & { clue: string; floor: number };
     wagerGot?: { id: string; seats: Record<Id, number> };
+    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string }> };
   } | null;
 }
 

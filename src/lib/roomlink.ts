@@ -1,12 +1,13 @@
 // The host's line to its buzzer room (see buzzproto.ts): make a room, keep a WebSocket to it open (reconnecting with the
 // same code and host token after a drop), send the host's state, and pass on what the room says. No Svelte here, so it
 // can be tested with a fake WebSocket; remote.svelte.ts makes it reactive for the app.
-import { BUZZ_PROTOCOL, isRoomCode, socketUrl, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type QueuedBuzz, type RoomToHost } from './buzzproto';
+import { ANSWER_MAX, BUZZ_PROTOCOL, isRoomCode, socketUrl, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type QueuedBuzz, type RoomToHost } from './buzzproto';
 
 export type RoomStatus = 'off' | 'connecting' | 'online' | 'reconnecting' | 'error';
 export type RoomBuzz = Extract<RoomToHost, { t: 'buzz' }>;
 export type RoomQueue = Extract<RoomToHost, { t: 'queue' }>;
 export type RoomWager = Extract<RoomToHost, { t: 'wager' }>;
+export type RoomAnswer = Extract<RoomToHost, { t: 'answer' }>;
 
 /** What the link needs from a WebSocket (the browser's, or a test's fake). */
 export interface SocketLike {
@@ -39,6 +40,8 @@ export interface LinkEvents {
   onWager?: (w: RoomWager) => void;
   /** A seated phone asks for another colour for its player. */
   onColor?: (c: { seatId: string; color: string }) => void;
+  /** A player sent their answer from their phone (a ✍ clue). */
+  onAnswer?: (a: RoomAnswer) => void;
 }
 
 const OPEN = 1;
@@ -123,6 +126,10 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
         : null;
     case 'color':
       return isStr(m.seatId) && typeof m.color === 'string' && /^#[0-9a-f]{6}$/i.test(m.color) ? { t: 'color', seatId: m.seatId, color: m.color.toLowerCase() } : null;
+    case 'answer':
+      return isStr(m.id, 100) && m.id && isStr(m.seatId) && isStr(m.text, ANSWER_MAX * 4) && m.text && Number.isSafeInteger(m.n) && (m.n as number) >= 1
+        ? { t: 'answer', id: m.id, seatId: m.seatId, text: m.text, n: m.n as number, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
+        : null;
     default:
       return null;
   }
@@ -395,6 +402,9 @@ export class RoomLink {
         return;
       case 'color':
         this.ev.onColor?.(m);
+        return;
+      case 'answer':
+        this.ev.onAnswer?.(m);
         return;
       case 'pong':
         return;

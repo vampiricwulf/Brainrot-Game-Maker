@@ -151,6 +151,16 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(s.scores).toEqual({ a: 0, b: 0 });
   });
 
+  it('a ✍ clue: the answers asked for go along with the clue words (the phones need them to answer), never the answer', () => {
+    const { game, session } = setup();
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    const s = hostState(game, session, newBuzz(), 0, { answers: { id: 'c', open: true, seats: [{ id: 'a' }, { id: 'b' }] } });
+    expect(s.phase).toBe('lobby');
+    expect(s.clue?.text).toBe('This dog says doge');
+    expect(s.answers).toEqual({ id: 'c', open: true, seats: [{ id: 'a' }, { id: 'b' }] });
+    expect(JSON.stringify(s)).not.toContain('Shiba');
+  });
+
   it('lets players pick their colour unless it is turned off or there are teams', () => {
     const { game, session } = setup();
     expect(hostState(game, session, newBuzz(), 0).colorPick).toBe(true);

@@ -19,6 +19,7 @@
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
   import RoundNav from './host/RoundNav.svelte';
+  import AnswersHost from './host/AnswersHost.svelte';
   import InlineAsk from './host/InlineAsk.svelte';
   import RpgHost from './rpg/RpgHost.svelte';
   import type { RpgAsk } from './rpg/hostops';
@@ -67,6 +68,9 @@
     onprevround,
     ongotoround,
     onbackfromfinal,
+    everyone = false,
+    answerPhones = [],
+    onanswerjudge = () => {},
     onbackfromend,
     onrematch,
     onintronext,
@@ -157,6 +161,12 @@
     /** Jump to any round (the round picker). */
     ongotoround: (index: number) => void;
     onbackfromfinal: () => void;
+    /** A ✍ clue: everyone answers on their phone (AnswersHost). */
+    everyone?: boolean;
+    /** The players with a phone connected now. */
+    answerPhones?: string[];
+    /** ✔ / ✘ on one player's phone answer. */
+    onanswerjudge?: (playerId: string, sign: 1 | -1) => void;
     onbackfromend: () => void;
     onrematch: () => void;
     onintronext: () => void;
@@ -214,7 +224,7 @@
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
-  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd);
+  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
   const buzz = $derived(app.live.buzz);
   const lockedNames = $derived(
     (buzz?.lockedOut ?? [])
@@ -695,6 +705,10 @@
         {#key info?.clue.id}
           <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={onddshow} oncancel={oncancelclue} />
         {/key}
+      {/if}
+
+      {#if everyone && info}
+        <div class="mode-host"><AnswersHost {game} {session} clueId={info.clue.id} phones={answerPhones} open={!session.revealed} onjudge={onanswerjudge} /></div>
       {/if}
 
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->

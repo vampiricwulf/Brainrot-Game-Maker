@@ -4,7 +4,7 @@ import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzpro
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
-import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus, type RoomWager } from './roomlink';
+import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
@@ -80,6 +80,7 @@ function newLink(base: string): RoomLink {
       onQueue: (q) => queueWatchers.forEach((fn) => fn(q)),
       onFull: () => (remote.fullAt = Date.now()),
       onWager: (w) => wagerWatchers.forEach((fn) => fn(w)),
+      onAnswer: (a) => answerWatchers.forEach((fn) => fn(a)),
       onColor: (c) => colorWatchers.forEach((fn) => fn(c)),
     },
     deps,
@@ -99,6 +100,13 @@ export function onRoomBuzz(fn: (b: RoomBuzz) => void): () => void {
 export function onRoomQueue(fn: (q: RoomQueue) => void): () => void {
   queueWatchers.add(fn);
   return () => queueWatchers.delete(fn);
+}
+
+const answerWatchers = new Set<(a: RoomAnswer) => void>();
+/** A player sent their answer to a ✍ clue from their phone. Returns the unsubscribe. */
+export function onRoomAnswer(fn: (a: RoomAnswer) => void): () => void {
+  answerWatchers.add(fn);
+  return () => answerWatchers.delete(fn);
 }
 
 const colorWatchers = new Set<(c: { seatId: string; color: string }) => void>();
@@ -165,6 +173,8 @@ export const moveMember = (member: string, seatId: string) => !!link?.send({ t: 
 export const roomHasTeams = (): boolean => remote.features.includes('teams');
 /** The room this window is in takes wagers from phones (an older buzzer server doesn't: the host types them). */
 export const roomHasWagers = (): boolean => remote.features.includes('wagers');
+/** The room this window is in takes answers from phones (✍ clues; an older buzzer server doesn't). */
+export const roomHasAnswers = (): boolean => remote.features.includes('answers');
 
 /** Close the room: the phones are told the game is over. */
 export function closeRoom(): void {

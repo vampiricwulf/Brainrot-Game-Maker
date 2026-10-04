@@ -307,6 +307,13 @@
             bind:this={emptyBox}
             bind:checked={() => !!clue.empty, (v) => ((clue.empty = v), !v && followDailyDoubles(round))}
           /> Empty tile (not playable)</label>
+        {#if clue.type === 'standard'}
+          <label
+            class="check"
+            title="With phone buzzers: nobody buzzes; every player types an answer on their phone, only you see them, and you mark each right or wrong. Without phones it plays as usual."
+            ><input type="checkbox" disabled={clue.empty} bind:checked={() => !!clue.everyone, (v) => (v ? (clue.everyone = true) : delete clue.everyone)} /> ✍ Everyone answers (in secret, on their phones)</label
+          >
+        {/if}
         <label class="field">
           Value
           <!-- Whole points, never below 0 (blank: the row's value). -->

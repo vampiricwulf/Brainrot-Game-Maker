@@ -18,14 +18,14 @@
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
-  import { clip, type HostState, type WagerAsk } from '../lib/buzzproto';
+  import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
-    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomBuzz, onRoomColor, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomColor, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
     resendHostState, roomHasWagers, roomLink, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
-  import type { RoomBuzz, RoomQueue, RoomWager } from '../lib/roomlink';
+  import type { RoomBuzz, RoomAnswer, RoomQueue, RoomWager } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
@@ -251,6 +251,18 @@
       return { name: p.name, color: p.color, ...(members.length ? { members } : {}), ...(app.live.phones?.includes(p.id) ? { phone: true } : {}) };
     });
   }
+  // A ✍ clue: viewers see that everyone is answering, and who has (never what).
+  $effect(() => {
+    const id = everyone && info ? info.clue.id : null;
+    const ans = session.remote?.answers;
+    const inNow = id && ans?.id === id ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id) : [];
+    untrack(() => {
+      if (!id) return void (app.live.answers && delete app.live.answers);
+      const was = app.live.answers?.in ?? [];
+      if (app.live.answers && was.length === inNow.length && was.every((x, i) => x === inNow[i])) return;
+      app.live.answers = { in: inNow };
+    });
+  });
   // Who has a phone buzzer connected right now: their plates (and the "Starting soon" lineup) show 📱.
   $effect(() => {
     const on = phonesOn && remote.status === 'online' ? [...new Set(remote.phones.filter((p) => p.connected && p.seatId).map((p) => p.seatId!))].sort() : [];
@@ -482,6 +494,7 @@
     const offBuzz = onRoomBuzz(roomBuzz);
     const offQueue = onRoomQueue(roomQueueIn);
     const offWager = onRoomWager(roomWager);
+    const offAnswer = onRoomAnswer(roomAnswer);
     const offColor = onRoomColor(roomColor);
     if (session.remote && phonesOn) rejoinRoom(session.remote);
     else if (session.remote) {
@@ -508,6 +521,7 @@
       offBuzz();
       offQueue();
       offWager();
+      offAnswer();
       offColor();
       // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
       // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
@@ -677,8 +691,10 @@
 
   const info = $derived(currentClueInfo(session, game));
 
-  /** Buzzer mode, while a clue is open (a Daily Double has its one player): players buzz in. */
-  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd);
+  /** A ✍ clue with phone buzzers: everyone types an answer on their phone instead of buzzing. */
+  const everyone = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !!info?.clue.everyone && info.clue.type === 'standard');
+  /** Buzzer mode, while a clue is open (a Daily Double has its one player; a ✍ clue has everyone answer): players buzz in. */
+  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
   const playerIds = () => session.players.map((p) => p.id);
@@ -925,7 +941,24 @@
 
   /** What the buzzer room gets now: the game's state for the phones, their status line, 🔒, and the wagers they may send. */
   function roomState(): HostState {
-    return hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked, wager: phoneWagerAsk() });
+    return hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked, wager: phoneWagerAsk(), answers: phoneAnswerAsk() });
+  }
+
+  /** A ✍ clue's answers phones may send now (until its answer is on screen), with the ones already taken. */
+  function phoneAnswerAsk(): AnswerAsk | null {
+    if (!everyone || !info) return null;
+    const got = session.remote?.answers?.id === info.clue.id ? session.remote.answers.seats : {};
+    return { id: info.clue.id, open: !session.revealed, seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })) };
+  }
+
+  /** A player sent their answer to the ✍ clue from their phone: the host sees it (nobody else). One already taken is skipped. */
+  function roomAnswer(a: RoomAnswer): void {
+    const r = session.remote;
+    const ask = phonesOn && r ? phoneAnswerAsk() : null;
+    const seat = ask?.open && ask.id === a.id ? ask.seats.find((x) => x.id === a.seatId) : undefined;
+    if (!r || !ask || !seat || a.n <= (seat.got ?? 0)) return;
+    const seats = r.answers?.id === ask.id ? r.answers.seats : {};
+    r.answers = { id: ask.id, seats: { ...seats, [a.seatId]: { text: a.text, n: a.n, ...(a.by && game.settings.buzzTeams ? { by: a.by } : {}) } } };
   }
 
   /** The wagers phones may send now (none before the game starts), with the ones already taken from them. */
@@ -936,11 +969,6 @@
     return first && Object.keys(got).length ? wagerAsk(game, session, wagerLimitsOff, got) : first;
   }
 
-  /**
-   * A player sent their wager from their phone (the room checked it). It goes in their box, marked 📱 (the host can
-   * still type over it): a Daily Double's before its question shows; a Final's on its wager screen, as a step ("Ann’s
-   * wager (from their phone): $500"). One already taken (a room passing it on again after a reconnect) is skipped.
-   */
   /**
    * A player picked another colour on their phone: theirs if it's one of the players' colours (they read on stream) and
    * no other player has it. Before the game it's simply their colour; during it, a step like any other.
@@ -954,6 +982,11 @@
     else logged(session, `${p.name} picked a new colour on their phone`, () => (p.color = color));
   }
 
+  /**
+   * A player sent their wager from their phone (the room checked it). It goes in their box, marked 📱 (the host can
+   * still type over it): a Daily Double's before its question shows; a Final's on its wager screen, as a step ("Ann’s
+   * wager (from their phone): $500"). One already taken (a room passing it on again after a reconnect) is skipped.
+   */
   function roomWager(w: RoomWager): void {
     const r = session.remote;
     const ask = phonesOn && r ? phoneWagerAsk() : null;
@@ -3010,6 +3043,9 @@
         onreopen={toggleTile}
         onundo={doUndo}
         onredo={doRedo}
+        {everyone}
+        answerPhones={app.live.phones ?? []}
+        onanswerjudge={(id, sign) => award(sign, [id], amount ?? info?.value ?? null)}
         onnextround={() => nextRound(1)}
         onprevround={() => nextRound(-1)}
         ongotoround={(i) => nextRound(i - session.currentRound)}

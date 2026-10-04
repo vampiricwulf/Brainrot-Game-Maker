@@ -23,6 +23,7 @@ import {
   rankKey,
   WAGER_RATE,
   COLOR_RATE,
+  ANSWER_RATE,
   COLOR_WINDOW_MS,
   WAGER_WINDOW_MS,
   Room,
@@ -118,7 +119,7 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers'] });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1392,7 +1393,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -1657,6 +1658,71 @@ describe('colours', () => {
     g.t.now += COLOR_WINDOW_MS;
     g.pa.send({ t: 'color', color: '#111111' });
     expect(g.hostAll('color')).toHaveLength(COLOR_RATE + 1);
+  });
+});
+
+describe('answers (everyone answers on their phone)', () => {
+  const ask = (x: Partial<NonNullable<HostState['answers']>> = {}): HostState['answers'] => ({ id: 'clue1', open: true, seats: [{ id: 'a' }, { id: 'b' }], ...x });
+  const said = (msgs: unknown[]) => JSON.stringify(msgs);
+
+  it('a phone sends its answer: the host hears it, that phone sees it, no other phone does', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    expect(g.pa.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: true });
+    expect(g.pc.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: false });
+    g.pa.send({ t: 'answer', id: 'clue1', text: '  What is   a Shiba Inu?  ' });
+    expect(g.pa.last('answered')).toEqual({ t: 'answered', id: 'clue1', ok: true });
+    expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'What is a Shiba Inu?', n: 1 });
+    expect(g.pa.last('view')!.view.answer).toMatchObject({ text: 'What is a Shiba Inu?' });
+    for (const p of [g.pb, g.pc, g.phone('viewer')]) expect(said(p.msgs())).not.toContain('Shiba');
+    expect(said(g.hostAll('phones'))).not.toContain('Shiba');
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Doge' });
+    expect(g.hostLast('answer')).toMatchObject({ text: 'Doge', n: 2 });
+  });
+
+  it('refuses one when none is asked, for another clue, from a seat not in it, empty, or once locked', () => {
+    const g = game();
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'x' });
+    expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.pa.send({ t: 'answer', id: 'other', text: 'x' });
+    g.pc.send({ t: 'answer', id: 'clue1', text: 'x' });
+    expect(g.pc.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    for (const text of ['', '   ', 5, null]) {
+      g.pb.send({ t: 'answer', id: 'clue1', text });
+      expect(g.pb.last('answered')).toMatchObject({ ok: false, reason: 'bad' });
+    }
+    g.send({ t: 'state', state: state({ answers: ask({ open: false }) }) });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'late' });
+    expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    expect(g.hostAll('answer')).toHaveLength(0);
+  });
+
+  it('limits how often a phone sends one, and how long it is', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'y'.repeat(500) });
+    expect(Array.from(g.hostLast('answer')!.text).length).toBeLessThanOrEqual(200);
+    for (let i = 1; i < ANSWER_RATE; i++) g.pa.send({ t: 'answer', id: 'clue1', text: `a${i}` });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'too many' });
+    expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'slow' });
+  });
+
+  it('one sent while the host is away reaches it when it is back, unless it took it already; a new clue starts over', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.room.hostClose();
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Away' });
+    g.pb.send({ t: 'answer', id: 'clue1', text: 'Taken' });
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state({ answers: ask({ seats: [{ id: 'a' }, { id: 'b', got: 1 }] }) }) });
+    g.room.hostClose();
+    g.room.hostOpen();
+    // Back the first time: both. The second: only the one it hasn't taken.
+    expect(g.hostAll('answer').filter((m) => m.text === 'Away')).toHaveLength(2);
+    expect(g.hostAll('answer').filter((m) => m.text === 'Taken')).toHaveLength(1);
+    g.send({ t: 'state', state: state({ answers: ask({ id: 'clue2' }) }) });
+    expect(g.pa.last('view')!.view.answer).toEqual({ id: 'clue2', open: true, mine: true });
   });
 });
 

@@ -94,6 +94,11 @@ let wagerErr = '';
 let wagerFor = '';
 /** A wager sent that the room hasn't answered yet. */
 let wagerSending = false;
+/** A ✍ clue's answer: on its way, the last refusal, what's in the box for (so a new view doesn't wipe what's typed). */
+let answerSending = false;
+let answerErr = '';
+let answerFor = '';
+let wasAnsUp = false;
 /** The colour picker is open; the colours it was last drawn with (redrawn only when they change, so focus stays). */
 let colorsOpen = false;
 let colorsKey = '';
@@ -271,6 +276,10 @@ function dropped(s: WebSocket, wait?: number): void {
     wagerSending = false;
     wagerErr = 'The connection dropped. If it doesn’t say ✔ Sent once it’s back, send it again.';
   }
+  if (answerSending) {
+    answerSending = false;
+    answerErr = 'The connection dropped. If it doesn’t say ✔ Sent once it’s back, send it again.';
+  }
   render();
   if (notice?.final) return;
   const full = notice?.full ? Math.min(30_000, 3000 * 2 ** Math.max(0, fullTries - 1)) : undefined;
@@ -387,6 +396,13 @@ function onMessage(m: RoomToPhone): void {
       if (m.ok) vibrate(40);
       break;
     }
+    case 'answered':
+      answerSending = false;
+      answerErr = m.ok
+        ? ''
+        : ({ closed: 'Answers are closed now.', bad: 'Type an answer first.', slow: 'Too many tries: wait a few seconds.' }[m.reason ?? 'bad'] ?? "That didn't work. Try again.");
+      if (m.ok) vibrate(40);
+      break;
     case 'kicked': {
       const team = !!view?.teams;
       seatId = null;
@@ -797,7 +813,7 @@ function renderBuzz(v: PhoneView): void {
   b.style.setProperty('--seat-ink', ink(you.color));
   const clue = $('clue');
   clue.replaceChildren();
-  if (v.phase !== 'lobby' && v.clue) {
+  if (v.clue && (v.phase !== 'lobby' || v.answer)) {
     clue.append(v.clue.text);
     if (v.clue.caption) {
       const c = document.createElement('small');
@@ -812,7 +828,16 @@ function renderBuzz(v: PhoneView): void {
   // Above the box: what's on screen ("Final Jeopardy! · US Presidents", "Daily Double — you're up!").
   if (boxUp && !clue.childNodes.length && v.status) clue.append(v.status);
   $('wager-form').hidden = !boxUp;
-  b.hidden = boxUp;
+  // A ✍ clue: the answer box instead of the buzzer while answers are open.
+  const ans = !boxUp && v.answer?.mine ? v.answer : null;
+  const ansUp = !!ans?.open;
+  $('answer-form').hidden = !ansUp;
+  b.hidden = boxUp || ansUp;
+  if (ansUp !== wasAnsUp) {
+    const lost = !document.activeElement || document.activeElement === document.body || !!$('answer-form').contains(document.activeElement) || document.activeElement === b;
+    wasAnsUp = ansUp;
+    if (lost) queueMicrotask(() => (ansUp ? $('answer-in') : b).focus());
+  }
   // The keys (and a screen reader) follow: into the box as it opens, back to the buzzer as it goes.
   if (boxUp !== wasBoxUp) {
     const lost = !document.activeElement || document.activeElement === document.body || !!$('wager-form').contains(document.activeElement) || document.activeElement === b;
@@ -820,6 +845,8 @@ function renderBuzz(v: PhoneView): void {
     if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : b).focus());
   }
   if (boxUp) return renderWager(v, wager!, sym);
+  if (ansUp) return renderAnswer(v, ans!, sym);
+  if (!ans) ((answerFor = ''), (answerErr = ''));
   wagerFor = '';
   wagerErr = '';
   const left = Math.ceil((lockedUntil - serverNow()) / 1000);
@@ -833,7 +860,10 @@ function renderBuzz(v: PhoneView): void {
   const team = !!v.teams;
   /** Teams: a teammate's buzz holds your team's place (not yours). */
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
-  if (wager?.mine) {
+  if (ans && !ans.open) {
+    // A ✍ clue whose answer is on screen: what this seat sent stays in sight.
+    [cls, big, small] = ['off', 'Answers locked', ans.text ? `${team ? 'Your team’s' : 'Yours'}: “${ans.text}”` : 'None sent'];
+  } else if (wager?.mine) {
     // Locked: the question is up.
     const yours = team ? 'Your team’s wager' : 'Your wager';
     [cls, big, small] = [
@@ -1005,6 +1035,27 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   show('s-buzz');
 }
 
+/** A ✍ clue: this seat's answer box (what's in, who sent it, why the last one wasn't taken). */
+function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: string): void {
+  const team = !!v.teams;
+  $('answer-label').textContent = `${team ? 'Your team’s answer' : 'Your answer'} (only the host sees it)`;
+  const inp = $<HTMLTextAreaElement>('answer-in');
+  // Filled with what's in when the box comes up, or when what's in changes (a teammate) while not typing.
+  const key = `${a.id} ${a.text ?? ''}`;
+  if (key !== answerFor && (document.activeElement !== inp || !answerFor.startsWith(`${a.id} `))) {
+    inp.value = a.text ?? '';
+    answerFor = key;
+  }
+  let state = '';
+  if (a.text) state = `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}. You can change it until the host shows the answer.`;
+  $('answer-state').textContent = answerSending ? 'Sending…' : state;
+  $('answer-err').textContent = answerErr;
+  $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
+  const hostGone = renderFoot(v, sym);
+  say(sentences([connected ? '' : 'Reconnecting…', $('clue').textContent ?? '', 'Everyone answers', state, hostGone ? ($('host-note').textContent ?? '') : '']));
+  show('s-buzz');
+}
+
 /** The game is over: "You came 1st" / "with $700 🎉" (teams: your team; a tie says so). */
 function placeLine(v: PhoneView): { big: string; small: string } {
   const f = v.final!;
@@ -1051,7 +1102,8 @@ document.addEventListener('keydown', (e) => {
     !e.repeat &&
     !$('s-buzz').hidden &&
     !(e.target instanceof HTMLButtonElement && e.target !== $('buzz')) &&
-    !(e.target instanceof HTMLInputElement)
+    !(e.target instanceof HTMLInputElement) &&
+    !(e.target instanceof HTMLTextAreaElement)
   ) {
     e.preventDefault();
     buzz(e.timeStamp);
@@ -1121,6 +1173,28 @@ $('wager-form').addEventListener('submit', (e) => {
   if (!connected) wagerErr = 'Not connected: try again in a moment.';
   send({ t: 'wager', id: w.id, amount });
   render();
+});
+$('answer-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const a = view?.answer;
+  if (!a?.mine || !a.open) return;
+  const text = $<HTMLTextAreaElement>('answer-in').value.trim();
+  if (!text) {
+    answerErr = 'Type an answer first.';
+    return render();
+  }
+  answerErr = '';
+  answerSending = connected;
+  if (!connected) answerErr = 'Not connected: try again in a moment.';
+  send({ t: 'answer', id: a.id, text });
+  render();
+});
+// Enter sends (Shift+Enter: a new line).
+$('answer-in').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    $<HTMLFormElement>('answer-form').requestSubmit();
+  }
 });
 $('sound').addEventListener('click', () => {
   soundOn = !soundOn;

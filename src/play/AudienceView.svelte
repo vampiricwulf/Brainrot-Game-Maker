@@ -171,7 +171,7 @@
       session.phase === 'slides';
     if (!onSlide) return 0;
     if (live.timer) return TIMER_BAND;
-    return answering || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) ? PILL_BAND : 0;
+    return answering || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
   });
   /**
    * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
@@ -561,6 +561,14 @@
 
 {#if answering}
   <AnsweringPlate player={answering} by={live.buzz?.by} />
+{:else if live.answers && session.phase === 'clue' && !session.revealed}
+  <!-- A ✍ clue: everyone answers on their phone; a dot per player fills in once theirs is in (never the words). -->
+  <div class="everyone" data-everyone in:fly={{ y: -60, duration: 250 }}>
+    <span>✍ Everyone answers</span>
+    <span class="dots" role="img" aria-label="{live.answers.in.length} of {session.players.length} answers in">
+      {#each session.players as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
+    </span>
+  </div>
 {/if}
 
 {#if live.overlay}
@@ -960,6 +968,40 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .everyone {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 10px 30px;
+    font-family: var(--board-font);
+    font-size: 46px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.75);
+    border: 5px solid var(--value, #ffcc00);
+    border-radius: 999px;
+    z-index: 16;
+    pointer-events: none;
+  }
+  .everyone .dots {
+    display: flex;
+    gap: 10px;
+  }
+  .everyone .dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 4px solid var(--c);
+    transition: background 0.2s;
+  }
+  .everyone .dot.in {
+    background: var(--c);
   }
   .lineup-phone {
     display: inline-block;

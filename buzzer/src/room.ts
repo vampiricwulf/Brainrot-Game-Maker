@@ -63,6 +63,7 @@ import {
   BUZZ_PROTOCOL,
   MEMBER_NAME_MAX,
   WAGER_MAX,
+  ANSWER_MAX,
   phoneView,
   ROOM_FEATURES,
   TIE_MS,
@@ -77,6 +78,7 @@ import {
   type RoomToHost,
   type RoomToPhone,
   type Seat,
+  type SentAnswer,
   type SentWager,
   type WagerRefusal,
   type WagerSeat,
@@ -122,6 +124,9 @@ export const WAGER_WINDOW_MS = 10_000;
 /** Colours a phone may ask for per COLOR_WINDOW_MS (trying a few is fine; a script cycling them isn't). */
 export const COLOR_RATE = 10;
 export const COLOR_WINDOW_MS = 10_000;
+/** Answers a phone may send per ANSWER_WINDOW_MS (fixing a typo a few times is fine; a script isn't). */
+export const ANSWER_RATE = 10;
+export const ANSWER_WINDOW_MS = 10_000;
 /** After the first buzz of an arm, the room waits at least this long for buzzes still on their way before deciding… */
 export const GRACE_MS = 250;
 /** …and at most this long, however slow the network of a phone that could still beat it (see graceEnd). */
@@ -189,6 +194,8 @@ export interface RoomSaved {
   memberLocks?: Record<string, number>;
   /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat; at: when the round began. */
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
+  /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat. */
+  answers?: { id: string; seats: Record<string, SentAnswer> };
   /** Seat id → when its token was handed out (a phone coming back with it keeps the time; see Wagers above). */
   seatedAt?: Record<string, number>;
   /**
@@ -260,6 +267,8 @@ interface Phone extends PhoneSaved {
   wagerRate?: Window;
   /** Colours asked for lately (COLOR_RATE). */
   colorRate?: Window;
+  /** Answers sent lately (ANSWER_RATE). */
+  answerRate?: Window;
 }
 
 interface Window {
@@ -365,6 +374,15 @@ export class Room {
     if (sent && st?.wager?.id === sent.id)
       for (const [seatId, w] of Object.entries(sent.seats))
         if (w.n > (st.wager.seats.find((x) => x.id === seatId)?.got ?? 0)) this.tellWager(sent.id, seatId, w);
+    // And answers.
+    const typed = this.s.answers;
+    if (typed && st?.answers?.id === typed.id)
+      for (const [seatId, a] of Object.entries(typed.seats))
+        if (a.n > (st.answers.seats.find((x) => x.id === seatId)?.got ?? 0)) this.tellAnswer(typed.id, seatId, a);
+  }
+
+  private tellAnswer(id: string, seatId: string, a: SentAnswer): void {
+    if (this.hostHere) this.deps.toHost({ t: 'answer', id, seatId, text: a.text, n: a.n, ...(a.by ? { by: a.by } : {}) });
   }
 
   private tellWager(id: string, seatId: string, w: SentWager): void {
@@ -464,6 +482,11 @@ export class Room {
     if (!ask) delete this.s.wagers;
     else if (this.s.wagers?.id !== ask.id) this.s.wagers = { id: ask.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.wagers.seats)) if (!ask.seats.some((x) => x.id === id)) delete this.s.wagers.seats[id];
+    // The same for answers.
+    const ans = next.answers;
+    if (!ans) delete this.s.answers;
+    else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {} };
+    else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
       for (const p of this.phones.values()) if (p.pendingName !== undefined) {
@@ -755,7 +778,7 @@ export class Room {
       delete p.flooded;
       this.deps.savePhone(strip(p));
     }
-    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager') p.active = this.deps.now();
+    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer') p.active = this.deps.now();
     if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
       p.device = m.device;
       this.deps.savePhone(strip(p));
@@ -796,6 +819,9 @@ export class Room {
         break;
       case 'color':
         if (typeof m.color === 'string') this.color(p, m.color);
+        break;
+      case 'answer':
+        if (typeof m.id === 'string') this.answer(p, m.id, m.text);
         break;
       case 'ping':
         if (typeof m.at === 'number') {
@@ -1090,6 +1116,30 @@ export class Room {
   }
 
   /**
+   * A phone sends its seat's answer for the host's answer round `id`: kept for the seat (teams: whoever on it sent it
+   * last), told to the host only, and every phone of the seat sees it. The phone hears either way.
+   */
+  private answer(p: Phone, id: string, text: unknown): void {
+    const st = this.s.state;
+    const ask = st?.answers;
+    const no = (reason: 'closed' | 'bad' | 'slow') => this.deps.toPhone(p.conn, { t: 'answered', id: clip(id, 100), ok: false, reason });
+    const seat = p.seatId ? ask?.seats.find((x) => x.id === p.seatId) : undefined;
+    if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId) return no('closed');
+    if (!this.allow((p.answerRate ??= { start: 0, count: 0 }), ANSWER_RATE, ANSWER_WINDOW_MS)) return no('slow');
+    const words = typeof text === 'string' ? cleanName(text, ANSWER_MAX) : '';
+    if (!words) return no('bad');
+    const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {} });
+    const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
+    const a: SentAnswer = { text: words, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
+    sent.seats[p.seatId] = a;
+    this.deps.toPhone(p.conn, { t: 'answered', id, ok: true });
+    this.tellAnswer(id, p.seatId, a);
+    this.save();
+    // Its teammates' phones see it too.
+    this.sync();
+  }
+
+  /**
    * A phone sends its seat's wager for the host's wager round `id`. Taken: kept for the seat (teams: whoever on it sent
    * it last), told to the host, and every phone of the seat sees it. The phone hears either way.
    */
@@ -1278,7 +1328,8 @@ export class Room {
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
           st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
-        const view = { ...phoneView(st, p.seatId, me, by, sent, late), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
+        const typed = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers.seats[p.seatId] : undefined;
+        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;
@@ -1410,6 +1461,15 @@ export function cleanState(x: unknown): HostState | null {
   if (x.teams === true) extra.teams = true;
   if (x.colorPick === true) extra.colorPick = true;
   if (x.answerShown === true) extra.answerShown = true;
+  if (isObj(x.answers) && typeof x.answers.id === 'string' && x.answers.id && x.answers.id.length <= 100 && Array.isArray(x.answers.seats)) {
+    const aseats: { id: string; got?: number }[] = [];
+    for (const a of x.answers.seats.slice(0, 64)) {
+      if (!isObj(a) || typeof a.id !== 'string' || !ids.has(a.id) || aseats.some((o) => o.id === a.id)) continue;
+      const got = Number.isSafeInteger(a.got) && (a.got as number) > 0 ? (a.got as number) : undefined;
+      aseats.push({ id: a.id, ...(got ? { got } : {}) });
+    }
+    extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats };
+  }
   if (x.over === true) extra.over = true;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);
