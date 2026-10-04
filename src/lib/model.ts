@@ -940,6 +940,8 @@ export interface Party {
 /** Changes to an object during the game (the authored slide never changes). */
 export interface ObjectOverride {
   taken?: boolean;
+  /** A pile of currency partly picked up (the rest didn't fit under the player's max): what's left of it. */
+  amount?: number;
   /** Revealed (true) or hidden (false) from the audience, overriding `secret`. */
   shown?: boolean;
   x?: number;

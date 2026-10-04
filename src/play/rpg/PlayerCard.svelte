@@ -124,12 +124,15 @@
     using = null;
     if (!e || !def?.onUse?.length) return;
     const actions = def.onUse;
-    const ctx = { game, session, live: app.live, world, st, board, bs, selected, chosen: [p.id] };
+    // "The party" is the party the player using it is in (where they are), not the one viewers follow.
+    const ctx = { game, session, live: app.live, world, st, board, bs, selected, chosen: [p.id], at: st?.positions[p.id]?.screen };
     let said: string[] = [];
-    // One undoable step: what it does, and using it up.
+    // One undoable step: what it does, and using it up (only when it did something: "Pick who it's for first" keeps it).
     logged(session, `${name} uses ${def.name}`, () => {
+      const before = JSON.stringify([session, app.live]);
       said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a)}`));
-      if (!def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
+      const did = JSON.stringify([session, app.live]) !== before;
+      if (did && !def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
     });
     toast(said.join(' · '), 3000);
   }

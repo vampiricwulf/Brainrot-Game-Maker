@@ -181,6 +181,20 @@ describe('objects and items on the RPG stage', () => {
     expect(statNumber(game, session, 'p1', currencyFields(game)[0])).toBe(0);
   });
 
+  it('picks up only the currency that fits under the max, and leaves the rest', () => {
+    const { game, session, st, gold } = withLoot();
+    const f = currencyFields(game)[0];
+    f.max = 3;
+    expect(pickUp(game, session, st, gold, 'p1')).toContain('the most they can carry');
+    expect(statNumber(game, session, 'p1', f)).toBe(3);
+    expect(st.objects[gold.id]).toEqual({ amount: 2 });
+    expect(pickUp(game, session, st, gold, 'p1')).toContain('can’t carry any more');
+    expect(st.objects[gold.id]).toEqual({ amount: 2 });
+    pickUp(game, session, st, gold, 'p0');
+    expect(statNumber(game, session, 'p0', f)).toBe(2);
+    expect(st.objects[gold.id].taken).toBe(true);
+  });
+
   it('gives an item to another player, or drops it where it was dragged on the stage', () => {
     const { game, session, st, potion } = withLoot();
     pickUp(game, session, st, potion, 'p0');

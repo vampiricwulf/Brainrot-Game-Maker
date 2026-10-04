@@ -389,6 +389,7 @@ const SHOWN: Record<string, string[]> = { worlds: ['mapShown', 'split'], boardga
 
 function restore(session: Session, json: string, game?: Game): void {
   const followed = Object.fromEntries(Object.entries(session.worlds ?? {}).map(([id, st]) => [id, st.active]));
+  const partiesWere = Object.fromEntries(Object.entries(session.worlds ?? {}).map(([id, st]) => [id, st.parties.map((p) => p.id).join()]));
   // Older saves kept the whole score log here too: it's left alone (a step's own points are in its `score`).
   for (const [k, v] of Object.entries(JSON.parse(json))) {
     if ((PARTS as readonly string[]).includes(k)) {
@@ -405,8 +406,11 @@ function restore(session: Session, json: string, game?: Game): void {
   }
   // Viewers keep following the party they were (switched outside any step) while it's still there, and with one party
   // left there's no split view.
+  // A step that merged or split parties switched the follow itself: undoing (or redoing) it switches it back too.
   for (const [id, st] of Object.entries(session.worlds ?? {})) {
-    if (st.parties.some((p) => p.id === followed[id])) st.active = followed[id];
+    const sameParties = st.parties.map((p) => p.id).join() === partiesWere[id];
+    const ownsFollow = !sameParties && st.parties.some((p) => p.id === st.active);
+    if (!ownsFollow && st.parties.some((p) => p.id === followed[id])) st.active = followed[id];
     if (st.parties.length < 2) st.split = false;
   }
 }

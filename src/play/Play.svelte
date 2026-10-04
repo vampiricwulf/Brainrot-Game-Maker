@@ -2373,7 +2373,8 @@
       return;
     }
     if (session.phase === 'rpg' && !e.ctrlKey && !e.metaKey) {
-      const d = NUMPAD[e.code] ?? (e.altKey ? ALTKEY[k] : undefined);
+      // (By the key's place, not its letter: on a Mac Option+Q types "œ".)
+      const d = NUMPAD[e.code] ?? (e.altKey ? (ALTKEY[k] ?? ALTKEY[e.code.replace(/^Key/, '').toLowerCase()]) : undefined);
       if (d) {
         e.preventDefault();
         rpgStep(d);

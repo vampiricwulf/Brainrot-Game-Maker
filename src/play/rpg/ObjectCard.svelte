@@ -12,7 +12,7 @@
   import { blip } from '../../lib/live';
   import { formatStat, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
-  import { objectName, pickUp as pickUpNow, removeObject } from './hostops';
+  import { objectName, pickUp as pickUpNow, pileAmount, removeObject } from './hostops';
 
   let {
     el,
@@ -132,7 +132,7 @@
 
   function pickUp(): void {
     if (!picker) return void toast('Pick who picks it up');
-    pickUpNow(game, session, st, el, picker);
+    toast(pickUpNow(game, session, st, el, picker), 3000);
     onclose();
   }
 
@@ -210,7 +210,8 @@
       <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {role.qty ?? 1} {itemDef(game, role.item)?.name ?? title}</button>
     {:else if role?.class === 'currency'}
       {@const f = statFields(game).find((x) => x.id === role.field)}
-      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {f ? formatStat(f, role.amount ?? 0) : role.amount}</button>
+      {@const left = pileAmount(st, el)}
+      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {f ? formatStat(f, left) : left}</button>
     {/if}
     {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
     {#if role?.shop}<button onclick={() => (ctx.live.overlay = { kind: 'shop', nonce: newId(), shopId: role.shop!, buyer: who[0] })}>🛒 Shop</button>{/if}

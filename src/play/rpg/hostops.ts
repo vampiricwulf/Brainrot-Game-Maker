@@ -8,7 +8,7 @@ import {
   step, worldById,
 } from '../../lib/rpg';
 import { nameList } from '../../lib/session';
-import { addStat, currencyFields, entryName, giveItem, inventory, itemDef, logged, statFields, transferEntry } from '../../lib/toolset';
+import { addStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, statFields, statRoom, transferEntry } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
 import { app } from '../../lib/app.svelte';
 import { blip } from '../../lib/live';
@@ -238,17 +238,26 @@ export function objectMenu(game: Game, session: Session, elId: string, { open, r
   ];
 }
 
+/** How much is in a pile of currency now (some may have been picked up already). */
+export function pileAmount(st: WorldState | undefined, el: SlideElement): number {
+  return st?.objects[el.id]?.amount ?? el.role?.amount ?? 0;
+}
+
 /** A player picks up an item or a pile of currency lying on a screen: it's theirs, and gone from the screen. Returns the log line. */
 export function pickUp(game: Game, session: Session, st: WorldState, el: SlideElement, playerId: string): string {
   const role = el.role;
-  const text = `${names(session, [playerId])} picks up ${objectName(el)}`;
+  let text = `${names(session, [playerId])} picks up ${objectName(el)}`;
+  // Currency: only what fits under the player's max; the rest stays on the screen.
+  const f = role?.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined;
+  const amount = pileAmount(st, el);
+  const fits = f ? Math.min(amount, statRoom(game, session, playerId, f)) : amount;
+  if (f && amount > 0 && fits <= 0) return `${names(session, [playerId])} can’t carry any more ${f.name} (at most ${formatStat(f, f.max ?? 0)})`;
+  if (f && fits < amount) text = `${names(session, [playerId])} picks up ${formatStat(f, fits)} of ${objectName(el)} (the most they can carry): ${formatStat(f, amount - fits)} left`;
   logged(session, text, () => {
     if (role?.class === 'item') giveItem(game, session, playerId, role.item ?? null, role.qty ?? 1, role.item ? undefined : objectName(el));
-    else if (role?.class === 'currency') {
-      const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0];
-      if (f) addStat(game, session, playerId, f, role.amount ?? 0);
-    }
-    override(st, el.id).taken = true;
+    else if (f) addStat(game, session, playerId, f, fits);
+    if (f && fits < amount) override(st, el.id).amount = amount - fits;
+    else override(st, el.id).taken = true;
   });
   blip(app.live, 'pickUp');
   return text;

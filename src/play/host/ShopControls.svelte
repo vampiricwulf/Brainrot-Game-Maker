@@ -61,7 +61,8 @@
     asking = null;
     if (a.what === 'price') {
       if (v === null || v < 0) return void toast('That isn’t a price');
-      purchase(a.item, { price: v, allowShort: true });
+      // Short of it at that price too: it says so (Sell anyway is still there), as at the usual price.
+      purchase(a.item, { price: v, allowShort: false });
       return;
     }
     const s = shop;
