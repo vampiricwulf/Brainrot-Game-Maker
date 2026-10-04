@@ -252,14 +252,17 @@ export function duplicateCategory(round: BoardRound, index: number): void {
   if (round.categories.length >= 10) return;
   const copy = clone(round.categories[index]);
   copy.id = newId();
-  for (const c of copy.clues) c.id = newId();
-  copy.title += ' (copy)';
+  // Every clue, and its slides' items, with ids of its own (as a copied clue has).
+  copy.clues = copy.clues.map(copyClue);
+  if (copy.title.trim()) copy.title += ' (copy)';
   round.categories.splice(index + 1, 0, copy);
 }
 
 /** Multiply all row values of a round (e.g. ×2 for Double Jeopardy). */
 export function scaleValues(round: BoardRound, factor: number): void {
   round.values = round.values.map((v) => Math.round(v * factor));
+  // Tiles with a value of their own go with them.
+  for (const c of round.categories) for (const cl of c.clues) if (cl.value !== null && cl.value !== undefined) cl.value = Math.round(cl.value * factor);
 }
 
 /** Deep copy of plain game data (works on Svelte state proxies, unlike structuredClone). */

@@ -215,9 +215,10 @@
     // Esc closes from anywhere but the slide editor's own fields (the quick fields, and the Type, Value, Countdown and
     // Tile shows row, save as you type).
     const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts');
-    // (A wheel or dice open over the clue has the keys.)
-    if (tool) return;
-    if (e.key === 'Escape' && (!typing(e) || quick) && !facePicker) onclose();
+    // (A wheel or dice open over the clue has the keys, and so does the tile image picker: a picture picked after
+    // moving on would go on the next clue.)
+    if (tool || facePicker) return;
+    if (e.key === 'Escape' && (!typing(e) || quick)) onclose();
     else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       step(e.shiftKey ? -1 : 1);
@@ -338,6 +339,7 @@
           Tile shows
           <input
             class="face"
+            data-field="tile-face"
             disabled={clue.empty}
             placeholder="the value"
             value={clue.tileFace?.text ?? ''}

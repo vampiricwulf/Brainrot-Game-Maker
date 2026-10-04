@@ -46,6 +46,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Shops: "Other price…" for someone short of it says so (with Sell anyway) instead of taking their gold below zero.
 - RPG: picking up a pile of currency past the player's max takes only what fits and leaves the rest on the screen (it all vanished); with no room at all it says so.
 - RPG: players arriving on a screen are never placed in a ⛔ No-go area (they could land on the lava it marked); they stand along the edge beside it, or a little further in.
+- Board editor: pasting a two-line category name (copied from another category) into a category's name pastes the name, instead of writing its two lines over that category's top two clues.
+- Clue editor: with the 🖼 Tile image picker open, Ctrl+Enter and Alt+arrows no longer move to another clue (the picture then went on that one).
+- Board editor: ×2 and ÷2 also change tiles that have a value of their own (imported clues keep theirs), and ⧉ Duplicate category gives the copy's slides their own items (as a copied clue has) and no longer names an unnamed category " (copy)".
+- Find: empty tiles are no longer listed, and a match in a tile's "Tile shows" text goes to that box.
 
 ## 2026-10-03
 

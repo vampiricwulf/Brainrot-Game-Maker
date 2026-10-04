@@ -308,6 +308,9 @@
   function catNamePaste(e: ClipboardEvent, ci: number): void {
     const text = e.clipboardData?.getData('text/plain') ?? '';
     if (!/\n./.test(text.trim())) return;
+    // A two-line name (Shift+Enter makes one), copied from another category: just pasted as the name, not two clues.
+    const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length <= 2 && !/[\t]/.test(text)) return;
     const cat = round.categories[ci];
     const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
     const r = step(null, () => pasteColumn(round, ci, text), { notify: true, place });
