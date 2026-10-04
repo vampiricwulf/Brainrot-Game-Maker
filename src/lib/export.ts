@@ -3,6 +3,7 @@
 import { buildPack, CUT_OFF, type PackProgress } from './pack';
 import { safeFilename, saveFile, savedWhere } from './fileio';
 import { ask, tell } from './ask.svelte';
+import { notWritingWhile } from './desktop.svelte';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
 import { onlineCount } from './usage';
@@ -150,14 +151,16 @@ export async function exportStandaloneHtml(
 ): Promise<{ size: number; missing: string[]; online: number; where: string } | null> {
   const { blob: pack, missing } = await buildPack(game, onProgress);
   if (tooBigForHtml(pack.size)) {
-    await tell(`${TOO_BIG}\n\nThis game's HTML file would be about ${formatBytes(base64Length(pack.size))}.`);
+    await notWritingWhile(() => tell(`${TOO_BIG}\n\nThis game's HTML file would be about ${formatBytes(base64Length(pack.size))}.`));
     return null;
   }
   // base64 grows the pack by a third.
   const estimate = Math.round(pack.size * 1.34);
   const anyway = { ok: 'Export anyway', cancel: 'Cancel' };
-  if (estimate > STRONG && !(await ask(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`, anyway))) return null;
-  if (estimate > WARN && estimate <= STRONG && !(await ask(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`, anyway))) return null;
+  // Nothing is written while it asks (closing the app meanwhile doesn't wait for an answer).
+  const sure = (q: string) => notWritingWhile(() => ask(q, anyway));
+  if (estimate > STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`))) return null;
+  if (estimate > WARN && estimate <= STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`))) return null;
   const html = selfHtml();
   const cut = html.lastIndexOf('</body>');
   const [head, tail] = cut < 0 ? [html, ''] : [html.slice(0, cut), html.slice(cut)];

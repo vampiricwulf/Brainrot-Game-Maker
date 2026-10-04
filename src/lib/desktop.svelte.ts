@@ -254,12 +254,17 @@ export function onOpenedFile(open: (file: File) => void): () => void {
 let opener: ((file: File) => void) | null = null;
 let listeningForFiles = false;
 
+/** The file being taken now: one take at a time, so a file's name and contents always go together. */
+let taking: Promise<void> = Promise.resolve();
+
 function openWaiting(): void {
-  const open = opener;
-  if (!open) return;
-  takeOpenedFile()
-    .then((file) => file && open(file))
-    .catch((err) => void tell(err instanceof Error ? err.message : String(err)));
+  taking = taking.then(() => {
+    const open = opener;
+    if (!open) return;
+    return takeOpenedFile()
+      .then((file) => void (file && open(file)))
+      .catch((err) => void tell(err instanceof Error ? err.message : String(err)));
+  });
 }
 
 /** Saves, exports and autosaves being written now (closing the window asks first, see flushOnClose). */
@@ -273,6 +278,20 @@ export async function whileWriting<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } finally {
     if (--writes === 0) for (const done of writesDone.splice(0)) done();
+  }
+}
+
+/**
+ * Inside whileWriting, a question to the host (Export anyway?): nothing is written while it waits, so closing the window
+ * meanwhile doesn't say a save is in progress.
+ */
+export async function notWritingWhile<T>(fn: () => Promise<T>): Promise<T> {
+  if (!writes) return fn();
+  if (--writes === 0) for (const done of writesDone.splice(0)) done();
+  try {
+    return await fn();
+  } finally {
+    writes++;
   }
 }
 

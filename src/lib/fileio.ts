@@ -78,7 +78,7 @@ export async function saveFile(filename: string, blob: Blob, gameId?: string): P
     // Kept as a new file: still noted as this game's, so a later Save of another game with the same title (its old note
     // pointing at this name) never replaces it.
     const saved = await saveToSaves(filename, blob, 'new');
-    if (gameId) writeOwners({ ...owners, [saved.path]: gameId });
+    if (gameId) writeOwners({ ...readOwners(), [saved.path]: gameId });
     return saved;
   }
   const [saves, folders] = await Promise.all([listSaves(), dataFolders()]);
@@ -87,7 +87,8 @@ export async function saveFile(filename: string, blob: Blob, gameId?: string): P
   const beside = saveTarget(filename, gameId, owners, names('app'), folders?.saves?.path ?? undefined, true);
   const docs = saveTarget(filename, gameId, owners, names('documents'), folders?.savesDocuments?.path ?? undefined);
   const saved = await saveToSaves(beside.name, blob, beside.mode, docs);
-  if (gameId) writeOwners({ ...owners, [saved.path]: gameId });
+  // Read again: another save written meanwhile (an export) noted its file too.
+  if (gameId) writeOwners({ ...readOwners(), [saved.path]: gameId });
   return saved;
 }
 

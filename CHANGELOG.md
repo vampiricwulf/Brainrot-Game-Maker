@@ -24,6 +24,9 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- Desktop: pressing Save while a big HTML export was still writing could make the next Save write "Game (2).brainrot" instead of replacing the game's own file. Both saves now keep their notes.
+- Desktop: closing the app while an export asked "Export anyway?" no longer says a save is in progress (nothing is written while it asks).
+- Desktop: opening several game files at once from Explorer could show one file's name with another's contents, or a stray "No file to open." message.
 - 🔊 Sounds: a preview kept playing, with no way to stop it, when its sound was switched off or its file removed; it now stops. Clicking ▶ on two sounds quickly no longer leaves the second playing with a ▶ on its button.
 - In two-window play, a cue whose chosen file the audience window hadn't loaded was silent; it now plays the built-in sound there, as the Sounds tab says.
 - Update check: a failed Check for updates no longer hides the notice and Update button for a newer version already found. A failed check at start-up now says so in ℹ About instead of leaving the line empty, and Firefox's and Safari's offline errors read "Couldn't reach GitHub (offline?)" too.
