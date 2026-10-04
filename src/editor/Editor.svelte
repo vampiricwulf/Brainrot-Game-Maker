@@ -307,8 +307,11 @@
   function roundOver(e: DragEvent, round: Round): void {
     if (!roundDrag) return;
     e.preventDefault();
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    roundDrop = { id: round.id, after: e.clientY > r.top + r.height / 2 };
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    // (On a narrow window the tabs sit in a row: the side is left or right, not above or below.)
+    const row = el.parentElement ? getComputedStyle(el.parentElement).flexDirection.startsWith('row') : false;
+    roundDrop = { id: round.id, after: row ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2 };
   }
   function roundDropped(e: DragEvent): void {
     if (!roundDrag) return;

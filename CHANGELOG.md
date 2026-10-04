@@ -24,6 +24,10 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Clue editor: unticking Empty tile on a Daily Double raises the ⭐ Daily Doubles count**, as the board's own menu does.
+- **Clue editor: Alt+arrows leave dropdowns (Alt+↓ opens them on Windows) and, on a Mac, text boxes (Option+arrows move
+  the cursor) alone**, instead of jumping to another clue.
+- **Round tabs on a narrow window (in a row): dragging one drops it before or after by left or right**, not top or bottom.
 - **Buttons (on spaces, items, objects): an emptied number box keeps its number**: a "set HP to" left blank no longer
   set HP to 0 in play, and an emptied Seconds no longer started a broken countdown.
 - **Stats & Items: a stat's Start, Min and Max can be typed over** (a minus sign isn't lost, and an emptied Start doesn't

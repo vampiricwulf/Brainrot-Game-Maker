@@ -4,7 +4,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { addClueSlide, deleteClueSlide, duplicateClueSlide, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { addClueSlide, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
   import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, questionSlides, type ClueType, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -200,6 +200,17 @@
     return !!t?.closest?.('input:not([type="checkbox"]), textarea, select') || !!t?.closest?.('.se input[type="checkbox"]');
   }
 
+  /**
+   * Where Alt+arrows have a job of their own, they keep it: a dropdown (Alt+↓ opens it on Windows), and on a Mac, a
+   * text box (Option+arrows move the cursor by word or line).
+   */
+  function ownAltArrows(e: KeyboardEvent): boolean {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest?.('select')) return true;
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+    return mac && !!t?.closest?.('input:not([type="checkbox"]), textarea, [contenteditable="true"]');
+  }
+
   function onkey(e: KeyboardEvent): void {
     // Esc closes from anywhere but the slide editor's own fields (the quick fields, and the Type, Value, Countdown and
     // Tile shows row, save as you type).
@@ -210,7 +221,7 @@
     else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       step(e.shiftKey ? -1 : 1);
-    } else if (e.altKey && !e.ctrlKey && !e.metaKey && ALT_ARROWS[e.key] && !e.defaultPrevented) {
+    } else if (e.altKey && !e.ctrlKey && !e.metaKey && ALT_ARROWS[e.key] && !e.defaultPrevented && !ownAltArrows(e)) {
       // Alt+← is the browser's Back button on Windows.
       e.preventDefault();
       go(neighbourClue(round, pos, ...ALT_ARROWS[e.key]));
@@ -289,7 +300,11 @@
             <button disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
           {/if}
         {/if}
-        <label class="check"><input type="checkbox" bind:this={emptyBox} bind:checked={clue.empty} /> Empty tile (not playable)</label>
+        <label class="check"><input
+            type="checkbox"
+            bind:this={emptyBox}
+            bind:checked={() => !!clue.empty, (v) => ((clue.empty = v), !v && followDailyDoubles(round))}
+          /> Empty tile (not playable)</label>
         <label class="field">
           Value
           <!-- Whole points, never below 0 (blank: the row's value). -->
