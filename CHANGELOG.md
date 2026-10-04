@@ -33,6 +33,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Teams: a team whose name was left blank is called "Team 2" on stream (as its box suggested), not "Player 2".
 - Final round: the Think time box keeps its number when emptied, and is at least 5 seconds (blank or 0 played a 30-second countdown it didn't show).
 - ＋ Add player (or team) picks a number no one has yet, so it doesn't make a second "Player 3".
+- Pre-game: Ctrl+Z bringing back a deleted player gives back their start score too, and sample players keep their place in the list (they moved to the bottom).
 
 ## 2026-10-03
 

@@ -1833,6 +1833,12 @@
 
   /** Players added by "＋ Add 3 sample players", by id → their sample name. */
   const samples = new Map<string, string>();
+  /** Every player's start score as last seen before the game (one deleted, then brought back by an Undo, keeps it). */
+  const startScores = new Map<string, number>();
+  $effect(() => {
+    if (!app.pregame) return;
+    for (const p of session.players) startScores.set(p.id, p.startScore ?? 0);
+  });
 
   function start(): void {
     if (!session.players.length) return;
@@ -2166,10 +2172,24 @@
     const was = new Map(session.players.map((p) => [p.id, p]));
     const kept = src.players.map((t) => {
       const p = was.get(t.id);
-      return { id: t.id, name: t.name, color: t.color, ...(t.avatar ? { avatar: t.avatar } : {}), startScore: p?.startScore ?? 0 };
+      // (One brought back by an Undo gets the start score it had.)
+      const startScore = p?.startScore ?? startScores.get(t.id) ?? 0;
+      return { id: t.id, name: t.name, color: t.color, ...(t.avatar ? { avatar: t.avatar } : {}), startScore };
     });
-    const sampled = session.players.filter((p) => samples.get(p.id) === p.name && !kept.some((k) => k.id === p.id));
-    const list = [...kept, ...$state.snapshot(sampled)];
+    const list = [...kept];
+    // Sample players stay where they were among the others (after the one they followed).
+    session.players.forEach((p, i) => {
+      if (samples.get(p.id) !== p.name || kept.some((k) => k.id === p.id)) return;
+      let at = 0;
+      for (let j = i - 1; j >= 0; j--) {
+        const k = list.findIndex((x) => x.id === session.players[j].id);
+        if (k >= 0) {
+          at = k + 1;
+          break;
+        }
+      }
+      list.splice(at, 0, $state.snapshot(p));
+    });
     if (JSON.stringify(list) !== JSON.stringify($state.snapshot(session.players))) session.players = list;
     const players = $state.snapshot(src.players);
     if (JSON.stringify(players) !== JSON.stringify($state.snapshot(game.players))) game.players = players;
