@@ -33,6 +33,18 @@ describe('Pick a player wheel', () => {
     ]);
   });
 
+  it('a land-once wheel keeps its Spin again slice: it lands as often as it comes up', () => {
+    const { game, session, live } = withPlayers();
+    const w = newWheel('Dares', ['Sing', 'Dance', 'Spin again']);
+    w.removeAfterLanding = true;
+    game.wheels.push(w);
+    openWheel(live, session, w);
+    const again = w.segments[2].id;
+    for (let i = 0; i < 30 && !wheelSpentUp(live.overlay as never, session, game); i++) spinWheel(live, session, game);
+    expect(session.removedSegments![w.id].sort()).toEqual([w.segments[0].id, w.segments[1].id].sort());
+    expect(session.removedSegments![w.id]).not.toContain(again);
+  });
+
   it('lands on a current player (players changed after it opened) and logs who it was', () => {
     const { game, session, live } = withPlayers();
     openPlayerWheel(live, session);

@@ -9,7 +9,7 @@
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
   import { addWheel, removeWheel, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
-  import { rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
+  import { isRespin, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
@@ -98,6 +98,8 @@
     toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a, `${from}: ${describeAction(game, a)}`), 3000);
   }
 
+  /** The wheel landed on a "Spin again" slice: spinning again is the main button. */
+  const again = $derived(o?.kind === 'wheel' && !!o.spin && o.result !== null && isRespin(o.segments[o.result]));
   /** The wheel landed or the dice came up: Close is the main button now, and spinning or rolling again is secondary. */
   const landed = $derived(!busy && ((o?.kind === 'wheel' && !!o.spin) || (o?.kind === 'dice' && !!o.roll)));
   /** A wheel/dice tile with nothing to ask, showing its own tool: closing it goes back to the board (the tile is done). */
@@ -118,6 +120,7 @@
         disabled: busy,
         run: () => spinWheel(app.live, session, game),
       };
+    if (o.kind === 'wheel' && landed && again && !spent) return { label: '↻ Spin again', key: 'W', run: () => spinWheel(app.live, session, game) };
     if (o.kind === 'dice' && !landed) return { label: o.roll ? 'Roll again' : 'Roll!', key: 'D', disabled: busy, run: () => rollDice(app.live, session, o.preset, o.mover) };
     if (o.kind === 'popup' && o.answer && !o.revealed) return { label: '👁 Reveal answer', key: 'R', run: () => (o.revealed = true) };
     // A board game's own roll (or spin) that came up: moving is next (▶ Move, Enter, which closes it), not Close.
@@ -142,7 +145,7 @@
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
         <!-- (Spin! is the main button until it lands, then Close is.) -->
-        {#if landed}<button onclick={() => spinWheel(app.live, session, game)} disabled={spent} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>Spin again</button>{/if}
+        {#if landed && !again}<button onclick={() => spinWheel(app.live, session, game)} disabled={spent} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>Spin again</button>{/if}
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{o.pool ? ' (edited)' : ''}
         </button>
@@ -175,7 +178,8 @@
           {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
           <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
         </select>
-        {#if spent && !busy}<span class="warn small" role="status">Every slice has landed: Restore to spin again</span>{/if}
+        {#if spent && !busy}<span class="warn small" role="status">Every slice has landed: Restore to spin again</span>
+        {:else if again && landed}<span class="small" role="status">↻ It landed on {outcomeName}: spin again (W)</span>{/if}
         {#if removed}
           <button class="ghost small" onclick={() => o.wheelId && session.removedSegments && (session.removedSegments[o.wheelId] = [])}>
             Restore {removed} used slice{removed === 1 ? '' : 's'}

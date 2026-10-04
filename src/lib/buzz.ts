@@ -233,6 +233,7 @@ export function hostState(
     ...(extra.wager ? { wager: extra.wager } : {}),
     ...(session.phase === 'end' ? { over: true } : {}),
     ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
+    ...(info && session.revealed ? { answerShown: true } : {}),
   };
 }
 

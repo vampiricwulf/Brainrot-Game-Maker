@@ -17,8 +17,11 @@ in plain words for the people who make and host games. Anything committed but no
 - Phone buzzers: players can change their colour on their phone (🎨 Change your colour, under the buzzer), from the colours no other player has. It's on by default; turn it off with "Players can pick their colour on their phone" on the Phone buzzers card. It isn't offered with teams, where the host picks each team's colour.
 - Phone buzzers: the audience sees who has a phone connected, with 📱 on the "Starting soon" lineup and on each player's score plate. It goes away when that phone disconnects.
 - Phone buzzers: while someone else is answering, a phone that hasn't buzzed yet says "You can still buzz" (to get in line in case they miss) instead of "Wait".
+- Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Phone buzzers: showing the answer closes the buzzers. Phones say "Clue over", a press then counts for nothing (nor gets in line), a wrong answer after it doesn't open them for the rest, and U says why they stay closed.
+- Phone buzzers: the join code on the stream no longer covers anything on a slide. It moves to a corner with nothing under it, shrinks to just the code if that's all that fits, and stays off a slide with something in every corner.
 - Slide editor: a click that wobbles a pixel no longer nudges the item (or snaps it to a guide) when the slide is drawn small, as in the clue editor.
 - Slide editor: clicking one item of several selected now selects just that one (dragging still moves them all).
 - Slide editor: lining up items with a locked one selected lines them up with it (it stays put) instead of ignoring it; Space evenly shows only when three or more unlocked items are selected.

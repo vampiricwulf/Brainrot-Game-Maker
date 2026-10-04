@@ -391,7 +391,16 @@ export function activeSegments(session: Session, wheel: WheelPreset): WheelSegme
 /** A "land once" wheel whose every slice has landed: it can't spin until the host restores them. */
 export function wheelUsedUp(session: Session, wheel: WheelPreset, ids: Id[] = wheel.segments.map((s) => s.id)): boolean {
   const removed = new Set(session.removedSegments?.[wheel.id] ?? []);
-  return !!wheel.removeAfterLanding && ids.length > 0 && ids.every((id) => removed.has(id));
+  // (Spin again slices never land for good: only the rest count. A wheel left with nothing else would spin forever.)
+  const again = new Set(wheel.segments.filter(isRespin).map((s) => s.id));
+  const left = ids.filter((id) => !again.has(id));
+  return !!wheel.removeAfterLanding && left.length > 0 && left.every((id) => removed.has(id));
+}
+
+/** A slice that means "spin again": marked so, or named "Spin again" / "Respin" (and not marked otherwise). */
+export function isRespin(seg: Pick<WheelSegment, 'label' | 'respin'> | undefined): boolean {
+  if (!seg) return false;
+  return seg.respin ?? /^\W*(spin\s*again|re-?\s*spin)\b/i.test(seg.label.trim());
 }
 
 /** A slice's name on screen and in the log: "Slice 3" for one left blank. */

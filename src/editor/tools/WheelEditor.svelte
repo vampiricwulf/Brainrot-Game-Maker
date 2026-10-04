@@ -6,7 +6,7 @@
   import { tick, untrack } from 'svelte';
   import type { WheelPreset, WheelSegment } from '../../lib/model';
   import type { Overlay } from '../../lib/live';
-  import { MIN_WEIGHT, newSegment, parseQuickWheel, segmentAngles, sliceWeight, spinSeconds, spinTarget, weightedIndex } from '../../lib/tools';
+  import { isRespin, MIN_WEIGHT, newSegment, parseQuickWheel, segmentAngles, sliceWeight, spinSeconds, spinTarget, weightedIndex } from '../../lib/tools';
   import { app } from '../../lib/app.svelte';
   import { liveNumber } from '../../lib/numfield';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
@@ -98,6 +98,15 @@
     ]);
   }
 
+  /** ↻: landing on this slice spins again (left unset when that's what its name already says). */
+  function toggleRespin(seg: WheelSegment): void {
+    const on = !isRespin(seg);
+    step(on ? `“${name(seg)}” spins again` : `“${name(seg)}” no longer spins again`, () => {
+      delete seg.respin;
+      if (isRespin(seg) !== on) seg.respin = on;
+    });
+  }
+
   /** A click on a slice of the preview goes to its row. */
   function previewClick(e: MouseEvent): void {
     const at = (e.target as Element).closest('[data-slice]')?.getAttribute('data-slice');
@@ -183,6 +192,14 @@
             />
           </label>
           <span class="pct muted">{pct[i]?.toFixed(0)}%</span>
+          <button
+            class="ghost small"
+            class:on={isRespin(seg)}
+            aria-pressed={isRespin(seg)}
+            onclick={() => toggleRespin(seg)}
+            aria-label="Spin again"
+            title="Spin again: landing on this slice spins the wheel again{wheel.removeAfterLanding ? ' (it never gets used up)' : ''}">↻</button
+          >
           <button class="ghost small" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
           <button class="ghost small" onclick={() => move(i, i + 1)} disabled={i === wheel.segments.length - 1} aria-label="Move down">▼</button>
           <button class="ghost small" onclick={() => duplicate(i)} aria-label="Duplicate slice" title="Duplicate slice (Ctrl+D)">⧉</button>
@@ -198,6 +215,10 @@
     <p class="muted small">Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · click a slice on the wheel to find it</p>
     <div class="row">
       <button onclick={() => wheel.segments.push(newSegment(`Option ${wheel.segments.length + 1}`, wheel.segments.length))}>＋ Add slice</button>
+      <button
+        onclick={() => step('Added a Spin again slice', () => wheel.segments.push({ ...newSegment('Spin again', wheel.segments.length), respin: true }))}
+        title="A slice that, when the wheel lands on it, spins the wheel again">＋ ↻ Spin again slice</button
+      >
     </div>
     <details>
       <summary class="muted small">Add many at once (one per line)</summary>
@@ -226,6 +247,10 @@
 </div>
 
 <style>
+  .seg button.on {
+    border-color: var(--accent);
+    background: rgba(79, 124, 255, 0.25);
+  }
   /* The preview gives way on a narrow window, so a slice's row fits on one line. */
   .we {
     display: grid;

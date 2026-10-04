@@ -403,6 +403,11 @@ export interface WheelSegment extends Outcome {
   color: string;
   /** Relative size and landing chance. */
   weight: number;
+  /**
+   * Landing here means spin again (the slice is never used up on a "land once" wheel). Unset: a slice named "Spin
+   * again" or "Respin" is one; false: it isn't, whatever it's called.
+   */
+  respin?: boolean;
 }
 
 /** The built-in wheel of the current players (not saved in `game.wheels`); a wheel tile can use it by this id. */

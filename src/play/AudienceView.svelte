@@ -9,6 +9,7 @@
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
+  import { joinSpot, type Rect } from '../lib/joinspot';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
@@ -247,8 +248,37 @@
   const buzzNow = $derived(
     !!live.room && game.settings.buzzArm === 'host' && session.phase === 'clue' && !session.dd && !session.revealed && live.buzz?.phase === 'armed' && !live.overlay,
   );
+  /**
+   * In a corner over a slide: one with nothing of the slide (nor the caption, slide dots or countdown) under it, smaller
+   * if need be; with every corner taken it isn't shown. (A title card's middle is the round's name: its corner is free.)
+   */
+  const spot = $derived.by(() => {
+    if (codeSpot !== 'corner') return null;
+    const tb = session.phase === 'tiebreaker' ? game.tiebreaker : undefined;
+    const slide =
+      session.phase === 'clue' && info && !introName
+        ? session.revealed
+          ? info.clue.answerSlide
+          : shownQuestionSlide(session, info.clue)
+        : tb && !introName
+          ? session.tiebreakerRevealed
+            ? tb.answerSlide
+            : shownQuestionSlide(session, tb)
+          : undefined;
+    if (!slide) return { corner: 'br' as const, small: false };
+    const taken: Rect[] = [];
+    if (band) taken.push({ x: 0, y: 0, w: 1920, h: band });
+    if (tb) taken.push({ x: 0, y: 24, w: 1920, h: 70 });
+    if (session.phase === 'clue' && info && stream?.clueCaption) {
+      const text = `${categoryLabel(info.category)} · ${session.dd ? 'Daily Double' : formatPoints(info.value, sym)}`;
+      taken.push({ x: 24, y: 1080 - 24 - 72, w: Math.min(1500, 44 + text.length * 26), h: 72 });
+    }
+    const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : 1;
+    if (of > 1) taken.push({ x: 960 - (50 * of + 22) / 2, y: 1080 - 31 - 40, w: 50 * of + 22, h: 40 });
+    return joinSpot(slide, taken, bandScale ?? 1);
+  });
   /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
-  const codeShown = $derived(!!codeSpot && !live.overlay);
+  const codeShown = $derived(!!codeSpot && !live.overlay && (codeSpot !== 'corner' || !!spot));
   /** Room kept free at the score bar's right end on the board: the join code's, the countdown's. */
   const barReserve = $derived((codeSpot === 'bar' ? JOIN_ROOM : 0) + (timerBar ? TIMER_ROOM : 0));
   const ties = $derived(tiedLeaders(session));
@@ -385,7 +415,7 @@
       <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap; with the join
            code in the corner, short of that, about 420px wide.) -->
       {@const pipsMax = of > 1 && !session.revealed ? 960 - (50 * of + 22) / 2 - 24 - 44 - 16 : 1500}
-      {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && codeSpot === 'corner' ? 1920 - 24 - 44 - 16 - 420 - 24 : 1500)}px`}
+      {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && spot?.corner === 'br' ? 1920 - 24 - 44 - 16 - (spot.small ? 300 : 440) - 24 : 1500)}px`}
       <div class="caption" style:max-width={captionMax}>{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
     {/if}
     {#if session.dd?.stage === 'question' && ddPlayer}
@@ -552,14 +582,19 @@
   <div
     class="join-badge"
     class:on-bar={codeSpot === 'bar'}
-    style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : undefined}
-    style:right={codeSpot === 'bar' && timerBar ? `${24 + TIMER_ROOM}px` : undefined}
+    class:small={spot?.small}
+    data-corner={spot?.corner}
+    style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : spot?.corner.startsWith('t') ? '24px' : undefined}
+    style:bottom={spot?.corner.startsWith('t') ? 'auto' : undefined}
+    style:left={spot?.corner.endsWith('l') ? '24px' : undefined}
+    style:right={codeSpot === 'bar' && timerBar ? `${24 + TIMER_ROOM}px` : spot?.corner.endsWith('l') ? 'auto' : undefined}
   >
     <!-- Nobody new can join (seats locked, or all taken): it doesn't invite everyone watching, it's the players' code. -->
-    <span class="jb-how">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz in'}</span>
-    <span class="jb-code">{live.room.code}</span>
+    {#if spot?.small}<span class="jb-code">📱 {live.room.code}</span>
+    {:else}<span class="jb-how">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz in'}</span>
+      <span class="jb-code">{live.room.code}</span>{/if}
     <!-- In the corner there's room for where to go, too. -->
-    {#if codeSpot === 'corner' && !live.room.closed}<span class="jb-link">{live.room.link.replace(/^https?:\/\//, '').replace(/\/[^/]*$/, '')}</span>{/if}
+    {#if codeSpot === 'corner' && !spot?.small && !live.room.closed}<span class="jb-link">{live.room.link.replace(/^https?:\/\//, '').replace(/\/[^/]*$/, '')}</span>{/if}
   </div>
 {/if}
 

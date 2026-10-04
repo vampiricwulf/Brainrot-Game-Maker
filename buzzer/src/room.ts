@@ -1013,7 +1013,7 @@ export class Room {
     const now = this.deps.now();
     const result = (outcome: 'pending' | 'late' | 'early' | 'locked', extra: { lockedUntil?: number } = {}) =>
       this.deps.toPhone(p.conn, { t: 'result', armId, outcome, ...extra });
-    if (st.phase === 'closed' && st.done) return result('late'); // the clue is over: no penalty
+    if ((st.phase === 'closed' && st.done) || st.answerShown) return result('late'); // the clue is over: no penalty
     // Teams: an early buzz locks the one who jumped, not their teammates.
     const member = st.teams && p.member && this.s.members?.[p.member] ? p.member : undefined;
     if (st.phase === 'closed') {
@@ -1277,7 +1277,7 @@ export class Room {
         const race = this.s.race;
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
-          st.phase === 'answering' && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
+          st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
         const view = { ...phoneView(st, p.seatId, me, by, sent, late), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
@@ -1409,6 +1409,7 @@ export function cleanState(x: unknown): HostState | null {
   if (x.locked === true) extra.locked = true;
   if (x.teams === true) extra.teams = true;
   if (x.colorPick === true) extra.colorPick = true;
+  if (x.answerShown === true) extra.answerShown = true;
   if (x.over === true) extra.over = true;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);

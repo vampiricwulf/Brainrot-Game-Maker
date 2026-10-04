@@ -103,6 +103,8 @@ export interface HostState {
   over?: boolean;
   /** Players may pick their own colour on their phone (not teams: a team's colour is the host's). */
   colorPick?: boolean;
+  /** The clue's answer is on screen: no more buzzes, not even to get in line. */
+  answerShown?: boolean;
 }
 
 /** HostState.wager: who is wagering, and on what. */

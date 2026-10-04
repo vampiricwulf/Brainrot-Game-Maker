@@ -4,7 +4,7 @@ import { newId } from './model';
 import { applyScore, newSession, score } from './session';
 import {
   actionDeltas, activeSegments, applyAction, diceCount, initials, newWheel, parseDice, planRollOff, rollPreset, rollResult, segmentAngles, sliceAt,
-  sliceLabel, spinSeconds, spinTarget, uniqueLabels, weightedIndex, wheelUsedUp, MIN_WEIGHT, sliceWeight,
+  sliceLabel, spinSeconds, spinTarget, uniqueLabels, weightedIndex, wheelUsedUp, isRespin, MIN_WEIGHT, sliceWeight,
 } from './tools';
 
 function seeded(seed = 42) {
@@ -131,6 +131,23 @@ describe('score actions', () => {
   it('swaps with one player', () => {
     const { session } = setup();
     expect(actionDeltas(session, { kind: 'swapScores' }, ['p0', 'p1'], 'p0')).toEqual({ p1: 700, p0: -700 });
+  });
+
+  it('knows a Spin again slice: marked, or named so unless marked otherwise', () => {
+    for (const label of ['Spin again', 'spin again!', 'Respin', 'Re-spin', '↻ Spin Again']) expect(isRespin({ label })).toBe(true);
+    for (const label of ['Spin the bottle', 'Again', 'Respinning plates later', '']) expect(isRespin({ label }), label).toBe(false);
+    expect(isRespin({ label: 'Bonus', respin: true })).toBe(true);
+    expect(isRespin({ label: 'Spin again', respin: false })).toBe(false);
+  });
+
+  it('a land-once wheel with only Spin again slices left is used up (they never land for good)', () => {
+    const { session } = setup();
+    const w = newWheel('w', ['a', 'b', 'Spin again']);
+    w.removeAfterLanding = true;
+    session.removedSegments = { [w.id]: [w.segments[0].id] };
+    expect(wheelUsedUp(session, w)).toBe(false);
+    session.removedSegments[w.id].push(w.segments[1].id);
+    expect(wheelUsedUp(session, w)).toBe(true);
   });
 
   it("says when a land-once wheel's every slice has landed", () => {

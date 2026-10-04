@@ -283,6 +283,28 @@ try {
   assert(true, 'the host panel queue shows the roll order (🎲 1st, 🎲 2nd)');
   await host.keyboard.press('Escape');
 
+  // ---------- The answer shown with the buzzers open: they close ----------
+  for (let i = 0; i < 3 && !(await host.locator('.stage-box .board .tile').count()); i++) {
+    await host.keyboard.press('Escape');
+    await host.waitForTimeout(300);
+  }
+  await host.locator('.stage-box .board .tile').nth(3).click();
+  await big(p1).getByText('Get ready…').waitFor();
+  await host.keyboard.press('u');
+  await big(p1).getByText('BUZZ!').waitFor();
+  await host.keyboard.press('r');
+  await big(p1).getByText('Clue over').waitFor();
+  await press(p1);
+  await host.waitForTimeout(800);
+  assert(
+    (await big(p1).innerText()) === 'Clue over' && (await host.locator('.panel .p .sel[aria-pressed="true"]').count()) === 0,
+    'showing the answer closes the buzzers: the phones say "Clue over", and a press then picks nobody',
+  );
+  await host.keyboard.press('u');
+  await host.getByText('The answer is showing: the buzzers stay closed').waitFor();
+  assert(true, 'and U says why they stay closed');
+  await host.keyboard.press('Escape');
+
   // ---------- The host's connection drops with the buzzers open ----------
   // (Esc again, back to the board, if the first one only closed the roll.)
   for (let i = 0; i < 3 && !(await host.locator('.stage-box .board .tile').count()); i++) {

@@ -576,6 +576,22 @@ describe('the race', () => {
     expect(g.pb.last('view')?.view.canQueue).toBeUndefined();
   });
 
+  it('once the answer is on screen, a buzz counts for nothing (no penalty, no place in line)', () => {
+    const g = game();
+    g.arm(1);
+    g.pb.send({ t: 'buzz', armId: 1 });
+    g.tick(MAX_GRACE_MS);
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, clue: { text: 'Q?' }, answering: 'b', answerShown: true }) });
+    expect(g.pa.last('view')?.view.canQueue).toBeUndefined();
+    g.pa.send({ t: 'buzz', armId: 1 });
+    expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late' });
+    expect(g.hostLast('queue')?.queue.map((q) => q.seatId)).toEqual(['b']);
+    // Closed with the answer showing: no early-buzz wait either.
+    g.send({ t: 'state', state: state({ phase: 'closed', armId: 1, clue: { text: 'Q?' }, answerShown: true }) });
+    g.pc.send({ t: 'buzz', armId: 1 });
+    expect(g.pc.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late' });
+  });
+
   it('a phone on a slower network that reacted faster wins', () => {
     const g = game();
     timeRtt(g, g.pa, 40);

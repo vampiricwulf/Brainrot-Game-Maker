@@ -2,7 +2,7 @@
 import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
 import type { ExtraWheel, Live } from './live';
 import {
-  activeSegments, describeRoll, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
+  activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
   type PoolSlice,
 } from './tools';
 import { templateSegments, type WheelTemplate } from './wheeltemplates';
@@ -205,7 +205,7 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   const seg = w.segments[index];
   const logged = logRoll(session, 'wheel', w.name, sliceLabel(seg, index), w.players ? [seg.id] : undefined);
   if (w.players) logged.picked = true;
-  if (preset?.removeAfterLanding) {
+  if (preset?.removeAfterLanding && !isRespin(seg)) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];
     const list = session.removedSegments[preset.id];
@@ -232,7 +232,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   o.tagged = o.players ? [seg.id] : undefined;
   const logged = logRoll(session, 'wheel', o.name, sliceLabel(seg, index), o.players ? [seg.id] : undefined);
   if (o.players) logged.picked = true;
-  if (preset?.removeAfterLanding) {
+  if (preset?.removeAfterLanding && !isRespin(seg)) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];
     const list = session.removedSegments[preset.id];

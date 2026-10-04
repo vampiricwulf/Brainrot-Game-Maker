@@ -700,6 +700,8 @@
     // An opening the room has already used (an Undo back to before the buzzers reopened) isn't used again: the room
     // would take its decided buzz for this one. Open, it's a new opening; otherwise the latest one.
     const floor = session.remote?.armId ?? 0;
+    // The answer is on screen: nobody buzzes any more (a wrong answer then doesn't open them for the rest).
+    if (b.phase === 'armed' && session.phase === 'clue' && session.revealed) b = { phase: 'closed', armId: Math.max(floor, b.armId - 1), answering: null, lockedOut: [...b.lockedOut], done: true };
     if (b.armId < floor) b = { ...b, armId: b.phase === 'armed' ? floor + 1 : floor };
     app.live.buzz = b;
     // The room's openings only go up, also after a reload (see Session.remote).
@@ -732,6 +734,10 @@
       clueArmFloor = next.phase === 'armed' ? next.armId - 1 : next.armId;
       setBuzz(next);
     });
+  });
+  // The answer revealed while the buzzers are open: they close (setBuzz keeps them so).
+  $effect(() => {
+    if (buzzing && session.revealed && buzz.phase === 'armed') untrack(() => setBuzz(buzz));
   });
   // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
   // picked (or let go) by hand, a number key or a click in the host panel, answers (or the buzzers open again for the rest).
@@ -773,6 +779,7 @@
   /** U or 🔔 Open the buzzers: everyone who hasn't missed this clue may buzz. While someone is answering: everyone (0). */
   function openBuzzers(all = false): void {
     if (!buzzing) return;
+    if (session.revealed) return toast('The answer is showing: the buzzers stay closed');
     if (all || buzz.phase === 'answering') {
       if (selected.length || buzz.lockedOut.length) toast('Buzzers open for everyone');
       selected = [];
@@ -865,7 +872,8 @@
    * answers (with nobody left in it, the buzzers open for the rest). Returns who answers now.
    */
   function passOn(b: BuzzState, id: string): string | null {
-    const queue = roomQueue && roomQueue.armId > clueArmFloor ? roomQueue.queue.map((q) => ({ id: q.seatId, by: q.by })) : [];
+    // (With the answer on screen nobody else gets a turn: it's no question any more.)
+    const queue = !session.revealed && roomQueue && roomQueue.armId > clueArmFloor ? roomQueue.queue.map((q) => ({ id: q.seatId, by: q.by })) : [];
     const after = buzzMissed(b, id, session.players.map((p) => p.id), queue);
     setBuzz(after);
     return after.phase === 'answering' ? after.answering : null;
