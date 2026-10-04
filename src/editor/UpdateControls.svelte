@@ -6,7 +6,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
-  import { canSelfUpdate, installUpdate, openLink } from '../lib/desktop.svelte';
+  import { canSelfUpdate, installUpdate, openLink, restartIntoUpdate } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
   import { ASSETS, skipVersion, update, type Release } from '../lib/update.svelte';
 
@@ -30,17 +30,28 @@
     if (!exe || !sig) return;
     update.status = 'installing';
     try {
-      await installUpdate(exe, sig);
+      // Already in place (the restart failed last time): only the restart is left.
+      if (update.installed !== release.version) {
+        await installUpdate(exe, sig);
+        update.installed = release.version;
+      }
+      await restartIntoUpdate();
     } catch (err) {
       update.status = 'available';
-      toast(typeof err === 'string' ? err : err instanceof Error ? err.message : "The update didn't install.");
+      const why = typeof err === 'string' ? err : err instanceof Error ? err.message : '';
+      toast(
+        update.installed === release.version
+          ? `Version ${release.version} is in place, but the app didn't restart${why ? ` (${why})` : ''}. Press Restart again, or close the app and open it.`
+          : why || "The update didn't install.",
+      );
     }
   }
+  const ready = $derived(update.installed === release.version);
 </script>
 
 {#if desktopApp && selfUpdate && exe && sig}
-  <button class="small primary" onclick={install} disabled={update.status === 'installing'} title="Downloads it, checks it's the real thing, saves your game and restarts the app">
-    {update.status === 'installing' ? 'Updating…' : `⬆ Update to ${release.version}`}
+  <button class="small primary" onclick={install} disabled={update.status === 'installing'} title={ready ? 'Saves your game and restarts into the new version' : "Downloads it, checks it's the real thing, saves your game and restarts the app"}>
+    {update.status === 'installing' ? 'Updating…' : ready ? `⟳ Restart into ${release.version}` : `⬆ Update to ${release.version}`}
   </button>
 {:else if desktopApp}
   <button class="small primary" onclick={() => open(exe ?? release.page)} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>

@@ -70,6 +70,7 @@
       <dd class="updates">
         <span role="status">
           {#if update.status === 'checking'}Checking…{:else if update.status === 'available' && update.latest}Version {update.latest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked at start-up (⚙ Settings).{/if}
+          {#if update.error && (update.status === 'available' || update.status === 'current')}<span class="muted">{update.error}.</span>{/if}
           {#if update.checkedAt && update.status !== 'checking'}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}
         </span>
         {#if (update.status === 'available' || update.status === 'installing') && update.latest}

@@ -41,6 +41,8 @@
   // ▶ plays what the game would play (a missing file: the built-in sound), at its volume; ■ stops it.
   let previewEl = $state<HTMLAudioElement>();
   let previewing = $state<CueKey | null>(null);
+  /** The file it's playing (el.src can come back spelled differently). */
+  let previewUrl = '';
   function preview(key: CueKey): void {
     const el = previewEl;
     if (!el) return;
@@ -48,14 +50,21 @@
     if (previewing === key) return void (previewing = null);
     const url = soundUrl(cueHere(app.game, key));
     if (!url) return;
-    el.src = url;
+    el.src = previewUrl = url;
     el.volume = cueVolume(app.game, key);
     previewing = key;
-    el.play().catch(() => (previewing = null));
+    // A ▶ on another sound before this one started aborts this one: that doesn't stop the other's ■.
+    el.play().catch(() => previewing === key && previewUrl === url && (previewing = null));
   }
-  // Changing its volume while it plays is heard at once.
+  // Changing its volume while it plays is heard at once; switching it off or taking its file away stops it.
   $effect(() => {
-    if (previewing && previewEl) previewEl.volume = cueVolume(app.game, previewing);
+    if (!previewing || !previewEl) return;
+    const url = soundUrl(cueHere(app.game, previewing));
+    if (url && url === previewUrl) previewEl.volume = cueVolume(app.game, previewing);
+    else {
+      previewEl.pause();
+      previewing = null;
+    }
   });
 </script>
 

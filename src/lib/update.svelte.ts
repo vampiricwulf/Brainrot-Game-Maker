@@ -31,7 +31,9 @@ export const update = $state<{
   skipped: string;
   /** When GitHub last answered (ms; 0: not yet), shown in ℹ About. */
   checkedAt: number;
-}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0 });
+  /** The version whose .exe the desktop app already put in place (only the restart into it is left). */
+  installed: string;
+}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '' });
 
 function storedFlag(key: string): boolean {
   try {
@@ -89,7 +91,7 @@ function toApi(r: Release): unknown {
 /**
  * Ask GitHub for the newest release, at start-up and when ℹ About's button is pressed (`manual`). It always asks
  * (one small request; releases come often, so an answer kept from earlier would hide a newer one). When GitHub can't be
- * reached, the start-up check stays quiet and goes by what it heard last; the button says so.
+ * reached, the start-up check stays quiet and goes by what it heard last; ℹ About says so.
  */
 export async function checkForUpdate(manual = false): Promise<void> {
   if (update.status === 'checking' || update.status === 'installing') return;
@@ -101,7 +103,13 @@ export async function checkForUpdate(manual = false): Promise<void> {
     const res = await fetch(API, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
     if (res.status === 404) return settle(null);
     if (!res.ok) throw new Error(res.status === 403 || res.status === 429 ? 'GitHub is busy: try again in a while' : `GitHub answered ${res.status}`);
-    const release = releaseFrom(await res.json());
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      throw new Error("GitHub's answer couldn't be read: try again in a while");
+    }
+    const release = releaseFrom(json);
     update.checkedAt = Date.now();
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ at: update.checkedAt, release }));
@@ -110,12 +118,16 @@ export async function checkForUpdate(manual = false): Promise<void> {
     }
     settle(release);
   } catch (err) {
-    update.error = err instanceof Error && err.message !== 'Failed to fetch' ? err.message : "Couldn't reach GitHub (offline?)";
+    // fetch's own failures (offline, blocked) are TypeErrors, worded differently in each browser.
+    update.error = err instanceof Error && !(err instanceof TypeError) ? err.message : "Couldn't reach GitHub (offline?)";
     const heard = manual ? null : lastHeard();
     if (heard) {
       update.checkedAt = heard.at;
       settle(heard.release);
-    } else update.status = manual ? 'failed' : 'idle';
+    } else if (update.latest && isNewer(update.latest.version, __APP_VERSION__)) {
+      // A newer version is still known from before: its notice and Update button stay (ℹ About says the check failed).
+      update.status = 'available';
+    } else update.status = 'failed';
   }
 }
 

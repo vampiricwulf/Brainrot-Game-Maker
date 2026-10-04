@@ -303,9 +303,13 @@ export async function canSelfUpdate(): Promise<boolean> {
   return inTauri() && (await invoke<boolean>('can_self_update').catch(() => false));
 }
 
-/** Put a release's .exe in place of this one (its signature checked), then restart into it once everything's saved. */
+/** Put a release's .exe in place of this one (its signature checked); restartIntoUpdate starts it. */
 export async function installUpdate(exeUrl: string, signatureUrl: string): Promise<void> {
   await invoke('install_update', { exeUrl, signatureUrl });
+}
+
+/** Save everything and restart into the update put in place by installUpdate. */
+export async function restartIntoUpdate(): Promise<void> {
   await saveEverythingNow();
   await invoke('restart_app');
 }

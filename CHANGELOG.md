@@ -24,6 +24,10 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- 🔊 Sounds: a preview kept playing, with no way to stop it, when its sound was switched off or its file removed; it now stops. Clicking ▶ on two sounds quickly no longer leaves the second playing with a ▶ on its button.
+- In two-window play, a cue whose chosen file the audience window hadn't loaded was silent; it now plays the built-in sound there, as the Sounds tab says.
+- Update check: a failed Check for updates no longer hides the notice and Update button for a newer version already found. A failed check at start-up now says so in ℹ About instead of leaving the line empty, and Firefox's and Safari's offline errors read "Couldn't reach GitHub (offline?)" too.
+- Desktop update: if the new version was put in place but the app didn't restart, the button now reads Restart into the new version instead of downloading it again.
 - **Clue editor: unticking Empty tile on a Daily Double raises the ⭐ Daily Doubles count**, as the board's own menu does.
 - **Clue editor: Alt+arrows leave dropdowns (Alt+↓ opens them on Windows) and, on a Mac, text boxes (Option+arrows move
   the cursor) alone**, instead of jumping to another clue.

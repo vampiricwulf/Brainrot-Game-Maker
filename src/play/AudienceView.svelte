@@ -583,7 +583,7 @@
 <!-- Game sound cues: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
 {#if role !== 'mirror'}
   {#each cues as c (c.nonce)}
-    {@const url = soundUrl(c.media)}
+    {@const url = soundUrl(c.media) ?? soundUrl(c.fallback)}
     {#if url}
       <audio use:loudness={c.volume ?? 1} use:autoPlay={url} use:holdWhile={!!live.cover} onended={() => cueDone(c.nonce)}></audio>
     {/if}

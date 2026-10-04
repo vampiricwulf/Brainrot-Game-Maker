@@ -31,6 +31,7 @@ export const cueHere = (game: Game, key: CueKey): string | undefined => cueMedia
  */
 export function playCue(live: Live, game: Game, key: CueKey, cut = false): void {
   const media = cueHere(game, key);
-  if (media) playSound(live, media, cut, cueVolume(game, key));
+  // The audience window plays it: should it not have the file loaded, it plays the built-in sound, as here.
+  if (media) playSound(live, media, cut, cueVolume(game, key), hasBuiltin(key) ? BUILTIN + key : undefined);
   else if (cut) live.sound = null;
 }
