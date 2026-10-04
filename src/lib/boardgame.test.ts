@@ -288,10 +288,23 @@ describe('board game: skipped turns and rolling again', () => {
     expect(nextTurn(bs)).toEqual(['b']);
     expect(bs.turn).toBe(2);
     expect(bs.skips).toBeUndefined();
-    // Going back doesn't count as a turn missed.
+    // Going back is the turn before (a's), and the skip that turn used up is owed again (with the one added since).
     skipTurns(bs, ['b']);
     nextTurn(bs, -1);
-    expect([bs.turn, bs.skips]).toEqual([1, { b: 1 }]);
+    expect([bs.turn, bs.skips]).toEqual([0, { b: 2 }]);
+    // Back again (nothing remembered further): just the player before.
+    nextTurn(bs, -1);
+    expect(bs.turn).toBe(2);
+  });
+
+  it('goes back to the turn before a Roll again, with its move', () => {
+    const bs = state();
+    bs.last = { playerId: 'a', passed: [], landed: 'x', turn: 0 };
+    bs.again = 'a';
+    nextTurn(bs);
+    expect(bs.turn).toBe(0);
+    nextTurn(bs, -1);
+    expect([bs.turn, bs.again, bs.last?.playerId]).toEqual([0, 'a', 'a']);
   });
 
   it('never loops forever when everyone skips', () => {

@@ -112,6 +112,14 @@ try {
   assert((await turn()).includes('Bob'), 'N: Bob’s turn');
   await page.keyboard.press('Shift+N');
   assert((await turn()).includes('Ann'), 'Shift+N: back to Ann');
+  assert((await mainLabel(page)) === 'Next turn ▶', `her turn as it was: her move is made (${await mainLabel(page)})`);
+  await page.keyboard.press('d');
+  await page.waitForTimeout(300);
+  assert((await toast()).includes('Ann already moved this turn'), `D doesn't roll a second move for her (${await toast()})`);
+  // Round to a fresh turn of hers.
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  assert((await turn()).includes('Ann') && (await mainLabel(page)) === '🎲 Roll', 'N, N: Ann’s next turn starts with 🎲 Roll');
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   await page.waitForTimeout(1500);

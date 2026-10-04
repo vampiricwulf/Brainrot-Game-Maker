@@ -122,8 +122,11 @@ function syncPlayers(session: Session, round: BoardGameRound, bs: BoardGameState
   const ids = session.players.map((p) => p.id);
   // The same player keeps the turn when someone before them left; when they left, it goes to the next one still in.
   const keep = [...bs.order.slice(bs.turn), ...bs.order.slice(0, bs.turn)].find((id) => ids.includes(id));
+  const was = bs.order.join();
   bs.order = bs.order.filter((id) => ids.includes(id));
   for (const id of ids) if (!bs.order.includes(id)) bs.order.push(id);
+  // (◀ Previous turn's memory is of another order.)
+  if (bs.order.join() !== was) delete bs.before;
   const start = startSpace(round);
   for (const id of ids) if (!bs.positions[id]) bs.positions[id] = { space: start?.id };
   bs.turn = keep ? bs.order.indexOf(keep) : 0;
@@ -173,6 +176,26 @@ export function currentPlayer(bs: BoardGameState): Id | undefined {
 export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   const n = bs.order.length;
   bs.fork = undefined;
+  const before = bs.before;
+  // Back: to the turn as it was before the last Next turn (the skip or Roll again it used up is theirs again), when
+  // nothing changed the order since. Otherwise just the player before.
+  if (delta < 0 && before && before.turn < n) {
+    bs.turn = before.turn;
+    bs.turns = before.turns;
+    // The skips it used up are owed again (any added since stay too).
+    if (before.skipped.length) {
+      const skips = { ...bs.skips };
+      for (const id of before.skipped) skips[id] = (skips[id] ?? 0) + 1;
+      bs.skips = skips;
+    }
+    if (before.again) bs.again = before.again;
+    bs.last = before.last;
+    for (const k of ['turns', 'last'] as const) if (bs[k] === undefined) delete bs[k];
+    delete bs.before;
+    return [];
+  }
+  const was = delta > 0 ? { turn: bs.turn, turns: bs.turns, again: bs.again, last: bs.last ? JSON.parse(JSON.stringify(bs.last)) : undefined } : null;
+  delete bs.before;
   // A new turn, even for the same player (one player, 🔁 Roll again): its move is still to make.
   bs.turns = (bs.turns ?? 0) + 1;
   if (!n) return [];
@@ -185,6 +208,7 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   bs.again = undefined;
   if (again && bs.order.includes(again)) {
     bs.turn = bs.order.indexOf(again);
+    if (was) bs.before = { ...was, skipped: [] };
     return [];
   }
   const skipped: Id[] = [];
@@ -201,6 +225,7 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   bs.turn = turn;
   if (Object.keys(skips).length) bs.skips = skips;
   else delete bs.skips;
+  if (was) bs.before = { ...was, again: undefined, skipped };
   return skipped;
 }
 
@@ -261,7 +286,7 @@ export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id
  */
 export function waysNow(round: BoardGameRound, bs: BoardGameState): { playerId: Id; steps: number; ways: Id[] } | null {
   const f = bs.fork;
-  if (f) return { playerId: f.playerId, steps: f.stepsLeft, ways: waysOn(round, f.at, bs.prev?.[f.playerId], f.stepsLeft < 0) };
+  if (f) return { playerId: f.playerId, steps: f.stepsLeft, ways: waysOn(round, f.at, f.came ?? bs.prev?.[f.playerId], f.stepsLeft < 0) };
   const turn = currentPlayer(bs);
   const at = turn ? bs.positions[turn]?.space : undefined;
   if (round.mover.kind !== 'step' || !turn || !at) return null;
@@ -277,6 +302,7 @@ export function moveInOrder(bs: BoardGameState, from: number, to: number): void 
   const [id] = order.splice(from, 1);
   order.splice(to, 0, id);
   bs.order = order;
+  delete bs.before;
   bs.turn = order.indexOf(cur);
 }
 
@@ -304,7 +330,9 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   if (!steps) return 'No steps to move';
   const w = walk(round, from, steps, choose, bs.prev?.[playerId]);
   const prevPassed = bs.fork?.playerId === playerId && bs.last?.playerId === playerId ? bs.last.passed : [];
-  bs.fork = w.fork ? { playerId, at: w.fork.at, stepsLeft: w.fork.stepsLeft } : undefined;
+  // A fork on the way back doesn't offer the space it just stepped back from (the walk left it out too).
+  const came = w.fork && steps < 0 ? [from, ...w.path].at(-2) : undefined;
+  bs.fork = w.fork ? { playerId, at: w.fork.at, stepsLeft: w.fork.stepsLeft, ...(came ? { came } : {}) } : undefined;
   if (w.path.length) {
     bs.positions[playerId] = { space: w.path[w.path.length - 1] };
     const full = [from, ...w.path];

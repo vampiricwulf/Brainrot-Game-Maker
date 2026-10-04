@@ -1566,7 +1566,7 @@ export interface BoardGameState {
   /** The space each player came from, so a move doesn't turn back along a two-way link. */
   prev?: Record<Id, Id>;
   /** A move stopped at a fork: the host picks the way, then it goes on (the same way: negative steps go back). */
-  fork?: { playerId: Id; at: Id; stepsLeft: number };
+  fork?: { playerId: Id; at: Id; stepsLeft: number; came?: Id };
   /** Spaces passed and landed on in the last move, for their action buttons; `turn`: the turn (`turns`) it was made in. */
   last?: { playerId: Id; passed: Id[]; landed?: Id; turn?: number };
   /** How many times the turn has changed (Next turn, Previous turn): a move counts for the turn it was made in. */
@@ -1579,5 +1579,7 @@ export interface BoardGameState {
   skips?: Record<Id, number>;
   /** The player Next turn goes to instead of the next one (🔁 Roll again). */
   again?: Id;
+  /** The turn as it was before the last Next turn, for ◀ Previous turn (the skips and Roll again it used up, its move). */
+  before?: { turn: number; turns?: number; skipped: Id[]; again?: Id; last?: BoardGameState['last'] };
 }
 

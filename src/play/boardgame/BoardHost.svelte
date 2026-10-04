@@ -50,7 +50,7 @@
   const fork = $derived(bs?.fork);
   const forkSpace = $derived(round && fork ? spaceById(round, fork.at) : undefined);
   /** The ways on from the fork, as the move saw them (backwards when it was going back). */
-  const forkWays = $derived(round && bs && fork ? waysOn(round, fork.at, bs.prev?.[fork.playerId], fork.stepsLeft < 0) : []);
+  const forkWays = $derived(round && bs && fork ? waysOn(round, fork.at, fork.came ?? bs.prev?.[fork.playerId], fork.stepsLeft < 0) : []);
   const last = $derived(bs?.last);
   const landed = $derived(round && last?.landed ? spaceById(round, last.landed) : undefined);
   // (The space landed on shows its passing buttons with its own, once: not here too after a loop round it.)
@@ -176,6 +176,7 @@
     const now = b.order[b.turn];
     logged(session, `Shuffle the turn order: ${turnOrder(session, o)}`, () => {
       b.order = o;
+      delete b.before;
       b.turn = Math.max(0, now ? o.indexOf(now) : 0);
     });
   }

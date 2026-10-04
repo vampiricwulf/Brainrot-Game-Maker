@@ -62,6 +62,7 @@ export function setTurn(game: Game, session: Session, playerId: string): void {
     // The turn given away: the one before doesn't roll again after it, and their landing buttons go.
     bs.again = undefined;
     bs.last = undefined;
+    delete bs.before;
   });
 }
 
@@ -99,8 +100,10 @@ export function turnNow(game: Game, session: Session, delta = 1): void {
   const again = delta > 0 && bs.again && currentPlayer(after) === bs.again ? ' again' : '';
   const skips = skipped.length ? ` (${nameList(skipped.map((id) => playerName(session, id)))} ${skipped.length === 1 ? 'skips' : 'skip'} a turn)` : '';
   logged(session, `${playerName(session, currentPlayer(after))}’s turn${again}${skips}`, () => {
+    const back = delta < 0 && !!bs.before;
     nextTurn(bs, delta);
-    bs.last = undefined;
+    // (Back to the turn before: its move and landing buttons come back with it.)
+    if (!back) bs.last = undefined;
   });
 }
 

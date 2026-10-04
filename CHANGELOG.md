@@ -38,6 +38,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Board games: at a fork the main button says 🔀 Pick a way, and N says to pick first instead of quietly dropping the steps left (Next turn ▶ beside it still does, on purpose).
 - Board games: D (or 🎲 Roll) after the player has moved this turn says so instead of rolling, so Enter can't move them twice; type a number for an extra move.
 - Board games: 🔀 Shuffle keeps the turn with whoever had it; giving someone the turn by their name drops a pending Roll again and the last player's landing buttons.
+- Board games: ◀ Previous turn (Shift+N) goes back to the turn before as it was: a skip or Roll again that the Next turn used up is owed again, and that turn's move and landing buttons come back (it gave the turn to a player who was meant to miss it, and offered 🎲 Roll again).
+- Board games: a move back that stops at a fork no longer offers the space it just stepped back from.
 
 ## 2026-10-03
 
