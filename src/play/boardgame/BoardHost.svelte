@@ -229,6 +229,7 @@
                 class="nm"
                 style:background={id === turnId ? p.color : undefined}
                 style:color={id === turnId ? textOn(p.color) : undefined}
+                aria-current={id === turnId ? 'true' : undefined}
                 onclick={() => setTurn(game, session, id)}
                 onkeydown={(e) => {
                   // Alt+←/→ moves them in the order.
@@ -239,8 +240,8 @@
                 }}
                 title={id === turnId ? `${p.name}’s turn · drag (or Alt+←/→) to move them in the order` : `Click: ${p.name}’s turn · drag (or Alt+←/→) to move them in the order`}
               >{p.name}</button>
-              {#if bs.skips?.[id]}<span class="mark" title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span>{/if}
-              {#if bs.again === id}<span class="mark" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
+              {#if bs.skips?.[id]}<span class="mark" role="img" aria-label="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}" title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span>{/if}
+              {#if bs.again === id}<span class="mark" role="img" aria-label="Rolls again" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
               <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="{p.name} later in the turn order">▶</button>
             </span>
           {/if}

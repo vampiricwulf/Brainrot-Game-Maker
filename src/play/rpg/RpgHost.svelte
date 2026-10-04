@@ -344,6 +344,7 @@
         <button
           class="small party"
           class:on={pt.id === party?.id}
+          aria-current={pt.id === party?.id ? 'true' : undefined}
           class:drop-on={dropHover.at === `party:${pt.id}`}
           style:border-color={lead?.color}
           data-party={pt.id}
@@ -582,6 +583,7 @@
             style:background={on ? pl.color : undefined}
             style:color={on ? textOn(pl.color) : undefined}
             data-player-id={pl.id}
+            aria-pressed={on}
             draggable="true"
             ondragstart={(e) => e.dataTransfer?.setData('text/x-player', pl.id)}
             onclick={() => (selected = on ? selected.filter((x) => x !== pl.id) : [...selected, pl.id])}

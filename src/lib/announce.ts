@@ -86,7 +86,8 @@ export function announceChanges(node: HTMLElement, wait = 600) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const words = () => {
     const copy = node.cloneNode(true) as HTMLElement;
-    copy.querySelectorAll('button, select, input, [aria-hidden="true"], .hint').forEach((e) => e.remove());
+    // (`data-quiet`: parts that speak for themselves or change all the time, a running countdown, the phones' popover.)
+    copy.querySelectorAll('button, select, input, [aria-hidden="true"], .hint, [data-quiet]').forEach((e) => e.remove());
     return (copy.textContent ?? '').replace(/\s+/g, ' ').replace(/\s·\s*$/, '').trim();
   };
   const check = () => {

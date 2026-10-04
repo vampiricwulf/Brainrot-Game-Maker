@@ -61,6 +61,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Dice with custom faces have at most 100 sides (the faces past 100 rolled with no label or effect), and lowering the sides says which faces went (Ctrl+Z brings them back).
 - Wheels: unticking "Each slice can only land once" mid-game puts the slices that landed back on the wheel, and the Restore count no longer counts slices deleted since.
 - Shops sharing a stock pool really share it from the start: the stock begins at the number any of them has, wherever the first sale is (a shop left at ∞ sold the pool's item without end, and each shop counted down from its own number).
+- Screen readers: the host panel's status line no longer reads the countdown out every second (it says "Time's up" once), nor the 📱 phones list when it opens.
+- Keyboard: hiding the timer (✕) leaves the keys on its Start button, and closing the 📱 phones list (✕ or Esc) puts them back on the 📱 chip (they were lost to the page).
+- RPG and board-game host panels say who is selected, which party is followed and whose turn it is to screen readers (it was shown by color only), and the ⏭/🔁 marks are named. An object on the RPG stage opens its card with Space too, not just Enter.
 
 ## 2026-10-03
 

@@ -341,8 +341,12 @@
         onpointermove={objMove}
         onpointerup={objUp}
         onpointercancel={dragCancel}
-        onclick={(e) => e.stopPropagation()}
-        onkeydown={(e) => e.key === 'Enter' && onobject(el.id)}
+        onclick={(e) => {
+          e.stopPropagation();
+          // From the keyboard (Enter or Space: a click with no pointer), its card; a pointer's click is handled on release.
+          if (e.detail === 0) onobject(el.id);
+        }}
+        aria-pressed={hostCopy ? selectedObjects.includes(el.id) : undefined}
         aria-label="Object: {el.name || el.role?.class}"
         title="{el.name || el.role?.class}: click for its card, Shift+click to select it (selected players and objects drag together), drag to move it{el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}"
       ></button>

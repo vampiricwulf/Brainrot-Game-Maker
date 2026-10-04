@@ -42,6 +42,12 @@
 
   let open = $state(false);
   let chip = $state<HTMLButtonElement>();
+  /** Closed (✕ or Esc): the keys go back to the 📱 chip, if they were in the list. */
+  function close(): void {
+    const inside = !!document.activeElement?.closest('[aria-label="Phone buzzers"]');
+    open = false;
+    if (inside) chip?.focus();
+  }
 
   function toggle(): void {
     open = !open;
@@ -71,7 +77,7 @@
   );
 </script>
 
-<svelte:window onkeydowncapture={(e) => open && e.key === 'Escape' && (e.stopImmediatePropagation(), (open = false))} />
+<svelte:window onkeydowncapture={(e) => open && e.key === 'Escape' && (e.stopImmediatePropagation(), close())} />
 
 <span class="wrap">
   <button
@@ -94,6 +100,7 @@
       id="phone-pop"
       role="region"
       aria-label="Phone buzzers"
+      data-quiet
       use:anchored={{ anchor: chip, align: 'end', gap: 6, within: audience.open ? null : '.panel' }}
     >
       {#if remote.status === 'off'}
@@ -104,7 +111,7 @@
           <b class="code">{remote.code}</b>
           <button class="small" onclick={() => copyText(roomLink(), 'Join link copied')}>📋 Copy link</button>
           <span class="spacer"></span>
-          <button class="ghost small" onclick={() => (open = false)} aria-label="Close the phones list">✕</button>
+          <button class="ghost small" onclick={close} aria-label="Close the phones list">✕</button>
         </div>
         {#if remote.status === 'reconnecting'}
           <p class="warn small" role="status">⚠ Reconnecting to the buzzer room… phones can’t buzz until it’s back.</p>
