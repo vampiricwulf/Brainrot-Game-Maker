@@ -316,15 +316,16 @@ describe('wagerAsk (the wagers phones may send)', () => {
     finalSetWager(session, 'b', 1234);
     const st = hostState(game, session, newBuzz(), 0, { wager: wagerAsk(game, session, true) });
     expect(st.wager?.seats.map((x) => x.amount)).toEqual([4321, 1234]);
+    // (As numbers in the JSON: a random id can contain the same digits.)
     const ann = JSON.stringify(phoneView(st, 'a'));
-    expect(ann).toContain('4321');
-    expect(ann).not.toContain('1234');
-    expect(JSON.stringify(phoneView(st, 'c'))).not.toMatch(/4321|1234/);
+    expect(ann).toMatch(/:4321[,}]/);
+    expect(ann).not.toMatch(/:1234[,}]/);
+    expect(JSON.stringify(phoneView(st, 'c'))).not.toMatch(/:(4321|1234)[,}]/);
     expect(phoneView(st, 'c').wager).toMatchObject({ mine: false });
     expect(hostState(game, session, newBuzz(), 0).wager).toBeUndefined();
     // A phone seated after the wagers began isn't told the host's amount, only that one is in.
     const late = phoneView(st, 'a', null, null, null, true);
-    expect(JSON.stringify(late)).not.toContain('4321');
+    expect(JSON.stringify(late)).not.toMatch(/:4321[,}]/);
     expect(late.wager).toMatchObject({ mine: true, hidden: true });
     // What it sent itself it sees (unless the host typed over it: still not shown).
     expect(phoneView(st, 'a', null, null, { amount: 77, n: 1 }, true).wager).toMatchObject({ hidden: true });
