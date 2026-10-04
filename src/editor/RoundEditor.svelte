@@ -637,7 +637,11 @@
     min="0"
     max={ddMax}
     value={round.dailyDoubleCount ?? 1}
-    oninput={(e) => (round.dailyDoubleCount = Math.max(0, Math.min(ddMax, Math.floor(+e.currentTarget.value) || 0)))}
+    oninput={(e) => {
+      // Emptied to type a new number: it keeps the one it had until there is one.
+      if (e.currentTarget.value.trim() === '') return;
+      round.dailyDoubleCount = Math.max(0, Math.min(ddMax, Math.floor(+e.currentTarget.value) || 0));
+    }}
     onchange={(e) => (e.currentTarget.value = String(round.dailyDoubleCount ?? 1))}
     aria-label="How many Daily Doubles"
     class="ddn"

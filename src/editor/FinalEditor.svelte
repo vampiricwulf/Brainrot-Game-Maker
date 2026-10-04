@@ -38,7 +38,21 @@
     <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" data-round-name />
   </label>
   <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" data-field="final-category" /></label>
-  <label class="field">Think time (seconds)<input type="number" min="5" bind:value={round.timerSeconds} /></label>
+  <label class="field">Think time (seconds)<input
+      type="number"
+      min="5"
+      value={round.timerSeconds ?? 30}
+      oninput={(e) => {
+        // Emptied to type a new number: it keeps the one it had.
+        const v = Math.floor(+e.currentTarget.value);
+        if (e.currentTarget.value.trim() !== '' && v > 0) round.timerSeconds = v;
+      }}
+      onchange={(e) => {
+        // At least 5 seconds (what the game plays).
+        round.timerSeconds = Math.max(5, round.timerSeconds ?? 30);
+        e.currentTarget.value = String(round.timerSeconds);
+      }}
+    /></label>
   <label class="check">
     <input type="checkbox" checked={round.allowNonPositive ?? true} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
     Players with a score of 0 or less can play it

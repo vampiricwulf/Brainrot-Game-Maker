@@ -1837,7 +1837,7 @@
   function start(): void {
     if (!session.players.length) return;
     // A name left blank (or only spaces, or invisible characters) would be an empty plate on stream.
-    session.players.forEach((p, i) => blankName(p.name) && (p.name = `Player ${i + 1}`));
+    session.players.forEach((p, i) => blankName(p.name) && (p.name = `${pregameTeams ? 'Team' : 'Player'} ${i + 1}`));
     // A board short of Daily Doubles (a new one's ⭐ Daily Doubles 1, none placed) would play without them: the rest go
     // in at random now, each board a step as 🎲 Place now is.
     const placed = game.rounds.flatMap((r, ri) => (isBoard(r) && dailyDoublesShort(r) ? [{ n: placeDailyDoubles(ri, false), name: r.name }] : []));
@@ -1954,8 +1954,11 @@
     const before = new Set(dds());
     const n = randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
     const added = new Set(dds().filter((id) => !before.has(id)));
-    // (Placed on the way into the game: nowhere to put one, no step.)
-    if (!n && !tell) return 0;
+    // Nowhere to put one: no step (🎲 Place now says why).
+    if (!n) {
+      if (tell) toast(`No room for another Daily Double in ${r.name}: one a category, on a standard tile`);
+      return 0;
+    }
     const edited = app.game.rounds.find((x) => x.id === r.id);
     step(
       `Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`,

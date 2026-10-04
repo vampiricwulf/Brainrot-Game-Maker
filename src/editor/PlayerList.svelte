@@ -66,7 +66,10 @@
   function add(): P | undefined {
     if (players.length >= max) return;
     const color = nextFreeColor(players.map((p) => p.color));
-    const p: P = { id: newId(), name: `${noun} ${players.length + 1}`, color };
+    // The next number no one has yet (Player 3 deleted from 1–4: the new one isn't a second Player 4).
+    let k = players.length + 1;
+    while (players.some((x) => x.name.trim().toLowerCase() === `${noun} ${k}`.toLowerCase())) k++;
+    const p: P = { id: newId(), name: `${noun} ${k}`, color };
     if (showScores) p.startScore = 0;
     players.push(p);
     return p;

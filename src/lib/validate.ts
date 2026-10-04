@@ -31,9 +31,12 @@ function plural(n: number, word: string): string {
  * screen, places the rest): how many it wants and has. Null when it has them all.
  */
 export function dailyDoublesShort(round: BoardRound): { want: number; placed: number } | null {
-  // (No more than the board has tiles for.)
-  const want = Math.min(round.dailyDoubleCount ?? 1, playableClues(round).length);
   const placed = dailyDoublesPlaced(round);
+  // No more than placing them can add: one a category, on a standard tile, in a category without one yet.
+  const room = round.categories.filter(
+    (c) => !c.clues.some((cl) => cl.type === 'dailyDouble' && !cl.empty) && c.clues.some((cl) => !cl.empty && cl.type === 'standard'),
+  ).length;
+  const want = Math.min(round.dailyDoubleCount ?? 1, playableClues(round).length, placed + room);
   return placed < want ? { want, placed } : null;
 }
 

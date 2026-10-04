@@ -28,6 +28,11 @@ in plain words for the people who make and host games. Anything committed but no
 - Phone buzzers: a quick ✔ or ✘ on a player who isn't the one answering (a blurted answer) no longer reopens the buzzers and takes the turn from the one answering.
 - Keys list (?): the buzzer-mode number keys now say that, with someone answering, they pick player N as well (to judge both), and how to let the one answering go.
 - Phone page: "Not you? Change player" asks first, and warns when the host has locked the seats (you couldn't get back in).
+- Pre-game: "Daily Doubles not placed yet" no longer stays up when the board has no room for more (one a category, on a standard tile); 🎲 Place now says so instead of "Placed 0 Daily Doubles".
+- Editor: emptying the ⭐ Daily Doubles box to type a new number no longer sets it to 0; it keeps its number until you type one.
+- Teams: a team whose name was left blank is called "Team 2" on stream (as its box suggested), not "Player 2".
+- Final round: the Think time box keeps its number when emptied, and is at least 5 seconds (blank or 0 played a 30-second countdown it didn't show).
+- ＋ Add player (or team) picks a number no one has yet, so it doesn't make a second "Player 3".
 
 ## 2026-10-03
 
