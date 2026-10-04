@@ -8,6 +8,7 @@
   import { nameList, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
   import InlineAsk from './host/InlineAsk.svelte';
+  import { onMount } from 'svelte';
 
   let {
     game,
@@ -99,9 +100,26 @@
     if (undone(row)) onredoto(row);
     else onback(row);
   }
+
+  // In the host panel (one window) it covers the panel: the keys go into it, the panel under it is out of reach
+  // meanwhile, and closed, the keys go back to what opened it (📜 Log).
+  let box = $state<HTMLElement>();
+  onMount(() => {
+    if (!area) return;
+    const from = document.activeElement as HTMLElement | null;
+    const panel = box?.parentElement?.querySelector<HTMLElement>('.panel');
+    panel?.setAttribute('inert', '');
+    box?.querySelector<HTMLButtonElement>('header button[aria-pressed="true"]')?.focus();
+    return () => {
+      panel?.removeAttribute('inert');
+      const lost = !document.activeElement || document.activeElement === document.body || !!box?.contains(document.activeElement);
+      if (from?.isConnected && lost) setTimeout(() => from.focus());
+    };
+  });
 </script>
 
 <aside
+  bind:this={box}
   class:in-panel={!!area}
   style:top={area ? `${area.top}px` : undefined}
   style:left={area ? `${area.left}px` : undefined}

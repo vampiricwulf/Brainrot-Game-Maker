@@ -190,6 +190,9 @@ try {
   await page.keyboard.press('g');
   await page.waitForTimeout(400);
   assert(!(await page.locator('.hist').count()) && (await page.locator('nav button.round-tab.active').count()) === 1, 'Go there shows the round it changed');
+  await page
+    .waitForFunction(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav'), null, { timeout: 3000 })
+    .catch(() => {});
   assert(await page.evaluate(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav')), 'and the focus is there, not on the page');
 
   // ---------- RPG screens ----------

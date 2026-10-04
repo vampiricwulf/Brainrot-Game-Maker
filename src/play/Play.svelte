@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { focusRescue } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
@@ -2890,7 +2891,7 @@
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. The page's main part, named
        by the game's title (for screen readers). -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <main class="play" class:hidden={hideControls} class:side class:dual class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt}>
+  <main class="play" class:hidden={hideControls} class:side class:dual class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt} use:focusRescue>
     <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
