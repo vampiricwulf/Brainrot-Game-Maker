@@ -537,6 +537,17 @@ describe('RPG: where arriving players stand', () => {
     expect(ps.every((p) => p.x >= 75 && p.x <= 1845 && p.y >= standArea(game).top)).toBe(true);
   });
 
+  it('never puts arriving players in a No-go area', () => {
+    const { game, world, st } = four();
+    const to = at(world, '0,1');
+    const screen = world.maps.flatMap((m) => m.screens).find((x) => x.id === to.screen)!;
+    // Lava along the whole west edge, where they come in going east.
+    screen.slide.elements.push({ ...newShapeEl('rect'), x: 0, y: 0, w: 420, h: 1080, role: { class: 'blocker' as const } });
+    const ids = ['a1', 'a2'];
+    place(game, st, world, ids, to, 'e');
+    expect(ids.every((id) => st.positions[id].x >= 420 + 40)).toBe(true);
+  });
+
   it('a column too long for the screen goes on in a second one, further in', () => {
     const { game, world, st } = four();
     const many = Array.from({ length: 6 }, (_, i) => `x${i}`);

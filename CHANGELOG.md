@@ -45,6 +45,7 @@ in plain words for the people who make and host games. Anything committed but no
 - RPG: Alt+Q/W/E/A/D/Z/X/C move the party on a Mac too (Option+letter types other characters there).
 - Shops: "Other price…" for someone short of it says so (with Sell anyway) instead of taking their gold below zero.
 - RPG: picking up a pile of currency past the player's max takes only what fits and leaves the rest on the screen (it all vanished); with no room at all it says so.
+- RPG: players arriving on a screen are never placed in a ⛔ No-go area (they could land on the lava it marked); they stand along the edge beside it, or a little further in.
 
 ## 2026-10-03
 

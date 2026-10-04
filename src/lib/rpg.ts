@@ -295,7 +295,7 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const perLine = Math.max(1, Math.floor((hi - lo) / gap) + 1);
   // Further lines go towards the middle of the screen.
   const inward = vertical ? (cx > SLIDE_W / 2 ? -1 : 1) : cy > SLIDE_H / 2 ? -1 : 1;
-  const spots = (shift: number) => {
+  const spots = (shift: number, deeper = 0) => {
     const out: { x: number; y: number }[] = [];
     for (let first = 0, line = 0; first < n; first += perLine, line++) {
       const count = Math.min(perLine, n - first);
@@ -305,7 +305,7 @@ export function place(game: Game, st: WorldState, world: World, players: string[
       const under = lo - Math.min(...along);
       if (over > 0) along = along.map((a) => a - over);
       else if (under > 0) along = along.map((a) => a + under);
-      const across = (vertical ? cx : cy) + line * gap * inward;
+      const across = (vertical ? cx : cy) + (line + deeper) * gap * inward;
       for (const a of along)
         out.push(vertical ? { x: fit(across, area.left, area.right), y: fit(a, lo, hi) } : { x: fit(a, lo, hi), y: fit(across, area.top, area.bottom) });
     }
@@ -315,12 +315,23 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const others = Object.entries(st.positions)
     .filter(([id, p]) => p.screen === to.screen && !p.hidden && !players.includes(id))
     .map(([, p]) => p);
-  const clear = (row: { x: number; y: number }[]) => row.every((a) => others.every((o) => Math.abs(a.x - o.x) >= AVATAR || Math.abs(a.y - o.y) >= AVATAR));
+  // Nor in a No-go area (lava, a wall drawn on the background).
+  const blocked = els.filter((e) => e.role?.class === 'blocker');
+  const inBlocker = (a: { x: number; y: number }) =>
+    blocked.some((b) => a.x > b.x - AVATAR / 2 && a.x < b.x + b.w + AVATAR / 2 && a.y > b.y - AVATAR / 2 && a.y < b.y + b.h + AVATAR / 2);
+  const clear = (row: { x: number; y: number }[]) =>
+    row.every((a) => !inBlocker(a) && others.every((o) => Math.abs(a.x - o.x) >= AVATAR || Math.abs(a.y - o.y) >= AVATAR));
+  // Along the edge first, then a little further in (a No-go area right along the edge).
   let row = spots(0);
-  for (let k = 1; k <= 12 && !clear(row); k++) {
-    const next = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * gap);
-    if (clear(next)) row = next;
-  }
+  search: for (let deeper = 0; deeper <= 6; deeper++)
+    for (let k = deeper ? 0 : 1; k <= 12; k++) {
+      if (clear(row)) break search;
+      const next = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * gap, deeper);
+      if (clear(next)) {
+        row = next;
+        break search;
+      }
+    }
   players.forEach((id, i) => (st.positions[id] = { ...st.positions[id], map: to.map, screen: to.screen, ...row[i] }));
 }
 
