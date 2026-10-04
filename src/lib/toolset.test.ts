@@ -613,6 +613,12 @@ describe('limits the editor and the host can trip over', () => {
     expect(shopCurrencyGone(game, shop)).toBe(true);
     expect(shopCurrency(game, shop)).toBe('score');
     expect(statsProblems(game).map((p) => p.text)).toEqual(['Shop “Village” charged a deleted stat (it charges points now): pick what it charges']);
+    // A stat that's no longer a number can't be charged either.
+    const gold = { ...newStatField('Coins'), id: 'coins', type: 'text' as const };
+    game.statFields = [...(game.statFields ?? []), gold];
+    game.shops![0].currency = 'coins';
+    expect(shopCurrencyGone(game, game.shops![0])).toBe(true);
+    expect(statsProblems(game).map((p) => p.text)).toContain('Shop “Village” charged “Coins”, which isn\'t a number now (it charges points now): pick what it charges');
     shop.currency = SCORE_CURRENCY;
     expect(shopCurrencyGone(game, shop)).toBe(false);
   });

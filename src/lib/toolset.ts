@@ -222,12 +222,16 @@ export const SCORE_CURRENCY = 'score';
  */
 export function shopCurrency(game: Game, shop: Shop): StatField | 'score' {
   if (shop.currency === SCORE_CURRENCY) return 'score';
-  return statFields(game).find((f) => f.id === shop.currency) ?? currencyFields(game)[0] ?? 'score';
+  // (A stat that's no longer a number can't be charged: as if it were gone.)
+  return statFields(game).find((f) => f.id === shop.currency && f.type === 'number') ?? currencyFields(game)[0] ?? 'score';
 }
 
-/** The shop charges a stat that was deleted since (it then charges the first currency, or points, until one is picked). */
+/**
+ * The shop charges a stat that was deleted since, or isn't a number any more (it then charges the first currency, or
+ * points, until one is picked).
+ */
 export function shopCurrencyGone(game: Game, shop: Shop): boolean {
-  return !!shop.currency && shop.currency !== SCORE_CURRENCY && !statFields(game).some((f) => f.id === shop.currency);
+  return !!shop.currency && shop.currency !== SCORE_CURRENCY && !statFields(game).some((f) => f.id === shop.currency && f.type === 'number');
 }
 
 /** What's wrong with a number stat's Start, Min and Max ("Min is more than Max"), or null. */
@@ -251,7 +255,9 @@ export function statsProblems(game: Game): Problem[] {
     if (shopCurrencyGone(game, s)) {
       const cur = shopCurrency(game, s);
       const now = cur === 'score' ? 'points' : cur.name;
-      out.push({ text: `Shop “${s.name}” charged a deleted stat (it charges ${now} now): pick what it charges`, tab: 'stats', level: 'warn', place: { tab: 'stats', shop: s.id } });
+      const was = statFields(game).find((f) => f.id === s.currency);
+      const what = was ? `“${was.name}”, which isn't a number now` : 'a deleted stat';
+      out.push({ text: `Shop “${s.name}” charged ${what} (it charges ${now} now): pick what it charges`, tab: 'stats', level: 'warn', place: { tab: 'stats', shop: s.id } });
     }
   return out;
 }

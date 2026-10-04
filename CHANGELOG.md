@@ -24,6 +24,13 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Buttons (on spaces, items, objects): an emptied number box keeps its number**: a "set HP to" left blank no longer
+  set HP to 0 in play, and an emptied Seconds no longer started a broken countdown.
+- **Stats & Items: a stat's Start, Min and Max can be typed over** (a minus sign isn't lost, and an emptied Start doesn't
+  jump to 0); an emptied Min or Max means no limit once you leave it.
+- **Stats & Items: emptying a player's own starting text** gives them the stat's start again, not a blank.
+- **A shop charging a stat that's no longer a number** charges the first currency (or points) instead, and the
+  checklist says so, instead of every purchase failing with "Short by …".
 - **RPG: with the main map left empty (its screens moved or deleted), the party starts on the first map that has
   screens**, instead of the round having nowhere to start.
 - **RPG world editor: moving the start screen (when none was chosen) to another map says where the party starts now.**

@@ -8,6 +8,7 @@
   import { adoptUsedBy, clipboard, holdUsedBy, toolHere } from '../../lib/clipboard.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
+  import { keepNum, shown } from '../tools/numbox';
   import { copyActions, moveTo } from '../../lib/listedit';
   import { clone } from '../../lib/ops';
   import { dropMenu, showMenu } from '../../lib/menustate.svelte';
@@ -283,7 +284,8 @@
             {#each numbers as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
           <select bind:value={a.op} aria-label="Change"><option value="add">add</option><option value="set">set to</option></select>
-          <input type="number" bind:value={a.amount} aria-label="Amount" class="n" />
+          <!-- (Emptied, a number box keeps its number: "HP = null" would set HP to 0.) -->
+          <input type="number" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} aria-label="Amount" class="n" />
           {@render who(a)}
         {:else if a.do === 'item'}
           <select bind:value={a.op} aria-label="Give or take"><option value="give">Give</option><option value="take">Take</option></select>
@@ -304,7 +306,7 @@
           </select>
           {@render who(a)}
         {:else if a.do === 'score'}
-          <input type="number" bind:value={a.amount} aria-label="Points" class="n" />
+          <input type="number" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} aria-label="Points" class="n" />
           {@render who(a)}
         {:else if a.do === 'wheel'}
           {#each [a.wheel, ...(a.also ?? [])] as id, wi (wi)}
@@ -334,7 +336,7 @@
         {:else if a.do === 'question'}
           <input value={slideText(a.question)} oninput={(e) => setSlideText(a.question, e.currentTarget.value)} placeholder="Question" aria-label="Question" />
           <input value={slideText(a.answer)} oninput={(e) => setSlideText(a.answer, e.currentTarget.value)} placeholder="Answer" aria-label="Answer" />
-          <label class="small">Worth<input type="number" bind:value={a.value} class="n" /></label>
+          <label class="small">Worth<input type="number" bind:value={() => a.value, (v) => keepNum(v, (n) => (a.value = n))} onchange={(e) => shown(e, a.value)} class="n" /></label>
           <button class="small" onclick={() => (editing = { action: a, which: 'question' })}>Edit slides…</button>
         {:else if a.do === 'sound'}
           <div class="pop">
@@ -357,7 +359,15 @@
         {:else if a.do === 'shop'}
           <span class="shop"><ShopSelect bind:value={() => a.shop || undefined, (v) => (a.shop = v ?? '')} /></span>
         {:else if a.do === 'timer'}
-          <input type="number" min="1" bind:value={a.seconds} aria-label="Seconds" class="n" /> <span class="small muted">seconds</span>
+          <input
+            type="number"
+            min="1"
+            bind:value={() => a.seconds, (v) => keepNum(v, (n) => n >= 1 && (a.seconds = Math.round(n)))}
+            onchange={(e) => shown(e, a.seconds)}
+            aria-label="Seconds"
+            class="n"
+          />
+          <span class="small muted">seconds</span>
         {:else if a.do === 'goto'}
           {@const to = a.zone ? `z:${a.zone}` : `s:${a.space ?? ''}`}
           <select

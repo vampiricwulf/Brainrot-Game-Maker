@@ -349,9 +349,35 @@
         <!-- What the type needs goes on a line of its own (see .field-row), so every row's audience, color and 🗑 line up. -->
         <div class="by-type">
           {#if f.type === 'number'}
-            <label class="field">Start<input type="number" class="n" value={Number(f.start ?? 0)} oninput={(e) => (f.start = +e.currentTarget.value)} /></label>
-            <label class="field">Min<input type="number" class="n" value={f.min ?? ''} oninput={(e) => (f.min = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
-            <label class="field">Max<input type="number" class="n" value={f.max ?? ''} oninput={(e) => (f.max = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+            <!-- A number counts as it's typed; an emptied box (or a "-" on its way to a number) keeps what it was until it's
+                 left: Start then shows its number again, Min and Max have no limit. -->
+            <label class="field"
+              >Start<input
+                type="number"
+                class="n"
+                value={Number(f.start ?? 0)}
+                oninput={(e) => e.currentTarget.value !== '' && (f.start = +e.currentTarget.value)}
+                onchange={(e) => e.currentTarget.value === '' && (e.currentTarget.value = String(Number(f.start ?? 0)))}
+              /></label
+            >
+            <label class="field"
+              >Min<input
+                type="number"
+                class="n"
+                value={f.min ?? ''}
+                oninput={(e) => e.currentTarget.value !== '' && (f.min = +e.currentTarget.value)}
+                onchange={(e) => e.currentTarget.value === '' && (f.min = undefined)}
+              /></label
+            >
+            <label class="field"
+              >Max<input
+                type="number"
+                class="n"
+                value={f.max ?? ''}
+                oninput={(e) => e.currentTarget.value !== '' && (f.max = +e.currentTarget.value)}
+                onchange={(e) => e.currentTarget.value === '' && (f.max = undefined)}
+              /></label
+            >
             <!-- (A stat without a display shows as a number: showing the field doesn't fill it in.) -->
             <select bind:value={() => f.display ?? 'counter', (v) => (f.display = v)} aria-label="{f.name} shown as">
               <option value="counter">Number</option>
@@ -412,7 +438,13 @@
                     <input
                       placeholder={String(f.start ?? '')}
                       value={p.stats?.[f.id] ?? ''}
-                      oninput={(e) => (p.stats = { ...(p.stats ?? {}), [f.id]: e.currentTarget.value })}
+                      oninput={(e) => {
+                        // Emptied: their own value goes (they start with the stat's, the box's grey hint).
+                        const v = e.currentTarget.value;
+                        p.stats = { ...(p.stats ?? {}) };
+                        if (v === '') delete p.stats[f.id];
+                        else p.stats[f.id] = v;
+                      }}
                       aria-label="{p.name} starting {f.name}"
                     />
                   {:else if f.type === 'checkbox'}
