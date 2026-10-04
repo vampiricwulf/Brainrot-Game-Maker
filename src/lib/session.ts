@@ -98,7 +98,18 @@ export function undo(session: Session): ScoreEvent[] {
     session.redoStack.push(e.id);
   }
   followFinals(session, events);
+  followPicker(session, events);
   return events;
+}
+
+/** An award that made its player the picker: undone, the picker goes back (unless it changed since); redone, again. */
+function followPicker(session: Session, events: ScoreEvent[]): void {
+  for (const e of events) {
+    if (!e.picker) continue;
+    if (e.undone) {
+      if (session.currentPickerId === e.picker.now) session.currentPickerId = e.picker.was;
+    } else session.currentPickerId = e.picker.now;
+  }
 }
 
 /** Redo the last undone step (all of its events). */
@@ -116,6 +127,7 @@ export function redo(session: Session): ScoreEvent[] {
   // In the order they happened (the stack gives them back last first), so "Redid …" names them as "Undid …" did.
   events.reverse();
   followFinals(session, events);
+  followPicker(session, events);
   return events;
 }
 
@@ -126,6 +138,7 @@ export function toggleEvent(session: Session, eventId: string): void {
   e.undone = !e.undone;
   session.redoStack = session.redoStack.filter((id) => id !== eventId);
   followFinals(session, [e]);
+  followPicker(session, [e]);
 }
 
 /**

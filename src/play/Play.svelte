@@ -605,11 +605,16 @@
     // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out, and the next in the buzz order
     // answers (with nobody left in it, the buzzers open for the rest).
     const b = app.live.buzz;
+    const buzzBefore = b ? ($state.snapshot(b) as BuzzState) : null;
     let next: string | null = null;
     if (buzzing && b?.answering && events.length && ids.includes(b.answering)) {
       if (sign > 0) setBuzz(buzzDone(b));
-      else next = passOn(b, b.answering);
+      // Wrong: everyone it was taken from is locked out (not only the one answering), so none of them answers next.
+      else next = passOn({ ...b, lockedOut: [...new Set([...b.lockedOut, ...ids.filter((id) => id !== b.answering)])] }, b.answering);
     }
+    // The buzzers as they were, for an Undo of this award (and as they are now, for a Redo).
+    if (buzzBefore && app.live.buzz && app.live.buzz !== b)
+      buzzSteps.set(batch, { clue: info?.clue.id, before: buzzBefore, after: $state.snapshot(app.live.buzz) as BuzzState });
     // One pop per player, or one for a group ("Everyone +$200").
     for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
     // Screen readers: what changed, and where that leaves each player.
@@ -618,7 +623,11 @@
       announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${total}`);
     }
     // Awarding control of the board follows TV rules: the last correct player picks next.
-    if (game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1) session.currentPickerId = ids[0];
+    // (Kept on the award, so undoing it gives the picker back.)
+    if (game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1 && events.length && session.currentPickerId !== ids[0]) {
+      events[0].picker = { was: session.currentPickerId, now: ids[0] };
+      session.currentPickerId = ids[0];
+    }
     selected = next ? [next] : [];
   }
 
@@ -652,6 +661,17 @@
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
   const playerIds = () => session.players.map((p) => p.id);
+
+  /** Awards that changed the buzzers (by their step): an Undo puts them back as they were, a Redo as they were after. */
+  const buzzSteps = new Map<string, { clue: string | undefined; before: BuzzState; after: BuzzState }>();
+  /** A score step undone or redone: the buzzers follow it, while its clue is still open. */
+  function buzzFollow(events: { batchId?: string; id: string }[], undone: boolean): void {
+    const s = events.length ? buzzSteps.get(events[0].batchId ?? events[0].id) : undefined;
+    if (!s || !buzzing || s.clue !== info?.clue.id) return;
+    const to = undone ? s.before : s.after;
+    setBuzz(to);
+    selected = to.phase === 'answering' && to.answering ? [to.answering] : [];
+  }
 
   function setBuzz(b: BuzzState): void {
     app.live.buzz = b;
@@ -1508,6 +1528,7 @@
     const events = undo(session);
     if (!events.length) return null;
     undone.push({ log: 'score', id: stepOf(events[0]) });
+    buzzFollow(events, true);
     return describeStep(session, events, sym);
   }
 
@@ -1518,6 +1539,7 @@
       if (a) return `${a.text}${inRound(a)}`;
     }
     const events = redo(session);
+    buzzFollow(events, false);
     return events.length ? describeStep(session, events, sym) : null;
   }
 

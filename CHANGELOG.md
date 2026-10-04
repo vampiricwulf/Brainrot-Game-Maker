@@ -24,6 +24,11 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Undoing an award gives the picker back**: with "the last correct player picks next" on, Ctrl+Z took the points
+  back but left the star (and the phones' "picks next") on that player.
+- **Phone buzzers: undoing an award puts the buzzers back as they were** (the player marked wrong by mistake can answer
+  again, a right answer undone reopens the clue), and Redo as they were after.
+- **Phone buzzers: deducting from several players at once locks them all out**, so none of them is handed the clue next.
 - **Board games: the Steps box fills once the dice (or the movement wheel) have landed on stream**, so ▶ Move can't end
   the roll early; a move pressed while it's still rolling waits ("Still rolling…").
 - **Board games moving one space at a time: while someone is at a fork, the turn's way buttons step aside** for the

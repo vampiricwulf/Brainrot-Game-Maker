@@ -1081,3 +1081,17 @@ describe('names', () => {
     expect(describeStep(session, session.scoreLog, '$')).toBe('+$200 × 3 (P1, P2 & P3) · Memes $200');
   });
 });
+
+describe('an award that made its player the picker', () => {
+  it('gives the picker back when undone, and takes it again when redone', () => {
+    const { game, session, a, b } = setup();
+    session.currentPickerId = a;
+    const events = applyScore(session, game, [b], 200, 'x');
+    events[0].picker = { was: a, now: b };
+    session.currentPickerId = b;
+    undo(session);
+    expect(session.currentPickerId).toBe(a);
+    redo(session);
+    expect(session.currentPickerId).toBe(b);
+  });
+});

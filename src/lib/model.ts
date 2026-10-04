@@ -596,6 +596,8 @@ export interface ScoreEvent {
   right?: boolean;
   /** The round it was given in (the 📜 Log's history groups by round). */
   round?: number;
+  /** The award made its player the picker (it was `was`): undoing it gives the picker back. */
+  picker?: { was?: Id; now: Id };
 }
 
 export interface RollEvent {
