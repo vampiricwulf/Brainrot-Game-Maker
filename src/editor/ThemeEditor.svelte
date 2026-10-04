@@ -497,7 +497,7 @@
       </select>
     </label>
     <div class="preview">
-      <Stage>
+      <Stage hostOnly>
         <AudienceView game={shown} session={demo} {live} role="mirror" />
       </Stage>
     </div>

@@ -2903,7 +2903,7 @@
         ondragleave={() => itemDrag.now && (dropHover.at = null)}
         oncontextmenu={stageMenu}
       >
-        <Stage>
+        <Stage hostOnly={dual}>
           <AudienceView
             {game}
             {session}

@@ -3,7 +3,11 @@
   import { setContext, type Snippet } from 'svelte';
   import { SLIDE_H, SLIDE_W } from './model';
 
-  let { children, background = '#000' }: { children: Snippet; background?: string } = $props();
+  /**
+   * `hostOnly`: a copy no viewer sees (the host's mirror of the audience window, an editor preview): it follows the
+   * computer's reduced-motion setting like the rest of the host's screen. Others follow "Reduce motion on stream".
+   */
+  let { children, background = '#000', hostOnly = false }: { children: Snippet; background?: string; hostOnly?: boolean } = $props();
   let w = $state(0);
   let h = $state(0);
   const scale = $derived(Math.min(w / SLIDE_W, h / SLIDE_H) || 0);
@@ -18,7 +22,7 @@
 <div class="frame" bind:clientWidth={w} bind:clientHeight={h}>
   <div
     class="stage"
-    data-stage
+    data-stage={hostOnly ? undefined : ''}
     style:width="{SLIDE_W}px"
     style:height="{SLIDE_H}px"
     style:background

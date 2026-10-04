@@ -429,7 +429,7 @@
         role="region"
         aria-label="Board preview. Drop images here."
       >
-        <Stage>
+        <Stage hostOnly>
           <AudienceView game={preview} {session} {live} role="mirror" />
           <EditLayer
             slide={pseudo}

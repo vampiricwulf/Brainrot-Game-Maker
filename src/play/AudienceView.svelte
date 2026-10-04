@@ -693,10 +693,9 @@
       opacity: 0;
     }
   }
-  @media (prefers-reduced-motion: reduce) {
-    .buzz-now {
-      animation: none;
-    }
+  /* What viewers see follows "Reduce motion on stream", not the computer showing it (app.css). */
+  :global(html.reduce-stream) .buzz-now {
+    animation: none;
   }
   .cover.host {
     opacity: 0.35;
