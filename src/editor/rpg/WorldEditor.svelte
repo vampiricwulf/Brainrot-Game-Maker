@@ -142,7 +142,16 @@
   // Deleting is done at once: the note at the bottom offers Undo.
   function removeMap(m: WorldMap): void {
     if (world.maps.length <= 1) return;
-    step(`Deleted map “${m.name}”`, () => (world.maps = world.maps.filter((x) => x.id !== m.id)), { notify: true });
+    // It says when the party now starts elsewhere, or something led there (as deleting screens does).
+    const ids = new Set(m.screens.map((s) => s.id));
+    const wasStart = !!start && m.screens.some((s) => s.id === start.screen);
+    step(null, () => {
+      world.maps = world.maps.filter((x) => x.id !== m.id);
+      const first = wasStart ? (world.maps.find((x) => x.screens.length)?.screens[0] ?? undefined) : undefined;
+      const loose = refsText(refsTo(game, world, ids));
+      const notes = [`Deleted map “${m.name}”`, first && `the party now starts at ${first.name}`, loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`];
+      nameStep(notes.filter(Boolean).join(' · '), { notify: true });
+    });
     mapId = world.maps[0].id;
     selIds = [];
   }
@@ -259,7 +268,7 @@
     const what = list.length === 1 ? `screen “${list[0].name}”` : `${list.length} screens`;
     step(null, () => {
       map.screens = map.screens.filter((s) => !ids.has(s.id));
-      const first = wasStart ? world.maps[0]?.screens[0] : undefined;
+      const first = wasStart ? (world.maps[0]?.screens[0] ?? world.maps.find((x) => x.screens.length)?.screens[0]) : undefined;
       const loose = refsText(refsTo(game, world, ids));
       const notes = [`Deleted ${what}`, first && `the party now starts at ${first.name}`, loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`];
       nameStep(notes.filter(Boolean).join(' · '), { notify: true });
@@ -319,10 +328,17 @@
   function moveAcross(list: Screen[], from: WorldMap, to: WorldMap, cells?: [number, number][]): void {
     if (to.screens.length + list.length > MAX_GRID * MAX_GRID) return void toast(`${to.name} is full (16×16 is the most)`);
     const what = list.length === 1 ? `screen “${list[0].name}”` : `${list.length} screens`;
+    const before = start ? { ...start } : null;
     step(`Moved ${what} to map “${to.name}”`, () => list.forEach((s, i) => moveToMap(game, world, s, from, to, cells?.[i])));
     mapId = to.id;
     selIds = list.map((s) => s.id);
     cursor = [list[0].col, list[0].row];
+    // The start was the main map's first screen (none set): moving it away moves the start, which it says.
+    void tick().then(() => {
+      if (!start || before?.screen === start.screen) return;
+      const at = world.maps.find((m) => m.id === start.map)?.screens.find((s) => s.id === start.screen);
+      if (at) toast(`The party now starts at ${at.name} (🏁 Make it the start on a screen to choose)`);
+    });
   }
 
   /** No room left for one more screen (16×16 is the most). */
@@ -514,7 +530,7 @@
       { heading: v.name },
       { label: '✎ Edit this look', onclick: () => ((lookId = v.id), (editing = true)) },
       { label: '⧉ Duplicate this look', onclick: () => step(`Duplicated look “${v.name}” of ${s.name}`, () => duplicateLook(s, v)) },
-      { label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v)), hint: 'Its own picture takes its place' },
+      { label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)), hint: 'Its own picture takes its place' },
       { label: '◀ Move earlier', onclick: () => step(`Moved look “${v.name}” earlier`, () => moveLook(s, i, i - 1)), disabled: i === 0 },
       { label: '▶ Move later', onclick: () => step(`Moved look “${v.name}” later`, () => moveLook(s, i, i + 1)), disabled: i === n - 1 },
       { sep: true },

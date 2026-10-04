@@ -24,6 +24,14 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **RPG: with the main map left empty (its screens moved or deleted), the party starts on the first map that has
+  screens**, instead of the round having nowhere to start.
+- **RPG world editor: moving the start screen (when none was chosen) to another map says where the party starts now.**
+- **RPG world editor: deleting a map says what now leads nowhere** (doorways, side exits, Go to buttons, the start),
+  as deleting screens does.
+- **RPG world editor: "Make it the main look" keeps doorways arriving at an object there** (at its match in the new
+  picture), instead of showing "⚠ Deleted object".
+- **RPG: ＋ a screen beside one during play stays within the 16 × 16 grid**, so the map can still be edited after.
 - **Board editor: text dragged out of a category's name drops as text**, instead of moving the category.
 - **Board editor: copying, pasting or reusing a Daily Double raises the ⭐ Daily Doubles count** (Ctrl/Alt-drag, Paste
   clue, Duplicate category, Use this tile again), so the checklist doesn't warn and 🔀 Randomize doesn't take it off.

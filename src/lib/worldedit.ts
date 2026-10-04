@@ -225,12 +225,27 @@ export function duplicateLook(s: Screen, v: ScreenVariant): ScreenVariant {
   return copy;
 }
 
-/** The look becomes the screen's own picture; what was its own picture takes the look's place in the list. */
-export function makeMainLook(s: Screen, v: ScreenVariant): void {
+/**
+ * The look becomes the screen's own picture; what was its own picture takes the look's place in the list. Doorways (in
+ * `world`) arriving at an object of the old picture arrive at its match in the new one (the same kind and name, else
+ * the one in the same spot), not at a deleted object.
+ */
+export function makeMainLook(s: Screen, v: ScreenVariant, world?: World): void {
   const own = s.slide;
   s.slide = v.slide;
   v.slide = own;
   v.name = 'Old main look';
+  if (!world) return;
+  for (const el of worldObjects(world)) {
+    const r = el.role;
+    if (!r?.arrive || s.slide.elements.some((e) => e.id === r.arrive)) continue;
+    const old = own.elements.find((e) => e.id === r.arrive);
+    if (!old) continue;
+    const match =
+      s.slide.elements.find((e) => e.role?.class === old.role?.class && (e.name ?? '') === (old.name ?? '')) ??
+      s.slide.elements.find((e) => e.x === old.x && e.y === old.y);
+    if (match) r.arrive = match.id;
+  }
 }
 
 /** Move a look to another place in the list (the order the host's look switcher lists them in). */

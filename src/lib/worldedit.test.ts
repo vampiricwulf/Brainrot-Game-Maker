@@ -189,4 +189,24 @@ describe('world editor: walls and looks', () => {
     expect(a1.slide.background.color).toBe('#000');
     expect([night.slide, night.name]).toEqual([own, 'Old main look']);
   });
+
+  it('a doorway arriving at an object of the old main look arrives at its match in the new one', () => {
+    const { world, over } = setup();
+    const a1 = named(over, 'A1');
+    const spawn = { ...newShapeEl('rect'), name: 'Gate', role: { class: 'spawn' as const } };
+    a1.slide.elements = [spawn];
+    const twin = { ...newShapeEl('rect'), name: 'Gate', role: { class: 'spawn' as const } };
+    const night = { id: 'n', name: 'Night', slide: { background: {}, elements: [twin] } };
+    a1.variants = [night];
+    const door = { ...newShapeEl('rect'), role: { class: 'doorway' as const, arrive: spawn.id } };
+    named(over, 'B1').slide.elements = [door];
+    makeMainLook(a1, night, world);
+    expect(door.role.arrive).toBe(twin.id);
+  });
+
+  it('with the main map left empty, the party starts on the first map that has screens', () => {
+    const { world, over, cave, round } = setup();
+    over.screens = [];
+    expect(startRef(world, round)).toEqual({ map: cave.id, screen: cave.screens[0].id });
+  });
 });

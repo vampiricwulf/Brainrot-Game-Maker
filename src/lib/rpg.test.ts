@@ -296,6 +296,11 @@ describe('RPG: improvising', () => {
     expect([d1.col, d1.row, m.cols]).toEqual([3, 0, 4]);
     expect(exitOf(m, c1, 'e').kind).toBe('open');
     expect(addScreenBeside(m, screenAt(m, 0, 0)!, 'n')).toBeNull(); // off the top
+    // Never past the editor's 16 × 16 grid.
+    const edge = addScreenBeside(m, c1, 's', 'C2')!;
+    edge.col = 15;
+    m.cols = 16;
+    expect(addScreenBeside(m, edge, 'e')).toBeNull();
   });
 
   it('keeps a screen from the game being played in the editor’s copy, with the objects added in play', () => {

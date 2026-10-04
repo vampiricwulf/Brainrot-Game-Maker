@@ -158,10 +158,10 @@ export function ensureWorld(session: Session, game: Game, round: RpgRound): Worl
   return st;
 }
 
-/** Where the party starts: the round's start screen, else the primary map's first screen. */
+/** Where the party starts: the round's start screen, else the primary map's first screen (else the first map's with any). */
 export function startRef(world: World, round: RpgRound): ScreenRef | null {
   if (round.start && world.maps.some((m) => m.id === round.start!.map && m.screens.some((s) => s.id === round.start!.screen))) return round.start;
-  const map = world.maps[0];
+  const map = world.maps[0]?.screens.length ? world.maps[0] : world.maps.find((m) => m.screens.length);
   const first = map?.screens[0];
   return map && first ? { map: map.id, screen: first.id } : null;
 }
@@ -604,7 +604,8 @@ export function addScreenBeside(map: WorldMap, at: Screen, dir: Dir8, name?: str
   const [dx, dy] = DIR_VEC[dir];
   const col = at.col + dx;
   const row = at.row + dy;
-  if (col < 0 || row < 0 || screenAt(map, col, row)) return null;
+  // (Within the editor's 16 × 16 grid: a wider map couldn't be edited after.)
+  if (col < 0 || row < 0 || col >= 16 || row >= 16 || screenAt(map, col, row)) return null;
   // Grow the map when the new screen is past its edge.
   map.cols = Math.max(map.cols, col + 1);
   map.rows = Math.max(map.rows, row + 1);
