@@ -51,6 +51,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Board editor: ×2 and ÷2 also change tiles that have a value of their own (imported clues keep theirs), and ⧉ Duplicate category gives the copy's slides their own items (as a copied clue has) and no longer names an unnamed category " (copy)".
 - Find: empty tiles are no longer listed, and a match in a tile's "Tile shows" text goes to that box.
 - Board editor: the "🖼 A picture on …: where does it go?" bar stays with the tile it was dropped on while the board changes (an Undo, a category moved); it put the picture on whatever tile was then in that spot. If that tile goes away, the bar goes too.
+- 📁 Media: files used only on tiles left empty for now count as used, so 🗑 Delete unused no longer deletes them (making the tile playable again showed a missing file); where a file is used says "(empty tile)".
+- Picking a file of another kind in a file picker (the dialog's "All files"): it's added to 📁 Media but not used there, as a dropped one isn't (a video as the theme's background showed nothing, a picture as a sound played nothing).
+- Uploaded fonts: a font replaced with 🔗 Replace file… shows at once (it kept the old one until a reload), and one whose file arrived after the game opened (reopened from Recent games, found again) is used without a reload.
+- 🎨 Theme: a warning when clues, answers and scores are hard to read on the tile color, and the Clue text color box shows the color clues are actually drawn in (it showed white).
 
 ## 2026-10-03
 

@@ -34,7 +34,7 @@
       if (!list.includes(where)) list.push(where);
       at.set(id, list);
     };
-    for (const { slide, where } of allSlides(game)) {
+    for (const { slide, where } of allSlides(game, { empty: true })) {
       put(slide.background.image, `${where}, background`);
       for (const el of slide.elements)
         if (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') {

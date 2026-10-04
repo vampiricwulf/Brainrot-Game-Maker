@@ -7,7 +7,7 @@ import { allSlides } from './usage';
 
 /** Pictures (on slides, and the board's images) that show an edited copy of file `id`. */
 export function editedUsers(game: Game, id: string): ImageEl[] {
-  const els = [...allSlides(game).flatMap(({ slide }) => slide.elements), ...boardRounds(game).flatMap((r) => r.decor ?? [])];
+  const els = [...allSlides(game, { empty: true }).flatMap(({ slide }) => slide.elements), ...boardRounds(game).flatMap((r) => r.decor ?? [])];
   return els.filter((e): e is ImageEl => e.kind === 'image' && e.media === id && !!e.editedMedia);
 }
 

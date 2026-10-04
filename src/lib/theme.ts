@@ -178,9 +178,9 @@ export function headerBackground(t: Theme, col: number): string {
 /**
  * How well the board's words read on what's behind them (WCAG contrast, 1 … 21; null where a color can't be read):
  * the values on every tile color (the tile, the alternating one, the gradient's end), and the category names on every
- * category color. Under 3 is hard to read on a stream.
+ * category color, and the slides' text and scores on the tile color. Under 3 is hard to read on a stream.
  */
-export function themeReadability(t: Theme): { values: number | null; names: number | null } {
+export function themeReadability(t: Theme): { values: number | null; names: number | null; text: number | null } {
   const worst = (text: string | undefined, on: (string | undefined)[]): number | null => {
     const fg = toHex(text);
     const bgs = on.map(toHex).filter((c): c is string => !!c);
@@ -189,6 +189,8 @@ export function themeReadability(t: Theme): { values: number | null; names: numb
   return {
     values: worst(t.value, [t.tile, t.tilePattern ? t.tile2 : undefined, t.tileGradient]),
     names: worst(t.boardText, [t.headerBg ?? t.tile, t.header2, t.headerGradient]),
+    // The slides' text and the scores, on the tile color (the slides' and score plates' background).
+    text: worst(stageText(t), [t.tile]),
   };
 }
 

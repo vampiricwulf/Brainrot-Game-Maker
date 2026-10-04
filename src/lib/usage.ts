@@ -7,14 +7,15 @@ export interface SlideRef {
   where: string;
 }
 
-export function allSlides(game: Game): SlideRef[] {
+/** `empty`: empty tiles' slides too (kept for when the tile is used again: their files are still in use). */
+export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   const out: SlideRef[] = [];
   game.rounds.forEach((r, ri) => {
     if (isBoard(r))
       for (const c of r.categories)
         c.clues.forEach((cl, i) => {
-          if (cl.empty) return;
-          const where = `${roundName(r, ri)} · ${categoryLabel(c)} #${i + 1}`;
+          if (cl.empty && !empty) return;
+          const where = `${roundName(r, ri)} · ${categoryLabel(c)} #${i + 1}${cl.empty ? ' (empty tile)' : ''}`;
           out.push({ slide: cl.questionSlide, where: `${where} (question)` });
           cl.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${where} (question slide ${j + 2})` }));
           out.push({ slide: cl.answerSlide, where: `${where} (answer)` });
@@ -69,7 +70,7 @@ function actionSlides(actions: Action[] | undefined): Slide[] {
 export function mediaUsage(game: Game): Map<string, number> {
   const n = new Map<string, number>();
   const bump = (id?: string) => id && n.set(id, (n.get(id) ?? 0) + 1);
-  for (const { slide } of allSlides(game)) {
+  for (const { slide } of allSlides(game, { empty: true })) {
     bump(slide.background.image);
     for (const el of slide.elements) {
       if (el.kind === 'image') {
@@ -83,7 +84,7 @@ export function mediaUsage(game: Game): Map<string, number> {
   if (fonts.length) {
     // Text on slides, text drawn onto pictures (kept to edit it again), and the theme's category, value and clue text
     // fonts.
-    const els = [...allSlides(game).flatMap(({ slide }) => slide.elements), ...boardRounds(game).flatMap((r) => r.decor ?? [])];
+    const els = [...allSlides(game, { empty: true }).flatMap(({ slide }) => slide.elements), ...boardRounds(game).flatMap((r) => r.decor ?? [])];
     const used = els.flatMap((e) => (e.kind === 'text' ? [e.font] : e.kind === 'image' ? (e.edits?.texts ?? []).map((t) => t.font) : []));
     used.push(game.theme?.boardFont ?? '', game.theme?.valueFont ?? '', game.theme?.clueFont ?? '');
     for (const f of fonts) {

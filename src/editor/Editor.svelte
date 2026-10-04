@@ -35,7 +35,7 @@
   import { readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
   import { buzzerBase } from '../lib/remote.svelte';
-  import { formatBytes, loadGameMedia, pruneMedia } from '../lib/media.svelte';
+  import { formatBytes, loadGameMedia, mediaUrls, pruneMedia } from '../lib/media.svelte';
   import { askToKeepStorage } from '../lib/persist';
   import SoundsPanel from './SoundsPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
@@ -109,7 +109,9 @@
   $effect(() => {
     if (typeof tab === 'number') lastRound = tab;
   });
+  // Again when a font's file arrives or changes (loaded after the game opened, found again, replaced).
   $effect(() => {
+    for (const m of game.media) if (m.kind === 'font') void mediaUrls[m.id];
     registerGameFonts(game);
   });
   $effect(() => {

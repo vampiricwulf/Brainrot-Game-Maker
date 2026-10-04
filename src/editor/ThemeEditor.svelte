@@ -224,6 +224,9 @@
     </div>
     {@render valuesNote()}
     {@render namesNote()}
+    {#if hard(readable.text)}
+      <p class="warn small" role="status">⚠ Clues, answers and scores are hard to read on the tile color ({readable.text.toFixed(1)}:1): pick a “Text on slides & scores” further from it.</p>
+    {/if}
     </details>
 
     <details class="sec" open data-sec="fonts">
@@ -260,7 +263,7 @@
       <label class="check clue-color" data-k="clueColor" data-name="Clue text color" data-color>
         <input
           type="color"
-          value={t.clueColor ?? FACTORY_COLOR}
+          value={t.clueColor ?? hex(stageText(t), FACTORY_COLOR)}
           onchange={(e) => clueText('color', e.currentTarget.value)}
           aria-label="Clue text color"
         />

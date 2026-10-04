@@ -178,7 +178,10 @@ try {
   assert(true, 'an exported game in the list opens');
 
   // A second launch given a game file: the running app opens it.
+  // (Opening finishes a moment after the title shows: a title typed sooner can end up beside the opened one.)
+  await d.waitForTimeout(500);
   await d.locator('input.title').fill('From a second launch');
+  await d.waitForFunction(() => document.querySelector('input.title')?.value === 'From a second launch');
   // (The game just opened: let the title settle before exporting under it.)
   await d.waitForTimeout(300);
   await d.getByRole('button', { name: /^More:/ }).click();

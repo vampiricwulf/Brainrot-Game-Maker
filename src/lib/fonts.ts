@@ -37,19 +37,25 @@ export function fontChoices(game: Game): FontChoice[] {
   return [...BUNDLED_FONTS, ...uploaded];
 }
 
-const registered = new Set<string>();
+/** The fonts each document has, by media id, with the file they came from (a file replaced is loaded again). */
+const registered = new WeakMap<Document, Map<string, { blob: Blob; face: FontFace }>>();
 
 /** Register the game's uploaded fonts with the document (host and audience windows both call this). */
 export async function registerGameFonts(game: Game, doc: Document = document): Promise<void> {
+  let had = registered.get(doc);
+  if (!had) registered.set(doc, (had = new Map()));
   for (const m of game.media) {
-    if (m.kind !== 'font' || registered.has(m.id)) continue;
+    if (m.kind !== 'font') continue;
     const blob = getBlob(m.id);
-    if (!blob) continue;
+    if (!blob || had.get(m.id)?.blob === blob) continue;
     try {
       const face = new FontFace(uploadedFamily(m.id), await blob.arrayBuffer());
       await face.load();
+      // Replaced (🔗 Replace file…, or its Undo): the old face goes, so the new one is drawn.
+      const old = had.get(m.id);
+      if (old) doc.fonts.delete(old.face);
       doc.fonts.add(face);
-      registered.add(m.id);
+      had.set(m.id, { blob, face });
     } catch (err) {
       console.warn(`Couldn't load font ${m.name}`, err);
     }

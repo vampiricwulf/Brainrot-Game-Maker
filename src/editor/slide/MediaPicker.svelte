@@ -37,7 +37,9 @@
       // The file and where it's used: one step.
       await stepAsync(null, async () => {
         const ref = await addMediaFile(editedGame(), file);
-        if (ref.kind !== kind) toast(`That's ${ref.kind === 'image' ? 'an' : 'a'} ${ref.kind} file; added it anyway.`);
+        // Another kind (the file dialog's "All files"): kept in the library, but not used here (a video as the theme's
+        // background, a picture as a sound, shows or plays nothing), as a dropped one isn't.
+        if (ref.kind !== kind) return void toast(`That's ${ref.kind === 'image' || ref.kind === 'audio' ? 'an' : 'a'} ${ref.kind} file, not ${kind === 'image' || kind === 'audio' ? 'an' : 'a'} ${kind}: it's in 📁 Media, but not used here.`);
         warnIfUnplayable(ref);
         await onpick(ref.id);
       });
