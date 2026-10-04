@@ -201,7 +201,7 @@
     </div>
     <details>
       <summary class="muted small">Add many at once (one per line)</summary>
-      <textarea rows="4" bind:value={paste} placeholder={'Sing a song x3\nDo 10 push-ups\nSpeak in rhymes\n(x3 = three times as likely)'}></textarea>
+      <textarea rows="4" bind:value={paste} aria-label="Slices to add, one per line" placeholder={'Sing a song x3\nDo 10 push-ups\nSpeak in rhymes\n(x3 = three times as likely)'}></textarea>
       <button
         class="small"
         onclick={() => {

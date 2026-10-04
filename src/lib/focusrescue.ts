@@ -25,7 +25,8 @@ export function focusRescue(root: HTMLElement) {
     if (el.isConnected && usable(el)) return;
     for (const p of around) {
       if (!p.isConnected) continue;
-      const to = [...p.querySelectorAll<HTMLElement>(FOCUSABLE)].find(usable);
+      // A button first: in a text box, keys mean something else (Esc there closes the clue being edited).
+      const to = [...p.querySelectorAll<HTMLElement>('button')].find(usable) ?? [...p.querySelectorAll<HTMLElement>(FOCUSABLE)].find(usable);
       if (to) return void to.focus();
     }
   };

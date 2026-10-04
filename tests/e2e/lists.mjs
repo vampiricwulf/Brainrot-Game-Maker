@@ -312,7 +312,7 @@ try {
   assert((await notice.innerText()).startsWith('Disconnected'), 'and ✂ Disconnect, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   // Zones reorder (the header's ↶ ↷ undo it).
-  await page.getByRole('tab', { name: /Off-board zones/ }).click();
+  await page.getByRole('button', { name: /Off-board zones/ }).click();
   await page.getByRole('button', { name: '＋ Add zone' }).click();
   await page.getByRole('button', { name: '＋ Add zone' }).click();
   const zones = page.getByLabel('Zone name');

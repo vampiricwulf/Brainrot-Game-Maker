@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { focusRescue } from '../lib/focusrescue';
   import { modal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
@@ -234,7 +235,7 @@
 
 {#if clue}
   <div class="modal-backdrop clue-backdrop" role="presentation">
-    <div class="modal clue" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal>
+    <div class="modal clue" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal use:focusRescue>
       <header>
         <div>
           <div class="hint">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>

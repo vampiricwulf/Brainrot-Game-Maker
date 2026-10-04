@@ -228,7 +228,7 @@ try {
   await dpop.getByRole('button', { name: 'Done' }).click();
   assert((await page.getByLabel('Dice', { exact: true }).inputValue()) === 'Dice 1', 'Move by ＋ Add dice… makes dice and moves by them');
   assert((await page.locator('.bge').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, 'the board game has no ↶ of its own (the header has it)');
-  await page.getByRole('tab', { name: /Board backdrop/ }).click();
+  await page.getByRole('button', { name: /Board backdrop/ }).click();
   assert((await page.locator('.se').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, 'nor its backdrop editor');
 
   // ---------- Stat presets ----------

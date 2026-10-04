@@ -179,6 +179,7 @@
         {:else}
           <button
             class:active={sel === item.id}
+            aria-current={sel === item.id ? 'true' : undefined}
             data-place="{kind}:{item.id}"
             data-tool={item.id}
             draggable="true"

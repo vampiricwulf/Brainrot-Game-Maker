@@ -246,7 +246,7 @@ try {
   assert(!(await page.getByRole('button', { name: '✎ Edit dice' }).count()), 'typing standard dice rolls those instead');
 
   // A zone.
-  await page.getByRole('tab', { name: /Off-board zones/ }).click();
+  await page.getByRole('button', { name: /Off-board zones/ }).click();
   await page.getByRole('button', { name: '＋ Add zone' }).click();
   assert((await page.getByLabel('Zone name').inputValue()) === 'Shadow Realm', 'the first zone is the Shadow Realm');
   assert(await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length), '＋ Add zone puts the typing in its name');

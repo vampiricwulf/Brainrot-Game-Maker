@@ -783,10 +783,11 @@
     <label class="field grow">Host notes (never shown on stream)<input bind:value={round.hostNotes} data-field="round-notes" /></label>
   </div>
 
-  <div class="tabs" role="tablist">
-    <button role="tab" aria-selected={view === 'spaces'} class:on={view === 'spaces'} onclick={() => (view = 'spaces')}>⬤ Spaces ({round.spaces.length})</button>
-    <button role="tab" aria-selected={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🖼 Board backdrop</button>
-    <button role="tab" aria-selected={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
+  <!-- Which part of the board to edit: buttons that say which is shown (not tabs, which promise arrow keys). -->
+  <div class="tabs" role="group" aria-label="Edit">
+    <button aria-pressed={view === 'spaces'} class:on={view === 'spaces'} onclick={() => (view = 'spaces')}>⬤ Spaces ({round.spaces.length})</button>
+    <button aria-pressed={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🖼 Board backdrop</button>
+    <button aria-pressed={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
   </div>
 
 

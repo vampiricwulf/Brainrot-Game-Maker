@@ -66,6 +66,8 @@ in plain words for the people who make and host games. Anything committed but no
 - RPG and board-game host panels say who is selected, which party is followed and whose turn it is to screen readers (it was shown by color only), and the ⏭/🔁 marks are named. An object on the RPG stage opens its card with Space too, not just Enter.
 - Keyboard: on the play screen, when the button that has the keys goes away or turns off (Stay after 🚪 Exit, ± Adjust score's Done, a score typed in a chip, ↶ Back to here in the log, the timer's buttons at Time's up), the keys go to the nearest button still there instead of being lost.
 - 📜 Log in one window: it takes the keys when it opens, the host panel under it can't be tabbed into meanwhile, and closing it gives the keys back to what opened it.
+- Keyboard in the editor: when the button that has the keys goes away (🗑 deleting a round, a stat, an item, a shop, a wheel slice, a die, a file, a space; a clue's last extra slide; the 🌐 Link box closing), the keys go to the nearest button still there instead of being lost.
+- Screen readers in the editor: the wheel or dice open in 🎡 Wheels & Dice is announced, the score-effect boxes on slices and faces have names, the "Add many at once" box has one, 🌐 Link says whether its box is open, and the board-game editor's Spaces / Board backdrop / Off-board zones switch is announced as buttons that say which is shown (it claimed to be tabs with arrow keys).
 
 ## 2026-10-03
 

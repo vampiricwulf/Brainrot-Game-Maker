@@ -904,7 +904,7 @@
         {/if}
       </div>
       <div class="pop">
-        <button onclick={() => (linkBox ? (linkBox = null) : openLink())} title="YouTube, Google Drive, or a link to a picture, video or sound online">
+        <button onclick={() => (linkBox ? (linkBox = null) : openLink())} aria-expanded={!!linkBox} title="YouTube, Google Drive, or a link to a picture, video or sound online">
           🌐 Link
         </button>
         {#if linkBox}

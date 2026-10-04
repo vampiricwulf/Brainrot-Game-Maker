@@ -103,20 +103,21 @@
       {#if outcome.scoreAction}
         {@const a = outcome.scoreAction}
         <div class="row sub">
-          <select value={a.kind} onchange={(e) => setAction(e.currentTarget.value)}>
+          <select value={a.kind} onchange={(e) => setAction(e.currentTarget.value)} aria-label="What it does to the score">
             {#each ACTIONS as [k, l]}<option value={k}>{l}</option>{/each}
           </select>
           {#if a.kind === 'addPoints' || a.kind === 'setScore'}
-            <input type="number" class="n2" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} />
+            <input type="number" class="n2" aria-label="Points" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} />
           {:else if a.kind === 'addRollTimes'}
-            × <input type="number" class="n2" bind:value={() => a.multiplier, (v) => keepNum(v, (n) => (a.multiplier = n))} onchange={(e) => shown(e, a.multiplier)} />
+            × <input type="number" class="n2" aria-label="Times the roll" bind:value={() => a.multiplier, (v) => keepNum(v, (n) => (a.multiplier = n))} onchange={(e) => shown(e, a.multiplier)} />
           {:else if a.kind === 'multiplyScore'}
-            × <input type="number" step="0.5" class="n2" bind:value={() => a.factor, (v) => keepNum(v, (n) => (a.factor = n))} onchange={(e) => shown(e, a.factor)} />
+            × <input type="number" step="0.5" class="n2" aria-label="Times the score" bind:value={() => a.factor, (v) => keepNum(v, (n) => (a.factor = n))} onchange={(e) => shown(e, a.factor)} />
           {:else if a.kind === 'steal'}
             <input
               type="number"
               class="n2"
               min="0"
+              aria-label="Points to steal"
               value={a.amount === 'all' ? '' : a.amount}
               disabled={a.amount === 'all'}
               oninput={(e) => keepNum(e.currentTarget.valueAsNumber, (n) => (a.amount = Math.abs(n)))}

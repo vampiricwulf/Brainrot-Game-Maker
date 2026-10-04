@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { focusRescue } from '../lib/focusrescue';
   import { dropMenu, showMenu } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
@@ -851,7 +852,7 @@
   {/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
-  <div class="body" inert={replacing}>
+  <div class="body" inert={replacing} use:focusRescue>
     <nav aria-label="Editor">
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
