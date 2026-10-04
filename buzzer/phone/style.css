@@ -49,8 +49,8 @@ header { align-items: center; }
 header .right { display: flex; align-items: center; gap: 10px; flex: none; }
 #code { font-weight: 700; letter-spacing: 0.15em; color: var(--text); }
 .icon {
-  min-width: 40px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 6px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -79,8 +79,8 @@ section {
   margin: 0 auto;
 }
 
-h1 { font-size: 26px; margin: 8px 0 4px; text-align: center; }
-.note { color: var(--muted); text-align: center; margin: 0; min-height: 1.2em; }
+h1 { font-size: 26px; margin: 8px 0 4px; text-align: center; overflow-wrap: anywhere; }
+.note { color: var(--muted); text-align: center; margin: 0; min-height: 1.2em; overflow-wrap: anywhere; }
 .err { color: var(--bad); text-align: center; margin: 0; min-height: 1.2em; }
 .big-msg { font-size: 24px; text-align: center; margin: auto 0; color: var(--muted); }
 #wait-cancel { margin-bottom: auto; }
@@ -133,7 +133,9 @@ input:focus { outline: none; border-color: var(--accent); }
 .seat .dot { flex: none; width: 28px; height: 28px; border-radius: 50%; }
 .seat .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .seat .tag { color: var(--muted); font-weight: 400; font-size: 15px; }
-.seat:disabled { opacity: 0.45; cursor: default; }
+/* A taken seat is dimmed, but what it says to do (ask the host to free it) stays readable. */
+.seat:disabled { cursor: default; }
+.seat:disabled .dot, .seat:disabled .name, .seat:disabled .tag, .seat:disabled .members:not(.hint) { opacity: 0.45; }
 /* Teams: who is on a team, under its name. */
 .seat .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .seat .who .name { flex: none; }
@@ -196,8 +198,14 @@ input:focus { outline: none; border-color: var(--accent); }
  * player's name (.name), which may be one long word: it breaks where it must rather than push the page sideways.
  */
 #buzz-big { font-size: clamp(22px, 8.5vmin, 60px); font-weight: 900; line-height: 1.05; max-width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; }
-#buzz-small { font-size: clamp(15px, 4.2vmin, 22px); max-width: 100%; overflow-wrap: normal; }
+/* At most three lines inside the round button (the whole of it is in the button's name). */
+#buzz-small { font-size: clamp(15px, 4.2vmin, 22px); max-width: 100%; overflow-wrap: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 #buzz-big.name, #buzz-small.name { overflow-wrap: anywhere; }
+
+/* Short portrait screens (a small phone with the browser's bars): a long clue scrolls in less room, so the buzzer stays on screen. */
+@media (max-height: 620px) {
+  #clue { max-height: 18dvh; }
+}
 
 /*
  * Landscape phones: the button on the right, the clue and the score beside it. By the screen's shape, not

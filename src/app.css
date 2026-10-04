@@ -301,6 +301,21 @@ html.reduce-stream [data-stage] *::after {
   transition-duration: 1ms !important;
   transition-delay: 0s !important;
 }
+/* Shown for a moment and then faded out ("Buzz now!", TIME'S UP): their last frame is gone, so ending at once would
+   never show them. They show for that moment, still, and then go at once. */
+html.reduce-stream [data-stage] .bn-pill,
+html.reduce-stream [data-stage] .timesup {
+  animation-name: shown-then-gone !important;
+  animation-duration: 1ms !important;
+  animation-fill-mode: forwards !important;
+}
+html.reduce-stream [data-stage] .bn-pill { animation-delay: 2s !important; }
+html.reduce-stream [data-stage] .timesup { animation-delay: 3s !important; }
+@keyframes shown-then-gone {
+  to {
+    opacity: 0;
+  }
+}
 
 /* Read by screen readers, not shown (the live region in announce.ts). */
 .sr-only {

@@ -613,9 +613,9 @@ function drawSound(): void {
   word.textContent = soundOn ? 'Sound on' : 'Muted';
   b.replaceChildren(soundOn ? '🔔 ' : '🔕 ', word);
   b.title = soundOn ? 'Sound is on: tap to mute this phone' : 'Sound is off: tap to hear the buzzer sounds on this phone';
-  // One name, and the button's pressed state says whether it's on (a label that changes too would say it twice).
-  b.setAttribute('aria-label', 'Sound');
-  b.setAttribute('aria-pressed', String(soundOn));
+  // Its name is the words on it ("Sound on" / "Muted"), so "tap Muted" works by voice too.
+  b.removeAttribute('aria-label');
+  b.removeAttribute('aria-pressed');
 }
 
 let wakeWanted = false;
@@ -629,6 +629,9 @@ async function wake(): Promise<void> {
 }
 
 // ---- drawing ----
+
+/** The wager box was up when last drawn (the keys move with it). */
+let wasBoxUp = false;
 
 function show(id: ScreenId): void {
   for (const s of screens) $(s).hidden = s !== id;
@@ -692,8 +695,8 @@ function renderTeam(t: SeatsMsg['seats'][number]): void {
     if (!inp.value) inp.value = loadName();
     $('team-err').textContent = '';
   }
-  const err = $('team-err').textContent ?? '';
-  say(sentences([`Join ${t.name}`, t.members?.length ? `On it: ${t.members.join(', ')}` : '', 'Type your name', err]));
+  // (The error has its own alert.)
+  say(sentences([`Join ${t.name}`, t.members?.length ? `On it: ${t.members.join(', ')}` : '', 'Type your name']));
   show('s-team');
   if (wasHidden) inp.focus();
 }
@@ -806,6 +809,12 @@ function renderBuzz(v: PhoneView): void {
   if (boxUp && !clue.childNodes.length && v.status) clue.append(v.status);
   $('wager-form').hidden = !boxUp;
   b.hidden = boxUp;
+  // The keys (and a screen reader) follow: into the box as it opens, back to the buzzer as it goes.
+  if (boxUp !== wasBoxUp) {
+    const lost = !document.activeElement || document.activeElement === document.body || !!$('wager-form').contains(document.activeElement) || document.activeElement === b;
+    wasBoxUp = boxUp;
+    if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : b).focus());
+  }
   if (boxUp) return renderWager(v, wager!, sym);
   wagerFor = '';
   wagerErr = '';
@@ -883,6 +892,10 @@ function renderBuzz(v: PhoneView): void {
   if (cue && cue !== cued) {
     beep(cls === 'armed' ? [880] : [660, 990]);
     flash();
+    // Said at once, not after whatever a screen reader is still reading: a buzz is a race.
+    const alert = $('alert');
+    alert.textContent = '';
+    queueMicrotask(() => (alert.textContent = big));
   }
   cued = cue || cued;
   b.className = cls;
@@ -946,7 +959,8 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   $('wager-err').textContent = wagerErr;
   $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
   const hostGone = renderFoot(v, sym);
-  say(sentences([connected ? '' : 'Reconnecting…', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, wagerErr, hostGone ? ($('host-note').textContent ?? '') : '']));
+  // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
+  say(sentences([connected ? '' : 'Reconnecting…', $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
 
