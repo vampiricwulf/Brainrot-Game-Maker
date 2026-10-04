@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type WagerSource } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -291,6 +291,7 @@ export function shownQuestionSlide(session: Session, clue: Pick<Clue, 'questionS
 /** The clue whose question slides are being stepped through: the open clue, the Final's question, or the tiebreaker. */
 function slidesOnShow(session: Session, game: Game): Pick<Clue, 'questionSlide' | 'extraSlides'> | undefined {
   if (session.phase === 'tiebreaker') return game.tiebreaker;
+  if (session.phase === 'slides') return slidesRound(session, game);
   if (session.phase === 'final') return session.finalStep === 'question' ? (currentFinal(session, game) ?? undefined) : undefined;
   return session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue : undefined;
 }
@@ -308,7 +309,9 @@ export function slidePosition(session: Session, game: Game): { at: number; of: n
  * Double's wager, nor with the answer showing). Returns whether it moved.
  */
 export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
-  if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase === 'final' ? session.finalStep !== 'question' : session.phase !== 'clue' || session.revealed || session.dd?.stage === 'splash') return false;
+  if (session.phase === 'slides') {
+    // (A slides round: no answer, nothing in the way.)
+  } else if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase === 'final' ? session.finalStep !== 'question' : session.phase !== 'clue' || session.revealed || session.dd?.stage === 'splash') return false;
   const clue = slidesOnShow(session, game);
   if (!clue) return false;
   const to = clueSlideIndex(session, clue) + d;
@@ -526,6 +529,14 @@ export function goToRound(session: Session, game: Game, index: number): void {
     ensureBoard(session, game, round);
     return;
   }
+  if (isSlides(round)) {
+    // Its slides are the introduction: no title card. Coming back to it from the round after: its last slide.
+    session.phase = 'slides';
+    session.intro = null;
+    const last = questionSlides(round).length - 1;
+    if (backwards && last > 0) session.slide = last;
+    return;
+  }
   session.phase = 'board';
   // Only the first visit to a round plays its intro: going back (or returning) shows the board straight away.
   if (changed) {
@@ -553,7 +564,17 @@ export function backToLastRound(session: Session, game: Game): void {
   } else if (isBoardGame(round)) {
     session.phase = 'boardgame';
     ensureBoard(session, game, round);
+  } else if (isSlides(round)) {
+    session.phase = 'slides';
+    const last = questionSlides(round).length - 1;
+    if (last > 0) session.slide = last;
   } else session.phase = 'board';
+}
+
+/** The slides round on screen. */
+export function slidesRound(session: Session, game: Game): SlidesRound | undefined {
+  const r = session.phase === 'slides' ? game.rounds[session.currentRound] : undefined;
+  return isSlides(r) ? r : undefined;
 }
 
 // ---------- Daily Double ----------
@@ -1047,7 +1068,7 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     return;
   }
   const r = to.rounds[session.currentRound];
-  const fits = session.phase === 'final' ? isFinal(r) : session.phase === 'rpg' ? isRpg(r) : session.phase === 'boardgame' ? isBoardGame(r) : isBoard(r);
+  const fits = session.phase === 'final' ? isFinal(r) : session.phase === 'rpg' ? isRpg(r) : session.phase === 'boardgame' ? isBoardGame(r) : session.phase === 'slides' ? isSlides(r) : isBoard(r);
   if (found !== null && fits) return;
   const seen = session.introducedRounds ?? [];
   if (!seen.includes(session.currentRound)) session.introducedRounds = [...seen, session.currentRound];

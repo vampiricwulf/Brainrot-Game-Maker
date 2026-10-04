@@ -7,7 +7,7 @@
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, standings, tiedLeaders } from '../lib/session';
+  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Rect } from '../lib/joinspot';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
@@ -167,7 +167,8 @@
     const onSlide =
       (session.phase === 'clue' && session.dd?.stage !== 'splash') ||
       (session.phase === 'final' && (session.finalStep === 'question' || session.finalStep === 'answer')) ||
-      session.phase === 'tiebreaker';
+      session.phase === 'tiebreaker' ||
+      session.phase === 'slides';
     if (!onSlide) return 0;
     if (live.timer) return TIMER_BAND;
     return answering || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) ? PILL_BAND : 0;
@@ -224,7 +225,7 @@
     mediaScope(
       session.phase === 'clue' && c
         ? `clue:${c.round}.${c.cat}.${c.row}`
-        : session.phase === 'final' || session.phase === 'tiebreaker'
+        : session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'slides'
           ? `${session.phase}:${session.currentRound}`
           : '',
     );
@@ -241,7 +242,7 @@
     if (introName || (session.phase === 'board' && session.intro?.stage === 'title')) return 'corner';
     if (session.phase === 'board') return layout.score ? 'bar' : null;
     if (session.phase === 'clue') return session.dd ? null : 'corner';
-    if (session.phase === 'tiebreaker') return 'corner';
+    if (session.phase === 'tiebreaker' || session.phase === 'slides') return 'corner';
     return null;
   });
   /** The host just opened the buzzers ("When I press U"): a cue on the clue's slide while they're open. */
@@ -255,7 +256,8 @@
   const spot = $derived.by(() => {
     if (codeSpot !== 'corner') return null;
     const tb = session.phase === 'tiebreaker' ? game.tiebreaker : undefined;
-    const slide =
+    const sr = slidesRound(session, game);
+    const slide = sr && !introName ? shownQuestionSlide(session, sr) :
       session.phase === 'clue' && info && !introName
         ? session.revealed
           ? info.clue.answerSlide
@@ -273,7 +275,7 @@
       const text = `${categoryLabel(info.category)} · ${session.dd ? 'Daily Double' : formatPoints(info.value, sym)}`;
       taken.push({ x: 24, y: 1080 - 24 - 72, w: Math.min(1500, 44 + text.length * 26), h: 72 });
     }
-    const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : 1;
+    const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : sr ? questionSlides(sr).length : 1;
     if (of > 1) taken.push({ x: 960 - (50 * of + 22) / 2, y: 1080 - 31 - 40, w: 50 * of + 22, h: 40 });
     return joinSpot(slide, taken, bandScale ?? 1);
   });
@@ -489,6 +491,20 @@
   <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} />
 {:else if session.phase === 'boardgame'}
   <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} />
+{:else if session.phase === 'slides' && slidesRound(session, game)}
+  {@const sr = slidesRound(session, game)!}
+  {@const srAt = clueSlideIndex(session, sr)}
+  {@const srOf = questionSlides(sr).length}
+  {#key `${sr.id}-${srAt}`}
+    <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade={{ duration: 300 }}>
+      <div class="slide-area" style:scale={bandScale}><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
+    </div>
+  {/key}
+  {#if srOf > 1}
+    <div class="pips" role="img" aria-label="Slide {srAt + 1} of {srOf}" data-slide-pips>
+      {#each { length: srOf } as _, i (i)}<span class:on={i <= srAt}></span>{/each}
+    </div>
+  {/if}
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
   {@const tb = game.tiebreaker}
   {@const tbAt = clueSlideIndex(session, tb)}

@@ -63,6 +63,13 @@
       ],
     },
     {
+      title: 'Slides round',
+      keys: [
+        ['N (or click the stage)', 'The next slide; after the last one, N goes on to the next round'],
+        ['Shift+N', 'The slide before'],
+      ],
+    },
+    {
       title: 'Buzzer mode (phone buzzers, set on the pre-game screen)',
       keys: [
         ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz). With someone answering it picks N as well (to judge both); press the one answering’s number to let them go'],

@@ -452,7 +452,7 @@ export interface Category {
 }
 
 /** How a round plays. Each game is a list of rounds, and each round picks its mode. */
-export type RoundMode = 'board' | 'final' | 'rpg' | 'boardgame';
+export type RoundMode = 'board' | 'final' | 'rpg' | 'boardgame' | 'slides';
 
 /** A Jeopardy board: categories of clues with values. */
 export interface BoardRound {
@@ -503,11 +503,25 @@ export interface FinalRound {
   wasOff?: boolean;
 }
 
-export type Round = BoardRound | FinalRound | RpgRound | BoardGameRound;
+/**
+ * Slides shown in order, with nothing to answer: an introduction, the rules, a break. The first slide is `questionSlide`
+ * and the rest `extraSlides` (as a clue's question slides, so the same slide tools work on them).
+ */
+export interface SlidesRound {
+  id: Id;
+  name: string;
+  mode: 'slides';
+  questionSlide: Slide;
+  extraSlides?: ExtraSlide[];
+  hostNotes?: string;
+}
+
+export type Round = BoardRound | FinalRound | RpgRound | BoardGameRound | SlidesRound;
 
 export const isBoard = (r: Round | undefined | null): r is BoardRound => r?.mode === 'board';
 export const isFinal = (r: Round | undefined | null): r is FinalRound => r?.mode === 'final';
 export const isRpg = (r: Round | undefined | null): r is RpgRound => r?.mode === 'rpg';
+export const isSlides = (r: Round | undefined | null): r is SlidesRound => r?.mode === 'slides';
 export const isBoardGame = (r: Round | undefined | null): r is BoardGameRound => r?.mode === 'boardgame';
 
 /** Game format version (bumped when saved games need converting; see migrateGame). */
@@ -639,7 +653,7 @@ export interface Session {
   currentRound: number;
   /** Rounds whose intro has already played, so revisiting a round never replays it. */
   introducedRounds?: number[];
-  phase: 'board' | 'clue' | 'final' | 'rpg' | 'boardgame' | 'tiebreaker' | 'end';
+  phase: 'board' | 'clue' | 'final' | 'rpg' | 'boardgame' | 'slides' | 'tiebreaker' | 'end';
   /** Round intro sequence in progress (spec §6.3 step 0). */
   intro?: { stage: 'title' | 'fill' | 'categories'; revealed: number } | null;
   /** Daily Double in progress for the open clue. */
@@ -1107,6 +1121,10 @@ export function newFinalRound(name = 'Final Jeopardy!'): FinalRound {
   return { id: newId(), name, mode: 'final', category: '', questionSlide: textSlide(), answerSlide: textSlide(), timerSeconds: 30, allowNonPositive: true };
 }
 
+export function newSlidesRound(name = 'Introduction'): SlidesRound {
+  return { id: newId(), name, mode: 'slides', questionSlide: textSlide() };
+}
+
 export function newGame(): Game {
   return {
     id: newId(),
@@ -1437,6 +1455,9 @@ function repairGame(g: Game): void {
       repairExtraSlides(r);
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
       if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
+    } else if (isSlides(r)) {
+      r.questionSlide = repairSlide(r.questionSlide);
+      repairExtraSlides(r);
     } else if (isBoardGame(r)) {
       r.slide = repairSlide(r.slide);
       if (!Array.isArray(r.spaces)) r.spaces = [];
@@ -1477,7 +1498,7 @@ export function linkMoverDice(game: Pick<Game, 'dice' | 'rounds'>): void {
   }
 }
 
-const KNOWN_MODES = new Set<string>(['board', 'final', 'rpg', 'boardgame']);
+const KNOWN_MODES = new Set<string>(['board', 'final', 'rpg', 'boardgame', 'slides']);
 
 /**
  * What a game the app can't use is missing, as the first place it's wrong ("rounds[2].world: no such world"), or null

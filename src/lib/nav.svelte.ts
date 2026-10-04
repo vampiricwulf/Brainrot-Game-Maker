@@ -215,6 +215,12 @@ export function resolve(game: Game, place: Place): Place | null {
           const sl = part.side === 'a' ? r.answerSlide : (extra ?? r.questionSlide);
           return !part.element || inSlide(sl, part.element) ? place : at({ kind: 'final', side: part.side, slide: part.slide });
         }
+        case 'slides': {
+          if (r.mode !== 'slides') return round;
+          const extra = part.slide ? r.extraSlides?.find((s) => s.id === part.slide) : undefined;
+          if (part.slide && !extra) return at({ kind: 'slides' });
+          return !part.element || inSlide(extra ?? r.questionSlide, part.element) ? place : at({ kind: 'slides', slide: part.slide });
+        }
         case 'space':
           return r.mode === 'boardgame' && has(r.spaces, part.space) ? place : round;
         case 'backdrop':

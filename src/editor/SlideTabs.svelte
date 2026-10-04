@@ -26,8 +26,11 @@
     side = $bindable(),
     qi = $bindable(),
     what,
+    plain = false,
   }: {
     holder: SlideHolder;
+    /** Slides with nothing to answer (a slides round): no Answer tab, and they're "Slide 1, 2…". */
+    plain?: boolean;
     side: 'q' | 'a';
     /** The question slide open (0: the first), kept while the Answer tab is open. */
     qi: number;
@@ -40,7 +43,7 @@
 
   /** A change to the question slides as one named step; the slide it returns opens. */
   function slides(label: string, fn: () => number, notify = false): void {
-    const to = step(label, fn, notify ? { notify: true } : undefined);
+    const to = step(plain ? label.replace(' question slide', ' slide') : label, fn, notify ? { notify: true } : undefined);
     side = 'q';
     qi = to;
   }
@@ -62,15 +65,18 @@
     const mod = e.ctrlKey || e.metaKey;
     const open = (i: number) => {
       e.preventDefault();
-      if (i >= n) side = 'a';
+      if (i >= n) {
+        if (plain) return;
+        side = 'a';
+      }
       else ((side = 'q'), (qi = i));
       focusTab();
     };
     if (!mod && !e.altKey && !e.shiftKey) {
       if (e.key === 'ArrowLeft') return open(Math.max(0, now - 1));
-      if (e.key === 'ArrowRight') return open(Math.min(n, now + 1));
+      if (e.key === 'ArrowRight') return open(Math.min(plain ? n - 1 : n, now + 1));
       if (e.key === 'Home') return open(0);
-      if (e.key === 'End') return open(n);
+      if (e.key === 'End') return open(plain ? n - 1 : n);
     }
     if (side === 'a' || n < 2) return;
     if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
@@ -101,31 +107,41 @@
         aria-selected={on}
         tabindex={on ? 0 : -1}
         data-qslide={i + 1}
-        aria-label={qslides.length > SHORT_TABS ? `Question ${i + 1}` : undefined}
+        aria-label={qslides.length > SHORT_TABS ? `${plain ? 'Slide' : 'Question'} ${i + 1}` : undefined}
         onclick={() => ((side = 'q'), (qi = i))}
         title={qslides.length > 1
-          ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it`
+          ? `${plain ? 'Slide' : 'Question slide'} ${i + 1} of ${qslides.length}: viewers see them in this order${plain ? '' : ', then the answer'}. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it`
           : undefined}
-        >{qslides.length > SHORT_TABS ? `Q${i + 1}` : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
+        >{plain
+          ? qslides.length > SHORT_TABS
+            ? `S${i + 1}`
+            : qslides.length > 1
+              ? `Slide ${i + 1}`
+              : 'Slide'
+          : qslides.length > SHORT_TABS
+            ? `Q${i + 1}`
+            : qslides.length > 1
+              ? `Question ${i + 1}`
+              : 'Question slide'}</button
       >
     {/each}
-    <button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} tabindex={side === 'a' ? 0 : -1} onclick={() => (side = 'a')}
+    {#if !plain}<button role="tab" class:on={side === 'a'} aria-selected={side === 'a'} tabindex={side === 'a' ? 0 : -1} onclick={() => (side = 'a')}
       >{qslides.length > 1 ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
-    >
+    >{/if}
   </div>
   <button
     class="ghost add"
     onclick={addSlide}
-    title={side === 'a' ? 'Add a question slide before the answer' : 'Add a question slide after this one: lead in, then show more before the answer'}>＋ Add slide</button
+    title={plain ? 'Add a slide after this one' : side === 'a' ? 'Add a question slide before the answer' : 'Add a question slide after this one: lead in, then show more before the answer'}>＋ Add slide</button
   >
   {#if qslides.length > 1 && side === 'q'}
     <span class="spacer"></span>
-    <div class="slidetools" role="group" aria-label="Question slide {at + 1} of {qslides.length}">
+    <div class="slidetools" role="group" aria-label="{plain ? 'Slide' : 'Question slide'} {at + 1} of {qslides.length}">
       <span class="muted small">Slide {at + 1} of {qslides.length}</span>
       <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} aria-label="Move slide earlier" title="Move this slide earlier">◀ Earlier</button>
       <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} aria-label="Move slide later" title="Move this slide later">Later ▶</button>
       <button class="ghost small" onclick={duplicateSlide} title="A copy of this slide, right after it">⧉ Duplicate</button>
-      <button class="ghost small danger" onclick={deleteSlide} title="Delete this question slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
+      <button class="ghost small danger" onclick={deleteSlide} title="Delete this {plain ? '' : 'question '}slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
     </div>
   {/if}
 </div>

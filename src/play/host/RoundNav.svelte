@@ -6,7 +6,8 @@
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { isBoard, isFinal, playableClues, roundName, type Game, type Session } from '../../lib/model';
+  import { isBoard, isFinal, isSlides, playableClues, roundName, type Game, type Session } from '../../lib/model';
+  import { slidePosition } from '../../lib/session';
   import { ROUND_MODES } from '../../lib/modes';
   import { hostAsk, offerNext } from './slots.svelte';
   import { app } from '../../lib/app.svelte';
@@ -17,13 +18,19 @@
     onprev,
     onnext,
     ongoto,
-  }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void } = $props();
+    onslide,
+  }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void; onslide?: (d: 1 | -1) => void } = $props();
 
   const round = $derived(game.rounds[session.currentRound]);
   const board = $derived(!!round && isBoard(round));
   const left = $derived(round ? playableClues(round).filter((c) => !session.used[c.id]).length : 0);
-  // (An RPG or board-game round has no clues to count: it's never "done", leaving it always asks.)
-  const done = $derived(board && !session.intro && left === 0);
+  /** A slides round: where it is (null: one slide). */
+  const slides = $derived(!!round && isSlides(round));
+  const slidePos = $derived(slides ? slidePosition(session, game) : null);
+  const lastSlide = $derived(slides && (!slidePos || slidePos.at >= slidePos.of));
+  // (An RPG or board-game round has no clues to count: it's never "done", leaving it always asks. A slides round is done
+  // on its last slide.)
+  const done = $derived((board && !session.intro && left === 0) || lastSlide);
   const isLast = $derived(session.currentRound >= game.rounds.length - 1);
   const nextRound = $derived(game.rounds[session.currentRound + 1]);
   const target = $derived(isLast || !nextRound ? 'the end screen' : roundName(nextRound, session.currentRound + 1));
@@ -43,7 +50,10 @@
   });
 
   // A played-out board: going on is the moment's main button.
-  offerNext('board', () => (done ? { label: nextLabel, run: next } : null));
+  // A slides round: the next slide, then (on the last) the next round.
+  offerNext('board', () =>
+    slides && !lastSlide && onslide ? { label: 'Next slide ▶', key: 'N', run: () => onslide(1) } : done ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next } : null,
+  );
 
   function next(): void {
     if (Date.now() - shownAt < GUARD_MS) return;

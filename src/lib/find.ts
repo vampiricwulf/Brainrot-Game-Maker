@@ -1,7 +1,7 @@
 // Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
 // on them, board-game spaces and zones, items, stats, shops, wheels, dice, media files — with the place to go
 // to (nav.svelte.ts's goTo, as the History tab's Go there).
-import { categoryLabel, formatPoints, roundName, type Game, type Slide } from './model';
+import { categoryLabel, formatPoints, questionSlides, roundName, type Game, type Slide } from './model';
 import type { Place } from './historylabel';
 
 export interface Hit {
@@ -46,7 +46,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
 
   game.rounds.forEach((r, i) => {
     const rn = roundName(r, i);
-    const notes = r.mode === 'rpg' || r.mode === 'boardgame' || r.mode === 'final' ? r.hostNotes : undefined;
+    const notes = r.mode === 'rpg' || r.mode === 'boardgame' || r.mode === 'final' || r.mode === 'slides' ? r.hostNotes : undefined;
     look('🏷', [r.name, notes], rn, { tab: 'round', round: r.id }, field([[r.name, 'main [data-round-name]'], [notes, 'main [data-field="round-notes"]']]));
     if (r.mode === 'board') {
       for (const cat of r.categories) {
@@ -68,6 +68,11 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       look('❓', slideWords(r.questionSlide), `${rn} › Question${r.extraSlides?.length ? ' 1' : ''}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
       r.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${rn} › Question ${j + 2}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q', slide: sl.id } }, 'main [data-field="q"]'));
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
+    } else if (r.mode === 'slides') {
+      const n = questionSlides(r).length;
+      questionSlides(r).forEach((sl, j) =>
+        look('🖼', slideWords(sl), `${rn} › Slide${n > 1 ? ` ${j + 1}` : ''}`, { tab: 'round', round: r.id, part: { kind: 'slides', ...(j ? { slide: r.extraSlides![j - 1].id } : {}) } }, 'main [data-field="q"]'),
+      );
     } else if (r.mode === 'boardgame') {
       for (const s of r.spaces) {
         const place: Place = { tab: 'round', round: r.id, part: { kind: 'space', space: s.id } };

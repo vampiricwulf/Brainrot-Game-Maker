@@ -150,6 +150,7 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
     }
     case 'rpg':
     case 'boardgame':
+    case 'slides':
       return round ? { text: roundName(round, session.currentRound) } : null;
     case 'tiebreaker':
       return { text: 'Tiebreaker!' };

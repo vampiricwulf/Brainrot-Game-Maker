@@ -2554,6 +2554,11 @@
         } else if (session.phase === 'tiebreaker') {
           // The tiebreaker's question slides: N the next, Shift+N the one before.
           slideStep(e.shiftKey ? -1 : 1);
+        } else if (session.phase === 'slides') {
+          // A slides round: N the next slide, then (after the last) the next round, as the main button says.
+          if (e.shiftKey) slideStep(-1);
+          else if (hostNext && !hostNext.disabled) hostNext.run();
+          else if (!slideStep(1)) nextRound(1);
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         else if (session.phase === 'final') {

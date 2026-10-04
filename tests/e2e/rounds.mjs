@@ -28,7 +28,7 @@ try {
   assert((await roundNames()).length === 0, 'a new game has no rounds');
   assert(await page.locator('.first-round').isVisible(), 'the editor opens on "Add your first round"');
   assert(await page.getByRole('button', { name: '▶ Play' }).isDisabled(), 'Play waits for a round');
-  assert((await page.locator('.first-round .mode').count()) === 4, 'every mode can be the first round');
+  assert((await page.locator('.first-round .mode').count()) === 5, 'every mode can be the first round');
   await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();

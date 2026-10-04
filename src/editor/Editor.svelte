@@ -12,8 +12,10 @@
     isBoardGame,
     isFinal,
     isRpg,
+    isSlides,
     migrateGame,
     newFinalRound,
+    newSlidesRound,
     newGame,
     newRound,
     roundName,
@@ -41,6 +43,7 @@
   import SoundsPanel from './SoundsPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
+  import SlidesEditor from './SlidesEditor.svelte';
   import TiebreakerEditor from './TiebreakerEditor.svelte';
   import StatsItemsEditor from './StatsItemsEditor.svelte';
   import RpgRoundEditor from './rpg/RpgRoundEditor.svelte';
@@ -173,12 +176,18 @@
     return () => (offApplying(), offApplied());
   });
 
-  /** Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last. */
+  /**
+   * Add a round of `mode`. New rounds go before Final rounds at the end, so the Final stays last; the first slides round
+   * is the game's introduction, so it goes first.
+   */
   function addRound(mode: RoundMode): void {
     let at = game.rounds.length;
     if (mode !== 'final') while (at > 0 && isFinal(game.rounds[at - 1])) at--;
+    const intro = mode === 'slides' && !game.rounds.some(isSlides);
+    if (intro) at = 0;
     let round: Round;
-    if (mode === 'rpg') round = newRpgRound(game, game.rounds.some(isRpg) ? `Adventure ${game.rounds.filter(isRpg).length + 1}` : 'Adventure');
+    if (mode === 'slides') round = newSlidesRound(intro ? 'Introduction' : `Slides ${game.rounds.filter(isSlides).length + 1}`);
+    else if (mode === 'rpg') round = newRpgRound(game, game.rounds.some(isRpg) ? `Adventure ${game.rounds.filter(isRpg).length + 1}` : 'Adventure');
     else if (mode === 'boardgame') round = newBoardGameRound(game.rounds.some(isBoardGame) ? `Board game ${game.rounds.filter(isBoardGame).length + 1}` : 'Board game');
     else if (mode === 'final') round = newFinalRound(game.rounds.some(isFinal) ? `Final round ${game.rounds.filter(isFinal).length + 1}` : 'Final Jeopardy!');
     else {
@@ -191,6 +200,7 @@
     // Its clues take the theme's clue text.
     if (isBoard(round)) followClueText(game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
     else if (isFinal(round)) followClueText(game, [round.questionSlide, round.answerSlide]);
+    else if (isSlides(round)) followClueText(game, [round.questionSlide]);
     game.rounds.splice(at, 0, round);
     tab = at;
     // The menu (or the card) that added it is gone: the focus goes to the new round's name, ready to type over.
@@ -981,7 +991,7 @@
           {@const round = game.rounds[i]}
           {#key round.id}
             <!-- (A form round reads best at the pages' width; boards and maps fill the screen.) -->
-            <div class:page={isFinal(round)}>
+            <div class:page={isFinal(round) || isSlides(round)}>
             <RoundActions
               {round}
               index={i}
@@ -999,6 +1009,8 @@
               <RpgRoundEditor {round} />
             {:else if isBoardGame(round)}
               <BoardGameEditor {round} />
+            {:else if isSlides(round)}
+              <SlidesEditor {round} />
             {/if}
             </div>
           {/key}

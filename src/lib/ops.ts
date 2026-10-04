@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type TextEl } from './model';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it). */
@@ -341,6 +341,12 @@ export function reidRound<R extends Round>(round: R): R {
       reSlide(sl);
     }
     reSlide(round.answerSlide);
+  } else if (isSlides(round)) {
+    reSlide(round.questionSlide);
+    for (const sl of round.extraSlides ?? []) {
+      sl.id = newId();
+      reSlide(sl);
+    }
   } else if (isBoardGame(round)) {
     // A copy gets its own spaces and zones (and its own board state in play); links and Send to buttons follow the new
     // ids (a zone renamed in the copy is named so there, not by the original's name).

@@ -14,4 +14,5 @@ export const ROUND_MODES: Record<RoundMode, ModeInfo> = {
   final: { label: 'Final Jeopardy', icon: '🏆', hint: 'One category, private wagers, one question, reveals player by player' },
   rpg: { label: 'RPG', icon: '🗺', hint: 'A world of screens on a map: move the players’ avatars, doorways, items, shops' },
   boardgame: { label: 'Board game', icon: '♟', hint: 'Spaces in a loop or a path: take turns to spin or roll, step along, pass Start, get sent away' },
+  slides: { label: 'Slides', icon: '🖼', hint: 'Slides shown one after another: an introduction, the rules, a break (nothing to answer)' },
 };

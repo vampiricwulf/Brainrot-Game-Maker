@@ -1,7 +1,7 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, places, playerName, tiedLeaders } from '../lib/session';
+  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, places, playerName, slidesRound, tiedLeaders } from '../lib/session';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -155,6 +155,16 @@
       {#if session.phase === 'board'}
         <div class="label">Picking next</div>
         <div class="q">{picker ? picker.name : 'Nobody set (press P then a number, or click a name plate)'}</div>
+      {:else if session.phase === 'slides'}
+        {@const sr = slidesRound(session, game)}
+        {#if sr}
+          {@const all = questionSlides(sr)}
+          {@const at = clueSlideIndex(session, sr)}
+          <div class="label">On screen{all.length > 1 ? `: slide ${at + 1} of ${all.length}` : ''}</div>
+          <div class="q">{slideText(all[at]) || '(no text)'}</div>
+          {#if all[at + 1]}<div class="label">Next slide</div><div class="q muted">{slideText(all[at + 1]) || '(no text)'}</div>{/if}
+          {#if sr.hostNotes?.trim()}<div class="label">Notes</div><div class="q">{sr.hostNotes}</div>{/if}
+        {/if}
       {/if}
     {/if}
     {@render standingsList()}

@@ -45,6 +45,8 @@ export type RoundPart =
   | { kind: 'decor'; element?: string }
   /** `slide`: a question slide after the first (its id). */
   | { kind: 'final'; side?: Side; slide?: string; element?: string }
+  /** A slides round's slide: `slide`, one after the first (its id). */
+  | { kind: 'slides'; slide?: string; element?: string }
   | { kind: 'space'; space: string }
   | { kind: 'backdrop'; element?: string }
   | { kind: 'zone'; zone: string; inSlide?: boolean; element?: string }
@@ -200,6 +202,20 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       at.crumbs.push(side === 'q' && r.extraSlides?.length ? `${SIDE_NAME.q} 1` : SIDE_NAME[side]);
       part({ kind: 'final', side });
       slide(r[path[2] as 'questionSlide'], 3, (element) => ({ tab: 'round', round: id, part: { kind: 'final', side, element } }), side);
+    } else if (r.mode === 'slides') {
+      if (path[2] === 'extraSlides') {
+        const n = r.extraSlides?.findIndex((s) => s.id === path[3]) ?? -1;
+        if (n < 0) return;
+        const sl = r.extraSlides![n];
+        reached(4, 'slide', `Slide ${n + 2}`);
+        part({ kind: 'slides', slide: sl.id });
+        slide(sl, 4, (element) => ({ tab: 'round', round: id, part: { kind: 'slides', slide: sl.id, element } }));
+        return;
+      }
+      if (path[2] !== 'questionSlide') return;
+      reached(3, 'slide', 'Slide 1');
+      part({ kind: 'slides' });
+      slide(r.questionSlide, 3, (element) => ({ tab: 'round', round: id, part: { kind: 'slides', element } }));
     } else if (r.mode === 'boardgame') {
       if (path[2] === 'spaces') {
         at.crumbs.push('Spaces');
@@ -380,6 +396,11 @@ export function itemPlace(game: Game, id: string): Place | null {
     if (r.mode === 'final') {
       const side = sides.find((k) => on(r[k]));
       if (side) return placeAt(game, ['rounds', r.id, side, 'elements', id]).place;
+      const extra = r.extraSlides?.find(on);
+      if (extra) return placeAt(game, ['rounds', r.id, 'extraSlides', extra.id, 'elements', id]).place;
+    }
+    if (r.mode === 'slides') {
+      if (on(r.questionSlide)) return placeAt(game, ['rounds', r.id, 'questionSlide', 'elements', id]).place;
       const extra = r.extraSlides?.find(on);
       if (extra) return placeAt(game, ['rounds', r.id, 'extraSlides', extra.id, 'elements', id]).place;
     }

@@ -24,7 +24,7 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
       r.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (question slide ${j + 2})` }));
       out.push({ slide: r.answerSlide, where: `${roundName(r, ri)} (answer)` });
-    }
+    } else if (r.mode === 'slides') questionSlides(r).forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (slide ${j + 1})` }));
   });
   // RPG worlds: every screen, and the slides objects and actions show (dialogue, pop-ups, questions).
   for (const w of game.worlds ?? [])

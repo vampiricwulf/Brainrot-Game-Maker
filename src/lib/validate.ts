@@ -2,7 +2,7 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, playableClues, PLAYER_WHEEL, roundName, type Action, type BoardRound, type Game } from './model';
+import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, isSlides, playableClues, questionSlides, PLAYER_WHEEL, roundName, type Action, type BoardRound, type Game } from './model';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
@@ -76,6 +76,11 @@ export function validate(game: Game): Problem[] {
     }
     if (isBoardGame(round)) {
       out.push(...boardGameProblems(game, round, name, i));
+      return;
+    }
+    if (isSlides(round)) {
+      const blank = questionSlides(round).flatMap((s, n) => (slideHasContent(s) ? [] : [n + 1]));
+      if (blank.length) out.push({ text: `${name}: slide${blank.length > 1 ? 's' : ''} ${blank.join(', ')} ${blank.length > 1 ? 'are' : 'is'} empty`, tab: i, level: 'warn' });
       return;
     }
     const r = { ...round, name };

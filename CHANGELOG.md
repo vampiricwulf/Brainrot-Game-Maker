@@ -17,6 +17,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Phone buzzers: players can change their colour on their phone (🎨 Change your colour, under the buzzer), from the colours no other player has. It's on by default; turn it off with "Players can pick their colour on their phone" on the Phone buzzers card. It isn't offered with teams, where the host picks each team's colour.
 - Phone buzzers: the audience sees who has a phone connected, with 📱 on the "Starting soon" lineup and on each player's score plate. It goes away when that phone disconnects.
 - Phone buzzers: while someone else is answering, a phone that hasn't buzzed yet says "You can still buzz" (to get in line in case they miss) instead of "Wait".
+- A new kind of round, Slides: slides shown one after another, for an introduction, the rules or a break, all in one round. Add one with ＋ Add round › Slides; the first goes at the start of the game as the Introduction. Type each slide's text in the box or on the canvas, and use ＋ Add slide for more. In play, N (or a click on the stage) shows the next slide and Shift+N the one before; on the last slide the main button is Next round ▶.
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed

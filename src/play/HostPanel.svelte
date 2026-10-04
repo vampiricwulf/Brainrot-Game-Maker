@@ -548,6 +548,10 @@
           ? 'Pick the way (→ buttons, the space, or Enter when there’s one)'
           : 'D rolls or spins, then ▶ Move (Enter)'} · Shift+N turn back · click a token to select them, drag it to send them
       </span>
+    {:else if session.phase === 'slides'}
+      <b>{round?.name}</b>
+      {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
+      <span class="muted hint">N (or a click on the stage) shows the next slide · Shift+N the one before</span>
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
@@ -750,6 +754,8 @@
           {#if !(toolOnly && app.live.overlay) && next?.run !== onback}
             <button onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
           {/if}
+        {:else if session.phase === 'slides'}
+          {#if slidePos}<button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>{/if}
         {:else if session.phase === 'tiebreaker'}
           {#if slidePos && !answerShowing(session)}
             <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
@@ -853,11 +859,11 @@
   <!-- The tools, then the round's navigation (quiet; leaving a round asks), away from the main cell. -->
   <div class="row toolsrow">
     {@render tools?.()}
-    {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame'}
+    {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides'}
       <span class="spacer"></span>
       <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
       {#key session.currentRound}
-        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} />
+        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} {onslide} />
       {/key}
     {/if}
   </div>
