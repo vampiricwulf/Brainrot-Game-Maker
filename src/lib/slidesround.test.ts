@@ -2,7 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { gameProblem, migrateGame, newSlidesRound, questionSlides, setSlideText, slideText, type Game, type SlidesRound } from './model';
-import { addClueSlide, clone, reidRound } from './ops';
+import { addClueSlide, clone, reidRound, textStyleTargets } from './ops';
+import { clueSlides } from './cluetext';
+import { randomizeDailyDoubles } from './session';
+import type { BoardRound, TextEl } from './model';
 import { backToLastRound, clueSlideIndex, goToRound, newSession, rebaseSession, shownQuestionSlide, slidePosition, stepSlide } from './session';
 import { allSlides } from './usage';
 import { validate } from './validate';
@@ -87,5 +90,31 @@ describe('slides round', () => {
     expect(copy.id).not.toBe(intro.id);
     expect(copy.extraSlides!.map((s) => s.id)).not.toContain(intro.extraSlides![0].id);
     expect(questionSlides(copy).map(slideText)).toEqual(['Welcome', 'Rules', 'Let’s go']);
+  });
+
+  it('“Use this style elsewhere” on one of its slides: this round is its own slides; the game, every question and slide', () => {
+    const { game, intro } = withIntro();
+    const from = questionSlides(intro)[0].elements[0] as TextEl;
+    const own = textStyleTargets(game, null, from, 'round-q', null, intro);
+    expect(own).toHaveLength(2);
+    const all = textStyleTargets(game, null, from, 'game-q');
+    expect(all.length).toBeGreaterThan(2);
+    expect(all).toEqual(expect.arrayContaining(own));
+  });
+
+  it('follows the theme’s clue text (its slides are among the clue slides)', () => {
+    const { game, intro } = withIntro();
+    expect(clueSlides(game)).toEqual(expect.arrayContaining(questionSlides(intro)));
+  });
+});
+
+describe('✍ clues', () => {
+  it('random Daily Doubles never land on one', () => {
+    const game = jeopardyGame();
+    const r = game.rounds[0] as BoardRound;
+    for (const c of r.categories) for (const cl of c.clues) cl.everyone = true;
+    r.categories[0].clues[0].everyone = undefined;
+    expect(randomizeDailyDoubles(r, 3)).toBe(1);
+    expect(r.categories[0].clues[0].type).toBe('dailyDouble');
   });
 });

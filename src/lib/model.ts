@@ -722,7 +722,7 @@ export interface Session {
     locked?: boolean;
     buzz?: BuzzState & { clue: string; floor: number };
     wagerGot?: { id: string; seats: Record<Id, number> };
-    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string }> };
+    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string }>; locked?: boolean };
   } | null;
 }
 

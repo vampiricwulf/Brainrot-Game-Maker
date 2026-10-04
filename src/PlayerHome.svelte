@@ -3,7 +3,7 @@
   import { app, toast } from './lib/app.svelte';
   import { savePack } from './lib/pack';
   import type { SavedPlay } from './lib/persist';
-  import { finalName, isBoard, isBoardGame, isFinal, isRpg, playableClues } from './lib/model';
+  import { finalName, isBoard, isBoardGame, isFinal, isRpg, isSlides, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
   import { onlineCount } from './lib/usage';
@@ -31,11 +31,13 @@
     const boards = game.rounds.filter(isBoard);
     const rpgs = game.rounds.filter(isRpg).length;
     const boardGames = game.rounds.filter(isBoardGame).length;
+    const slideRounds = game.rounds.filter(isSlides).length;
     const clues = boards.reduce((n, r) => n + playableClues(r).length, 0);
     return [
       boards.length && `${plural(boards.length, 'board')} · ${plural(clues, 'clue')}`,
       rpgs && plural(rpgs, 'RPG adventure'),
       boardGames && plural(boardGames, 'board game'),
+      slideRounds && plural(slideRounds, 'slides round'),
       ...game.rounds.filter(isFinal).map((f) => finalName(f)),
     ]
       .filter(Boolean)

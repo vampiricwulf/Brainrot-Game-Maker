@@ -51,6 +51,12 @@ try {
   await page.keyboard.press('n');
   await stage.locator('[data-slide="2"]').waitFor();
   assert(true, 'Shift+N the one before');
+  await page.getByRole('button', { name: '◀ Slide' }).click();
+  await stage.locator('[data-slide="1"]').waitFor();
+  await stage.locator('[data-slide="1"]').click();
+  await stage.locator('[data-slide="2"]').waitFor();
+  assert(true, 'and with the mouse: ◀ Slide, and a click on the stage for the next');
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: `${process.env.SCREENSHOTS}/slides-host.png` });
   await page.getByRole('button', { name: 'Next round ▶' }).first().waitFor();
   assert(true, 'on the last slide the main button is Next round ▶');
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)

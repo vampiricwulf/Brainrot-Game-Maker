@@ -1678,6 +1678,9 @@ describe('answers (everyone answers on their phone)', () => {
     expect(said(g.hostAll('phones'))).not.toContain('Shiba');
     g.pa.send({ t: 'answer', id: 'clue1', text: 'Doge' });
     expect(g.hostLast('answer')).toMatchObject({ text: 'Doge', n: 2 });
+    // A new line typed on the phone is a space.
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'George\nWashington' });
+    expect(g.hostLast('answer')).toMatchObject({ text: 'George Washington' });
   });
 
   it('refuses one when none is asked, for another clue, from a seat not in it, empty, or once locked', () => {

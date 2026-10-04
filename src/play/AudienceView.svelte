@@ -555,7 +555,7 @@
   </div>
 {/if}
 
-{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame')}
+{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'slides' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame')}
   <TimerDisplay timer={live.timer} middle={timerBar ? timerBar.top + timerBar.height / 2 : undefined} />
 {/if}
 

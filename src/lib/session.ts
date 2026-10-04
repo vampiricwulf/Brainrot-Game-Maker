@@ -627,7 +627,8 @@ export function randomizeDailyDoubles(
   const candidates: { cat: number; row: number; w: number }[] = [];
   round.categories.forEach((c, ci) =>
     c.clues.forEach((cl, row) => {
-      if (cl.empty || cl.type !== 'standard') return;
+      // (Nor a ✍ clue: everyone answers it, a Daily Double has one player.)
+      if (cl.empty || cl.type !== 'standard' || cl.everyone) return;
       const t = rows > 1 ? row / (rows - 1) : 1;
       candidates.push({ cat: ci, row, w: 0.3 + t * t * 3 });
     }),

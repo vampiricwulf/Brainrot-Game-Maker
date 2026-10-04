@@ -561,7 +561,9 @@
     {:else if session.phase === 'slides'}
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      <span class="muted hint">N (or a click on the stage) shows the next slide · Shift+N the one before</span>
+      <span class="muted hint"
+        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on'} · Shift+N the one before</span
+      >
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
@@ -708,7 +710,7 @@
       {/if}
 
       {#if everyone && info}
-        <div class="mode-host"><AnswersHost {game} {session} clueId={info.clue.id} phones={answerPhones} open={!session.revealed} onjudge={onanswerjudge} /></div>
+        <div class="mode-host"><AnswersHost {game} {session} clueId={info.clue.id} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
       {/if}
 
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->
@@ -786,7 +788,7 @@
           <button class="ghost" aria-expanded="false" onclick={() => (adjust = true)} title="Give or take points (or press a player's number)">± Adjust score</button>
         {/if}
       {/snippet}
-      {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || scoring)}
+      {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
         <div class="row flow">{@render others()}</div>
       {/if}
 

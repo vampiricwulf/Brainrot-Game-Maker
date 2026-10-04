@@ -25,8 +25,8 @@
     qi = id ? Math.max(0, (untrack(() => round.extraSlides)?.findIndex((s) => s.id === id) ?? -1) + 1) : 0;
   });
 
-  // There is no "this round" of clues here, so round scopes cover the whole game.
-  const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));
+  // "This round" is this round's own slides; "the game" the game's questions and every slides round's slides.
+  const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope, null, scope.startsWith('game') ? undefined : round);
 </script>
 
 <div class="grid">

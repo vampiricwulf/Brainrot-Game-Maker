@@ -1126,7 +1126,8 @@ export class Room {
     const seat = p.seatId ? ask?.seats.find((x) => x.id === p.seatId) : undefined;
     if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId) return no('closed');
     if (!this.allow((p.answerRate ??= { start: 0, count: 0 }), ANSWER_RATE, ANSWER_WINDOW_MS)) return no('slow');
-    const words = typeof text === 'string' ? cleanName(text, ANSWER_MAX) : '';
+    // (Line breaks are spaces: "George⏎Washington" stays two words.)
+    const words = typeof text === 'string' ? cleanName(text.replace(/[\t\r\n]+/g, ' '), ANSWER_MAX) : '';
     if (!words) return no('bad');
     const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {} });
     const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;

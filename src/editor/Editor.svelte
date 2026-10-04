@@ -203,6 +203,8 @@
     else if (isSlides(round)) followClueText(game, [round.questionSlide]);
     game.rounds.splice(at, 0, round);
     tab = at;
+    // (Said, as it isn't where new rounds usually go.)
+    if (intro && game.rounds.length > 1) toast('Added “Introduction” at the start of the game: drag its tab to move it');
     // The menu (or the card) that added it is gone: the focus goes to the new round's name, ready to type over.
     focusRoundName(round.id);
   }

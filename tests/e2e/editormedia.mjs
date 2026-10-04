@@ -191,6 +191,7 @@ try {
   await menu.getByRole('menuitem', { name: '＋ Text here' }).click();
   assert((await layers.count()) === 2 && (await page.locator('.insp textarea').count()) === 1, '＋ Text here adds a text box');
   await page.locator('.insp textarea').fill('Second');
+  await layers.filter({ hasText: 'Second' }).waitFor();
   const x2 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
   const w2 = Number(await pos.getByLabel('W', { exact: true }).inputValue());
   // (Centred on that spot as far as the slide allows: a box that would stick out past the edge is moved onto it.)
@@ -228,6 +229,10 @@ try {
 
   // ---------- Layers: double-click or F2 renames ----------
   const second = layers.filter({ hasText: 'Second' });
+  // (Should this ever not be there, say what the layers are.)
+  await second.waitFor({ timeout: 5000 }).catch(async () => {
+    throw new Error(`no "Second" layer: ${JSON.stringify(await layers.allInnerTexts())}`);
+  });
   await second.locator('.name').dblclick();
   const layerName = page.getByRole('textbox', { name: 'Layer name' });
   await layerName.fill('Subtitle');

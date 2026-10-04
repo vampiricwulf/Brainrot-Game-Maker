@@ -45,7 +45,7 @@
       <li data-answer-row={p.id}>
         <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
         <span class="text" class:muted={!a} dir="auto"
-          >{#if a}“{a.text}”{#if a.by}<span class="muted small"> · {a.by}</span>{/if}{:else if phones.includes(p.id)}typing…{:else}no phone connected{/if}</span
+          >{#if a}“{a.text}”{#if a.by}<span class="muted small"> · {a.by}</span>{/if}{:else if phones.includes(p.id)}waiting…{:else}no phone connected{/if}</span
         >
         {#if j}
           <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>

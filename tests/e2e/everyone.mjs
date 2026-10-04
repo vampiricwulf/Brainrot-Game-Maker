@@ -151,6 +151,9 @@ try {
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   assert((await p1.locator('#buzz-small').innerText()) === 'Yours: “Shiba Inu”', 'showing the answer locks them: the phone keeps its own in sight');
+  await host.keyboard.press('r');
+  await host.waitForTimeout(800);
+  assert((await p1.locator('#buzz-big').innerText()) === 'Answers locked' && (await p1.locator('#answer-form').isHidden()), 'hiding the answer again doesn’t open them: nobody changes theirs after seeing it');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Everyone answers E2E passed.');

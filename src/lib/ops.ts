@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type TextEl } from './model';
+import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it). */
@@ -286,10 +286,17 @@ export function copyTextStyle(from: TextEl, to: TextEl): void {
  * The main text elements that "Use this style elsewhere" would restyle (never `from` itself).
  * scope: `${'cat' | 'round' | 'game'}-${'q' | 'a' | 'qa'}`; 'cat' needs the category (or finds nothing).
  */
-export function textStyleTargets(game: Game, round: BoardRound | null, from: TextEl, scope: string, category?: Category | null): TextEl[] {
+export function textStyleTargets(
+  game: Game,
+  round: BoardRound | null,
+  from: TextEl,
+  scope: string,
+  category?: Category | null,
+  slidesOnly?: SlidesRound,
+): TextEl[] {
   const [where, which] = scope.split('-');
   const cats =
-    where === 'cat' ? (category ? [category] : []) : (where === 'game' || !round ? boardRounds(game) : [round]).flatMap((r) => r.categories);
+    where === 'cat' || slidesOnly ? (category ? [category] : []) : (where === 'game' || !round ? boardRounds(game) : [round]).flatMap((r) => r.categories);
   const slides: Slide[] = [];
   for (const c of cats)
     for (const cl of c.clues) {
@@ -301,6 +308,8 @@ export function textStyleTargets(game: Game, round: BoardRound | null, from: Tex
       if (which.includes('q')) slides.push(...questionSlides(r));
       if (which.includes('a')) slides.push(r.answerSlide);
     }
+  // Slides rounds' slides go with the questions (the whole game's, or this slides round's own: `round` is a board).
+  if (which.includes('q')) for (const r of game.rounds.filter(isSlides)) if (where === 'game' || slidesOnly?.id === r.id) slides.push(...questionSlides(r));
   const out: TextEl[] = [];
   for (const s of slides) {
     const t = s.elements.find((e): e is TextEl => e.kind === 'text');

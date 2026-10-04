@@ -24,6 +24,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- ✍ Everyone answers: a ✍ clue plays as usual (with buzzing) when no buzzer room is running, or the room's server can't take answers; before, nobody could buzz or answer.
+- ✍ Everyone answers: hiding the answer again doesn't let phones change theirs; an answer sent just before the answer showed still reaches the host; the first right answer picks next (not whoever was ticked last); random Daily Doubles never land on a ✍ clue; a line break typed on a phone is a space ("George Washington", not "GeorgeWashington"); a phone that hasn't sent one shows "waiting…".
+- Slides rounds: ◀ Slide shows in the host panel (only Shift+N went back); a countdown started on one shows on stream; with something busy on top (a wheel spinning), N doesn't skip to the next round; the theme's clue text and "Use this style elsewhere" include their slides ("this round" is the round's own slides); the player-only home lists them; adding the first one says it went to the start of the game.
+- Phone buzzers: a colour picked on a phone mid-game is no longer an undo step (Ctrl+Z stays with what the host did).
 - A player-only game file uses the buzzer server it was made with, even when this browser has another one saved (from another file or the app).
 - Phone buzzers: showing the answer closes the buzzers. Phones say "Clue over", a press then counts for nothing (nor gets in line), a wrong answer after it doesn't open them for the rest, and U says why they stay closed.
 - Phone buzzers: the join code on the stream no longer covers anything on a slide. It moves to a corner with nothing under it, shrinks to just the code if that's all that fits, and stays off a slide with something in every corner.

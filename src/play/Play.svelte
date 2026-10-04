@@ -21,7 +21,7 @@
   import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomColor, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
-    resendHostState, roomHasWagers, roomLink, sendHostState, startRoom,
+    resendHostState, roomHasAnswers, roomHasWagers, roomLink, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
@@ -251,6 +251,24 @@
       return { name: p.name, color: p.color, ...(members.length ? { members } : {}), ...(app.live.phones?.includes(p.id) ? { phone: true } : {}) };
     });
   }
+  // A ✍ clue opened: its answers start (kept in the session, see `everyone`).
+  $effect(() => {
+    const id = everyone && info ? info.clue.id : null;
+    untrack(() => {
+      const r = session.remote;
+      if (id && r && r.answers?.id !== id) r.answers = { id, seats: {} };
+    });
+  });
+  // A ✍ clue's answers lock once its answer is shown, for good (hiding it again doesn't let anyone change theirs).
+  $effect(() => {
+    if (!everyone || !info || !session.revealed) return;
+    const id = info.clue.id;
+    untrack(() => {
+      const r = session.remote;
+      if (!r || (r.answers?.id === id && r.answers.locked)) return;
+      r.answers = { id, seats: r.answers?.id === id ? r.answers.seats : {}, locked: true };
+    });
+  });
   // A ✍ clue: viewers see that everyone is answering, and who has (never what).
   $effect(() => {
     const id = everyone && info ? info.clue.id : null;
@@ -616,7 +634,7 @@
     return 'Adjustment';
   }
 
-  function award(sign: 1 | -1, ids = selected, amt = amount): void {
+  function award(sign: 1 | -1, ids = selected, amt = amount, picker = true): void {
     if (!ids.length) return toast(`Select a player first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
     // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
     if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);
@@ -657,7 +675,7 @@
     }
     // Awarding control of the board follows TV rules: the last correct player picks next.
     // (Kept on the award, so undoing it gives the picker back.)
-    if (game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1 && events.length && session.currentPickerId !== ids[0]) {
+    if (picker && game.settings.pickerFollowsAward !== false && sign > 0 && ids.length === 1 && events.length && session.currentPickerId !== ids[0]) {
       events[0].picker = { was: session.currentPickerId, now: ids[0] };
       session.currentPickerId = ids[0];
     }
@@ -692,7 +710,16 @@
   const info = $derived(currentClueInfo(session, game));
 
   /** A ✍ clue with phone buzzers: everyone types an answer on their phone instead of buzzing. */
-  const everyone = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !!info?.clue.everyone && info.clue.type === 'standard');
+  // (Only with a room that takes answers; once taken for a clue, its answers stay so through a reload, before the room
+  // has said what it can do.)
+  const everyone = $derived(
+    buzzerOn(game.settings) &&
+      session.phase === 'clue' &&
+      !session.dd &&
+      !!info?.clue.everyone &&
+      info.clue.type === 'standard' &&
+      ((!!remote.code && roomHasAnswers()) || session.remote?.answers?.id === info.clue.id),
+  );
   /** Buzzer mode, while a clue is open (a Daily Double has its one player; a ✍ clue has everyone answer): players buzz in. */
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
   /** The buzzers' state (see buzz.ts). */
@@ -947,18 +974,20 @@
   /** A ✍ clue's answers phones may send now (until its answer is on screen), with the ones already taken. */
   function phoneAnswerAsk(): AnswerAsk | null {
     if (!everyone || !info) return null;
-    const got = session.remote?.answers?.id === info.clue.id ? session.remote.answers.seats : {};
-    return { id: info.clue.id, open: !session.revealed, seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })) };
+    const mine = session.remote?.answers?.id === info.clue.id ? session.remote.answers : undefined;
+    const got = mine?.seats ?? {};
+    return { id: info.clue.id, open: !session.revealed && !mine?.locked, seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })) };
   }
 
   /** A player sent their answer to the ✍ clue from their phone: the host sees it (nobody else). One already taken is skipped. */
   function roomAnswer(a: RoomAnswer): void {
     const r = session.remote;
     const ask = phonesOn && r ? phoneAnswerAsk() : null;
-    const seat = ask?.open && ask.id === a.id ? ask.seats.find((x) => x.id === a.seatId) : undefined;
+    // (The room decides what's in time: one it took just before the answer showed still counts.)
+    const seat = ask?.id === a.id ? ask.seats.find((x) => x.id === a.seatId) : undefined;
     if (!r || !ask || !seat || a.n <= (seat.got ?? 0)) return;
-    const seats = r.answers?.id === ask.id ? r.answers.seats : {};
-    r.answers = { id: ask.id, seats: { ...seats, [a.seatId]: { text: a.text, n: a.n, ...(a.by && game.settings.buzzTeams ? { by: a.by } : {}) } } };
+    const was = r.answers?.id === ask.id ? r.answers : undefined;
+    r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...(a.by && game.settings.buzzTeams ? { by: a.by } : {}) } }, ...(was?.locked ? { locked: true } : {}) };
   }
 
   /** The wagers phones may send now (none before the game starts), with the ones already taken from them. */
@@ -978,8 +1007,8 @@
     const p = session.players.find((x) => x.id === seatId);
     if (!p || p.color.toLowerCase() === color || !PLAYER_PALETTE.includes(color)) return;
     if (isColorTaken(color, session.players.filter((x) => x.id !== seatId).map((x) => x.color))) return;
-    if (app.pregame) p.color = color;
-    else logged(session, `${p.name} picked a new colour on their phone`, () => (p.color = color));
+    // (Not an undo step: Ctrl+Z is the host's, for what they did.)
+    p.color = color;
   }
 
   /**
@@ -2590,8 +2619,8 @@
         } else if (session.phase === 'slides') {
           // A slides round: N the next slide, then (after the last) the next round, as the main button says.
           if (e.shiftKey) slideStep(-1);
-          else if (hostNext && !hostNext.disabled) hostNext.run();
-          else if (!slideStep(1)) nextRound(1);
+          else if (hostNext) !hostNext.disabled && hostNext.run();
+          else slideStep(1);
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         else if (session.phase === 'final') {
@@ -3045,7 +3074,9 @@
         onredo={doRedo}
         {everyone}
         answerPhones={app.live.phones ?? []}
-        onanswerjudge={(id, sign) => award(sign, [id], amount ?? info?.value ?? null)}
+        onanswerjudge={(id, sign) =>
+          // (The first right answer picks next, not whoever was ticked last.)
+          award(sign, [id], amount ?? info?.value ?? null, !session.scoreLog.some((e) => !e.undone && e.clueId === info?.clue.id && (e.right ?? e.delta > 0)))}
         onnextround={() => nextRound(1)}
         onprevround={() => nextRound(-1)}
         ongotoround={(i) => nextRound(i - session.currentRound)}
