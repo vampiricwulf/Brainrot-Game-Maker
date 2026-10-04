@@ -79,11 +79,13 @@ export function slideHistory(slide: Slide): SlideUndo {
   let hv = $state(0);
   let pending = $state(false);
   let dragging = false;
+  /** Inside stepAsync (dropping several files): what it does, its own steps too, is one step. */
+  let holding = 0;
   $effect(() => {
     const now = JSON.stringify(slide);
     pending = now !== hist.last;
     if (!pending) return;
-    const t = setTimeout(() => !dragging && commit(), 400);
+    const t = setTimeout(() => !dragging && !holding && commit(), 400);
     return () => clearTimeout(t);
   });
   const canUndo = $derived(hv >= 0 && (pending || hist.undoStack.length > 0));
@@ -118,21 +120,26 @@ export function slideHistory(slide: Slide): SlideUndo {
     },
     keys: true,
     step(_label, fn) {
+      if (holding) return fn();
       commit();
       fn();
       commit();
     },
     async stepAsync(_label, fn) {
-      commit();
-      await fn();
-      commit();
+      if (!holding) commit();
+      holding++;
+      try {
+        await fn();
+      } finally {
+        if (--holding === 0) commit();
+      }
     },
     begin() {
-      commit();
+      if (!holding) commit();
       dragging = true;
       return () => {
         dragging = false;
-        commit();
+        if (!holding) commit();
       };
     },
     undo: () => restore(hist.undo(JSON.stringify(slide))),

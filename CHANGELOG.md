@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Slide editor: lining up items with a locked one selected lines them up with it (it stays put) instead of ignoring it; Space evenly shows only when three or more unlocked items are selected.
 - Slide editor: Duplicate makes unlocked copies of locked items, so a copied background on top can be clicked and moved.
 - Drawing pad: Clear can be undone (↶ or Ctrl+Z), and Insert says so when everything drawn was erased instead of doing nothing.
+- Editing a screen live during play: dropping several files at once is one undo step again (it was one per file).
 
 ## 2026-10-03
 
