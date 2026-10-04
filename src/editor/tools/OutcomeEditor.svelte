@@ -88,7 +88,11 @@
             min="0"
             class="n"
             value={outcome.timerSeconds ?? ''}
-            oninput={(e) => (outcome.timerSeconds = +e.currentTarget.value || undefined)}
+            oninput={(e) => {
+              // Blank or 0: no timer. (Not below 0: "Start -5s" would mean nothing.)
+              const v = Math.round(+e.currentTarget.value);
+              outcome.timerSeconds = v > 0 ? v : undefined;
+            }}
           />s
         </label>
       </div>
@@ -112,9 +116,11 @@
             <input
               type="number"
               class="n2"
+              min="0"
               value={a.amount === 'all' ? '' : a.amount}
               disabled={a.amount === 'all'}
-              oninput={(e) => (a.amount = +e.currentTarget.value || 0)}
+              oninput={(e) => keepNum(e.currentTarget.valueAsNumber, (n) => (a.amount = Math.abs(n)))}
+              onchange={(e) => a.amount !== 'all' && shown(e, a.amount)}
             />
             <label class="check small"><input type="checkbox" checked={a.amount === 'all'} onchange={(e) => (a.amount = e.currentTarget.checked ? 'all' : 300)} /> all</label>
           {/if}

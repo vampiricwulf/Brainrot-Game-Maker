@@ -56,6 +56,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Uploaded fonts: a font replaced with 🔗 Replace file… shows at once (it kept the old one until a reload), and one whose file arrived after the game opened (reopened from Recent games, found again) is used without a reload.
 - 🎨 Theme: a warning when clues, answers and scores are hard to read on the tile color, and the Clue text color box shows the color clues are actually drawn in (it showed white).
 - 📁 Media: a file you renamed keeps your name when you 🔗 Replace it (it took the new file's name), and Find missing files finds it by its own file name too (renamed files stayed missing).
+- Shops: switching what a row sells no longer keeps the old item's price on it (a Sword sold for the Potion's 5). Prices and stock can't go below 0, stock is whole, and "Buys back at 0%" means it doesn't buy things back (it took them for nothing).
+- Wheel slices and dice faces: the Steal amount keeps its number when emptied to retype (it saved Steal 0) and can't be negative, and a Timer below 0 means no timer (it offered "Start -5s").
+- Dice with custom faces have at most 100 sides (the faces past 100 rolled with no label or effect), and lowering the sides says which faces went (Ctrl+Z brings them back).
+- Wheels: unticking "Each slice can only land once" mid-game puts the slices that landed back on the wheel, and the Restore count no longer counts slices deleted since.
 
 ## 2026-10-03
 

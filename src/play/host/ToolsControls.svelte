@@ -66,7 +66,14 @@
   const extraResults = $derived(
     o?.kind === 'wheel' ? (o.extra ?? []).flatMap((w) => (w.spin && w.result !== null && w.segments[w.result] ? [{ w, seg: w.segments[w.result] }] : [])) : [],
   );
-  const removed = $derived(o?.kind === 'wheel' && o.wheelId ? (session.removedSegments?.[o.wheelId]?.length ?? 0) : 0);
+  /** Slices that landed and are off the wheel (not ones deleted in the editor since, nor any once it isn't "land once"). */
+  const removed = $derived.by(() => {
+    if (o?.kind !== 'wheel' || !o.wheelId) return 0;
+    const w = game.wheels.find((x) => x.id === o.wheelId);
+    if (!w?.removeAfterLanding) return 0;
+    const ids = new Set(w.segments.map((s) => s.id));
+    return (session.removedSegments?.[o.wheelId] ?? []).filter((id) => ids.has(id)).length;
+  });
   /** A "land once" wheel with every slice landed: no spin until they're restored (it would start over unannounced). */
   const spent = $derived(o?.kind === 'wheel' && wheelSpentUp(o, session, game));
 

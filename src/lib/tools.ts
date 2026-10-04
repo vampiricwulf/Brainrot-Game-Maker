@@ -381,6 +381,8 @@ export function logRoll(session: Session, source: RollEvent['source'], name: str
 
 /** Wheel slices still in play (respecting "remove after landing"). */
 export function activeSegments(session: Session, wheel: WheelPreset): WheelSegment[] {
+  // (A wheel no longer "land once": the slices that landed are back on it.)
+  if (!wheel.removeAfterLanding) return wheel.segments;
   const removed = new Set(session.removedSegments?.[wheel.id] ?? []);
   const left = wheel.segments.filter((s) => !removed.has(s.id));
   return left.length ? left : wheel.segments;

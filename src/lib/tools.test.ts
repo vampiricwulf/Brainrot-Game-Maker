@@ -149,8 +149,12 @@ describe('score actions', () => {
   it('respects removed wheel slices', () => {
     const { session } = setup();
     const w = newWheel('w', ['a', 'b', 'c']);
+    w.removeAfterLanding = true;
     session.removedSegments = { [w.id]: [w.segments[0].id] };
     expect(activeSegments(session, w).map((s) => s.label)).toEqual(['b', 'c']);
+    // No longer "land once": the slice that landed is back.
+    w.removeAfterLanding = false;
+    expect(activeSegments(session, w).map((s) => s.label)).toEqual(['a', 'b', 'c']);
   });
 });
 

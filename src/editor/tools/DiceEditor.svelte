@@ -6,7 +6,7 @@
   import { diceCount, rollPreset } from '../../lib/tools';
   import { step } from '../../lib/history.svelte';
   import { faceLines } from '../../lib/listedit';
-  import { app } from '../../lib/app.svelte';
+  import { app, toast } from '../../lib/app.svelte';
   import { liveNumber } from '../../lib/numfield';
   import Stage from '../../lib/Stage.svelte';
   import DiceView from '../../play/tools/DiceView.svelte';
@@ -25,10 +25,15 @@
   }
 
   function setSides(d: Die, n: number): void {
-    d.sides = Math.max(2, Math.min(1000, Math.floor(n) || 2));
+    // With custom faces, at most 100 (a face each): past that the faces would roll with no label or effect.
+    d.sides = Math.max(2, Math.min(d.customFaces ? 100 : 1000, Math.floor(n) || 2));
     if (d.customFaces) {
-      while (d.customFaces.length < Math.min(d.sides, 100)) d.customFaces.push({ label: String(d.customFaces.length + 1) });
-      d.customFaces.length = Math.min(d.sides, 100);
+      while (d.customFaces.length < d.sides) d.customFaces.push({ label: String(d.customFaces.length + 1) });
+      // Faces past the new count go: say so when they had something on them (Undo brings them back).
+      const gone = d.customFaces.slice(d.sides);
+      const had = gone.some((f, i) => f.label !== String(d.sides + i + 1) || Object.keys(f).length > 1);
+      d.customFaces.length = d.sides;
+      if (had) toast(`Faces ${d.sides + 1}–${d.sides + gone.length} went with the sides (Ctrl+Z brings them back)`);
     }
   }
 
@@ -79,7 +84,7 @@
             >Sides d<input
               type="number"
               min="2"
-              max="1000"
+              max={d.customFaces ? 100 : 1000}
               value={d.sides}
               onchange={(e) => {
                 setSides(d, +e.currentTarget.value);
@@ -109,7 +114,7 @@
               <button class="small" onclick={() => fill(d)} disabled={!lines.length}>
                 Fill {lines.length > 1 ? `faces 1–${Math.min(lines.length, faces)}` : 'face 1'}
               </button>
-              {#if lines.length >= 2 && lines.length !== d.sides}
+              {#if lines.length >= 2 && lines.length !== d.sides && lines.length <= 100}
                 <button class="small" onclick={() => fill(d, true)}>Fill and make it a d{lines.length}</button>
               {/if}
               {#if lines.length > faces}<span class="muted small">{lines.length - faces} line{lines.length - faces === 1 ? '' : 's'} more than it has sides</span>{/if}

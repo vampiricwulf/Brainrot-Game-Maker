@@ -534,7 +534,7 @@
             {#if iconFor === it.id}<MediaPicker kind="image" onpick={(id) => ((it.icon = id), (iconFor = null))} onclose={() => (iconFor = null)} />{/if}
           </div>
           <input class="name" bind:value={it.name} aria-label="Item name" />
-          <label class="field">Price<input type="number" class="n" value={it.price ?? ''} oninput={(e) => (it.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} /></label>
+          <label class="field">Price<input type="number" class="n" min="0" value={it.price ?? ''} oninput={(e) => (it.price = e.currentTarget.value === '' ? undefined : Math.max(0, +e.currentTarget.value || 0))} /></label>
           <label class="check small"><input type="checkbox" bind:checked={it.stackable} /> Stacks</label>
           <select
             value={it.wearable?.slot ?? ''}
@@ -637,7 +637,11 @@
               max="100"
               value={s.buysBack ? Math.round(s.buysBack.rate * 100) : ''}
               placeholder="—"
-              oninput={(e) => (s.buysBack = e.currentTarget.value === '' ? undefined : { rate: Math.min(100, Math.max(0, +e.currentTarget.value || 0)) / 100 })}
+              oninput={(e) => {
+                // 0% (or blank): it doesn't buy things back (not "for nothing").
+                const pct = Math.min(100, Math.max(0, +e.currentTarget.value || 0));
+                s.buysBack = pct > 0 ? { rate: pct / 100 } : undefined;
+              }}
             />
           </label>
           <span class="spacer"></span>
@@ -681,14 +685,15 @@
                   >
                 </td>
                 <td>
-                  <select bind:value={st.item} aria-label="Item for sale">
+                  <!-- Another item: the old one's price on this row goes with it (the new item's own price shows). -->
+                  <select value={st.item} onchange={(e) => ((st.item = e.currentTarget.value), (st.price = undefined))} aria-label="Item for sale">
                     <!-- Each item once per shop: the ones other rows sell are greyed out. -->
                     {#each game.items ?? [] as it (it.id)}<option value={it.id} disabled={it.id !== st.item && s.stock.some((x) => x.item === it.id)}>{it.name}</option>{/each}
                   </select>
                 </td>
-                <td><input type="number" class="n" value={st.price ?? ''} placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)} oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : +e.currentTarget.value)} aria-label="Price" /></td>
+                <td><input type="number" class="n" value={st.price ?? ''} placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)} min="0" oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : Math.max(0, +e.currentTarget.value || 0))} aria-label="Price" /></td>
                 <td>
-                  <input type="number" class="n" min="0" value={st.qty ?? ''} placeholder="∞" oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : +e.currentTarget.value)} aria-label="In stock" />
+                  <input type="number" class="n" min="0" value={st.qty ?? ''} placeholder="∞" step="1" oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : Math.max(0, Math.floor(+e.currentTarget.value || 0)))} aria-label="In stock" />
                 </td>
                 <td>
                   <button class="ghost tiny" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">✕</button>
