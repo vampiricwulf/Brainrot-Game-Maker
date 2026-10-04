@@ -113,6 +113,7 @@ try {
   assert(['Copy clue', 'Paste clue here', 'Clear clue', 'Insert row above', 'Delete row 2'].every((x) => items.some((i) => i.includes(x))), 'the tile menu copies, pastes, clears and does rows');
   await menu.getByRole('menuitem', { name: /Clear clue/ }).click();
   assert(!(await tileText(2, 1)).includes('Who is Pepe?'), 'Clear clue from the menu');
+  assert(await tile(2, 1).evaluate((el) => el === document.activeElement), 'the focus goes back to the tile after its menu (its keys go on working)');
   await shot('board-1280');
 
   // ---------- ED-16: drag a tile onto another ----------

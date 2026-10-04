@@ -165,6 +165,11 @@ export function insertRow(round: BoardRound, at: number): boolean {
  */
 export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void {
   clue.type = type;
+  followDailyDoubles(round);
+}
+
+/** More Daily Doubles on the board than ⭐ Daily Doubles says (one copied, pasted, used again): the box follows. */
+export function followDailyDoubles(round: BoardRound): void {
   const placed = dailyDoublesPlaced(round);
   if (placed > (round.dailyDoubleCount ?? 1)) round.dailyDoubleCount = placed;
 }

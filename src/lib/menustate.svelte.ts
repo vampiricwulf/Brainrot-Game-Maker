@@ -6,8 +6,13 @@ export type MenuEntry =
   | { sep: true }
   | { heading: string };
 
-/** `from`: the button a dropped menu came from (see dropMenu). */
-export const contextMenu = $state<{ open: { x: number; y: number; items: MenuEntry[]; from?: HTMLElement } | null }>({ open: null });
+/**
+ * `from`: the button a dropped menu came from (see dropMenu). `back`: where the focus goes when it closes (what had it,
+ * or the tile, card… right-clicked), so the keys go on working there.
+ */
+export const contextMenu = $state<{ open: { x: number; y: number; items: MenuEntry[]; from?: HTMLElement; back?: HTMLElement } | null }>({ open: null });
+
+const FOCUSABLE = 'button, [tabindex]:not([tabindex="-1"]), a[href], input, textarea, select';
 
 /** Show a menu at the pointer (instead of the browser's own). Empty menus show nothing. */
 export function showMenu(e: MouseEvent, items: MenuEntry[], from?: HTMLElement): void {
@@ -15,7 +20,9 @@ export function showMenu(e: MouseEvent, items: MenuEntry[], from?: HTMLElement):
   if (!shown.some((i) => 'label' in i)) return;
   e.preventDefault();
   e.stopPropagation();
-  contextMenu.open = { x: e.clientX, y: e.clientY, items: shown, from };
+  const focused = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+  const clicked = e.target instanceof Element ? e.target.closest<HTMLElement>(FOCUSABLE) : null;
+  contextMenu.open = { x: e.clientX, y: e.clientY, items: shown, from, back: from ?? clicked ?? focused ?? undefined };
 }
 
 /**

@@ -26,6 +26,7 @@
     scaleValues,
     setClueType,
     setRowCount,
+    followDailyDoubles,
     swapClues,
     type TilePos,
   } from '../lib/ops';
@@ -160,8 +161,14 @@
 
   function dropChosen(where: 'question' | 'face'): void {
     const d = tileDrop;
-    tileDrop = null;
+    closeDrop();
     if (d) void dropOnTile(d.files, d.cat, d.row, where);
+  }
+  /** The question goes (answered or cancelled): the tile it was about has the focus again, for the board's keys. */
+  function closeDrop(): void {
+    const d = tileDrop;
+    tileDrop = null;
+    if (d) void tick().then(() => focusTile(d.cat, d.row, true));
   }
 
   // An undo or redo here: open the clue or the board images it changed, or close them to show the board.
@@ -221,7 +228,14 @@
     if (copy) {
       const c = copyClue(clue);
       const notify = clueHasContent(round.categories[to.cat].clues[to.row]);
-      step(`Copied ${a} to ${b}`, () => (round.categories[to.cat].clues[to.row] = c), { notify, place: tilePlace(to.cat, c.id) });
+      step(
+        `Copied ${a} to ${b}`,
+        () => {
+          round.categories[to.cat].clues[to.row] = c;
+          followDailyDoubles(round);
+        },
+        { notify, place: tilePlace(to.cat, c.id) },
+      );
     } else step(`Swapped ${a} and ${b}`, () => swapClues(round, from, to), { place: tilePlace(to.cat, clue.id) });
     cursor = to;
   }
@@ -254,6 +268,7 @@
       () => {
         adoptUsedBy(game, c);
         round.categories[p.cat].clues[p.row] = c;
+        followDailyDoubles(round);
       },
       { notify, place: tilePlace(p.cat, c.id) },
     );
@@ -379,7 +394,14 @@
       {
         label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty',
         onclick: () =>
-          step(clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`, () => (clue.empty = !clue.empty), { place: tilePlace(p.cat, clue.id) }),
+          step(
+            clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`,
+            () => {
+              clue.empty = !clue.empty;
+              followDailyDoubles(round);
+            },
+            { place: tilePlace(p.cat, clue.id) },
+          ),
       },
       { sep: true },
       { label: '📋 Copy clue', onclick: () => copyTile(p), keys: 'Ctrl+C' },
@@ -448,7 +470,7 @@
       { sep: true },
       { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
       { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
-      { label: '⧉ Duplicate', onclick: () => step(`Duplicated category “${categoryLabel(cat)}”`, () => duplicateCategory(round, ci)), disabled: n >= 10 },
+      { label: '⧉ Duplicate', onclick: () => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), disabled: n >= 10 },
       { label: '🖼 Image…', onclick: () => (catPicker = ci) },
       { label: '⌫ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueHasContent) },
       { sep: true },
@@ -645,10 +667,10 @@
     role="group"
     aria-label="Where the dropped picture goes"
     bind:this={dropAskEl}
-    onkeydown={(e) => e.key === 'Escape' && (tileDrop = null)}
+    onkeydown={(e) => e.key === 'Escape' && closeDrop()}
   >
     <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(tileDrop)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
-    <button class="ghost small" onclick={() => (tileDrop = null)}>Cancel</button>
+    <button class="ghost small" onclick={closeDrop}>Cancel</button>
     <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
     <button class="primary small" onclick={() => dropChosen('question')}>Put {n === 1 ? 'it' : 'them'} in the question</button>
   </div>
@@ -668,6 +690,8 @@
         onpointerdown={(e) => catDown(e, cat.id)}
         oncontextmenu={(e) => catMenu(e, ci)}
         ondragstart={(e) => {
+          // (Text dragged out of its name box isn't the category: it drops as text.)
+          if (grab !== cat.id) return;
           catDrag = cat.id;
           e.dataTransfer?.setData('text/x-category', cat.id);
           if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';

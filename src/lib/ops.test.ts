@@ -16,6 +16,7 @@ import {
   restyle,
   rowStep,
   setClueType,
+  followDailyDoubles,
   setRowCount,
   stepClue,
   swapClues,
@@ -239,6 +240,14 @@ describe('new rows and categories', () => {
     expect(round.dailyDoubleCount).toBe(2);
     // Taking one off leaves the count as it is.
     setClueType(round, round.categories[1].clues[0], 'standard');
+    expect(round.dailyDoubleCount).toBe(2);
+  });
+
+  it('a Daily Double copied or pasted onto another tile raises the ⭐ count too', () => {
+    const round = newRound('R', 3);
+    setClueType(round, round.categories[0].clues[0], 'dailyDouble');
+    round.categories[2].clues[1] = copyClue(round.categories[0].clues[0]);
+    followDailyDoubles(round);
     expect(round.dailyDoubleCount).toBe(2);
   });
 });

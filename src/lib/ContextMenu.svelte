@@ -34,10 +34,11 @@
   });
 
   function run(fn: () => void): void {
-    // A dropped menu gives its button the focus back first, so a window the item opens returns it there on close.
-    const from = contextMenu.open?.from;
+    // The focus goes back first (a dropped menu's button, else what had it or was right-clicked), so a window the item
+    // opens returns it there on close, and the keys go on working there after.
+    const back = contextMenu.open?.back;
     closeMenu();
-    from?.focus();
+    if (back?.isConnected) back.focus({ preventScroll: true });
     fn();
   }
 
@@ -46,10 +47,11 @@
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopImmediatePropagation();
-      const from = contextMenu.open.from;
+      const back = contextMenu.open.back;
       closeMenu();
-      // A menu dropped from a button gives it the focus back.
-      return from?.focus();
+      // The focus goes back (to a dropped menu's button, or what had it or was right-clicked).
+      if (back?.isConnected) back.focus({ preventScroll: true });
+      return;
     }
     // Every other key is the menu's too: Delete, Ctrl+Z and the like never reach what's under it (the arrows aren't a
     // nudge for what's selected in a slide editor). Tab, Enter and Space do their usual job on the focused item.

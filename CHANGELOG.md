@@ -24,6 +24,11 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Board editor: text dragged out of a category's name drops as text**, instead of moving the category.
+- **Board editor: copying, pasting or reusing a Daily Double raises the ⭐ Daily Doubles count** (Ctrl/Alt-drag, Paste
+  clue, Duplicate category, Use this tile again), so the checklist doesn't warn and 🔀 Randomize doesn't take it off.
+- **After a right-click (or Shift+F10) menu, the focus goes back to the tile, card or field it was opened on**, so the
+  arrow keys, Delete and Ctrl+V go on working there; so does closing the "where does the dropped picture go?" question.
 - **Phone buzzers (buzzer server: publish it again to get these): after a wrong answer, places count without the one
   who missed** (Carol is told she's next behind Bob, not "3rd"); **a clue opened with the buzzers closed no longer
   brings back the last clue's buzz order** ("You're 2nd" on a clue nobody buzzed on); **kicking a phone that's asleep or
