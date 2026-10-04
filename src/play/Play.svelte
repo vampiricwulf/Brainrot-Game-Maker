@@ -634,7 +634,9 @@
       events[0].picker = { was: session.currentPickerId, now: ids[0] };
       session.currentPickerId = ids[0];
     }
-    selected = next ? [next] : [];
+    // A quick ✔/✘ on someone else (a blurted answer) leaves whoever is answering with the turn.
+    const still = buzzing && b?.answering && !ids.includes(b.answering) && app.live.buzz === b ? b.answering : null;
+    selected = next ? [next] : still ? [still] : [];
   }
 
   /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
@@ -675,11 +677,17 @@
     const s = events.length ? buzzSteps.get(events[0].batchId ?? events[0].id) : undefined;
     if (!s || !buzzing || s.clue !== info?.clue.id) return;
     const to = undone ? s.before : s.after;
+    // The phones' queue was a later opening's.
+    roomQueue = null;
     setBuzz(to);
     selected = to.phase === 'answering' && to.answering ? [to.answering] : [];
   }
 
   function setBuzz(b: BuzzState): void {
+    // An opening the room has already used (an Undo back to before the buzzers reopened) isn't used again: the room
+    // would take its decided buzz for this one. Open, it's a new opening; otherwise the latest one.
+    const floor = session.remote?.armId ?? 0;
+    if (b.armId < floor) b = { ...b, armId: b.phase === 'armed' ? floor + 1 : floor };
     app.live.buzz = b;
     // The room's openings only go up, also after a reload (see Session.remote).
     if (session.remote && (session.remote.armId ?? 0) < b.armId) session.remote.armId = b.armId;

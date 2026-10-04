@@ -395,6 +395,8 @@ try {
   setState({ phase: 'lobby', clue: null, done: null });
 
   // "Not you?": Dee lets go of her seat and taps her name again.
+  // It asks first (the link sits under the buzz button).
+  dee.once('dialog', (d) => d.accept());
   await dee.getByRole('button', { name: 'Not you? Change player' }).click();
   await dee.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(await dee.getByRole('button', { name: 'Dee' }).isEnabled(), '"Not you? Change player" frees the seat');

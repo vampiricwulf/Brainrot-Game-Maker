@@ -24,6 +24,10 @@ in plain words for the people who make and host games. Anything committed but no
 - After the host page reloads and reconnects to the audience window, the host's media controls (and Space, M and the arrow keys) find a paused video or a Drive/Streamable player there again.
 - A scores window left open when the host page reloads reconnects by itself: it shows the scores again once the game's back, Exit closes it, and keys pressed in it work. Its "host left" note no longer says to reopen the audience window.
 - Audience window: a long game title on the Starting soon card shrinks to fit, and the banner gives way, so the phones' QR code is never cut off. Long player names stay on one line ("…") on the end screen, the Final spotlight and the Daily Double card instead of running off the stage. A long clue caption stops short of the join code in the corner.
+- Phone buzzers: undoing a wrong answer after the buzzers had reopened (and someone buzzed) no longer makes the next clue start with that old buzz "answering" on every phone; the Buzz order list starts afresh too.
+- Phone buzzers: a quick ✔ or ✘ on a player who isn't the one answering (a blurted answer) no longer reopens the buzzers and takes the turn from the one answering.
+- Keys list (?): the buzzer-mode number keys now say that, with someone answering, they pick player N as well (to judge both), and how to let the one answering go.
+- Phone page: "Not you? Change player" asks first, and warns when the host has locked the seats (you couldn't get back in).
 
 ## 2026-10-03
 

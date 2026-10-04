@@ -463,8 +463,13 @@ function denied(reason: DenyReason): void {
     }[reason] ?? "That didn't work. Try again.";
 }
 
-/** "Not you?": let go of this seat and pick again. */
+/** "Not you?": let go of this seat and pick again (it asks first: the link is right under the buzz button). */
 function leaveSeat(): void {
+  const what = seats?.teams ? 'this team' : 'this player';
+  const ask = seats?.locked
+    ? `Give up ${what}? The host has locked the seats: you can't get back in until they unlock them.`
+    : `Give up ${what} and pick again?`;
+  if (!confirm(ask)) return;
   send({ t: 'leave' });
   saveSeat(null);
   seatId = null;
