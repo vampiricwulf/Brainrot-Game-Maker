@@ -34,6 +34,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Final round: the Think time box keeps its number when emptied, and is at least 5 seconds (blank or 0 played a 30-second countdown it didn't show).
 - ＋ Add player (or team) picks a number no one has yet, so it doesn't make a second "Player 3".
 - Pre-game: Ctrl+Z bringing back a deleted player gives back their start score too, and sample players keep their place in the list (they moved to the bottom).
+- Board games: a "Move ±N" for one player no longer drops another player's fork waiting for a way (and its steps left), nor takes over the last move (the main button went back to 🎲 Roll for a player who had moved).
+- Board games: at a fork the main button says 🔀 Pick a way, and N says to pick first instead of quietly dropping the steps left (Next turn ▶ beside it still does, on purpose).
+- Board games: D (or 🎲 Roll) after the player has moved this turn says so instead of rolling, so Enter can't move them twice; type a number for an extra move.
+- Board games: 🔀 Shuffle keeps the turn with whoever had it; giving someone the turn by their name drops a pending Roll again and the last player's landing buttons.
 
 ## 2026-10-03
 

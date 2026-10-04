@@ -51,7 +51,7 @@ export function sendNow(game: Game, session: Session, who: string[], to: { space
   return text;
 }
 
-/** Make it a player's turn (a way to pick at a fork is dropped). */
+/** Make it a player's turn (a way to pick at a fork, and a pending Roll again, are dropped). */
 export function setTurn(game: Game, session: Session, playerId: string): void {
   const { bs } = boardNow(game, session);
   const i = bs?.order.indexOf(playerId) ?? -1;
@@ -59,6 +59,9 @@ export function setTurn(game: Game, session: Session, playerId: string): void {
   logged(session, `${playerName(session, playerId)}’s turn`, () => {
     bs.turn = i;
     bs.fork = undefined;
+    // The turn given away: the one before doesn't roll again after it, and their landing buttons go.
+    bs.again = undefined;
+    bs.last = undefined;
   });
 }
 
@@ -141,6 +144,11 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
     return null;
   }
   if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
+  // This turn's move is made: a roll now would be moved again by Enter. (An extra move: type the number of spaces.)
+  const { bs } = boardNow(game, session);
+  const last = bs?.last;
+  if (bs && !bs.fork && last && last.playerId === currentPlayer(bs) && (last.turn ?? 0) === (bs.turns ?? 0))
+    return `${playerName(session, last.playerId)} already moved this turn: N for the next turn (or type a number to move again)`;
   const preset = moverPreset(game, round);
   if (preset) rollDice(live, session, preset, true);
   else {

@@ -2499,7 +2499,12 @@
         if (session.intro) {
           // The round's intro first (its title card, then a board's tiles and categories).
           if (!e.shiftKey) intro();
-        } else if (session.phase === 'boardgame') turnNow(game, session, e.shiftKey ? -1 : 1);
+        } else if (session.phase === 'boardgame') {
+          // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
+          const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
+          if (fork && !e.shiftKey) toast(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
+          else turnNow(game, session, e.shiftKey ? -1 : 1);
+        }
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
           if (e.shiftKey) finalBack(session);
           else finalRevealNext();

@@ -253,14 +253,14 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
 }
 
 /**
- * Move each of `who` (a "Move ±N spaces" for several players). One at a time, but the board's shared state stays right:
+ * Move each of `who` (a "Move ±N spaces", for one player or several). One at a time, but the board's shared state stays right:
  * the first fork any of them stopped at is the one to pick (a later move doesn't drop it), and the last move shown (the
  * mover's landing buttons, Roll again) stays the mover's, now made if they moved too. Returns the line for the log.
  */
 function moveEach(board: BoardGameRound, bs: BoardGameState, who: string[], steps: number): string {
-  if (who.length === 1) return movePlayer(board, bs, who[0], steps);
   const before = bs.last;
-  let fork = bs.fork;
+  // (One player too: someone else's fork waiting for a way stays; a mover's own is replaced by where they get to now.)
+  let fork = bs.fork && !who.includes(bs.fork.playerId) ? bs.fork : undefined;
   const lastOf: Record<string, BoardGameState['last']> = {};
   const said = who.map((id) => {
     const line = movePlayer(board, bs, id, steps);

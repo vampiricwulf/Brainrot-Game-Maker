@@ -79,6 +79,14 @@
     if (boardEdit.on) return { label: '✓ Done editing', key: 'Esc', title: 'Esc: back to playing (the changes stay in this game)', run: () => setEditing(false) };
     const prev = { label: '◀ Previous turn', key: '⇧N', title: 'Shift+N: back to the turn before', run: () => turnNow(game, session, -1) };
     const next = { label: 'Next turn ▶', key: 'N', title: 'N: the next player’s turn', run: () => turnNow(game, session, 1) };
+    // At a fork the way is picked first (Next turn ▶ beside it drops the steps left).
+    if (bs.fork)
+      return {
+        label: '🔀 Pick a way',
+        title: `Pick which way ${turnName} goes: the buttons under “which way?”, or a marked space on the stage`,
+        run: () => toast(`Pick which way first (${Math.abs(bs.fork?.stepsLeft ?? 0)} to go): the buttons under “which way?”, or a marked space`),
+        also: [prev, next],
+      };
     if (moved) return { ...next, also: [prev] };
     const also = [prev, next];
     if (steps) return { label: `▶ Move ${steps}`, key: '⏎', title: `Enter: move ${turnName} ${steps} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
@@ -164,9 +172,11 @@
       const j = Math.floor(Math.random() * (i + 1));
       [o[i], o[j]] = [o[j], o[i]];
     }
+    // Whose turn it is stays theirs (now wherever they are in the order).
+    const now = b.order[b.turn];
     logged(session, `Shuffle the turn order: ${turnOrder(session, o)}`, () => {
       b.order = o;
-      b.turn = 0;
+      b.turn = Math.max(0, now ? o.indexOf(now) : 0);
     });
   }
 
