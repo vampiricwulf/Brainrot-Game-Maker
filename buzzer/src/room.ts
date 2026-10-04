@@ -188,6 +188,11 @@ export interface RoomSaved {
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
   /** Seat id → when its token was handed out (a phone coming back with it keeps the time; see Wagers above). */
   seatedAt?: Record<string, number>;
+  /**
+   * Seat id (teams: member id) → the device id and address of the phone that last held it, so a kick blocks it even while
+   * that phone is away (asleep, its tab closed).
+   */
+  seen?: Record<string, { device?: string; ip?: string }>;
 }
 
 /** Someone on a team (teams). */
@@ -404,8 +409,12 @@ export class Room {
 
   private setState(next: HostState): void {
     const prev = this.s.state;
-    const race = this.s.race;
     const now = this.deps.now();
+    // A new clue opened with the buzzers closed keeps the last opening's number: the last clue's buzzes aren't this one's
+    // (picking who answers there would tell phones "You're 2nd" on a clue they never buzzed on).
+    if (this.s.race && prev?.phase === 'lobby' && next.phase !== 'lobby' && next.phase !== 'armed' && this.s.race.armId === next.armId)
+      this.newRace(next.armId, now);
+    const race = this.s.race;
     const same = !!race && race.armId === next.armId;
     const seatIds = new Set(next.seats.map((x) => x.id));
     // The host moved on during a grace window: the host wins. A new arm drops the buzzes; anything else ranks them now.
@@ -536,10 +545,12 @@ export class Room {
     const conns = new Set(holders.map((p) => p.conn));
     if (!one && this.s.holders[seatId]) conns.add(this.s.holders[seatId]);
     for (const [, x] of members) if (x.conn) conns.add(x.conn);
-    const devices = new Set(holders.flatMap((p) => (p.device ? [p.device] : [])));
+    // (The phones that held it while away too: their device ids and addresses from when they last held it.)
+    const away = (one ? [member] : [seatId, ...members.map(([id]) => id)]).flatMap((k) => (this.s.seen?.[k] ? [this.s.seen[k]] : []));
+    const devices = new Set([...holders.flatMap((p) => (p.device ? [p.device] : [])), ...away.flatMap((x) => (x.device ? [x.device] : []))]);
     // Its address too: a new device id is one cleared localStorage away. But phones on one Wi-Fi share an address: the
     // others already here (another player in the same house) are spared.
-    const ips = new Set(holders.flatMap((p) => (p.ip ? [p.ip] : [])));
+    const ips = new Set([...holders.flatMap((p) => (p.ip ? [p.ip] : [])), ...away.flatMap((x) => (x.ip ? [x.ip] : []))]);
     const spared = [...this.phones.values()].flatMap((p) => (p.device && !conns.has(p.conn) && !devices.has(p.device) ? [p.device] : []));
     // A team's block adds up: kicking a second member doesn't let the first back on.
     const now = this.deps.now();
@@ -579,6 +590,7 @@ export class Room {
     if (!this.s.members?.[id]) return;
     delete this.s.members[id];
     delete this.s.memberLocks?.[id];
+    delete this.s.seen?.[id];
     for (const p of this.phones.values()) {
       if (p.member !== id) continue;
       this.unseat(p);
@@ -599,6 +611,7 @@ export class Room {
     delete this.s.tokens[seatId];
     delete this.s.holders[seatId];
     delete this.s.seatedAt?.[seatId];
+    delete this.s.seen?.[seatId];
     delete this.s.earlyLocks[seatId];
     for (const [id, m] of Object.entries(this.s.members ?? {})) if (m.seatId === seatId) this.dropMember(id, kicked);
     for (const p of this.phones.values()) {
@@ -954,6 +967,10 @@ export class Room {
    * the phone that had it did, and the room times its round trip at once.
    */
   private seated(p: Phone, seatId: string): void {
+    if (p.device || p.ip) {
+      (this.s.seen ??= {})[p.member ?? seatId] = { ...(p.device ? { device: p.device } : {}), ...(p.ip ? { ip: p.ip } : {}) };
+      this.save();
+    }
     this.probe(p);
     this.lastResults.delete(p.conn);
     const race = this.s.race;
@@ -1165,8 +1182,15 @@ export class Room {
     }
     // The answering seat isn't in the queue when the host picked someone who hadn't buzzed: everyone moves down one.
     const shift = race.winner && !race.queue.some((b) => b.seatId === race.winner) ? 1 : 0;
+    // Those who already missed this clue aren't ahead of anyone any more: the places count without them, and the one
+    // ahead is the one answering.
+    const out = new Set(st.lockedOut.filter((id) => id !== race.winner));
+    const ahead = lead && out.has(lead.seatId) && race.winner ? race.winner : lead?.seatId;
+    const aheadKey = race.queue.find((b) => b.seatId === ahead)?.key ?? lead?.key ?? 0;
+    let missed = 0;
     queue.forEach((q, i) => {
-      const rank = i + 1 + shift;
+      if (out.has(q.seatId)) return void missed++;
+      const rank = i + 1 + shift - missed;
       const rolled = q.rolled !== undefined ? { rolled: q.rolled } : {};
       let r: RoomToPhone;
       if (race.tie?.includes(q.seatId)) r = { t: 'result', armId: race.armId, outcome: 'tie', rank };
@@ -1176,7 +1200,7 @@ export class Room {
         const fastest = i === 0 && !!next && race.queue[1].key > race.queue[0].key;
         r = { t: 'result', armId: race.armId, outcome: 'first', rank, afterMs: 0, ...(fastest ? { byMs: next.afterMs } : {}), ...rolled };
       } else if (shift) r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner!), ...rolled };
-      else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: q.afterMs, behind: name(lead.seatId), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
+      else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: Math.max(0, race.queue[i].key - aheadKey), behind: name(ahead ?? ''), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
       const member = race.queue[i].member;
       for (const p of this.phones.values()) {
         if (p.seatId !== q.seatId) continue;

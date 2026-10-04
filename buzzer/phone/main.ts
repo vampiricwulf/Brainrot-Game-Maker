@@ -97,15 +97,18 @@ let wagerSending = false;
 // ---- saved seat (per room code) and this browser's id ----
 
 const key = () => `brainrot-buzzer:${code}`;
+/** The seat kept in memory too: where storage is blocked, a dropped connection (not a reload) still gets it back. */
+let seatHere: { seatId: string; token: string } | null = null;
 function loadSeat(): { seatId: string; token: string } | null {
   try {
     const v = JSON.parse(localStorage.getItem(key()) ?? 'null');
-    return v && typeof v.seatId === 'string' && typeof v.token === 'string' ? v : null;
+    return v && typeof v.seatId === 'string' && typeof v.token === 'string' ? v : seatHere;
   } catch {
-    return null;
+    return seatHere;
   }
 }
 function saveSeat(s: { seatId: string; token: string } | null): void {
+  seatHere = s;
   try {
     if (s) localStorage.setItem(key(), JSON.stringify(s));
     else localStorage.removeItem(key());

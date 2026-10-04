@@ -24,6 +24,12 @@ in plain words for the people who make and host games. Anything committed but no
   the slide on screen and the next one; then 👁 Reveal answer.
 
 ### Fixed
+- **Phone buzzers (buzzer server: publish it again to get these): after a wrong answer, places count without the one
+  who missed** (Carol is told she's next behind Bob, not "3rd"); **a clue opened with the buzzers closed no longer
+  brings back the last clue's buzz order** ("You're 2nd" on a clue nobody buzzed on); **kicking a phone that's asleep or
+  closed keeps it off that seat** when it comes back.
+- **Phone buzzers: a phone whose browser can't save anything keeps its seat through a dropped connection**, instead of
+  being told to tap its name on a seat that shows as taken.
 - **Undoing an award gives the picker back**: with "the last correct player picks next" on, Ctrl+Z took the points
   back but left the star (and the phones' "picks next") on that player.
 - **Phone buzzers: undoing an award puts the buzzers back as they were** (the player marked wrong by mistake can answer

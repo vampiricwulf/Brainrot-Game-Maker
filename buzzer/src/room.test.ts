@@ -356,6 +356,19 @@ describe('seats', () => {
     expect(g.pb.last('joined')?.seatId).toBe('b');
   });
 
+  it('a phone kicked while it is away (asleep, its tab closed) is still kept off that seat when it comes back', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    const troll = g.phone('t1', '203.0.113.5');
+    troll.send({ t: 'join', seatId: 'a', device: 'dev-1' });
+    g.room.phoneClose('t1');
+    g.send({ t: 'kick', seatId: 'a' });
+    const back = g.phone('t2', '203.0.113.5');
+    back.send({ t: 'join', seatId: 'a', device: 'dev-1' });
+    expect(back.last('denied')?.reason).toBe('blocked');
+  });
+
   it('a kick keeps the address off that seat too: a new device id doesn\'t get round it', () => {
     const g = setup();
     g.room.hostOpen();
@@ -566,6 +579,36 @@ describe('the race', () => {
     ]);
     expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'first', rank: 1, afterMs: 0, byMs: 60 });
     expect(g.pa.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 60, behind: 'Bob' });
+  });
+
+  it('after a wrong answer, places count without the one who missed (the next in line hears it is next)', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 100;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 100 });
+    g.t.now += 50;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 150 });
+    g.t.now += 50;
+    g.pc.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.tick(MAX_GRACE_MS);
+    // Ann missed: Bob answers (same opening), Carol is next.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'b', lockedOut: ['a'], clue: { text: 'Q?' } }) });
+    expect(g.pc.last('result')).toMatchObject({ outcome: 'late', rank: 2, behind: 'Bob', afterMs: 50 });
+  });
+
+  it('a new clue opened with the buzzers closed doesn’t bring back the last clue’s buzzes', () => {
+    const g = game();
+    g.arm(1);
+    g.t.now += 100;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 100 });
+    g.t.now += 50;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 150 });
+    g.tick(MAX_GRACE_MS);
+    // Back to the board, then a new clue with the buzzers closed: the host picks Carol.
+    g.send({ t: 'state', state: state({ phase: 'lobby', armId: 1 }) });
+    const before = g.pb.msgs().filter((m) => m.t === 'result').length;
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', clue: { text: 'Q2?' } }) });
+    expect(g.pb.msgs().filter((m) => m.t === 'result').length).toBe(before);
   });
 
   it('rankKey: reactMs counts, raised (never more than that) to leave the network at most the round trip + tolerance', () => {
