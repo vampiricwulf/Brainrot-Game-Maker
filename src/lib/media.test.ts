@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { addMediaFile, getBlob, keepLinkCopy, mediaUrls, pruneMedia, registerBlob, relinkMissing, restoreStash, stashMedia } from './media.svelte';
+import { addMediaFile, getBlob, keepLinkCopy, mediaUrls, pruneMedia, registerBlob, relinkMissing, replaceMediaFile, restoreStash, stashMedia } from './media.svelte';
 import { newGame } from './model';
 import { app } from './app.svelte';
 import { saveEditor, watchWrites } from './persist';
@@ -89,6 +89,17 @@ describe('missing files found again, and copies of links saved', () => {
     // Undo: the file is missing again.
     await restoreStash('lost', swaps[0].before);
     expect(getBlob('lost')).toBeUndefined();
+  });
+
+  it('finds a renamed file by its own name, and keeps the name it was given', async () => {
+    const game = newGame();
+    game.media.push({ id: 'ren', name: 'Theme song.mp3', file: 'track01.mp3', mime: 'audio/mpeg', size: 3, kind: 'audio' });
+    const r = await relinkMissing(game, [new File(['abc'], 'TRACK01.mp3', { type: 'audio/mpeg' })]);
+    expect(r.fixed).toBe(1);
+    expect(game.media[0].name).toBe('Theme song.mp3');
+    // Replace…: the new file's name is its own name now; the name given stays.
+    await replaceMediaFile(game, 'ren', new File(['abcd'], 'other.mp3', { type: 'audio/mpeg' }));
+    expect([game.media[0].name, game.media[0].file]).toEqual(['Theme song.mp3', 'other.mp3']);
   });
 
   it('a copy of a link becomes the file (same id); nothing happens once it is no longer a link', async () => {

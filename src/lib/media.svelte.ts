@@ -505,7 +505,10 @@ export async function replaceMediaFile(game: Game, id: string, file: File, keepN
   const { mime, kind, blob } = await checkedFile(file, file.name);
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
   await putMedia(id, blob.type ? blob : new Blob([blob], { type: mime }));
-  if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
+  // A file the user renamed keeps the name they gave it (the new file's name is its own name now).
+  if (ref.file !== undefined) ref.file = file.name;
+  else if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
+  if (ref.file === ref.name) delete ref.file;
   ref.mime = mime;
   ref.size = blob.size;
   // It's a stored file now, not a link.
@@ -521,7 +524,8 @@ export function missingMedia(game: Game): MediaRef[] {
 }
 
 /**
- * Reconnect missing files from a batch the user picked, matched by file name (ignoring case): each keeps its name.
+ * Reconnect missing files from a batch the user picked, matched by file name (ignoring case; a renamed one by its own
+ * name too): each keeps its name.
  * `swapped` is told of each file's bytes put back (stashed copies, for Undo to take them out again).
  * Returns how many were reconnected and the names still missing.
  */
@@ -534,13 +538,15 @@ export async function relinkMissing(
   let fixed = 0;
   const errors: string[] = [];
   for (const ref of missingMedia(game)) {
-    const f = byName.get(ref.name.toLowerCase());
-    if (!f) continue;
+    // By its name, or by the file's own name if it was renamed.
+    const key = [ref.name, ref.file].find((n) => n && byName.has(n.toLowerCase()))?.toLowerCase();
+    const f = key ? byName.get(key) : undefined;
+    if (!key || !f) continue;
     try {
       const before = await stashMedia(ref.id);
       await replaceMediaFile(game, ref.id, f, true);
       swapped({ id: ref.id, before, after: await stashMedia(ref.id) });
-      byName.delete(ref.name.toLowerCase());
+      byName.delete(key);
       fixed++;
     } catch (e) {
       errors.push((e as Error).message);

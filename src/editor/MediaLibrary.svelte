@@ -146,7 +146,12 @@
     const want = name.trim();
     if (want && want !== m.name) {
       const to = uniqueMediaName(game.media.filter((x) => x.id !== m.id).map((x) => x.name), want);
-      step(`Renamed file “${m.name}” to “${to}”`, () => (m.name = to));
+      step(`Renamed file “${m.name}” to “${to}”`, () => {
+        // (Its own name is kept: the file on disk still has it.)
+        m.file ??= m.name;
+        m.name = to;
+        if (m.file === to) delete m.file;
+      });
     }
     void tick().then(() => document.querySelector<HTMLElement>(`[data-media-name="${m.id}"]`)?.focus());
   }

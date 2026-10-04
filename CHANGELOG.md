@@ -55,6 +55,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Picking a file of another kind in a file picker (the dialog's "All files"): it's added to 📁 Media but not used there, as a dropped one isn't (a video as the theme's background showed nothing, a picture as a sound played nothing).
 - Uploaded fonts: a font replaced with 🔗 Replace file… shows at once (it kept the old one until a reload), and one whose file arrived after the game opened (reopened from Recent games, found again) is used without a reload.
 - 🎨 Theme: a warning when clues, answers and scores are hard to read on the tile color, and the Clue text color box shows the color clues are actually drawn in (it showed white).
+- 📁 Media: a file you renamed keeps your name when you 🔗 Replace it (it took the new file's name), and Find missing files finds it by its own file name too (renamed files stayed missing).
 
 ## 2026-10-03
 

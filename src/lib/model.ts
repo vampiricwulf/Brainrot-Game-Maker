@@ -35,6 +35,8 @@ export interface MediaRef {
   source?: string;
   /** When that link stops working (ms since 1970), if the site says (Discord). */
   expiresAt?: number;
+  /** Renamed in 📁 Media: the file's own name (Find missing files finds it by that too; Replace… keeps the new name). */
+  file?: string;
 }
 
 // ---------- Slides ----------
