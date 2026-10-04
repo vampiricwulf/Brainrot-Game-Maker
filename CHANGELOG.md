@@ -22,6 +22,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- A player-only game file uses the buzzer server it was made with, even when this browser has another one saved (from another file or the app).
 - Phone buzzers: showing the answer closes the buzzers. Phones say "Clue over", a press then counts for nothing (nor gets in line), a wrong answer after it doesn't open them for the rest, and U says why they stay closed.
 - Phone buzzers: the join code on the stream no longer covers anything on a slide. It moves to a corner with nothing under it, shrinks to just the code if that's all that fits, and stays off a slide with something in every corner.
 - Slide editor: a click that wobbles a pixel no longer nudges the item (or snaps it to a guide) when the slide is drawn small, as in the clue editor.

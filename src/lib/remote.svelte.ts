@@ -4,6 +4,7 @@ import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzpro
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
+import { app } from './app.svelte';
 import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
@@ -13,10 +14,12 @@ const clean = (url: string) => url.trim().replace(/\/+$/, '');
 
 /**
  * Where rooms are made: ⚙ Settings › Buzzer server, else (an exported game) the one it was exported with, else the
- * built-in one. '' when none is set (no phone buzzers).
+ * built-in one. '' when none is set (no phone buzzers). A player-only file uses the one it was made with first: its
+ * maker chose it, and this browser's setting may be another file's (every file:// page shares the same storage).
  */
 export function buzzerBase(): string {
-  return clean(prefs.buzzerServer || embeddedBuzzerServer() || DEFAULT_BUZZER_URL);
+  const embedded = embeddedBuzzerServer();
+  return clean((app.playerOnly ? embedded || prefs.buzzerServer : prefs.buzzerServer || embedded) || DEFAULT_BUZZER_URL);
 }
 
 export const remote = $state<{
