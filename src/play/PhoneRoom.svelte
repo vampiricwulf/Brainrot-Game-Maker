@@ -56,8 +56,13 @@
   {#if !base}
     <!-- (A game saved with Buzzer mode on plays without it here: you pick who answers.) -->
     <p class="muted small">
-      Players can buzz in from their phones once phone buzzers are set up{settings.buzzer ? '. Until then you pick who answers (1–9 or a click)' : ''}.
-      {#if !onsetup && !app.playerOnly}Set them up in ⚙ Settings (in the editor).{/if}
+      {#if app.playerOnly}
+        <!-- An exported game made without a buzzer server: nothing to set up here. -->
+        This file has no phone buzzers{settings.buzzer ? ': you pick who answers (1–9 or a click)' : ''}.
+      {:else}
+        Players can buzz in from their phones once phone buzzers are set up{settings.buzzer ? '. Until then you pick who answers (1–9 or a click)' : ''}.
+        {#if !onsetup}Set them up in ⚙ Settings (in the editor).{/if}
+      {/if}
     </p>
     {#if onsetup}
       <div class="row">

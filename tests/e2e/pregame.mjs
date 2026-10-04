@@ -418,7 +418,7 @@ try {
   await player.goto(pathToFileURL(exported).href);
   await player.getByRole('button', { name: '▶ Play' }).click();
   const card = await player.locator('section[aria-label="Phone buzzers"]').innerText();
-  assert(card.includes('once phone buzzers are set up') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'), `the player-only file doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
+  assert(card.includes('This file has no phone buzzers') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'), `the player-only file says it has no phone buzzers, and doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
   await player.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

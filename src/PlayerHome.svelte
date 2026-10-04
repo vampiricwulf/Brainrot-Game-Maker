@@ -88,6 +88,8 @@
       <p class="warn small">This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game.</p>
     {/if}
     <button class="ghost small" onclick={download}>⬇ Download as .brainrot (to edit in the builder)</button>
+    <!-- Someone who made it, testing their export: their games are where they left them. -->
+    <p class="muted small">This file plays this one game. It can't change it, and your own games in the builder aren't touched.</p>
   </div>
 </div>
 

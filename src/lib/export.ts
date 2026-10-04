@@ -21,6 +21,10 @@ export const MAX_HTML_CHARS = 2 ** 29 - 24;
 /** Said when a game is too big to go in (or come out of) one HTML file. */
 export const TOO_BIG = 'Too big for one HTML file — Save a .brainrot instead (it opens in the desktop app or this page).';
 
+/** Said to someone opening an exported game this browser can't read (it's whole, but too big for it). */
+export const TOO_BIG_TO_OPEN =
+  "This game is too big for this browser to open. Try it in Chrome or Edge on a computer, or ask whoever sent it for the .brainrot file instead (it opens in the Brainrot Games Maker builder or desktop app).";
+
 /** How long a pack of `bytes` is in base64. */
 export const base64Length = (bytes: number): number => Math.ceil(bytes / 3) * 4;
 
@@ -45,7 +49,7 @@ export function unreadablePack(): string | null {
   const el = document.getElementById(PACK_ELEMENT_ID);
   if (!el || embeddedPack()) return null;
   const size = Number(el.dataset.size);
-  return !size || size > MAX_PACK_CHARS ? TOO_BIG : CUT_OFF;
+  return !size || size > MAX_PACK_CHARS ? TOO_BIG_TO_OPEN : CUT_OFF;
 }
 
 /**
@@ -94,9 +98,12 @@ const attr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').rep
 export async function unpackEmbedded(b64: string, cut = false): Promise<Blob> {
   if (cut) throw new Error(CUT_OFF);
   // fetch() on a data: URL decodes large base64 far more efficiently than atob().
+  // The file is whole (cut off is said above): failing here is this browser running out of room for it.
   const res = await fetch(`data:application/zip;base64,${b64}`).catch(() => null);
-  if (!res?.ok) throw new Error(CUT_OFF);
-  return res.blob();
+  if (!res?.ok) throw new Error(TOO_BIG_TO_OPEN);
+  return res.blob().catch(() => {
+    throw new Error(TOO_BIG_TO_OPEN);
+  });
 }
 
 /**
@@ -127,9 +134,13 @@ function blobToBase64(blob: Blob): Promise<string> {
  * Shown while a big exported file is still being read, before the app starts (the app only runs once the whole page,
  * pack and all, is read).
  */
+// After a while, a line for a viewer that never runs the app (an email or phone preview): no script needed to show it.
 const LOADING_HTML =
+  '<style>@keyframes jb-late{to{opacity:1}}</style>' +
   '<div style="display:grid;place-items:center;height:100%;padding:16px;text-align:center;color:#9aa3b5;font:16px system-ui,sans-serif">' +
-  '<div>Loading the game…<br><small>Big games can take a minute to open.</small></div></div>';
+  '<div>Loading the game…<br><small>Big games can take a minute to open.</small>' +
+  '<br><small style="opacity:0;animation:jb-late 0s 20s forwards">Still loading? Save this file and open it in Chrome, Edge or Firefox on a computer (a preview can’t play it).</small>' +
+  '</div></div>';
 
 /** This app's own HTML (the single file), without runtime DOM or a previously embedded game. */
 function selfHtml(): string {

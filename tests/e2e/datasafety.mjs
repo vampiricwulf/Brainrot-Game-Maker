@@ -268,7 +268,7 @@ try {
   const big = await context.newPage();
   big.on('pageerror', (e) => errors.push(`[too big] ${e.message}`));
   await big.goto(pathToFileURL(resolve('test-results/datasafety-toobig.html')).href);
-  await big.getByText('Too big for one HTML file — Save a .brainrot instead').waitFor();
+  await big.getByText('This game is too big for this browser to open').waitFor();
   assert((await big.getByRole('button', { name: 'Open…' }).count()) === 0, 'an exported file whose game is too big to read says so, instead of opening the editor');
   await big.close();
 
