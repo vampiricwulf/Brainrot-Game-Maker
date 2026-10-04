@@ -127,7 +127,7 @@ try {
   assert((await page.locator('.canvas [data-space]').count()) === 20, 'the 20-space loop template has 20 spaces');
   t = await tabs();
   assert(t.at(-1).includes('Final'), 'a template round goes before the Final');
-  await page.locator('nav > button.round-tab').first().click({ button: 'right' });
+  await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: '📋 Copy round' }).click();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Paste round “Jeopardy!”/ }).click();
