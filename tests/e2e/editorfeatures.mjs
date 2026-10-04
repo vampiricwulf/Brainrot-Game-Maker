@@ -43,13 +43,13 @@ try {
   assert((await page.locator('.toast').count()) === 0, 'and its toast doesn’t follow into ▶ Play');
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   let t = await tabs();
-  assert(t.length === 4 && t[0].includes('Jeopardy!') && t[3].includes('Final'), `the sample game has a board, an adventure, a board game and a Final (${t.join(' | ')})`);
+  assert(t.length === 5 && t[0].includes('Introduction') && t[1].includes('Jeopardy!') && t[4].includes('Final'), `the sample game has an introduction, a board, an adventure, a board game and a Final (${t.join(' | ')})`);
   await page.locator('.problems.ok').waitFor({ timeout: 3000 });
   assert(true, 'and nothing on the checklist');
   await page.keyboard.press('Control+z');
   assert((await page.locator('nav > button.round-tab').count()) === 0, 'Ctrl+Z takes the whole sample back');
   await page.keyboard.press('Control+y');
-  assert((await page.locator('nav > button.round-tab').count()) === 4, 'and Ctrl+Y brings it back');
+  assert((await page.locator('nav > button.round-tab').count()) === 5, 'and Ctrl+Y brings it back');
   // Its board game's special spaces show their names on the board, and their card knows their kind.
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   const named = await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts();
@@ -57,7 +57,7 @@ try {
   await page.locator('.canvas').getByRole('button', { name: 'Bonus', exact: true }).click();
   const kind = await page.locator('.side [data-space-kind] option:checked').innerText();
   assert(kind === '⭐ Star (bonus points)', `its Bonus space’s Make it a… box says ⭐ Star, from its +100 button (${kind})`);
-  await page.locator('nav > button.round-tab').first().click();
+  await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
 
   // ---------- Import clues ----------
   await page.getByRole('button', { name: '📥 Import clues…' }).click();

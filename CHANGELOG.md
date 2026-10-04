@@ -14,6 +14,8 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-04
 
 ### Added
+- The sample game opens with an Introduction (a slides round), and ＋ Add round › Start from a template has 🖼 Welcome and rules (a welcome slide, then how it plays) and 🎁 The sample game, so it can be added to a game that already has rounds.
+- Phone buzzers: before the room starts, its card says it runs online (this computer and the phones need the internet, on any network), and warns when this computer seems to be offline.
 - Phone buzzers: players can change their colour on their phone (🎨 Change your colour, under the buzzer), from the colours no other player has. It's on by default; turn it off with "Players can pick their colour on their phone" on the Phone buzzers card. It isn't offered with teams, where the host picks each team's colour.
 - Phone buzzers: the audience sees who has a phone connected, with 📱 on the "Starting soon" lineup and on each player's score plate. It goes away when that phone disconnects.
 - Phone buzzers: while someone else is answering, a phone that hasn't buzzed yet says "You can still buzz" (to get in line in case they miss) instead of "Wait".

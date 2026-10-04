@@ -9,7 +9,7 @@ describe('the sample game', () => {
   it('is a complete game of every mode, with nothing to fix', () => {
     const game = newGame();
     expect(addSampleGame(game)).toBe(0);
-    expect(game.rounds.map((r) => r.mode)).toEqual(['board', 'rpg', 'boardgame', 'final']);
+    expect(game.rounds.map((r) => r.mode)).toEqual(['slides', 'board', 'rpg', 'boardgame', 'final']);
     expect(game.players).toHaveLength(3);
     expect(game.title).toBe('Sample game');
     expect(validate(game).filter((p) => p.level === 'warn')).toEqual([]);

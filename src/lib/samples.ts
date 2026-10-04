@@ -6,6 +6,7 @@ import {
   newFinalRound,
   newId,
   newRound,
+  newSlidesRound,
   newTextEl,
   setSlideText,
   textSlide,
@@ -281,7 +282,17 @@ export const TEMPLATES: Template[] = [
     make: (g) => loop20Round('Board game', g),
   },
   { mode: 'boardgame', label: 'Race to the finish', hint: 'A path from Start to Finish: first one there wins', make: () => raceRound() },
+  { mode: 'slides', label: 'Welcome and rules', hint: 'Two slides to open the show: a welcome, then how it plays', make: () => introRound() },
 ];
+
+/** An introduction: a welcome slide, then the rules (to change to the show's own). */
+function introRound(welcome = 'Welcome to the show!'): Round {
+  const r = newSlidesRound('Introduction');
+  setSlideText(r.questionSlide, welcome);
+  const rules = textSlide('How it plays: pick a clue, answer before the others, and the most points wins!');
+  r.extraSlides = [{ ...rules, id: newId() }];
+  return r;
+}
 
 // ---------- The sample game ----------
 
@@ -304,7 +315,8 @@ export function addSampleGame(game: Game): number {
   setSlideText(final.answerSlide, 'Just chatting');
   const rpg = sampleWorld(game);
   const bg = sampleBoardGame(game);
-  game.rounds.push(board, rpg, bg, final);
+  // (Its introduction only in a game of its own: added to a game with rounds, it would land in the middle.)
+  game.rounds.push(...(at ? [] : [introRound('Welcome to the sample game!')]), board, rpg, bg, final);
   // Red, green and yellow: far apart in hue, so no two look alike (on the blue theme two blues did).
   if (!game.players.length)
     game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: newId(), name, color: PLAYER_PALETTE[[0, 6, 2][i]] }));

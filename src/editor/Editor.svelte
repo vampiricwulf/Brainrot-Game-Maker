@@ -209,7 +209,7 @@
 
   /** The round modes, templates and rounds from elsewhere, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */
   function addRoundMenu(e: MouseEvent): void {
-    dropMenu(e, addRoundItems(game, addRound, showNew, importRounds));
+    dropMenu(e, addRoundItems(game, addRound, showNew, importRounds, showSample));
   }
 
   /** A round just added (a template, a pasted or imported round): shown, with its name ready to type over. */

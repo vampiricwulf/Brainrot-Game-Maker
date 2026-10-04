@@ -43,6 +43,14 @@
     /** ⚙ Set up phone buzzers… (no buzzer server yet): ⚙ Settings, at the phone buzzers. None in a player-only file. */
     onsetup?: () => void;
   } = $props();
+  /** The browser says there's no network (it can be wrong the other way, never this way round for long). */
+  let offline = $state(typeof navigator !== 'undefined' && navigator.onLine === false);
+  $effect(() => {
+    const on = () => (offline = navigator.onLine === false);
+    addEventListener('online', on);
+    addEventListener('offline', on);
+    return () => (removeEventListener('online', on), removeEventListener('offline', on));
+  });
 
   const base = $derived(buzzerBase());
   const link = $derived(roomLink());
@@ -86,7 +94,11 @@
   {#if !base || !settings.buzzer}
     <!-- Nothing to start until it's on. -->
   {:else if !remote.code || remote.status === 'off'}
-    <p class="muted small">Start the room, then share the link or the code on stream.</p>
+    <p class="muted small">
+      Start the room, then share the link or the code on stream. The room runs online: this computer and the players’
+      phones need the internet (any network: they don’t have to be on yours).
+    </p>
+    {#if offline}<p class="warn small" role="status">📵 This computer seems to be offline: connect to the internet to start the room.</p>{/if}
     <div class="row">
       <button class="primary" onclick={onstart} disabled={remote.status === 'connecting'}>
         {remote.status === 'connecting' ? 'Starting the room…' : '▶ Start the room'}

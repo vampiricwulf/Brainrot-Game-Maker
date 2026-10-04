@@ -194,6 +194,8 @@ export function addMedia(game: Game, refs: readonly MediaRef[]): void {
 
 /** Where a new round goes: at the end, before any Final rounds there (so the Final stays last), unless it's a Final. */
 export function placeFor(game: Game, round: Round): number {
+  // The game's first slides round is its introduction: it goes first.
+  if (round.mode === 'slides' && !game.rounds.some((r) => r.mode === 'slides')) return 0;
   let at = game.rounds.length;
   if (round.mode !== 'final') while (at > 0 && game.rounds[at - 1].mode === 'final') at--;
   return at;
