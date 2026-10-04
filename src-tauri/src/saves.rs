@@ -5,6 +5,7 @@
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub const FOLDER: &str = "BrainrotSaves";
@@ -109,9 +110,29 @@ pub fn is_openable(name: &str) -> bool {
     is_game(game)
 }
 
-/// Where the save about to be replaced waits (a second name for it) until the new one is in place.
+/// Each save's own temporary names: two saves of the same file at once (an autosave and a Save) never share one.
+static WRITES: AtomicU64 = AtomicU64::new(0);
+
+fn ms_now() -> u128 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis())
+}
+
+/// Where the save about to be replaced waits (a second name for it) until the new one is in place. The name says
+/// when (a hard link keeps the old save's time, which can't tell a save in progress from one left by a crash).
 fn held_name(name: &str) -> String {
-    format!(".{name}.prev")
+    format!(".{name}.{}-{}.prev", ms_now(), WRITES.fetch_add(1, Ordering::Relaxed))
+}
+
+/// A held save's file (`.Game.brainrot.1791…-3.prev`, or an older app's `.Game.brainrot.prev`): the save it's of,
+/// and when it was made (ms since 1970) if its name says.
+fn held_of(file: &str) -> Option<(String, Option<u128>)> {
+    let inner = file.strip_prefix('.')?.strip_suffix(".prev")?;
+    match inner.rsplit_once('.') {
+        Some((save, stamp)) if stamp.split_once('-').is_some_and(|(a, b)| !a.is_empty() && a.bytes().all(|c| c.is_ascii_digit()) && b.bytes().all(|c| c.is_ascii_digit())) => {
+            Some((save.to_string(), stamp.split_once('-').and_then(|(a, _)| a.parse().ok())))
+        }
+        _ => Some((inner.to_string(), None)),
+    }
 }
 
 /// Keep a second name for the save that's about to be replaced (`held`), so it can become the `.bak` once the
@@ -158,7 +179,7 @@ fn write_save_with(
 ) -> io::Result<PathBuf> {
     fs::create_dir_all(dir)?;
     let path = dir.join(name);
-    let part = dir.join(format!(".{name}.part"));
+    let part = dir.join(format!(".{name}.{}-{}.part", std::process::id(), WRITES.fetch_add(1, Ordering::Relaxed)));
     let held = dir.join(held_name(name));
     let written = fs::File::create(&part).and_then(|mut file| {
         file.write_all(data)?;
@@ -179,6 +200,16 @@ fn write_save_with(
         let _ = fs::remove_file(&part);
         if holding {
             let _ = fs::remove_file(&held);
+        }
+        // The folder could be written (the new file is in it): it's the old save that couldn't be replaced, held
+        // open by another program (antivirus, OneDrive syncing it) or read-only. Said as such, not "the folder
+        // can't be written" (which would send the save to Documents and leave two versions).
+        if err.kind() == io::ErrorKind::PermissionDenied {
+            return Err(io::Error::other(format!(
+                "{} couldn't be replaced ({}). Another program may have it open (antivirus, OneDrive or Dropbox syncing it), or it's read-only: wait a moment and save again",
+                name,
+                plain_error(&err)
+            )));
         }
         return Err(err);
     }
@@ -242,14 +273,19 @@ fn drop_stale_parts(dir: &Path, now: SystemTime) {
         if !(name.starts_with('.') && (name.ends_with(".part") || name.ends_with(".prev"))) {
             continue;
         }
-        let modified = entry.metadata().and_then(|m| m.modified());
-        if !modified.is_ok_and(|t| now.duration_since(t).is_ok_and(|age| age >= STALE_PART)) {
+        // How old: a held save by the time in its name (its file's time is the old save's), else by its file's.
+        let stamped = held_of(name).and_then(|(_, at)| at);
+        let old = match stamped {
+            Some(at) => now.duration_since(UNIX_EPOCH).is_ok_and(|t| t.as_millis().saturating_sub(at) >= STALE_PART.as_millis()),
+            None => entry.metadata().and_then(|m| m.modified()).is_ok_and(|t| now.duration_since(t).is_ok_and(|age| age >= STALE_PART)),
+        };
+        if !old {
             continue;
         }
         // The save before one that was replaced, its backups never moved along (the app stopped right after
         // the new save went in): it becomes the `.bak`. One that's still the same as the save (the app
         // stopped before the new one went in) is only a second name for it.
-        if let Some(save) = name.strip_prefix('.').and_then(|n| n.strip_suffix(".prev")).and_then(clean_name) {
+        if let Some(save) = held_of(name).and_then(|(save, _)| clean_name(&save)) {
             let same = match (fs::read(entry.path()), fs::read(dir.join(&save))) {
                 (Ok(held), Ok(current)) => held == current,
                 _ => false,
@@ -422,6 +458,25 @@ mod tests {
         let names: Vec<String> = list_saves(&dir).into_iter().map(|s| s.name).collect();
         assert_eq!(names, ["New.html", "New.brainrot", "Old.json"]);
         assert_eq!(list_saves(&dir.join("missing")), Vec::new());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_held_save_is_aged_by_the_time_in_its_name() {
+        let dir = temp("held");
+        fs::create_dir_all(&dir).unwrap();
+        // Held a moment ago (a save in progress), though its file is old (a hard link keeps the old save's time).
+        let held = held_name("Game.brainrot");
+        fs::write(dir.join(&held), b"old").unwrap();
+        fs::write(dir.join("Game.brainrot"), b"new").unwrap();
+        assert_eq!(held_of(&held).map(|(save, at)| (save, at.is_some())), Some(("Game.brainrot".to_string(), true)));
+        assert_eq!(held_of(".Game.brainrot.prev"), Some(("Game.brainrot".to_string(), None)));
+        drop_stale_parts(&dir, SystemTime::now());
+        assert!(dir.join(&held).exists(), "a save in progress keeps its held copy");
+        // Left by a crash long ago: it becomes the backup.
+        drop_stale_parts(&dir, SystemTime::now() + STALE_PART);
+        assert!(!dir.join(&held).exists());
+        assert_eq!(fs::read(dir.join("Game.brainrot.bak")).unwrap(), b"old");
         let _ = fs::remove_dir_all(&dir);
     }
 

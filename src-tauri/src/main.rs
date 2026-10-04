@@ -439,7 +439,8 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<s
 async fn off_main<T: Send + 'static>(work: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(work)
         .await
-        .map_err(|err| format!("Couldn't finish: {err}"))?
+        // (A panic's own text says nothing to a host.)
+        .map_err(|_| "That didn't finish: something went wrong in the app. Try again.".to_string())?
 }
 
 /// `%20`-style decoding of the file name header (headers are ASCII; names may not be).
@@ -531,6 +532,9 @@ fn note_opened_file<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I, cwd: &P
     true
 }
 
+/// take_opened_file's answer when another file arrived since the page asked its name.
+const CHANGED: &str = "changed";
+
 /// The name of the game file waiting to be opened, if any (take_opened_file reads it).
 #[tauri::command]
 fn opened_file() -> Option<String> {
@@ -538,10 +542,19 @@ fn opened_file() -> Option<String> {
     opened.as_ref()?.file_name()?.to_str().map(str::to_string)
 }
 
-/// The waiting game file's bytes; it's no longer waiting afterwards.
+/// The waiting game file's bytes; it's no longer waiting afterwards. `name`: the one the page was told of (opened_file):
+/// a file another launch gave meanwhile isn't taken under that name (the page asks again).
 #[tauri::command]
-async fn take_opened_file() -> Result<tauri::ipc::Response, String> {
-    let path = OPENED.lock().unwrap_or_else(|e| e.into_inner()).take().ok_or("No file to open.")?;
+async fn take_opened_file(name: Option<String>) -> Result<tauri::ipc::Response, String> {
+    let path = {
+        let mut opened = OPENED.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(name) = &name {
+            if opened.as_ref().and_then(|p| p.file_name()).and_then(|n| n.to_str()) != Some(name.as_str()) {
+                return Err(CHANGED.into());
+            }
+        }
+        opened.take().ok_or("No file to open.")?
+    };
     off_main(move || {
         std::fs::read(&path)
             .map(tauri::ipc::Response::new)
@@ -629,7 +642,7 @@ fn open_link(url: String) -> Result<(), String> {
         .arg(&url)
         .spawn()
         .map(|_| ())
-        .map_err(|err| format!("Couldn't open {url}: {err}"))
+        .map_err(|err| format!("Couldn't open {url}: {}.", saves::plain_error(&err)))
 }
 
 /// Whether this process runs elevated ("Run as administrator").

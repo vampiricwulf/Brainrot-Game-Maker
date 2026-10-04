@@ -45,19 +45,43 @@ pub fn replace_exe(exe: &Path, bytes: &[u8]) -> Result<(), String> {
     let new = beside(exe, ".new");
     let old = beside(exe, ".old");
     let cant = |err: std::io::Error| {
+        // A folder only an administrator may change (Program Files): the manual way needs that too.
+        let admin = if err.kind() == std::io::ErrorKind::PermissionDenied {
+            " This folder needs administrator rights to change: move the app to a folder of yours (Documents, the Desktop) to update it in place."
+        } else {
+            ""
+        };
         format!(
-            "Couldn't put the new version in place of this one ({}). Download it and put it in place of this .exe yourself.",
+            "Couldn't put the new version in place of this one ({}).{admin} Or download it and put it in place of this .exe yourself.",
             crate::saves::plain_error(&err)
         )
     };
-    fs::write(&new, bytes).map_err(cant)?;
+    // On the disk before it takes the program's name: a power cut right after the restart never leaves half a program.
+    fs::File::create(&new)
+        .and_then(|mut file| {
+            std::io::Write::write_all(&mut file, bytes)?;
+            file.sync_all()
+        })
+        .map_err(|err| {
+            let _ = fs::remove_file(&new);
+            cant(err)
+        })?;
     let _ = fs::remove_file(&old);
     if let Err(err) = fs::rename(exe, &old) {
         let _ = fs::remove_file(&new);
         return Err(cant(err));
     }
     if let Err(err) = fs::rename(&new, exe) {
-        let _ = fs::rename(&old, exe);
+        // Put the old one back. If even that fails, both files are still there: say where.
+        if fs::rename(&old, exe).is_err() {
+            return Err(format!(
+                "The update stopped halfway ({}). This version is in {} and the new one in {}: rename either of them to {} to start the app.",
+                crate::saves::plain_error(&err),
+                old.display(),
+                new.display(),
+                exe.file_name().map_or_else(|| exe.display().to_string(), |n| n.to_string_lossy().into_owned())
+            ));
+        }
         let _ = fs::remove_file(&new);
         return Err(cant(err));
     }
@@ -85,23 +109,44 @@ async fn download(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, String
     if !url.starts_with(RELEASES) || !url.contains("/releases/download/") {
         return Err("Updates only come from the app's GitHub releases.".into());
     }
-    let failed = |err: reqwest::Error| format!("The download failed ({err}). Check the connection and try again.");
-    let response = client.get(url).send().await.map_err(failed)?.error_for_status().map_err(failed)?;
-    let bytes = response.bytes().await.map_err(failed)?;
-    if bytes.len() > MAX_BYTES {
-        return Err("The download is far bigger than the app: it wasn't installed.".into());
+    // In plain words (reqwest's own text has the whole signed link in it).
+    let failed = |err: reqwest::Error| {
+        let why = if err.is_timeout() {
+            "it stopped answering".to_string()
+        } else if let Some(status) = err.status() {
+            format!("GitHub answered {}", status.as_u16())
+        } else {
+            "couldn't reach GitHub".to_string()
+        };
+        format!("The download failed ({why}). Check the connection and try again.")
+    };
+    let too_big = || "The download is far bigger than the app: it wasn't installed.".to_string();
+    let mut response = client.get(url).send().await.map_err(failed)?.error_for_status().map_err(failed)?;
+    if response.content_length().is_some_and(|n| n > MAX_BYTES as u64) {
+        return Err(too_big());
     }
-    Ok(bytes.to_vec())
+    // Read a piece at a time, stopping as soon as it's too big (not after all of it is in memory).
+    let mut bytes = Vec::new();
+    while let Some(piece) = response.chunk().await.map_err(failed)? {
+        bytes.extend_from_slice(&piece);
+        if bytes.len() > MAX_BYTES {
+            return Err(too_big());
+        }
+    }
+    Ok(bytes)
 }
 
 /// Download the release's .exe and its signature, check it, and put it in place of this one. The page restarts the
 /// app afterwards (once its game is saved).
 pub async fn install(exe_url: &str, signature_url: &str) -> Result<(), String> {
     let key = PUBLIC_KEY.ok_or("This copy of the app can't update itself: download the new version instead.")?;
+    // A connection that goes quiet ends the download with a message (the button was stuck on "Updating…").
     let client = reqwest::Client::builder()
         .user_agent("Brainrot Games Maker updater")
+        .connect_timeout(Duration::from_secs(20))
+        .read_timeout(Duration::from_secs(45))
         .build()
-        .map_err(|err| format!("Couldn't start the download ({err}). Download the new version instead."))?;
+        .map_err(|_| "Couldn't start the download. Download the new version instead.".to_string())?;
     let exe = download(&client, exe_url).await?;
     let signature = String::from_utf8(download(&client, signature_url).await?)
         .map_err(|_| "The update's signature isn't readable.".to_string())?;
@@ -110,7 +155,7 @@ pub async fn install(exe_url: &str, signature_url: &str) -> Result<(), String> {
         return Err("The download isn't a Windows program: it wasn't installed.".into());
     }
     let path = std::env::current_exe()
-        .map_err(|err| format!("Couldn't find where this app is ({err}). Download the new version instead."))?;
+        .map_err(|err| format!("Couldn't find where this app is ({}). Download the new version instead.", crate::saves::plain_error(&err)))?;
     replace_exe(&path, &exe)
 }
 

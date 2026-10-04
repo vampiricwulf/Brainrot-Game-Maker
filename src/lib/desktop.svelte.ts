@@ -96,8 +96,10 @@ export const RESTART_ASK = 'Restart Brainrot Games Maker now? Everything is save
 export async function restartApp(retry = false): Promise<string | null> {
   desktop.restarting = true;
   try {
-    // Lets the last autosave (half a second behind) be written first.
+    // Lets the last autosave (half a second behind) be written first, and any save or export being written finish
+    // (as the restart into an update does).
     await new Promise((r) => setTimeout(r, 800));
+    await saveEverythingNow();
     await invoke(retry ? 'retry_audio_fix' : 'restart_app');
     return null;
   } catch (err) {
@@ -227,9 +229,17 @@ const isHost = () => inTauri() && w?.__JB_AUDIO_FIX !== undefined;
 
 /** The game file the app was opened with ("Open with", or a second launch given one), taken once. */
 async function takeOpenedFile(): Promise<File | null> {
-  const name = await invoke<string | null>('opened_file');
-  if (!name) return null;
-  return new File([await invoke<ArrayBuffer>('take_opened_file')], name);
+  // The name, then the file of that name: another launch can give a new file in between (it's asked again).
+  for (let tries = 0; tries < 5; tries++) {
+    const name = await invoke<string | null>('opened_file');
+    if (!name) return null;
+    try {
+      return new File([await invoke<ArrayBuffer>('take_opened_file', { name })], name);
+    } catch (err) {
+      if (err !== 'changed') throw err;
+    }
+  }
+  return null;
 }
 
 /**
