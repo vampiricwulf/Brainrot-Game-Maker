@@ -1079,9 +1079,15 @@
   }
   .first-round .modes {
     display: grid;
-    /* Two by two: the four modes never leave one alone on a row. */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Three, then two (wider): the five modes never leave one alone on a row. */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
+  }
+  .first-round .modes > .mode {
+    grid-column: span 2;
+  }
+  .first-round .modes > .mode:nth-child(n + 4) {
+    grid-column: span 3;
   }
   .first-round .mode,
   .first-round .sample {
@@ -1265,6 +1271,10 @@
   @media (max-width: 700px) {
     .first-round .modes {
       grid-template-columns: 1fr;
+    }
+    .first-round .modes > .mode,
+    .first-round .modes > .mode:nth-child(n + 4) {
+      grid-column: auto;
     }
     .body {
       flex-direction: column;
