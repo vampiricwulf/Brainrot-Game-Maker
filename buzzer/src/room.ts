@@ -1274,7 +1274,11 @@ export class Room {
         // (Teams: by who sent it, not when: a teammate's wager changed after they joined stays hidden from them too.)
         const own = m ? sent?.member === p.member : sent?.at !== undefined && sent.at >= (since ?? 0);
         if (late && sent && !own) sent = undefined;
-        const view = { ...phoneView(st, p.seatId, me, by, sent, late), hostHere: this.hostHere };
+        const race = this.s.race;
+        // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
+        const canQueue =
+          st.phase === 'answering' && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
+        const view = { ...phoneView(st, p.seatId, me, by, sent, late), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;

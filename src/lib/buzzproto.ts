@@ -170,6 +170,8 @@ export interface PhoneView {
   final?: { place: number; tied?: boolean };
   /** This phone may pick its player's colour (HostState.colorPick): `taken`, the other players' colours. */
   colorPick?: { taken: string[] };
+  /** Someone else is answering and a buzz from this phone would still get in line behind them (the room adds it). */
+  canQueue?: boolean;
 }
 
 /**

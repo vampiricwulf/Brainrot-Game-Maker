@@ -261,6 +261,13 @@ input:focus { outline: none; border-color: var(--accent); }
   color: #fff;
   border-color: var(--seat);
 }
+/* Someone else is answering, and a buzz still gets in line behind them. */
+#buzz.queue {
+  background: color-mix(in srgb, var(--seat) 22%, var(--panel-2));
+  color: #fff;
+  border-color: var(--seat);
+  border-style: dashed;
+}
 #buzz.off { background: var(--panel-2); color: var(--muted); }
 #buzz.locked { background: #3a2226; color: #ffb3b3; border-color: var(--bad); }
 

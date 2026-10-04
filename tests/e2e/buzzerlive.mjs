@@ -195,6 +195,7 @@ try {
   await press(p2);
   await big(p2).getByText("You're answering!").waitFor();
   await small(p1).getByText('Player 2 is answering').waitFor();
+  assert((await big(p1).innerText()) === 'You can still buzz' && (await small(p1).innerText()).includes('next in line'), 'the other phone is told it can still buzz to be next in line');
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   assert((await selected()).length === 1, 'the first phone in is picked in the host panel; the other phone sees who is answering');
   await press(p1);

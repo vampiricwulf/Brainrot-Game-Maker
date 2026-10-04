@@ -560,6 +560,22 @@ describe('the race', () => {
     expect(g.pb.last('view')?.view.answering?.you).toBe(true);
   });
 
+  it('while someone answers, the phones that could still get in line are told so (not the one answering, nor after a host pick)', () => {
+    const g = game();
+    g.arm(1);
+    g.pb.send({ t: 'buzz', armId: 1 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.pa.last('view')?.view.canQueue).toBe(true);
+    expect(g.pc.last('view')?.view.canQueue).toBe(true);
+    expect(g.pb.last('view')?.view.canQueue).toBeUndefined();
+    // Cat missed earlier: locked out, so not her.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, clue: { text: 'Q?' }, answering: 'b', lockedOut: ['c'] }) });
+    expect(g.pc.last('view')?.view.canQueue).toBeUndefined();
+    // The host picks someone on a clue nobody buzzed on: there is no line to join.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 2, clue: { text: 'Q2?' }, answering: 'a' }) });
+    expect(g.pb.last('view')?.view.canQueue).toBeUndefined();
+  });
+
   it('a phone on a slower network that reacted faster wins', () => {
     const g = game();
     timeRtt(g, g.pa, 40);
