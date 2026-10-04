@@ -20,6 +20,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Slide editor: Duplicate makes unlocked copies of locked items, so a copied background on top can be clicked and moved.
 - Drawing pad: Clear can be undone (↶ or Ctrl+Z), and Insert says so when everything drawn was erased instead of doing nothing.
 - Editing a screen live during play: dropping several files at once is one undo step again (it was one per file).
+- Cover (K): Google Drive and Streamable videos stop under it too (they kept playing, and could be heard); they start again from the beginning after it.
+- After the host page reloads and reconnects to the audience window, the host's media controls (and Space, M and the arrow keys) find a paused video or a Drive/Streamable player there again.
+- A scores window left open when the host page reloads reconnects by itself: it shows the scores again once the game's back, Exit closes it, and keys pressed in it work. Its "host left" note no longer says to reopen the audience window.
+- Audience window: a long game title on the Starting soon card shrinks to fit, and the banner gives way, so the phones' QR code is never cut off. Long player names stay on one line ("…") on the end screen, the Final spotlight and the Daily Double card instead of running off the stage. A long clue caption stops short of the join code in the corner.
 
 ## 2026-10-03
 

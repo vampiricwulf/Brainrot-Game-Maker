@@ -350,6 +350,12 @@
       finalStepWas = now;
     });
   });
+  /** Quiet a clue's media under the cover: paused, or a site's own player (Drive, Streamable), which can't be paused, taken
+   *  off (it starts again from the start after the cover). */
+  function hush(id: string): void {
+    const m = (dual ? remoteMedia : localMedia)[id];
+    mediaCommand({ el: id, op: m?.kind === 'external' ? 'stop' : 'pause' });
+  }
   // ⏸ Cover: what's going on waits under it (the countdown, a clue's video or sound), and goes on after it.
   let coverHeld: { timer: TimerState | null; media: string[] } | null = null;
   $effect(() => {
@@ -360,9 +366,9 @@
         const running = t && !t.expired && t.startedAt !== null ? t : null;
         if (running) toggleTimer(app.live);
         const media = Object.entries(dual ? remoteMedia : localMedia)
-          .filter(([, m]) => !m.paused && m.kind !== 'external' && (dual || (m as { role?: string }).role !== 'mirror'))
+          .filter(([, m]) => !m.paused && (dual || (m as { role?: string }).role !== 'mirror'))
           .map(([id]) => id);
-        for (const id of media) mediaCommand({ el: id, op: 'pause' });
+        for (const id of media) hush(id);
         coverHeld = { timer: running, media };
       } else if (!on && coverHeld) {
         const held = coverHeld;
@@ -379,12 +385,12 @@
     if (!app.live.cover) return;
     const map = dual ? remoteMedia : localMedia;
     const playing = Object.entries(map)
-      .filter(([, m]) => !m.paused && m.kind !== 'external' && (dual || (m as { role?: string }).role !== 'mirror'))
+      .filter(([, m]) => !m.paused && (dual || (m as { role?: string }).role !== 'mirror'))
       .map(([id]) => id);
     untrack(() => {
       if (!coverHeld) return;
       for (const id of playing) {
-        mediaCommand({ el: id, op: 'pause' });
+        hush(id);
         if (!coverHeld.media.includes(id)) coverHeld.media.push(id);
       }
     });

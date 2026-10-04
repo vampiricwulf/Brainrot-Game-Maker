@@ -44,7 +44,8 @@ export type AudienceEvent =
 /** A key pressed in the audience window, for the host's shortcuts (the host clicked it to allow sound, and kept typing). */
 export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'>;
 
-export type AudienceMsg = { type: 'hello' } | { type: 'audience-event'; event: AudienceEvent } | { type: 'key'; key: AudienceKey } | { type: 'bye' };
+/** hello `scores`: from the scores-only window (one a reloaded host page doesn't know yet says so until it's found). */
+export type AudienceMsg = { type: 'hello'; scores?: boolean } | { type: 'audience-event'; event: AudienceEvent } | { type: 'key'; key: AudienceKey } | { type: 'bye' };
 
 /** Envelope on the BroadcastChannel (it also reaches other same-origin tabs, so say who's talking). */
 export type ChannelMsg = { from: 'host'; msg: HostMsg } | { from: 'audience'; msg: AudienceMsg };
@@ -199,6 +200,11 @@ export function onAudienceKey(fn: (key: AudienceKey) => void): () => void {
 if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location.hash !== SCORES_HASH) {
   window.addEventListener('message', (e: MessageEvent<AudienceMsg>) => {
     if (scoresWin && e.source === scoresWin) return fromScores(e.data);
+    // The scores window an earlier load of this page opened: it's this page's again (Exit closes it, keys reach Play).
+    if (!scoresWin && e.data?.type === 'hello' && e.data.scores && e.source && e.source !== win) {
+      adoptScores(e.source as Window);
+      return fromScores(e.data);
+    }
     if (!win || e.source !== win) return;
     fromAudience(e.data);
   });
@@ -334,12 +340,17 @@ export function openScoresWindow(): boolean {
     scoresWin.focus();
     return true;
   }
-  scoresWin = window.open(location.href.split('#')[0] + SCORES_HASH, 'jb-audience-scores', 'popup=yes,width=1280,height=240');
-  if (!scoresWin) return false;
+  const w = window.open(location.href.split('#')[0] + SCORES_HASH, 'jb-audience-scores', 'popup=yes,width=1280,height=240');
+  if (!w) return false;
+  adoptScores(w);
+  return true;
+}
+
+function adoptScores(w: Window): void {
+  scoresWin = w;
   scoresWindow.open = true;
   clearInterval(scoresPoll);
   scoresPoll = setInterval(() => (!scoresWin || scoresWin.closed) && scoresClosed(), 700);
-  return true;
 }
 
 export function closeScoresWindow(): void {

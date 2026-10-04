@@ -10,7 +10,7 @@
   import { newSession } from '../lib/session';
   import { CHANNEL_NAME, audienceTitle, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
   import { inTauri, toggleFullscreen } from '../lib/platform';
-  import { applyLocal, onLocalMediaChange } from '../lib/mediactl.svelte';
+  import { applyLocal, localMedia, onLocalMediaChange } from '../lib/mediactl.svelte';
   import { onSoundReport, playChime, setAudioOut, watchSinks } from '../lib/audioout.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import Stage from '../lib/Stage.svelte';
@@ -75,6 +75,7 @@
         return;
       }
     }
+    let rejoin: ReturnType<typeof setInterval> | undefined;
     const handle = (m: HostMsg) => {
       switch (m?.type) {
         case 'game':
@@ -84,6 +85,7 @@
           registerGameFonts(m.game);
           document.title = scores ? audienceTitle(m.game).replace(/Audience$/, 'Scores') : audienceTitle(m.game);
           status = 'connected';
+          clearInterval(rejoin);
           break;
         case 'session':
           session = m.session;
@@ -106,11 +108,20 @@
           break;
         case 'bye':
           status = 'host-left';
+          // The host page may be reloading: the scores window says it's here until the page answers.
+          if (scores && viaOpener) {
+            clearInterval(rejoin);
+            rejoin = setInterval(() => send({ type: 'hello', scores: true }), 1500);
+          }
           break;
         case 'ping':
           // A host page that reloaded found this window again: hello, and whether sound may play here.
           send({ type: 'hello' });
           send({ type: 'audience-event', event: { kind: 'activation', active: activated && !blockedSince } });
+          // And the media showing here (hello clears the host's list; a paused video or a site's player doesn't report
+          // itself again on its own).
+          for (const [id, state] of Object.entries(localMedia))
+            send({ type: 'audience-event', event: { kind: 'media', id, state: $state.snapshot(state) } });
           break;
         case 'close':
           // (A window the page didn't open can't close itself: it says the host left instead.)
@@ -156,7 +167,7 @@
       send({ type: 'audience-event', event });
     });
     const offSinks = watchSinks();
-    send({ type: 'hello' });
+    send(scores ? { type: 'hello', scores: true } : { type: 'hello' });
     send({ type: 'audience-event', event: { kind: 'activation', active: activated } });
     poke();
     return () => {
@@ -165,6 +176,7 @@
       channel?.close();
       closer?.close();
       clearTimeout(noHost);
+      clearInterval(rejoin);
       offMedia();
       offSound();
       offSinks();
@@ -268,7 +280,7 @@
   {/if}
   <!-- The same: viewers keep the last picture, not a red bar (nothing's on stream before the game came, though). -->
   {#if status === 'host-left' && (!idle || !game)}
-    <div class="banner">Host window closed. Reopen the audience window from the host to reconnect.</div>
+    <div class="banner">{scores ? 'Host window closed. This window reconnects when the host page is open again.' : 'Host window closed. Reopen the audience window from the host to reconnect.'}</div>
   {/if}
 </div>
 

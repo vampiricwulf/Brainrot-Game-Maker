@@ -267,7 +267,8 @@
   <div class="full title-card" in:fade={{ duration: 300 }}>
     <div class="soon" class:has-room={!!live.room}>
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
-      <div class="round-name">{game.title}</div>
+      <!-- A long title shrinks to two or three lines instead of pushing the join code off the stage. -->
+      <div class="round-name" use:autofit={{ size: live.room ? 110 : 150, min: live.room ? 48 : 64, enabled: true, text: `${game.title}|${!!live.room}` }}>{game.title}</div>
       <div class="soon-text">{live.rematch ? 'Rematch! ' : ''}{stream?.soonText?.trim() || 'Starting soon…'}</div>
       {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
       {#if live.lineup?.length}
@@ -381,8 +382,11 @@
       </div>
     {/if}
     {#if stream?.clueCaption && !waiting}
-      <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap.) -->
-      <div class="caption" style:max-width={of > 1 && !session.revealed ? `${960 - (50 * of + 22) / 2 - 24 - 44 - 16}px` : undefined}>{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
+      <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap; with the join
+           code in the corner, short of that, about 420px wide.) -->
+      {@const pipsMax = of > 1 && !session.revealed ? 960 - (50 * of + 22) / 2 - 24 - 44 - 16 : 1500}
+      {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && codeSpot === 'corner' ? 1920 - 24 - 44 - 16 - 420 - 24 : 1500)}px`}
+      <div class="caption" style:max-width={captionMax}>{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
     {/if}
     {#if session.dd?.stage === 'question' && ddPlayer}
       <div class="dd-badge" style:border-color={ddPlayer.color}>
@@ -823,6 +827,24 @@
   }
   .soon .round-name {
     font-size: 150px;
+    max-width: 1800px;
+    max-height: 330px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .soon.has-room .round-name {
+    max-height: 230px;
+  }
+  /* Everything else keeps its size; the banner gives way if it still doesn't fit the stage's height. */
+  .soon {
+    max-height: 1060px;
+  }
+  .soon > * {
+    flex-shrink: 0;
+  }
+  .soon > .card-img {
+    flex-shrink: 1;
+    min-height: 0;
   }
   .soon.has-room {
     gap: 28px;
@@ -961,6 +983,11 @@
     paint-order: stroke fill;
   }
   .dd-player {
+    max-width: 1700px;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--board-font);
     font-size: 70px;
     font-weight: 800;
@@ -1035,6 +1062,11 @@
     min-width: 900px;
   }
   .spot-name {
+    max-width: 1700px;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 90px;
     font-weight: 900;
     padding: 6px 40px;
@@ -1127,6 +1159,11 @@
   .nm {
     padding: 2px 20px;
     border-radius: 8px;
+    /* A long name stays on one line (the rows are measured as one line each), cut with "…". */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .sc {
     margin-left: auto;
