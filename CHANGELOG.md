@@ -50,6 +50,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Clue editor: with the 🖼 Tile image picker open, Ctrl+Enter and Alt+arrows no longer move to another clue (the picture then went on that one).
 - Board editor: ×2 and ÷2 also change tiles that have a value of their own (imported clues keep theirs), and ⧉ Duplicate category gives the copy's slides their own items (as a copied clue has) and no longer names an unnamed category " (copy)".
 - Find: empty tiles are no longer listed, and a match in a tile's "Tile shows" text goes to that box.
+- Board editor: the "🖼 A picture on …: where does it go?" bar stays with the tile it was dropped on while the board changes (an Undo, a category moved); it put the picture on whatever tile was then in that spot. If that tile goes away, the bar goes too.
 
 ## 2026-10-03
 

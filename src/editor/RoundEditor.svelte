@@ -119,10 +119,24 @@
    * Image files dropped on a tile: asked first whether they go in the question (the usual meaning, and the default) or
    * on the tile's face, which the board shows instead of the value until it's picked.
    */
-  let tileDrop = $state<{ files: File[]; cat: number; row: number } | null>(null);
+  // (The tile itself, not its place: the board can change while it asks.)
+  let tileDrop = $state<{ files: File[]; clue: string } | null>(null);
+  /** Where that tile is now (null: it's gone, an Undo took its category away, say). */
+  const dropAt = $derived.by((): TilePos | null => {
+    if (!tileDrop) return null;
+    for (const [cat, c] of round.categories.entries()) {
+      const row = c.clues.findIndex((cl) => cl.id === tileDrop?.clue);
+      if (row >= 0) return { cat, row };
+    }
+    return null;
+  });
   let dropAskEl = $state<HTMLElement>();
   $effect(() => {
     if (tileDrop) void tick().then(() => dropAskEl?.querySelector<HTMLButtonElement>('button.primary')?.focus());
+  });
+  // The tile it was about went away: nothing to ask about.
+  $effect(() => {
+    if (tileDrop && !dropAt) untrack(() => (tileDrop = null));
   });
 
   // …and the next tiles down the column (then on to the next column), skipping empty tiles.
@@ -161,14 +175,15 @@
 
   function dropChosen(where: 'question' | 'face'): void {
     const d = tileDrop;
+    const at = dropAt;
     closeDrop();
-    if (d) void dropOnTile(d.files, d.cat, d.row, where);
+    if (d && at) void dropOnTile(d.files, at.cat, at.row, where);
   }
   /** The question goes (answered or cancelled): the tile it was about has the focus again, for the board's keys. */
   function closeDrop(): void {
-    const d = tileDrop;
+    const at = dropAt;
     tileDrop = null;
-    if (d) void tick().then(() => focusTile(d.cat, d.row, true));
+    if (at) void tick().then(() => focusTile(at.cat, at.row, true));
   }
 
   // An undo or redo here: open the clue or the board images it changed, or close them to show the board.
@@ -370,7 +385,8 @@
       tileDragEnd();
     } else if (!empty && hasFiles(e)) {
       const files = dropped(e);
-      if (files.length) tileDrop = { files, ...p };
+      const id = round.categories[p.cat]?.clues[p.row]?.id;
+      if (files.length && id) tileDrop = { files, clue: id };
     }
   }
 
@@ -665,7 +681,7 @@
   </div>
 </div>
 
-{#if tileDrop}
+{#if tileDrop && dropAt}
   {@const n = tileDrop.files.length}
   <!-- Where a picture dropped on a tile goes. The focus starts on the question (Enter); Esc cancels. -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -676,7 +692,7 @@
     bind:this={dropAskEl}
     onkeydown={(e) => e.key === 'Escape' && closeDrop()}
   >
-    <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(tileDrop)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
+    <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(dropAt)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
     <button class="ghost small" onclick={closeDrop}>Cancel</button>
     <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
     <button class="primary small" onclick={() => dropChosen('question')}>Put {n === 1 ? 'it' : 'them'} in the question</button>
