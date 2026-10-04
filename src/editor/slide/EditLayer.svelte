@@ -52,7 +52,7 @@
   let guides = $state<{ x: number[]; y: number[] }>({ x: [], y: [] });
 
   type Drag =
-    | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean; shiftAtDown: boolean }
+    | { kind: 'move'; sx: number; sy: number; orig: Map<string, { x: number; y: number }>; moved: boolean; shiftAtDown: boolean; narrow?: string }
     | { kind: 'resize'; sx: number; sy: number; hx: number; hy: number; o: { x: number; y: number; w: number; h: number }; keep: boolean }
     | { kind: 'rotate'; cx: number; cy: number; a0: number; r0: number }
     // `click`: what a press that doesn't drag selects (a text box pressed beside its letters); `alt`: where an
@@ -159,10 +159,12 @@
     } else if (!selected.includes(el.id)) {
       selected = [el.id];
     }
+    // A plain click (no drag) on one of several selected items selects just it, once released.
+    const narrow = !e.shiftKey && !e.ctrlKey && !e.metaKey && selected.length > 1 ? el.id : undefined;
     const movable = visible.filter((x) => selected.includes(x.id) && !x.locked);
     if (!movable.length) return;
     const orig = new Map(movable.map((m) => [m.id, { x: m.x, y: m.y }]));
-    begin({ kind: 'move', sx: p.x, sy: p.y, orig, moved: false, shiftAtDown: e.shiftKey }, e);
+    begin({ kind: 'move', sx: p.x, sy: p.y, orig, moved: false, shiftAtDown: e.shiftKey, narrow }, e);
   }
 
   function handleDown(e: PointerEvent, hx: number, hy: number): void {
@@ -228,7 +230,8 @@
     } else if (drag.kind === 'move') {
       let dx = p.x - drag.sx;
       let dy = p.y - drag.sy;
-      if (!drag.moved && Math.hypot(dx, dy) < 2) return;
+      // A few screen pixels (the slide can be drawn small): a click that wobbles doesn't move it.
+      if (!drag.moved && Math.hypot(dx, dy) < 3 / (stage.scale || 1)) return;
       drag.moved = true;
       // Shift pressed during the drag: move along one axis only (whichever the pointer moved more on).
       // A Shift still held from the press (Shift+click adds to the selection) doesn't count until released.
@@ -323,6 +326,7 @@
         selected = drag.add ? (selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]) : [id];
       }
     }
+    if (drag?.kind === 'move' && !drag.moved && drag.narrow) selected = [drag.narrow];
     // Every drag that began (and told onstart) ends with onchange, a selection box too (it changes nothing).
     const ended = !!drag;
     drag = null;

@@ -1,6 +1,6 @@
 <!--
   A drawpad: draw a whole object from as many strokes as it takes (pen, filled shapes, eraser, any color and size,
-  undo/redo, clear), over the screen it goes on, then insert it as one picture where it was drawn.
+  undo/redo, clear (undoable)), over the screen it goes on, then insert it as one picture where it was drawn.
 -->
 <script lang="ts">
   import { modal } from '../../lib/modal';
@@ -36,6 +36,10 @@
   let size = $state(14);
   let strokes = $state<Stroke[]>([]);
   let redoList = $state<Stroke[]>([]);
+  /** What Clear took away (Undo brings it back, until the next stroke). */
+  let cleared = $state<Stroke[] | null>(null);
+  /** Insert found nothing to insert (everything was erased). */
+  let empty = $state(false);
   let current: Stroke | null = null;
   let canvas = $state<HTMLCanvasElement>();
   let busy = $state(false);
@@ -104,10 +108,25 @@
     if (!current) return;
     strokes = [...strokes, current];
     redoList = [];
+    cleared = null;
+    empty = false;
     current = null;
   }
 
+  function clear(): void {
+    cleared = strokes;
+    strokes = [];
+    redoList = [];
+    empty = false;
+  }
+
   function undo(): void {
+    empty = false;
+    if (!strokes.length && cleared) {
+      strokes = cleared;
+      cleared = null;
+      return;
+    }
     const s = strokes.at(-1);
     if (!s) return;
     strokes = strokes.slice(0, -1);
@@ -145,7 +164,7 @@
     if (!ctx || !canvas) return;
     paint(ctx, strokes);
     const box = contentBox(ctx);
-    if (!box) return;
+    if (!box) return void (empty = true);
     busy = true;
     const out = document.createElement('canvas');
     out.width = box.w;
@@ -193,6 +212,8 @@
       <h2 class="modal-title">🖌 {title}</h2>
       {#if discarding}
         <InlineAsk text="Discard this drawing?" ok="Discard" cancel="Cancel" danger onok={oncancel} oncancel={() => (discarding = false)} />
+      {:else if empty}
+        <span class="hint warn" role="alert">Nothing to insert: everything drawn has been erased.</span>
       {:else}
         <span class="hint">Draw the whole thing, as many strokes as it takes, then Insert.</span>
       {/if}
@@ -213,9 +234,9 @@
       <span class="sep"></span>
       <label class="small">Size <input type="range" min="2" max="80" bind:value={size} aria-label="Brush size" /> {size}</label>
       <span class="sep"></span>
-      <button class="ghost" onclick={undo} disabled={!strokes.length} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
+      <button class="ghost" onclick={undo} disabled={!strokes.length && !cleared} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
       <button class="ghost" onclick={redo} disabled={!redoList.length} aria-label="Redo (Ctrl+Shift+Z)" title="Redo (Ctrl+Shift+Z)">↷</button>
-      <button class="ghost" onclick={() => ((redoList = []), (strokes = []))} disabled={!strokes.length}>Clear</button>
+      <button class="ghost" onclick={clear} disabled={!strokes.length} title="Clear (Undo brings it back)">Clear</button>
     </div>
     <div class="pad-wrap">
       <div class="pad">

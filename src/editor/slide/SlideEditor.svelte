@@ -428,10 +428,10 @@
 
   // ---------- Selection actions ----------
   /** The selected items that can change, and how many selected ones are locked (left alone). */
-  function selection(): { free: SlideElement[]; locked: number } {
+  function selection(): { free: SlideElement[]; locked: number; held: SlideElement[] } {
     const all = slide.elements.filter((e) => selected.includes(e.id));
     const free = all.filter((e) => !e.locked);
-    return { free, locked: all.length - free.length };
+    return { free, locked: all.length - free.length, held: all.filter((e) => e.locked) };
   }
 
   /** Delete the selected items, keeping locked ones. `verb` names it in the notice ("Cut image · Undo"). */
@@ -458,6 +458,8 @@
       const z = topZ();
       for (const [i, c] of copies.entries()) {
         c.zIndex = z + i;
+        // A copy of a locked item comes unlocked: on top of everything, a locked one couldn't be clicked or moved.
+        delete c.locked;
         // (A copy of an item at the bottom-right edge stays partly on the slide.)
         keepOnStage(c, SLIDE_W, SLIDE_H);
       }
@@ -556,9 +558,12 @@
     vdistribute: ['Spaced # evenly down', 'Spaced # evenly down'],
   };
   function align(how: Align): void {
-    const { free, locked } = selection();
-    if (free.length) undoApi.step(ALIGNED[how][free.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H));
-    if (locked) tell(lockedNote(locked));
+    const { free, held } = selection();
+    const spacing = how === 'hdistribute' || how === 'vdistribute';
+    // Locked items don't move, but the others line up with them (spacing evenly is only for the ones that move).
+    const fixed = spacing ? [] : held;
+    if (free.length) undoApi.step(ALIGNED[how][free.length + fixed.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H, fixed));
+    if (spacing && held.length) tell(lockedNote(held.length));
   }
 
   // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
@@ -1192,7 +1197,7 @@
         <button class="small" onclick={() => align('vcenter')} aria-label="Line up their middles down">Middle</button>
         <button class="small" onclick={() => align('bottom')} aria-label="Line up their bottom edges">Bottom</button>
       </div>
-      {#if selected.length > 2}
+      {#if selected.filter((id) => !slide.elements.find((e) => e.id === id)?.locked).length > 2}
         <div class="agrid two">
           <button class="small" onclick={() => align('hdistribute')} title="The outermost two stay; the gaps between them all become equal">↔ Space evenly</button>
           <button class="small" onclick={() => align('vdistribute')} title="The outermost two stay; the gaps between them all become equal">↕ Space evenly</button>

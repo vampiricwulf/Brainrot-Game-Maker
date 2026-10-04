@@ -105,18 +105,20 @@ const drawn = (e: Placed) => bounds({ ...e, rotation: e.rotation ?? 0 });
  * line…), and Distribute spaces three or more evenly between the outermost two. Items are placed as drawn: a turned
  * one by the box around it.
  */
-export function align(els: Placed[], how: Align, W = 1920, H = 1080): void {
+export function align(els: Placed[], how: Align, W = 1920, H = 1080, fixed: Placed[] = []): void {
   if (!els.length) return;
+  if (how === 'hdistribute' || how === 'vdistribute') return distribute(els, how === 'hdistribute' ? 'x' : 'y');
   const all = els.map(drawn);
+  // `fixed` (selected but locked) stay where they are, and the others line up with them too.
+  const every = [...all, ...fixed.map(drawn)];
   const area =
-    els.length === 1
+    every.length === 1
       ? { x: 0, y: 0, w: W, h: H }
       : (() => {
-          const x = Math.min(...all.map((b) => b.x));
-          const y = Math.min(...all.map((b) => b.y));
-          return { x, y, w: Math.max(...all.map((b) => b.x + b.w)) - x, h: Math.max(...all.map((b) => b.y + b.h)) - y };
+          const x = Math.min(...every.map((b) => b.x));
+          const y = Math.min(...every.map((b) => b.y));
+          return { x, y, w: Math.max(...every.map((b) => b.x + b.w)) - x, h: Math.max(...every.map((b) => b.y + b.h)) - y };
         })();
-  if (how === 'hdistribute' || how === 'vdistribute') return distribute(els, how === 'hdistribute' ? 'x' : 'y');
   els.forEach((e, i) => {
     const b = all[i];
     let dx = 0;

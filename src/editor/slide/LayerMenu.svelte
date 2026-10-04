@@ -110,7 +110,7 @@
     </button>
     {#if aligning}
       <!-- One item lines up with the slide; several with each other. -->
-      <div class="aligns" role="group" aria-label={unlocked > 1 ? 'Line up the selected items' : 'Align to the slide'}>
+      <div class="aligns" role="group" aria-label={selected.length > 1 ? 'Line up the selected items' : 'Align to the slide'}>
         {#each ALIGNS as [how, label] (how)}<button role="menuitem" onclick={() => act(`align-${how}`)}>{label}</button>{/each}
         {#if unlocked > 2}
           <button role="menuitem" class="wide" onclick={() => act('align-hdistribute')}>Space evenly across</button>

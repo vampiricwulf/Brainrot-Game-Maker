@@ -11,6 +11,15 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-04
+
+### Fixed
+- Slide editor: a click that wobbles a pixel no longer nudges the item (or snaps it to a guide) when the slide is drawn small, as in the clue editor.
+- Slide editor: clicking one item of several selected now selects just that one (dragging still moves them all).
+- Slide editor: lining up items with a locked one selected lines them up with it (it stays put) instead of ignoring it; Space evenly shows only when three or more unlocked items are selected.
+- Slide editor: Duplicate makes unlocked copies of locked items, so a copied background on top can be clicked and moved.
+- Drawing pad: Clear can be undone (↶ or Ctrl+Z), and Insert says so when everything drawn was erased instead of doing nothing.
+
 ## 2026-10-03
 
 ### Added
