@@ -20,9 +20,10 @@ export const BUZZ_PROTOCOL = 1;
  * What this room can do beyond protocol 1 (the welcome lists them; a room from before lists none). 'teams': seats can be
  * teams that several phones join (HostState.teams). 'wagers': players send their Daily Double or Final wager from
  * their phone (HostState.wager), and only the host hears the amount. 'free': the host can free a seat without blocking
- * anyone (kick with block: false), for a player who came back on another phone.
+ * anyone (kick with block: false), for a player who came back on another phone. 'color': a seated phone asks for another
+ * colour (PhoneMsg 'color'), passed on to the host, which takes it when it's free (HostState.colorPick).
  */
-export const ROOM_FEATURES = ['teams', 'wagers', 'free'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
 /** The biggest wager a phone may send (and a seat's max the room passes on). */
@@ -100,6 +101,8 @@ export interface HostState {
   wager?: WagerAsk | null;
   /** The game is over (its final scores are up): phones say where they came (PhoneView.final). */
   over?: boolean;
+  /** Players may pick their own colour on their phone (not teams: a team's colour is the host's). */
+  colorPick?: boolean;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -165,6 +168,8 @@ export interface PhoneView {
   wager?: PhoneWager;
   /** The game is over (HostState.over): where this phone's seat came, by score (tied: others have the same score). */
   final?: { place: number; tied?: boolean };
+  /** This phone may pick its player's colour (HostState.colorPick): `taken`, the other players' colours. */
+  colorPick?: { taken: string[] };
 }
 
 /**
@@ -226,6 +231,7 @@ export function phoneView(s: HostState, seatId: string | null, me?: MemberRef | 
     ...(s.teams ? { teams: true } : {}),
     ...wagerView(s, seatId, me, sent, late),
     ...finalView(s, seat?.id),
+    ...(s.colorPick && seat && !s.teams ? { colorPick: { taken: s.seats.filter((x) => x.id !== seat.id).map((x) => x.color.toLowerCase()) } } : {}),
   };
 }
 
@@ -390,7 +396,9 @@ export type RoomToHost =
    * Added later ('wagers'): a phone sent seatId's wager for the host's wager round `id`. n counts up per seat (the host
    * says which it took: WagerSeat.got). by: teams, who on the team sent it. Only the host ever hears the amount.
    */
-  | { t: 'wager'; id: string; seatId: string; amount: number; n: number; by?: string };
+  | { t: 'wager'; id: string; seatId: string; amount: number; n: number; by?: string }
+  /** Added later ('color'): a seated phone asks for this colour (#rrggbb) for its player. */
+  | { t: 'color'; seatId: string; color: string };
 
 /** A phone → room. */
 export type PhoneMsg =
@@ -410,7 +418,9 @@ export type PhoneMsg =
   /** Sent straight back on every probe, so the room can time the round trip itself (replaced pong → sync). */
   | { t: 'echo'; id: number }
   /** Added later ('wagers'): this phone's seat's wager for the host's wager round `id` (a whole number, 0 or more). */
-  | { t: 'wager'; id: string; amount: number };
+  | { t: 'wager'; id: string; amount: number }
+  /** Added later ('color'): this phone's player wants this colour (#rrggbb); the host takes it if it's free. */
+  | { t: 'color'; color: string };
 
 /** Why the room didn't take a phone's wager: not taking one now, over the max (with the limit on), not a whole number, too many sends. */
 export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';

@@ -80,6 +80,7 @@ function newLink(base: string): RoomLink {
       onQueue: (q) => queueWatchers.forEach((fn) => fn(q)),
       onFull: () => (remote.fullAt = Date.now()),
       onWager: (w) => wagerWatchers.forEach((fn) => fn(w)),
+      onColor: (c) => colorWatchers.forEach((fn) => fn(c)),
     },
     deps,
   );
@@ -98,6 +99,13 @@ export function onRoomBuzz(fn: (b: RoomBuzz) => void): () => void {
 export function onRoomQueue(fn: (q: RoomQueue) => void): () => void {
   queueWatchers.add(fn);
   return () => queueWatchers.delete(fn);
+}
+
+const colorWatchers = new Set<(c: { seatId: string; color: string }) => void>();
+/** A player asked for another colour from their phone. Returns the unsubscribe. */
+export function onRoomColor(fn: (c: { seatId: string; color: string }) => void): () => void {
+  colorWatchers.add(fn);
+  return () => colorWatchers.delete(fn);
 }
 
 /** A player sent their wager from their phone. Returns the unsubscribe. */

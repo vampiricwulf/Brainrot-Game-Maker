@@ -158,6 +158,19 @@ input:focus { outline: none; border-color: var(--accent); }
 }
 #clue small { display: block; color: var(--muted); font-size: 0.75em; margin-top: 4px; }
 #me { margin: 0; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+#colors { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 0; }
+#colors[hidden] { display: none; }
+.swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.swatch[aria-pressed='true'] { outline: 3px solid #fff; outline-offset: 2px; }
+.swatch:disabled { opacity: 0.25; cursor: not-allowed; }
 .warn-note { margin: 0; color: #ffd27a; text-align: center; font-size: 16px; }
 .link {
   border: 0;

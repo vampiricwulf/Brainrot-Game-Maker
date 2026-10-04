@@ -276,7 +276,7 @@
         <ul class="lineup" class:small={live.lineup.length > 6}>
           {#each live.lineup as p, i (i)}
             <li style:--c={p.color}>
-              <span class="lineup-name">{p.name}</span>
+              <span class="lineup-name">{#if p.phone}<span class="lineup-phone" title="Phone buzzer connected">📱 </span>{/if}{p.name}</span>
               {#if p.members?.length}<span class="lineup-members">{p.members.join(', ')}</span>{/if}
             </li>
           {/each}
@@ -339,7 +339,7 @@
       </div>
       {#if layout.score}
         <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">
-          <ScoreBar {game} {session} {onpicker} host={!!onact} reserve={barReserve} />
+          <ScoreBar {game} {session} phones={live.phones} {onpicker} host={!!onact} reserve={barReserve} />
         </div>
       {/if}
       {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
@@ -409,7 +409,7 @@
         <SlideView slide={finalCategorySlide} />
         <div class="final-sub">Make your wagers…</div>
         <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
-        <div class="score-area"><ScoreBar {game} {session} host={!!onact} lit={null} ticks={wagersIn} /></div>
+        <div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} ticks={wagersIn} /></div>
       {:else if session.finalStep === 'question'}
         {#if finalRound}
           {@const fAt = clueSlideIndex(session, finalRound)}
@@ -450,7 +450,7 @@
           {/if}
         </div>
         <div class="score-area">
-          <ScoreBar {game} {session} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} lit={session.final?.current ?? null} />
+          <ScoreBar {game} {session} phones={live.phones} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} lit={session.final?.current ?? null} />
         </div>
       {/if}
     </div>
@@ -909,6 +909,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .lineup-phone {
+    display: inline-block;
+    font-size: 0.7em;
+    animation: phone-in 0.4s ease-out;
+  }
+  @keyframes phone-in {
+    from {
+      scale: 0.3;
+      opacity: 0;
+    }
   }
   .lineup-members {
     font-size: 26px;

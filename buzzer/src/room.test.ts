@@ -22,6 +22,8 @@ import {
   PROBE_GAP_MS,
   rankKey,
   WAGER_RATE,
+  COLOR_RATE,
+  COLOR_WINDOW_MS,
   WAGER_WINDOW_MS,
   Room,
   TOO_BIG,
@@ -116,7 +118,7 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color'] });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1358,7 +1360,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -1592,6 +1594,37 @@ describe('teams', () => {
     expect(names).toHaveLength(MAX_MEMBERS);
     expect(names).not.toContain('Ann');
     expect(names).toContain('Bea');
+  });
+});
+
+describe('colours', () => {
+  it('a seated phone picks a colour when the host allows it: the host hears it, the phone sees the others taken', () => {
+    const g = game({ colorPick: true });
+    expect(g.pa.last('view')!.view.colorPick).toEqual({ taken: ['#00ff00', '#0000ff'] });
+    g.pa.send({ t: 'color', color: '#ABCDEF' });
+    expect(g.hostLast('color')).toEqual({ t: 'color', seatId: 'a', color: '#abcdef' });
+  });
+
+  it('refuses it when the host does not allow it, with teams, from a phone not seated, or not a colour', () => {
+    const g = game();
+    expect(g.pa.last('view')!.view.colorPick).toBeUndefined();
+    g.pa.send({ t: 'color', color: '#abcdef' });
+    g.send({ t: 'state', state: state({ colorPick: true, teams: true }) });
+    g.pa.send({ t: 'color', color: '#abcdef' });
+    g.send({ t: 'state', state: state({ colorPick: true }) });
+    const viewer = g.phone('viewer');
+    viewer.send({ t: 'color', color: '#abcdef' });
+    for (const color of ['red', '#abc', 'url(x)', 5, null]) g.pa.send({ t: 'color', color });
+    expect(g.hostAll('color')).toHaveLength(0);
+  });
+
+  it('limits how often a phone sends one', () => {
+    const g = game({ colorPick: true });
+    for (let i = 0; i < COLOR_RATE + 3; i++) g.pa.send({ t: 'color', color: '#00000' + (i % 10) });
+    expect(g.hostAll('color')).toHaveLength(COLOR_RATE);
+    g.t.now += COLOR_WINDOW_MS;
+    g.pa.send({ t: 'color', color: '#111111' });
+    expect(g.hostAll('color')).toHaveLength(COLOR_RATE + 1);
   });
 });
 

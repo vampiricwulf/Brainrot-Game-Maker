@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## 2026-10-04
 
+### Added
+- Phone buzzers: players can change their colour on their phone (🎨 Change your colour, under the buzzer), from the colours no other player has. It's on by default; turn it off with "Players can pick their colour on their phone" on the Phone buzzers card. It isn't offered with teams, where the host picks each team's colour.
+- Phone buzzers: the audience sees who has a phone connected, with 📱 on the "Starting soon" lineup and on each player's score plate. It goes away when that phone disconnects.
+
 ### Fixed
 - Slide editor: a click that wobbles a pixel no longer nudges the item (or snaps it to a guide) when the slide is drawn small, as in the clue editor.
 - Slide editor: clicking one item of several selected now selects just that one (dragging still moves them all).

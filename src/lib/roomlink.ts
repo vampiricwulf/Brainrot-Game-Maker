@@ -37,6 +37,8 @@ export interface LinkEvents {
   onFull?: () => void;
   /** A player sent their wager from their phone. */
   onWager?: (w: RoomWager) => void;
+  /** A seated phone asks for another colour for its player. */
+  onColor?: (c: { seatId: string; color: string }) => void;
 }
 
 const OPEN = 1;
@@ -119,6 +121,8 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return isStr(m.id, 100) && m.id && isStr(m.seatId) && Number.isSafeInteger(m.amount) && (m.amount as number) >= 0 && Number.isSafeInteger(m.n) && (m.n as number) >= 1
         ? { t: 'wager', id: m.id, seatId: m.seatId, amount: m.amount as number, n: m.n as number, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
         : null;
+    case 'color':
+      return isStr(m.seatId) && typeof m.color === 'string' && /^#[0-9a-f]{6}$/i.test(m.color) ? { t: 'color', seatId: m.seatId, color: m.color.toLowerCase() } : null;
     default:
       return null;
   }
@@ -388,6 +392,9 @@ export class RoomLink {
         return;
       case 'wager':
         this.ev.onWager?.(m);
+        return;
+      case 'color':
+        this.ev.onColor?.(m);
         return;
       case 'pong':
         return;

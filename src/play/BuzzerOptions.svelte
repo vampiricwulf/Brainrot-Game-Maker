@@ -5,7 +5,7 @@
 <script lang="ts" module>
   import type { GameSettings } from '../lib/model';
 
-  export type BuzzSettingKey = 'buzzer' | 'buzzArm' | 'phoneJoin' | 'earlyBuzzLock' | 'buzzTeams';
+  export type BuzzSettingKey = 'buzzer' | 'buzzArm' | 'phoneJoin' | 'phoneColorsOff' | 'earlyBuzzLock' | 'buzzTeams';
   /** Changes one buzzer setting (here and in the editor's copy of the game, undoable there). */
   export type SetBuzzSetting = <K extends BuzzSettingKey>(key: K, value: GameSettings[K], label: string) => void;
 </script>
@@ -39,6 +39,15 @@
         onchange={(e) => onset('phoneJoin', e.currentTarget.checked || undefined, 'New players from their phone')}
       />
       Let new players join from their phone (you add them)
+    </label>
+    <label class="check" title={settings.buzzTeams ? 'A team’s colour is yours to pick (👥 Teams)' : 'From the colours no other player has'}>
+      <input
+        type="checkbox"
+        checked={!settings.phoneColorsOff && !settings.buzzTeams}
+        disabled={!!settings.buzzTeams}
+        onchange={(e) => onset('phoneColorsOff', e.currentTarget.checked ? undefined : true, 'Players pick their colour on their phone')}
+      />
+      Players can pick their colour on their phone
     </label>
     <label>
       <span>A phone that buzzes too early waits (seconds)</span>

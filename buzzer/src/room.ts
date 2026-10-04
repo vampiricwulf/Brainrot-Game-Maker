@@ -119,6 +119,9 @@ export const JOIN_RATE = 10;
 /** Wagers a phone may send per WAGER_WINDOW_MS (changing its mind a few times is fine; a script isn't). */
 export const WAGER_RATE = 10;
 export const WAGER_WINDOW_MS = 10_000;
+/** Colours a phone may ask for per COLOR_WINDOW_MS (trying a few is fine; a script cycling them isn't). */
+export const COLOR_RATE = 10;
+export const COLOR_WINDOW_MS = 10_000;
 /** After the first buzz of an arm, the room waits at least this long for buzzes still on their way before deciding… */
 export const GRACE_MS = 250;
 /** …and at most this long, however slow the network of a phone that could still beat it (see graceEnd). */
@@ -255,6 +258,8 @@ interface Phone extends PhoneSaved {
   hold?: boolean;
   /** Wagers sent lately (WAGER_RATE). */
   wagerRate?: Window;
+  /** Colours asked for lately (COLOR_RATE). */
+  colorRate?: Window;
 }
 
 interface Window {
@@ -789,6 +794,9 @@ export class Room {
       case 'wager':
         if (typeof m.id === 'string') this.wager(p, m.id, m.amount);
         break;
+      case 'color':
+        if (typeof m.color === 'string') this.color(p, m.color);
+        break;
       case 'ping':
         if (typeof m.at === 'number') {
           this.deps.toPhone(conn, { t: 'pong', at: m.at, serverNow: this.deps.now() });
@@ -1068,6 +1076,17 @@ export class Room {
     }
     this.save();
     this.announce();
+  }
+
+  /**
+   * A seated phone asks for another colour for its player: passed on to the host (which takes it when it's free, and
+   * the new colour comes back in its state). Only when the host lets players pick (colorPick), never for teams.
+   */
+  private color(p: Phone, color: string): void {
+    const st = this.s.state;
+    if (!st?.colorPick || st.teams || !p.seatId || !st.seats.some((x) => x.id === p.seatId) || !/^#[0-9a-f]{6}$/i.test(color)) return;
+    if (!this.allow((p.colorRate ??= { start: 0, count: 0 }), COLOR_RATE, COLOR_WINDOW_MS)) return;
+    if (this.hostHere) this.deps.toHost({ t: 'color', seatId: p.seatId, color: color.toLowerCase() });
   }
 
   /**
@@ -1385,6 +1404,7 @@ export function cleanState(x: unknown): HostState | null {
   if (typeof x.currency === 'string' && x.currency) extra.currency = clip(x.currency, 8);
   if (x.locked === true) extra.locked = true;
   if (x.teams === true) extra.teams = true;
+  if (x.colorPick === true) extra.colorPick = true;
   if (x.over === true) extra.over = true;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);

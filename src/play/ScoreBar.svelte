@@ -15,6 +15,7 @@
     lit,
     ticks = [],
     reserve = 0,
+    phones = [],
   }: {
     game: Game;
     session: Session;
@@ -29,6 +30,8 @@
     ticks?: string[];
     /** Room kept free at the right end (px), for the phone buzzers' join code. */
     reserve?: number;
+    /** Players with a phone buzzer connected (📱 on their plate). */
+    phones?: string[];
   } = $props();
   const sym = $derived(game.settings.currencySymbol);
   const litId = $derived(lit === undefined ? session.currentPickerId : lit);
@@ -70,6 +73,7 @@
       <span class="score" class:neg={s < 0}>
         <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm" title={formatPoints(s, sym)}>{plateScore(s, sym, session.players.length, reserve)}</span></span>
       </span>
+      {#if phones.includes(p.id)}<span class="phone" title="Phone buzzer connected" aria-label="Phone buzzer connected">📱</span>{/if}
       {#if ticks.includes(p.id)}<span class="tick" title="Wager in">✔</span>{/if}
     </button>
   {/each}
@@ -147,6 +151,27 @@
     white-space: nowrap;
   }
   /* The Final's "wager in": over the plate's top edge, never over its score (narrow plates have no room beside it). */
+  .phone {
+    position: absolute;
+    right: 6px;
+    top: -18px;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    z-index: 1;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    border: 2px solid var(--c);
+    font-size: 18px;
+    animation: phone-in 0.4s ease-out;
+  }
+  @keyframes phone-in {
+    from {
+      scale: 0.3;
+      opacity: 0;
+    }
+  }
   .tick {
     position: absolute;
     left: 50%;

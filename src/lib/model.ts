@@ -286,6 +286,8 @@ export interface GameSettings {
   buzzArm?: 'open' | 'host';
   /** Phone buzzers: someone not in the game can ask to join from their phone (the host adds them). */
   phoneJoin?: boolean;
+  /** Phone buzzers: players can't pick their own colour on their phone (left out: they can; never with teams). */
+  phoneColorsOff?: boolean;
   /**
    * Phone buzzers: teams. Each player is a team; people join one from their phone with their own name, and any of them
    * buzzes for it (the team's first buzz counts; a wrong answer locks out the whole team).

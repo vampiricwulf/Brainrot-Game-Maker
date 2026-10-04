@@ -149,7 +149,16 @@ describe('hostState (what the buzzer room is told)', () => {
       { id: 'b', name: 'Bo', color: '#00ff00' },
     ]);
     expect(s.scores).toEqual({ a: 0, b: 0 });
+  });  it('lets players pick their colour unless it is turned off or there are teams', () => {
+    const { game, session } = setup();
+    expect(hostState(game, session, newBuzz(), 0).colorPick).toBe(true);
+    game.settings.phoneColorsOff = true;
+    expect(hostState(game, session, newBuzz(), 0).colorPick).toBeUndefined();
+    game.settings.phoneColorsOff = undefined;
+    game.settings.buzzTeams = true;
+    expect(hostState(game, session, newBuzz(), 0).colorPick).toBeUndefined();
   });
+
 
   it('during a clue: the question words and caption only, never the answer, notes, hidden text or media', () => {
     const { game, session } = setup();
@@ -163,7 +172,7 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(s).toMatchObject({ phase: 'armed', lockedOut: ['a'], scores: { a: 0, b: 200 } });
     const json = JSON.stringify(s);
     for (const leak of ['Shiba', 'HOST NOTE', 'LAYER NOTE', 'SECRET', 'img1', 'answerSlide', 'What is', 'hostNotes', 'media']) expect(json).not.toContain(leak);
-    expect(Object.keys(s).sort()).toEqual(['allowNew', 'answering', 'armId', 'clue', 'currency', 'earlyLockMs', 'lockedOut', 'phase', 'scores', 'seats', 'title']);
+    expect(Object.keys(s).sort()).toEqual(['allowNew', 'answering', 'armId', 'clue', 'colorPick', 'currency', 'earlyLockMs', 'lockedOut', 'phase', 'scores', 'seats', 'title']);
   });
 
   it('a phone sees no clue on the board, even if the buzz state says otherwise', () => {

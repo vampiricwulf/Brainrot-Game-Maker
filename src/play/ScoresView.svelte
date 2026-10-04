@@ -28,7 +28,7 @@
     <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
       <!-- In a Final nobody picks: the spotlit player in its reveals is lit, else nobody (as on the stage). -->
       <div class="plates">
-        <ScoreBar {game} {session} lit={session.phase === 'final' ? (session.finalStep === 'reveal' ? (session.final?.current ?? null) : null) : undefined} />
+        <ScoreBar {game} {session} phones={live.phones} lit={session.phase === 'final' ? (session.finalStep === 'reveal' ? (session.final?.current ?? null) : null) : undefined} />
       </div>
       {#if live.timer}
         <div class="clock"><TimerDisplay timer={live.timer} /></div>

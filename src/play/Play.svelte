@@ -20,7 +20,7 @@
   } from '../lib/buzz';
   import { clip, type HostState, type WagerAsk } from '../lib/buzzproto';
   import {
-    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomBuzz, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomBuzz, onRoomColor, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
     resendHostState, roomHasWagers, roomLink, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
@@ -33,7 +33,7 @@
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, validate } from '../lib/validate';
-  import { nearKey, nextFreeColor } from '../lib/colors';
+  import { isColorTaken, nearKey, nextFreeColor, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
@@ -248,9 +248,19 @@
   function lineup(): NonNullable<Live['lineup']> {
     return session.players.map((p) => {
       const members = pregameTeams && session.remote ? teamMembers(p.id).filter(Boolean) : [];
-      return { name: p.name, color: p.color, ...(members.length ? { members } : {}) };
+      return { name: p.name, color: p.color, ...(members.length ? { members } : {}), ...(app.live.phones?.includes(p.id) ? { phone: true } : {}) };
     });
   }
+  // Who has a phone buzzer connected right now: their plates (and the "Starting soon" lineup) show 📱.
+  $effect(() => {
+    const on = phonesOn && remote.status === 'online' ? [...new Set(remote.phones.filter((p) => p.connected && p.seatId).map((p) => p.seatId!))].sort() : [];
+    untrack(() => {
+      const was = app.live.phones ?? [];
+      if (on.length === was.length && on.every((x, i) => x === was[i])) return;
+      if (on.length) app.live.phones = on;
+      else delete app.live.phones;
+    });
+  });
   $effect(() => {
     const l = $state.snapshot(app.live);
     if (viewers) {
@@ -472,6 +482,7 @@
     const offBuzz = onRoomBuzz(roomBuzz);
     const offQueue = onRoomQueue(roomQueueIn);
     const offWager = onRoomWager(roomWager);
+    const offColor = onRoomColor(roomColor);
     if (session.remote && phonesOn) rejoinRoom(session.remote);
     else if (session.remote) {
       // Buzzer mode was turned off (in the editor) while the room was left open: it's closed now.
@@ -497,6 +508,7 @@
       offBuzz();
       offQueue();
       offWager();
+      offColor();
       // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
       // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
       // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
@@ -921,6 +933,19 @@
    * still type over it): a Daily Double's before its question shows; a Final's on its wager screen, as a step ("Ann’s
    * wager (from their phone): $500"). One already taken (a room passing it on again after a reconnect) is skipped.
    */
+  /**
+   * A player picked another colour on their phone: theirs if it's one of the players' colours (they read on stream) and
+   * no other player has it. Before the game it's simply their colour; during it, a step like any other.
+   */
+  function roomColor({ seatId, color }: { seatId: string; color: string }): void {
+    if (!phonesOn || game.settings.phoneColorsOff || teamsOn(game.settings)) return;
+    const p = session.players.find((x) => x.id === seatId);
+    if (!p || p.color.toLowerCase() === color || !PLAYER_PALETTE.includes(color)) return;
+    if (isColorTaken(color, session.players.filter((x) => x.id !== seatId).map((x) => x.color))) return;
+    if (app.pregame) p.color = color;
+    else logged(session, `${p.name} picked a new colour on their phone`, () => (p.color = color));
+  }
+
   function roomWager(w: RoomWager): void {
     const r = session.remote;
     const ask = phonesOn && r ? phoneWagerAsk() : null;
@@ -2141,7 +2166,7 @@
   }
 
   /** The buzzer settings (the 📱 Phone buzzers card). */
-  const BUZZ = ['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock', 'buzzTeams'] as const satisfies readonly (keyof GameSettings)[];
+  const BUZZ = ['buzzer', 'buzzArm', 'phoneJoin', 'phoneColorsOff', 'earlyBuzzLock', 'buzzTeams'] as const satisfies readonly (keyof GameSettings)[];
 
   /** An undo or redo changed the editor's game: the game here, and the players listed, follow it. */
   function fromEditor(): void {

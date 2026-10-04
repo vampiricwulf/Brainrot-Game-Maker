@@ -14,6 +14,7 @@
  * goes to the host only. Their view says what's in (and once locked, what was locked in).
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
+import { PLAYER_COLOR_NAMES, PLAYER_PALETTE } from '../../src/lib/colors';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -93,6 +94,9 @@ let wagerErr = '';
 let wagerFor = '';
 /** A wager sent that the room hasn't answered yet. */
 let wagerSending = false;
+/** The colour picker is open; the colours it was last drawn with (redrawn only when they change, so focus stays). */
+let colorsOpen = false;
+let colorsKey = '';
 
 // ---- saved seat (per room code) and this browser's id ----
 
@@ -920,9 +924,45 @@ function renderFoot(v: PhoneView, sym: string): boolean {
   const team = !!v.teams;
   $('me').textContent = `${team && you.member ? `${you.member} · ` : ''}${you.name} · ${money(you.score, sym)}`;
   $('leave').textContent = team ? 'Change team or name' : 'Not you? Change player';
+  renderColors(v);
   const hostGone = v.hostHere === false;
   $('host-note').hidden = !hostGone;
   return hostGone;
+}
+
+/** 🎨 Change your colour (when the host allows it): the palette, with other players' colours greyed out. */
+function renderColors(v: PhoneView): void {
+  const pick = v.colorPick;
+  const btn = $<HTMLButtonElement>('color-btn');
+  btn.hidden = !pick;
+  if (!pick) colorsOpen = false;
+  btn.setAttribute('aria-expanded', String(colorsOpen));
+  const box = $('colors');
+  box.hidden = !colorsOpen;
+  if (!pick || !colorsOpen) return;
+  const mine = v.you!.color.toLowerCase();
+  const key = `${mine} ${pick.taken.join(',')}`;
+  if (key === colorsKey && box.childElementCount) return;
+  colorsKey = key;
+  const had = document.activeElement instanceof HTMLElement && box.contains(document.activeElement) ? document.activeElement.dataset.color : undefined;
+  box.replaceChildren(
+    ...PLAYER_PALETTE.map((c, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swatch';
+      b.dataset.color = c;
+      b.style.background = c;
+      const taken = pick.taken.includes(c);
+      b.disabled = taken;
+      b.setAttribute('aria-pressed', String(c === mine));
+      b.setAttribute('aria-label', `${PLAYER_COLOR_NAMES[i] ?? c}${taken ? ' (another player has it)' : ''}`);
+      b.title = b.getAttribute('aria-label')!;
+      if (c === mine) b.textContent = '✔';
+      b.style.color = ink(c);
+      return b;
+    }),
+  );
+  if (had) box.querySelector<HTMLElement>(`[data-color="${had}"]`)?.focus();
 }
 
 /** The player's wager box: their score and max, what's in, and why the last one wasn't taken. */
@@ -1036,6 +1076,20 @@ document.addEventListener('visibilitychange', () => {
   } else probe();
 });
 $('leave').addEventListener('click', leaveSeat);
+$('color-btn').addEventListener('click', () => {
+  colorsOpen = !colorsOpen;
+  colorsKey = '';
+  if (view?.you) renderColors(view);
+});
+$('colors').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.swatch');
+  if (!b || b.disabled || !b.dataset.color) return;
+  if (b.getAttribute('aria-pressed') !== 'true') send({ t: 'color', color: b.dataset.color });
+  // Shut, keys back on the button that opened it; the buzzer turns the new colour when the host has it.
+  colorsOpen = false;
+  $('color-btn').focus();
+  if (view?.you) renderColors(view);
+});
 $('wait-cancel').addEventListener('click', () => {
   // Not waiting for the host any more: back to the list.
   send({ t: 'leave' });

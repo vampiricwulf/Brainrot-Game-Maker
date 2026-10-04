@@ -232,6 +232,7 @@ export function hostState(
     ...(teamsOn(game.settings) ? { teams: true } : {}),
     ...(extra.wager ? { wager: extra.wager } : {}),
     ...(session.phase === 'end' ? { over: true } : {}),
+    ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
   };
 }
 

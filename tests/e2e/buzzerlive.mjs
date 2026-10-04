@@ -145,6 +145,18 @@ try {
   await small(p2).getByText('The game starts soon').waitFor();
   assert(true, '▶ Play goes back into the same room: same code, both phones still joined');
 
+  // ---------- A phone picks its own colour (another player's is greyed out) ----------
+  await p1.getByRole('button', { name: '🎨 Change your colour' }).click();
+  const colours = p1.getByRole('group', { name: 'Pick your colour' });
+  assert(
+    (await colours.getByRole('button', { name: 'sky blue (another player has it)' }).isDisabled()) &&
+      (await colours.locator('[aria-pressed="true"]').count()) === 1,
+    'the phone shows the colours: its own ticked, Player 2’s greyed out',
+  );
+  await colours.getByRole('button', { name: 'yellow', exact: true }).click();
+  await p1.waitForFunction(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim() === '#f0e442');
+  assert(await colours.isHidden(), 'picking one shuts the picker, and the phone’s buzzer turns that colour');
+
   // ---------- A clue: closed, then opened with U ----------
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
@@ -161,6 +173,12 @@ try {
   });
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-live-board.png` });
   assert((await badge.innerText()).includes(code) && clash === 0, 'the join code shows in a corner of the stream during the game, over no tile or score plate');
+  const plate1 = host.locator('.stage-box .plate', { hasText: 'Player 1' });
+  assert(
+    (await plate1.locator('.name').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(240, 228, 66)',
+    'the host has the colour the phone picked: Player 1’s plate on the stream is yellow',
+  );
+  assert((await host.locator('.stage-box .plate .phone').count()) === 2, 'both plates show 📱: their phones are connected');
   await host.keyboard.press('k');
   await host.locator('.stage-box .cover-join').getByText(code).waitFor();
   await host.keyboard.press('k');
