@@ -105,6 +105,12 @@ try {
   await mainButton(page).click();
   assert((await toast()).includes('Landed on Space 3'), 'it moves');
   assert((await mainLabel(page)) === 'Next turn ▶', `moved: Next turn ▶ is the main button (${await mainLabel(page)})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(200);
+  assert((await mainLabel(page)) === '▶ Move 2', `Ctrl+Z: the move is undone and its count is back (${await mainLabel(page)})`);
+  await page.keyboard.press('Control+Shift+z');
+  await page.waitForTimeout(200);
+  assert((await mainLabel(page)) === 'Next turn ▶', `Ctrl+Shift+Z: moved again (${await mainLabel(page)})`);
   const { p, m } = await besideMain(page, 'next turn');
   assert(m.x - (p.x + p.width) < 14, 'Previous turn sits right beside Next turn');
   if (shots) await page.screenshot({ path: `${shots}/under-stage-next-turn.png` });

@@ -95,11 +95,11 @@
   });
 
   // A new turn starts with no count: the last player's roll isn't theirs. A move (a way picked on the stage too) uses it up.
-  // An Undo of a move puts its count back (the move left `last` as it was before), so Enter moves it again.
+  // An Undo of a move puts its count back (`last` and the turn count as they were before it), so Enter moves it again.
   let movedFrom: { n: number; last: string; turn?: Id } | null = null;
   $effect(() => {
     const t = turnId;
-    const last = JSON.stringify(bs?.last ?? null);
+    const last = JSON.stringify([bs?.last ?? null, bs?.turns ?? 0]);
     steps = movedFrom && movedFrom.turn === t && movedFrom.last === last ? movedFrom.n : null;
   });
   const card = $derived(round && space ? spaceById(round, space) : undefined);
@@ -130,7 +130,7 @@
     if (!n) return void toast('How many spaces? Roll first, or type a number');
     const o = app.live.overlay;
     if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void toast('Still rolling…');
-    const before = { n, last: JSON.stringify(bs?.last ?? null), turn: turnId };
+    const before = { n, last: JSON.stringify([bs?.last ?? null, bs?.turns ?? 0]), turn: turnId };
     toast(moveNow(game, session, n, choose, who), 3000);
     movedFrom = before;
     app.live.overlay = null;
