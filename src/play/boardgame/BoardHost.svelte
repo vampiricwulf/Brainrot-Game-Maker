@@ -11,7 +11,7 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { clampSteps, currentPlayer, MAX_STEPS, spaceById, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
+  import { newId, type Action, type BoardSpace, type Game, type Id, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import { overlayDoneAt } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
@@ -95,10 +95,12 @@
   });
 
   // A new turn starts with no count: the last player's roll isn't theirs. A move (a way picked on the stage too) uses it up.
+  // An Undo of a move puts its count back (the move left `last` as it was before), so Enter moves it again.
+  let movedFrom: { n: number; last: string; turn?: Id } | null = null;
   $effect(() => {
-    void turnId;
-    void bs?.last;
-    steps = null;
+    const t = turnId;
+    const last = JSON.stringify(bs?.last ?? null);
+    steps = movedFrom && movedFrom.turn === t && movedFrom.last === last ? movedFrom.n : null;
   });
   const card = $derived(round && space ? spaceById(round, space) : undefined);
 
@@ -128,7 +130,9 @@
     if (!n) return void toast('How many spaces? Roll first, or type a number');
     const o = app.live.overlay;
     if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void toast('Still rolling…');
+    const before = { n, last: JSON.stringify(bs?.last ?? null), turn: turnId };
     toast(moveNow(game, session, n, choose, who), 3000);
+    movedFrom = before;
     app.live.overlay = null;
     // Moved: the count is used up (a fork goes on with the steps left, not these).
     steps = null;

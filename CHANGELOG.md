@@ -24,6 +24,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Final: a second Final straight after another starts with "Ignore the limits" ticked again (it kept the last Final's choice); Redo back onto the Final question starts its countdown and think music again.
+- ✍ Everyone answers: reopening a clue players already answered shows each phone its own answer again (phones had lost theirs, and could send a new one over it).
+- Board games: Undo of a move puts its count back in the Steps box, so Enter moves it again (the roll was lost).
 - ⚙ Settings: a number or buzzer server typed in and then closed with Esc is saved (it used to last only until the app restarted).
 - Open…: deleting a Recent game keeps the keys in the list instead of dropping them on the page; deleting the last one shows your BrainrotSaves saves (when there are any) instead of closing; the BrainrotSaves list starts on its first save.
 - Checklist: a "Go to a screen" button on an item, wheel slice or die face whose screen was deleted, a "Reveal / Hide an object" button whose object was deleted, and a Shop object with no shop chosen are listed as pointing nowhere (they weren't).

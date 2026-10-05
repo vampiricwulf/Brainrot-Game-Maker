@@ -1727,6 +1727,17 @@ describe('answers (everyone answers on their phone)', () => {
     g.send({ t: 'state', state: state({ answers: ask({ id: 'clue2' }) }) });
     expect(g.pa.last('view')!.view.answer).toEqual({ id: 'clue2', open: true, mine: true });
   });
+
+  it('the clue closed and reopened: each phone still sees its own answer', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Doge' });
+    g.send({ t: 'state', state: state() });
+    expect(g.pa.last('view')!.view.answer).toBeUndefined();
+    g.send({ t: 'state', state: state({ answers: ask({ open: false, seats: [{ id: 'a', got: 1 }, { id: 'b' }] }) }) });
+    expect(g.pa.last('view')!.view.answer).toMatchObject({ id: 'clue1', open: false, text: 'Doge' });
+    expect(g.hostAll('answer')).toHaveLength(1);
+  });
 });
 
 describe('wagers', () => {

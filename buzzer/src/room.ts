@@ -482,10 +482,11 @@ export class Room {
     if (!ask) delete this.s.wagers;
     else if (this.s.wagers?.id !== ask.id) this.s.wagers = { id: ask.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.wagers.seats)) if (!ask.seats.some((x) => x.id === id)) delete this.s.wagers.seats[id];
-    // The same for answers.
+    // The same for answers, except that none open keeps the last clue's (its clue reopened shows each phone its own again).
     const ans = next.answers;
-    if (!ans) delete this.s.answers;
-    else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {} };
+    if (!ans) {
+      /* kept */
+    } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {} };
     else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {

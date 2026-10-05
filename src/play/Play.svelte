@@ -440,6 +440,7 @@
   // "Ignore the limits" is for the wagers being entered now: the next Final starts with them off again (the default).
   $effect(() => {
     void session.phase;
+    void session.currentRound; // a Final straight after another Final
     wagerLimitsOff = true;
   });
   // An undo back to a step saved before the category and the wagers were one screen: it's the wager screen.
@@ -1670,13 +1671,25 @@
 
   /** One Redo, back the way the Undos went. Returns what it brought back, or null with nothing to redo. */
   function redoOnce(): string | null {
+    const finalWas = session.phase === 'final' ? session.finalStep : undefined;
+    // A Redo back onto the Final's question starts its countdown and think music again (as N did); onto the answer, the music stops.
+    const after = (t: string | null) => {
+      if (finalWas && session.phase === 'final' && session.finalStep !== finalWas) {
+        if (session.finalStep === 'question') {
+          app.live.timer = null;
+          startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
+          playCue(app.live, game, 'finalThink');
+        } else if (session.finalStep === 'answer') app.live.sound = null;
+      }
+      return t;
+    };
     if (redoFrom(session, undone) === 'action') {
       const a = redoAction(session, game);
-      if (a) return `${a.text}${inRound(a)}`;
+      if (a) return after(`${a.text}${inRound(a)}`);
     }
     const events = redo(session);
     buzzFollow(events, false);
-    return events.length ? describeStep(session, events, sym) : null;
+    return after(events.length ? describeStep(session, events, sym) : null);
   }
 
   function doUndo(): void {
