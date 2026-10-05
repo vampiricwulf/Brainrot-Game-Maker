@@ -278,6 +278,19 @@
     void tick().then(() => focused && focusCell(...cur, true));
   }
 
+  /**
+   * What else deleting screens `ids` did, once they're gone (for the note): the party starting elsewhere, buttons and
+   * doorways that led there.
+   */
+  function goneNotes(ids: Set<string>, wasStart: boolean): string {
+    const first = wasStart ? (world.maps[0]?.screens[0] ?? world.maps.find((x) => x.screens.length)?.screens[0]) : undefined;
+    const loose = refsText(refsTo(game, world, ids));
+    return [first && `the party now starts at ${first.name}`, loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`]
+      .filter(Boolean)
+      .map((n) => ` · ${n}`)
+      .join('');
+  }
+
   /** Where copies of screens go: the same shape in the first place it fits (after them), else any free cells. */
   function spotsFor(list: Screen[]): [number, number][] {
     const anchor = list[0];
@@ -409,9 +422,14 @@
   }
 
   function removeLine(axis: 'col' | 'row', at: number): void {
-    const gone = map.screens.filter((s) => s[axis] === at).length;
+    const goneList = map.screens.filter((s) => s[axis] === at);
+    const gone = goneList.length;
     const with_ = gone ? ` with ${gone} screen${gone === 1 ? '' : 's'}` : '';
-    step(`Deleted ${axis === 'col' ? `column ${colName(at)}` : `row ${at + 1}`} of map “${map.name}”${with_}`, () => deleteLine(map, axis, at), { notify: true });
+    const wasStart = goneList.some(isStart);
+    step(null, () => {
+      deleteLine(map, axis, at);
+      nameStep(`Deleted ${axis === 'col' ? `column ${colName(at)}` : `row ${at + 1}`} of map “${map.name}”${with_}${gone ? goneNotes(new Set(goneList.map((s) => s.id)), wasStart) : ''}`, { notify: true });
+    });
     selIds = selIds.filter((id) => map.screens.some((s) => s.id === id));
   }
 
@@ -577,17 +595,16 @@
 
   /** Map resize: screens outside the new size are deleted with it (the note at the bottom offers Undo). */
   function resize(cols: number, rows: number): void {
-    const outside = map.screens.filter((s) => s.col >= cols || s.row >= rows).length;
+    const outsideList = map.screens.filter((s) => s.col >= cols || s.row >= rows);
+    const outside = outsideList.length;
     const gone = outside ? ` (deleted ${outside} screen${outside === 1 ? '' : 's'})` : '';
-    step(
-      `Resized map “${map.name}” to ${cols}×${rows}${gone}`,
-      () => {
-        map.screens = map.screens.filter((s) => s.col < cols && s.row < rows);
-        map.cols = cols;
-        map.rows = rows;
-      },
-      { notify: !!outside },
-    );
+    const wasStart = outsideList.some(isStart);
+    step(null, () => {
+      map.screens = map.screens.filter((s) => s.col < cols && s.row < rows);
+      map.cols = cols;
+      map.rows = rows;
+      nameStep(`Resized map “${map.name}” to ${cols}×${rows}${gone}${outside ? goneNotes(new Set(outsideList.map((s) => s.id)), wasStart) : ''}`, { notify: !!outside });
+    });
   }
 
   // ---------- Pictures dropped on the map ----------

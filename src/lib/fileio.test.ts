@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { BIG_FILE, isGameFile, parseGame, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
-import { base64Length, MAX_HTML_CHARS, MAX_PACK_CHARS, TOO_BIG, tooBigForHtml } from './export';
+import { base64Length, MAX_HTML_CHARS, MAX_PACK_CHARS, TOO_BIG_TO_OPEN, tooBigForHtml } from './export';
 import { openGameFile } from './pack';
 import { jeopardyGame } from './testgame';
 
@@ -124,7 +124,7 @@ describe('opening game files', () => {
   it('says an exported game too long to read is too big, instead of failing to read it', async () => {
     const huge = { name: 'Huge.html', size: MAX_HTML_CHARS + 1, type: 'text/html', slice: () => new Blob(['<!']) } as unknown as File;
     Object.setPrototypeOf(huge, File.prototype);
-    await expect(openGameFile(huge)).rejects.toThrow(TOO_BIG);
+    await expect(openGameFile(huge)).rejects.toThrow(TOO_BIG_TO_OPEN);
   });
 });
 

@@ -24,6 +24,12 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Checklist: a "Go to a screen" button on an item, wheel slice or die face whose screen was deleted, a "Reveal / Hide an object" button whose object was deleted, and a Shop object with no shop chosen are listed as pointing nowhere (they weren't).
+- Board games: Move by dice the app can't read ("2d6+1") says it rolls a d6, in the editor and on the checklist; saved dice are found by their name in any case; "Make it a…" offers Undo when it replaces landing buttons.
+- RPG editor: shrinking a map or deleting a row or column says when the party now starts elsewhere and which doorways now lead nowhere (as deleting a screen does); "Go to a screen" works when the main map has no screens but another does (it said to add an RPG round); a screen picker shows what a side really leads to when a choice isn't taken.
+- Items › Import CSV: a file with a header but no "name" column doesn't import its header as an item, and the note counts the items imported (not blank rows).
+- An exported game file too big for the browser says to ask for the .brainrot (not the exporter's "Save a .brainrot instead"); exported files no longer carry the editor page's last screen-reader message; ⬇ Download as .brainrot in a player-only file says where it went and which files weren't in it, and says nothing when its save picker is closed.
+- Desktop: autosave no longer fails while the "Autosaves to keep" box is empty or 0.
 - Closing the audience window mid-game no longer plays the last few sounds all at once on the host (they could go out on stream).
 - A wheel slice's or die face's video or sound pauses under the cover (K), as the other media do (viewers kept hearing it).
 - A countdown shows over a pop-up, wheel, dice or shop on screen (it ran hidden under them, only its time's-up sound heard), and on the results screen too.

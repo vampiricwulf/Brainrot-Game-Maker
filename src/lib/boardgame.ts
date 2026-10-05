@@ -16,6 +16,7 @@ import {
   type Session,
 } from './model';
 import { actionProblem, nameList } from './refs';
+import { parseDice } from './tools';
 import type { Problem } from './validate';
 import type { Place } from './historylabel';
 
@@ -449,6 +450,12 @@ export function moverDiceGone(game: Pick<Game, 'dice'>, round: BoardGameRound): 
   return m.kind === 'dice' && !!m.diceId && !game.dice.some((d) => d.id === m.diceId);
 }
 
+/** Move by dice typed in that are neither saved dice nor dice the app reads ("2d6"): the move rolls a d6. */
+export function moverDiceUnknown(round: BoardGameRound): boolean {
+  const m = round.mover;
+  return m.kind === 'dice' && !m.diceId && !!m.dice.trim() && !parseDice(m.dice);
+}
+
 /** Checklist items for a board-game round. */
 export function boardGameProblems(game: Game, round: BoardGameRound, name: string, tab: number): Problem[] {
   const out: Problem[] = [];
@@ -461,6 +468,8 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
     out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn', place: at() });
   if (moverDiceGone(game, round)) out.push({ text: `${name}: the movement dice no longer exist (pick others in Move by)`, tab, level: 'warn', place: at() });
+  if (moverDiceUnknown(round))
+    out.push({ text: `${name}: Move by “${round.mover.kind === 'dice' ? round.mover.dice : ''}” isn’t dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)`, tab, level: 'warn', place: at() });
   // (No space is ever under the stats strip: in play the board is scaled into the room the strip leaves.)
   // A deleted space, zone, item… (or nothing chosen).
   const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])].filter((a) => actionProblem(game, a, { board: round })).map(() => s));

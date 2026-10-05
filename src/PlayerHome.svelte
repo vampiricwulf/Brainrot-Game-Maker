@@ -2,6 +2,7 @@
 <script lang="ts">
   import { app, toast } from './lib/app.svelte';
   import { savePack } from './lib/pack';
+  import { isCancel } from './lib/fileio';
   import type { SavedPlay } from './lib/persist';
   import { finalName, isBoard, isBoardGame, isFinal, isRpg, isSlides, playableClues } from './lib/model';
   import { mediaUrls } from './lib/media.svelte';
@@ -46,9 +47,12 @@
 
   async function download(): Promise<void> {
     try {
-      await savePack($state.snapshot(game));
-      toast('Downloaded the .brainrot game pack: open it in the Brainrot Games Maker to edit', 5000);
+      const { where, missing } = await savePack($state.snapshot(game));
+      const left = missing.length ? ` (${missing.length} file${missing.length === 1 ? '' : 's'} weren’t in this copy, so they aren’t in the pack)` : '';
+      toast(`${where}: open it in the Brainrot Games Maker to edit${left}`, 6000);
     } catch (e) {
+      // (The save picker closed: nothing to say.)
+      if (isCancel(e)) return;
       toast(`Couldn't download the game pack: ${(e as Error).message}`, 6000);
     }
   }

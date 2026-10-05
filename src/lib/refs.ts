@@ -20,9 +20,18 @@ export function actionProblem(game: Game, a: Action, where: { world?: World; boa
     case 'wheel':
       return a.wheel === PLAYER_WHEEL || game.wheels.some((w) => w.id === a.wheel) ? null : 'That wheel no longer exists';
     case 'move': {
-      // Only an RPG round's own world can say (moves elsewhere are refused anyway).
-      const m = where.world?.maps.find((x) => x.id === a.to.map);
-      return !where.world || m?.screens.some((s) => s.id === a.to.screen) ? null : 'That screen no longer exists';
+      // An RPG round's own world says; a button elsewhere (an item's Use, a wheel slice's) goes by the world with that
+      // map (one in no world at all is a screen deleted with its map).
+      const worlds = where.world ? [where.world] : (game.worlds ?? []);
+      if (!worlds.length) return null;
+      const m = worlds.flatMap((w) => w.maps).find((x) => x.id === a.to.map);
+      return m?.screens.some((s) => s.id === a.to.screen) ? null : 'That screen no longer exists';
+    }
+    case 'reveal':
+    case 'hide': {
+      if (!a.object) return null;
+      const worlds = where.world ? [where.world] : (game.worlds ?? []);
+      return !worlds.length || worlds.some((w) => worldObjects(w).some((el) => el.id === a.object)) ? null : 'That object no longer exists';
     }
     case 'goto':
       if (!where.board) return null;
@@ -63,6 +72,8 @@ export function objectPointsNowhere(game: Game, el: SlideElement, world: World):
   if (!r) return false;
   if (r.class === 'item' && r.item && !game.items?.some((i) => i.id === r.item)) return true;
   if ((r.class === 'npc' || r.class === 'shop') && r.shop && !game.shops?.some((s) => s.id === r.shop)) return true;
+  // A shop with no shop chosen has nothing to sell (its card has no 🛒).
+  if (r.class === 'shop' && !r.shop) return true;
   if (r.class === 'currency' && r.field && !game.statFields?.some((f) => f.id === r.field)) return true;
   return (r.actions ?? []).some((a) => actionProblem(game, a, { world }) !== null);
 }

@@ -253,13 +253,16 @@
     const rows = parseCsv(await file.text());
     const head = rows[0]?.map((h) => h.trim().toLowerCase()) ?? [];
     const col = (name: string) => head.indexOf(name);
-    const start = col('name') >= 0 ? 1 : 0;
+    // A header row is any first row naming a column the file can have (not only "name").
+    const start = ['name', 'price', 'stackable', 'wearable', 'description'].some((k) => col(k) >= 0) ? 1 : 0;
     const n = col('name') >= 0 ? col('name') : 0;
     let added = 0;
+    let read = 0;
     step(`Imported items from “${file.name}”`, () => {
       for (const r of rows.slice(start)) {
         const name = r[n]?.trim();
         if (!name) continue;
+        read++;
         const price = Number(r[col('price')] ?? '');
         const slot = r[col('wearable')]?.trim().toLowerCase();
         const existing = game.items?.find((i) => i.name.toLowerCase() === name.toLowerCase());
@@ -275,7 +278,7 @@
         }
       }
     });
-    toast(`Imported ${rows.length - start} item row(s): ${added} new`);
+    toast(read ? `Imported ${read} item${read === 1 ? '' : 's'}: ${added} new, ${read - added} updated` : `No items in “${file.name}” (a column of names, with price, stackable, wearable and description if you like)`);
   }
 
   /**

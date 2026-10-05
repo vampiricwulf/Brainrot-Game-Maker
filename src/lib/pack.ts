@@ -6,7 +6,7 @@ import { migrateGame, type Game } from './model';
 import { parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
 import { buildZip, crc32, type ZipEntry } from './zipwrite';
 import { looksLikeHtml } from './sniff';
-import { MAX_HTML_CHARS, packInHtml, TOO_BIG, unpackEmbedded } from './export';
+import { MAX_HTML_CHARS, packInHtml, TOO_BIG_TO_OPEN, unpackEmbedded } from './export';
 
 function mediaPath(ref: { id: string; name: string }): string {
   const ext = extOf(ref.name);
@@ -128,7 +128,7 @@ export async function openGameFile(file: File, put: PutMedia = putMedia): Promis
   const name = file.name.replace(/\.bak\d*$/i, '');
   if (kind === 'html' || (!kind && (/\.html?$/i.test(name) || file.type === 'text/html'))) {
     // (A browser can't read a file this long as text.)
-    if (file.size > MAX_HTML_CHARS) throw new Error(TOO_BIG);
+    if (file.size > MAX_HTML_CHARS) throw new Error(TOO_BIG_TO_OPEN);
     const html = await file.text();
     const inside = packInHtml(html);
     // This app's page, cut off before its game (the game comes last): it didn't arrive whole.

@@ -1,5 +1,6 @@
 <!-- Pick a screen of a world: its map, then the screen. -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { ScreenRef, World } from '../../lib/model';
 
   let {
@@ -19,6 +20,16 @@
   const map = $derived(world.maps.find((m) => m.id === value?.map) ?? world.maps[0]);
   // A screen (or map) deleted since says so (not a blank box).
   const screen = $derived(map?.screens.find((s) => s.id === value?.screen));
+  let mapSel = $state<HTMLSelectElement>();
+  let screenSel = $state<HTMLSelectElement>();
+  /** Tell what was picked; a choice not taken (none, or a map with no screens) goes back to what it is. */
+  function pick(ref: ScreenRef | undefined): void {
+    onchange(ref);
+    void tick().then(() => {
+      if (mapSel) mapSel.value = map?.id ?? '';
+      if (screenSel) screenSel.value = screen?.id ?? value?.screen ?? '';
+    });
+  }
 </script>
 
 <div class="sp">
@@ -26,9 +37,10 @@
   <select
     aria-label={label ? `${label}: map` : 'Map'}
     value={map?.id ?? ''}
+    bind:this={mapSel}
     onchange={(e) => {
       const m = world.maps.find((x) => x.id === e.currentTarget.value);
-      onchange(m?.screens[0] ? { map: m.id, screen: m.screens[0].id } : undefined);
+      pick(m?.screens[0] ? { map: m.id, screen: m.screens[0].id } : undefined);
     }}
   >
     {#each world.maps as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
@@ -36,7 +48,8 @@
   <select
     aria-label={label ? `${label}: screen` : 'Screen'}
     value={screen?.id ?? value?.screen ?? ''}
-    onchange={(e) => map && onchange(e.currentTarget.value ? { map: map.id, screen: e.currentTarget.value } : undefined)}
+    bind:this={screenSel}
+    onchange={(e) => map && pick(e.currentTarget.value ? { map: map.id, screen: e.currentTarget.value } : undefined)}
   >
     <option value="">{none}</option>
     {#if value && !screen}<option value={value.screen}>⚠ Deleted screen — pick another</option>{/if}

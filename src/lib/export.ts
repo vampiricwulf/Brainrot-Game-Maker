@@ -148,6 +148,9 @@ function selfHtml(): string {
   const app = root.querySelector('#app');
   if (app) app.innerHTML = LOADING_HTML;
   root.querySelector(`#${PACK_ELEMENT_ID}`)?.remove();
+  // Not this page's own leftovers: its screen-reader line (it would say the last toast again) and its classes.
+  root.querySelector('#live-region')?.remove();
+  root.removeAttribute('class');
   return '<!doctype html>\n' + root.outerHTML;
 }
 

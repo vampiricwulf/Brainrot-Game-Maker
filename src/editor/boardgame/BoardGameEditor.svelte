@@ -15,7 +15,7 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -45,7 +45,8 @@
   function setMoverDice(text: string): void {
     const m = round.mover;
     if (m.kind !== 'dice') return;
-    const d = game.dice.find((x) => x.name === text.trim());
+    // (Its name in any case: "big dice" is "Big Dice".)
+    const d = game.dice.find((x) => x.name.trim().toLowerCase() === text.trim().toLowerCase());
     m.dice = text;
     if (d) m.diceId = d.id;
     else delete m.diceId;
@@ -630,7 +631,8 @@
     step(`Made “${s.name}” a ${k.label.replace(/^\S+\s/, '')} space`, () => {
       const shop = kind === 'shop' ? (game.shops?.[0] ?? newShop(game)).id : undefined;
       applySpaceKind(s, kind, { shop, hp: numberStat(game, 'HP')?.id });
-    });
+      // (Its landing buttons were replaced: the note offers Undo.)
+    }, { notify: !!s.onLand?.length });
   }
 
   /** ⑂ A second way on from a space: a new space beside the first way, picked to set up. */
@@ -767,6 +769,8 @@
         <button class="small ghost" onclick={() => (tool = { kind: 'dice', id: moverDice.id })} title="Change these dice">✎ Edit dice</button>
       {:else if moverDiceGone(game, round)}
         <span class="warn small" role="status">⚠ These dice were deleted: pick others</span>
+      {:else if moverDiceUnknown(round)}
+        <span class="warn small" role="status">⚠ Not dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)</span>
       {/if}
     {/if}
     <label class="field">

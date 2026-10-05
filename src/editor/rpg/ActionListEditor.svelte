@@ -40,6 +40,8 @@
     /** The add button's words, when two lists are side by side (a space's "when passed" and "when landed on"). */
     addLabel?: string;
   } = $props();
+  /** The first map with a screen: where a new "Go to a screen" button points (the main map may have none). */
+  const firstMap = $derived(world?.maps.find((m) => m.screens.length));
 
   const game = $derived(editedGame());
   const numbers = $derived(statFields(game).filter((f) => f.type === 'number'));
@@ -91,7 +93,7 @@
       case 'sound':
         return { id, do: 'sound', media: '' };
       case 'move': {
-        const m = world?.maps[0];
+        const m = firstMap;
         return m?.screens[0] ? { id, do: 'move', to: { map: m.id, screen: m.screens[0].id }, who: 'party' } : null;
       }
       case 'reveal':
@@ -175,7 +177,7 @@
   function paste(): void {
     // (The same kinds ＋ Add button offers here.)
     const fits = (a: Action) =>
-      BOARD_ONLY.includes(a.do) ? !!board : a.do === 'move' ? !board && !!world?.maps[0]?.screens[0] : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
+      BOARD_ONLY.includes(a.do) ? !!board : a.do === 'move' ? !board && !!firstMap : a.do === 'reveal' || a.do === 'hide' ? objects.length > 0 : true;
     const copies = copyActions(clipboard.actions.filter(fits));
     const left = clipboard.actions.length - copies.length;
     if (!copies.length) return void toast('Those buttons can’t work here');
@@ -210,8 +212,8 @@
       KINDS.filter(([k]) => (BOARD_ONLY.includes(k) ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(([k, l]) => ({
         label: l,
         onclick: () => add(k),
-        disabled: k === 'move' && !world?.maps[0]?.screens[0],
-        hint: k === 'move' && !world?.maps[0]?.screens[0] ? 'Add an RPG round (a world of screens) first' : undefined,
+        disabled: k === 'move' && !firstMap,
+        hint: k === 'move' && !firstMap ? (world ? 'Add a screen to a map first' : 'Add an RPG round (a world of screens) first') : undefined,
       })),
     );
   }

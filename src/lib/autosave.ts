@@ -43,6 +43,8 @@ export function planAutosave(game: Pick<Game, 'title' | 'id'>, saves: SaveEntry[
 
 /** Write one autosave. Returns where it went. */
 export async function autosave(game: Game, keep: number): Promise<string> {
+  // (The setting's box left empty or at 0 while typing: at least one is kept.)
+  keep = Math.max(1, Math.floor(keep) || 3);
   const { name, drop } = planAutosave(game, await listSaves(), keep);
   const { blob } = await buildPack(game);
   const { path } = await saveToSaves(name, blob, 'overwrite');
