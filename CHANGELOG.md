@@ -28,7 +28,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Board games and RPG rounds: D, Enter and the move keys don't act unseen under the round's title card (it says to start the round first).
 - Resuming a game with the editor's changes: Undo no longer puts back the boards, screens and maps from before the changes, and a party left on a screen deleted since goes to one that's there.
 - Rematch starts from the game as saved, not from the copy just played with its live changes (✎ Edit board, improvised screens, items left lying), which were for that game only unless kept with 💾 Keep in game.
-- RPG and board games: a secret item worn by a player no longer shows on their avatar on stream; the ± on a stat past its limit (after Buy anyway) says where it is; with one window, ✎ Edit board doesn't show the hidden space names on stream.
+- RPG and board games: a secret item worn by a player no longer shows on their avatar on stream; the ± on a stat past its limit (after Buy anyway) says where it is.
 - Slides rounds: on the last slide, a click on the stage goes on to the next round, as N does (it did nothing).
 - Slide editor: after a right-click menu (Cut, Select all…), the keys stay on the slide. In the clue editor, Esc with items selected deselects them first, wherever the keys are; the next Esc closes the clue. Before, it sometimes closed the clue at once.
 - ✍ Everyone answers: a ✍ clue plays as usual (with buzzing) when no buzzer room is running, or the room's server can't take answers; before, nobody could buzz or answer.
