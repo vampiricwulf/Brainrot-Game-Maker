@@ -359,6 +359,27 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
 /** The parts of a session the action log can put back. */
 const PARTS = ['stats', 'inventories', 'worlds', 'boardgames', 'stock'] as const;
 
+/**
+ * The game was edited and play goes on with the edits ("Resume with my edits"): the steps forget the boards, screens and
+ * maps they kept, so an Undo doesn't put the game from before the edits back. (Scores, stats and positions stay.)
+ */
+export function forgetGameParts(session: Session): void {
+  const strip = (json: string | undefined): string | undefined => {
+    if (json === undefined) return json;
+    try {
+      const o = JSON.parse(json) as Record<string, unknown>;
+      for (const k of Object.keys(o)) if (/^(board|screen|map):/.test(k)) delete o[k];
+      return JSON.stringify(o);
+    } catch {
+      return json;
+    }
+  };
+  for (const e of [...(session.actionLog ?? []), ...(session.actionRedo ?? [])]) {
+    e.before = strip(e.before) ?? e.before;
+    if (e.after !== undefined) e.after = strip(e.after);
+  }
+}
+
 /** The host's own choices a step can put back as they were: the picker, how a tie for first was settled, the players. */
 const HOST = ['currentPickerId', 'coWinners', 'rollOffWinner', 'tiebreakClue', 'players', 'removedPlayers'] as const;
 
@@ -627,6 +648,7 @@ export function wornItems(game: Game, session: Session, playerId: string): ItemD
   return inventory(session, playerId)
     .filter((e) => e.equipped)
     .map((e) => itemDef(game, e.item))
-    .filter((d): d is ItemDef => !!d?.wearable);
+    // (Not a secret one: it would show on stream on the avatar, though the sheet keeps it out of the list.)
+    .filter((d): d is ItemDef => !!d?.wearable && !d.secret);
 }
 

@@ -10,7 +10,7 @@
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
-  import { playerName, runSpace, sendNow } from './bgops';
+  import { decidingAction, playerName, runSpace, sendNow } from './bgops';
 
   let {
     game,
@@ -71,7 +71,9 @@
       <span class="muted small">Landing on it{who.length ? ` (${whoNames})` : ''}:</span>
       {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a)}>{describeAction(game, a)}</button>{/each}
       {#if space.onLand.length > 1}
-        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who), 3000)} title="Every landing action, in order">▶ Run all</button>
+        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who), 3000)} title={space.onLand.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
+          >▶ {space.onLand.some(decidingAction) ? 'Start' : 'Run all'}</button
+        >
       {/if}
     </div>
   {/if}

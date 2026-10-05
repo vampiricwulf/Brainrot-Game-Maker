@@ -63,7 +63,7 @@
   } from './rpg/hostops';
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
-  import { ensureWorld, override } from '../lib/rpg';
+  import { ensureWorld, override, refindPositions } from '../lib/rpg';
   import { boardNow, moveNow, rollMover, runSpace, sendNow, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
@@ -72,6 +72,7 @@
   import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
+  import { clone } from '../lib/ops';
   import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
   import type { Pop } from '../lib/live';
   import {
@@ -480,7 +481,8 @@
   /** The round's party or turn order takes in the players added or removed. */
   function catchUp(): void {
     const round = game.rounds[session.currentRound];
-    if (session.phase === 'rpg' && isRpg(round)) ensureWorld(session, game, round);
+    // (After an Undo a party can be back on a screen deleted since: it goes to one that's there.)
+    if (session.phase === 'rpg' && isRpg(round)) (ensureWorld(session, game, round), refindPositions(session, game));
     else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
   }
   // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
@@ -1528,7 +1530,14 @@
   function rematch(): void {
     // Until the rematch starts, the finished game stays viewable from the editor ("View results").
     app.resumable = { game: $state.snapshot(game), session: $state.snapshot(session), savedAt: Date.now() };
-    const s = newSession(game);
+    // From the game as it's saved, not the copy just played: what was changed live (✎ Edit board, improvised screens,
+    // items left lying) was for that game only, unless kept (💾 Keep in game).
+    if (app.game.id === game.id) {
+      const buzzer = game.settings.buzzer;
+      app.playGame = clone(app.game);
+      app.playGame.settings.buzzer = buzzer;
+    }
+    const s = newSession(app.playGame!);
     // (With their pictures: a picture is only taken off with its −🖼.)
     s.players = session.players.map(({ id, name, color, avatar }) => ({ id, name, color, startScore: 0, ...(avatar ? { avatar } : {}) }));
     // The same buzzer room: the phones stay joined.
@@ -2474,6 +2483,12 @@
     if (session.phase === 'rpg' && !e.ctrlKey && !e.metaKey) {
       // (By the key's place, not its letter: on a Mac Option+Q types "œ".)
       const d = NUMPAD[e.code] ?? (e.altKey ? (ALTKEY[k] ?? ALTKEY[e.code.replace(/^Key/, '').toLowerCase()]) : undefined);
+      if (d && session.intro) {
+        // (Not under the round's title card: nobody would see the party move.)
+        e.preventDefault();
+        toast('Start the round first (N, or click the title card)');
+        return;
+      }
       if (d) {
         e.preventDefault();
         rpgStep(d);
@@ -2546,6 +2561,7 @@
     switch (k) {
       case 'enter':
         // Board games with nobody selected: move (see boardEnter).
+        if (session.phase === 'boardgame' && session.intro) break;
         if (session.phase === 'boardgame' && (!selected.length || !amount) && !e.shiftKey && boardEnter()) break;
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
@@ -2565,7 +2581,11 @@
         else if (selected.length) selected = [];
         break;
       case 'd':
-        // Board games: roll (or spin) the round's own mover.
+        // Board games: roll (or spin) the round's own mover (not under the round's title card: nobody would see it).
+        if (session.phase === 'boardgame' && session.intro) {
+          toast('Start the round first (N, or click the title card)');
+          break;
+        }
         if (session.phase === 'boardgame') {
           const why = rollMover(game, session, app.live);
           if (why) toast(why);

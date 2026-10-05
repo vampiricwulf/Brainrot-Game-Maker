@@ -179,7 +179,8 @@ export function refindPositions(session: Session, game: Game): void {
     for (const p of Object.values(st.positions)) {
       const map = world.maps.find((m) => m.screens.some((s) => s.id === p.screen));
       const to = map ? { map: map.id, screen: p.screen } : start;
-      if (to) Object.assign(p, to);
+      // (Only what changed: this also runs after every Undo.)
+      if (to && (p.map !== to.map || p.screen !== to.screen)) Object.assign(p, to);
     }
   }
 }

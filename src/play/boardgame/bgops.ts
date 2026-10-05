@@ -2,7 +2,7 @@
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
 import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
-import { isBoardGame, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
+import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
@@ -83,12 +83,21 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   const { round, bs } = boardNow(game, session);
   const list = space[which] ?? [];
   if (!round || !bs || !list.length) return `${space.name} has no actions`;
+  // A roll, a spin or a question decides what comes next (a fight: win or lose): only that runs, and the host presses
+  // the outcome it came to (running them all would win and lose at once).
+  const decides = list.find(decidingAction);
+  const run = decides ? [decides] : list;
   let said: string[] = [];
   const ctx = { game, session, live, board: round, bs, selected: who, chosen: who };
-  logged(session, `${space.name}: ${list.map((a) => describeAction(game, a)).join(', ')}`, () => {
-    said = list.map((a) => runAction(ctx, a, `${space.name}: ${describeAction(game, a)}`));
+  logged(session, `${space.name}: ${run.map((a) => describeAction(game, a)).join(', ')}`, () => {
+    said = run.map((a) => runAction(ctx, a, `${space.name}: ${describeAction(game, a)}`));
   });
-  return said.join(' · ');
+  return decides ? `${said.join(' · ')}: then press the outcome` : said.join(' · ');
+}
+
+/** A roll, a spin or a question: what follows depends on how it comes out. */
+export function decidingAction(a: Action): boolean {
+  return a.do === 'dice' || a.do === 'wheel' || a.do === 'question';
 }
 
 export function turnNow(game: Game, session: Session, delta = 1): void {
@@ -122,8 +131,10 @@ export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay'
   const m = round.mover;
   if (o?.kind === 'dice' && o.roll && o.mover && m.kind === 'dice') return o.roll.total;
   if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) {
-    const n = parseInt(o.segments[o.result]?.label.match(/-?\d+/)?.[0] ?? '', 10);
-    return Number.isFinite(n) ? n : null;
+    const label = o.segments[o.result]?.label ?? '';
+    const n = parseInt(label.match(/-?\d+/)?.[0] ?? '', 10);
+    // "Back 2" (or "← 2") moves back.
+    return Number.isFinite(n) ? (/^\W*(back|←)/i.test(label.trim()) ? -Math.abs(n) : n) : null;
   }
   return null;
 }
@@ -136,6 +147,14 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
   const o = live.overlay;
   if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return null;
   const m = round.mover;
+  if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
+  // At a fork: the way first (a roll now would do nothing). This turn's move made: a roll now would be moved again by
+  // Enter (an extra move: type the number of spaces). The same for a wheel as for dice.
+  const { bs } = boardNow(game, session);
+  if (bs?.fork) return `${playerName(session, bs.fork.playerId)} is at a fork: pick which way first (${Math.abs(bs.fork.stepsLeft)} to go)`;
+  const last = bs?.last;
+  if (bs && last && last.playerId === currentPlayer(bs) && (last.turn ?? 0) === (bs.turns ?? 0))
+    return `${playerName(session, last.playerId)} already moved this turn: N for the next turn (or type a number to move again)`;
   if (m.kind === 'wheel') {
     const w = game.wheels.find((x) => x.id === m.wheel);
     if (!w) return 'The movement wheel no longer exists: pick one in the editor';
@@ -146,12 +165,6 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
     spinWheel(live, session, game);
     return null;
   }
-  if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
-  // This turn's move is made: a roll now would be moved again by Enter. (An extra move: type the number of spaces.)
-  const { bs } = boardNow(game, session);
-  const last = bs?.last;
-  if (bs && !bs.fork && last && last.playerId === currentPlayer(bs) && (last.turn ?? 0) === (bs.turns ?? 0))
-    return `${playerName(session, last.playerId)} already moved this turn: N for the next turn (or type a number to move again)`;
   const preset = moverPreset(game, round);
   if (preset) rollDice(live, session, preset, true);
   else {

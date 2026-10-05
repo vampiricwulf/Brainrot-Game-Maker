@@ -132,6 +132,9 @@ function syncPlayers(session: Session, round: BoardGameRound, bs: BoardGameState
   bs.turn = keep ? bs.order.indexOf(keep) : 0;
   // A way to pick for someone who left isn't asked any more.
   if (bs.fork && !ids.includes(bs.fork.playerId)) bs.fork = undefined;
+  // Nor their last move's buttons, nor their move being shown.
+  if (bs.last && !ids.includes(bs.last.playerId)) bs.last = undefined;
+  if (bs.hop && !ids.includes(bs.hop.playerId)) bs.hop = undefined;
   rehome(round, bs);
 }
 
@@ -344,7 +347,8 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   }
   // A fork's space counts as passed, since the walk goes on from it. A space passed twice (round a small loop) gets
   // its buttons once.
-  const passed = [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])];
+  // Going back passes nothing (no Start bonus for being sent back past it).
+  const passed = steps > 0 ? [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])] : prevPassed;
   bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1), turn: bs.turns ?? 0 };
   const name = (id?: Id) => spaceById(round, id)?.name ?? '?';
   if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;

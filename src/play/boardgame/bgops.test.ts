@@ -1,16 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../../lib/model';
 import { newLive } from '../../lib/live';
-import { newBoardGameRound } from '../../lib/boardgame';
+import { ensureBoard, movePlayer, newBoardGameRound } from '../../lib/boardgame';
 import { goToRound, newSession } from '../../lib/session';
 import { newWheel } from '../../lib/tools';
-import { redoAction, undoAction } from '../../lib/toolset';
+import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import type { Action } from '../../lib/model';
 import { moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice } from '../../lib/overlay';
 
 describe('board game: the round’s mover', () => {
+  it('a wheel move is one per turn, as a dice one is; a slice saying “Back 2” moves back', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const wheel = newWheel('Move', ['Back 2']);
+    game.wheels.push(wheel);
+    const round = newBoardGameRound('Board');
+    round.mover = { kind: 'wheel', wheel: wheel.id };
+    game.rounds.push(round);
+    const session = newSession(game);
+    goToRound(session, game, 0);
+    const live = newLive();
+    rollMover(game, session, live);
+    expect(moverResult(game, round, live.overlay)).toBe(-2);
+    const bs = session.boardgames![round.id];
+    movePlayer(round, bs, 'a', 3);
+    const o = live.overlay;
+    if (o?.kind === 'wheel' && o.spin) o.spin.startedAt -= o.spin.duration;
+    expect(rollMover(game, session, live)).toMatch(/already moved this turn/);
+  });
+
   it('spins the movement wheel with one press of D', () => {
     const game = newGame();
     game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
@@ -110,6 +130,41 @@ describe('board game: the host’s moves on the stage', () => {
     // Back from the first player: the last one's turn.
     expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', 'Cat’s turn']);
   });
+
+  it('Start (or Run all) on a space with a roll in it runs just the roll: the host presses the outcome', () => {
+    const { game, session, round } = playing();
+    const sp = round.spaces[2];
+    sp.onLand = [
+      { id: 'd', do: 'dice', dice: '1d6' },
+      { id: 'w', do: 'score', amount: 200, who: 'ask' },
+      { id: 'l', do: 'score', amount: -100, who: 'ask' },
+    ];
+    const live = newLive();
+    expect(runSpace(game, session, live, sp, ['a'])).toMatch(/then press the outcome$/);
+    expect(live.overlay?.kind).toBe('dice');
+    expect(session.scoreLog).toEqual([]);
+  });
+
+  it('going back past Start is no pass of it; a player who left takes their last move’s buttons with them', () => {
+    const { game, session, round, bs } = playing();
+    const start = round.spaces[0];
+    start.onPass = [{ id: 'p', do: 'score', amount: 200, who: 'ask' }];
+    bs().positions.a = { space: round.spaces[1].id };
+    movePlayer(round, bs(), 'a', -3);
+    expect(bs().last?.passed ?? []).not.toContain(start.id);
+    session.players = session.players.filter((p) => p.id !== 'a');
+    ensureBoard(session, game, round);
+    expect(bs().last).toBeUndefined();
+  });
+
+  it('after “Resume with my edits”, the steps forget the boards and screens they kept (Undo leaves the edits alone)', () => {
+    const { session } = playing();
+    session.actionLog = [{ id: 's', ts: 0, text: 'x', before: JSON.stringify({ 'board:r': { spaces: [] }, 'screen:w/m/s': {}, 'map:w/m': {}, stats: { a: 1 } }), after: JSON.stringify({ 'board:r': { spaces: [1] }, stats: { a: 2 } }) }];
+    forgetGameParts(session);
+    expect(JSON.parse(session.actionLog[0].before)).toEqual({ stats: { a: 1 } });
+    expect(JSON.parse(session.actionLog[0].after!)).toEqual({ stats: { a: 2 } });
+  });
+
 
   it('runs a space’s landing actions for some players as one step', () => {
     const { game, session, round } = playing();

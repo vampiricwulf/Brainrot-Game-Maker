@@ -37,6 +37,7 @@
   import { audience, audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow, pushGame, pushLive } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
+  import { forgetGameParts } from './lib/toolset';
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
   import { sameGame } from './lib/samegame';
@@ -598,6 +599,7 @@
     if (withEdits) {
       game = clone(app.game);
       rebaseSession(saved.session, saved.game, game);
+      forgetGameParts(saved.session);
     }
     // The buzzer room open now (the pre-game screen's, or the one left open in the editor): the phones stay in it for
     // the resumed game, when that one plays with phone buzzers (a room of its own it had before is closed). A finished

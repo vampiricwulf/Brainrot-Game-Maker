@@ -80,7 +80,12 @@
     if (!f) return;
     let changed = 0;
     logged(session, `${name}: ${f.name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => (changed = addStat(game, session, p.id, f, delta)));
-    if (!changed) toast(`${name}’s ${f.name} is already at its ${delta > 0 ? `max (${f.max})` : `min (${f.min})`}`);
+    if (!changed) {
+      // (Past its limit already, as after a Buy anyway: says where it is.)
+      const now = statNumber(game, session, p.id, f);
+      const lim = delta > 0 ? f.max : f.min;
+      toast(now === lim ? `${name}’s ${f.name} is already at its ${delta > 0 ? 'max' : 'min'} (${lim})` : `${name}’s ${f.name} is at ${now}, ${delta > 0 ? 'above its max' : 'below its min'} (${lim})`);
+    }
     else if (delta < 0 && !f.currency) blip(app.live, 'hurt');
   }
 
