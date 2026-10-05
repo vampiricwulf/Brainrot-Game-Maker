@@ -93,6 +93,18 @@ try {
   // Export HTML: a playable file that includes the pack (a game needs a round to be exported).
   await a.getByRole('button', { name: '＋ Add round' }).click();
   await a.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  // Ctrl+S in the clue editor saves too (it used to say to close it first), and the clue stays open.
+  await a.locator('[data-tile="0,0"]').click();
+  await a.keyboard.press('Enter');
+  const clueBox = a.getByRole('dialog', { name: 'Edit clue' });
+  await clueBox.waitFor();
+  const [fromClue] = await Promise.all([a.waitForEvent('download'), a.keyboard.press('Control+s')]);
+  assert(fromClue.suggestedFilename() === 'Two-tabs.brainrot' && (await clueBox.isVisible()), 'Ctrl+S in the clue editor saves the game, the clue editor stays open');
+  await a.keyboard.press('Escape');
+  await clueBox.waitFor({ state: 'hidden' });
+  // (Unsaved changes again, for Open… to ask about below.)
+  await a.getByRole('button', { name: '＋ Add round' }).click();
+  await a.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   const html = await exportHtml(a);
   assert(statSync(await html.path()).size > 3 * 1024 * 1024, 'the exported HTML includes the media');
   const player = await context.newPage();

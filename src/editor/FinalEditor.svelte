@@ -58,8 +58,8 @@
     Players with a score of 0 or less can play it
   </label>
   <span class="hint">
-    While the category is up the host ticks who plays and enters each wager privately (not held to the player's score
-    unless the host turns the limits on), then they're revealed player by player.
+    While the category is up the host ticks who plays and enters each wager privately (a wager can be more than the
+    player's score: untick "Ignore the limits" then to hold wagers to it), then they're revealed player by player.
   </span>
 </div>
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->

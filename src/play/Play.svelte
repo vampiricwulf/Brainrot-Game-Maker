@@ -188,6 +188,8 @@
   const sym = $derived(game.settings.currencySymbol);
   // (▶ Test this round never goes on stream: an audience window left open keeps its card, and the test plays here.)
   const dual = $derived(audience.open && !app.test);
+  /** The pre-game screen's "things to check" box (the bar at the foot brings it into view). */
+  let checksEl = $state<HTMLDetailsElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
   // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): on a wide window it
@@ -2977,7 +2979,7 @@
         </section>
 
         {#if checks.length}
-          <details class="checks">
+          <details class="checks" bind:this={checksEl}>
             <summary>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</summary>
             <ul>
               {#each checks as c}
@@ -3023,6 +3025,17 @@
           </span>
         {/if}
         {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
+        {#if checks.length}
+          <!-- The checks can be below the fold (a 720-high window): this brings them up, open. -->
+          <button
+            class="ghost small"
+            onclick={() => {
+              if (!checksEl) return;
+              checksEl.open = true;
+              checksEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }}>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</button
+          >
+        {/if}
         {#if unplacedDDs}
           <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
           <span class="muted small" title="Place them yourself in the editor, or with 🎲 Place now in the checks above">

@@ -626,18 +626,20 @@ export function randomizeDailyDoubles(
     }),
   );
   const rows = round.values.length;
-  const candidates: { cat: number; row: number; w: number }[] = [];
+  const candidates: { cat: number; row: number; w: number; written: boolean }[] = [];
   round.categories.forEach((c, ci) =>
     c.clues.forEach((cl, row) => {
       // (Nor a ✍ clue: everyone answers it, a Daily Double has one player.)
       if (cl.empty || cl.type !== 'standard' || cl.everyone) return;
       const t = rows > 1 ? row / (rows - 1) : 1;
-      candidates.push({ cat: ci, row, w: 0.3 + t * t * 3 });
+      candidates.push({ cat: ci, row, w: 0.3 + t * t * 3, written: !!cl.questionSlide?.elements.length });
     }),
   );
   let placed = 0;
   while (have + placed < count) {
-    const pool = candidates.filter((c) => !usedCats.has(c.cat));
+    // A clue with something on it first: a half-built game tried out doesn't get its Daily Double on a blank one.
+    const open = candidates.filter((c) => !usedCats.has(c.cat));
+    const pool = open.some((c) => c.written) ? open.filter((c) => c.written) : open;
     if (!pool.length) break;
     const total = pool.reduce((a, c) => a + c.w, 0);
     let x = rand() * total;

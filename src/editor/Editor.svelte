@@ -625,7 +625,15 @@
     }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
-    if (document.querySelector('[role="dialog"][aria-modal="true"]')) toast('Close this window first, then save (Ctrl+S)');
+    const open = [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')];
+    // The clue being edited is the game itself (not a question waiting on an answer): it saves from there too, what's
+    // being typed first (a field commits as it's left), and the keys come back to it.
+    if (open.length === 1 && open[0].matches('.modal.clue')) {
+      if (saving || e.repeat) return;
+      const at = document.activeElement instanceof HTMLElement && open[0].contains(document.activeElement) ? document.activeElement : null;
+      at?.blur();
+      void save().finally(() => at?.isConnected && at.focus({ preventScroll: true }));
+    } else if (open.length) toast('Close this window first, then save (Ctrl+S)');
     else if (!saving && !e.repeat) save();
   }
 

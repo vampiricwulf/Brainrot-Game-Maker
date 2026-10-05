@@ -290,15 +290,30 @@
   }
 
   const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  /** The tile Enter in a category's name just went down to (until the next key there). */
+  let cameFromName: string | null = null;
+  const ddPlaced = $derived(dailyDoublesPlaced(round));
+  const ddWanted = $derived(Math.min(ddMax, round.dailyDoubleCount ?? 1));
   const catNameField = (ci: number) => gridEl?.querySelector<HTMLTextAreaElement>(`[data-cat-name="${ci}"]`);
 
   /**
    * On a tile: arrows move between tiles (↑ from the top row goes to the category's name), Enter or F2 opens the
-   * clue, Delete / Backspace clears it, Ctrl+C / Ctrl+V copy and paste a whole clue.
+   * clue, Delete / Backspace clears it (Backspace just after Enter in the name goes back to the name), Ctrl+C / Ctrl+V copy and paste a whole clue.
    */
   function tileKey(e: KeyboardEvent, p: TilePos): void {
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
+    // Just come down from the category's name (Enter): Backspace is a fix to the name, not a clue wiped.
+    const fromName = cameFromName === `${p.cat},${p.row}`;
+    cameFromName = null;
+    if (fromName && k === 'backspace' && !mod && !e.altKey) {
+      e.preventDefault();
+      const t = catNameField(p.cat);
+      if (!t) return;
+      t.focus();
+      t.setSelectionRange(t.value.length, t.value.length);
+      return;
+    }
     const v = ARROWS[e.key];
     if (v && !mod && !e.altKey && !e.shiftKey) {
       e.preventDefault();
@@ -358,7 +373,9 @@
     const t = e.currentTarget as HTMLTextAreaElement;
     if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
       e.preventDefault();
-      return focusTile(ci, 0, true);
+      focusTile(ci, 0, true);
+      cameFromName = `${ci},0`;
+      return;
     }
     if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || t.selectionEnd < t.value.length) return;
     e.preventDefault();
@@ -583,10 +600,11 @@
         if (!e.currentTarget.value.trim() || !Number.isFinite(+e.currentTarget.value)) return void (e.currentTarget.value = String(round.categories.length));
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
         // Fewer categories drops the last ones at once: if any had something in it, the note at the bottom offers Undo.
-        const lost = round.categories.slice(n).some(categoryHasContent);
+        const gone = round.categories.slice(n).filter(categoryHasContent).length;
+        const lost = gone > 0;
         if (n !== round.categories.length)
           step(
-            `Changed ${name} to ${n} categor${n === 1 ? 'y' : 'ies'}`,
+            `Changed ${name} to ${n} categor${n === 1 ? 'y' : 'ies'}${lost ? ` (removed ${gone} with clues in)` : ''}`,
             () => {
               while (round.categories.length < n) addCategory(round);
               while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
@@ -609,8 +627,10 @@
         if (!e.currentTarget.value.trim() || !Number.isFinite(+e.currentTarget.value)) return void (e.currentTarget.value = String(round.values.length));
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
         // Like fewer categories: the bottom rows go at once, with Undo when they had clues in them.
-        const lost = round.categories.some((c) => c.clues.slice(n).some(clueHasContent));
-        if (n !== round.values.length) step(`Changed ${name} to ${n} row${n === 1 ? '' : 's'}`, () => (setRowCount(round, n), followTheme()), { notify: lost });
+        const gone = round.categories.reduce((a, c) => a + c.clues.slice(n).filter(clueHasContent).length, 0);
+        const lost = gone > 0;
+        const label = `Changed ${name} to ${n} row${n === 1 ? '' : 's'}${lost ? ` (removed ${gone} written clue${gone === 1 ? '' : 's'})` : ''}`;
+        if (n !== round.values.length) step(label, () => (setRowCount(round, n), followTheme()), { notify: lost });
         e.currentTarget.value = String(round.values.length);
       }}
     />
@@ -679,7 +699,7 @@
       toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
     title="Scatter Daily Doubles at random. To set one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick ⭐ Daily Double as its Type).">🔀 Randomize</button>
-  <span class="hint">{dailyDoublesPlaced(round)} placed</span>
+  <span class="hint">{ddPlaced} placed{ddPlaced < ddWanted ? ` (Start places ${ddWanted - ddPlaced} at random)` : ''}</span>
     </div>
   </div>
 </div>

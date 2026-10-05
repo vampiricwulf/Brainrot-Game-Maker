@@ -155,6 +155,23 @@ describe('flow', () => {
     expect(dds.reduce((x, y) => x + y)).toBe(3);
   });
 
+  it('puts a Daily Double on a clue with something on it when there is one (a half-built game tried out)', () => {
+    const { game } = setup();
+    const round = board(game, 0);
+    for (const c of round.categories) for (const cl of c.clues) cl.questionSlide.elements = [];
+    const written = round.categories[2].clues[1];
+    written.questionSlide.elements = [{ id: 'q', kind: 'text', text: 'Hi', x: 0, y: 0, w: 10, h: 10, rotation: 0, opacity: 1 } as never];
+    for (let i = 0; i < 5; i++) {
+      for (const c of round.categories) for (const cl of c.clues) cl.type = 'standard';
+      expect(randomizeDailyDoubles(round, 1, () => i / 5)).toBe(1);
+      expect(written.type).toBe('dailyDouble');
+    }
+    // None written: it still places one.
+    written.questionSlide.elements = [];
+    written.type = 'standard';
+    expect(randomizeDailyDoubles(round, 1, () => 0.5)).toBe(1);
+  });
+
   it('only adds the missing Daily Doubles when keeping the ones placed by hand', () => {
     const { game } = setup();
     const round = board(game, 0);
