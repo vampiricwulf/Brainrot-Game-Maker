@@ -855,7 +855,14 @@
     slideExtras={{ canPasteSlide: !!clipboard.slide }}
     onpick={(id) => (selected = [id])}
     onaction={(a) => menuAction(a, at)}
-    onclose={() => (menu = null)}
+    onclose={() => {
+      menu = null;
+      // The keys stay with the slide (on its canvas) once the menu is done, not wherever they were before it, nor on
+      // the page: Esc then deselects, rather than closing the clue around it.
+      setTimeout(() => {
+        if (!root?.contains(document.activeElement) && !document.querySelector('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
+      });
+    }}
   />
 {/if}
 
