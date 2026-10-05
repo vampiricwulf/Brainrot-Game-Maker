@@ -675,6 +675,10 @@ const sentences = (parts: string[]): string =>
 function render(): void {
   const away = !connected && everConnected && !notice?.final && !notice?.full && !!code;
   $('overlay').hidden = !away;
+  // Long gone: say what to check, and offer a try now (it keeps trying on its own too).
+  const long = away && attempts > 3;
+  $('overlay-text').textContent = long ? 'Still trying to reconnect… check your Wi-Fi or mobile data' : 'Reconnecting…';
+  $('overlay-retry').hidden = !long;
   $('sound').hidden = !(seatId && view?.you);
   if (!code) return show('s-code');
   if (notice) {
@@ -801,6 +805,9 @@ function renderSeats(s: SeatsMsg): void {
           return render();
         }
         send({ t: 'join', seatId: x.id, device });
+        // Something at once: the room's answer can take a moment on a slow network.
+        seatsNote = `Joining as ${x.name}…`;
+        renderSeatsRest(s);
       });
       return b;
     }),
@@ -922,7 +929,7 @@ function renderBuzz(v: PhoneView): void {
   } else if (you.lockedOut) {
     [cls, big, small] = ['off', 'Wait', team ? 'Your team already answered this one' : 'You already answered this one'];
   } else if (left > 0) {
-    [cls, big, small] = ['locked', 'Too early', `wait ${left}s`];
+    [cls, big, small] = ['locked', 'Too early', `You buzzed before it lit up · wait ${left}s`];
     spoken = 'Wait a moment before buzzing again';
   } else if (v.phase === 'armed') {
     [cls, big, small] = ['armed', 'BUZZ!', team && you.member ? `${you.member} for ${you.name}` : you.name];
@@ -979,7 +986,8 @@ function renderFoot(v: PhoneView, sym: string): boolean {
 
 /** 🎨 Change your colour (when the host allows it): the palette, with other players' colours greyed out. */
 function renderColors(v: PhoneView): void {
-  const pick = v.colorPick;
+  // (Not while the host is away: it would be dropped. Nor once the game is over.)
+  const pick = v.hostHere !== false && !(v.phase === 'lobby' && v.final) ? v.colorPick : undefined;
   const btn = $<HTMLButtonElement>('color-btn');
   btn.hidden = !pick;
   if (!pick) colorsOpen = false;
@@ -1051,6 +1059,14 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   show('s-buzz');
 }
 
+/** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
+function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string {
+  if (!a.text) return '';
+  const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
+  if (typed && typed !== a.text) return `Not sent yet: tap Change answer to send it. What the host has: “${a.text}”`;
+  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host shows the answer.`;
+}
+
 /** A ✍ clue: this seat's answer box (what's in, who sent it, why the last one wasn't taken). */
 function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: string): void {
   const team = !!v.teams;
@@ -1062,8 +1078,7 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
     inp.value = a.text ?? '';
     answerFor = key;
   }
-  let state = '';
-  if (a.text) state = `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}. You can change it until the host shows the answer.`;
+  const state = answerState(a, team);
   $('answer-state').textContent = answerSending ? 'Sending…' : state;
   $('answer-err').textContent = answerErr;
   $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
@@ -1145,10 +1160,18 @@ document.addEventListener('visibilitychange', () => {
   } else probe();
 });
 $('leave').addEventListener('click', leaveSeat);
+$('overlay-retry').addEventListener('click', () => {
+  clearTimeout(retryTimer);
+  attempts = 0;
+  connect();
+  render();
+});
 $('color-btn').addEventListener('click', () => {
   colorsOpen = !colorsOpen;
   colorsKey = '';
   if (view?.you) renderColors(view);
+  // On a small phone it opens below the screen's edge.
+  if (colorsOpen) $('colors').scrollIntoView({ block: 'nearest' });
 });
 $('colors').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.swatch');
@@ -1243,10 +1266,18 @@ $('new-back').addEventListener('click', () => {
   newForm = false;
   render();
 });
+$('answer-in').addEventListener('input', () => {
+  const a = view?.answer;
+  if (a && !answerSending) $('answer-state').textContent = answerState(a, !!view?.teams);
+});
 $('new-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = $<HTMLInputElement>('new-in').value.trim();
-  if (!name) return;
+  if (!name) {
+    seatsNote = 'Type your name first.';
+    $('seats-note').textContent = seatsNote;
+    return void $('new-in').focus();
+  }
   unlockAudio();
   pendingName = name;
   send({ t: 'new', name, device });

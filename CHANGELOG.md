@@ -24,6 +24,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Phones: an answer edited and not sent says "Not sent yet" (it kept saying ✔ Sent), and a sent one shows what the host has; "Reconnecting…" covers the buzzer fully and, after a while, says to check the Wi-Fi with a Try again now button; tapping your name says "Joining as …" at once; Ask to join with no name says to type one; "Too early" says you buzzed before it lit up; a wager's error shows right under its box.
+- Phones: the buzzer fits a landscape screen without scrolling; on small phones the colour picker scrolls into view; 🎨 Change your colour is hidden while the host is away (the pick was dropped) and once the game is over.
 - Daily Double: with nobody picked yet, 1–9 pick who found it (they typed into the wager box), and the player buttons show their numbers.
 - N on a clue with a player picked and no points given says so first (Enter awards, X marks wrong, N again closes), instead of closing the clue and losing their points.
 - Final reveals: in a short window (1280×720) the how-to starts folded, so every player's row is in view.

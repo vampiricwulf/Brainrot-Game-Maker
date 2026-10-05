@@ -216,7 +216,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 #buzz-big.name, #buzz-small.name { overflow-wrap: anywhere; }
 
 /* Short portrait screens (a small phone with the browser's bars): a long clue scrolls in less room, so the buzzer stays on screen. */
-@media (max-height: 620px) {
+@media (max-height: 680px) {
   #clue { max-height: 18dvh; }
 }
 
@@ -237,7 +237,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   #s-buzz .side { grid-area: clue; align-self: center; }
   #s-buzz .side.foot { grid-area: foot; }
   #clue { max-height: 55dvh; font-size: clamp(15px, 5.2vh, 20px); }
-  #buzz { grid-area: buzz; width: max(150px, min(calc(100dvh - 70px), 50vw, 520px)); align-self: center; }
+  #buzz { grid-area: buzz; width: max(150px, min(calc(100dvh - 100px), 50vw, 520px)); align-self: center; }
 }
 #buzz.pressed { transform: scale(0.95); }
 
@@ -302,7 +302,11 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #12131acc;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  background: #12131a;
   font-size: 24px;
   z-index: 10;
 }
