@@ -660,8 +660,17 @@
       return;
     }
     if (typing(e) || picker) return;
-    // Not a key meant for something else in focus (a round's tab, the clue's Next button…): it's theirs alone.
+    // Not a key meant for something else in focus (a round's tab, the clue's Next button…): it's theirs alone. Except
+    // Esc with items selected, from anywhere in the same dialog (the clue editor): it deselects first (the next Esc
+    // closes it).
     const at = document.activeElement;
+    const box = root?.closest('[role="dialog"]');
+    const sameBox = !!box && !!at && (at === document.body || at.closest('[role="dialog"]') === box);
+    if (e.key === 'Escape' && selected.length && !previewing && sameBox) {
+      e.stopImmediatePropagation();
+      selected = [];
+      return;
+    }
     if (at && at !== document.body && !root?.contains(at)) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
