@@ -64,7 +64,7 @@
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, override, refindPositions } from '../lib/rpg';
-  import { boardNow, moveNow, rollMover, runSpace, sendNow, turnNow } from './boardgame/bgops';
+  import { boardNow, moveNow, rollMover, runSpace, sendNow, setTurn, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -1279,6 +1279,9 @@
       });
       // Settled: now there's a winner to cheer.
       if (app.session === s) winnerCue();
+    } else if (s.phase === 'boardgame') {
+      // A board game's turn, not a board's picker.
+      setTurn(game, s, o.winner);
     } else setPicker(s, o.winner, ' (roll-off)');
   }
 
@@ -2364,8 +2367,25 @@
   let removing = $state<string | null>(null);
   const removingPlayer = $derived(session.players.find((p) => p.id === removing));
 
+  // A question from a card's action ("worth 100"): its value goes in the Amount box, as a tile's does when it opens.
+  let popupNonce = '';
+  $effect(() => {
+    const o = app.live.overlay;
+    if (o?.kind !== 'popup' || o.nonce === popupNonce) return;
+    popupNonce = o.nonce;
+    if (typeof o.value === 'number') untrack(() => (amount = o.value!));
+  });
+
+  /** G / Numpad 5: everyone back together (with one party there's nothing to do: it says so). */
+  function regroupKey(): void {
+    if ((rpgNow(game, session).st?.parties.length ?? 0) < 2) return void toast('Everyone is already together');
+    regroupAll(game, session);
+  }
+
   function removeFromGame(id: string): void {
     removing = null;
+    // Their sheet on stage: it goes too (viewers were left with a dimmed, empty stage).
+    if (app.live.overlay?.kind === 'sheet' && app.live.overlay.playerId === id) app.live.overlay = null;
     removePlayer(session, id);
     selected = selected.filter((x) => x !== id);
   }
@@ -2436,7 +2456,15 @@
       if (ways.length !== 1) return false;
       [steps, way] = [1, ways[0]];
     }
-    if (!steps) return false;
+    if (!steps) {
+      // (A player picked: Enter is their award.)
+      if (selected.length) return false;
+      // Nothing to move (it used to fall through to the award, which asked for a player).
+      const id = currentPlayer(bs);
+      const moved = !!id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0);
+      toast(moved ? 'Moved this turn: N for the next turn' : `Roll first (D), or type the steps`);
+      return true;
+    }
     toast(moveNow(game, session, steps, way), 3000);
     app.live.overlay = null;
     bgSteps = null;
@@ -2511,7 +2539,9 @@
     }
     if (session.phase === 'rpg' && !e.ctrlKey && !e.metaKey) {
       // (By the key's place, not its letter: on a Mac Option+Q types "œ".)
-      const d = NUMPAD[e.code] ?? (e.altKey ? (ALTKEY[k] ?? ALTKEY[e.code.replace(/^Key/, '').toLowerCase()]) : undefined);
+      // Plain arrows too, unless a video or sound is on screen (they seek it, as anywhere).
+      const plainArrow = !e.altKey && !e.shiftKey && k.startsWith('arrow') && !firstMedia() ? ALTKEY[k] : undefined;
+      const d = NUMPAD[e.code] ?? plainArrow ?? (e.altKey ? (ALTKEY[k] ?? ALTKEY[e.code.replace(/^Key/, '').toLowerCase()]) : undefined);
       if (d && session.intro) {
         // (Not under the round's title card: nobody would see the party move.)
         e.preventDefault();
@@ -2525,7 +2555,7 @@
       }
       if (e.code === 'Numpad5') {
         e.preventDefault();
-        regroupAll(game, session);
+        regroupKey();
         return;
       }
     }
@@ -2541,7 +2571,7 @@
     if (session.phase === 'rpg' && !e.shiftKey && ['g', 'v', 'j'].includes(k)) {
       e.preventDefault();
       if (k === 'j') rpgMap = true;
-      else if (k === 'g') regroupAll(game, session);
+      else if (k === 'g') regroupKey();
       else toggleMap(game, session);
       return;
     }
@@ -2654,7 +2684,10 @@
           // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
           const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
           if (fork && !e.shiftKey) toast(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
-          else turnNow(game, session, e.shiftKey ? -1 : 1);
+          else {
+            const t = turnNow(game, session, e.shiftKey ? -1 : 1);
+            if (t) toast(t, 4000);
+          }
         }
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
           if (e.shiftKey) finalBack(session);

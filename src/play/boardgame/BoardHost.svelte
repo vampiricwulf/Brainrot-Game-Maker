@@ -77,8 +77,8 @@
   offerNext('turn', () => {
     if (!bs || !round) return null;
     if (boardEdit.on) return { label: '✓ Done editing', key: 'Esc', title: 'Esc: back to playing (the changes stay in this game)', run: () => setEditing(false) };
-    const prev = { label: '◀ Previous turn', key: '⇧N', title: 'Shift+N: back to the turn before', run: () => turnNow(game, session, -1) };
-    const next = { label: 'Next turn ▶', key: 'N', title: 'N: the next player’s turn', run: () => turnNow(game, session, 1) };
+    const prev = { label: '◀ Previous turn', key: '⇧N', title: 'Shift+N: back to the turn before', run: () => turnTold(-1) };
+    const next = { label: 'Next turn ▶', key: 'N', title: 'N: the next player’s turn', run: () => turnTold(1) };
     // At a fork the way is picked first (Next turn ▶ beside it drops the steps left).
     if (bs.fork)
       return {
@@ -118,6 +118,12 @@
     const t = setTimeout(() => (steps = r), wait);
     return () => clearTimeout(t);
   });
+
+  /** Next turn ▶ / ◀ Previous turn: a skip or a Roll again is said (it isn't the next player's turn). */
+  function turnTold(delta: number): void {
+    const t = turnNow(game, session, delta);
+    if (t) toast(t, 4000);
+  }
 
   function roll(): void {
     const why = rollMover(game, session, app.live);

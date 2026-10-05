@@ -146,6 +146,13 @@ async function bigWorld() {
   const lowest = Math.max(...(await host.locator('.rpg .avatar[data-player-id]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom))));
   assert((await there()).includes('Village') && lowest <= stripTop, `arriving from the south they stand above the stats strip (${Math.round(lowest)} ≤ ${Math.round(stripTop)})`);
   assert((await cues(aud)).includes('step'), 'a step plays the Step sound on stream');
+  // The plain arrow keys move the party too (no video or sound on screen for them to seek).
+  await host.keyboard.press('ArrowDown');
+  await host.waitForTimeout(400);
+  const southOf = await there();
+  await host.keyboard.press('ArrowUp');
+  await host.waitForTimeout(800);
+  assert(!southOf.includes('Village') && (await there()).includes('Village'), `the arrow keys move the party (↓ to ${southOf}, ↑ back)`);
   // Under ⏸ Cover, viewers hear nothing new: a step there and back makes no sound on stream.
   await host.keyboard.press('b');
   await aud.locator('.cover').waitFor();

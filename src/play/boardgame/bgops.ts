@@ -100,20 +100,26 @@ export function decidingAction(a: Action): boolean {
   return a.do === 'dice' || a.do === 'wheel' || a.do === 'question';
 }
 
-export function turnNow(game: Game, session: Session, delta = 1): void {
+/**
+ * Next (or with -1, the turn before). Returns what to tell the host when it isn't simply the next player's turn (someone
+ * skipped, or a Roll again), else null.
+ */
+export function turnNow(game: Game, session: Session, delta = 1): string | null {
   const { bs } = boardNow(game, session);
-  if (!bs) return;
+  if (!bs) return null;
   // The log says whose turn it is now (“Ann’s turn”), as Make it their turn does.
   const after = { ...bs };
   const skipped = nextTurn(after, delta);
   const again = delta > 0 && bs.again && currentPlayer(after) === bs.again ? ' again' : '';
   const skips = skipped.length ? ` (${nameList(skipped.map((id) => playerName(session, id)))} ${skipped.length === 1 ? 'skips' : 'skip'} a turn)` : '';
-  logged(session, `${playerName(session, currentPlayer(after))}’s turn${again}${skips}`, () => {
+  const text = `${playerName(session, currentPlayer(after))}’s turn${again}${skips}`;
+  logged(session, text, () => {
     const back = delta < 0 && !!bs.before;
     nextTurn(bs, delta);
     // (Back to the turn before: its move and landing buttons come back with it.)
     if (!back) bs.last = undefined;
   });
+  return again || skips ? text : null;
 }
 
 /** The name the round's movement dice roll under (a saved preset's, else what the round says: "2d6"). */

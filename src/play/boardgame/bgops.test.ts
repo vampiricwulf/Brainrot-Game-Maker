@@ -201,7 +201,8 @@ describe('board game: the host’s moves on the stage', () => {
 
     // Bob misses his next turn: Ann's ends, and it's Cat's.
     expect(run({ id: '4', do: 'skip', who: 'ask' }, ['b'])).toBe('Skip next turn: Bob');
-    turnNow(game, session);
+    // (What the host is told: it isn't simply the next player's turn.)
+    expect(turnNow(game, session)).toBe('Cat’s turn (Bob skips a turn)');
     expect(bs().order[bs().turn]).toBe('c');
     expect(session.actionLog?.at(-1)?.text).toBe('Cat’s turn (Bob skips a turn)');
     expect(bs().skips).toBeUndefined();
@@ -212,9 +213,10 @@ describe('board game: the host’s moves on the stage', () => {
 
     // Cat rolls again: Next turn stays with her, once.
     expect(run({ id: '5', do: 'again' })).toBe('Roll again: Cat');
-    turnNow(game, session);
+    expect(turnNow(game, session)).toBe('Cat’s turn again');
     expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', 'Cat’s turn again']);
-    turnNow(game, session);
+    // An ordinary next turn: nothing to say.
+    expect(turnNow(game, session)).toBeNull();
     expect(bs().order[bs().turn]).toBe('a');
   });
 

@@ -14,7 +14,8 @@ in plain words for the people who make and host games. Anything committed but no
 ## 2026-10-05
 
 ### Fixed
-- Stream: the game's title on the Starting soon card is big again (it always shrank to its smallest size); "🔔 Buzz now!" no longer covers the clue's first line, and the pill stays solid while the stage's glow pulses; a long Final category no longer runs under "Make your wagers…" and the scores; the Final's spotlight card keeps its size when "✔ CORRECT / ✘ WRONG" comes in; one pop for several players with long names says how many ("4 players +$200") instead of cutting the names off.
+- RPG rounds: the plain arrow keys move the party (as the sample's note says), unless a video or sound on screen takes them; a question from a card's action fills in its value as the amount; Compare on a card starts on a stat both sides have other than HP (a fight's Power); G or Numpad 5 with one party says everyone is already together; taking out a player whose sheet is on stage takes the sheet off too (viewers saw a dimmed, empty stage).
+- Board games: "Who goes first" makes it the winner's turn (it only named them); Next turn says when it skips a player or gives someone another roll; Enter with nothing to move says to roll first (or N once moved) instead of asking for a player.
 
 ## 2026-10-04
 
@@ -29,6 +30,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Stream: the game's title on the Starting soon card is big again (it always shrank to its smallest size); "🔔 Buzz now!" no longer covers the clue's first line, and the pill stays solid while the stage's glow pulses; a long Final category no longer runs under "Make your wagers…" and the scores; the Final's spotlight card keeps its size when "✔ CORRECT / ✘ WRONG" comes in; one pop for several players with long names says how many ("4 players +$200") instead of cutting the names off. (1c26f90, 5050c71)
 - Start game puts a Daily Double still to place on a clue with something on it (it could land on a blank one in a half-built game being tried out); the board's "placed" note says when Start will place the rest at random.
 - Board editor: Backspace just after Enter in a category's name goes back to fix the name (it wiped the top clue); fewer rows or categories says how many written clues it removed.
 - Ctrl+S saves from the clue editor too (it said to close it first).

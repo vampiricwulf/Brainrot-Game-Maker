@@ -62,7 +62,9 @@
   let cmpField = $state('');
   /** The NPC stat picked (null: the one named like the player stat, else the first). */
   let cmpStat = $state<number | null>(null);
-  const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? numberFields.find((f) => npcStats.some((s) => s.name === f.name)) ?? numberFields[0]);
+  // (A stat both have, and not HP when there's another: a fight compares Power, not health.)
+  const shared = $derived(numberFields.filter((f) => npcStats.some((s) => s.name === f.name)));
+  const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? shared.find((f) => !/^(hp|health|life|lives)$/i.test(f.name.trim())) ?? shared[0] ?? numberFields[0]);
   const ns = $derived(cmpStat ?? Math.max(0, npcStats.findIndex((s) => s.name === cf?.name)));
 
   function runAll(): void {
