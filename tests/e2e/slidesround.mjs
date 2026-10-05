@@ -61,9 +61,10 @@ try {
   assert(true, 'on the last slide the main button is Next round ▶');
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)
   await page.waitForTimeout(500);
-  await page.keyboard.press('n');
+  // A click on the stage does what it says too.
+  await stage.locator('[data-slide="2"]').click();
   await stage.locator('.board, .round-name').first().waitFor();
-  assert(true, 'and N then goes on to the board');
+  assert(true, 'and then (a click on the stage, as N) goes on to the board');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Slides round E2E passed.');

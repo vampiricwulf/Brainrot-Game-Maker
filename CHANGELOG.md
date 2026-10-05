@@ -24,6 +24,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Slides rounds: on the last slide, a click on the stage goes on to the next round, as N does (it did nothing).
 - Slide editor: after a right-click menu (Cut, Select all…), the keys stay on the slide. In the clue editor, Esc with items selected deselects them first, wherever the keys are; the next Esc closes the clue. Before, it sometimes closed the clue at once.
 - ✍ Everyone answers: a ✍ clue plays as usual (with buzzing) when no buzzer room is running, or the room's server can't take answers; before, nobody could buzz or answer.
 - ✍ Everyone answers: hiding the answer again doesn't let phones change theirs; an answer sent just before the answer showed still reaches the host; the first right answer picks next (not whoever was ticked last); random Daily Doubles never land on a ✍ clue; a line break typed on a phone is a space ("George Washington", not "GeorgeWashington"); a phone that hasn't sent one shows "waiting…".

@@ -562,7 +562,7 @@
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted hint"
-        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on'} · Shift+N the one before</span
+        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N (or a click on the stage) goes on'} · Shift+N the one before</span
       >
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>

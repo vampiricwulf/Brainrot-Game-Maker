@@ -251,7 +251,7 @@
       return { name: p.name, color: p.color, ...(members.length ? { members } : {}), ...(app.live.phones?.includes(p.id) ? { phone: true } : {}) };
     });
   }
-  // A ✍ clue opened: its answers start (kept in the session, see `everyone`).
+  // A ✍ clue opened: its answers start (kept in the session, see `everyone`; back on it, by Undo or a reload, as they were).
   $effect(() => {
     const id = everyone && info ? info.clue.id : null;
     untrack(() => {
@@ -1330,8 +1330,11 @@
         intro();
         break;
       case 'reveal':
-        // (A clue's next question slide first, then its answer.)
-        if (!answerShowing(session) && !slideStep(1)) revealToggle();
+        // (A clue's next question slide first, then its answer. A slides round's last slide: what the main button says,
+        // Next round ▶.)
+        if (session.phase === 'slides') {
+          if (!slideStep(1) && hostNext && !hostNext.disabled) hostNext.run();
+        } else if (!answerShowing(session) && !slideStep(1)) revealToggle();
         break;
       case 'back':
         if (session.phase === 'clue') back();
