@@ -517,6 +517,8 @@
     if (previous?.key === e.key) previous = null;
     const left = (recentKept = await listRecent());
     recentList = left.length ? left : null;
+    // The last one gone: the saves in BrainrotSaves are still there to open.
+    if (!left.length && desktopSaves.length) saveList = desktopSaves;
     // (Not the files this game's own undo history can bring back.)
     pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia());
   }

@@ -24,6 +24,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- ⚙ Settings: a number or buzzer server typed in and then closed with Esc is saved (it used to last only until the app restarted).
+- Open…: deleting a Recent game keeps the keys in the list instead of dropping them on the page; deleting the last one shows your BrainrotSaves saves (when there are any) instead of closing; the BrainrotSaves list starts on its first save.
 - Checklist: a "Go to a screen" button on an item, wheel slice or die face whose screen was deleted, a "Reveal / Hide an object" button whose object was deleted, and a Shop object with no shop chosen are listed as pointing nowhere (they weren't).
 - Board games: Move by dice the app can't read ("2d6+1") says it rolls a d6, in the editor and on the checklist; saved dice are found by their name in any case; "Make it a…" offers Undo when it replaces landing buttons.
 - RPG editor: shrinking a map or deleting a row or column says when the party now starts elsewhere and which doorways now lead nowhere (as deleting a screen does); "Go to a screen" works when the main map has no screens but another does (it said to add an RPG round); a screen picker shows what a side really leads to when a choice isn't taken.

@@ -47,8 +47,8 @@
       or an exported .html), or an older version Save kept (Game.brainrot.bak).
     </p>
     <div class="list">
-      {#each saves as s (s.place + s.name)}
-        <button class="save" onclick={() => onpick(s)}>
+      {#each saves as s, i (s.place + s.name)}
+        <button class="save" onclick={() => onpick(s)} data-autofocus={i === 0 ? '' : undefined}>
           <b>{s.name}</b>
           <span class="hint"
             >{exported(s) ? 'Exported game · ' : ''}{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents' ? ' · in Documents' : ''}</span

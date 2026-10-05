@@ -18,15 +18,21 @@
   /** What ⚙ Test found at the buzzer server. */
   let tested = $state('');
   let testing = $state(false);
+  /** Esc closes it with a box still focused (no change event then), so whatever was typed is kept here too. */
+  function close(): void {
+    savePrefs();
+    keepLimits();
+    onclose();
+  }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
 
-<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && close()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" use:modal data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title">⚙ Settings</h2>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
+      <button class="ghost modal-x" onclick={close} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
 
     <h3>Saving</h3>
@@ -144,7 +150,7 @@
         }}>Back to the defaults</button
       >
       <span class="spacer"></span>
-      <button class="primary" onclick={onclose}>Done</button>
+      <button class="primary" onclick={close}>Done</button>
     </div>
   </div>
 </div>

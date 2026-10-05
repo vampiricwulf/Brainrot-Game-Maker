@@ -3,6 +3,7 @@
      BrainrotSaves… lists the saves and exported games (OpenSaves). -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { focusRescue } from '../lib/focusrescue';
   import { modal } from '../lib/modal';
   import type { RecentEntry } from '../lib/recent';
 
@@ -33,7 +34,7 @@
 
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <!-- Esc closes it when it's the window on top (Delete's question over it takes Esc first). -->
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" use:modal={{ esc: onclose }} data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="open-heading" use:modal={{ esc: onclose }} use:focusRescue data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title" id="open-heading">📂 Open a game</h2>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
