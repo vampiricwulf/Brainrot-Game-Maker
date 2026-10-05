@@ -1394,6 +1394,16 @@
     else if (!questionSlides(info.clue).every(blankSlide)) autoTimer();
   }
 
+  // A Daily Double's wager fixed in the Amount box once its question is up (a typo on the splash): the wager is that now,
+  // for the quick ✔/✘ and for Show wager too.
+  $effect(() => {
+    const a = amount;
+    untrack(() => {
+      const dd = session.dd;
+      if (dd?.stage === 'question' && typeof a === 'number' && Number.isInteger(a) && a >= 0 && a !== dd.wager) dd.wager = a;
+    });
+  });
+
   function ddShow(playerId: string, wager: number): void {
     ddShowQuestion(session, playerId, wager);
     selected = [playerId];
@@ -1540,8 +1550,12 @@
     const s = newSession(app.playGame!);
     // (With their pictures: a picture is only taken off with its −🖼.)
     s.players = session.players.map(({ id, name, color, avatar }) => ({ id, name, color, startScore: 0, ...(avatar ? { avatar } : {}) }));
-    // The same buzzer room: the phones stay joined.
-    s.remote = session.remote;
+    // The same buzzer room: the phones stay joined (not the last game's answers, wagers taken or buzzers mid-clue: the
+    // rematch's clues have the same ids).
+    if (session.remote) {
+      const { answers: _a, wagerGot: _w, buzz: _b, ...room } = $state.snapshot(session.remote);
+      s.remote = room;
+    } else s.remote = session.remote;
     selected = [];
     amount = null;
     // (Viewers' card says "Rematch! Starting soon…".)
@@ -2539,9 +2553,11 @@
         const p = session.players[n - 1];
         if (p) setPicker(session, p.id);
       } else if (reveal && n) {
-        // The final reveals: spotlight the Nth player in the reveal order (N shows their wager).
-        if (!reveal.order[n - 1]) return;
-        reveal.current = reveal.order[n - 1];
+        // The final reveals: spotlight player N (in the players' order, as everywhere else: the score plates' and the
+        // panel's), if they're in this Final. (N then shows their wager.)
+        const id = session.players[n - 1]?.id;
+        if (!id || !reveal.order.includes(id)) return;
+        reveal.current = id;
       } else if (buzzing && !n) {
         // 0: reset the buzzers (nobody locked out, open for everyone). 1–9 pick a player by hand, over any phone's buzz.
         openBuzzers(true);
@@ -2646,6 +2662,8 @@
           else slideStep(1);
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
+        // The question up: the answer, as the main button shows it (its reveal sound too).
+        else if (session.phase === 'final' && session.finalStep === 'question') revealToggle();
         else if (session.phase === 'final') {
           finalNextStep(session, game);
           finalStep();

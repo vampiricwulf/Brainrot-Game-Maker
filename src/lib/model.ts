@@ -597,6 +597,11 @@ export interface FinalState {
   results: Record<Id, 'right' | 'wrong'>;
   /** Player currently spotlighted in the reveal. */
   current?: Id;
+  /**
+   * The question has been on screen: phones can't send wagers any more, even after an Undo back to the wagers (kept out
+   * of undo steps on purpose: the question was seen).
+   */
+  phonesLocked?: boolean;
 }
 
 export interface Player {
@@ -649,8 +654,11 @@ export interface ClueRef {
 export interface Session {
   gameId: Id;
   players: Player[];
-  /** Players taken out mid-game, kept (with their log entries) so the host can restore them (`inFinal`: into the final round too). */
-  removedPlayers?: (Player & { inFinal?: boolean })[];
+  /**
+   * Players taken out mid-game, kept (with their log entries) so the host can restore them (`inFinal`: into the Final
+   * being played too; `finalRound`: which one, so they aren't put in a later one).
+   */
+  removedPlayers?: (Player & { inFinal?: boolean; finalRound?: Id })[];
   /** Clue ids that have been played. */
   used: Record<Id, true>;
   /** The clue most recently closed (and marked used), for "Reopen last tile". */

@@ -85,7 +85,7 @@
         ['Enter in a wager box', 'The next wager still to type in; with every wager in, show the question'],
         ['Shift+N', 'Reveals: back to the player before'],
         ['R', 'The question: reveal the answer (again: hide it); the countdown stops'],
-        ['1 – 9', 'Reveals: spotlight the Nth player'],
+        ['1 – 9', 'Reveals: spotlight player N (as numbered in the player list)'],
         ['C / X', 'Reveals: the spotlit player is right / wrong (or right-click their score plate)'],
         ['Alt+↑ / ↓ on a name', 'Reveals: move them up / down the order (or drag the row)'],
       ],

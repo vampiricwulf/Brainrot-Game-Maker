@@ -520,6 +520,9 @@ export function logged(session: Session, text: string, change: () => void, game?
   done(text);
 }
 
+/** The `before` of each step under way, by session (see startStep). */
+const openSteps = new WeakMap<Session, Set<Record<string, string>>>();
+
 /**
  * Start a step that takes a while (the live screen editor): everything changed until `done(text)` is one undoable
  * step. Nothing is logged if nothing changed. Only the parts that changed are kept.
@@ -527,9 +530,15 @@ export function logged(session: Session, text: string, change: () => void, game?
 export function startStep(session: Session, game?: Game): (text: string) => void {
   const before = capture(session, game);
   const scored = session.scoreLog.length;
+  const open = openSteps.get(session) ?? openSteps.set(session, new Set()).get(session)!;
+  open.add(before);
   return (text) => {
+    open.delete(before);
     const now = capture(session, game);
     const keys = [...new Set([...Object.keys(before), ...Object.keys(now)])].filter((k) => before[k] !== now[k]);
+    // Steps still under way (the Players dialog's, the live screen editor's) start from this one's result for what it
+    // changed: undoing one of them later never takes this one back with it (a phone wager that came in meanwhile).
+    for (const b of open) for (const k of keys) b[k] = now[k];
     // Points spent or earned inside the step (a purchase in a shop that charges points) undo with it.
     const score = session.scoreLog.slice(scored).map((e) => ({ ...e }));
     if (!keys.length && !score.length) return;

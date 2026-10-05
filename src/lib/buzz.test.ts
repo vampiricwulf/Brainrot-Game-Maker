@@ -266,6 +266,19 @@ describe('wagerAsk (the wagers phones may send)', () => {
     return { game, session };
   }
 
+  it('a Final whose question was on screen stays locked for phones after an Undo back to its wagers', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a', 'b'], 500, 'x');
+    const fi = game.rounds.findIndex((r) => r.mode === 'final');
+    goToRound(session, game, fi);
+    session.intro = null;
+    expect(wagerAsk(game, session, true)?.open).toBe(true);
+    finalNext(session, game);
+    expect(wagerAsk(game, session, true)?.open).toBe(false);
+    session.finalStep = 'wagers';
+    expect(wagerAsk(game, session, true)?.open).toBe(false);
+  });
+
   it('none on the board or during an ordinary clue', () => {
     const { game, session } = setup();
     expect(wagerAsk(game, session, true)).toBeNull();

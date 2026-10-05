@@ -205,10 +205,11 @@ export function toggleStep(session: Session, step: string): void {
 export function removePlayer(session: Session, playerId: string): void {
   const p = session.players.find((x) => x.id === playerId);
   if (!p) return;
-  const f = session.final;
+  // (Only the Final being played: one played earlier in the game keeps its reveals as they were.)
+  const f = session.phase === 'final' ? session.final : null;
   const inFinal = !!f?.players.includes(playerId);
   session.players = session.players.filter((x) => x.id !== playerId);
-  session.removedPlayers = [...(session.removedPlayers ?? []), inFinal ? { ...p, inFinal } : p];
+  session.removedPlayers = [...(session.removedPlayers ?? []), inFinal ? { ...p, inFinal, ...(f?.roundId ? { finalRound: f.roundId } : {}) } : p];
   if (session.currentPickerId === playerId) session.currentPickerId = undefined;
   if (session.dd?.playerId === playerId) session.dd.playerId = undefined;
   if (f) {
@@ -223,11 +224,12 @@ export function removePlayer(session: Session, playerId: string): void {
 export function restorePlayer(session: Session, playerId: string): void {
   const removed = session.removedPlayers?.find((x) => x.id === playerId);
   if (!removed) return;
-  const { inFinal, ...p } = removed;
+  const { inFinal, finalRound, ...p } = removed;
   session.removedPlayers = session.removedPlayers!.filter((x) => x.id !== playerId);
   session.players = [...session.players, p];
-  const f = session.final;
-  if (inFinal && f && !f.players.includes(playerId)) {
+  // Back into the Final they were taken out of, while it's the one being played.
+  const f = session.phase === 'final' ? session.final : null;
+  if (inFinal && f && (!finalRound || finalRound === f.roundId) && !f.players.includes(playerId)) {
     f.players = [...f.players, playerId];
     // Reveal order: lowest score first until the reveals start (as startFinal does), then at the end.
     const order = [...f.order, playerId];
@@ -864,6 +866,7 @@ export function finalNext(session: Session, game: Game): void {
       // Everyone sat out: nothing to wager or reveal, so on to the next round (or the end).
       if (f && !f.players.length) return goToRound(session, game, session.currentRound + 1);
       session.finalStep = 'question';
+      if (f) f.phonesLocked = true;
       // (From its first question slide.)
       delete session.slide;
       break;

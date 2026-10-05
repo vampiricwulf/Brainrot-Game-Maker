@@ -519,6 +519,19 @@ describe('the host’s own choices', () => {
     expect(session.final!.players).toEqual(['a', 'b']);
   });
 
+  it('a step under way never takes back one logged meanwhile (a phone wager while a dialog is open)', () => {
+    const { game, session } = show();
+    applyScore(session, game, ['a', 'b'], 300, 'x');
+    goToRound(session, game, 1);
+    const f = session.final!;
+    const long = startStep(session);
+    logged(session, 'Bob’s wager (from their phone)', () => (f.wagers.b = 500));
+    f.wagers.a = 300;
+    long('Ann’s wager: $300');
+    undoAction(session);
+    expect([f.wagers.a, f.wagers.b]).toEqual([undefined, 500]);
+  });
+
   it('puts back where a Final wager came from: a phone’s, then the host’s change', () => {
     const { game, session } = show();
     applyScore(session, game, ['a', 'b'], 300, 'x');

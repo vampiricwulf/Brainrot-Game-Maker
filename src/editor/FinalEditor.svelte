@@ -54,7 +54,7 @@
       }}
     /></label>
   <label class="check">
-    <input type="checkbox" checked={round.allowNonPositive ?? true} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
+    <input type="checkbox" checked={round.allowNonPositive ?? false} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
     Players with a score of 0 or less can play it
   </label>
   <span class="hint">

@@ -7,7 +7,7 @@
   import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { finalName, formatPoints, roundName, type Game, type Session } from '../../lib/model';
+  import { finalName, formatPoints, roundName, type Game, type Session, type WagerSource } from '../../lib/model';
   import {
     currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
     hasWager, nameList, score, slidePosition, wagerFromPhone, wagerSentBy,
@@ -142,25 +142,38 @@
     return `${name}${wasPhone ? ' (from their phone)' : ''}: ${shownWager(was)} → ${shownWager(now)}`;
   }
 
-  /** The wager being typed: one step from the box's focus until it's left. */
-  let wagerStep: { id: string; was: number | undefined; wasPhone: boolean; done: (text: string) => void } | null = null;
+  /**
+   * The wager being typed: what that player's wager was when the box got the focus. Once it's left, the change is one
+   * step of that player's wager alone (taken as a step only then, so other players' phone wagers that came in meanwhile
+   * aren't part of it: undoing it never takes those away).
+   */
+  let wagerStep: { id: string; was: number | undefined; from: WagerSource; by: string | undefined } | null = null;
+
+  const sourceOf = (fs: NonNullable<typeof f>, id: string): { from: WagerSource; by: string | undefined } => ({
+    from: wagerFromPhone(fs, id) ? 'phone' : 'host',
+    by: fs.wagerBy?.[id],
+  });
 
   function wagerDone(): void {
     const w = wagerStep;
     wagerStep = null;
     if (!w || !f) return;
-    w.done(wagerText(w.id, w.was, f.wagers[w.id], w.wasPhone));
+    const now = f.wagers[w.id];
+    if (now === w.was) return;
+    // Back to what it was, then the change as a step.
+    finalSetWager(session, w.id, w.was, w.from, w.by);
+    logged(session, wagerText(w.id, w.was, now, w.from === 'phone'), () => finalSetWager(session, w.id, now));
   }
 
-  // A wager sent from their phone while the host's focus is in that box: it's a step of its own ("Ann’s wager (from
-  // their phone): $500"), so the host's step starts again from it (leaving the box unchanged adds nothing).
+  // A wager sent from their phone while the host's focus is in that box is a step of its own ("Ann’s wager (from their
+  // phone): $500"): the host's change starts again from it.
   $effect(() => {
     const fs = f;
     if (!fs) return;
     void JSON.stringify([fs.wagers, fs.wagerFrom]);
     untrack(() => {
       const w = wagerStep;
-      if (w && wagerFromPhone(fs, w.id) && fs.wagers[w.id] !== w.was) wagerStep = { id: w.id, was: fs.wagers[w.id], wasPhone: true, done: startStep(session) };
+      if (w && wagerFromPhone(fs, w.id) && fs.wagers[w.id] !== w.was) wagerStep = { id: w.id, was: fs.wagers[w.id], ...sourceOf(fs, w.id) };
     });
   });
 
@@ -358,7 +371,7 @@
                 oninput={(e) => finalSetWager(session, p.id, e.currentTarget.value === '' ? undefined : +e.currentTarget.value)}
                 onfocus={() => {
                   wagerDone();
-                  wagerStep = { id: p.id, was: f.wagers[p.id], wasPhone: wagerFromPhone(f, p.id), done: startStep(session) };
+                  wagerStep = { id: p.id, was: f.wagers[p.id], ...sourceOf(f, p.id) };
                 }}
                 onblur={wagerDone}
                 onkeydown={(e) => {
@@ -367,6 +380,12 @@
                   else if (e.key.toLowerCase() === 'n' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     if (wagersOk) next();
+                    else {
+                      // (Why not, rather than nothing: as N says outside the box.)
+                      const { missing, over, whole } = finalWagerProblems(session, override);
+                      const names = (ids: string[]) => nameList(ids.map((id) => byId[id]?.name ?? '?'));
+                      toast(missing.length ? `Waiting on: ${names(missing)}` : whole.length ? `Not a whole number: ${names(whole)}` : `Over the max: ${names(over)}`, 3000);
+                    }
                   }
                 }}
                 data-wager={p.id}
@@ -376,14 +395,14 @@
                 <span class="phone small" title="Sent from their phone (only you see the amount). You can still change it." data-phone-wager={p.id}
                   >📱 {formatPoints(w ?? 0, sym)} from phone ✔{by ? ` · sent by ${by}` : ''}</span
                 >
-              {:else if phones.includes(p.id)}
+              {:else if phones.includes(p.id) && !f.phonesLocked}
                 <!-- (One the host typed, or the 0 filled in for nothing to wager: their phone can still send another.) -->
                 <span class="muted small" data-phone-wager={p.id} title="Their phone can send their wager"
                   >{w === undefined ? '📱 waiting…' : '📱 can still send'}</span
                 >
               {/if}
               <span class="muted small">
-                {override ? `max ${formatPoints(cap, sym)} (their score)` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
+                {override ? `their score ${formatPoints(cap, sym)} (no limit now)` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
               </span>
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
@@ -392,7 +411,9 @@
           </div>
         {/each}
       </div>
-      {#if phones.some((id) => f.players.includes(id))}
+      {#if f.phonesLocked && phones.some((id) => f.players.includes(id))}
+        <span class="muted small">📱 The question was on screen: phones can’t send wagers any more (type any change here).</span>
+      {:else if phones.some((id) => f.players.includes(id))}
         <span class="muted small">📱 Players with a phone can send their wager from it, and change it until you show the question.</span>
       {:else if phoneNote}
         <span class="muted small">{phoneNote}</span>
@@ -442,8 +463,8 @@
               aria-hidden="true"
               title="Drag to change the order">⋮⋮</span
             >
-            <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier">▲</button>
-            <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later">▼</button>
+            <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier: {p?.name ?? '?'}">▲</button>
+            <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later: {p?.name ?? '?'}">▼</button>
             <button
               class="name"
               style:background={p?.color}
@@ -480,14 +501,14 @@
                 {#if wagerFromPhone(f, id)}<span class="phone" title="Sent from their phone. You can still change it until it's shown.">📱</span>{/if}
                 {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
               </label>
-              {#if hasWager(f, id)}<button class="small" onclick={() => finalShow(session, id)}>Show wager</button>{/if}
+              {#if hasWager(f, id)}<button class="small" onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
             {:else}
               <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
               <span class="muted small">wager {formatPoints(f.wagers[id], sym)}</span>
-              <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]}>Show wager</button>
+              <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
             {/if}
-            <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)}>✔ Right</button>
-            <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)}>✘ Wrong</button>
+            <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
+            <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
           </div>
         {/each}
       </div>
@@ -509,7 +530,7 @@
         <span class="muted small">{waitingOn}</span>
       {:else if session.finalStep === 'reveal'}
         {#if armed}
-          <span class="armed">Everyone is judged: press N again (or the button) to finish.</span>
+          <span class="armed">Everyone is judged: press N again (or the button) to {after ? 'go on' : 'finish'}.</span>
         {:else if unjudged}
           <span class="muted small">{unjudged} still to judge</span>
         {/if}

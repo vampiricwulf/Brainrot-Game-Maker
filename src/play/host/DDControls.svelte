@@ -5,6 +5,7 @@
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
   import { offerNext } from './slots.svelte';
+  import { toast } from '../../lib/app.svelte';
 
   let {
     game,
@@ -34,6 +35,13 @@
   // Initial choice only: whoever is picking (the host can change it). With no picker, nobody: the host picks (never a
   // silent Player 1).
   let playerId = $state(untrack(() => session.dd?.playerId ?? session.currentPickerId ?? ''));
+  // The one picked taken out of the game (👥 Players) meanwhile: nobody picked, not a player who isn't there.
+  $effect(() => {
+    const ids = session.players.map((p) => p.id);
+    untrack(() => {
+      if (playerId && !ids.includes(playerId)) playerId = '';
+    });
+  });
 
   /** Who found it: the splash on stage (and their phone) names them at once, not only once the question shows. */
   function pick(id: string): void {
@@ -80,6 +88,11 @@
     e.preventDefault();
     e.stopPropagation();
     if (valid) onshow(playerId, wager!);
+    // (Why not, rather than nothing.)
+    else
+      toast(
+        !playerId ? 'Pick who found it first' : wager === null ? 'Type a wager first' : `That’s over the max (${formatPoints(cap, sym)}): type less, or tick Ignore the limit`,
+      );
   }
 
   // The main button, in the panel's main cell (Enter in the wager box does it too).
@@ -130,7 +143,7 @@
     <label class="check small">
       <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>
-    <button class="small ghost" disabled={!playerId} onclick={() => ((wager = cap), typed(cap))} title={playerId ? undefined : 'Pick who found it first'}
+    <button class="small ghost" disabled={!playerId} onclick={() => ((wager = cap), typed(cap), wagerBox?.focus())} title={playerId ? undefined : 'Pick who found it first'}
       >True Daily Double{playerId ? ` (${formatPoints(cap, sym)})` : ''}</button
     >
     {#if playerId}

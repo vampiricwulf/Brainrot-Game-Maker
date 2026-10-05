@@ -24,6 +24,14 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Final wagers: undoing a wager the host typed no longer wipes other players' wagers that came in from phones meanwhile (nor does a long step, like the Players dialog's, take back a step logged while it was open).
+- Final wagers: once the question has been on screen, phones can't send wagers any more, even after a Ctrl+Z back to the wagers (the panel says so).
+- Final: N on the question reveals the answer as the button does (with its sound; it only stopped the music); in the reveals, 1–9 spotlight player N as numbered everywhere else (it was the Nth in the reveal order); the "press N again" note says "go on" for a Final in the middle of the game; the reveal rows' buttons say whose they are to screen readers; with the limits off, a player's score shows as "their score $X (no limit now)", not "max"; N in a wager box with wagers missing says who's missing.
+- Final: taking a player out after a Final was played no longer changes its reveals, and bringing them back doesn't put them in a later Final.
+- Daily Double: a wager fixed in the Amount box after the question showed is the wager for the quick ✔/✘ and for Show wager too; Enter in the wager box with no player or over the max says why; True Daily Double gives the keys back to the wager box; the player picked taken out meanwhile is unpicked.
+- Rematch: a ✍ clue's answers and the wagers taken from phones in the last game don't carry over.
+- Phone buzzers: ✕ Close the room and turning Buzzer mode off ask first when phones are in the room (they'd all have to join again).
+- The Final round editor's "Players with a score of 0 or less can play it" box shows what the game does for older games (off).
 - Board games: with a movement wheel, D after the move no longer spins again (Enter would have moved the player twice); D at a fork says to pick the way first; a slice saying "Back 2" (or "← 2") moves back; being sent back past Start doesn't offer its "when passed" bonus; ▶ Run all on a space with a roll, spin or question in it (a fight) runs just that one, now ▶ Start, and the host presses the outcome (it ran the win and the loss together); a removed player's last move's buttons go with them.
 - Board games and RPG rounds: D, Enter and the move keys don't act unseen under the round's title card (it says to start the round first).
 - Resuming a game with the editor's changes: Undo no longer puts back the boards, screens and maps from before the changes, and a party left on a screen deleted since goes to one that's there.

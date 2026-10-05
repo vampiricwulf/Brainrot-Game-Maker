@@ -190,7 +190,7 @@ export function wagerAsk(game: Game, session: Session, limitsOff: boolean, got: 
     const step = session.finalStep ?? 'wagers';
     if (step !== 'wagers' && step !== 'question' && step !== 'answer') return null;
     const ids = f.players.filter(here);
-    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers', ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, id), f.wagers[id], !wagerFromPhone(f, id))) };
+    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers' && !f.phonesLocked, ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, id), f.wagers[id], !wagerFromPhone(f, id))) };
   }
   return null;
 }

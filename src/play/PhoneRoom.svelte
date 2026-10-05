@@ -43,6 +43,10 @@
     /** ⚙ Set up phone buzzers… (no buzzer server yet): ⚙ Settings, at the phone buzzers. None in a player-only file. */
     onsetup?: () => void;
   } = $props();
+  /** Phones in the room with a seat: closing it (or turning Buzzer mode off) asks first. */
+  const seatedPhones = $derived(remote.phones.filter((p) => p.seatId).length);
+  /** Asking before closing the room: ✕ Close the room, or Buzzer mode turned off. */
+  let closing = $state<'close' | 'off' | null>(null);
   /** The browser says there's no network (it can be wrong the other way, never this way round for long). */
   let offline = $state(typeof navigator !== 'undefined' && navigator.onLine === false);
   $effect(() => {
@@ -79,7 +83,19 @@
     {/if}
   {:else}
     <label class="check">
-      <input type="checkbox" checked={!!settings.buzzer} onchange={(e) => onset('buzzer', e.currentTarget.checked || undefined, 'Buzzer mode')} />
+      <input
+        type="checkbox"
+        checked={!!settings.buzzer}
+        onchange={(e) => {
+          // Off with phones in the room ends it: asked first (they'd all have to join again with a new code).
+          if (!e.currentTarget.checked && seatedPhones) {
+            e.currentTarget.checked = true;
+            closing = 'off';
+            return;
+          }
+          onset('buzzer', e.currentTarget.checked || undefined, 'Buzzer mode');
+        }}
+      />
       Buzzer mode: players buzz in from their phones
     </label>
     {#if !settings.buzzer}
@@ -114,7 +130,11 @@
         <div class="row">
           <a href={link} target="_blank" rel="noreferrer" class="link">{link}</a>
           <button class="small" onclick={() => copyText(link, 'Join link copied: paste it in the Discord chat')}>📋 Copy link</button>
-          <button class="small ghost" onclick={onclose} title="Phones are told the game is over. (◀ Back to editor keeps the room open.)">✕ Close the room</button>
+          <button
+            class="small ghost"
+            onclick={() => (seatedPhones ? (closing = 'close') : onclose())}
+            title="Phones are told the game is over. (◀ Back to editor keeps the room open.)">✕ Close the room</button
+          >
         </div>
         {#if remote.status === 'online'}
           {#if settings.buzzTeams}
@@ -139,9 +159,40 @@
     {/if}
     <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />
   {/if}
+  {#if closing}
+    <div class="ask" role="alertdialog" aria-label="Close the room?">
+      <span>
+        {seatedPhones}
+        {seatedPhones === 1 ? 'phone is' : 'phones are'} in the room: {closing === 'off' ? 'turning Buzzer mode off closes it' : 'closing it'} tells them the game is over, and
+        they’d join again with a new code.
+      </span>
+      <div class="row">
+        <button
+          class="danger small"
+          onclick={() => {
+            const what = closing;
+            closing = null;
+            if (what === 'off') onset('buzzer', undefined, 'Buzzer mode');
+            else onclose();
+          }}>{closing === 'off' ? 'Turn off and close' : 'Close the room'}</button
+        >
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="small" autofocus onclick={() => (closing = null)}>Keep it open</button>
+      </div>
+    </div>
+  {/if}
 </section>
 
 <style>
+  .ask {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--warn, #e0a030);
+    border-radius: 8px;
+  }
   .card {
     display: flex;
     flex-direction: column;
