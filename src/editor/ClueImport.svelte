@@ -15,7 +15,8 @@
   import { applyPlan, cluesFromTable, parseTable, planImport, previewText } from '../lib/clueimport';
   import { pickFile } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
-  import { categoryLabel, formatPoints, roundName, type BoardRound } from '../lib/model';
+  import { categoryLabel, formatPoints, roundName, slidesOfClue, type BoardRound } from '../lib/model';
+  import { followClueText } from '../lib/cluetext';
   import { app } from '../lib/app.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
@@ -49,7 +50,11 @@
     const name = roundName(round, app.game.rounds.indexOf(round));
     // One note (with Undo), at the board: not "… › Row values" because the import set the rows too.
     const left = p.left ? ` (${p.left} didn’t fit)` : '';
-    step(`Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into ${name}${left}`, () => applyPlan(round, p), { notify: true, place: { tab: 'round', round: round.id } });
+    step(`Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into ${name}${left}`, () => {
+        applyPlan(round, p);
+        // The imported clues take the theme's clue text, as clues added on the board do (one with a look of its own keeps it).
+        followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
+      }, { notify: true, place: { tab: 'round', round: round.id } });
     drafts.delete(round.id);
     onclose();
   }
@@ -99,7 +104,9 @@
         {:else if !clues.length}
           No clues found (each row needs a question or an answer)
         {:else if plan}
-          {clues.length} clue{clues.length === 1 ? '' : 's'} found · {plan.placed} go on the board{plan.left ? ` · ${plan.left} don’t fit` : ''}
+          {clues.length} clue{clues.length === 1 ? '' : 's'} found · {plan.placed} go on the board{plan.left ? ` · ${plan.left} don’t fit` : ''}{plan.leftOut.length
+            ? ` (only 10 categories fit on a board: ${plan.leftOut.map((n) => `“${n}”`).join(', ')} ${plan.leftOut.length === 1 ? 'is' : 'are'} left out)`
+            : ''}
         {/if}
       </span>
     </div>

@@ -10,7 +10,7 @@
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
-  import { step as record } from '../lib/history.svelte';
+  import { commit as commitHistory, step as record } from '../lib/history.svelte';
   import { QUICK_DICE, STD_DICE, tileDice } from '../lib/tools';
   import ToolPopup, { newTool } from './tools/ToolPopup.svelte';
 
@@ -177,6 +177,10 @@
   const next = $derived(stepClue(round, pos, 1));
   function go(to: { cat: number; row: number } | null): void {
     if (!to) return;
+    // The clue typed in is a step of its own, and the box the keys are in starts afresh with the next clue's text
+    // (the same box shows it: without leaving it, Ctrl+Z would go to the box's own undo, which has nothing).
+    commitHistory();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     pos = to;
     side = 'q';
     qi = 0;

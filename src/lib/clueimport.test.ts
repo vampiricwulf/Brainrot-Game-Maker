@@ -114,3 +114,30 @@ describe('clue import: onto a board', () => {
     expect(round.categories[0].clues[0].value).toBe(100);
   });
 });
+
+describe('clue import: review fixes', () => {
+  it('a plain column pasted on a category (no tabs): each line is one whole question, commas and all', () => {
+    const r = newRound('R', 2, [200, 400, 600]);
+    pasteColumn(r, 0, 'This city, the capital of France, has the Eiffel Tower\nWhat is 2+2?\nWho wrote Hamlet, the play?');
+    expect([q(r, 0, 0), q(r, 0, 2)]).toEqual(['This city, the capital of France, has the Eiffel Tower', 'Who wrote Hamlet, the play?']);
+    expect(a(r, 0, 0)).toBe('');
+  });
+
+  it('replacing the board: a category renamed loses the old one’s picture, and tiles are plain clues again', () => {
+    const r = newRound('R', 2, [200]);
+    r.categories[0].image = 'img';
+    Object.assign(r.categories[0].clues[0], { type: 'wheel', wheelId: 'w', everyone: true, timerSeconds: 9 });
+    const plan = planImport(r, cluesFromTable(parseTable('History\t200\tFirst president\tWashington')), 'replace');
+    applyPlan(r, plan);
+    expect(r.categories[0].image).toBeUndefined();
+    const cl = r.categories[0].clues[0];
+    expect([cl.type, cl.wheelId, cl.everyone, cl.timerSeconds]).toEqual(['standard', undefined, undefined, undefined]);
+  });
+
+  it('a first row whose answer is just "A" is a clue, not a header; more than 10 categories says which were left out', () => {
+    expect(cluesFromTable(parseTable('First letter\tA\nLast letter\tZ'))).toHaveLength(2);
+    const rows = Array.from({ length: 12 }, (_, i) => `Cat ${i + 1}\t200\tQ${i}\tA${i}`).join('\n');
+    const plan = planImport(newRound('R', 6), cluesFromTable(parseTable(rows)), 'replace');
+    expect(plan.leftOut).toEqual(['Cat 11', 'Cat 12']);
+  });
+});

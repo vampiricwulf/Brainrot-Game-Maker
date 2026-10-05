@@ -78,6 +78,9 @@ function headerOf(row: string[]): Partial<Record<Col, number>> | null {
   row.forEach((c, i) => {
     for (const k of Object.keys(NAMES) as Col[]) if (cols[k] === undefined && NAMES[k].test(c)) cols[k] = i;
   });
+  // (One cell like "A" or "$" alone is a clue's answer or value, not a header.)
+  const short = row.filter((c) => /^(q|a|\$|cat|pts)$/i.test(c.trim())).length;
+  if (short && Object.keys(cols).length < 2) return null;
   return cols.question !== undefined || (cols.category !== undefined && cols.answer !== undefined) ? cols : null;
 }
 
@@ -138,6 +141,8 @@ export interface ImportPlan {
   left: number;
   /** Tile ids written (for the preview). */
   filled: Set<string>;
+  /** Categories with no room on the board (it has 10 at most). */
+  leftOut: string[];
 }
 
 /**
@@ -184,6 +189,7 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
   const round = clone(source);
   const groups = groupByCategory(clues);
   const filled = new Set<string>();
+  const leftOut: string[] = [];
   let placed = 0;
   const put = (row: number, clue: Clue, c: ImportedClue) => {
     write(round, row, clue, c);
@@ -191,11 +197,18 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
     placed++;
   };
   if (mode === 'replace' && groups.length) {
+    leftOut.push(...groups.slice(MAX).map((g) => g.name || 'no name'));
     round.values = valuesFor(groups, source.values);
     const rows = round.values.length;
     round.categories = groups.slice(0, MAX).map((g, i) => {
       // Existing categories keep their ids (and their images): the board changes in place.
       const cat = round.categories[i] ?? newCategory(rows);
+      // (Its picture was the old category's: the new one's name shows.)
+      if (cat.title.trim() !== g.name.trim()) {
+        delete cat.image;
+        delete cat.imageFit;
+        delete cat.showTitleOverImage;
+      }
       cat.title = g.name;
       while (cat.clues.length < rows) cat.clues.push(newClue());
       cat.clues.length = rows;
@@ -203,7 +216,12 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
         clearClue(clue);
         clue.value = null;
         clue.empty = undefined;
-        if (clue.type === 'dailyDouble') clue.type = 'standard';
+        // A plain clue again: not the wheel, dice, ✍ or countdown of the clue that was there.
+        clue.type = 'standard';
+        delete clue.wheelId;
+        delete clue.diceId;
+        delete clue.everyone;
+        delete clue.timerSeconds;
       }
       for (const [row, c] of rowsFor(g.clues, round.values, () => true)) put(row, cat.clues[row], c);
       return cat;
@@ -219,14 +237,17 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
         cat = newCategory(round.values.length);
         round.categories.push(cat);
       }
-      if (!cat) continue;
+      if (!cat) {
+        leftOut.push(g.name || 'no name');
+        continue;
+      }
       used.add(cat.id);
       if (name) cat.title = name;
       const c = cat;
       for (const [row, ic] of rowsFor(g.clues, round.values, (r) => !c.clues[r].empty && !clueHasContent(c.clues[r]) && c.clues[r].type !== 'wheel' && c.clues[r].type !== 'dice')) put(row, c.clues[row], ic);
     }
   }
-  return { round, placed, left: clues.length - placed, filled };
+  return { round, placed, left: clues.length - placed, filled, leftOut };
 }
 
 /** Put a plan's board in place (keeping the round's own object, its name and its board images). */
@@ -241,7 +262,8 @@ export function applyPlan(round: BoardRound, plan: ImportPlan): void {
  * and how many didn't fit, or null when it isn't a block of clues (a name with a line break is just typed).
  */
 export function pasteColumn(round: BoardRound, ci: number, text: string): { placed: number; left: number } | null {
-  const rows = parseTable(text.trim(), text.includes('\t') ? '\t' : ',');
+  // (Copied cells come with tabs between them. Without any, each line is one whole question: its commas are its own.)
+  const rows = parseTable(text.trim(), '\t');
   const cat = round.categories[ci];
   if (!cat || rows.length < 2) return null;
   const first = rows[0];

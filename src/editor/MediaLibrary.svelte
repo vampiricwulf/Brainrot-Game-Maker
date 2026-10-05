@@ -92,7 +92,10 @@
     return '';
   }
 
-  /** Done at once: the note at the bottom offers Undo (the files stay stored while a step can bring them back). */
+  /**
+   * Done at once: the note at the bottom offers Undo (the files stay stored while a step can bring them back). One still
+   * in use isn't saved with the game: the checklist says so until it's put back or taken off those slides.
+   */
   function remove(ids: string[], label: string): void {
     step(label, () => (game.media = game.media.filter((m) => !ids.includes(m.id))), { notify: true });
     picked = picked.filter((id) => !ids.includes(id));

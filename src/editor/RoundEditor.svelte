@@ -579,6 +579,8 @@
       max="10"
       value={round.categories.length}
       onchange={(e) => {
+        // Emptied (or not a number) and left: nothing changes (it isn't "1").
+        if (!e.currentTarget.value.trim() || !Number.isFinite(+e.currentTarget.value)) return void (e.currentTarget.value = String(round.categories.length));
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
         // Fewer categories drops the last ones at once: if any had something in it, the note at the bottom offers Undo.
         const lost = round.categories.slice(n).some(categoryHasContent);
@@ -604,6 +606,7 @@
       max="10"
       value={round.values.length}
       onchange={(e) => {
+        if (!e.currentTarget.value.trim() || !Number.isFinite(+e.currentTarget.value)) return void (e.currentTarget.value = String(round.values.length));
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
         // Like fewer categories: the bottom rows go at once, with Undo when they had clues in them.
         const lost = round.categories.some((c) => c.clues.slice(n).some(clueHasContent));

@@ -24,6 +24,11 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Media: a file deleted while still used on slides is named on the checklist ("1 deleted file still used (3 places): not saved with the game. Undo the delete, or take it off those slides"), instead of a "media file missing" that the Media page couldn't find.
+- A column of clues pasted on a category's name without tabs (a plain list) takes each line as one whole question: commas inside it no longer split it into a question and an answer.
+- Import clues › Replace the board: a category that gets another name loses the old one's picture (its new name shows), and every tile is a plain clue again (not the wheel, dice, ✍ or countdown of the clue that was there); imported clues take the theme's clue text; a first row with an answer of just "A" (or a "$") is a clue, not a header; more than 10 categories says which were left out.
+- Board editor: emptying the Categories or Rows box and clicking away changes nothing (it removed all but one).
+- Clue editor: after Ctrl+Enter or Alt+arrows to another clue, Ctrl+Z undoes as it should, and typing in two clues is two undo steps.
 - Final wagers: undoing a wager the host typed no longer wipes other players' wagers that came in from phones meanwhile (nor does a long step, like the Players dialog's, take back a step logged while it was open).
 - Final wagers: once the question has been on screen, phones can't send wagers any more, even after a Ctrl+Z back to the wagers (the panel says so).
 - Final: N on the question reveals the answer as the button does (with its sound; it only stopped the music); in the reveals, 1–9 spotlight player N as numbered everywhere else (it was the Nth in the reveal order); the "press N again" note says "go on" for a Final in the middle of the game; the reveal rows' buttons say whose they are to screen readers; with the limits off, a player's score shows as "their score $X (no limit now)", not "max"; N in a wager box with wagers missing says who's missing.

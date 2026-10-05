@@ -127,7 +127,16 @@ export function validate(game: Game): Problem[] {
   out.push(...statsProblems(game), ...toolButtonProblems(game));
 
   const known = new Set(game.media.map((m) => m.id));
-  const missing = new Set([...[...mediaUsage(game).keys()].filter((id) => !known.has(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
+  const usage = mediaUsage(game);
+  // Deleted from 🖼 Media but still on slides: they show nothing (and aren't saved with the game).
+  const deleted = [...usage.keys()].filter((id) => !known.has(id) && !Object.values(game.audio ?? {}).includes(id));
+  if (deleted.length)
+    out.push({
+      text: `${plural(deleted.length, 'deleted file')} still used (${plural(deleted.reduce((n, id) => n + (usage.get(id) ?? 0), 0), 'place')}): not saved with the game. Undo the delete, or take ${deleted.length === 1 ? 'it' : 'them'} off those slides`,
+      tab: 'media',
+      level: 'warn',
+    });
+  const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
   // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
   const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && missing.has(id)));
   if (cues.size) out.push({ text: `${plural(cues.size, 'sound file')} missing: see 🔊 Sounds`, tab: 'sounds', level: 'warn' });
