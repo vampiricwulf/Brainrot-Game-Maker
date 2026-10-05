@@ -469,7 +469,7 @@
                   <div class="spot-result {res}" in:scale={{ start: 2, duration: 350 }}>{res === 'right' ? '✔ CORRECT' : '✘ WRONG'}</div>
                 {:else}
                   <!-- Its room kept: the card doesn't jump when the result comes in. -->
-                  <div class="spot-result" style:visibility="hidden" aria-hidden="true">✔ CORRECT</div>
+                  <div class="spot-hold" aria-hidden="true">✔ CORRECT</div>
                 {/if}
                 <div class="spot-score">{formatPoints(score(session, spotlight.id), sym)}</div>
               </div>
@@ -1187,11 +1187,15 @@
   .spot-wager b {
     color: var(--value);
   }
-  .spot-result {
+  .spot-result,
+  .spot-hold {
     font-size: 90px;
     font-weight: 900;
     padding: 4px 30px;
     border-radius: 14px;
+  }
+  .spot-hold {
+    visibility: hidden;
   }
   .spot-result.right {
     background: #1f9d55;
