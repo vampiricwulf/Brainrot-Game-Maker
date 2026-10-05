@@ -6,6 +6,8 @@
 
   /** custom: the seconds typed in the box (bound, so T uses them too). */
   let { defaultSeconds, custom = $bindable(null) }: { defaultSeconds: number; custom?: number | null } = $props();
+  /** The countdown it starts: the seconds typed when they make one (1 to 3600), else the default. */
+  const secs = $derived(custom != null && custom >= 1 ? Math.min(3600, Math.round(custom)) : defaultSeconds);
   let now = $state(Date.now());
   onMount(() => {
     const id = setInterval(() => (now = Date.now()), 250);
@@ -34,7 +36,7 @@
     <button class="small ghost" onclick={() => startTimer(app.live, t.start ?? t.total)} title="Restart" aria-label="Restart timer">↺</button>
     <button class="small ghost" onclick={hide} title="Hide timer" aria-label="Hide timer">✕</button>
   {:else}
-    <button class="small" onclick={() => startTimer(app.live, custom || defaultSeconds)} title="T">Start {custom || defaultSeconds}s</button>
+    <button class="small" onclick={() => startTimer(app.live, secs)} title="T">Start {secs}s</button>
   {/if}
   <!-- Enter starts that countdown; Enter and Esc give the keys back to the shortcuts, as the Amount box does. -->
   <input
@@ -45,7 +47,7 @@
     bind:value={custom}
     aria-label="Timer seconds"
     onkeydown={(e) => {
-      if (e.key === 'Enter') startTimer(app.live, custom || defaultSeconds);
+      if (e.key === 'Enter') startTimer(app.live, secs);
       if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
     }}
   />

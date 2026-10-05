@@ -24,6 +24,14 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Closing the audience window mid-game no longer plays the last few sounds all at once on the host (they could go out on stream).
+- A wheel slice's or die face's video or sound pauses under the cover (K), as the other media do (viewers kept hearing it).
+- A countdown shows over a pop-up, wheel, dice or shop on screen (it ran hidden under them, only its time's-up sound heard), and on the results screen too.
+- "🔔 Ann is answering" no longer shows over the answer once it's revealed (picking who gets the points isn't someone answering).
+- A board round left without a name gets "Round N" on its title card, not a blank one.
+- The timer's seconds box: 0, a negative or a huge number starts the default countdown (it was an instant "TIME'S UP!").
+- Phone buzzers: phones don't get question text viewers can't see yet (see-through, or coming in seconds later, like a hint); the seat list isn't redrawn when nothing on it changed (a tap mid-redraw was lost, and a screen reader's place in it); "This game is full, trying again" isn't hidden behind "Reconnecting…"; the keyboard no longer covers the ✍ answer box.
+- Desktop app: an audience window that lost its host (the host page reloaded) finds it again, instead of staying frozen while a second one opens.
 - Media: a file deleted while still used on slides is named on the checklist ("1 deleted file still used (3 places): not saved with the game. Undo the delete, or take it off those slides"), instead of a "media file missing" that the Media page couldn't find.
 - A column of clues pasted on a category's name without tabs (a plain list) takes each line as one whole question: commas inside it no longer split it into a question and an answer.
 - Import clues › Replace the board: a category that gets another name loses the old one's picture (its new name shows), and every tile is a plain clue again (not the wheel, dice, ✍ or countdown of the clue that was there); imported clues take the theme's clue text; a first row with an answer of just "A" (or a "$") is a clue, not a header; more than 10 categories says which were left out.

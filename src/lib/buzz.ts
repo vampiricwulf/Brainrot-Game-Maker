@@ -108,7 +108,8 @@ export function buzzDone(b: BuzzState): BuzzState {
 /** The question slide's words, for the phones: text boxes only, top to bottom, none hidden from viewers. */
 export function questionText(s: Slide | undefined): string {
   if (!s) return '';
-  const texts = s.elements.filter((e): e is TextEl => e.kind === 'text' && !e.secret && !!e.text.trim());
+  // (Not text viewers can't see yet either: see-through, or coming in seconds later, like a hint.)
+  const texts = s.elements.filter((e): e is TextEl => e.kind === 'text' && !e.secret && e.opacity > 0 && (e.entrance?.delay ?? 0) <= 2 && !!e.text.trim());
   texts.sort((a, b) => a.y - b.y || a.x - b.x);
   return texts
     .map((t) => t.text.trim())

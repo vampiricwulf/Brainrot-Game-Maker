@@ -197,6 +197,8 @@ export function timerRemaining(t: TimerState, now = Date.now()): number {
 }
 
 export function startTimer(live: Live, seconds: number): void {
+  // Whole seconds, 1 to an hour (a 0 or -5 typed would be an instant "TIME'S UP!" on stream).
+  seconds = Number.isFinite(seconds) && seconds >= 1 ? Math.min(3600, Math.round(seconds)) : 30;
   live.timer = { total: seconds, startedAt: Date.now(), elapsed: 0, expired: false, start: seconds };
 }
 

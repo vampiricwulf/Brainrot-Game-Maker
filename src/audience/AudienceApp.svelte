@@ -108,10 +108,11 @@
           break;
         case 'bye':
           status = 'host-left';
-          // The host page may be reloading: the scores window says it's here until the page answers.
-          if (scores && viaOpener) {
+          // The host page may be reloading: the scores window says it's here until the page answers, and so does an
+          // audience window the page didn't open itself (the desktop app's), which a reloaded page only finds by its hello.
+          if ((scores && viaOpener) || (!scores && !viaOpener)) {
             clearInterval(rejoin);
-            rejoin = setInterval(() => send({ type: 'hello', scores: true }), 1500);
+            rejoin = setInterval(() => send(scores ? { type: 'hello', scores: true } : { type: 'hello' }), 1500);
           }
           break;
         case 'ping':

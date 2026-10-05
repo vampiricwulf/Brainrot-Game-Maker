@@ -10,6 +10,7 @@
   import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Rect } from '../lib/joinspot';
+  import { holdWhile, provideCover } from '../lib/hold';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
@@ -158,7 +159,8 @@
     if (session.intro?.stage !== 'title' || session.phase === 'board' || !r) return null;
     return isFinal(r) ? finalName(r) : roundName(r, session.currentRound);
   });
-  const answering = $derived(session.phase === 'clue' && !session.dd && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
+  // (Not once the answer is on screen: the host picking who gets the points isn't someone answering.)
+  const answering = $derived(session.phase === 'clue' && !session.dd && !session.revealed && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
   /**
    * While the countdown, "Ann is answering" or the Daily Double badge is up over a question, the slide moves down into
    * the room under them (a top band), so they never cover its first line.
@@ -194,6 +196,8 @@
       if (!c) return void (cues.length && (cues = []));
       if (c.nonce === heard) return;
       heard = c.nonce;
+      // (The host's silent copy keeps none: they'd all play at once if the audience window closed.)
+      if (role === 'mirror') return void (cues.length && (cues = []));
       if ((c.at && Date.now() - c.at >= 4000) || live.cover) return void (c.cut && (cues = []));
       cues = cuesAfter(cues, c);
     });
@@ -204,21 +208,8 @@
     node.volume = v;
     return { update: (n: number) => (node.volume = n) };
   }
-  /** A cue's sound waits under the cover and goes on after it. */
-  function holdWhile(node: HTMLMediaElement, held: boolean) {
-    let paused = false;
-    const set = (h: boolean) => {
-      if (h && !node.paused) {
-        paused = true;
-        node.pause();
-      } else if (!h && paused) {
-        paused = false;
-        void node.play().catch(() => {});
-      }
-    };
-    set(held);
-    return { update: set };
-  }
+  // (A tool's result card on stage waits under the cover too.)
+  provideCover(() => !!live.cover);
   // A clue's (or a Final's) media goes on where it was when its slide comes back (the answer hidden again).
   $effect.pre(() => {
     const c = session.currentClue;
@@ -348,7 +339,7 @@
       in:scale={{ start: 0.3, duration: 600 }}
       out:fade={{ duration: 250 }}
     >
-      <div class="round-name">{round?.name}</div>
+      <div class="round-name">{round ? roundName(round, session.currentRound) : ''}</div>
     </div>
   {:else}
     <div class="board-screen" in:fade={{ duration: 200 }}>
@@ -555,7 +546,7 @@
   </div>
 {/if}
 
-{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'slides' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame')}
+{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'slides' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'end')}
   <TimerDisplay timer={live.timer} middle={timerBar ? timerBar.top + timerBar.height / 2 : undefined} />
 {/if}
 

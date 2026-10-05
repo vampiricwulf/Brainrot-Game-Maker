@@ -5,6 +5,7 @@
   import type { Game, Outcome } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { autoPlay } from '../../lib/audioout.svelte';
+  import { coverUp, holdWhile } from '../../lib/hold';
 
   /** `fallback`: the name shown for an outcome left blank ("Slice 3"). */
   let {
@@ -14,6 +15,8 @@
     color = 'var(--value)',
     fallback = '',
   }: { outcome: Outcome; game: Game; role: MediaRole; color?: string; fallback?: string } = $props();
+  /** Under the cover (K) its video or sound waits, as the cues do. */
+  const covered = coverUp();
   const ref = $derived(outcome.media ? game.media.find((m) => m.id === outcome.media) : undefined);
   const url = $derived(outcome.media ? mediaUrls[outcome.media] : undefined);
 </script>
@@ -30,9 +33,9 @@
     {:else if ref.kind === 'video'}
       <!-- Plays with sound, or muted if the browser blocks that (the host is told either way). -->
       <!-- svelte-ignore a11y_media_has_caption -->
-      <video use:autoPlay={url} loop playsinline></video>
+      <video use:autoPlay={url} use:holdWhile={covered()} loop playsinline></video>
     {:else if ref.kind === 'audio' && role !== 'mirror'}
-      <audio use:autoPlay={url}></audio>
+      <audio use:autoPlay={url} use:holdWhile={covered()}></audio>
     {/if}
   {/if}
   {#if outcome.details}<div class="details">{outcome.details}</div>{/if}

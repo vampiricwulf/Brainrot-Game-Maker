@@ -99,6 +99,8 @@ let answerSending = false;
 let answerErr = '';
 let answerFor = '';
 let wasAnsUp = false;
+/** What the seat list was last drawn with (see renderSeats). */
+let seatsKey = '';
 /** The colour picker is open; the colours it was last drawn with (redrawn only when they change, so focus stays). */
 let colorsOpen = false;
 let colorsKey = '';
@@ -671,7 +673,7 @@ const sentences = (parts: string[]): string =>
     .join(' ');
 
 function render(): void {
-  const away = !connected && everConnected && !notice?.final && !!code;
+  const away = !connected && everConnected && !notice?.final && !notice?.full && !!code;
   $('overlay').hidden = !away;
   $('sound').hidden = !(seatId && view?.you);
   if (!code) return show('s-code');
@@ -728,11 +730,18 @@ function renderSeats(s: SeatsMsg): void {
   const list = $('seat-list');
   // The seat this phone still holds a claim to (another tab or phone took it back): tapping it takes it back here.
   const saved = loadSeat();
+  // Redrawn only when what it shows changed (a tap on a name mid-redraw would be lost, and the keys' place too); the
+  // name the keys were on keeps them.
+  const key = JSON.stringify([s.seats, s.teams, s.locked, saved?.seatId ?? null]);
+  if (key === seatsKey && list.childElementCount) return renderSeatsRest(s);
+  seatsKey = key;
+  const had = document.activeElement instanceof HTMLElement && list.contains(document.activeElement) ? document.activeElement.dataset.seat : undefined;
   list.replaceChildren(
     ...s.seats.map((x) => {
       const mine = saved?.seatId === x.id;
       const b = document.createElement('button');
       b.className = 'seat';
+      b.dataset.seat = x.id;
       b.disabled = !mine && (x.taken || !!s.locked);
       const dot = document.createElement('span');
       dot.className = 'dot';
@@ -797,6 +806,13 @@ function renderSeats(s: SeatsMsg): void {
     }),
   );
   if (!s.seats.length) list.innerHTML = `<p class="note">${teams ? 'No teams yet' : 'No players yet'}. Wait for the host to add them.</p>`;
+  if (had) list.querySelector<HTMLElement>(`[data-seat="${CSS.escape(had)}"]`)?.focus();
+  renderSeatsRest(s);
+}
+
+/** The seats screen's other parts (redrawn every time). */
+function renderSeatsRest(s: SeatsMsg): void {
+  const teams = !!s.teams;
   $('new-btn').hidden = !s.allowNew || !!s.locked;
   $('host-away').hidden = s.hostHere;
   $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : (s.note ?? '');
@@ -1152,7 +1168,7 @@ $('wait-cancel').addEventListener('click', () => {
 // The on-screen keyboard opening (or the phone turning) with the wager box in use: keep the box in sight.
 window.visualViewport?.addEventListener('resize', () => {
   const el = document.activeElement;
-  if (el instanceof HTMLInputElement) el.scrollIntoView({ block: 'center' });
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.scrollIntoView({ block: 'center' });
 });
 $('wager-form').addEventListener('submit', (e) => {
   e.preventDefault();

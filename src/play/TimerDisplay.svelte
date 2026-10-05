@@ -51,7 +51,7 @@
     border: 4px solid #fff;
     color: #fff;
     text-align: center;
-    z-index: 20;
+    z-index: 45; /* over a tool or pop-up on screen (it was hidden under them), under the cover */
     font-family: var(--value-font);
   }
   .timer.on-bar {
@@ -97,7 +97,7 @@
     -webkit-text-stroke: 10px #000;
     paint-order: stroke fill;
     text-shadow: 0 0 60px #ff0000;
-    z-index: 30;
+    z-index: 50;
     /* Then it gets out of the way, so viewers can read the question again (the red clock at 0 stays). */
     animation: slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both, shake 0.4s 0.5s linear 2, fade-out 0.5s 2.5s forwards;
     pointer-events: none;
