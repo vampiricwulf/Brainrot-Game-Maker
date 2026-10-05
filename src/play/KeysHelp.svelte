@@ -38,7 +38,7 @@
       title: 'Tools and media',
       keys: [
         ['D', 'Roll the last dice again (board games: the round’s own dice)'],
-        ['W', 'Spin the wheel (or open the first saved wheel)'],
+        ['W', 'Spin the wheel on screen, or open the first saved wheel (none saved: 🎡 Wheel makes a quick one)'],
         ['O', 'Roll-off: who goes first (on a tie for first at the end: the tied players roll for the win)'],
         ['S', 'Scoreboard on screen'],
         ['Space', 'Play / pause the slide’s video or audio'],

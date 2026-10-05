@@ -109,7 +109,7 @@
   <b>Daily Double!</b>
   <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a player.</span>{/if}</span>
   <div class="row">
-    {#each session.players as p (p.id)}
+    {#each session.players as p, i (p.id)}
       <button
         class="chip"
         style:border-color={p.color}
@@ -117,8 +117,9 @@
         style:color={playerId === p.id ? textOn(p.color) : undefined}
         aria-pressed={playerId === p.id}
         onclick={() => pick(p.id)}
+        title={i < 9 ? `Key ${i + 1} (before a wager is typed)` : undefined}
       >
-        {p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
+        {#if i < 9}<span class="key">{i + 1}</span>{/if}{p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
     {/each}
   </div>
@@ -136,6 +137,11 @@
         onkeydown={(e) => {
           if (e.key === 'Enter') enter(e);
           else if (e.key === 'Escape') oncancel();
+          // Nobody picked yet: 1–9 pick who found it (as everywhere else), not a wager.
+          else if (!playerId && /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && session.players[+e.key - 1]) {
+            e.preventDefault();
+            pick(session.players[+e.key - 1].id);
+          }
         }}
       />
     </label>
@@ -177,6 +183,11 @@
 </div>
 
 <style>
+  .key {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-right: 4px;
+  }
   .dd {
     display: flex;
     flex-direction: column;

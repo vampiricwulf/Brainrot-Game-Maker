@@ -365,7 +365,7 @@ try {
   const noRoom = page.locator('.actions .ia');
   await noRoom.getByText("Buzzer mode is on, but the buzzer room isn't started").waitFor();
   assert((await noRoom.getByRole('button', { name: '📱 Start the room first' }).count()) === 1 && (await noRoom.getByRole('button', { name: 'Start without phones' }).count()) === 1, 'Start with Buzzer mode on and no room asks: start the room first, or play without phones');
-  await noRoom.getByRole('button', { name: 'Back' }).click();
+  await noRoom.getByRole('button', { name: 'Not yet' }).click();
   assert((await noRoom.count()) === 0 && (await start.count()) === 1, 'Back leaves things as they were');
   await start.click();
   await page.waitForTimeout(450);

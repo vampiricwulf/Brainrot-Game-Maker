@@ -2925,6 +2925,7 @@
                 </button>
               {/if}
               </div>
+              {#if !dual}<span class="hint small">The card and its countdown show in the 📺 audience window (in one window, viewers see this screen).</span>{/if}
             </div>
             <label class="field">
               Cover card (K)
@@ -3004,13 +3005,13 @@
       <!-- The notes wrap in their own room: Start stays at the right end of the bar, on its line. -->
       <span class="notes">
         {#if askNoRoom}
-          <!-- Buzzer mode with no room: Start asks here (not a pop-up), and Back leaves things as they are. -->
+          <!-- Buzzer mode with no room: Start asks here (not a pop-up), and Not yet leaves things as they are. -->
           <InlineAsk
             text="Buzzer mode is on, but the buzzer room isn't started: no phone can join."
             alt="📱 Start the room first"
             onalt={startRoomHere}
             ok="Start without phones"
-            cancel="Back"
+            cancel="Not yet"
             focusCancel
             onok={() => void startClicked()}
             oncancel={() => (askNoRoom = false)}

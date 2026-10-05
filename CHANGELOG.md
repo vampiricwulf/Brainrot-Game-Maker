@@ -24,6 +24,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a slice can mean "Spin again". Mark it with ↻ in the wheel editor, or add one with ＋ ↻ Spin again slice; a slice named "Spin again" or "Respin" counts too. When the wheel lands on one, the host's main button is ↻ Spin again (W), and on a "land once" wheel it never gets used up.
 
 ### Fixed
+- Daily Double: with nobody picked yet, 1–9 pick who found it (they typed into the wager box), and the player buttons show their numbers.
+- N on a clue with a player picked and no points given says so first (Enter awards, X marks wrong, N again closes), instead of closing the clue and losing their points.
+- Final reveals: in a short window (1280×720) the how-to starts folded, so every player's row is in view.
+- Wording: the "Starting soon" countdown says it shows in the audience window; the no-room question's button is "Not yet" (not a second "Back"); Settings' buzzer server note and the ⌨ list's W say what they really do; the Final's and RPG title cards mention N.
 - Final: a second Final straight after another starts with "Ignore the limits" ticked again (it kept the last Final's choice); Redo back onto the Final question starts its countdown and think music again.
 - ✍ Everyone answers: reopening a clue players already answered shows each phone its own answer again (phones had lost theirs, and could send a new one over it).
 - Board games: Undo of a move puts its count back in the Steps box, so Enter moves it again (the roll was lost).

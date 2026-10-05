@@ -25,7 +25,7 @@
   import type { RpgAsk } from './rpg/hostops';
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
-  import { app } from '../lib/app.svelte';
+  import { app, toast } from '../lib/app.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
   import { scoresWindow } from '../lib/sync.svelte';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
@@ -447,7 +447,7 @@
         return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
       if (buzzClosed && !gotIt) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
       if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
-      return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: onback };
+      return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: doneUnscored };
     }
     if (session.phase === 'tiebreaker') {
       if (moreSlides && slidePos)
@@ -458,6 +458,21 @@
     }
     return null;
   });
+  /**
+   * ▦ Done ▶ board as the main button (N): with someone still picked and nothing given on this clue, the first press says
+   * so (their points would be lost), the second closes it. (Esc and the plain Done button close at once.)
+   */
+  let warnedFor = $state<string | null>(null);
+  function doneUnscored(): void {
+    const id = info?.clue.id ?? null;
+    if (answering && id && warnedFor !== id && !Object.keys(marks).length) {
+      warnedFor = id;
+      const who = session.players.filter((p) => selected.includes(p.id)).map((p) => p.name).join(', ');
+      toast(`${who || 'A player'} is picked with no points given: Enter awards, X marks wrong, or N again closes without points`, 5000);
+      return;
+    }
+    onback();
+  }
   const next = $derived(slots.offers.tool?.() ?? flow ?? slots.next());
   $effect(() => {
     nextAction = next;
@@ -541,13 +556,13 @@
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
         <!-- Its title card is up: viewers don't see the category yet. -->
-        <span class="muted">Title card <span class="hint">· click the screen to go on</span></span>
+        <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
       {:else}
         <span class="muted">{finalStepText[session.finalStep ?? 'wagers']}</span>
       {/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
-      <span class="muted">Title card <span class="hint">· click the screen to go on</span></span>
+      <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
@@ -767,7 +782,7 @@
             </button>
           {/if}
           <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
-          {#if !(toolOnly && app.live.overlay) && next?.run !== onback}
+          {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
             <button onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
           {/if}
         {:else if session.phase === 'slides'}

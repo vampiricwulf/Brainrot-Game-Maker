@@ -170,6 +170,16 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   const inClue = await exitAt();
   assert(Math.abs(onBoard.x - inClue.x) < 1 && Math.abs(onBoard.y - inClue.y) < 1, `🚪 Exit stays in the same place on the board and in a clue (${onBoard.x},${onBoard.y} → ${inClue.x},${inClue.y})`);
+  // A player picked, the answer shown, nothing given: N (▦ Done ▶ board) says so first, rather than losing their points.
+  await page.keyboard.press('2');
+  await page.keyboard.press('r');
+  await page.keyboard.press('n');
+  await page.waitForTimeout(200);
+  assert(
+    (await page.locator('.toast').innerText()).includes('is picked with no points given') && (await status()).includes('Answer is showing'),
+    'N with a player picked and no points given warns first; the clue stays open',
+  );
+  await page.keyboard.press('2');
   const chip = page.locator('.panel .p').first();
   await chip.getByRole('button', { name: /^Wrong:/ }).click();
   await chip.locator('.mark').waitFor();

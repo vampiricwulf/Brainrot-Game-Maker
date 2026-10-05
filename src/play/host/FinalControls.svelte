@@ -278,12 +278,13 @@
     return { label: 'Next player ▶' };
   });
 
-  // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room).
+  // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room). In a
+  // short window it starts folded: open, it pushed the third player's row out of sight at 1280×720.
   const HOW_KEY = 'jb.finalHowSeen';
   let howOpen = $state(readHowOpen());
   function readHowOpen(): boolean {
     try {
-      return localStorage.getItem(HOW_KEY) !== '1';
+      return window.innerHeight >= 860 && localStorage.getItem(HOW_KEY) !== '1';
     } catch {
       return false;
     }
