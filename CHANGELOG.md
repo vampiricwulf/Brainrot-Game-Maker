@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-05
+
+### Fixed
+- Stream: the game's title on the Starting soon card is big again (it always shrank to its smallest size); "🔔 Buzz now!" no longer covers the clue's first line, and the pill stays solid while the stage's glow pulses; a long Final category no longer runs under "Make your wagers…" and the scores; the Final's spotlight card keeps its size when "✔ CORRECT / ✘ WRONG" comes in; one pop for several players with long names says how many ("4 players +$200") instead of cutting the names off.
+
 ## 2026-10-04
 
 ### Added

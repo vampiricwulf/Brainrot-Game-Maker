@@ -369,6 +369,8 @@ try {
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   await aud.locator('.soon-text').waitFor();
   assert((await aud.locator('.soon-text').innerText()) === 'Back in a sec, chat', 'the Starting soon card says what the host typed');
+  const titlePx = await aud.locator('.soon .round-name').evaluate((e) => parseFloat(e.style.fontSize));
+  assert(titlePx >= 100, `a short game title on the Starting soon card is big, not shrunk to the smallest size (${titlePx}px)`);
   assert(/^[12]:\d\d$/.test(await aud.locator('.soon-count').innerText()), 'and counts down to the start');
   assert(!(await page.locator('.pregame .exposed').count()), 'with the audience window open, no single-window warning');
   await page.locator('.mode', { hasText: 'Single window' }).click();

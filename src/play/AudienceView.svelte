@@ -6,7 +6,7 @@
 <script lang="ts">
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
-  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, roundName, textSlide, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, newTextEl, roundName, type ClueRef, type Slide, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Rect } from '../lib/joinspot';
@@ -95,7 +95,8 @@
   const finalRound = $derived(currentFinal(session, game));
   /** The Final's category, in the theme's clue text (🎨 Theme → Clue text) like its question and answer. */
   const finalCategorySlide = $derived.by(() => {
-    const slide = textSlide(finalRound ? finalRound.category || finalName(finalRound) : '');
+    // (In the room between the Final's label and "Make your wagers…", not the whole slide: a long one ran under both.)
+    const slide: Slide = { background: {}, elements: [newTextEl(finalRound ? finalRound.category || finalName(finalRound) : '', { x: 120, y: 170, w: 1680, h: 540 })] };
     const t = slide.elements[0];
     if (t?.kind === 'text') {
       if (game.theme?.clueFont) t.font = game.theme.clueFont;
@@ -173,7 +174,7 @@
       session.phase === 'slides';
     if (!onSlide) return 0;
     if (live.timer) return TIMER_BAND;
-    return answering || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
+    return answering || buzzNow || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
   });
   /**
    * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
@@ -466,6 +467,9 @@
                 </div>
                 {#if res}
                   <div class="spot-result {res}" in:scale={{ start: 2, duration: 350 }}>{res === 'right' ? '✔ CORRECT' : '✘ WRONG'}</div>
+                {:else}
+                  <!-- Its room kept: the card doesn't jump when the result comes in. -->
+                  <div class="spot-result" style:visibility="hidden" aria-hidden="true">✔ CORRECT</div>
                 {/if}
                 <div class="spot-score">{formatPoints(score(session, spotlight.id), sym)}</div>
               </div>
@@ -714,6 +718,12 @@
     inset: 0;
     z-index: 5;
     pointer-events: none;
+  }
+  /* The glow pulses on its own layer: the pill over it stays solid. */
+  .buzz-now::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     box-shadow: inset 0 0 0 10px var(--value, #ffcc00), inset 0 0 60px 20px color-mix(in srgb, var(--value, #ffcc00) 55%, transparent);
     animation: bn-glow 1.4s ease-in-out infinite alternate;
   }
@@ -744,7 +754,7 @@
     }
   }
   /* What viewers see follows "Reduce motion on stream", not the computer showing it (app.css). */
-  :global(html.reduce-stream) .buzz-now {
+  :global(html.reduce-stream) .buzz-now::before {
     animation: none;
   }
   .cover.host {
@@ -883,6 +893,11 @@
   }
   .soon.has-room .round-name {
     max-height: 230px;
+  }
+  /* Lines tall enough for the font's glyphs: at line-height 1 they stood out of the line, which read as overflowing at
+     every size (the title always shrank to its smallest). */
+  .soon .round-name {
+    line-height: 1.5;
   }
   /* Everything else keeps its size; the banner gives way if it still doesn't fit the stage's height. */
   .soon {

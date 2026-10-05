@@ -38,6 +38,8 @@ describe('score pops', () => {
       { text: `Ann & Bo +$${(1000).toLocaleString()}`, who: 'Ann & Bo', amount: `+$${(1000).toLocaleString()}`, color: '#fc0' },
     ]);
     const one = applyScore(session, game, [ids[2]], -400, 'x');
+    const long = session.players.slice(0, 2).map((p, i) => ({ ...p, name: `A really long player name ${i}` }));
+    expect(groupPops(long.map((p) => ({ id: p.id, ts: 0, playerId: p.id, delta: 200, reason: 'x' }) as never), [...long, ...session.players.slice(2)], '$', '#fc0')[0].who).toBe('2 players');
     expect(groupPops(one, session.players, '$', '#fc0')).toEqual([{ text: 'Cy −$400', who: 'Cy', amount: '−$400', color: '#000002', playerId: ids[2] }]);
   });
 

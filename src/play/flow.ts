@@ -32,7 +32,9 @@ export function groupPops(events: ScoreEvent[], players: Player[], sym: string, 
       continue;
     }
     const everyone = list.length === players.length && players.length > 2;
-    const who = everyone ? 'Everyone' : nameList(list.map((e) => players.find((p) => p.id === e.playerId)!.name));
+    const names = nameList(list.map((e) => players.find((p) => p.id === e.playerId)!.name));
+    // Too many names to read in one pop: how many instead.
+    const who = everyone ? 'Everyone' : names.length > 40 ? `${list.length} players` : names;
     out.push({ text: `${who} ${amount(delta)}`, who, amount: amount(delta), color: groupColor });
   }
   return out;
