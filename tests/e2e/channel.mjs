@@ -84,6 +84,25 @@ try {
   await notice.waitFor({ state: 'detached', timeout: 3000 });
   assert(true, 'and the notice goes once the mouse is still, off the stream');
 
+  // A new host page finds the audience window left open (it says hello every 1.5 s once its host is gone, like the
+  // desktop app's own window), and resuming in it uses that window: no second one to capture.
+  const hostR = await context.newPage();
+  hostR.on('pageerror', (e) => errors.push('[hostR] ' + e.message));
+  hostR.on('dialog', (d) => d.accept());
+  let rPopups = 0;
+  hostR.on('popup', () => rPopups++);
+  await hostR.goto(base);
+  await hostR.locator('.status-bar [data-audience-open]').waitFor({ timeout: 8000 });
+  assert(true, 'a new host page finds the audience window left open');
+  await hostR.getByRole('button', { name: 'Resume game' }).click();
+  await hostR.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click();
+  await aud.locator('.board .header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
+  await hostR.waitForTimeout(800);
+  assert(rPopups === 0, 'resuming in the audience window uses that one: the game is back on it, no new window');
+  await hostR.close({ runBeforeUnload: true });
+  // (Gone before the next part, which opens its own: else the new page finds this one again.)
+  await aud.close();
+
   // A host page that opened its audience window, then reloaded: Resume preselects the display used last, finds that
   // window again (no new one) and asks it whether it may play sound, instead of asking for a click again.
   const host2 = await context.newPage();
