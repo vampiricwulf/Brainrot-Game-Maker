@@ -4,7 +4,7 @@ import { toast } from '../lib/app.svelte';
 import { tell } from '../lib/ask.svelte';
 import { clipboard } from '../lib/clipboard.svelte';
 import { clueSlides, followClueText } from '../lib/cluetext';
-import { pickFile } from '../lib/fileio';
+import { OTHER_GAME_FILES, pickFile } from '../lib/fileio';
 import { nameStep, step } from '../lib/history.svelte';
 import { ROUND_MODES } from '../lib/modes';
 import { roundName, type Game } from '../lib/model';
@@ -90,8 +90,7 @@ export function copiedFiles(source: Game, refs: readonly { id: string; name: str
  * copiedFiles). Null when cancelled or it can't be read.
  */
 export async function pickOtherGame(): Promise<Game | null> {
-  // (What Open… takes, but theme files: they hold no game.)
-  const file = await pickFile('.brainrot,.jbr,.zip,.json,.html,.htm,.bak,.bak2,application/json,application/zip,text/html');
+  const file = await pickFile(OTHER_GAME_FILES);
   if (!file) return null;
   try {
     const read = await readGameFile(file);

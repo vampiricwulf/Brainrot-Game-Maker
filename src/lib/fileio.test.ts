@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import { BIG_FILE, isGameFile, parseGame, readTextFile, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
+import { BIG_FILE, GAME_FILES, isGameFile, OTHER_GAME_FILES, parseGame, readTextFile, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
 import { base64Length, MAX_HTML_CHARS, MAX_PACK_CHARS, TOO_BIG_TO_OPEN, tooBigForHtml } from './export';
 import { openGameFile } from './pack';
 import { jeopardyGame } from './testgame';
@@ -119,6 +119,9 @@ describe('opening game files', () => {
     expect(isGameFile('notes.txt') || isGameFile('photo.png.bak')).toBe(false);
     // A pack zipped by hand opens when dropped, as through Browse….
     expect(isGameFile('Quiz.zip')).toBe(true);
+    // Open… and Import rounds… list the same game files, .htm pages too (a theme file holds no rounds).
+    expect(OTHER_GAME_FILES.split(',')).toEqual(GAME_FILES.split(',').filter((t) => t !== '.brainrot-theme'));
+    expect(GAME_FILES.split(',')).toContain('.htm');
   });
 
   it('says an exported game too long to read is too big, instead of failing to read it', async () => {
