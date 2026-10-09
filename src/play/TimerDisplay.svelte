@@ -27,6 +27,8 @@
    * again over the question. (Not marked yet: this window's own 0, a moment before the host's, shows it at once.)
    */
   const fresh = $derived(timer.expiredAt === undefined ? !timer.expired : now - timer.expiredAt < 3200);
+  // (Its own value: a live update that replaces `timer` with the same stamp doesn't move the banner along again.)
+  const expiredAt = $derived(timer.expiredAt);
 </script>
 
 <div
@@ -41,7 +43,9 @@
   <div class="bar"><div class="fill" style:width="{frac * 100}%"></div></div>
 </div>
 {#if done && fresh}
-  <div class="timesup">TIME'S UP!</div>
+  <!-- Shown late (a window reloaded or opened within its moment), it joins the slam and fade where they are by now. -->
+  {@const age = expiredAt === undefined ? 0 : Math.max(0, Date.now() - expiredAt)}
+  <div class="timesup" style:--age="{age}ms">TIME'S UP!</div>
 {/if}
 
 <style>
@@ -105,6 +109,7 @@
     z-index: 50;
     /* Then it gets out of the way, so viewers can read the question again (the red clock at 0 stays). */
     animation: slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both, shake 0.4s 0.5s linear 2, fade-out 0.5s 2.5s forwards;
+    animation-delay: calc(0s - var(--age, 0s)), calc(0.5s - var(--age, 0s)), calc(2.5s - var(--age, 0s));
     pointer-events: none;
   }
   .done {

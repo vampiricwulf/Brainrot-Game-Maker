@@ -178,7 +178,8 @@ function restoreMedia(id: string, st: MediaState): void {
   if (!was) return;
   if (Date.now() > was.until) return void delete mediaWas[id];
   if (!was.fresh) {
-    // Only one that started over (it first reports with no length yet): a window that never reloaded is left alone.
+    // Only one that started over on a new page (it first reports with no length yet). One in a window that said hello
+    // again without reloading isn't put back, though its file sent there again does start it over.
     if (st.duration > 0) return void delete mediaWas[id];
     was.fresh = true;
   } else if (!was.seeked) {

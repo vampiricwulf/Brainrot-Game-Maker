@@ -310,7 +310,7 @@ html.reduce-stream [data-stage] .timesup {
   animation-fill-mode: forwards !important;
 }
 html.reduce-stream [data-stage] .bn-pill { animation-delay: 2s !important; }
-html.reduce-stream [data-stage] .timesup { animation-delay: 3s !important; }
+html.reduce-stream [data-stage] .timesup { animation-delay: calc(3s - var(--age, 0s)) !important; }
 @keyframes shown-then-gone {
   to {
     opacity: 0;
