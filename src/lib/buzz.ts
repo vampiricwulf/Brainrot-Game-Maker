@@ -3,7 +3,7 @@
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
 import { clip, WAGER_MAX, type BuzzPhase, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type Session, type Slide, type TextEl } from './model';
-import { currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, wagerFromPhone } from './session';
+import { currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -234,7 +234,8 @@ export function hostState(
     ...(teamsOn(game.settings) ? { teams: true } : {}),
     ...(extra.wager ? { wager: extra.wager } : {}),
     ...(extra.answers ? { answers: extra.answers } : {}),
-    ...(session.phase === 'end' ? { over: true } : {}),
+    // (With a tie for first the tiebreaker settled, its winner: the phones rank the players as the end screen does.)
+    ...(session.phase === 'end' ? { over: true, ...(session.rollOffWinner && tiedForFirst(session).some((p) => p.id === session.rollOffWinner) ? { winner: session.rollOffWinner } : {}) } : {}),
     ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
     ...(info && session.revealed ? { answerShown: true } : {}),
   };

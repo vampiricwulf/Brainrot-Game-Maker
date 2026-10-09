@@ -90,7 +90,7 @@ let lostArm = -1;
 let cued = '';
 /** Why the room didn't take the last wager sent ('' when it did, or none was sent). */
 let wagerErr = '';
-/** The wager round the box was last filled for, and the amount it showed then (a new one from the host fills it again). */
+/** The wager round and the amount the box last saw (a new one from the host or a teammate fills it again). */
 let wagerFor = '';
 /** A wager sent that the room hasn't answered yet. */
 let wagerSending = false;
@@ -328,7 +328,9 @@ function onMessage(m: RoomToPhone): void {
             ? 'Your team left the game. Pick another one.'
             : 'The host took you out of the game.'
           : !!m.teams !== wasTeams
-            ? 'You’re not on a team on this phone any more. Pick your team.'
+            ? m.teams
+              ? 'The host switched to teams. Pick your team.'
+              : 'The host turned teams off. Tap your name.'
             : m.teams
             ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
             : 'Your seat moved to another tab or phone. Tap your name to take it back here.';
@@ -895,7 +897,9 @@ function renderBuzz(v: PhoneView): void {
       wager.amount !== undefined ? `${yours}: ${money(wager.amount, sym)}` : wager.hidden ? 'The host has it (not shown on this phone)' : 'None sent: the host decides',
     ];
   } else if (wager?.kind === 'dd') {
-    [cls, big, small] = ['off', `${wager.who || 'Someone'} is wagering…`, 'Daily Double'];
+    // Locked: the question is up, and they're answering it.
+    const who = wager.who || 'Someone';
+    [cls, big, small] = ['off', wager.open ? `${who} is wagering…` : `${who} is answering`, 'Daily Double'];
   } else if (wager) {
     [cls, big, small] = ['off', 'You sit this one out', v.status || (team ? 'Your team isn’t in this one' : 'You’re not in this one')];
   } else if (v.phase === 'lobby' && v.final) {
@@ -1026,12 +1030,15 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   const team = !!v.teams;
   // (The line above already says it's a Daily Double or names the Final.)
   $('wager-head').textContent = team ? 'Your team’s wager' : 'Your wager';
-  $('wager-label').textContent = `Wager (only the host sees it)`;
+  $('wager-label').textContent = team ? 'Wager (only the host and your team see it)' : 'Wager (only the host sees it)';
   const inp = $<HTMLInputElement>('wager-in');
-  // Filled with what's in when the box comes up, or when what's in changes (a teammate, the host) while not typing.
+  // Filled with what's in when the box comes up, and again when what's in changes (a teammate, the host), unless the
+  // box holds an edit not sent yet (something other than what was in before). The box has the focus as it opens, so
+  // that alone doesn't mean someone is typing.
   const key = `${w.id} ${w.amount ?? ''}`;
-  if (key !== wagerFor && (document.activeElement !== inp || !wagerFor.startsWith(`${w.id} `))) {
-    inp.value = w.amount !== undefined ? String(w.amount) : '';
+  if (key !== wagerFor) {
+    const was = wagerFor.startsWith(`${w.id} `) ? wagerFor.slice(w.id.length + 1) : null;
+    if (was === null || document.activeElement !== inp || inp.value.trim() === was) inp.value = w.amount !== undefined ? String(w.amount) : '';
     wagerFor = key;
   }
   inp.max = w.limit && w.max !== undefined ? String(w.max) : '';
@@ -1070,12 +1077,14 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
 /** A ✍ clue: this seat's answer box (what's in, who sent it, why the last one wasn't taken). */
 function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: string): void {
   const team = !!v.teams;
-  $('answer-label').textContent = `${team ? 'Your team’s answer' : 'Your answer'} (only the host sees it)`;
+  $('answer-label').textContent = team ? 'Your team’s answer (only the host and your team see it)' : 'Your answer (only the host sees it)';
   const inp = $<HTMLTextAreaElement>('answer-in');
-  // Filled with what's in when the box comes up, or when what's in changes (a teammate) while not typing.
+  // Filled with what's in when the box comes up, and again when what's in changes (a teammate), unless the box holds
+  // an edit not sent yet (as for the wager box).
   const key = `${a.id} ${a.text ?? ''}`;
-  if (key !== answerFor && (document.activeElement !== inp || !answerFor.startsWith(`${a.id} `))) {
-    inp.value = a.text ?? '';
+  if (key !== answerFor) {
+    const was = answerFor.startsWith(`${a.id} `) ? answerFor.slice(a.id.length + 1) : null;
+    if (was === null || document.activeElement !== inp || inp.value.replace(/\s+/g, ' ').trim() === was) inp.value = a.text ?? '';
     answerFor = key;
   }
   const state = answerState(a, team);

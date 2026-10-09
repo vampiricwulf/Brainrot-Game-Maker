@@ -192,6 +192,11 @@ export interface RoomSaved {
   members?: Record<string, Member>;
   /** Teams: member id → when their early-buzz lock ends (an early buzz locks the member, not the team). */
   memberLocks?: Record<string, number>;
+  /**
+   * Teams: members the host moved during this clue off a team that buzzed on it, is answering it or is out of it: out
+   * of the rest of the clue on their new team too, until ↺ Reset or the next clue.
+   */
+  clueOut?: string[];
   /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat; at: when the round began. */
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
   /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat. */
@@ -464,6 +469,8 @@ export class Room {
       this.newRace(next.armId, now);
     }
     delete next.rollOrder;
+    // Back on the board, or everyone may buzz again (↺ Reset, a new clue): nobody is out any more.
+    if (next.phase === 'lobby' || (prev && next.armId !== prev.armId && !next.lockedOut.length)) delete this.s.clueOut;
     this.s.state = next;
     // Teams turned on or off: every seat and member is let go (phones pick again: a team, or their own name).
     if (prev && !!prev.teams !== !!next.teams) {
@@ -601,7 +608,12 @@ export class Room {
   /** Teams: the host puts a member (and their phone) on another team. */
   private move(member: string, seatId: string): void {
     const m = this.s.members?.[member];
-    if (!m || !this.s.state?.teams || !this.s.state.seats.some((x) => x.id === seatId) || m.seatId === seatId) return;
+    const st = this.s.state;
+    if (!m || !st?.teams || !st.seats.some((x) => x.id === seatId) || m.seatId === seatId) return;
+    // Moved during a clue off a team in it (they or a teammate buzzed, it's answering) or out of it: no second go for
+    // the new team on this clue.
+    const had = st.answering === m.seatId || st.lockedOut.includes(m.seatId) || !!this.s.race?.queue.some((b) => b.seatId === m.seatId || b.member === member);
+    if (st.phase !== 'lobby' && had && !this.s.clueOut?.includes(member)) (this.s.clueOut ??= []).push(member);
     m.seatId = seatId;
     for (const p of this.phones.values()) {
       if (p.member !== member) continue;
@@ -1054,7 +1066,7 @@ export class Room {
       return;
     }
     if (armId !== st.armId) return result('late');
-    if (st.lockedOut.includes(seatId)) return result('locked');
+    if (st.lockedOut.includes(seatId) || (member && this.s.clueOut?.includes(member))) return result('locked');
     const until = (member ? this.s.memberLocks?.[member] : this.s.earlyLocks[seatId]) ?? 0;
     if (until > now) return result('locked', { lockedUntil: until });
     let race = this.s.race;
@@ -1327,11 +1339,14 @@ export class Room {
         const own = m ? sent?.member === p.member : sent?.at !== undefined && sent.at >= (since ?? 0);
         if (late && sent && !own) sent = undefined;
         const race = this.s.race;
+        // Teams: moved here off a team in this clue, or out of it (see move): out of it too, as a team that missed.
+        const out = !!p.member && !!this.s.clueOut?.includes(p.member);
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
-          st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
+          !out && st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
         const typed = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers.seats[p.seatId] : undefined;
         const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
+        if (out && view.you) view.you = { ...view.you, lockedOut: true };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;
@@ -1473,6 +1488,7 @@ export function cleanState(x: unknown): HostState | null {
     extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats };
   }
   if (x.over === true) extra.over = true;
+  if (extra.over && typeof x.winner === 'string' && ids.has(x.winner)) extra.winner = x.winner;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);
     const wseats: WagerSeat[] = [];

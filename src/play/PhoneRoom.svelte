@@ -43,10 +43,17 @@
     /** ⚙ Set up phone buzzers… (no buzzer server yet): ⚙ Settings, at the phone buzzers. None in a player-only file. */
     onsetup?: () => void;
   } = $props();
-  /** Phones in the room with a seat: closing it (or turning Buzzer mode off) asks first. */
+  /** Phones in the room with a seat: closing it (or turning Buzzer mode off, or Teams on or off) asks first. */
   const seatedPhones = $derived(remote.phones.filter((p) => p.seatId).length);
   /** Asking before closing the room: ✕ Close the room, or Buzzer mode turned off. */
   let closing = $state<'close' | 'off' | null>(null);
+  /** Asking before turning Teams on (true) or off (false) with phones in the room: every phone picks again. */
+  let switching = $state<boolean | null>(null);
+  /** The options' changes: Teams with phones in the room asks first, as closing the room does. */
+  const setOption: SetBuzzSetting = (key, value, label) => {
+    if (key === 'buzzTeams' && seatedPhones && !!value !== !!settings.buzzTeams) switching = !!value;
+    else onset(key, value, label);
+  };
   /** The browser says there's no network (it can be wrong the other way, never this way round for long). */
   let offline = $state(typeof navigator !== 'undefined' && navigator.onLine === false);
   $effect(() => {
@@ -104,7 +111,7 @@
         locks that player out of the clue. You can still pick who answers by hand (1–9 or a click).
       </p>
     {:else}
-      <BuzzerOptions {settings} {onset} />
+      <BuzzerOptions {settings} onset={setOption} />
     {/if}
   {/if}
   {#if !base || !settings.buzzer}
@@ -178,6 +185,27 @@
         >
         <!-- svelte-ignore a11y_autofocus -->
         <button class="small" autofocus onclick={() => (closing = null)}>Keep it open</button>
+      </div>
+    </div>
+  {/if}
+  {#if switching !== null}
+    <div class="ask" role="alertdialog" aria-label="Turn teams {switching ? 'on' : 'off'}?">
+      <span>
+        {seatedPhones}
+        {seatedPhones === 1 ? 'phone is' : 'phones are'} in the room: turning teams {switching ? 'on' : 'off'} sends
+        {seatedPhones === 1 ? 'it' : 'them all'} back to {switching ? 'pick a team' : 'tap their name'}.
+      </span>
+      <div class="row">
+        <button
+          class="danger small"
+          onclick={() => {
+            const on = switching;
+            switching = null;
+            onset('buzzTeams', on || undefined, 'Teams');
+          }}>Turn teams {switching ? 'on' : 'off'}</button
+        >
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="small" autofocus onclick={() => (switching = null)}>Keep teams {switching ? 'off' : 'on'}</button>
       </div>
     </div>
   {/if}

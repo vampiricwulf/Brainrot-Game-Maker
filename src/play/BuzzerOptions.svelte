@@ -27,7 +27,12 @@
       <input
         type="checkbox"
         checked={!!settings.buzzTeams}
-        onchange={(e) => onset('buzzTeams', e.currentTarget.checked || undefined, 'Teams')}
+        onchange={(e) => {
+          // The box follows the setting: with phones in the room the 📱 card asks first, and "Keep" leaves it as it was.
+          const on = e.currentTarget.checked;
+          e.currentTarget.checked = !!settings.buzzTeams;
+          onset('buzzTeams', on || undefined, 'Teams');
+        }}
       />
       Teams: people join a team, anyone on it can buzz for it
     </label>

@@ -475,6 +475,25 @@ describe('seats', () => {
     expect(g.pb.last('view')?.view.final).toBeUndefined();
   });
 
+  it('game over after a tiebreaker settled a tie for first: its winner came 1st, the ones it beat share 2nd', () => {
+    const g = game({ scores: { a: 700, b: 700, c: 700 }, over: true, winner: 'b' });
+    expect(g.room.saved.state?.winner).toBe('b');
+    expect(g.pb.last('view')?.view.final).toEqual({ place: 1 });
+    expect(g.pa.last('view')?.view.final).toEqual({ place: 2, tied: true });
+    expect(g.pc.last('view')?.view.final).toEqual({ place: 2, tied: true });
+    // Two tied: the other came 2nd on their own.
+    g.send({ t: 'state', state: state({ scores: { a: 700, b: 700, c: 100 }, over: true, winner: 'b' }) });
+    expect(g.pa.last('view')?.view.final).toEqual({ place: 2 });
+    expect(g.pc.last('view')?.view.final).toEqual({ place: 3 });
+    // A winner no longer on top (a score fixed later) counts for nothing: scores rank them.
+    g.send({ t: 'state', state: state({ scores: { a: 900, b: 700, c: 700 }, over: true, winner: 'b' }) });
+    expect(g.pa.last('view')?.view.final).toEqual({ place: 1 });
+    expect(g.pb.last('view')?.view.final).toEqual({ place: 2, tied: true });
+    // Only with `over`, and only a seat in the game.
+    expect(cleanState({ ...state(), winner: 'b' })?.winner).toBeUndefined();
+    expect(cleanState({ ...state(), over: true, winner: 'zz' })?.winner).toBeUndefined();
+  });
+
   it('🔒 locked seats: only a seat token gets a seat; nobody new can ask', () => {
     const g = game({ allowNew: true });
     const token = g.pa.last('joined')!.token;
@@ -1550,11 +1569,63 @@ describe('teams', () => {
     g.tick(MAX_GRACE_MS);
     g.send({ t: 'move', member: g.memberOf('al')!, seatId: 'b' });
     g.al.send({ t: 'buzz', armId: 1, reactMs: 300 });
-    expect(g.al.last('result')?.outcome).toBe('late');
+    expect(g.al.last('result')?.outcome).toBe('locked');
     expect(g.room.saved.race!.queue.map((b) => b.seatId)).toEqual(['a']);
     // Bea, on Blue all along, still can.
     g.bea.send({ t: 'buzz', armId: 1, reactMs: 300 });
     expect(g.room.saved.race!.queue.map((b) => b.seatId)).toEqual(['a', 'b']);
+  });
+
+  it('someone moved while answering, then marked wrong, sits out the rebound on the new team too, until ↺ Reset', () => {
+    const g = teams();
+    g.arm(1);
+    g.al.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('a');
+    g.send({ t: 'move', member: g.memberOf('al')!, seatId: 'b' });
+    // Wrong: Red is out, and with nobody else in line the buzzers open again (a new arm, a new race).
+    g.arm(2, { lockedOut: ['a'] });
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: true });
+    expect(g.bea.last('view')!.view.you?.lockedOut).toBe(false);
+    g.t.now += 300;
+    g.al.send({ t: 'buzz', armId: 2, reactMs: 200 });
+    expect(g.al.last('result')?.outcome).toBe('locked');
+    expect(g.room.saved.race!.queue).toHaveLength(0);
+    g.bea.send({ t: 'buzz', armId: 2, reactMs: 250 });
+    expect(g.room.saved.race!.queue.map((b) => b.seatId)).toEqual(['b']);
+    // ↺ Reset: everyone may buzz again, Al too (for Blue).
+    g.arm(3);
+    expect(g.al.last('view')!.view.you?.lockedOut).toBe(false);
+    g.t.now += 300;
+    g.al.send({ t: 'buzz', armId: 3, reactMs: 200 });
+    expect(g.room.saved.race!.queue.map((b) => [b.seatId, b.by])).toEqual([['b', 'Al']]);
+  });
+
+  it('a teammate moved off a team in the clue (answering, or out of it) sits out the rest of it; the next clue they buzz again', () => {
+    const g = teams();
+    g.arm(1);
+    g.ann.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.tick(MAX_GRACE_MS);
+    // Al didn't buzz, but his team is answering: moved to Blue, he can't buzz for it on this clue (not even to get in line).
+    g.send({ t: 'move', member: g.memberOf('al')!, seatId: 'b' });
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: true });
+    expect(g.al.last('view')!.view.canQueue).toBeUndefined();
+    expect(g.bea.last('view')!.view.canQueue).toBe(true);
+    // Wrong: the buzzers open again for Blue, but not for Al.
+    g.arm(2, { lockedOut: ['a'] });
+    g.t.now += 300;
+    g.al.send({ t: 'buzz', armId: 2, reactMs: 200 });
+    expect(g.al.last('result')?.outcome).toBe('locked');
+    // Moved off a team already out of it (in the rebound): the same.
+    g.send({ t: 'move', member: g.memberOf('ann')!, seatId: 'b' });
+    expect(g.ann.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: true });
+    // Back on the board, nobody is out; a move between clues leaves nothing to sit out.
+    g.send({ t: 'state', state: g.st() });
+    expect(g.room.saved.clueOut).toBeUndefined();
+    g.send({ t: 'move', member: g.memberOf('ann')!, seatId: 'a' });
+    g.arm(3);
+    expect(g.ann.last('view')!.view.you).toMatchObject({ id: 'a', lockedOut: false });
+    expect(g.al.last('view')!.view.you?.lockedOut).toBe(false);
   });
 
   it('the host kicks one member (kept off that team a while) or a whole team', () => {

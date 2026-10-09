@@ -109,8 +109,8 @@ try {
     await p.getByRole('button', { name: team }).click();
     await p.getByRole('heading', { name: `Join ${team}` }).waitFor();
     // (Your own name, not the team's: the box says so, and gives an example.)
-    if ((await p.getByRole('textbox', { name: 'Your name (your team sees it)' }).getAttribute('placeholder')) !== 'e.g. Zoe') throw new Error('the team name box has no example');
-    await p.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill(name);
+    if ((await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).getAttribute('placeholder')) !== 'e.g. Zoe') throw new Error('the team name box has no example');
+    await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill(name);
     await p.getByRole('button', { name: 'Join the team' }).click();
     await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
     return p;
@@ -140,11 +140,11 @@ try {
   await zed.getByRole('button', { name: 'Back' }).click();
   assert(true, 'the name form says who is on the team already ("On it: Bea")');
   await zed.getByRole('button', { name: 'Player 2' }).click();
-  await zed.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill('ann');
+  await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('ann');
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#team-err').getByText('Someone in the game already has that name').waitFor();
   assert(true, 'the team list shows who is on each team, and a name someone has is taken');
-  await zed.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill('Zed');
+  await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Zed');
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#me').getByText('Zed · Player 2').waitFor();
 
@@ -163,6 +163,32 @@ try {
   await al.reload();
   await al.locator('#me').getByText('Al · Player 1').waitFor();
   assert(true, 'a phone reload comes back on its team with its name');
+
+  // Teams off with people on teams: asked first (every phone would pick again), as closing the room is.
+  await teamsBox.click();
+  const ask = card.getByRole('alertdialog', { name: 'Turn teams off?' });
+  await ask.waitFor();
+  const asked = (await ask.innerText()).replace(/\s+/g, ' ');
+  assert(asked.startsWith('3 phones are in the room: turning teams off sends them all back to tap their name.') && (await teamsBox.isChecked()), `Teams off with people on teams asks first, and the box stays ticked meanwhile (${asked})`);
+  await ask.getByRole('button', { name: 'Keep teams on' }).click();
+  await ask.waitFor({ state: 'detached' });
+  assert((await teamsBox.isChecked()) && (await card.getByText('3 people on 2 of 2 teams').isVisible()), 'kept on: nobody is sent back');
+  // Turned off all the same: the phones say why they're back at "Tap your name". On again, people pick their team.
+  await teamsBox.click();
+  await ask.getByRole('button', { name: 'Turn teams off' }).click();
+  await ann.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  assert((await ann.locator('#seats-note').innerText()) === 'The host turned teams off. Tap your name.', 'turned off: the phones say so ("The host turned teams off. Tap your name.")');
+  await card.getByText('0 of 2 players joined').waitFor();
+  await teamsBox.click();
+  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [al, 'Al', 'Player 1'], [bea, 'Bea', 'Player 2']]) {
+    await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
+    await p.getByRole('button', { name: team }).click();
+    await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill(name);
+    await p.getByRole('button', { name: 'Join the team' }).click();
+    await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
+  }
+  await card.getByText('3 people on 2 of 2 teams').waitFor();
+  assert(true, 'with nobody on a team, Teams goes on without asking; people pick their team again');
 
   // ---------- A clue: whoever on a team buzzes first answers for it ----------
   const big = (p) => p.locator('#buzz-big');

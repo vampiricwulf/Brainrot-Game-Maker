@@ -104,6 +104,11 @@ export interface HostState {
   wager?: WagerAsk | null;
   /** The game is over (its final scores are up): phones say where they came (PhoneView.final). */
   over?: boolean;
+  /**
+   * With `over`: a tiebreaker (the roll-off, the tiebreaker clue) settled a tie for first. That seat came 1st on its own,
+   * and the seats it tied with share 2nd (as the end screen ranks them).
+   */
+  winner?: string;
   /** Players may pick their own colour on their phone (not teams: a team's colour is the host's). */
   colorPick?: boolean;
   /** The clue's answer is on screen: no more buzzes, not even to get in line. */
@@ -305,11 +310,21 @@ function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | n
   };
 }
 
-/** Where a seat came when the game is over: 1 + how many scored more (equal scores share a place). */
+/**
+ * Where a seat came when the game is over: 1 + how many scored more (equal scores share a place), except that a
+ * tiebreaker's winner came 1st on its own (HostState.winner).
+ */
 function finalView(s: HostState, seatId: string | undefined): Pick<PhoneView, 'final'> {
   if (!s.over || !seatId) return {};
   const mine = s.scores[seatId] ?? 0;
   const others = s.seats.filter((x) => x.id !== seatId).map((x) => s.scores[x.id] ?? 0);
+  const top = Math.max(...s.seats.map((x) => s.scores[x.id] ?? 0));
+  if (s.winner && s.scores[s.winner] === top && mine === top) {
+    if (seatId === s.winner) return { final: { place: 1 } };
+    // Tied with the tiebreaker's winner: 2nd, shared with the others they tied with.
+    const rest = others.filter((x) => x === mine).length - 1;
+    return { final: { place: 2, ...(rest > 0 ? { tied: true } : {}) } };
+  }
   const tied = others.includes(mine);
   return { final: { place: 1 + others.filter((x) => x > mine).length, ...(tied ? { tied: true } : {}) } };
 }
