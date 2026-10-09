@@ -681,7 +681,10 @@
             <!-- svelte-ignore a11y_autofocus -->
             <input
               class="score-edit"
-              type="number"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              spellcheck="false"
               autofocus
               value={score(session, p.id)}
               onfocus={(e) => e.currentTarget.select()}
@@ -690,7 +693,13 @@
                 // Cancel: stop editing first, so the blur that follows doesn't commit the typed value.
                 if (e.key === 'Escape') editingScore = null;
               }}
-              onblur={(e) => editingScore === p.id && commitScore(p.id, e.currentTarget.value)}
+              onblur={(e) => {
+                if (editingScore !== p.id) return;
+                commitScore(p.id, e.currentTarget.value);
+                // (Clicked away from something that isn't a number: commitScore said so, and the box closes rather than
+                // staying open, unfocused, over the score.)
+                if (editingScore === p.id) editingScore = null;
+              }}
             />
           {:else}
             <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score">

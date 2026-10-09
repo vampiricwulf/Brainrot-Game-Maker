@@ -38,6 +38,7 @@ in plain words for the people who make and host games. Anything committed but no
 - ✎ Set the score… understands "1,000", "$500", "−$200", a dash pasted from chat and "500 pts"; if what's typed isn't a number it stays open and says so (it closed as if set). (a679621, a75568f)
 - Restoring an old score change in 📜 Log › Scores no longer gives that player the board when someone else has answered since; a $0 clue can be marked right or wrong (it said "Enter an amount first"). (a679621)
 - Start scores are rounded to whole points and capped at the most points allowed ("$250.5" showed on stream), and so are Final wagers; with the limits off, a Final wager box's tooltip shows the real score of a player below zero (it said $0); a Daily Double wager below 0 says so instead of "over the max". (a679621, a75568f)
+- Board games: dice or a wheel that land while the scores (S) are up still fill in the Steps box, so Enter moves (it asked for a roll, and D rolled again); the score box in the host panel reads "$500", "1,000" or "500 pts" like ✎ Set the score…; with a symbol of two or more characters ("R$") a bar of many plates drops it on every plate, not some.
 
 ## 2026-10-08
 

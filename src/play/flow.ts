@@ -69,13 +69,22 @@ const scoreWidth = (s: string) => [...s].reduce((w, c) => w + (c === ',' || c ==
  * side (ScoreBar's .score: 24px on a pill plate, else 8px).
  */
 export function plateScore(n: number, sym: string, count: number, reserve = 0, width = 1920, pad = 8): string {
+  return plateForm(n, sym, count, reserve, width, pad).text;
+}
+
+/** plateScore's pick, and whether it had to leave the game's symbol off (`dropped`). */
+function plateForm(n: number, sym: string, count: number, reserve: number, width: number, pad: number): { text: string; dropped: boolean } {
   // The score's room: the plate less its borders (4px a side), its padding and the 4px kept for the digits' shadow.
   const room = plateWidth(count, reserve, width) - 12 - 2 * pad;
   // Shorter and shorter until one fits (many players: narrow plates): "1,200 pts" → "1,200" → "1.2K" → "1K". A word
   // symbol goes before any digits do; "$" only at the very end.
-  const bare = wordSymbol(sym) ? '' : sym;
+  const word = wordSymbol(sym);
+  const bare = word ? '' : sym;
   const forms = [formatPoints(n, sym), formatPoints(n, bare), compactPoints(n, sym, 1000), compactPoints(n, bare, 1000), compactPoints(n, bare, 1000, 0), compactPoints(n, '', 1000, 0)];
-  return forms.find((s) => scoreWidth(s) <= room) ?? forms[forms.length - 1];
+  let k = forms.findIndex((s) => scoreWidth(s) <= room);
+  if (k < 0) k = forms.length - 1;
+  // (Forms 0 and 2 have a word symbol; forms 0-4 a front one: "$", "R$", "🧠".)
+  return { text: forms[k], dropped: !!sym.trim() && (word ? k !== 0 && k !== 2 : k === forms.length - 1) };
 }
 
 /**
@@ -84,8 +93,9 @@ export function plateScore(n: number, sym: string, count: number, reserve = 0, w
  * that fit.
  */
 export function plateScores(scores: number[], sym: string, reserve = 0, width = 1920, pad = 8): string[] {
-  const own = scores.map((n) => plateScore(n, sym, scores.length, reserve, width, pad));
-  // (A plate that had to drop it shows what it would with no symbol at all.)
-  const plain = scores.map((n) => plateScore(n, '', scores.length, reserve, width, pad));
-  return own.some((s, i) => s === plain[i]) ? plain : own;
+  const own = scores.map((n) => plateForm(n, sym, scores.length, reserve, width, pad));
+  // (By the form each plate picked, not by its text matching the no-symbol one: with a symbol of two or more characters
+  // "R$1K" can be too wide where "1.2K" fits, so a plate showing "1K" differs from its plain "1.2K".)
+  if (!own.some((f) => f.dropped)) return own.map((f) => f.text);
+  return scores.map((n) => plateScore(n, '', scores.length, reserve, width, pad));
 }

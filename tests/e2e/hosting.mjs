@@ -400,12 +400,15 @@ try {
   assert((await revealMain()).includes('Finish game'), 'with everyone judged, Finish game is the main button');
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Game over'));
+  // (Typed with a symbol, a comma or a word too: the score box reads them all as 500.)
+  const typed = ['$500', '500', '500 pts'];
   for (let i = 0; i < 3; i++) {
     await page.locator('.panel .p').nth(i).locator('.score').click();
-    await page.locator('.panel .score-edit').fill('500');
+    await page.locator('.panel .score-edit').fill(typed[i]);
     await page.keyboard.press('Enter');
   }
   await page.locator('.tie').waitFor();
+  assert(true, 'a score typed in the host panel as "$500" or "500 pts" reads as 500 (a three-way tie)');
   const winner = await cues(page, 'winner');
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();

@@ -305,6 +305,19 @@ try {
   if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
   await page.locator('.bh').waitFor();
 
+  // D, then S at once (the scores over the dice still rolling): the count still goes in once they land under the scores,
+  // and S again brings back the dice with no second roll.
+  await page.keyboard.press('d');
+  await page.keyboard.press('s');
+  await page.locator('.stage-box .ov .sb').waitFor();
+  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  const underScores = await page.getByLabel('Steps').inputValue();
+  assert((await page.locator('.stage-box .ov .sb').count()) === 1, `dice that land under the scores fill in the steps (${underScores})`);
+  await page.keyboard.press('s');
+  await page.locator('.stage-box .ov .sb').waitFor({ state: 'detached' });
+  assert((await page.getByLabel('Steps').inputValue()) === underScores, 'S again brings the dice back, the count as it was');
+  await page.keyboard.press('Escape');
+
   await page.getByLabel('Steps').fill('2');
   await page.getByRole('button', { name: /^▶ Move Player 1/ }).click();
   assert((await toast()).includes('Landed on Space 3'), 'moving 2 from Start lands on Space 3');

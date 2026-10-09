@@ -95,6 +95,9 @@ describe('score pops', () => {
     // Room for them all: each keeps it, and its own form ("$999.9M" beside "$1,200").
     expect(plateScores([1200, 0, 2000], '$')).toEqual(['$1,200', '$0', '$2,000']);
     expect(plateScores([999_999_999, 1200, ...zeros(10)], '$').slice(0, 2)).toEqual(['$999.9M', '$1,200']);
+    // A symbol of two or more characters: "R$1K" doesn't fit 20 plates but "1.2K" and "R$0" do; no plate keeps it.
+    expect(plateScores([1200, 1500, ...zeros(18)], 'R$').slice(0, 3)).toEqual(['1.2K', '1.5K', '0']);
+    expect(plateScores([1200, 1500, ...zeros(16)], 'US$').slice(0, 3)).toEqual(['1.2K', '1.5K', '0']);
   });
 });
 

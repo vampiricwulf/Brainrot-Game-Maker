@@ -104,18 +104,24 @@
   });
   const card = $derived(round && space ? spaceById(round, space) : undefined);
 
-  /** The number the round's dice or movement wheel just gave, to fill in the steps (no other dice or wheel). */
-  const rolled = $derived(round ? moverResult(game, round, app.live.overlay) : null);
+  /** The number the round's dice or movement wheel just gave, to fill in the steps (no other dice or wheel). Under the scores too. */
+  const rolled = $derived(round ? moverResult(game, round, toolOverlay(app.live)) : null);
+  /** The roll or spin whose count already went in: S hiding or bringing back the tool doesn't put it back over a typed count or a new turn's empty box. */
+  let filledFrom: unknown = null;
   $effect(() => {
     // Every roll or spin, even one that comes up the same as the last (a new turn has emptied the box since). Once it
-    // has landed on stream: the count shows (and can move) no sooner than viewers see it.
-    const o = app.live.overlay;
-    void (o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null);
+    // has landed on stream (under the scores too): the count shows (and can move) no sooner than viewers see it.
+    const o = toolOverlay(app.live);
+    const key = o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null;
     const r = rolled;
-    if (r === null) return;
+    if (r === null || key === filledFrom) return;
+    const fill = () => {
+      filledFrom = key;
+      steps = r;
+    };
     const wait = o && (o.kind === 'dice' || o.kind === 'wheel') ? overlayDoneAt(o) - Date.now() : 0;
-    if (wait <= 0) return void (steps = r);
-    const t = setTimeout(() => (steps = r), wait);
+    if (wait <= 0) return void fill();
+    const t = setTimeout(fill, wait);
     return () => clearTimeout(t);
   });
 
