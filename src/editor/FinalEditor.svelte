@@ -29,7 +29,8 @@
     if (side === 'q') qi = slide ? Math.max(0, (untrack(() => round.extraSlides)?.findIndex((s) => s.id === slide) ?? -1) + 1) : 0;
   });
 
-  // "This round" is this Final's own slides (as a Slides round's is); "the whole game" is every clue's.
+  // "This round" is this Final's own slides (as a Slides round's is); "the whole game" is every clue's. It starts on
+  // questions + answers (stylescope): a Final mostly has one question slide, so its other questions are none.
   const styleTargets = (el: TextEl, scope: string) => (scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope) : ownTextTargets(round, el, scope));
 </script>
 
@@ -83,6 +84,8 @@
   <SlideEditor
     slide={side === 'q' ? qslide : round.answerSlide}
     styletargets={styleTargets}
+    stylescope="round-qa"
+    quickfield={side}
     placeholder={side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
     badge={side === 'a' ? 'ANSWER' : undefined}
   />

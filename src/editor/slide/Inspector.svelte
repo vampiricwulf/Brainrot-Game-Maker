@@ -23,6 +23,7 @@
     onreplace,
     onapplystyle,
     stylecategory = false,
+    stylescope,
     onuploadfont,
     oneditimage,
     onedit,
@@ -45,6 +46,8 @@
     onapplystyle?: (el: TextEl, scope: string) => void;
     /** Offer "this category" scopes for it. */
     stylecategory?: boolean;
+    /** The scope it starts on (else this category's questions, or this round's). */
+    stylescope?: string;
     /** Upload a font: a picker drops from `from`, the ＋ button. */
     onuploadfont: (from: HTMLElement) => void;
     oneditimage?: () => void;
@@ -73,6 +76,8 @@
     // tell apart.
     t.color = onTile && !t.background && WHITE.test(v) && !WHITE.test(themeText) ? '#fefefe' : v;
   }
+  /** A colour of its own there instead: the Color box can't pick the theme's again (white is white), so ↺ does. */
+  const ownOnTile = $derived(el.kind === 'text' && onTile && !el.background && !themedText && !WHITE.test(themeText));
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
   const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
@@ -100,7 +105,7 @@
   }
 
   // svelte-ignore state_referenced_locally
-  let applyScope = $state(stylecategory ? 'cat-q' : 'round-q');
+  let applyScope = $state(stylescope ?? (stylecategory ? 'cat-q' : 'round-q'));
 </script>
 
 <!-- A file that plays from its link: say so, and offer to save a copy. -->
@@ -140,7 +145,13 @@
           <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted"> · showing {fit.size}</span>{/if}</span>
           <NumField min={8} max={600} bind:value={el.size} fallback={110} />
         </label>
-        <label class="field">Color<input type="color" value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} /></label>
+        <!-- (↺ outside the label: a click on it, gone as it's done, would open the colour picker.) -->
+        <div class="color">
+          <label class="field">Color<input type="color" value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} /></label>
+          {#if ownOnTile}
+            <button class="small" onclick={() => ((el as TextEl).color = '#ffffff')} title="Back to the theme's text colour (it follows the theme when that changes)">↺ Theme colour</button>
+          {/if}
+        </div>
       </div>
       {#if fit?.overflow && el.text}
         <p class="warn">
@@ -446,6 +457,12 @@
   }
   .sub {
     padding-left: 24px;
+  }
+  .color {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 6px;
   }
   .toggles button {
     padding: 4px 8px;

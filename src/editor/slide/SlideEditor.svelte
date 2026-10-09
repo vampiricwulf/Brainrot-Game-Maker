@@ -61,6 +61,8 @@
     slide,
     styletargets,
     stylecategory = false,
+    stylescope,
+    quickfield,
     placeholder,
     badge,
     fill = false,
@@ -72,6 +74,13 @@
     styletargets?: (el: TextEl, scope: string) => TextEl[];
     /** Offer "this category" in "Use this style elsewhere" (a clue's slides, not the Final's). */
     stylecategory?: boolean;
+    /** The slides "Use this style elsewhere" starts on (a Final's questions + answers: it mostly has one question slide). */
+    stylescope?: string;
+    /**
+     * The host's quick box (its data-field) that holds this slide's main text: Ctrl+V of a picture or copied items there
+     * puts them here (in the other side's box, it says to open that slide).
+     */
+    quickfield?: 'q' | 'a';
     /** Shown in the slide's main text box while it's empty. */
     placeholder?: string;
     /** A ribbon in the canvas corner, e.g. "ANSWER". */
@@ -618,9 +627,14 @@
   function typing(e: Event): boolean {
     return !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
   }
-  /** The host's quick Question / Answer / Text boxes (outside the editor), which hold its slides' main text. */
-  function quickBox(e: Event): boolean {
-    return !!(e.target as HTMLElement)?.closest?.('[data-field="q"], [data-field="a"]') && !root?.contains(e.target as Node);
+  /**
+   * The host's quick Question / Answer / Text boxes (outside the editor), which hold its slides' main text: 'this' for
+   * the one of the slide shown here, 'other' for the one of the slide that isn't (a clue's Answer while its Question is open).
+   */
+  function quickBox(e: Event): 'this' | 'other' | null {
+    const box = (e.target as HTMLElement)?.closest?.<HTMLElement>('[data-field="q"], [data-field="a"]');
+    if (!quickfield || !box || root?.contains(box)) return null;
+    return box.dataset.field === quickfield ? 'this' : 'other';
   }
   /** Focus is on a button or link, where Enter and Space belong to that control. */
   function onControl(e: Event): boolean {
@@ -682,6 +696,10 @@
           t[key] = !t[key];
         }
       });
+      // The typing in the field is a step of its own now, under this one: Ctrl+Z goes through the history (this, then
+      // the typing), not the field's own undo first, which would come back as a step on top. (The editor's Ctrl+Z
+      // follows the field from its focusin, see createFieldTracker: as if just focused, it has no typing of its own.)
+      textArea.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
       return;
     }
     if (typing(e) || picker) return;
@@ -854,14 +872,23 @@
     // (Word, PowerPoint and Excel put a picture of the text alongside it: the text is what was meant.)
     const pictures = !!files?.length && !officeTextPaste(data?.getData('text/html') ?? '', text, files.length);
     if (typing(e)) {
-      // In a quick Question / Answer box (where the keys are when a clue opens), words still go in as words; a
-      // picture, or copied items with no words ("1 slide item"), go on the slide. Other fields keep their paste.
-      if (!quickBox(e)) return;
-      if (pictures) {
+      // In the quick Question / Answer box of the slide shown (where the keys are when a clue opens), words go in as
+      // words (even with a picture of them alongside, as LibreOffice and Keynote put there); a picture alone, or copied
+      // items with no words ("1 slide item"), go on the slide. In the other side's box they'd land on a slide that isn't
+      // shown, so it says where to paste them. Other fields keep their paste.
+      const box = quickBox(e);
+      if (!box) return;
+      const picture = pictures && !text.trim();
+      const items = pastingOurs(data ?? null) && /^\d+ slide items?$/.test(clipboard.text);
+      if (box === 'other' && (picture || items)) {
+        e.preventDefault();
+        return void toast(`Open the ${quickfield === 'q' ? 'Answer' : 'Question'} slide to paste ${picture ? 'a picture' : 'the items'} on it`);
+      }
+      if (picture) {
         e.preventDefault();
         return void dropFiles(files!, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
       }
-      if (pastingOurs(data ?? null) && /^\d+ slide items?$/.test(clipboard.text)) {
+      if (items) {
         e.preventDefault();
         pasteItems();
       } else if (pastingGone(data ?? null)) {
@@ -1182,6 +1209,7 @@
           }}
           onapplystyle={styletargets ? applyStyle : undefined}
           {stylecategory}
+          {stylescope}
           onuploadfont={(from) => {
             replacing = null;
             picker = 'font';

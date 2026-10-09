@@ -51,7 +51,7 @@
 </label>
 <SlideTabs holder={round} bind:side bind:qi what="the round’s" plain />
 {#key `${round.id}-${slideKeyOf(slide)}`}
-  <SlideEditor {slide} styletargets={styleTargets} placeholder="Click to type on the slide" />
+  <SlideEditor {slide} styletargets={styleTargets} quickfield="q" placeholder="Click to type on the slide" />
 {/key}
 
 <style>

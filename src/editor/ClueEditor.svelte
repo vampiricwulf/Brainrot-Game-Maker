@@ -472,6 +472,7 @@
             slide={side === 'q' ? qslide : clue.answerSlide}
             styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
             stylecategory
+            quickfield={side}
             placeholder={side === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
             badge={side === 'a' ? 'ANSWER' : undefined}
             fill

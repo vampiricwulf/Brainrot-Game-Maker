@@ -57,15 +57,18 @@ try {
   await page.locator('.canvas').getByRole('button', { name: 'Bonus', exact: true }).click();
   const kind = await page.locator('.side [data-space-kind] option:checked').innerText();
   assert(kind === '⭐ Star (bonus points)', `its Bonus space’s Make it a… box says ⭐ Star, from its +100 button (${kind})`);
-  // In its Final, "Questions in this round" (the default) is the Final's own question slides, not every board question.
+  // In its Final, "…in this round" is the Final's own slides, not every board question. It starts on "Questions +
+  // answers in this round" (its answer): with one question slide, "Questions in this round" is none.
   await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
   await page.locator('.canvas .hit').first().click();
   const applyStyle = page.locator('.insp').getByRole('button', { name: 'Apply', exact: true });
+  const scope = page.getByRole('combobox', { name: 'Which slides get this style' });
+  assert((await scope.inputValue()) === 'round-qa', `in the Final, Use this style elsewhere starts on "Questions + answers in this round" (${await scope.inputValue()})`);
   await applyStyle.click();
-  assert((await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'), 'in the Final, "Questions in this round" restyles none of the board’s questions (it has one question slide)');
-  await page.getByRole('combobox', { name: 'Which slides get this style' }).selectOption('round-qa');
+  assert((await page.locator('.notice').innerText()).includes('Style applied to 1 slide'), 'which restyles its answer');
+  await scope.selectOption('round-q');
   await applyStyle.click();
-  assert((await page.locator('.notice').innerText()).includes('Style applied to 1 slide'), '"Questions + answers in this round" restyles its answer');
+  assert((await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'), '"Questions in this round" restyles none of the board’s questions (it has one question slide)');
   await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
 
   // ---------- Import clues ----------

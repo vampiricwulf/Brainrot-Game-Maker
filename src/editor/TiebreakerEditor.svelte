@@ -29,7 +29,8 @@
 
   /** What tells the open slide apart, so the slide editor starts afresh on another one (the first one has no id). */
   const slideKey = $derived(slideKeyOf(tbSide === 'q' ? qslide : undefined));
-  // "This round" is the tiebreaker's own slides; "the whole game" is every clue's.
+  // "This round" is the tiebreaker's own slides (it starts on questions + answers, as a Final's does); "the whole game"
+  // is every clue's.
   const styleTargets = (el: TextEl, scope: string) => {
     const tb = app.game.tiebreaker;
     return !tb || scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope.replace('round', 'game')) : ownTextTargets(tb, el, scope);
@@ -92,6 +93,8 @@
     <SlideEditor
       slide={tbSide === 'q' ? qslide : tb.answerSlide}
       styletargets={styleTargets}
+      stylescope="round-qa"
+      quickfield={tbSide}
       placeholder={tbSide === 'q' ? 'Click to type the tiebreaker question' : 'Click to type the tiebreaker answer'}
       badge={tbSide === 'a' ? 'ANSWER' : undefined}
     />

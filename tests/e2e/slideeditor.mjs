@@ -5,8 +5,9 @@
 // Replace redoing edits, the History's names for these, pastes from Word and from another tab, nudging off the slide,
 // Tab saying which item it picked, Shift+F10's menu, the several-items panel's Back and Lock, Move to the slide's… beside X and Y, a
 // turn that settles on level, and the History's names for line-ups, restacks, duplicates and pastes. Also: the text Color
-// box on Pastel, Ctrl+I in the Text field, Ctrl+Z on an image editor slider, a new crop starting Free, a caption's font
-// drawn once it loads, and Ctrl+V of items or a picture in the clue's Question box.
+// box on Pastel (and ↺ Theme colour), Ctrl+I in the Text field (and Ctrl+Z after it), Ctrl+Z on an image editor slider, a
+// new crop starting Free, a caption's font drawn once it loads, and Ctrl+V of items or a picture in the clue's Question
+// box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -124,12 +125,30 @@ try {
   assert(pastelText !== '#ffffff' && (await drawnColor()) === rgb(pastelText), `the Color box shows the dark colour the text is drawn in (${pastelText})`);
   await textColor.fill('#ffffff');
   assert((await drawnColor()) === 'rgb(254, 254, 254)', `white picked in it makes the words white (${await drawnColor()})`);
+  // ↺ Theme colour beside it goes back to the theme's dark text (only Undo could, once a colour was picked).
+  const themeColour = insp.getByRole('button', { name: '↺ Theme colour' });
+  await themeColour.click();
+  assert(
+    (await drawnColor()) === rgb(pastelText) && (await textColor.inputValue()) === pastelText && (await themeColour.count()) === 0,
+    `↺ Theme colour draws the words in the theme's text colour again (${await drawnColor()})`,
+  );
   // Ctrl+I in the Text field (where typing on the slide puts the cursor) makes it italic, as on the canvas.
-  await insp.locator('textarea').focus();
+  const textField = insp.locator('textarea');
+  const italic = () => insp.getByRole('button', { name: 'Italic' }).getAttribute('aria-pressed');
+  await textField.focus();
   await page.keyboard.press('Control+i');
-  assert((await insp.getByRole('button', { name: 'Italic' }).getAttribute('aria-pressed')) === 'true', 'Ctrl+I in the Text field makes the text box italic');
+  assert((await italic()) === 'true', 'Ctrl+I in the Text field makes the text box italic');
   await page.keyboard.press('Control+i');
-  assert((await insp.getByRole('button', { name: 'Italic' }).getAttribute('aria-pressed')) === 'false', 'and again makes it upright');
+  assert((await italic()) === 'false', 'and again makes it upright');
+  // Typed in, then Ctrl+I, then Ctrl+Z: it takes back the italic, then the typing (the field's own undo took the letters
+  // back first, the italic staying, and the next Ctrl+Z brought them back as a step of their own).
+  await page.keyboard.press('End');
+  await page.keyboard.type(' there');
+  await page.keyboard.press('Control+i');
+  await page.keyboard.press('Control+z');
+  assert((await italic()) === 'false' && (await textField.inputValue()) === 'Hi there', `Ctrl+Z after typing and Ctrl+I takes back the italic, the words staying (${await textField.inputValue()})`);
+  await page.keyboard.press('Control+z');
+  assert((await textField.inputValue()) === 'Hi', `and the next Ctrl+Z the typing (${await textField.inputValue()})`);
   const size = insp.locator('label.field', { hasText: 'Max size' }).locator('input');
   await size.fill('');
   await size.press('Tab');
@@ -442,16 +461,35 @@ try {
   await qBox.focus();
   await page.keyboard.press('Control+v');
   assert((await qBox.inputValue()) === question && (await drawn()).length === items0 + 1, `Ctrl+V in the Question box pastes the copied item on the slide (the question stays “${question}”)`);
-  const pics0 = await canvas.locator('.slide .el img').count();
-  await qBox.evaluate(async (el) => {
-    const c = new OffscreenCanvas(20, 10);
-    c.getContext('2d').fillRect(0, 0, 20, 10);
-    const d = new DataTransfer();
-    d.items.add(new File([await c.convertToBlob({ type: 'image/png' })], 'shot.png', { type: 'image/png' }));
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: d, bubbles: true, cancelable: true }));
-  });
+  /** A paste of a picture (and `words`, if any) in the box: whether the page took it (else it's the box's own paste). */
+  const pastePicture = (box, words = '') =>
+    box.evaluate(async (el, words) => {
+      const c = new OffscreenCanvas(20, 10);
+      c.getContext('2d').fillRect(0, 0, 20, 10);
+      const d = new DataTransfer();
+      d.items.add(new File([await c.convertToBlob({ type: 'image/png' })], 'shot.png', { type: 'image/png' }));
+      if (words) d.setData('text/plain', words);
+      const e = new ClipboardEvent('paste', { clipboardData: d, bubbles: true, cancelable: true });
+      el.dispatchEvent(e);
+      return e.defaultPrevented;
+    }, words);
+  const pictures = () => canvas.locator('.slide .el img').count();
+  const pics0 = await pictures();
+  await pastePicture(qBox);
   await page.waitForFunction((n) => document.querySelectorAll('.canvas .slide .el img').length > n, pics0);
   assert((await qBox.inputValue()) === question, 'a picture pasted in the Question box goes on the slide');
+  // Words with a picture of them alongside (LibreOffice, Keynote) go in the box as words, not on the slide as a picture.
+  const pics1 = await pictures();
+  const tookWords = await pastePicture(qBox, 'Copied from LibreOffice');
+  await page.waitForTimeout(400);
+  assert(!tookWords && (await pictures()) === pics1, 'words pasted with a picture of them are left to the Question box');
+  // In the Answer box, with the Question slide open, a picture would land on the question (it did): it says where to go.
+  const aBox = clue.locator('[data-field="a"]');
+  const answer = await aBox.inputValue();
+  await pastePicture(aBox);
+  await toast.filter({ hasText: 'Open the Answer slide to paste a picture on it' }).waitFor();
+  await page.waitForTimeout(400);
+  assert((await pictures()) === pics1 && (await aBox.inputValue()) === answer, 'a picture pasted in the Answer box doesn’t go on the open Question slide');
   await canvas.focus();
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
