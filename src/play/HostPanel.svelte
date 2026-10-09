@@ -496,7 +496,7 @@
       if (moreSlides && slidePos)
         return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
       return answerShowing(session)
-        ? { label: '🏁 Back to results', key: 'N', title: 'N: back to the results', run: ontiebreakerdone }
+        ? { label: '🏁 Back to results', key: 'N', title: 'N: back to the results', run: tiebreakerDone }
         : { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)', run: onreveal };
     }
     return null;
@@ -515,6 +515,20 @@
       return;
     }
     onback();
+  }
+  /**
+   * 🏁 Back to results as the tiebreaker's main button (N): with a tied player picked and no winner given, the first press
+   * says so (the tie would stay unsettled), the second goes back. (The plain button goes back at once.)
+   */
+  function tiebreakerDone(): void {
+    const tied = tiedForFirst(session);
+    if (!tbWinner && warnedFor !== 'tiebreaker' && tied.some((p) => selected.includes(p.id))) {
+      warnedFor = 'tiebreaker';
+      toast(`${pickedName || 'A tied player'} is picked but hasn’t won yet: Enter makes them the winner, or N again goes back without one`, 5000);
+      return;
+    }
+    warnedFor = null;
+    ontiebreakerdone();
   }
   const next = $derived(slots.offers.tool?.() ?? flow ?? slots.next());
   $effect(() => {

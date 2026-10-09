@@ -4,8 +4,9 @@
 // last slide. Then a game that ends with a Final
 // and a long slides outro after it, in two windows: the outro's dots say "1 / 22" (they'd run off the stage), its host
 // notes keep their lines, the tiebreaker's notes show; in the tiebreaker N follows the main button (the answer, then
-// 🏁 Back to results), points given there settle the tie (the panel says so), and Ctrl+Z takes back that award there,
-// then goes back to the Final's reveals for its last judgment (not out of sight).
+// 🏁 Back to results, which warns first with a tied player picked and no winner given), points given there settle the
+// tie (the panel says so), and Ctrl+Z takes back that award there, then goes back to the Final's reveals for its last
+// judgment (not out of sight).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -188,9 +189,15 @@ try {
   await s2.locator('[data-slide="answer"]').getByText('Forty-two').waitFor();
   await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('🏁 Back to results'));
   assert((await mainButton(p2).locator('kbd').innerText()) === 'N', 'N reveals the answer, then 🏁 Back to results is the main button, with N on it');
+  // A tied player picked (1) and no winner given: the first N says so, and the tiebreaker stays up.
+  await p2.keyboard.press('1');
+  await p2.locator('.panel .p.on[data-player-id="p1"]').waitFor();
+  await p2.keyboard.press('n');
+  await p2.locator('.toast', { hasText: 'Ann is picked but hasn’t won yet' }).waitFor();
+  assert((await p2.locator('.panel .status b').innerText()) === 'Tiebreaker', 'N with a tied player picked and no winner given warns first; the tiebreaker stays up');
   await p2.keyboard.press('n');
   await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
-  assert(true, 'and N goes back to the results');
+  assert(true, 'and N again goes back to the results');
   await mainButton(p2).click();
   await p2.locator('.panel .status', { hasText: 'Select the winner' }).waitFor();
   // Points given in the tiebreaker settle it: the panel says so (not "Select the winner").
