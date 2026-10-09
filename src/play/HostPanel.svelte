@@ -10,7 +10,7 @@
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -496,7 +496,7 @@
       if (moreSlides && slidePos)
         return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
       return answerShowing(session)
-        ? { label: '🏁 Back to results', run: ontiebreakerdone }
+        ? { label: '🏁 Back to results', key: 'N', title: 'N: back to the results', run: ontiebreakerdone }
         : { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)', run: onreveal };
     }
     return null;
@@ -619,8 +619,11 @@
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       {#if tbWinner}
         <span class="muted">{tbWinner.name} won the tiebreaker: 🏁 Back to results (or select someone else and ＋ Award to change it).</span>
+      {:else if !tiedForFirst(session).length}
+        <!-- (Points given here settled it.) -->
+        <span class="muted">Nobody is tied for first any more: 🏁 Back to results.</span>
       {:else}
-        <span class="muted">Select the winner and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
+        <span class="muted">Select the winner ({nameList(tiedForFirst(session).map((p) => p.name))}) and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
       {/if}
     {:else}
       <b>Game over</b>
@@ -953,7 +956,12 @@
           {:else if session.phase === 'board'}
             <button class="ghost" onclick={() => (adjust = false)}>Done</button>
           {:else if !toolOnly && !buzzing}
-            <span class="muted hint">Pick who answered (1–{Math.min(9, session.players.length) || 9}, 0 for everyone)</span>
+            <!-- (The tiebreaker takes one of the tied players.) -->
+            <span class="muted hint"
+              >{session.phase === 'tiebreaker'
+                ? `Pick the winner (1–${Math.min(9, session.players.length) || 9})`
+                : `Pick who answered (1–${Math.min(9, session.players.length) || 9}, 0 for everyone)`}</span
+            >
           {/if}
           <span class="spacer"></span>
           {@render others()}

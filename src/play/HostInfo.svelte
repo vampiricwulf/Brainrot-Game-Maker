@@ -142,6 +142,7 @@
     {/if}
     <div class="label">Answer</div>
     <div class="a">{slideText(game.tiebreaker.answerSlide) || '—'}</div>
+    {@render hostNote('Notes', game.tiebreaker.hostNotes?.trim() ? game.tiebreaker.hostNotes : undefined)}
   {:else if session.phase === 'rpg' && rpg.round}
     <div class="meta"><span class="cat">{rpg.round.name}</span></div>
     {#if here && rpg.st}
@@ -186,7 +187,7 @@
           <div class="label">On screen{all.length > 1 ? `: slide ${at + 1} of ${all.length}` : ''}</div>
           <div class="q">{slideText(all[at]) || '(no text)'}</div>
           {#if all[at + 1]}<div class="label">Next slide</div><div class="q muted">{slideText(all[at + 1]) || '(no text)'}</div>{/if}
-          {#if sr.hostNotes?.trim()}<div class="label">Notes</div><div class="q">{sr.hostNotes}</div>{/if}
+          {@render hostNote('Notes', sr.hostNotes?.trim() ? sr.hostNotes : undefined)}
         {/if}
       {/if}
     {/if}

@@ -150,6 +150,10 @@
   }
   /** An anchored pop is at most this wide (its name gives way to "…"), so it stays on the stage. */
   const POP_HALF = 300;
+  /** Slide dots (● ● ○) up to this many slides; more (a long rules deck) say "3 / 45" instead, so they stay on the stage. */
+  const PIPS_MAX = 20;
+  /** How wide the slide dots are (32px each, an 18px gap, 20px padding a side). */
+  const pipsW = (of: number) => (of > PIPS_MAX ? 180 : 50 * of + 22);
   /** The clue's caption is up (bottom left): pops along the foot go above it. */
   const captionUp = $derived(!!stream?.clueCaption && session.phase === 'clue' && session.dd?.stage !== 'splash');
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
@@ -303,7 +307,7 @@
       taken.push({ x: 24, y: 1080 - 24 - 72, w: Math.min(1500, 44 + text.length * 26), h: 72 });
     }
     const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : sr ? questionSlides(sr).length : 1;
-    if (of > 1) taken.push({ x: 960 - (50 * of + 22) / 2, y: 1080 - 31 - 40, w: 50 * of + 22, h: 40 });
+    if (of > 1) taken.push({ x: 960 - pipsW(of) / 2, y: 1080 - 31 - 40, w: pipsW(of), h: 40 });
     return joinSpot(slide, taken, bandScale ?? 1, ink);
   });
   /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
@@ -319,6 +323,13 @@
     return top ? [top.player] : [];
   });
 </script>
+
+<!-- Several question slides: where it is (● ● ○), so viewers know there's more to come; a long deck, as "3 / 45". -->
+{#snippet slidePips(at: number, of: number)}
+  <div class="pips" role="img" aria-label="Slide {at + 1} of {of}" data-slide-pips>
+    {#if of > PIPS_MAX}<b>{at + 1} / {of}</b>{:else}{#each { length: of } as _, i (i)}<span class:on={i <= at}></span>{/each}{/if}
+  </div>
+{/snippet}
 
 <div class="theme" style={themeCss}>
 {#if live.pregame}
@@ -436,15 +447,11 @@
     {/key}
     <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
     {@const of = questionSlides(info.clue).length}
-    {#if of > 1 && !session.revealed && !waiting}
-      <div class="pips" role="img" aria-label="Slide {at + 1} of {of}" data-slide-pips>
-        {#each { length: of } as _, i (i)}<span class:on={i <= at}></span>{/each}
-      </div>
-    {/if}
+    {#if of > 1 && !session.revealed && !waiting}{@render slidePips(at, of)}{/if}
     {#if stream?.clueCaption && !waiting}
       <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap; with the join
            code in the corner, short of that, about 420px wide.) -->
-      {@const pipsMax = of > 1 && !session.revealed ? 960 - (50 * of + 22) / 2 - 24 - 44 - 16 : 1500}
+      {@const pipsMax = of > 1 && !session.revealed ? 960 - pipsW(of) / 2 - 24 - 44 - 16 : 1500}
       {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && spot?.corner === 'br' ? 1920 - 24 - 44 - 16 - (spot.small ? 300 : 440) - 24 : 1500)}px`}
       <div class="caption" style:max-width={captionMax}>{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
     {/if}
@@ -476,11 +483,7 @@
           {@const fOf = questionSlides(finalRound).length}
           <div class="slide-area" style:scale={bandScale} data-slide={fAt + 1}><SlideView slide={shownQuestionSlide(session, finalRound)} {role} /></div>
           <!-- Several question slides: where it is (● ○), as on a clue. -->
-          {#if fOf > 1}
-            <div class="pips" role="img" aria-label="Slide {fAt + 1} of {fOf}" data-slide-pips>
-              {#each { length: fOf } as _, i (i)}<span class:on={i <= fAt}></span>{/each}
-            </div>
-          {/if}
+          {#if fOf > 1}{@render slidePips(fAt, fOf)}{/if}
         {/if}
       {:else if session.finalStep === 'answer'}
         {#if finalRound}<div class="slide-area" style:scale={bandScale}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
@@ -531,11 +534,7 @@
       <div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
     </div>
   {/key}
-  {#if srOf > 1}
-    <div class="pips" role="img" aria-label="Slide {srAt + 1} of {srOf}" data-slide-pips>
-      {#each { length: srOf } as _, i (i)}<span class:on={i <= srAt}></span>{/each}
-    </div>
-  {/if}
+  {#if srOf > 1}{@render slidePips(srAt, srOf)}{/if}
 {:else if session.phase === 'tiebreaker' && game.tiebreaker}
   {@const tb = game.tiebreaker}
   {@const tbAt = clueSlideIndex(session, tb)}
@@ -554,11 +553,7 @@
     </div>
   {/key}
   <!-- Several question slides: where it is (● ● ○), as on a clue. -->
-  {#if tbOf > 1 && !session.tiebreakerRevealed}
-    <div class="pips" role="img" aria-label="Slide {tbAt + 1} of {tbOf}" data-slide-pips>
-      {#each { length: tbOf } as _, i (i)}<span class:on={i <= tbAt}></span>{/each}
-    </div>
-  {/if}
+  {#if tbOf > 1 && !session.tiebreakerRevealed}{@render slidePips(tbAt, tbOf)}{/if}
 {:else if session.phase === 'end'}
   {@const ranked = places(session)}
   <!-- Everything's at full size while it fits (6 places); with more, it shrinks just enough for the last one to show. -->
@@ -1395,6 +1390,14 @@
   .pips span.on {
     background: #fff;
     opacity: 1;
+  }
+  .pips b {
+    color: #fff;
+    font-size: 30px;
+    line-height: 32px;
+    font-weight: 700;
+    padding: 0 6px;
+    font-variant-numeric: tabular-nums;
   }
   .caption {
     position: absolute;

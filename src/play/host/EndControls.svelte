@@ -3,8 +3,9 @@
   import { app } from '../../lib/app.svelte';
   import { getContext, onDestroy } from 'svelte';
   import { NEXT_GAME } from './nextgame';
-  import { isFinal, roundName, type Game, type Session } from '../../lib/model';
+  import { isFinal, questionSlides, roundName, type Game, type Session } from '../../lib/model';
   import { coWinnersHold, nameList, tiedForFirst, tiedLeaders } from '../../lib/session';
+  import { slideHasContent } from '../../lib/usage';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
   import { hostAsk, offerNext } from './slots.svelte';
@@ -35,13 +36,15 @@
   const level = $derived(tiedForFirst(session));
   const lastIndex = $derived(game.rounds.length - 1);
   const last = $derived(game.rounds[lastIndex]);
+  /** A tiebreaker clue with a question written (one ticked on but left empty would put a blank slide on stream). */
+  const tbReady = $derived(!!game.tiebreaker && questionSlides(game.tiebreaker).some(slideHasContent));
 
   const copyStandings = () => copyText(standingsText(game, session), 'Standings copied: paste them in chat');
   const rollOff = () => onrolloff?.(ties.map((p) => p.id));
 
   // A tie for first: settling it is the main button (the tiebreaker clue when the game has one, else a roll-off).
   offerNext('end', () =>
-    !ties.length ? null : game.tiebreaker ? { label: '❓ Tiebreaker clue', run: ontiebreaker } : onrolloff ? { label: '🎲 Tiebreaker roll-off', key: 'O', run: rollOff } : null,
+    !ties.length ? null : tbReady ? { label: '❓ Tiebreaker clue', run: ontiebreaker } : onrolloff ? { label: '🎲 Tiebreaker roll-off', key: 'O', run: rollOff } : null,
   );
 
   /** 🔁 Rematch asks first, in the panel's confirmation strip: the results go. */
@@ -69,8 +72,8 @@
     <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
     <div class="row">
       <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
-      {#if game.tiebreaker && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
-      {#if !game.tiebreaker}
+      {#if tbReady && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
+      {#if !tbReady}
         <button disabled title="Write one on the editor's Tiebreaker tab">❓ Tiebreaker clue</button>
       {/if}
       <button

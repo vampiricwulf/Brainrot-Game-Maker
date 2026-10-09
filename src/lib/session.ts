@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -550,9 +550,12 @@ export function goToRound(session: Session, game: Game, index: number): void {
   }
 }
 
-/** From the end screen back to the last round (a Final round goes back to its reveals; no board intro). */
-export function backToLastRound(session: Session, game: Game): void {
-  const last = Math.max(0, game.rounds.length - 1);
+/**
+ * From the end screen back to the last round, or to round `index` (the closing Final, with a slides outro after it). A
+ * Final round goes back to its reveals; no board intro.
+ */
+export function backToLastRound(session: Session, game: Game, index = game.rounds.length - 1): void {
+  const last = Math.max(0, index);
   const round = game.rounds[last];
   session.currentRound = last;
   session.intro = null;
@@ -1079,6 +1082,9 @@ export function usedTiles(session: Session, game: Game, round = session.currentR
  * parties stay on their screens wherever they were moved; board-game players on a deleted space go back to Start.
  */
 export function rebaseSession(session: Session, from: Game, to: Game): void {
+  // The question slide on screen, by id: slides added or taken out before it keep it on screen (the first has no id).
+  const was = slidesOnShow(session, from);
+  const shownId = was ? (questionSlides(was)[clueSlideIndex(session, was)] as Partial<ExtraSlide>).id : undefined;
   const openId = session.currentClue ? getClue(from, session.currentClue)?.clue.id : undefined;
   const ref = openId ? findClueRef(to, openId) : null;
   if (ref) session.currentClue = ref;
@@ -1101,6 +1107,9 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
   session.gameId = to.id;
   refindPositions(session, to);
   refindSpaces(session, to);
+  const now = shownId ? slidesOnShow(session, to) : undefined;
+  const j = now?.extraSlides?.findIndex((s) => s.id === shownId) ?? -1;
+  if (j >= 0) session.slide = j + 1;
   if (session.phase === 'end' || session.phase === 'tiebreaker') return;
   // The round being played was deleted (or the one now in its place is another mode): enter that one properly,
   // without its intro. With no rounds left, the game is over.
