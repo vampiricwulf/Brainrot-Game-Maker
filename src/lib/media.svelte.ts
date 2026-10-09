@@ -162,7 +162,8 @@ const OLD_OPEN_LOCK = 'jeopardy-builder-open';
 /** Mark this copy of the app as open for as long as the page lives (see pruneMedia). */
 export function holdOpenLock(): void {
   try {
-    for (const name of [OPEN_LOCK, OLD_OPEN_LOCK]) void navigator.locks?.request(name, { mode: 'shared' }, () => new Promise<never>(() => {}));
+    // (Refused where site data is blocked: its storage is too, so there's nothing to prune.)
+    for (const name of [OPEN_LOCK, OLD_OPEN_LOCK]) void navigator.locks?.request(name, { mode: 'shared' }, () => new Promise<never>(() => {})).catch(() => {});
   } catch {
     /* no Web Locks: pruning just can't see other copies */
   }

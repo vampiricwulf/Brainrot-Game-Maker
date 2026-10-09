@@ -810,8 +810,13 @@
     </div>
   </div>
 {:else if playerOnly && app.screen === 'editor'}
-  {@render statusBar(false)}
-  <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
+  <!-- As the editor: the status bar on top, the start screen in the rest (scrolling there in a short window, not the page). -->
+  <div class="player-screen">
+    {@render statusBar(false)}
+    <div class="player-slot">
+      <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
+    </div>
+  </div>
 {:else if app.screen === 'editor'}
   <!-- The editor fills the window (the page itself never scrolls): the status bar stays on top of it. -->
   <div class="editor-screen">
@@ -943,6 +948,16 @@
   .editor-slot {
     flex: 1;
     min-height: 0;
+  }
+  .player-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .player-slot {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
   }
   .status-bar {
     flex: none;

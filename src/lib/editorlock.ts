@@ -25,10 +25,12 @@ function hold(options: LockOptions): Promise<boolean> {
         resolve(true);
         return new Promise<void>((r) => (letGo = r));
       })
-      .catch(() => {
+      .catch((e) => {
         // Taken by a copy that got no answer (this one was frozen, or asleep in the background).
         if (holding) give(false);
-        else resolve(false);
+        // Refused, not busy (site data blocked, or a sandboxed frame): as with no Web Locks, this copy edits. Its storage
+        // is refused too then, so two copies have nothing to overwrite. (The take-over wait cut short is no.)
+        else resolve(e instanceof DOMException && e.name === 'SecurityError');
       });
   });
 }

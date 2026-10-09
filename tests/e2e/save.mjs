@@ -1,7 +1,7 @@
 // Saving: Save / Export HTML keep working and keep every file, and a second copy of the app (another
 // tab or window, which shares the browser's storage) never overwrites this copy's game or deletes its media.
 import { chromium } from 'playwright-core';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
@@ -157,6 +157,8 @@ try {
   await player.locator('.home').waitFor();
   await player.locator('.status-bar [data-audience-open]').waitFor();
   assert(true, 'the player file’s start screen says its audience window is up (on “Starting soon”), with its ✕');
+  const page = await player.evaluate(() => [document.documentElement.scrollHeight, innerHeight]);
+  assert(page[0] <= page[1], `and the line sits over the start screen without making the page scroll (${page.join(' / ')})`);
   await audP.close();
   await player.locator('.status-bar [data-audience-lost]').waitFor();
   assert(true, 'and warns when it is closed by accident (viewers see nothing), with Reopen');
@@ -174,6 +176,31 @@ try {
   assert(true, 'Play here instead: the first tab pauses, the second one has the game in progress');
   await player.close();
   await player2.close();
+
+  // Where the browser refuses the page's Web Locks (it blocks site data, or, here, a sandboxed frame), it refuses its
+  // storage too: the player file still plays, saying it can't keep progress, and the builder still edits, rather than
+  // waiting on another tab that isn't there.
+  const sandboxed = await context.newPage();
+  sandboxed.on('pageerror', (e) => errors.push(`[sandboxed] ${e.message}`));
+  const frameHost = resolve('test-results/save-sandboxed.html');
+  const inFrame = async (src) => {
+    writeFileSync(frameHost, `<!doctype html><body style="margin:0"><iframe sandbox="allow-scripts" src="${src}" style="border:0;width:100vw;height:100vh"></iframe>`);
+    await sandboxed.goto(pathToFileURL(frameHost).href);
+    return sandboxed.frameLocator('iframe');
+  };
+  const sp = await inFrame(pathToFileURL(saved).href);
+  await sp.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
+  const refused = await sandboxed.frames()[1].evaluate(() => navigator.locks.request('probe', () => {}).then(() => 'granted', (e) => e.name));
+  assert(
+    refused === 'SecurityError' &&
+      (await sp.getByText("This browser isn't saving progress here").count()) === 1 &&
+      (await sp.getByRole('heading', { name: 'This game is open in another tab' }).count()) === 0,
+    `with Web Locks refused (${refused}) the player file opens on ▶ Play, saying it isn’t saving progress (not “open in another tab”)`,
+  );
+  const sb = await inFrame(url);
+  await sb.getByRole('button', { name: 'Open…' }).waitFor({ timeout: 20000 });
+  assert(true, 'and the builder opens its editor');
+  await sandboxed.close();
 
   // Reopening the saved pack restores the game and its files. The game being edited has a round now, so Open… asks first.
   dialogs.length = 0;
