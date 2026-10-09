@@ -19,6 +19,7 @@ import {
   mostPlayers,
   newGame,
   textSlide,
+  typedPoints,
   wholePoints,
   type Game,
 } from './model';
@@ -277,6 +278,25 @@ describe('⚖ Game rules: what can be typed', () => {
     expect(wholePoints(NaN)).toBeNull();
   });
 
+  it('points typed as text: thousands, a symbol or a word around the number read too', () => {
+    expect(typedPoints('1,000')).toBe(1000);
+    expect(typedPoints(' $500 ')).toBe(500);
+    expect(typedPoints('500 pts')).toBe(500);
+    expect(typedPoints('−$200')).toBe(-200);
+    expect(typedPoints('$-200')).toBe(-200);
+    expect(typedPoints('-1,500.6')).toBe(-1501);
+    expect(typedPoints('€1 000')).toBe(1000);
+    expect(typedPoints('1e20')).toBe(MAX_POINTS);
+    // Nothing that reads as a number: null (asked again, not set to something else).
+    expect(typedPoints('')).toBeNull();
+    expect(typedPoints('abc')).toBeNull();
+    expect(typedPoints('$')).toBeNull();
+    expect(typedPoints('1.2.3')).toBeNull();
+    expect(typedPoints('12abc34')).toBeNull();
+    expect(typedPoints('1.5K')).toBeNull();
+    expect(typedPoints('2m pts')).toBeNull();
+  });
+
   it('a name with nothing to see in it is blank', () => {
     expect(blankName('')).toBe(true);
     expect(blankName('   ')).toBe(true);
@@ -312,5 +332,9 @@ describe('points with the game’s symbol', () => {
     expect(compactPoints(1_250_000, '$')).toBe('$1.2M');
     expect(compactPoints(999_999_999, '$')).toBe('$999.9M');
     expect(compactPoints(-3_480_000_000, 'pts')).toBe('−3.4B pts');
+    // From 1,000, and with no digit after the point (narrower still).
+    expect(compactPoints(1_250, '$', 1000)).toBe('$1.2K');
+    expect(compactPoints(1_999, '$', 1000, 0)).toBe('$1K');
+    expect(compactPoints(999, '$', 1000, 0)).toBe('$999');
   });
 });

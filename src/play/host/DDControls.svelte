@@ -91,7 +91,13 @@
     // (Why not, rather than nothing.)
     else
       toast(
-        !playerId ? 'Pick who found it first' : wager === null ? 'Type a wager first' : `That’s over the max (${formatPoints(cap, sym)}): type less, or tick Ignore the limit`,
+        !playerId
+          ? 'Pick who found it first'
+          : wager === null
+            ? 'Type a wager first'
+            : wager < 0
+              ? 'A wager can’t be below 0'
+              : `That’s over the max (${formatPoints(cap, sym)}): type less, or tick Ignore the limit`,
       );
   }
 
@@ -99,7 +105,13 @@
   offerNext('dd', () => ({
     label: 'Show question ▶',
     key: '⏎',
-    title: valid ? 'Enter in the wager box' : playerId ? 'Type a wager within the max (or tick Ignore the limit)' : 'Pick who found it first',
+    title: valid
+      ? 'Enter in the wager box'
+      : !playerId
+        ? 'Pick who found it first'
+        : wager !== null && wager < 0
+          ? 'A wager can’t be below 0'
+          : 'Type a wager within the max (or tick Ignore the limit)',
     disabled: !valid,
     run: () => valid && onshow(playerId, wager!),
   }));

@@ -201,6 +201,30 @@ try {
   assert((await page.locator('.fj .wagers input[data-wager]').count()) === 2, 'a player ticked out on the wager screen loses their wager box');
   await page.keyboard.press('Control+z');
   assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z brings a player back into the Final');
+  // ✎ Set the score… from a plate's menu (the Final has no score chips): what isn't a number is asked again, saying so;
+  // "−$200" reads; and the wager row shows that score (not the $0 they can wager). (Forced: the plate is a button that's
+  // off while nothing is done by clicking it, and its right-click menu still comes up.)
+  const plate3 = page.locator('.stage-box .plate', { hasText: 'Player 3' });
+  await plate3.click({ button: 'right', force: true });
+  await page.getByRole('menuitem', { name: '✎ Set the score…' }).click();
+  const scoreAsk = page.getByRole('group', { name: 'Player 3’s score:' });
+  await scoreAsk.getByRole('textbox').fill('abc');
+  await scoreAsk.getByRole('textbox').press('Enter');
+  await page.locator('.toast', { hasText: '“abc” isn’t a number' }).waitFor();
+  assert((await scoreAsk.count()) === 1 && (await plate3.locator('.score').innerText()) === '$400', 'Set the score with no number in it says so, and stays open (the score as it was)');
+  await scoreAsk.getByRole('textbox').fill('−$200');
+  await scoreAsk.getByRole('textbox').press('Enter');
+  await scoreAsk.waitFor({ state: 'detached' });
+  assert((await plate3.locator('.score').innerText()) === '−$200', 'a score typed as “−$200” reads (a symbol and a minus sign around the number)');
+  const row3 = page.locator('.fj .wagers .wrow', { hasText: 'Player 3' });
+  assert((await row3.innerText()).includes('their score −$200 (no limit now)'), `the wager row of a player below 0 shows their score (${(await row3.innerText()).replace(/\s+/g, ' ')})`);
+  // (Back to $400 the same way, before the wagers.)
+  await plate3.click({ button: 'right', force: true });
+  await page.getByRole('menuitem', { name: '✎ Set the score…' }).click();
+  await scoreAsk.getByRole('textbox').fill('400');
+  await scoreAsk.getByRole('textbox').press('Enter');
+  await scoreAsk.waitFor({ state: 'detached' });
+  assert((await plate3.locator('.score').innerText()) === '$400', 'and a plain number still sets it ($400)');
   for (let i = 0; i < 3; i++) await page.locator('.fj .wagers input[data-wager]').nth(i).fill(String((i + 1) * 100));
   // A wager already in is changed in its box: one step, named with the old and the new amount.
   await page.locator('.fj .wagers input[data-wager]').first().fill('150');

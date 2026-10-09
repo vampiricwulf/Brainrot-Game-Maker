@@ -7,7 +7,7 @@
   import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { finalName, formatPoints, roundName, type Game, type Session, type WagerSource } from '../../lib/model';
+  import { finalName, formatPoints, MAX_POINTS, roundName, type Game, type Session, type WagerSource } from '../../lib/model';
   import {
     currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
     hasWager, nameList, score, slidePosition, wagerFromPhone, wagerSentBy,
@@ -242,7 +242,8 @@
   function setWager(id: string, box: HTMLInputElement): void {
     const fs = f;
     const value = box.value;
-    const v = Number(value);
+    // (At most what reads on screen, as finalSetWager keeps it: the step says what it is.)
+    const v = Math.min(MAX_POINTS, Number(value));
     const was = fs?.wagers[id];
     const back = (): void => {
       box.value = typeof was === 'number' ? String(was) : '';
@@ -403,7 +404,7 @@
                 >
               {/if}
               <span class="muted small">
-                {override ? `their score ${formatPoints(cap, sym)} (no limit now)` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
+                {override ? `their score ${formatPoints(score(session, p.id), sym)} (no limit now)` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
               </span>
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->

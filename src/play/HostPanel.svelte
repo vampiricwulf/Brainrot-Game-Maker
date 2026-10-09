@@ -9,7 +9,7 @@
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
-  import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -283,8 +283,11 @@
   /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
   const cancelBlocked = $derived(!ddWager && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
-  /** 0 is an amount too: a Daily Double wagered at 0 (a 0 result), the tiebreaker's winner (no points). */
-  const zeroOk = $derived(amount === 0 && ((session.phase === 'clue' && session.dd?.stage === 'question') || session.phase === 'tiebreaker'));
+  /** 0 is an amount too: a Daily Double wagered at 0 or a clue worth 0 (a 0 result), the tiebreaker's winner (no points). */
+  const zeroOk = $derived(
+    amount === 0 &&
+      ((session.phase === 'clue' && (session.dd?.stage === 'question' || (!session.dd && info?.value === 0 && !toolOnly))) || session.phase === 'tiebreaker'),
+  );
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   /** Why ＋ Award and − Deduct are off (their tooltip). */
   const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who answered first (1–${Math.min(9, session.players.length) || 9})`);
@@ -385,9 +388,11 @@
   }
 
   function commitScore(id: string, value: string): void {
-    // (Whole points, within what reads on screen.)
-    const n = wholePoints(Number(value));
-    if (value.trim() !== '' && n !== null) {
+    if (value.trim() !== '') {
+      // (Whole points, within what reads on screen: "1,000", "$500" or "500 pts" read too.)
+      const n = typedPoints(value);
+      // Not a number: the box stays open, saying why (not closed as if the score was set).
+      if (n === null) return void toast(`“${value.trim()}” isn’t a number: type one, like 1500`);
       setScore(session, id, n);
       announce(`${session.players.find((p) => p.id === id)?.name ?? 'Player'} now ${formatPoints(n, sym)}`);
     }

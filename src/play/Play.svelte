@@ -5,7 +5,7 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, type ClueRef } from '../lib/model';
+  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
@@ -643,16 +643,18 @@
     if (!ids.length) return toast(`Select a player first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
     // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
     if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);
-    // A Daily Double wagered at 0 is still right or wrong: a 0 result is logged.
-    const zeroDD = amt === 0 && session.phase === 'clue' && session.dd?.stage === 'question';
-    if (!amt && !zeroDD) return toast('Enter an amount first');
+    // A Daily Double wagered at 0, or a clue worth 0 (not a wheel or dice tile with nothing to judge), is still right or
+    // wrong: a 0 result is logged.
+    const zero =
+      amt === 0 && session.phase === 'clue' && (session.dd?.stage === 'question' || (!session.dd && info?.value === 0 && !toolOnlyClue(info.clue)));
+    if (!amt && !zero) return toast('Enter an amount first');
     const batch = newId();
-    const events = zeroDD
+    const events = zero
       ? logZero(session, ids, reasonNow(), info?.clue.id, sign > 0, batch)
       : applyScore(session, game, ids, sign * Math.abs(amt!), reasonNow(), info?.clue.id, false, batch);
     // Wrong with no negative scores, from a player on 0 (or less): nothing to take, but it's still a wrong answer (the
     // log says so, the cue plays, and in Buzzer mode that player is locked out).
-    if (!zeroDD && sign < 0) {
+    if (!zero && sign < 0) {
       const missed = ids.filter((id) => !events.some((e) => e.playerId === id));
       if (missed.length) events.push(...logZero(session, missed, reasonNow(), info?.clue.id, false, batch));
     }
@@ -2010,6 +2012,8 @@
     if (!session.players.length) return;
     // A name left blank (or only spaces, or invisible characters) would be an empty plate on stream.
     session.players.forEach((p, i) => blankName(p.name) && (p.name = `${pregameTeams ? 'Team' : 'Player'} ${i + 1}`));
+    // A start score is whole points, within what reads on screen (even one still being typed as the game starts).
+    session.players.forEach((p) => (p.startScore = wholePoints(p.startScore) ?? 0));
     // A board short of Daily Doubles (a new one's ⭐ Daily Doubles 1, none placed) would play without them: the rest go
     // in at random now, each board a step as 🎲 Place now is.
     const placed = game.rounds.flatMap((r, ri) => (isBoard(r) && dailyDoublesShort(r) ? [{ n: placeDailyDoubles(ri, false), name: r.name }] : []));

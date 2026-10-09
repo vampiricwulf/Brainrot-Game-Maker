@@ -72,6 +72,13 @@ describe('score pops', () => {
     expect(plateScore(12_400, '$', 12)).toBe('$12,400');
     expect(plateScore(999_999_999, '$', 12)).toBe('$999.9M');
     expect(plateScore(-1_234_567_890, 'pts', 12)).toBe('−1.2B pts');
+    // Narrower still (20 plates, or 16 with a word symbol, or 14 and the countdown): shorter forms, never one cut off.
+    expect(plateScore(1200, '$', 20)).toBe('$1K');
+    expect(plateScore(-800, '$', 20)).toBe('−800');
+    expect(plateScore(123_456, '$', 20)).toBe('123K');
+    expect(plateScore(1200, 'pts', 16)).toBe('1,200');
+    expect(plateScore(5000, 'pts', 14, 250)).toBe('5,000');
+    expect(plateScore(123_456, 'pts', 16)).toBe('123K');
   });
 });
 

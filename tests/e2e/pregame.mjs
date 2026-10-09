@@ -148,6 +148,16 @@ try {
   assert((await same.innerText()).includes('“Bo”'), 'two players called Bo (whatever the case) are pointed out');
   await cy.fill('Cy');
   assert((await same.count()) === 0, 'and the note goes once they differ');
+  // ---------- A start score: whole points, within what reads on screen (made so once typed) ----------
+  const boStart = page.getByLabel('Bo\'s start score');
+  await boStart.fill('250.5');
+  await boStart.press('Tab');
+  assert((await boStart.inputValue()) === '251', 'a start score with a fraction becomes whole points once typed (250.5 → 251)');
+  const cyStart = page.getByLabel('Cy\'s start score');
+  await cyStart.fill('99999999999999999999');
+  await cyStart.press('Tab');
+  assert((await cyStart.inputValue()) === '1000000000000', 'and one past the most points reads as the most (1,000,000,000,000)');
+  await cyStart.fill('0');
   assert((await start.getAttribute('title')).includes('Ctrl+Enter'), 'Start game ▶ says its key, Ctrl+Enter');
   // ---------- Ctrl+Enter starts the game, from a name being typed in (which keeps the typing) ----------
   await cy.press('End');
@@ -157,6 +167,7 @@ try {
   assert(await page.locator('.pregame').count() === 0, 'Ctrl+Enter starts the game');
   await page.getByRole('button', { name: 'Skip intro' }).click();
   assert((await page.locator('main.play').innerText()).includes('Cyz'), 'with the name just typed in (Cyz)');
+  assert((await page.locator('.stage-box .plate', { hasText: 'Bo' }).locator('.score').innerText()) === '$251', 'Bo starts on the whole start score ($251)');
 
   // ---------- ⚖ Game rules mid-game, and raising Most players from 👥 Players ----------
   await page.getByRole('button', { name: '⚖ Rules' }).click();

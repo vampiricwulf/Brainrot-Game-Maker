@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -102,13 +102,16 @@ export function undo(session: Session): ScoreEvent[] {
   return events;
 }
 
-/** An award that made its player the picker: undone, the picker goes back (unless it changed since); redone, again. */
+/**
+ * An award that made its player the picker: undone, the picker goes back; redone, again. Either way only while it's
+ * still as the award left it (an old award put back in 📜 Log › Scores doesn't take the board from whoever has it now).
+ */
 function followPicker(session: Session, events: ScoreEvent[]): void {
   for (const e of events) {
     if (!e.picker) continue;
     if (e.undone) {
       if (session.currentPickerId === e.picker.now) session.currentPickerId = e.picker.was;
-    } else session.currentPickerId = e.picker.now;
+    } else if (session.currentPickerId === e.picker.was) session.currentPickerId = e.picker.now;
   }
 }
 
@@ -769,7 +772,8 @@ export function finalSetWager(session: Session, playerId: string, wager: number 
   const f = session.final;
   if (!f) return;
   if (wager === undefined) delete f.wagers[playerId];
-  else f.wagers[playerId] = wager;
+  // (At most what reads on screen. A fraction is kept, to be refused as not a whole number.)
+  else f.wagers[playerId] = Math.min(MAX_POINTS, wager);
   if (from === 'phone' && wager !== undefined) f.wagerFrom = { ...f.wagerFrom, [playerId]: 'phone' };
   else if (f.wagerFrom?.[playerId]) {
     const { [playerId]: _, ...rest } = f.wagerFrom;

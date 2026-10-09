@@ -1202,7 +1202,7 @@ export function boardRounds(game: Game): BoardRound[] {
 }
 
 /** A points symbol that's a word ("pts", "coins", "kr") goes after the number, with a space; $, €, R$, 🧠… go in front. */
-const wordSymbol = (sym: string) => /^\p{L}+\.?$/u.test(sym.trim());
+export const wordSymbol = (sym: string) => /^\p{L}+\.?$/u.test(sym.trim());
 
 /** The digits with the game's points symbol in its place, and "−" in front for less than zero. */
 function withSymbol(n: number, digits: string, sym: string): string {
@@ -1216,11 +1216,11 @@ export function formatPoints(n: number, sym: string): string {
 
 /**
  * Points shortened for a narrow spot ("$1.2M", "−3.4B pts"): cut down, never rounded up, so a score shown is never more
- * than the real one. Under 10,000 it's the whole number.
+ * than the real one. Under `from` (10,000) it's the whole number; `digits` after the point at most ("$1K" with 0).
  */
-export function compactPoints(n: number, sym: string): string {
-  if (Math.abs(n) < 10_000) return formatPoints(n, sym);
-  const opts = { notation: 'compact', maximumFractionDigits: 1, roundingMode: 'trunc' } as Intl.NumberFormatOptions;
+export function compactPoints(n: number, sym: string, from = 10_000, digits = 1): string {
+  if (Math.abs(n) < from) return formatPoints(n, sym);
+  const opts = { notation: 'compact', maximumFractionDigits: digits, roundingMode: 'trunc' } as Intl.NumberFormatOptions;
   return withSymbol(n, Math.abs(n).toLocaleString(undefined, opts), sym);
 }
 
@@ -1344,6 +1344,20 @@ export const MAX_POINTS = 1_000_000_000_000;
 export function wholePoints(n: number | null | undefined): number | null {
   if (typeof n !== 'number' || !Number.isFinite(n)) return null;
   return Math.min(MAX_POINTS, Math.max(-MAX_POINTS, Math.round(n)));
+}
+
+/**
+ * Points typed as text by the host (as wholePoints): "1,000", "$500", "−$200" or "500 pts" read too. Null when there's
+ * no number in it, or a short form ("1.5K", "2M") that would read as far less than meant.
+ */
+export function typedPoints(text: string): number | null {
+  const t = text.replace(/[\s,_]/g, '').replace(/−/g, '-');
+  if (t === '') return null;
+  if (Number.isFinite(Number(t))) return wholePoints(Number(t));
+  if (/\d[kmb](?![a-z])/i.test(text.replace(/[,_]/g, ''))) return null;
+  // A sign, a symbol in front ("$", "€"), the number, then a word after it ("pts") or a symbol.
+  const m = /^(-?)[^\d.-]*(-?)(\d+(?:\.\d+)?)[^\d.]*$/.exec(t);
+  return m ? wholePoints((m[1] || m[2] ? -1 : 1) * Number(m[3])) : null;
 }
 
 /** Most a tile (or a row of tiles) can be worth: past it, scores stop reading on screen. */

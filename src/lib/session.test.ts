@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { migrateGame, newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
+import { MAX_POINTS, migrateGame, newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
@@ -807,6 +807,16 @@ describe('final wagers', () => {
     expect(b in session.final!.wagers).toBe(false);
   });
 
+  it('a wager is at most what reads on screen (a fraction is kept, to be refused as not whole)', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 1);
+    finalSetWager(session, a, 1e20);
+    finalSetWager(session, b, 2.5);
+    expect([session.final!.wagers[a], session.final!.wagers[b]]).toEqual([MAX_POINTS, 2.5]);
+    expect(finalWagerProblems(session, true).whole).toEqual([b]);
+  });
+
   it('teams: says who sent a wager from their phone, until the host changes it', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 500, 'x');
@@ -1137,5 +1147,25 @@ describe('an award that made its player the picker', () => {
     expect(session.currentPickerId).toBe(a);
     redo(session);
     expect(session.currentPickerId).toBe(b);
+  });
+
+  it('an old award undone and put back in the log leaves the picker with whoever answered since', () => {
+    const { game, session, a, b, c } = setup();
+    session.currentPickerId = a;
+    const first = applyScore(session, game, [b], 200, 'x');
+    first[0].picker = { was: a, now: b };
+    session.currentPickerId = b;
+    const second = applyScore(session, game, [c], 400, 'y');
+    second[0].picker = { was: b, now: c };
+    session.currentPickerId = c;
+    toggleEvent(session, first[0].id);
+    expect(session.currentPickerId).toBe(c);
+    toggleEvent(session, first[0].id);
+    expect(session.currentPickerId).toBe(c);
+    // Undone and redone while it's still as the award left it: the picker follows.
+    toggleEvent(session, second[0].id);
+    expect(session.currentPickerId).toBe(b);
+    toggleEvent(session, second[0].id);
+    expect(session.currentPickerId).toBe(c);
   });
 });

@@ -86,6 +86,13 @@ try {
   await page.locator('.tile').nth(3).click();
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('dailyDouble');
   await page.getByRole('button', { name: 'Done' }).click();
+  // A tile worth $0 (a bonus for fun).
+  await page.locator('.tile').nth(2).click();
+  const zeroValue = page.getByRole('dialog', { name: 'Edit clue' }).getByLabel('Value');
+  await zeroValue.fill('0');
+  await zeroValue.press('Tab');
+  await page.getByRole('dialog', { name: 'Edit clue' }).locator('header .value', { hasText: '$0' }).waitFor();
+  await page.getByRole('button', { name: 'Done' }).click();
 
   await playWithPlayers(page, 3);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -156,6 +163,11 @@ try {
   await page.waitForTimeout(500);
   await tile(3).click();
   await page.locator('.dd input[type=number]').waitFor();
+  // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
+  await page.locator('.dd input[type=number]').fill('-500');
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'A wager can’t be below 0' }).waitFor();
+  assert((await mainButton(page).getAttribute('title')) === 'A wager can’t be below 0', 'a Daily Double wager below 0 says so (a toast, and the main button’s tooltip), not “over the max”');
   await page.locator('.dd input[type=number]').fill('100');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
@@ -188,6 +200,19 @@ try {
       (await chip.getByRole('button', { name: /^Wrong:/ }).isDisabled()) &&
       (await chip.getByRole('button', { name: /^Right:/ }).isEnabled()),
     'a player marked ✘ shows it on their chip (✘ −$400), and ✘ is off for them on this clue (✔ still on)',
+  );
+  await page.keyboard.press('Escape');
+  // A $0 tile is still judged: ✔ marks the player (a 0 result), rather than "Enter an amount first".
+  await tile(2).click();
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+  const zeroChip = page.locator('.panel .p').nth(1);
+  await zeroChip.getByRole('button', { name: 'Right: Player 2 +$0' }).click();
+  await zeroChip.locator('.mark.right').waitFor();
+  assert(
+    (await zeroChip.locator('.mark').innerText()).trim() === '✔' &&
+      (await zeroChip.getByRole('button', { name: /^Right:/ }).isDisabled()) &&
+      (await page.locator('.toast', { hasText: 'Enter an amount first' }).count()) === 0,
+    'a $0 tile is judged: ✔ marks the player on their chip (no points), with no “Enter an amount first”',
   );
   await page.keyboard.press('Escape');
 
