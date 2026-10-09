@@ -2706,8 +2706,11 @@
   let tabbing = false;
   /** The last thing the host used was the keyboard (not the mouse). */
   let viaKeys = false;
-  /** The button the mouse last pressed (until Tab reaches it): Enter there awards, even once a window gives it back. */
-  let pointed: Element | null = null;
+  /**
+   * Buttons the mouse pressed (each until Tab reaches it): Enter there awards, even once a window gives one back (its
+   * window opened with a click, then a checkbox in it clicked, then closed with Esc).
+   */
+  const pointed = new WeakSet<Element>();
   let tabbedTo: EventTarget | null = null;
 
   /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
@@ -3018,7 +3021,8 @@
   onpointerdowncapture={(e) => {
     tabbing = false;
     viaKeys = false;
-    pointed = e.target instanceof Element ? e.target.closest('button, [role="button"]') : null;
+    const b = e.target instanceof Element ? e.target.closest('button, [role="button"]') : null;
+    if (b) pointed.add(b);
   }}
   onfocusin={(e) => {
     const el = e.target instanceof Element ? e.target : null;
@@ -3027,8 +3031,8 @@
     // shortcut (awards, moves), the rescue's guess at the nearest button (the one with the keys turned off or went away):
     // it may change the game (▦ Done ▶ board after ＋ Award, a player's chip after 🎲 Roll).
     const guess = rescuing() && awardOpen(session);
-    if (tabbing && el === pointed) pointed = null;
-    tabbedTo = el && (tabbing || (viaKeys && !guess && el !== pointed && !el.matches('[data-next]'))) ? el : null;
+    if (tabbing && el) pointed.delete(el);
+    tabbedTo = el && (tabbing || (viaKeys && !guess && !pointed.has(el) && !el.matches('[data-next]'))) ? el : null;
     tabbing = false;
     fields.focusin(e);
   }}
