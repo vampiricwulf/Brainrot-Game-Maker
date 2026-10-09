@@ -309,6 +309,32 @@ describe('step labels', () => {
     expect(two).toMatchObject({ label: 'Added 2 images', where: 'Jeopardy! › Category 1 › $200 › Question' });
   });
 
+  it('shows a screen pasted with the stats, items and wheels it uses where the screen is', () => {
+    const pasted = step((g) => {
+      g.statFields = [newStatField('Gold')];
+      g.items = [{ id: 'potion', name: 'Potion', stackable: true }];
+      g.wheels.push(newWheel('Loot'));
+      screens(g).push(newScreen(3, 0, 'Forest'));
+    }, 'Pasted screen “Forest”');
+    const forest = screens(pasted.after)[3];
+    expect(pasted).toMatchObject({ where: 'World 1 › Overworld', place: { tab: 'world', screen: forest.id }, undoPlace: { tab: 'world' } });
+    // (A game with stats already: the new one is an insert into them.)
+    const before = structuredClone(pasted.after);
+    screens(before).pop();
+    const after = structuredClone(before);
+    after.statFields!.push(newStatField('HP'));
+    screens(after).push(forest);
+    expect(describeStep(diff(before, after), before, after, 'Pasted screen “Forest”')).toMatchObject({ place: { tab: 'world', screen: forest.id } });
+    // On its own, a stat added still shows on Stats & Items; so does an item deleted with the buttons that gave it.
+    expect(describeStep(diff(before, after).filter((o) => o.p[0] === 'statFields'), before, after).place).toMatchObject({ tab: 'stats' });
+    const giving = structuredClone(before);
+    giving.wheels[0].segments[0].actions = [{ id: 'b1', do: 'item', item: 'potion', qty: 1, op: 'give' }];
+    const gone = structuredClone(giving);
+    gone.items = [];
+    gone.wheels[0].segments[0].actions![0] = { id: 'b1', do: 'item', item: '', qty: 1, op: 'give' };
+    expect(describeStep(diff(giving, gone), giving, gone)).toMatchObject({ label: 'Deleted item “Potion”', place: { tab: 'stats' } });
+  });
+
   it('says switches turned on and off in words, not field names', () => {
     const el = (g: Game) => screens(g)[1].slide.elements;
     const door = (g: Game) => {

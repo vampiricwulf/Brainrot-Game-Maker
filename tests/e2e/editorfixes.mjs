@@ -3,7 +3,7 @@
 // characters, the world's menu, one set of ↶ ↷, and the theme's clue text and preview. Also: Enter in a category's
 // name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, ＋ buttons that put the
 // focus on what they add, and a board's six columns fitting a narrower window. Also: an RPG screen pasted into
-// another game bringing the items and stats its objects use.
+// another game bringing the items and stats its objects use, and undone where it was pasted.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -411,9 +411,25 @@ try {
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
   await page.locator('.first-round .mode', { hasText: 'RPG' }).click();
-  await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).focus();
+  // (A game with a stat already: the ones the screen brings are added to it.)
+  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: /HP \(bar/ }).click();
+  const adventure = tabs.filter({ hasText: 'Adventure' });
+  await adventure.click();
+  const cell = page.getByRole('button', { name: 'Add a screen at column 2, row 1' });
+  await cell.focus();
   await page.keyboard.press('Control+v');
-  await page.getByRole('button', { name: 'Screen Forest' }).focus();
+  const forest = page.getByRole('button', { name: 'Screen Forest' });
+  await forest.waitFor();
+  // Undone and redone, it shows on the map it was pasted on (not on 📊 Stats & Items with what it brought).
+  const onMap = async (shown) => (await adventure.getAttribute('aria-current')) === 'page' && (await shown.isVisible());
+  await page.keyboard.press('Control+z');
+  await forest.waitFor({ state: 'detached' });
+  assert(await onMap(cell), 'Ctrl+Z of a screen pasted with its stats and items stays on the map');
+  await page.keyboard.press('Control+y');
+  await forest.waitFor();
+  assert(await onMap(forest), 'Ctrl+Y of it stays on the map too');
+  await forest.focus();
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: '◀ Back to the map' }).waitFor();
   const picks = [];

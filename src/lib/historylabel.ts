@@ -566,6 +566,14 @@ function asList(op: Op): { op: Op; n: number } | null {
   return null;
 }
 
+/** The game's own lists that a clue, screen, slide item, button or space can use. */
+const KITS = new Set<Seg>(['wheels', 'dice', 'items', 'shops', 'statFields']);
+/** A wheel, dice, item, shop or stat added to the game (not a change inside one, nor one deleted). */
+function addsKit(op: Op): boolean {
+  const add = op.t === 'set' ? asList(op)?.op : op;
+  return add?.t === 'ins' && add.p.length === 1 && KITS.has(add.p[0]);
+}
+
 /** Every change is inside the thing `op` changes or around it (typing a question also makes its tile playable). */
 function related(ops: readonly Op[], op: Op): boolean {
   const mine = op.p.join('/');
@@ -602,7 +610,10 @@ function widePath(ops: readonly Op[], op: Op, alike: number): Seg[] | null {
 export function describe(all: readonly Op[], before: Game, after: Game, explicit?: string | null): Described {
   // A file added with what shows it (a picture put on a slide, an image edited): that is what the step did, and where.
   const shown = all.filter((o) => opPath(o)[0] !== 'media');
-  const ops = shown.length ? shown : all;
+  let ops = shown.length ? shown : all;
+  // The same for wheels, dice, items, shops and stats added with what uses them (a screen pasted from another game, a
+  // new item put on a screen): the step shows there, not on 🎡 Wheels & Dice or 📊 Stats & Items.
+  if (ops.some((o) => !KITS.has(opPath(o)[0]))) ops = ops.filter((o) => !addsKit(o));
   const first = primary(ops);
   const list = asList(first);
   const op = list?.op ?? first;
