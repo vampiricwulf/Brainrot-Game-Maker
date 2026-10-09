@@ -305,6 +305,20 @@ try {
   await page.locator('.tile').first().click();
   const editorFont = await page.locator('.modal .se .canvas').evaluate((c) => [...c.querySelectorAll('*')].map((e) => getComputedStyle(e).fontFamily).find((f) => f.includes('Bangers')) ?? '');
   assert(editorFont.includes('Bangers'), `the clue text font changes the clues' text (${editorFont})`);
+  // Its text box deleted, then the question typed again in the Question box: the new text box is on top of the rest (it
+  // went under them), in the clue text font (it came back in a new text box's).
+  const se = page.locator('.modal .se');
+  await se.getByRole('button', { name: /◼ Shape/ }).click();
+  await page.getByRole('button', { name: '▭ Rectangle' }).click();
+  await se.locator('.layers-box .row').filter({ hasNotText: 'Rectangle' }).locator('.name').click();
+  await page.keyboard.press('Delete');
+  await page.locator('.modal [data-field="q"]').fill('Back on top');
+  const items = await se.locator('.canvas .slide .el').evaluateAll((els) =>
+    els.map((e) => ({ text: !!e.querySelector('.text'), z: Number(e.style.zIndex), font: e.querySelector('.text') ? getComputedStyle(e.querySelector('.text')).fontFamily : '' })),
+  );
+  const retyped = items.find((e) => e.text);
+  const shape = items.find((e) => !e.text);
+  assert(items.length === 2 && retyped.z > shape.z && retyped.font.includes('Bangers'), `the question typed again goes on top, in the clue text font (${JSON.stringify(items)})`);
   await page.getByRole('button', { name: 'Done' }).click();
 
   // ---------- A copy of a copy is "(copy 2)", not "(copy) (copy)" ----------

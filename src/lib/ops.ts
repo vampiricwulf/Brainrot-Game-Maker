@@ -318,6 +318,16 @@ export function textStyleTargets(
   return out;
 }
 
+/**
+ * "This round" for a Final round or the tiebreaker: the main text of its own question slides and/or its answer (never
+ * `from` itself). scope as for textStyleTargets.
+ */
+export function ownTextTargets(holder: Pick<Clue, 'questionSlide' | 'extraSlides' | 'answerSlide'>, from: TextEl, scope: string): TextEl[] {
+  const which = scope.split('-')[1] ?? '';
+  const slides = [...(which.includes('q') ? questionSlides(holder) : []), ...(which.includes('a') ? [holder.answerSlide] : [])];
+  return slides.flatMap((s) => s.elements.find((e): e is TextEl => e.kind === 'text') ?? []).filter((t) => t !== from);
+}
+
 /** Copy `from`'s style onto `targets`. Returns a function that puts their previous styles back. */
 export function restyle(from: TextEl, targets: TextEl[]): () => void {
   const before = targets.map((t) => clone(t));

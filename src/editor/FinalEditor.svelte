@@ -3,8 +3,9 @@
   import { untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
-  import { textStyleTargets } from '../lib/ops';
+  import { ownTextTargets, textStyleTargets } from '../lib/ops';
   import { questionSlides, setSlideText, slideText, type FinalRound, type TextEl } from '../lib/model';
+  import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import SlideTabs, { slideKeyOf } from './SlideTabs.svelte';
 
@@ -28,8 +29,8 @@
     if (side === 'q') qi = slide ? Math.max(0, (untrack(() => round.extraSlides)?.findIndex((s) => s.id === slide) ?? -1) + 1) : 0;
   });
 
-  // There is no "this round" of clues here, so round scopes cover the whole game.
-  const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));
+  // "This round" is this Final's own slides (as a Slides round's is); "the whole game" is every clue's.
+  const styleTargets = (el: TextEl, scope: string) => (scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope) : ownTextTargets(round, el, scope));
 </script>
 
 <div class="grid">
@@ -66,11 +67,11 @@
 <div class="quick">
   <label class="field">
     {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
-    <textarea rows="2" data-field="q" placeholder="Type the final question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value)}></textarea>
+    <textarea rows="2" data-field="q" placeholder="Type the final question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
   </label>
   <label class="field">
     Answer (hidden until revealed)
-    <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value)}></textarea>
+    <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value) && followClueText(app.game, [round.answerSlide])}></textarea>
   </label>
   <label class="field">
     Host notes (never shown on stream)

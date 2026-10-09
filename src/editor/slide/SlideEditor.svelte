@@ -265,6 +265,11 @@
     if (!slide.elements.some((e) => e.kind === 'text') && !at) {
       // No main text any more (it was deleted): bring it back full-slide and shrink-to-fit.
       t = newTextEl('');
+      // A clue's main text comes back in the theme's clue text (the hosts with styletargets are the clue-type slides).
+      if (styletargets) {
+        t.font = game.theme.clueFont ?? t.font;
+        t.color = game.theme.clueColor ?? t.color;
+      }
     } else {
       t = newTextEl('New text', { x: 460, y: 390, w: 1000, h: 300 });
       t.size = 90;
@@ -563,7 +568,8 @@
     // Locked items don't move, but the others line up with them (spacing evenly is only for the ones that move).
     const fixed = spacing ? [] : held;
     if (free.length) undoApi.step(ALIGNED[how][free.length + fixed.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H, fixed));
-    if (spacing && held.length) tell(lockedNote(held.length));
+    // Said when locked items were left out of spacing, or when nothing could move at all (as a nudge says it).
+    if (held.length && (spacing || !free.length)) tell(lockedNote(held.length));
   }
 
   // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
@@ -612,6 +618,10 @@
   function typing(e: Event): boolean {
     return !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
   }
+  /** The host's quick Question / Answer / Text boxes (outside the editor), which hold its slides' main text. */
+  function quickBox(e: Event): boolean {
+    return !!(e.target as HTMLElement)?.closest?.('[data-field="q"], [data-field="a"]') && !root?.contains(e.target as Node);
+  }
   /** Focus is on a button or link, where Enter and Space belong to that control. */
   function onControl(e: Event): boolean {
     return !!(e.target as HTMLElement)?.closest?.('button, a[href], summary');
@@ -657,6 +667,21 @@
     if (e.key === 'Escape' && typing(e) && !picker && root?.contains(e.target as Node)) {
       const field = e.target as HTMLElement;
       setTimeout(() => !e.defaultPrevented && document.activeElement === field && field.blur());
+      return;
+    }
+    // Bold / italic / underline in the text box's own Text field too (where typing on the slide puts the cursor): a
+    // textarea has none of its own.
+    const bk = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (bk === 'b' || bk === 'i' || bk === 'u') && !picker && textArea && e.target === textArea && single?.kind === 'text') {
+      e.preventDefault();
+      const t = single;
+      edit(() => {
+        if (bk === 'b') t.weight = t.weight >= 700 ? 400 : 700;
+        else {
+          const key = bk === 'i' ? 'italic' : 'underline';
+          t[key] = !t[key];
+        }
+      });
       return;
     }
     if (typing(e) || picker) return;
@@ -822,14 +847,32 @@
   }
 
   function onpaste(e: ClipboardEvent): void {
-    if (!inCharge() || typing(e) || previewing) return;
+    if (!inCharge() || previewing) return;
     const data = e.clipboardData;
     const files = data?.files;
     const text = data?.getData('text/plain') ?? '';
     // (Word, PowerPoint and Excel put a picture of the text alongside it: the text is what was meant.)
-    if (files?.length && !officeTextPaste(data?.getData('text/html') ?? '', text, files.length)) {
+    const pictures = !!files?.length && !officeTextPaste(data?.getData('text/html') ?? '', text, files.length);
+    if (typing(e)) {
+      // In a quick Question / Answer box (where the keys are when a clue opens), words still go in as words; a
+      // picture, or copied items with no words ("1 slide item"), go on the slide. Other fields keep their paste.
+      if (!quickBox(e)) return;
+      if (pictures) {
+        e.preventDefault();
+        return void dropFiles(files!, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
+      }
+      if (pastingOurs(data ?? null) && /^\d+ slide items?$/.test(clipboard.text)) {
+        e.preventDefault();
+        pasteItems();
+      } else if (pastingGone(data ?? null)) {
+        e.preventDefault();
+        toast('Those items were copied in another tab or before the page reloaded: copy them again here');
+      }
+      return;
+    }
+    if (pictures) {
       e.preventDefault();
-      dropFiles(files, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
+      dropFiles(files!, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
       return;
     }
     if (pastingOurs(data ?? null)) {
@@ -1124,6 +1167,7 @@
         <Inspector
           el={single}
           {game}
+          onTile={!slide.background.color && !slide.background.gradient && !slide.background.image}
           fit={fits[single.id]}
           bind:textArea
           onorder={order}

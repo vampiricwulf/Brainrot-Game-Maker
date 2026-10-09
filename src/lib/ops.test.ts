@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newRound, setSlideText, slideText, type TextEl, type BoardRound, type Game } from './model';
+import { newImageEl, newRound, setSlideText, slideText, textSlide, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
+import { followClueText } from './cluetext';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
@@ -13,6 +14,7 @@ import {
   insertRow,
   moveRow,
   neighbourClue,
+  ownTextTargets,
   restyle,
   rowStep,
   setClueType,
@@ -58,6 +60,38 @@ describe('use this style elsewhere', () => {
     expect([target.color, target.size, target.text]).toEqual(['#ff00ff', 64, 'Keep me']);
     undo();
     expect([target.color, target.size, target.text]).toEqual(['#ffffff', 110, 'Keep me']);
+  });
+
+  it("in a Final round or the tiebreaker, “this round” is its own slides, not every board clue", () => {
+    const game = jeopardyGame();
+    const final = game.rounds.find((r): r is FinalRound => r.mode === 'final')!;
+    final.extraSlides = [{ ...textSlide('More'), id: 'x1' }];
+    const from = mainText(final.questionSlide);
+    expect(ownTextTargets(final, from, 'round-q')).toEqual([mainText(final.extraSlides[0])]);
+    expect(ownTextTargets(final, from, 'round-a')).toEqual([mainText(final.answerSlide)]);
+    expect(ownTextTargets(final, from, 'round-qa')).toHaveLength(2);
+    final.extraSlides = undefined;
+    expect(ownTextTargets(final, from, 'round-q')).toHaveLength(0);
+  });
+});
+
+describe('the quick Question / Answer boxes', () => {
+  it('bring a deleted text box back on top of the rest, in the clue text font and colour', () => {
+    const game = jeopardyGame();
+    game.theme.clueFont = "'Anton', Impact, sans-serif";
+    game.theme.clueColor = '#ffcc00';
+    const slide = board(game).categories[0].clues[0].questionSlide;
+    const pic = newImageEl('m1');
+    pic.zIndex = 3;
+    slide.elements = [pic];
+    const made = setSlideText(slide, 'Who painted the Mona Lisa?');
+    expect(made?.zIndex).toBe(4);
+    if (made) followClueText(game, [slide]);
+    expect([made?.font, made?.color]).toEqual(["'Anton', Impact, sans-serif", '#ffcc00']);
+    // Typing on in it changes its words only (a look given to it stays).
+    made!.font = 'Arial, Helvetica, sans-serif';
+    expect(setSlideText(slide, 'Who painted it?')).toBeUndefined();
+    expect([slideText(slide), made!.font, slide.elements.length]).toEqual(['Who painted it?', 'Arial, Helvetica, sans-serif', 2]);
   });
 });
 

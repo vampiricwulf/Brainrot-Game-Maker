@@ -313,6 +313,15 @@ assert(true, 'after Cancel the cursor is back in the link field');
 await page.keyboard.press('Escape');
 await page.locator('.picker').waitFor({ state: 'detached' });
 assert((await page.locator('.quick textarea').count()) > 0, 'and Esc then closes only the picker, not the clue');
+// A 🌐 Link download stopped by going to the Answer slide (its box goes with the slide) says so: it used to stop silently.
+await page.getByRole('button', { name: '🌐 Link' }).click();
+await page.locator('.linkbox').getByLabel('Paste a link').fill('https://slow.test/big2.png');
+await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
+await page.locator('.linkbox progress[aria-label="Download progress"]').waitFor();
+await page.getByRole('tab', { name: /^Answer slide/ }).click();
+await page.locator('.toast', { hasText: 'Stopped downloading the link' }).waitFor();
+assert(true, 'a 🌐 Link download stopped by going to the Answer slide says so');
+await page.getByRole('tab', { name: 'Question slide' }).click();
 await page.getByRole('button', { name: '🖼 Image' }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/flaky5.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');

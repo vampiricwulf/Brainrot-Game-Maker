@@ -3,7 +3,7 @@
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { step } from '../lib/history.svelte';
-  import { textStyleTargets } from '../lib/ops';
+  import { ownTextTargets, textStyleTargets } from '../lib/ops';
   import { questionSlides, setSlideText, slideText, textSlide, type TextEl } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import { followClueText } from '../lib/cluetext';
@@ -29,7 +29,11 @@
 
   /** What tells the open slide apart, so the slide editor starts afresh on another one (the first one has no id). */
   const slideKey = $derived(slideKeyOf(tbSide === 'q' ? qslide : undefined));
-  const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope.replace('round', 'game'));
+  // "This round" is the tiebreaker's own slides; "the whole game" is every clue's.
+  const styleTargets = (el: TextEl, scope: string) => {
+    const tb = app.game.tiebreaker;
+    return !tb || scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope.replace('round', 'game')) : ownTextTargets(tb, el, scope);
+  };
 </script>
 
 <div class="page">
@@ -76,11 +80,11 @@
   <div class="quick">
     <label class="field">
       {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
-      <textarea rows="2" placeholder="Type the tiebreaker question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value)}></textarea>
+      <textarea rows="2" data-field="q" placeholder="Type the tiebreaker question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
     </label>
     <label class="field">
       Answer (hidden until revealed)
-      <textarea rows="2" placeholder="Type the answer…" value={slideText(tb.answerSlide)} oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value)}></textarea>
+      <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(tb.answerSlide)} oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value) && followClueText(app.game, [tb.answerSlide])}></textarea>
     </label>
   </div>
   <SlideTabs holder={tb} bind:side={tbSide} bind:qi what="tiebreaker" />

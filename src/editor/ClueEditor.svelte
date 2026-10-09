@@ -7,6 +7,7 @@
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { addClueSlide, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
   import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, questionSlides, type ClueType, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
+  import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -401,7 +402,7 @@
               rows="2"
               placeholder={at ? 'Type what this slide adds…' : 'Type the question…'}
               value={slideText(qslide)}
-              oninput={(e) => setSlideText(qslide, e.currentTarget.value)}
+              oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}
             ></textarea>
           </label>
           <label class="field">
@@ -413,7 +414,7 @@
               rows="2"
               placeholder="Type the answer…"
               value={slideText(clue.answerSlide)}
-              oninput={(e) => setSlideText(clue.answerSlide, e.currentTarget.value)}
+              oninput={(e) => setSlideText(clue.answerSlide, e.currentTarget.value) && followClueText(app.game, [clue.answerSlide])}
             ></textarea>
           </label>
           <label class="field">

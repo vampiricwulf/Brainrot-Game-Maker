@@ -57,6 +57,15 @@ try {
   await page.locator('.canvas').getByRole('button', { name: 'Bonus', exact: true }).click();
   const kind = await page.locator('.side [data-space-kind] option:checked').innerText();
   assert(kind === '⭐ Star (bonus points)', `its Bonus space’s Make it a… box says ⭐ Star, from its +100 button (${kind})`);
+  // In its Final, "Questions in this round" (the default) is the Final's own question slides, not every board question.
+  await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
+  await page.locator('.canvas .hit').first().click();
+  const applyStyle = page.locator('.insp').getByRole('button', { name: 'Apply', exact: true });
+  await applyStyle.click();
+  assert((await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'), 'in the Final, "Questions in this round" restyles none of the board’s questions (it has one question slide)');
+  await page.getByRole('combobox', { name: 'Which slides get this style' }).selectOption('round-qa');
+  await applyStyle.click();
+  assert((await page.locator('.notice').innerText()).includes('Style applied to 1 slide'), '"Questions + answers in this round" restyles its answer');
   await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
 
   // ---------- Import clues ----------
