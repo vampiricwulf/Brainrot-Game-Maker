@@ -898,8 +898,12 @@ function renderBuzz(v: PhoneView): void {
   /** Teams: a teammate's buzz holds your team's place (not yours). */
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
   if (ans && !ans.open) {
-    // A ✍ clue whose answer is on screen: what this seat sent stays in sight.
-    [cls, big, small] = ['off', 'Answers locked', ans.text ? `${team ? 'Your team’s' : 'Yours'}: “${ans.text}”` : 'None sent'];
+    // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers).
+    [cls, big, small] = [
+      'off',
+      'Answers locked',
+      ans.text ? `${team ? 'Your team’s' : 'Yours'}: “${ans.text}”` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent',
+    ];
   } else if (wager?.mine) {
     // Locked: the question is up.
     const yours = team ? 'Your team’s wager' : 'Your wager';
