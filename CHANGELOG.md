@@ -25,6 +25,7 @@ in plain words for the people who make and host games. Anything committed but no
 - '↶ Reopen a tile…' is a menu: the arrow keys look through it and Enter picks (↓ on it put a tile back at once); ↓ in 'Go to round' asks before leaving the round. (4bcc729)
 - Tiebreaker: N runs its main button (next slide, the answer, then Back to results), and the ? key list has a Tiebreaker clue section; it names who's tied, asks for the winner, says when points given there settled the tie, and the first N with no winner picked warns before leaving. (352b56e, 72030e2)
 - Slide dots on stream turn into a count ("3 / 45") past 20 slides, so they stay on the stage. (352b56e)
+- Board games: a backward count (a wheel's "Back 2") labels its buttons "◀ Back 2" / "▶ Forward 2"; the fork's "which way?" buttons scroll into view, and in one window the hint says to click the space on the stage. (19d795b, 5549121)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -76,6 +77,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Ctrl+Z on the results or the tiebreaker goes back to the Final's reveals when a slides outro comes after the Final (it took back a judgment out of sight). (352b56e)
 - A tiebreaker ticked on but left empty is on the checklist (its line opens the empty box), and the end screen offers it only once it has a question. (352b56e)
 - Resume with my edits keeps the slide that was on screen, even when slides before it were added or taken out or it became the first. Slides rounds' host notes keep their line breaks. (352b56e, 72030e2)
+- Board games: with the controls hidden (H), D then Enter moves the player (D rolled again); a spent roll stays spent after Previous/Next turn or picking another name and back; Ctrl+Z of any move puts its count back, but not into the next board round; with one space a turn, Enter after the move says so; a landing "Back 3" keeps a Start bonus passed that turn; 12 tokens in one zone wrap instead of running off the board. (19d795b, 5549121)
 
 ## 2026-10-08
 

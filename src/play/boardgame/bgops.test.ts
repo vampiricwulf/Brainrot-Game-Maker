@@ -8,7 +8,7 @@ import { newWheel } from '../../lib/tools';
 import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import type { Action } from '../../lib/model';
-import { moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
+import { moveCounts, moveNow, moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 // (What screen readers are told.)
@@ -129,6 +129,26 @@ describe('board game: the host’s moves on the stage', () => {
     expect(session.actionLog?.at(-1)?.text).toBe('Turn order: Cat → Ann → Bob');
     undoAction(session, game);
     expect(bs().order).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keeps the count each move was made with, by its undo step (for the Steps box after an Undo of it)', () => {
+    const { game, session, round, bs } = playing();
+    // A fork at Space 3: on to Space 4, or straight to Space 7.
+    round.spaces[2].next.push(round.spaces[6].id);
+    moveNow(game, session, 5);
+    expect(bs().fork).toMatchObject({ playerId: 'a', stepsLeft: 3 });
+    const first = session.actionLog!.at(-1)!.id;
+    expect(moveCounts.get(first)).toBe(5);
+    // The fork's next leg goes on with the steps left: its Undo gives back nothing (the fork's buttons have them).
+    moveNow(game, session, 3, round.spaces[6].id);
+    const leg = session.actionLog!.at(-1)!.id;
+    expect(leg).not.toBe(first);
+    expect(moveCounts.has(leg)).toBe(false);
+    // A move that changes nothing is no step: nothing is kept for it.
+    sendNow(game, session, ['b'], { zone: 'shadow' });
+    const sent = session.actionLog!.at(-1)!.id;
+    moveNow(game, session, 2, undefined, 'b');
+    expect([session.actionLog!.at(-1)!.id, moveCounts.has(sent)]).toEqual([sent, false]);
   });
 
   it('says whose turn it is in the history, going on or back', () => {

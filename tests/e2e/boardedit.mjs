@@ -84,6 +84,16 @@ async function besideMain(page, what) {
 }
 
 const last = (page) => page.locator('.bh .last').innerText();
+/** Wait for the main button to say `want` (as mainLabel reads it). */
+const labelIs = (page, want) =>
+  page.waitForFunction(
+    (w) => {
+      const b = document.querySelector('.panel [data-next]');
+      return !!b && [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim() === w;
+    },
+    want,
+    { timeout: 5000 },
+  );
 const stageSpaces = (page) => page.locator('.stage-box [data-space]');
 
 try {
@@ -130,6 +140,46 @@ try {
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   await page.waitForTimeout(1500);
   assert(/^▶ Move \d$/.test(await mainLabel(page)), `D rolls, and the main button moves that many (${await mainLabel(page)})`);
+  // Enter moves them (the keys, not a button), and Ctrl+Z puts that count back too.
+  const rolledMove = await mainLabel(page);
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await page.keyboard.press('Enter');
+  await labelIs(page, 'Next turn ▶');
+  await page.keyboard.press('Control+z');
+  await labelIs(page, rolledMove);
+  assert((await page.getByLabel('Steps').inputValue()) === rolledMove.slice(-1), `Ctrl+Z of a move made with Enter puts its count back (${rolledMove})`);
+  // Moved again, then ◀ Previous turn and Next turn ▶: the count is spent, not back for a second move.
+  await page.keyboard.press('Enter');
+  await labelIs(page, 'Next turn ▶');
+  await page.keyboard.press('Shift+N');
+  await page.keyboard.press('n');
+  assert((await turn()).includes('Ann') && (await mainLabel(page)) === '🎲 Roll' && (await page.getByLabel('Steps').inputValue()) === '', `Shift+N then N: her used count isn’t back (${await mainLabel(page)})`);
+  // A count going back (typed, or a wheel's "Back 2"): the buttons say which way they go.
+  await page.getByLabel('Steps').fill('-2');
+  await page.getByLabel('Steps').blur();
+  const stepButtons = await page.locator('.bh .move button').allInnerTexts();
+  assert((await mainLabel(page)) === '◀ Back 2' && stepButtons.includes('◀ Back Ann 2') && stepButtons.includes('▶ Forward 2'), `-2 steps: ◀ Back 2, and the other button goes forward (${stepButtons.join(' | ')})`);
+  await page.getByLabel('Steps').fill('');
+  await page.getByLabel('Steps').blur();
+  // Controls hidden (H): D rolls, and once the dice have landed Enter moves her (no host panel to hold the count). The
+  // move takes the dice off the stage.
+  await page.keyboard.press('h');
+  await page.locator('.bh').waitFor({ state: 'detached' });
+  await page.keyboard.press('d');
+  const die = page.locator('.stage-box .die');
+  await die.waitFor();
+  await page.waitForFunction(() => !document.querySelector('.stage-box .die.rolling'), null, { timeout: 8000 });
+  // (Enter again only if it came a moment before the count went in: once she has moved, Enter moves nobody.)
+  for (let i = 0; await die.count(); i++) {
+    if (i === 5) throw new Error('Assertion failed: controls hidden, Enter once the dice have landed moves the player');
+    await page.keyboard.press('Enter');
+    await die.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
+  }
+  await page.keyboard.press('h');
+  await page.locator('.bh').waitFor();
+  assert((await last(page)).includes('Ann moves') && (await mainLabel(page)) === 'Next turn ▶', `controls hidden: D then Enter moves her (${await last(page)})`);
+  await page.keyboard.press('d');
+  assert((await toast()).includes('Ann already moved this turn'), `and D after it doesn’t roll again on stream (${await toast()})`);
   await page.keyboard.press('Escape');
   await page.getByLabel('Steps').fill('');
   await page.getByLabel('Send to').selectOption({ label: 'Nap time' });

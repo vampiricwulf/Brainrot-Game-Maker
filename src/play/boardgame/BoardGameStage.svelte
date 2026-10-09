@@ -305,14 +305,17 @@
     overflow: hidden;
     transition: transform 0.3s ease;
   }
+  /* A zone on screen: its players along the bottom. A crowd (12 tokens are wider than the board) wraps upward. */
   .zone-players {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 60px;
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
-    gap: 40px;
+    gap: 16px 40px;
+    padding: 0 40px;
   }
   /* Labels over the board never catch clicks meant for the tokens and spaces under them. */
   .labels {

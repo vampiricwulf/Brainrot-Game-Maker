@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -432,6 +432,10 @@ try {
   assert(!(await page.getByRole('button', { name: /Roll/ }).count()), 'one-space boards have no dice');
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 2' }).click();
   assert((await toast()).includes('Landed on Space 2'), 'a player moves one space');
+  // Enter then doesn't walk them on in the same turn (the → buttons still can, on purpose).
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await page.keyboard.press('Enter');
+  assert((await toast()).includes('Moved this turn: N for the next turn') && (await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).count()) === 1, `one space a turn: Enter after the move doesn't move them again (${await toast()})`);
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
@@ -539,6 +543,9 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Enter');
   assert((await toast()).includes('Bob is at a fork: pick the way first'), 'Enter at a fork says to pick the way');
+  // One window marks no ways on the stage: 🔀 Pick a way says to click the space there.
+  await mainButton(page).click();
+  assert((await toast()).includes('or click the space on the stage'), `one window: 🔀 Pick a way doesn't point at a “marked space” (${await toast()})`);
   await page.locator('.fork').getByRole('button', { name: '→ Merge' }).click();
   assert((await toast()).includes('Landed on Merge'), 'the fork’s other way leads to where the ways meet');
   // Back 1 from where the ways meet goes back the way Bob came (the Fork), not along the other way.
@@ -556,6 +563,8 @@ try {
   console.log('Twelve players on the board:');
   const crowd = { ...g, id: 'g_board_crowd', title: 'Board crowd', settings: { ...g.settings, maxPlayers: 12 } };
   crowd.players = ['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jay', 'Kim', 'Lou'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'][i] }));
+  // (With a zone to send them all to.)
+  crowd.rounds = [{ ...board, zones: [{ id: 'z_shadow', name: 'Shadow Realm', slide: { background: { color: '#2a0845' }, elements: [] } }] }];
   const crowdFile = resolve('test-results/boardgame-crowd.json');
   writeFileSync(crowdFile, JSON.stringify(crowd));
   const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -584,7 +593,92 @@ try {
   const tokensLow = await aud.locator('.tok.on-board').evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().bottom)));
   assert(tokensLow <= stripTop + 1, 'nor a token');
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd.png` });
+  // Everyone sent to the zone, and it on screen: 12 tokens are wider than the board in one row, so they wrap (none is cut
+  // off at its edges).
+  await host.evaluate(() => document.activeElement?.blur?.());
+  await host.keyboard.press('0');
+  await host.getByLabel('Send to').selectOption({ label: '🌀 Shadow Realm' });
+  await host.getByLabel('On screen', { exact: true }).selectOption({ label: '📺 Shadow Realm' });
+  await aud.waitForFunction(() => document.querySelectorAll('.zone-players .tok').length === 12);
+  const inZone = await aud.locator('.zone-players').evaluate((z) => {
+    const area = z.closest('.play-area').getBoundingClientRect();
+    const rs = [...z.querySelectorAll('.tok, .tok *')].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
+    const rows = new Set([...z.querySelectorAll('.tok')].map((t) => Math.round(t.getBoundingClientRect().top))).size;
+    return { rows, left: Math.round(Math.min(...rs.map((r) => r.left)) - area.left), right: Math.round(area.right - Math.max(...rs.map((r) => r.right))) };
+  });
+  assert(inZone.left >= 0 && inZone.right >= 0, `12 players in a zone on screen: none cut off at the edges (${JSON.stringify(inZone)})`);
+  if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd-zone.png` });
   await ctx2.close();
+
+  // Twelve long names in one window at 1280×720: the turn order wraps onto many rows, and a move that stops at the fork
+  // brings its "which way?" row into view (the host panel scrolls to it; the stage doesn't move). (A second board after
+  // it, for the Steps box going into another round.)
+  console.log('A fork under a long turn order, one window at 1280×720:');
+  const longNames = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
+  const long = {
+    ...crowd,
+    id: 'g_board_long',
+    title: 'Board long names',
+    players: crowd.players.map((p, i) => ({ ...p, name: longNames[i] })),
+    rounds: [crowd.rounds[0], { ...crowd.rounds[0], id: 'r_bg2', name: 'Board two' }],
+  };
+  const longFile = resolve('test-results/boardgame-long.json');
+  writeFileSync(longFile, JSON.stringify(long));
+  const ctx3 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const one = await ctx3.newPage();
+  one.on('pageerror', (e) => errors.push(`[long names] ${e.message}`));
+  await one.goto(pathToFileURL(file).href);
+  await openGameFile(one, longFile);
+  await one.getByText(/^Opened “/).waitFor();
+  await one.getByRole('button', { name: '▶ Play' }).click();
+  await one.getByRole('button', { name: 'Start game ▶' }).click();
+  await one.locator('.bh').waitFor();
+  if (await one.locator('.stage-box .title-card').count()) await one.locator('.stage-box .title-card').click();
+  const stageAt = () => one.evaluate(() => ({ stage: Math.round(document.querySelector('.stage-box').getBoundingClientRect().top), scrolled: document.querySelector('main.play').scrollTop }));
+  const stageBefore = await stageAt();
+  // 3 from Start: through Space 2 onto the Fork, with 1 to go.
+  await one.getByLabel('Steps').fill('3');
+  await one.getByLabel('Steps').press('Enter');
+  await one.locator('.fork button.good').first().waitFor();
+  const forkInView = await one
+    .waitForFunction(() => {
+      const r = document.querySelector('.fork button.good').getBoundingClientRect();
+      return !!document.elementFromPoint(r.left + 5, r.top + 5)?.closest('.fork');
+    }, null, { timeout: 5000 })
+    .then(() => true, () => false);
+  const forkBox = await one.locator('.fork button.good').first().boundingBox();
+  assert(forkInView, `the fork's "which way?" buttons come into view, where a click reaches them (first at y ${Math.round(forkBox.y)})`);
+  const stageAfter = await stageAt();
+  assert(JSON.stringify(stageAfter) === JSON.stringify(stageBefore), `and the stage stays where it was (${JSON.stringify(stageBefore)} → ${JSON.stringify(stageAfter)})`);
+  if (process.env.SHOTS) await one.screenshot({ path: `${process.env.SHOTS}/boardgame-fork-long.png` });
+  // Ctrl+Z of that move puts its 3 back in the Steps box. Then on to the next board: its first turn starts with an empty
+  // box (the count undone on the last board isn't for this one).
+  const stepsBox = one.getByLabel('Steps');
+  await one.evaluate(() => document.activeElement?.blur?.());
+  await one.keyboard.press('Control+z');
+  const countBack = await one
+    .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '3', null, { timeout: 5000 })
+    .then(() => true, () => false);
+  assert(countBack && !(await one.locator('.fork').count()), `Ctrl+Z of the move to the fork puts its count back (${await stepsBox.inputValue()})`);
+  // (Next round ▶ and its Yes each ignore a click in their first moment: the second half of a double-click.)
+  const leave = one.locator('.panel .confirm');
+  for (let i = 0; !(await leave.count()); i++) {
+    if (i === 10) throw new Error('Assertion failed: Next round ▶ asks “Leave Board game?”');
+    await one.getByRole('button', { name: 'Next round ▶' }).click();
+    await leave.waitFor({ timeout: 1000 }).catch(() => {});
+  }
+  for (let i = 0; await leave.count(); i++) {
+    if (i === 10) throw new Error('Assertion failed: Yes on “Leave Board game?” goes on to the next board');
+    await leave.getByRole('button', { name: 'Yes', exact: true }).click();
+    await leave.waitFor({ state: 'detached', timeout: 1000 }).catch(() => {});
+  }
+  await one.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === '◀ Prev round' && !b.disabled));
+  await one.locator('.bh').waitFor();
+  const emptied = await one
+    .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '', null, { timeout: 3000 })
+    .then(() => true, () => false);
+  assert(emptied && (await mainLabel(one)) === '🎡 Spin', `the next board starts with an empty Steps box and 🎡 Spin (${await stepsBox.inputValue()}, ${await mainLabel(one)})`);
+  await ctx3.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame.png` });
