@@ -445,7 +445,7 @@
         <!-- Nobody to wager or reveal: the button goes on to the next round (or the end). -->
         <span class="nobody" role="status">Nobody is playing this Final: tick a {noun} to play it, or go on.</span>
       {/if}
-      <label class="check small" title="Ticked, a wager can be more than the player's score. Untick to hold wagers to it (max: their score).">
+      <label class="check small" title="Ticked, a wager can be more than the {noun}'s score. Untick to hold wagers to it (max: their score).">
         <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} data-limits /> Ignore the limits
       </label>
     {:else if session.finalStep === 'reveal'}

@@ -814,6 +814,10 @@ assert(await page.getByText('Pick who answered').isVisible(), 'with nobody selec
 await page.keyboard.press('Enter');
 await page.getByText('Select a player first').waitFor();
 assert(true, 'Enter with nobody selected says why nothing happened');
+// Picking someone puts it away (then nobody again, as before).
+await page.keyboard.press('1');
+assert((await page.locator('.toast', { hasText: 'Select a player first' }).count()) === 0, 'picking a player puts “Select a player first” away');
+await page.keyboard.press('1');
 await page.locator('.panel .p').nth(2).locator('button.wrong').click();
 assert((await scoreOf(2)) === '−$200', 'quick wrong deducts the clue value');
 // Marked on this clue: the chip says so, and the same quick button is off (a second ✘ would take the points again).

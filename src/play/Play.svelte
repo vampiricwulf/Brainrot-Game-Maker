@@ -1,7 +1,7 @@
 <script lang="ts">
   import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
-  import { app, hint, toast } from '../lib/app.svelte';
+  import { app, hint, sceneFrom, toast } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
@@ -543,6 +543,9 @@
 
   // ✎ Edit board ends with the game.
   onMount(() => () => setEditing(false));
+  // A hint goes once the host picks someone, or types an amount or the steps ("Select a player first", "Enter an amount
+  // first", "Roll first (D), or type the steps").
+  onMount(() => sceneFrom(() => `${selected.join()}|${amount}|${bgSteps}`));
 
   onMount(() => {
     registerGameFonts(game);
@@ -2897,7 +2900,8 @@
         }
         if (session.phase === 'boardgame') {
           const why = rollMover(game, session, app.live);
-          if (why) toast(why);
+          // (Each says what to do first, as Enter's do: it goes once the way is picked, N is pressed…)
+          if (why) hint(why);
           break;
         }
         if (!toolBusy()) rollDice(app.live, session, lastDice);

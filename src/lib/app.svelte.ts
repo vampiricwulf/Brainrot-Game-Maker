@@ -76,9 +76,21 @@ export function toastMs(msg: string): number {
 
 /** Where the host is (the editor, the pre-game screen, the game): a toast belongs to the place it was said in. */
 const place = (): string => `${app.screen}|${app.pregame}`;
+/** The game screen's own part of the moment, which only it knows (who is picked, the Amount): see sceneFrom. */
+let sceneOwn = (): string => '';
 /**
- * The moment in the game (the clue, the Daily Double's step, the Final's reveal, a score given, a turn taken…): a hint
- * said in one ("Select a player first") is put away once it changes.
+ * The game screen tells who is picked and what's typed in: a hint about them ("Select a player first", "Enter an amount
+ * first") goes once they change too. Returns the way to stop (the screen closing).
+ */
+export function sceneFrom(fn: () => string): () => void {
+  sceneOwn = fn;
+  return () => {
+    if (sceneOwn === fn) sceneOwn = () => '';
+  };
+}
+/**
+ * The moment in the game (the clue, the Daily Double's step, the Final's reveal, a score given, a turn taken, a roll…):
+ * a hint said in one ("Select a player first") is put away once it changes.
  */
 const scene = (): string => {
   const s = app.session;
@@ -96,8 +108,11 @@ const scene = (): string => {
     s.scoreLog.length,
     // (The last one's id: the log is kept to a set length.)
     s.actionLog?.at(-1)?.id,
+    // (A dice roll or a wheel spin: D after "Roll first (D)".)
+    s.rollLog?.length,
     s.rollOffWinner,
     app.live.toolTile,
+    sceneOwn(),
   ].join(',');
 };
 /** The place the toast showing now was said in, and when; and the moment in the game, for a hint. */

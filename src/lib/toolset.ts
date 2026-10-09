@@ -612,7 +612,8 @@ export function redoFrom(session: Session, undone: Undone[]): 'score' | 'action'
 const FINAL_STEPS: Partial<Record<NonNullable<Session['finalStep']>, string>> = {
   wagers: 'Wagers locked, question shown',
   question: 'Final answer shown',
-  answer: 'Player reveals started',
+  // (Players' or teams' reveals: the same words for both.)
+  answer: 'Reveals started',
 };
 
 /**

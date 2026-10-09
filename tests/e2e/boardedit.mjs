@@ -122,8 +122,9 @@ try {
   await page.keyboard.press('d');
   await page.waitForTimeout(300);
   assert((await toast()).includes('Ann already moved this turn'), `D doesn't roll a second move for her (${await toast()})`);
-  // Round to a fresh turn of hers.
+  // Round to a fresh turn of hers. (That's a hint: N, as it says, puts it away rather than leaving it up on Bob's turn.)
   await page.keyboard.press('n');
+  assert((await page.locator('.toast', { hasText: 'already moved' }).count()) === 0, 'N puts D’s “Ann already moved this turn” away');
   await page.keyboard.press('n');
   assert((await turn()).includes('Ann') && (await mainLabel(page)) === '🎲 Roll', 'N, N: Ann’s next turn starts with 🎲 Roll');
   await page.keyboard.press('d');

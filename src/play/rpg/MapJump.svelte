@@ -71,7 +71,8 @@
   /** The players on a screen were dragged onto another: every party there goes (all the dots dragged). */
   function moveDots(from: ScreenRef, to: ScreenRef): void {
     const text = sendPartiesOn(game, session, from, to);
-    if (text) toast(text);
+    // (Under the title card: a hint, gone once the round starts.)
+    if (text) (text === START_FIRST ? hint : toast)(text);
   }
 
   /** Move the party (or these players) to the picked screen, then close. */

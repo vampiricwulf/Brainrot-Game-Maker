@@ -237,7 +237,8 @@
 
   function go(d: Dir8): void {
     const why = stepParty(game, session, d);
-    if (why) toast(why);
+    // (Under the title card: a hint, gone once the round starts.)
+    if (why) (why === START_FIRST ? hint : toast)(why);
   }
 
   /** Split view on or off; on with every party in one place, it says why the stage still shows one screen. */
@@ -287,7 +288,7 @@
   /** The players on a minimap screen were dragged onto another: every party there goes (all the dots dragged). */
   function moveDots(from: ScreenRef, to: ScreenRef): void {
     const text = sendPartiesOn(game, session, from, to);
-    if (text) toast(text);
+    if (text) (text === START_FIRST ? hint : toast)(text);
   }
 
   /** The players to move for one dragged: the whole selection when they're part of it. */
