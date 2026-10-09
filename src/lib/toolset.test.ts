@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newId, newTextEl, type BoardRound, type Game, type Session, type Shop } from './model';
-import { applyScore, backToBoard, finalJudge, finalNext, finalSetWager, goToRound, wagerFromPhone, wagerSentBy, newSession, openClue, redo, removePlayer, restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo } from './session';
+import { newGame, newId, newTextEl, type BoardRound, type FinalRound, type Game, type Session, type Shop } from './model';
+import {
+  applyScore, backToBoard, finalJudge, finalNext, finalSetWager, finalTakeNewcomers, finalWagersOk, goToRound, wagerFromPhone, wagerSentBy, newSession, openClue, redo, removePlayer,
+  restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo,
+} from './session';
 import { jeopardyGame } from './testgame';
 import { addScreenBeside, newWorld } from './rpg';
 import {
@@ -595,6 +598,35 @@ describe('the host’s own choices', () => {
     expect([f.wagers.a, wagerFromPhone(f, 'a'), wagerSentBy(f, 'a')]).toEqual([200, true, 'Al']);
     undoAction(session);
     expect([f.wagers.a, wagerFromPhone(f, 'a')]).toEqual([undefined, false]);
+  });
+
+  it('a player an Undo brings back from before the Final stays out of it, so a Redo leaves no wager it waits on', () => {
+    const { game, session } = show();
+    session.players.push({ id: 'c', name: 'Cat', color: '#4363d8', startScore: 0 });
+    applyScore(session, game, ['c'], 500, 'x');
+    logged(session, 'Removed Cat', () => removePlayer(session, 'c'));
+    goToRound(session, game, 1);
+    const round = game.rounds[1] as FinalRound;
+    const f = session.final!;
+    expect(f.players).toEqual(['a', 'b']);
+    // Ctrl+Z on the wager screen: Cat is back in the game; the round's catch-up after it adds nobody to the Final.
+    undoAction(session, game);
+    finalTakeNewcomers(session, round, []);
+    expect([session.players.map((p) => p.id), f.players]).toEqual([['a', 'b', 'c'], ['a', 'b']]);
+    // Ctrl+Shift+Z: out again, and the Final waits on nobody's wager but its players'.
+    redoAction(session, game);
+    expect([session.players.map((p) => p.id), f.players, f.order]).toEqual([['a', 'b'], ['a', 'b'], ['a', 'b']]);
+    expect(finalWagersOk(session)).toBe(true);
+    // One added on the wager screen comes in with the step that adds them: its Undo takes them out of both, its Redo back.
+    logged(session, 'Added Dee', () => {
+      session.players.push({ id: 'd', name: 'Dee', color: '#f58231', startScore: 0 });
+      finalTakeNewcomers(session, round, ['d']);
+    });
+    expect([f.players, f.wagers.d]).toEqual([['a', 'b', 'd'], 0]);
+    undoAction(session, game);
+    expect([session.players.map((p) => p.id), session.final!.players, session.final!.order]).toEqual([['a', 'b'], ['a', 'b'], ['a', 'b']]);
+    redoAction(session, game);
+    expect([session.players.map((p) => p.id), session.final!.players]).toEqual([['a', 'b', 'd'], ['a', 'b', 'd']]);
   });
 
   it('puts back the players: a rename, a new player, one removed and restored', () => {

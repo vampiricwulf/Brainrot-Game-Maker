@@ -11,7 +11,7 @@
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, forViewers, wagerFromPhone, coWinnersHold,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -495,20 +495,25 @@
       else if (o?.kind === 'scoreboard' && gone(o.under?.kind)) o.under = undefined;
     });
   });
-  /** The round's party or turn order takes in the players added or removed. */
-  function catchUp(): void {
+  /**
+   * The round's party or turn order takes in the players added or removed. A Final's wager screen takes in the players
+   * `added` (by the step under way only, so its Undo takes them out of the Final too).
+   */
+  function catchUp(added: string[] = []): void {
     const round = game.rounds[session.currentRound];
     // (After an Undo a party can be back on a screen deleted since: it goes to one that's there.)
     if (session.phase === 'rpg' && isRpg(round)) (ensureWorld(session, game, round), refindPositions(session, game));
     else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
+    else if (session.phase === 'final' && isFinal(round)) finalTakeNewcomers(session, round, added);
   }
   // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
-  // catches up at once, not only when the round is next visited.
+  // catches up at once, not only when the round is next visited. (Nobody comes into a Final here: a player an Undo
+  // brings back from an earlier round would join it outside any step, and a Redo would leave them in it.)
   $effect(() => {
     void session.players.map((p) => p.id).join();
     void session.worlds;
     void session.boardgames;
-    untrack(catchUp);
+    untrack(() => catchUp());
   });
   // A player taken out by Undo (one added in 👥 Players) isn't selected any more either.
   $effect(() => {
@@ -1066,8 +1071,8 @@
   function phoneWagerAsk(): WagerAsk | null {
     if (app.pregame) return null;
     const first = wagerAsk(game, session, wagerLimitsOff);
-    const got = first && session.remote?.wagerGot?.id === first.id ? session.remote.wagerGot.seats : {};
-    return first && Object.keys(got).length ? wagerAsk(game, session, wagerLimitsOff, got) : first;
+    const took = first && session.remote?.wagerGot?.id === first.id ? session.remote.wagerGot : undefined;
+    return took && Object.keys(took.seats).length ? wagerAsk(game, session, wagerLimitsOff, took.seats, took.amounts) : first;
   }
 
   /**
@@ -1094,7 +1099,8 @@
     const seat = ask?.open && ask.id === w.id ? ask.seats.find((x) => x.id === w.seatId) : undefined;
     if (!r || !ask || !seat || w.n <= (seat.got ?? 0)) return;
     if (ask.limit && w.amount > seat.max) return;
-    r.wagerGot = { id: ask.id, seats: { ...(r.wagerGot?.id === ask.id ? r.wagerGot.seats : {}), [w.seatId]: w.n } };
+    const same = r.wagerGot?.id === ask.id ? r.wagerGot : undefined;
+    r.wagerGot = { id: ask.id, seats: { ...same?.seats, [w.seatId]: w.n }, amounts: { ...same?.amounts, [w.seatId]: w.amount } };
     const name = playerName(session, w.seatId);
     const by = w.by && game.settings.buzzTeams ? w.by : '';
     if (ask.kind === 'dd' && session.dd) {
@@ -1152,8 +1158,13 @@
       who = `${who} ${i}`;
     }
     const p = { id: newId(), name: who, color: nextFreeColor(session.players.map((x) => x.color)), startScore: 0 };
+    // (Mid-game the round takes them in with it, as the Players dialog does: the step's Undo takes them out of both.)
     if (app.pregame) session.players.push(p);
-    else logged(session, `Added ${who} (from their phone)`, () => session.players.push(p));
+    else
+      logged(session, `Added ${who} (from their phone)`, () => {
+        session.players.push(p);
+        catchUp([p.id]);
+      });
     // The room has to know the seat before the phone takes it.
     sendHostState(roomState(), true);
     acceptPhone(conn, p.id);
@@ -1500,7 +1511,12 @@
     const a = amount;
     untrack(() => {
       const dd = session.dd;
-      if (dd?.stage === 'question' && typeof a === 'number' && Number.isInteger(a) && a >= 0 && a !== dd.wager) dd.wager = a;
+      if (dd?.stage === 'question' && typeof a === 'number' && Number.isInteger(a) && a >= 0 && a !== dd.wager) {
+        dd.wager = a;
+        // The host's amount now: the player's phone says so, not what it sent.
+        delete dd.draftFrom;
+        delete dd.draftBy;
+      }
     });
   });
 
@@ -1696,8 +1712,8 @@
     }
     if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
     winnerCue();
-    // A Final in the middle of the game went on to the next round.
-    if (session.phase !== 'final' && session.intro?.stage === 'title') introCue();
+    // The Final went on to the next round (another Final too): its title card's sound.
+    if (session.intro?.stage === 'title') introCue();
   }
 
   /**
@@ -2583,8 +2599,10 @@
 
   function commitRoster(): void {
     if (!rosterStep) return;
-    // The round's party or turn order takes the change in with it, so its Undo puts them back too.
-    catchUp();
+    // The round's party or turn order takes the change in with it, so its Undo puts them back too (a Final: the players
+    // added or restored by this change).
+    const had = new Set(rosterBefore.players.map((p) => p.id));
+    catchUp(session.players.filter((p) => !had.has(p.id)).map((p) => p.id));
     rosterStep(rosterChange(rosterBefore, { players: session.players, removed: session.removedPlayers }));
     beginRoster();
   }

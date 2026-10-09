@@ -197,6 +197,13 @@ try {
   await mainButton(host).click();
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $700', 'Show question locks it: the phone says “Wager locked · Your wager: $700”');
+  // The host fixes it in the Amount box (the question is up): the phone has the host's amount, not the one it sent.
+  const amountBox = host.locator('.panel .award').getByLabel('Amount');
+  await amountBox.fill('500');
+  await small(ann).getByText('Your wager: $500').waitFor();
+  assert(true, 'the host fixes the wager in the Amount box: the phone says “Your wager: $500”, not the $700 it sent');
+  await amountBox.fill('700');
+  await small(ann).getByText('Your wager: $700').waitFor();
   await big(bo).getByText('Player 1 is answering').waitFor();
   assert((await small(bo).innerText()) === 'Daily Double', 'and the other phones say “Player 1 is answering · Daily Double” (no longer “wagering…”)');
   assert(await noneOf(aud, [700, 777]), 'the audience window still has no amount (until the host shows the wager)');
@@ -248,6 +255,14 @@ try {
   await row('Player 1').getByText('📱 $1,300 from phone ✔').waitFor();
   const undo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(undo.startsWith('Undo: Player 1’s wager (from their phone): $1,234 → $1,300'), `a late change before the lock: the host's box follows, one step (${undo})`);
+  // ↶ Undo puts the one before back: the phone says the host has that one (not the $1,300 it sent last); ↷ Redo, its own.
+  await host.getByRole('button', { name: '↶ Undo' }).click();
+  await row('Player 1').getByText('📱 $1,234 from phone ✔').waitFor();
+  await ann.locator('#wager-state').getByText('The host has your wager as $1,234').waitFor();
+  assert(true, '↶ Undo of a phone’s change: its phone says the host has the one before ($1,234), not the $1,300 it sent');
+  await host.getByRole('button', { name: '↷ Redo' }).click();
+  await row('Player 1').getByText('📱 $1,300 from phone ✔').waitFor();
+  await ann.locator('#wager-state').getByText('✔ Sent: $1,300').waitFor();
   // A phone reload shows its own wager again.
   await ann.reload();
   await ann.locator('#wager-state').getByText('✔ Sent: $1,300').waitFor();
@@ -273,6 +288,17 @@ try {
   assert((await small(bo).innerText()) === 'Your wager: $2,000', 'the host’s change is what was locked in');
   assert(await noneOf(aud, [1234, 1300, 2000, 2222]), 'the audience window still has no amount once the question is up');
   await shot('pw-6-locked-phone', ann);
+  // Back to the wagers (↶ Undo), to the round before and to the Final again: the question was seen, the phones stay locked.
+  await host.getByRole('button', { name: '↶ Undo' }).click();
+  await host.locator('.fj button', { hasText: '◀ Previous round' }).click();
+  await host.locator('.stage-box .board').waitFor();
+  await host.waitForTimeout(450);
+  await host.locator('.rn > button').last().click();
+  await host.waitForTimeout(450);
+  await host.getByRole('button', { name: 'Yes', exact: true }).click();
+  await host.locator('.fj').getByText('📱 The question was on screen: phones can’t send wagers any more').waitFor();
+  await big(ann).getByText('Wager locked').waitFor();
+  assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
 
   // ---------- Teams: one wager per team, anyone on it sends it ----------
   const host2 = await newHost();

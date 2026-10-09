@@ -713,6 +713,8 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     results: keep(prev?.results),
     current,
     ...(chosen ? { chosen } : {}),
+    // The question was seen: phones stay locked out after a trip to another round too.
+    ...(prev?.phonesLocked ? { phonesLocked: true } : {}),
   };
   // A 0 filled in for nothing to wager goes when there's something to wager now (points given since, in a round before).
   const f = session.final;
@@ -762,6 +764,24 @@ export function finalChoose(session: Session, playerId: string, plays: boolean):
     f.order = [...f.order, playerId].sort((x, y) => score(session, x) - score(session, y));
     fillNothingToWager(session);
   }
+}
+
+/**
+ * Players who came in on the wager screen (`ids`: added or restored in 👥 Players, a phone joining), in the step that
+ * brings them in so its Undo takes them out of both: in if their score lets them play, as startFinal does on coming back
+ * to the Final; never anyone the host ticked in or out. Only those: a player already in the game isn't taken in at
+ * some other change (a score set since, an Undo or a Redo).
+ */
+export function finalTakeNewcomers(session: Session, round: FinalRound, ids: string[]): void {
+  const f = session.final;
+  if (!f || session.phase !== 'final' || session.finalStep !== 'wagers' || f.roundId !== round.id) return;
+  const add = session.players
+    .filter((p) => ids.includes(p.id) && !f.players.includes(p.id) && f.chosen?.[p.id] === undefined && (round.allowNonPositive || score(session, p.id) > 0))
+    .map((p) => p.id);
+  if (!add.length) return;
+  f.players = [...f.players, ...add];
+  f.order = [...f.order, ...add].sort((x, y) => score(session, x) - score(session, y));
+  fillNothingToWager(session);
 }
 
 /**

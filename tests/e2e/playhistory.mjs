@@ -213,6 +213,16 @@ try {
   assert((await page.locator('.fj .wagers input[data-wager]').count()) === 2, 'a player ticked out on the wager screen loses their wager box');
   await page.keyboard.press('Control+z');
   assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z brings a player back into the Final');
+  // A player added on the wager screen (👥 Players) plays it at once, as the round lets players at $0 play; Ctrl+Z takes
+  // them out of both.
+  await page.getByRole('button', { name: '👥 Players' }).click();
+  await page.getByRole('dialog', { name: 'Players' }).getByRole('button', { name: '＋ Add player' }).click();
+  await page.getByRole('dialog', { name: 'Players' }).getByRole('button', { name: 'Done' }).click();
+  await page.locator('.fj .wagers input[data-plays]:checked').nth(3).waitFor();
+  assert((await page.locator('.fj .wagers .wrow.out').count()) === 0, 'a player added on the wager screen (👥 Players) plays the Final at once (the round lets players at $0 play)');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 3);
+  assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z takes them out of the game and the Final');
   // ✎ Set the score… from a plate's menu (the Final has no score chips): what isn't a number is asked again, saying so;
   // "−$200" reads; and the wager row shows that score (not the $0 they can wager). (Forced: the plate is a button that's
   // off while nothing is done by clicking it, and its right-click menu still comes up.)
@@ -335,6 +345,49 @@ try {
   await page.keyboard.press('l');
   await page.locator('aside[aria-label="Log"]').waitFor({ state: 'detached' });
   await aud.close();
+
+  // A player taken out in the round before the Final, back with ↶ Undo on its wager screen and out again with ↷ Redo:
+  // they never join the Final on the way, so it isn't left waiting on a wager nobody can type.
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', (e) => errors.push(e.message));
+  p2.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
+  await p2.goto(pathToFileURL(file).href);
+  await addClassicRounds(p2);
+  await playWithPlayers(p2, 3);
+  await p2.getByRole('button', { name: 'Start game ▶' }).click();
+  await p2.getByRole('button', { name: 'Skip intro' }).click();
+  // Player 3 has $500 (enough to play the Final), then leaves.
+  await p2.keyboard.press('3');
+  await p2.locator('.award input').fill('500');
+  await p2.locator('.award input').press('Enter');
+  await p2.getByRole('button', { name: '👥 Players' }).click();
+  await p2.getByRole('button', { name: 'Remove Player 3' }).click();
+  await p2.locator('.modal .ask').getByRole('button', { name: 'Remove', exact: true }).click();
+  await p2.getByRole('button', { name: 'Done', exact: true }).click();
+  await p2.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' });
+  await p2.waitForTimeout(450);
+  await p2.locator('.rn button').last().click();
+  // (Its Yes takes no click in its first 400 ms.)
+  await p2.getByRole('button', { name: 'Yes', exact: true }).waitFor();
+  await p2.waitForTimeout(450);
+  await p2.getByRole('button', { name: 'Yes', exact: true }).click();
+  await p2.getByRole('button', { name: 'Start the round ▶' }).click();
+  await p2.locator('.fj .wagers').waitFor();
+  const wrows = p2.locator('.fj .wagers .wrow');
+  const wagerBoxes = p2.locator('.fj .wagers input[data-wager]');
+  assert((await wrows.count()) === 2 && (await wagerBoxes.count()) === 2, 'the Final has the two players left');
+  await p2.getByRole('button', { name: '↶ Undo' }).click();
+  await p2.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 3);
+  assert((await wagerBoxes.count()) === 2 && (await wrows.filter({ hasText: 'Player 3' }).locator('input[data-wager]').count()) === 0, '↶ Undo on the wager screen brings Player 3 back into the game, not into the Final');
+  await p2.getByRole('button', { name: '↷ Redo' }).click();
+  await p2.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 2);
+  // (Players 1 and 2 at $0 wager 0, filled in: every wager is in.)
+  assert(
+    (await p2.getByRole('button', { name: 'Show question ▶' }).isEnabled()) && (await wagerBoxes.count()) === 2,
+    '↷ Redo takes them out again, and Show question ▶ is there to press (nothing waits on Player 3)',
+  );
+  await ctx2.close();
 
   assert(!dialogs.length, 'no browser dialogs' + (dialogs.length ? ': ' + dialogs.join(' | ') : ''));
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
