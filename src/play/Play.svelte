@@ -1598,15 +1598,20 @@
    * tile to pick, from the panel's main button (a title card, a board game, a Final), else the round's own first one (an
    * Adventure's, not a tool card's).
    */
+  /** True while boardFocus puts the keys on a button it picked (not a tile): a guess, like the rescue's (see onfocusin). */
+  let placing = false;
   function boardFocus(): void {
     void tick().then(() => {
       const at = document.activeElement;
       if (at && at !== document.body && at.isConnected && !(at as HTMLButtonElement).disabled) return;
-      (
-        document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]:not(:disabled)') ??
+      const tile = document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]:not(:disabled)');
+      const to =
+        tile ??
         document.querySelector<HTMLElement>('.play .panel [data-next]:not(:disabled)') ??
-        document.querySelector<HTMLElement>('.play .panel .mode-host:not(.tools) button:not(:disabled)')
-      )?.focus({ preventScroll: true });
+        document.querySelector<HTMLElement>('.play .panel .mode-host:not(.tools) button:not(:disabled)');
+      placing = !tile;
+      to?.focus({ preventScroll: true });
+      placing = false;
     });
   }
 
@@ -2712,6 +2717,8 @@
    */
   const pointed = new WeakSet<Element>();
   let tabbedTo: EventTarget | null = null;
+  /** The list tabbedTo is in (a ✍ clue's ✔ / ✘ rows…): after it goes, the rescue's pick in that same list counts. */
+  let tabbedList: Element | null = null;
 
   /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
   function saySelected(): void {
@@ -3029,10 +3036,15 @@
     // The main button never counts, unless Tabbed to: "1, Enter" still awards with the keys on it. Nor does a button
     // clicked with the mouse that the app gives the keys back to (its window closed with Esc). Nor, where Enter is a
     // shortcut (awards, moves), the rescue's guess at the nearest button (the one with the keys turned off or went away):
-    // it may change the game (▦ Done ▶ board after ＋ Award, a player's chip after 🎲 Roll).
-    const guess = rescuing() && awardOpen(session);
+    // it may change the game (▦ Done ▶ board after ＋ Award, a player's chip after 🎲 Roll), nor boardFocus's pick of the
+    // round's first button (an Adventure's party chip). Unless it's the next row of the list the keys were in (✔ on one
+    // ✍ answer, then the next one's ✔): Enter presses that one too.
+    const nextRow = !!el && !!tabbedList?.isConnected && tabbedList.contains(el);
+    const guess = (rescuing() || placing) && awardOpen(session) && !nextRow;
     if (tabbing && el) pointed.delete(el);
     tabbedTo = el && (tabbing || (viaKeys && !guess && !pointed.has(el) && !el.matches('[data-next]'))) ? el : null;
+    // (Noted while the button is still in the page: a removed one's closest() finds nothing.)
+    tabbedList = tabbedTo instanceof Element ? tabbedTo.closest('ul, ol, [role="list"]') : null;
     tabbing = false;
     fields.focusin(e);
   }}

@@ -201,11 +201,19 @@ try {
       (await row('Player 2').getByRole('button', { name: 'Player 2 is wrong' }).count()) === 1,
     'with an audience window, the host sees the words with ✔ / ✘ while answers are still open',
   );
-  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).click();
+  // By keyboard: ✔ reached with Tab, pressed with Enter (the keys then go to the next answer's ✔).
+  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).focus();
+  await host.keyboard.press('Tab');
+  await host.keyboard.press('Shift+Tab');
+  await host.keyboard.press('Enter');
   await row('Player 1').getByText('✔ Right').waitFor();
+  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 2 is right');
   // (Its score pop on stream: the audience window has the state after the ✔.)
   await aud.locator('.pop', { hasText: 'Player 1' }).first().waitFor();
   assert((await aud.locator('.timer').count()) === 1, '✔ on one answer leaves the countdown going for the others');
+  await host.keyboard.press('Enter');
+  await row('Player 2').getByText('✔ Right').waitFor();
+  assert(true, '✔ reached with Tab and pressed with Enter: the keys go to the next ✔, and Enter marks Player 2 right (not “Select a player first”)');
   await host.keyboard.press('r');
   await aud.locator('.timer').waitFor({ state: 'detached' });
   assert(true, 'showing the answer ends it');
