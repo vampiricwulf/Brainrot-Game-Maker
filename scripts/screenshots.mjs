@@ -118,6 +118,10 @@ try {
   // The RPG round.
   await nextRound();
   await page.locator('.rh').waitFor();
+  // Past its title card first (the party doesn't move under it).
+  const card = page.locator('.stage-box .title-card');
+  if (await card.count()) await card.click();
+  await card.waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Go East', exact: true }).click();
   await page.waitForTimeout(700);
   await shot('play-rpg');

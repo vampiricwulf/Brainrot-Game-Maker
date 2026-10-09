@@ -5,7 +5,7 @@ import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
   addLive, avatarRange, avatarSpot, centredOn, droppedObject, dropEntry, giveEntry, groupDelta, joinPartyNow, liveText, moveChoices, moveGroup, objectMenu,
-  objectRange, partyOn, pickUp, regroupAll, removeObject, sendPlayers, splitOff, stepParty, wayOffEdge,
+  objectRange, partyOn, pickUp, regroupAll, removeObject, sendPartiesOn, sendPlayers, splitOff, START_FIRST, stepParty, wayOffEdge,
 } from './hostops';
 
 /** An RPG round with three players standing on its start screen. */
@@ -16,6 +16,8 @@ function setup(): { game: Game; session: Session; st: WorldState } {
   game.rounds = [round];
   const session = newSession(game);
   goToRound(session, game, 0);
+  // Started (past its title card).
+  session.intro = null;
   const st = ensureWorld(session, game, round)!;
   return { game, session, st };
 }
@@ -133,6 +135,49 @@ describe('dragging avatars on the RPG stage', () => {
     expect(session.actionLog?.at(-1)?.text).toBe('Party 2 west');
   });
 
+  it('moves every party on a map screen whose dots are dragged, not only one', () => {
+    const { game, session, st, start, beach } = withBeach();
+    // Cat walks to the Beach, then Bob on his own (a step doesn't merge parties): two parties there.
+    splitOff(game, session, ['p2']);
+    stepParty(game, session, 'e');
+    splitOff(game, session, ['p1']);
+    stepParty(game, session, 'e');
+    expect(st.parties.filter((p) => p.members.every((m) => st.positions[m].screen === beach.screen))).toHaveLength(2);
+    expect(sendPartiesOn(game, session, beach, start)).toMatch(/^Cat & Bob → /);
+    expect(Object.values(st.positions).every((p) => p.screen === start.screen)).toBe(true);
+    // One party: it goes by its name, as before.
+    splitOff(game, session, ['p0']);
+    stepParty(game, session, 'e');
+    expect(sendPartiesOn(game, session, beach, start)).toBe(`Party 2 → ${game.worlds![0].maps[0].screens[0].name}`);
+  });
+
+  it('leaves a party whose avatars are all hidden where it is (it had no dot to drag)', () => {
+    const { game, session, st, start, beach } = withBeach();
+    // Cat walks to the Beach and hides; then Ann & Bob walk there too.
+    splitOff(game, session, ['p2']);
+    stepParty(game, session, 'e');
+    st.positions.p2.hidden = true;
+    const ab = st.parties.find((p) => p.members.includes('p0'))!;
+    st.active = ab.id;
+    stepParty(game, session, 'e');
+    expect(Object.values(st.positions).every((p) => p.screen === beach.screen)).toBe(true);
+    expect(sendPartiesOn(game, session, beach, start)).toMatch(new RegExp(`^${ab.name} → `));
+    expect([st.positions.p0.screen, st.positions.p1.screen, st.positions.p2.screen]).toEqual([start.screen, start.screen, beach.screen]);
+    // A party with a dot goes whole, a hidden member too.
+    st.positions.p1.hidden = true;
+    sendPartiesOn(game, session, start, beach);
+    expect([st.positions.p0.screen, st.positions.p1.screen]).toEqual([beach.screen, beach.screen]);
+  });
+
+  it('doesn’t step under the round’s title card (nobody would see it)', () => {
+    const { game, session, st, start, beach } = withBeach();
+    session.intro = { stage: 'title', revealed: 0 };
+    expect(stepParty(game, session, 'e')).toBe(START_FIRST);
+    expect(sendPartiesOn(game, session, start, beach)).toBe(START_FIRST);
+    expect(st.positions.p0.screen).toBe(start.screen);
+    expect(session.actionLog ?? []).toHaveLength(0);
+  });
+
   it('offers a map screen to the followed party, the selected, each other party and everyone', () => {
     const { session, st } = withBeach();
     splitParty(st, ['p2']);
@@ -168,6 +213,14 @@ describe('objects and items on the RPG stage', () => {
     undoAction(session, game);
     expect(Object.values(session.worlds!)[0].objects[potion.id]).toEqual({ shown: false });
     expect(removeObject(game, session, 'nothing')).toBeNull();
+  });
+
+  it('offers no Reveal for what viewers never see (a no-go area, an arrival point, a hotspot)', () => {
+    const { game, session } = withLoot();
+    const wall = { ...newShapeEl('rect'), name: 'Wall', role: { class: 'blocker' as const } };
+    game.worlds![0].maps[0].screens[0].slide.elements.push(wall);
+    const items = objectMenu(game, session, wall.id, { open: () => {}, removed: () => {} });
+    expect(items.map((i) => ('label' in i ? i.label : 'heading' in i ? i.heading : '—'))).toEqual(['Wall', '🗂 Open its card', '—', '🗑 Remove']);
   });
 
   it('lets a player pick up an item or a pile of currency dropped on them', () => {

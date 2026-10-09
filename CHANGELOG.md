@@ -20,6 +20,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 - Score plates: when they're too narrow for the points symbol, every plate on the bar drops it together ("1.2K | 800 | 2K", not "$1K | 800 | $2K"). (a75568f)
 - The 'Try a sample game' card and 'The sample game' menu item say what they add; the editor's key list says ? doesn't work while a window like the clue editor is open. (c94bbf1)
+- RPG action buttons and the log say where and what: "Go to Lake", "Reveal Hidden chest (Road)", "Hide …" (they said only Go there, Reveal, Hide). (3ba3958)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -59,6 +60,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Audience window: a clue's sound or video the host paused or muted stays where it was when the window is reloaded, or closed and opened again (it played again from the start with sound); RPG music the browser blocked there says so and starts on the click; TIME'S UP isn't slammed in again by a reload or by opening the scores window. (6793d3e, 0643a46)
 - Board editor: a picture on a tile no longer covers its value or badges; tiles show ✍ for everyone-answers clues and their "Tile shows" text, and screen readers hear a tile's type; wheel and dice tiles say "No wheel chosen" or "No dice chosen" instead of asking for a question and answer they don't need; after Delete row, Move row or a tile drag the keys stay on the board. (dbefb23, 0577b3b)
 - Clue editor: Undo of ＋ Add wheel… or ＋ Add dice… stays on the clue (it jumped to Wheels & Dice); Undo and Redo of a question slide added, moved or deleted open the slide it changed; Ctrl+D on an only question slide duplicates it (it opened the browser's bookmark dialog); History names ✍ Everyone answers being ticked or unticked. (dbefb23, 0577b3b)
+- RPG rounds: wearing two copies of the same item no longer freezes the play screen and stops autosave; a question pop-up shows its answer to the host before it's revealed; an item that would change nothing (a Potion at full HP, a set value already there, damage at the lowest) is kept and says so instead of being used up; the pad and maps don't move the party under the title card. (3ba3958, 9dfe2a6)
+- RPG rounds: arrival points, no-go areas and hotspots no longer offer a Reveal that did nothing; a pile's pick-up button names a player with room, and 'can't carry any more' keeps the card open; dragging a screen's dots on a map moves every party standing there. (3ba3958, 9dfe2a6)
 
 ## 2026-10-08
 

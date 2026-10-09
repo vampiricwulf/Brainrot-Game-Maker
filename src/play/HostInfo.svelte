@@ -20,6 +20,11 @@
   const here = $derived(rpg.world && rpg.st ? findIn(rpg.world, focusRef(rpg.st) ?? { map: '', screen: '' }) : null);
   const board = $derived(boardNow(game, session));
   const landed = $derived(board.round && board.bs?.last?.landed ? spaceById(board.round, board.bs.last.landed) : undefined);
+  /** A question pop-up on screen (an RPG object's or a wheel slice's): its answer, for the host's eyes only. */
+  const ask = $derived.by(() => {
+    const o = app.live.overlay;
+    return o?.kind === 'popup' && o.answer ? { q: o.slide, a: o.answer, revealed: !!o.revealed, value: o.value } : null;
+  });
 </script>
 
 {#snippet hostNote(label: string, text: string | undefined)}
@@ -42,6 +47,12 @@
 {/snippet}
 
 <div class="info">
+  {#if ask}
+    <div class="label">Pop-up question{ask.value ? ` · worth ${formatPoints(ask.value, sym)}` : ''}</div>
+    <div class="q">{slideText(ask.q) || '—'}</div>
+    <div class="label">Answer {ask.revealed ? '(on screen)' : '(hidden from viewers)'}</div>
+    <div class="a">{slideText(ask.a) || '—'}</div>
+  {/if}
   {#if session.phase === 'clue' && info}
     <div class="meta">
       <span class="cat">{categoryLabel(info.category)}</span>

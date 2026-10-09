@@ -84,6 +84,16 @@ describe('stats', () => {
     expect(addStat(game, session, 'a', gold, 1)).toBe(1);
     expect(statValue(game, session, 'a', gold)).toBe(-1);
   });
+
+  it('changes nothing at all when already at the limit, even a stat never touched', () => {
+    const { game, session } = setup();
+    const hp = game.statFields![0];
+    // Bob's HP is at its start (10), its max: +3 does nothing, so no undo step and nothing stored.
+    logged(session, 'Bob: HP +3', () => expect(addStat(game, session, 'b', hp, 3)).toBe(0));
+    expect(session.actionLog ?? []).toHaveLength(0);
+    expect(session.stats?.b?.hp).toBeUndefined();
+    expect(statValue(game, session, 'b', hp)).toBe(10);
+  });
 });
 
 describe('inventory', () => {
@@ -478,6 +488,11 @@ describe('worn items', () => {
     giveItem(game, session, 'a', 'potion', 1);
     expect(wornItems(game, session, 'a')).toEqual([]);
     inventory(session, 'a').find((e) => e.item === 'sword')!.equipped = true;
+    expect(wornItems(game, session, 'a').map((d) => d.id)).toEqual(['sword']);
+    // A second Sword (not stackable: its own row) worn too still shows one Sword on the avatar.
+    giveItem(game, session, 'a', 'sword', 1);
+    for (const e of inventory(session, 'a').filter((e) => e.item === 'sword')) e.equipped = true;
+    expect(inventory(session, 'a').filter((e) => e.equipped)).toHaveLength(2);
     expect(wornItems(game, session, 'a').map((d) => d.id)).toEqual(['sword']);
   });
 });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { runAction, targets, typedSteps, type RunContext } from './actions';
+import { describeAction, runAction, targets, typedSteps, type RunContext } from './actions';
 import { ensureBoard, newBoardGameRound } from './boardgame';
 import { newLive } from './live';
-import { newGame, type Action } from './model';
+import { newGame, newShapeEl, type Action } from './model';
 import { addScreenBeside, ensureWorld, moveTo, newRpgRound, newWorld } from './rpg';
 import { newSession } from './session';
 import { newStatField, statValue } from './toolset';
@@ -42,6 +42,30 @@ describe('running buttons that point nowhere', () => {
     ctx.world = newWorld();
     ctx.st = { positions: {}, parties: [], active: '', knowledge: {}, objects: {}, added: {}, mapShown: false };
     expect(runAction(ctx, { id: '3', do: 'move', to: { map: ctx.world.maps[0].id, screen: 'gone' } })).toBe('That screen no longer exists');
+  });
+});
+
+describe('stat buttons that change nothing', () => {
+  it('store nothing, log nothing and play no Damage sound (so an item used for nothing is kept)', () => {
+    const ctx = setup();
+    const hp = { ...newStatField('HP'), id: 'hp', start: 10, min: 0, max: 10 };
+    ctx.game.statFields = [hp];
+    // Never touched (10/10): HP = 10, or 99 (kept to the max), leaves it as it was, with no value stored.
+    runAction(ctx, { id: '1', do: 'stat', field: 'hp', op: 'set', amount: 10, who: 'selected' });
+    runAction(ctx, { id: '2', do: 'stat', field: 'hp', op: 'set', amount: 99, who: 'selected' });
+    expect(ctx.session.stats?.a?.hp).toBeUndefined();
+    expect(ctx.session.actionLog ?? []).toHaveLength(0);
+    runAction(ctx, { id: '3', do: 'stat', field: 'hp', op: 'set', amount: 0, who: 'selected' });
+    expect(statValue(ctx.game, ctx.session, 'a', hp)).toBe(0);
+    expect(ctx.session.actionLog).toHaveLength(1);
+    // Poison at 0 HP takes nothing: no Damage sound, no step. With HP left, it hurts.
+    runAction(ctx, { id: '4', do: 'stat', field: 'hp', op: 'add', amount: -3, who: 'selected' });
+    expect(ctx.live.blip).toBeFalsy();
+    expect(ctx.session.actionLog).toHaveLength(1);
+    runAction(ctx, { id: '5', do: 'stat', field: 'hp', op: 'set', amount: 2, who: 'selected' });
+    runAction(ctx, { id: '6', do: 'stat', field: 'hp', op: 'add', amount: -3, who: 'selected' });
+    expect(statValue(ctx.game, ctx.session, 'a', hp)).toBe(0);
+    expect(ctx.live.blip?.key).toBe('hurt');
   });
 });
 
@@ -120,5 +144,29 @@ describe('who “the party” is', () => {
     runAction({ ...ctx, at: map.screens[0].id }, { id: '2', do: 'move', to: { map: map.id, screen: cave.id }, who: 'party' });
     expect([st.positions.a.screen, st.positions.b.screen, st.positions.c.screen]).toEqual([cave.id, cave.id, village.id]);
     expect(st.parties.map((p) => p.members)).toEqual([ab.members, ['c']]);
+  });
+});
+
+describe('button labels', () => {
+  it('say where a move goes, and what a reveal or hide shows and on which screen', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const round = newRpgRound(game);
+    game.rounds = [round];
+    const map = game.worlds![0].maps[0];
+    const road = addScreenBeside(map, map.screens[0], 'e', 'Road')!;
+    const lake = addScreenBeside(map, road, 'e', 'Lake')!;
+    const chest = { ...newShapeEl('rect'), name: 'Hidden chest', secret: true };
+    road.slide.elements.push(chest);
+    const reveal: Action = { id: '1', do: 'reveal', object: chest.id };
+    expect(describeAction(game, { id: '2', do: 'move', to: { map: map.id, screen: lake.id } })).toBe('Go to Lake');
+    expect(describeAction(game, reveal)).toBe('Reveal Hidden chest (Road)');
+    expect(describeAction(game, { id: '3', do: 'hide', object: chest.id })).toBe('Hide Hidden chest (Road)');
+    // The log says the same (the card puts the object's name first).
+    const session = newSession(game);
+    const st = ensureWorld(session, game, round)!;
+    runAction({ game, session, live: newLive(), world: game.worlds![0], st, selected: [] }, reveal, `Elder: ${describeAction(game, reveal)}`);
+    expect(session.actionLog?.at(-1)?.text).toBe('Elder: Reveal Hidden chest (Road)');
+    expect(st.objects[chest.id].shown).toBe(true);
   });
 });

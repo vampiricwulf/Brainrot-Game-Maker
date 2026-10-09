@@ -7,10 +7,10 @@
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
-  import { activeParty, audienceSees, classLabel, findIn, moveTo, OBJECT_CLASSES, override } from '../../lib/rpg';
+  import { activeParty, audienceSees, classLabel, findIn, moveTo, neverShown, OBJECT_CLASSES, override } from '../../lib/rpg';
   import { nameList } from '../../lib/session';
   import { blip } from '../../lib/live';
-  import { currencyFields, formatStat, itemDef, logged, statFields, statNumber } from '../../lib/toolset';
+  import { currencyFields, formatStat, itemDef, logged, statFields, statNumber, statRoom } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
   import { objectName, pickUp as pickUpNow, pileAmount, removeObject } from './hostops';
 
@@ -50,8 +50,13 @@
   const picked = $derived(chosen ?? (ctx.selected.length ? ctx.selected : null));
   const who = $derived(picked ?? here);
   const whoNames = $derived(nameList(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?')) || 'nobody');
-  /** Who picks it up: the first one picked (a pick-up goes to one player, and the button names them). */
-  const picker = $derived(who[0]);
+  /** A pile of currency: the stat it adds to. */
+  const pileField = $derived(role?.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined);
+  /**
+   * Who picks it up: the first one picked (a pick-up goes to one player, and the button names them). With nobody
+   * picked, a pile of currency goes to the first one here with room for it.
+   */
+  const picker = $derived(!picked && pileField ? (who.find((id) => statRoom(game, session, id, pileField) > 0) ?? who[0]) : who[0]);
   const pickerName = $derived(session.players.find((p) => p.id === picker)?.name ?? 'Nobody');
   const title = $derived(objectName(el));
   const locked = $derived(o?.locked ?? role?.locked ?? false);
@@ -134,8 +139,10 @@
 
   function pickUp(): void {
     if (!picker) return void toast('Pick who picks it up');
+    const lastStep = session.actionLog?.at(-1)?.id;
     toast(pickUpNow(game, session, st, el, picker), 3000);
-    onclose();
+    // Only once it was picked up: "can't carry any more" keeps the card open to pick someone else.
+    if (session.actionLog?.at(-1)?.id !== lastStep) onclose();
   }
 
   function npcStat(i: number, delta: number): void {
@@ -259,7 +266,12 @@
     </div>
   {/if}
   <div class="row">
-    <button class="small" onclick={() => setShown(!seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
+    <!-- (Hotspots, arrival points and no-go areas are the host's alone: a Reveal would do nothing.) -->
+    {#if neverShown(el)}
+      <span class="muted small">Never shown to viewers</span>
+    {:else}
+      <button class="small" onclick={() => setShown(!seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
+    {/if}
     <button class="small ghost" onclick={take} title="Take it off the screen (Delete; undoable)">🗑 Remove</button>
     <span class="muted small">Drag avatars on the stage to move them{role?.class === 'item' || role?.class === 'currency' ? ', or this onto one to pick it up' : ''}.</span>
   </div>

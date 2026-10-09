@@ -5,10 +5,10 @@ import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
 import { blip, playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
-import { actionProblem } from './refs';
+import { actionProblem, objectsWhere } from './refs';
 import { applyScore, nameList } from './session';
 import { activeParty, moveTo, override, partyOn } from './rpg';
-import { addStat, giveItem, itemDef, logged, setStat, statFields, takeItem } from './toolset';
+import { addStat, clampStat, giveItem, itemDef, logged, setStat, statFields, statValue, takeItem } from './toolset';
 
 export interface RunContext {
   game: Game;
@@ -97,12 +97,16 @@ export function describeAction(game: Game, a: Action): string {
       return 'Ask the question';
     case 'sound':
       return `Play ${game.media.find((m) => m.id === a.media)?.name ?? 'sound'}`;
-    case 'move':
-      return 'Go there';
+    // Where it goes, and what it shows or hides and where (it may be on another screen than the stage shows).
+    case 'move': {
+      const s = game.worlds?.flatMap((w) => w.maps).find((m) => m.id === a.to.map)?.screens.find((x) => x.id === a.to.screen);
+      return `Go to ${s?.name || 'a screen'}`;
+    }
     case 'reveal':
-      return 'Reveal';
-    case 'hide':
-      return 'Hide';
+    case 'hide': {
+      const at = a.object ? game.worlds?.flatMap(objectsWhere).find((o) => o.el.id === a.object) : undefined;
+      return `${a.do === 'reveal' ? 'Reveal' : 'Hide'} ${at ? `${at.el.name || 'object'} (${at.screen.name})` : 'an object'}`;
+    }
     case 'shop':
       return `Open ${game.shops?.find((s) => s.id === a.shop)?.name ?? 'shop'}`;
     case 'timer':
@@ -138,11 +142,16 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const who = targets(ctx, a.who);
       if (!f) return 'That stat no longer exists';
       if (!who.length) return 'Pick who it’s for first';
+      let moved = 0;
       logged(session, `${text} (${names(ctx, who)})`, () => {
-        for (const id of who) a.op === 'set' ? setStat(session, id, f, a.amount) : addStat(game, session, id, f, a.amount);
+        for (const id of who) {
+          if (a.op === 'add') moved += Math.abs(addStat(game, session, id, f, a.amount));
+          // (Not for a player already there: storing a start value would count as a change, and an item used up for nothing.)
+          else if (JSON.stringify(statValue(game, session, id, f)) !== JSON.stringify(clampStat(f, a.amount))) setStat(session, id, f, a.amount);
+        }
       });
-      // Damage (HP down…), not money spent.
-      if (a.op === 'add' && a.amount < 0 && !f.currency) blip(live, 'hurt');
+      // Damage (HP down…), not money spent; not when nobody lost any (all at their min).
+      if (moved && a.amount < 0 && !f.currency) blip(live, 'hurt');
       return `${text}: ${names(ctx, who)}`;
     }
     case 'item': {
@@ -212,7 +221,7 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       if (!ctx.st || !a.object) return 'Nothing to reveal';
       const st = ctx.st;
       const id = a.object;
-      logged(session, a.do === 'reveal' ? 'Reveal an object' : 'Hide an object', () => (override(st, id).shown = a.do === 'reveal'));
+      logged(session, text, () => (override(st, id).shown = a.do === 'reveal'));
       return text;
     }
     case 'shop':

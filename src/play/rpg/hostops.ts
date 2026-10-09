@@ -4,7 +4,7 @@ import {
   type SlideElement, type World, type WorldState,
 } from '../../lib/model';
 import {
-  activeParty, allElements, audienceSees, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, override, partyOn, regroup, splitParty,
+  activeParty, allElements, audienceSees, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, neverShown, override, partyOn, partyScreen, regroup, splitParty,
   step, worldById,
 } from '../../lib/rpg';
 import { nameList } from '../../lib/session';
@@ -35,8 +35,13 @@ export type RpgAsk = { what: 'screen'; dir: Dir8 } | { what: 'look' } | { what: 
 /** Where on the stage the host clicked (1920×1080), and on which screen in split view. */
 export type StagePoint = { x: number; y: number; screen?: ScreenRef };
 
+/** Said when a move would happen unseen under the round's title card. */
+export const START_FIRST = 'Start the round first (N, or click the title card)';
+
 /** Step the active party. Returns what to tell the host when it couldn't. */
 export function stepParty(game: Game, session: Session, dir: Dir8): string | null {
+  // (Not under the round's title card: nobody would see the party move, and the step sound would play over it.)
+  if (session.intro) return START_FIRST;
   const { world, st } = rpgNow(game, session);
   if (!world || !st) return 'No world to move in';
   let why: string | null = null;
@@ -102,6 +107,20 @@ export function sendPlayers(
     if (at) ids.forEach((id, i) => Object.assign(st.positions[id], avatarSpot(at.x + (i - (ids.length - 1) / 2) * 170, at.y)));
   });
   return text;
+}
+
+/**
+ * The players on a map screen were dragged onto another (the minimap's or the full map's dots): every party standing
+ * there goes, as the dots dragged showed them all. (Not a party whose avatars are all hidden: it had no dot to drag.
+ * A party with a dot goes whole, hidden members too.) Returns what to tell the host.
+ */
+export function sendPartiesOn(game: Game, session: Session, from: ScreenRef, to: ScreenRef): string | null {
+  if (session.intro) return START_FIRST;
+  const { st } = rpgNow(game, session);
+  if (!st) return null;
+  const dot = (m: string) => st.positions[m]?.screen === from.screen && !st.positions[m].hidden;
+  const parties = st.parties.filter((p) => partyScreen(st, p)?.screen === from.screen && p.members.some(dot));
+  return sendPlayers(game, session, parties.flatMap((p) => p.members), to, { label: parties.length === 1 ? parties[0].name : undefined });
 }
 
 /** Players join a party (dropped on its chip, or from their menu): they go to where it is. Returns what to tell the host. */
@@ -232,7 +251,10 @@ export function objectMenu(game: Game, session: Session, elId: string, { open, r
   return [
     { heading: name },
     { label: '🗂 Open its card', onclick: open },
-    { label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, elId).shown = !shown)) },
+    // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
+    ...(neverShown(el)
+      ? []
+      : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, elId).shown = !shown)) }]),
     { sep: true },
     { label: '🗑 Remove', danger: true, onclick: () => removed(removeObject(game, session, elId) ?? '') },
   ];

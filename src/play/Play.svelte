@@ -59,7 +59,7 @@
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
-    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, stepParty, toggleMap,
+    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, START_FIRST, stepParty, toggleMap,
     type AvatarDrop, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
@@ -2684,7 +2684,7 @@
       if (d && session.intro) {
         // (Not under the round's title card: nobody would see the party move.)
         e.preventDefault();
-        toast('Start the round first (N, or click the title card)');
+        toast(START_FIRST);
         return;
       }
       if (d) {
