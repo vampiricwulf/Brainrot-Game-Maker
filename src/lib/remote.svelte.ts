@@ -31,13 +31,15 @@ export const remote = $state<{
   /** What the room can do beyond the first protocol ('teams'); empty from an older buzzer server. */
   features: string[];
   error: string;
+  /** The close code the room turned this window away with (4004: it ended; 4000: another window took it), or 0. */
+  closedCode: number;
   /** Reconnect attempts since the room was last reached. */
   attempts: number;
   /** Phones asking to join that the host already answered (until the room's next list leaves them out). */
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], features: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+}>({ status: 'off', code: null, base: '', phones: [], features: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -70,6 +72,7 @@ function sync(): void {
   remote.phones = link.phones;
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
   remote.error = link.error;
+  remote.closedCode = link.closedCode;
   remote.attempts = link.attempts;
 }
 
@@ -153,13 +156,17 @@ export function resendHostState(): void {
   link?.resend();
 }
 
+/** Let a phone asking to join in, on seat `seatId`. false: the room can't be reached (the request stays listed). */
 export function acceptPhone(conn: string, seatId: string): boolean {
-  remote.answered = [...remote.answered, conn];
-  return !!link?.send({ t: 'accept', conn, seatId });
+  const ok = !!link?.send({ t: 'accept', conn, seatId });
+  if (ok) remote.answered = [...remote.answered, conn];
+  return ok;
 }
+/** Turn a phone asking to join away. false: the room can't be reached (the request stays listed). */
 export function rejectPhone(conn: string): boolean {
-  remote.answered = [...remote.answered, conn];
-  return !!link?.send({ t: 'reject', conn });
+  const ok = !!link?.send({ t: 'reject', conn });
+  if (ok) remote.answered = [...remote.answered, conn];
+  return ok;
 }
 /**
  * Take a seat back from its phone (it can't take it again for 2 minutes). free: only let go of it, blocking nobody (the
@@ -183,7 +190,7 @@ export const roomHasAnswers = (): boolean => remote.features.includes('answers')
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /**
@@ -193,7 +200,7 @@ export function closeRoom(): void {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */

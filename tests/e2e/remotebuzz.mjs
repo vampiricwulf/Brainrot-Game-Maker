@@ -8,7 +8,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, exportHtml, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, exportHtml, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -19,12 +19,13 @@ const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 
 // The fake buzzer room: POST /api/rooms makes room BCDF; a socket says welcome; everything the host sends is kept.
+// `offline`: new sockets drop at once (the network is down); `gone`: they're turned away with that code (4004: it ended).
 await context.addInitScript(() => {
   try {
     const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
     if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: 'https://buzz.test' }));
   } catch {}
-  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '' });
+  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '', offline: false, gone: 0 });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, init) => {
     const u = String(url);
@@ -48,6 +49,10 @@ await context.addInitScript(() => {
       room.sockets.push(this);
       setTimeout(() => {
         if (this.readyState !== 0) return;
+        if (room.offline || room.gone) {
+          this.readyState = 3;
+          return this.onclose?.(room.gone ? { code: room.gone, reason: 'no such room' } : { code: 1006 });
+        }
         this.readyState = 1;
         this.onopen?.({});
         this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now(), ...(room.features ? { features: room.features } : {}) }) });
@@ -178,6 +183,27 @@ try {
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '“Going live?” ticks the room off once a phone has joined');
   assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'a joined player shows ✔ joined');
   assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('waiting'), 'the others are waiting');
+  // The room out of reach for a moment: its last list of phones is stale (no count, no ✔ joined), and what would tell it
+  // something is greyed out (it wouldn't get there: Zed would wait to be let in for good).
+  await page.evaluate(() => {
+    window.__room.offline = true;
+    window.__drop();
+  });
+  await card.getByText('⚠ Reconnecting to the buzzer room…').waitFor();
+  assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'), 'reconnecting: the Start bar says so instead of “1 of 3 joined”');
+  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '“Going live?” no longer ticks the room off');
+  assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'and Player 1 isn’t shown as ✔ joined from the stale list');
+  const p2Row = await card.locator('li', { hasText: 'Player 2' }).innerText();
+  assert(p2Row.includes('room out of reach') && !p2Row.includes('waiting'), 'nor Player 2 as waiting for a phone: the room is out of reach');
+  assert(
+    (await card.getByRole('button', { name: '✔ Add' }).isDisabled()) &&
+      (await card.getByRole('button', { name: 'Turn Zed away' }).isDisabled()) &&
+      (await card.getByRole('button', { name: 'Take Player 1’s seat back from their phone' }).isDisabled()),
+    '✔ Add, ✕ (turn away) and ✕ Kick are greyed out while the room can’t be reached',
+  );
+  await page.evaluate(() => (window.__room.offline = false));
+  await card.getByText('1 of 3 players joined').waitFor({ timeout: 20_000 });
+  assert(await card.getByRole('button', { name: '✔ Add' }).isEnabled(), 'back in the room, they work again');
   await card.getByRole('button', { name: '✔ Add' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'accept'));
   const all = await sent();
@@ -364,11 +390,12 @@ try {
   // ---------- A dropped connection: reconnect with the same code ----------
   // (The room it comes back to can free a seat without blocking anyone.)
   await page.evaluate(() => (window.__room.features = ['teams', 'wagers', 'free']));
+  const socketsBefore = await page.evaluate(() => window.__room.sockets.length);
   await page.evaluate(() => window.__drop());
   await page.waitForFunction(() => document.querySelector('.panel .chip')?.textContent.includes('⚠'));
   assert(true, 'a dropped connection shows ⚠ on the chip');
-  await page.waitForFunction(() => window.__room.sockets.length === 2 && !document.querySelector('.panel .chip')?.textContent.includes('⚠'));
-  assert((await page.evaluate(() => window.__room.sockets[1].url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'it reconnects to the same room');
+  await page.waitForFunction((n) => window.__room.sockets.length === n + 1 && !document.querySelector('.panel .chip')?.textContent.includes('⚠'), socketsBefore);
+  assert((await page.evaluate(() => window.__room.sockets.at(-1).url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'it reconnects to the same room');
   assert((await page.evaluate(() => window.__room.posts)) === 2, 'without making a new one');
 
   // ---------- Free seat: a player back on a new phone (no block, unlike ✕ Kick) ----------
@@ -384,6 +411,12 @@ try {
   await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === false), seats[1].id);
   await page.locator('.toast', { hasText: 'seat is free' }).waitFor();
   assert(true, 'Free seat tells the room to free it without a block, and says they can tap their name on the new phone');
+  // With 🔒 seats locked a freed seat takes no tap either: the toast says to untick the lock (not that they can tap now).
+  await pop.getByLabel(/Lock seats/).check();
+  await free.click();
+  await page.locator('.toast', { hasText: 'untick Lock seats' }).waitFor();
+  assert(true, 'Free seat with the seats locked says to untick Lock seats so they can tap their name');
+  await pop.getByLabel(/Lock seats/).uncheck();
   await page.keyboard.press('Escape');
 
   // Back to the board: the lobby, nobody locked out.
@@ -505,6 +538,77 @@ try {
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   await roomBar.waitFor({ state: 'detached' });
   assert(true, '✕ Close the room closes it (phones are told the game is over)');
+
+  // ---------- A room kept in the editor that ended meanwhile is forgotten (not "still open", no dead code to share) ----------
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  const buzzerMode = card.getByLabel(/Buzzer mode/);
+  await buzzerMode.waitFor();
+  if (!(await buzzerMode.isChecked())) await buzzerMode.check();
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByLabel('Room code BCDF').waitFor();
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
+  await roomBar.getByText('BCDF').waitFor();
+  await page.evaluate(() => {
+    window.__room.gone = 4004;
+    window.__drop();
+  });
+  await roomBar.waitFor({ state: 'detached' });
+  await page.locator('.toast', { hasText: 'Buzzer room BCDF has ended' }).waitFor();
+  assert(true, 'a room kept in the editor that has ended is forgotten: the bar stops saying it’s open, and the host is told');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await card.getByRole('alert').getByText(/This buzzer room has ended/).waitFor();
+  assert(
+    (await card.getByRole('button', { name: '▶ Start the room' }).isVisible()) && (await card.getByLabel('Room code BCDF').count()) === 0 && (await card.getByRole('img', { name: /QR code/ }).count()) === 0,
+    '▶ Play then says it ended and offers a new room: no code, link or QR code of the dead one',
+  );
+
+  // ---------- A game kept to resume after a reload: Discard, or a fresh game started, closes its room too ----------
+  /** Start the room and a game, wait until the game is saved with it, then reload: the editor keeps it to resume. */
+  const playThenReload = async () => {
+    await page.evaluate(() => (window.__room.gone = 0));
+    // (The players came with the room just closed: this game has none of its own yet.)
+    if (!(await page.locator('.pregame input.name').count())) await addPlayers(page, 2);
+    await card.getByRole('button', { name: '▶ Start the room' }).click();
+    await card.getByLabel('Room code BCDF').waitFor();
+    const since = await page.evaluate(() => Date.now());
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    const saved = () =>
+      page.evaluate(
+        (since) =>
+          new Promise((ok) => {
+            const q = indexedDB.open('keyval-store');
+            q.onerror = () => ok(false);
+            q.onsuccess = () => {
+              const g = q.result.transaction('keyval').objectStore('keyval').get('playSession');
+              g.onerror = () => ok(false);
+              g.onsuccess = () => {
+                q.result.close();
+                ok(!!g.result && g.result.savedAt >= since && g.result.session.remote?.code === 'BCDF');
+              };
+            };
+          }),
+        since,
+      );
+    for (let i = 0; i < 100 && !(await saved()); i++) await page.waitForTimeout(100);
+    assert(await saved(), 'the game in progress is saved with its buzzer room');
+    await page.reload();
+    await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  };
+  await playThenReload();
+  assert((await page.locator('.status-bar .room-bar').count()) === 0, 'after a reload mid-game the editor keeps the game to resume (its room isn’t kept on its own)');
+  await page.locator('.status-bar .kept').getByRole('button', { name: 'Discard' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Discard', exact: true }).click();
+  await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
+  assert(true, 'Discard closes the kept game’s buzzer room: its phones are told the game is over (not "hang on" for hours)');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await playThenReload();
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.locator('.resume-card').waitFor();
+  await card.getByLabel(/Buzzer mode/).uncheck();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
+  assert(true, 'so does starting a fresh game instead of resuming it (Start game replaces the kept game, its room too)');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('remotebuzz e2e passed');

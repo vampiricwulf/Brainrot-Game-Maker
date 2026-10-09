@@ -168,6 +168,8 @@ export class RoomLink {
   /** What the room said it can do beyond protocol 1 (its welcome's features; none from an older room). */
   features: string[] = [];
   error = '';
+  /** The close code the room turned this host away with (4000–4999), or 0. */
+  closedCode = 0;
   /** Reconnect attempts since the room was last reached. */
   attempts = 0;
   room: NewRoom | null = null;
@@ -218,6 +220,7 @@ export class RoomLink {
     this.room = room;
     this.code = room.code;
     this.attempts = 0;
+    this.closedCode = 0;
     this.open('connecting');
   }
 
@@ -315,7 +318,10 @@ export class RoomLink {
       if (e.code >= 4000 && e.code < 5000) {
         if (this.ending) return this.stop();
         this.error = closedText(e.code, e.reason);
+        this.closedCode = e.code;
         this.room = null;
+        // Its phones went with it (or are another window's now): the last list would say they're still here.
+        this.phones = [];
         this.set('error');
         return;
       }

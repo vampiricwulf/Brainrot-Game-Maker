@@ -68,6 +68,8 @@ let teamPick: SeatsMsg['seats'][number] | null = null;
 let teamAsked = false;
 let notice: Notice | null = null;
 let seatsNote = '';
+/** Another tab or phone took this seat back (the token is kept, so a tap takes it back here): a reconnect doesn't. */
+let seatMoved = false;
 let result: ResultMsg | null = null;
 /** Server time this seat's early-buzz lock ends. */
 let lockedUntil = 0;
@@ -213,9 +215,8 @@ function connect(): void {
   s.onopen = () => {
     if (ws !== s) return;
     connected = everConnected = true;
-    attempts = 0;
     lastPong = Date.now();
-    const saved = loadSeat();
+    const saved = seatMoved ? null : loadSeat();
     rejoining = !!saved;
     if (saved) send({ t: 'join', seatId: saved.seatId, token: saved.token, device });
     // Still waiting for the host to let us in: the room forgot the request when the connection dropped, so ask again.
@@ -233,13 +234,15 @@ function connect(): void {
   };
   s.onmessage = (e) => {
     if (ws !== s || typeof e.data !== 'string') return;
+    // The room talked: it's there (a socket it turns away opens too, then closes at once).
+    attempts = 0;
     try {
       onMessage(JSON.parse(e.data) as RoomToPhone);
     } catch {
       // not ours
     }
   };
-  s.onclose = () => dropped(s);
+  s.onclose = (e) => dropped(s, undefined, e.code);
 }
 
 function ping(): void {
@@ -262,8 +265,11 @@ function probe(): void {
   render();
 }
 
-/** The socket is gone: try again with backoff (unless the game is over). `wait`: try again after this long instead. */
-function dropped(s: WebSocket, wait?: number): void {
+/**
+ * The socket is gone: try again with backoff (unless the game is over). `wait`: try again after this long instead.
+ * `closeCode`: what it closed with.
+ */
+function dropped(s: WebSocket, wait?: number, closeCode?: number): void {
   if (ws !== s) return;
   detach(s);
   ws = null;
@@ -284,6 +290,8 @@ function dropped(s: WebSocket, wait?: number): void {
   }
   render();
   if (notice?.final) return;
+  // 4004: the room is gone (closed, or ended after hours, while this phone was away): no point trying again.
+  if (closeCode === 4004) return ended();
   const full = notice?.full ? Math.min(30_000, 3000 * 2 ** Math.max(0, fullTries - 1)) : undefined;
   const delay = wait ?? full ?? Math.min(8000, 500 * 2 ** attempts) * (0.75 + Math.random() * 0.5);
   attempts++;
@@ -334,7 +342,9 @@ function onMessage(m: RoomToPhone): void {
             : m.teams
             ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
             : 'Your seat moved to another tab or phone. Tap your name to take it back here.';
-        if (!m.seats.some((x) => x.id === seatId) || !!m.teams !== wasTeams) saveSeat(null);
+        const kept = m.seats.some((x) => x.id === seatId) && !!m.teams === wasTeams;
+        if (!kept) saveSeat(null);
+        seatMoved = kept;
         seatId = null;
         view = null;
       }
@@ -354,6 +364,7 @@ function onMessage(m: RoomToPhone): void {
       break;
     }
     case 'joined':
+      seatMoved = false;
       seatId = m.seatId;
       saveSeat({ seatId: m.seatId, token: m.token });
       if (m.name) saveName(m.name);
@@ -408,6 +419,7 @@ function onMessage(m: RoomToPhone): void {
       if (m.ok) vibrate(40);
       break;
     case 'kicked': {
+      seatMoved = false;
       const team = !!view?.teams;
       seatId = null;
       view = null;

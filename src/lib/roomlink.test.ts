@@ -274,11 +274,20 @@ describe('RoomLink', () => {
     const t = fakeDeps();
     const link = new RoomLink('https://buzz.test', {}, t.deps);
     await link.create();
+    sockets[0].open();
+    sockets[0].say(welcome);
+    sockets[0].say({ t: 'phones', phones: [{ conn: 'c1', seatId: 'a', connected: true }] });
+    expect(link.phones.length).toBe(1);
     sockets[0].drop(4404, 'No such room');
     expect(link.status).toBe('error');
     expect(link.error).toBe('No such room');
+    // Which code (the app forgets a room kept open that ended, not one another window took), and no stale phones.
+    expect(link.closedCode).toBe(4404);
+    expect(link.phones).toEqual([]);
     t.advance(60_000);
     expect(sockets.length).toBe(1);
+    link.connect({ code: 'BCDF', hostToken: 'tok' });
+    expect(link.closedCode).toBe(0);
   });
 
   it('says why the room turned the host away in plain words, not the server\'s', async () => {

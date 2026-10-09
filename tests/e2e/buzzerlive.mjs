@@ -337,9 +337,25 @@ try {
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await small(p1).getByText('The host is setting up — hang on').waitFor();
   assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404 && (await p1.locator('main').getByText('The game is over').count()) === 0, 'Keep & leave keeps the room: phones say the host is setting up (not that the game is over)');
+  // Player 2's phone is asleep (its connection gone) when the room closes: it misses being told.
+  const p2Tap = taps.get(p2);
+  p2Tap.blocked = true;
+  p2Tap.drop();
   await host.locator('.room-bar').getByRole('button', { name: '✕ Close the room' }).click();
   await p1.locator('main').getByText('The game is over').waitFor();
   assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '✕ Close the room closes it: phones say the game is over');
+  // Woken up, it finds the room gone at once: "The game is over", not "Reconnecting…" over and over.
+  const p2Routes = p2Tap.routes.length;
+  p2Tap.blocked = false;
+  await p2.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await p2.locator('main').getByText('The game is over').waitFor();
+  // (Told by the room it's gone, 4004, on the connection it makes: not from the check a phone makes after a few tries.
+  // Two at most: a retry starting just as it wakes is replaced.)
+  const woke = p2Tap.routes.slice(p2Routes);
+  assert(
+    woke.length >= 1 && woke.length <= 2 && woke.some((r) => r.closed === 4004) && (await p2.locator('#overlay').isHidden()),
+    `a phone asleep when the room closed says the game is over when it wakes (${woke.length} connection, closed with ${woke.map((r) => r.closed).join()}; no retrying)`,
+  );
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Buzzer live E2E passed.');

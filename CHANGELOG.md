@@ -46,6 +46,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheel and dice tiles with a question: the buzzers and phones wait until the tile's wheel or dice is closed; dice or a wheel over the question no longer hides it, restarts its countdown or clears who missed, and closing one over a revealed answer starts no countdown. (26266eb, 660f904)
 - Under the cover (K), a countdown started meanwhile waits, paused, until you uncover, and automatic category reveals wait too; Undo of a right answer brings back the countdown it stopped; in buzzer mode, once everyone has missed, the main button is 👁 Reveal answer (🔔 Open the buzzers did nothing). (26266eb)
 - Single window: the stage keeps its size when a clue opens with a long host note, in buzzer mode, and on a Daily Double's question. (26266eb, 660f904)
+- Phones: one asleep when the buzzer room closed says "The game is over" when it wakes (it said "Reconnecting…" for ever), while one that only lost Wi-Fi for a moment keeps trying; a tab whose seat moved to another tab no longer takes it back by itself; one kicked while asleep is told so. (9edcace, d87a803)
+- Buzzer room: discarding a kept game, or starting a fresh one instead, closes its room (phones waited for hours); a room left open in the editor that has ended is forgotten, with a note, and the pre-game screen offers a new one. (9edcace)
+- While the buzzer room can't be reached, the phones list says so and greys out Add, turn away, Free seat, Kick and Move (a phone could be stuck waiting), and the Start bar and Going live? checklist stop showing an old joined count; Free seat with 🔒 seats locked says to untick the lock so the player can tap their name. (9edcace, d87a803)
 
 ## 2026-10-08
 
