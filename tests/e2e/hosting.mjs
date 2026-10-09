@@ -400,6 +400,7 @@ try {
 
   // ---------- The scores window on the results: nobody lit as the picker (nobody picks) ----------
   const pickerChips = await page.locator('.panel .p.picker').count();
+  assert(pickerChips > 0, 'a picker is still set going into the results (what the scores window must not light)');
   const [scoresWin] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
   watch(scoresWin, 'scores');
   await scoresWin.locator('.strip .plate').first().waitFor();

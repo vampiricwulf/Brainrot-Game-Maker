@@ -1661,11 +1661,12 @@
   });
 
   /**
-   * On the results, the next Undo belongs to the last round's Final (one of its judgments, or one of its steps, which only
-   * land in a Final on screen): back to its reveals first, so it's taken back there (not out of sight, or not at all).
+   * On the results (or the tiebreaker clue opened from them), the next Undo belongs to the last round's Final (one of its
+   * judgments, or one of its steps, which only land in a Final on screen): back to its reveals first, so it's taken back
+   * there (not out of sight, or not at all).
    */
   function undoIntoFinal(): void {
-    if (session.phase !== 'end') return;
+    if (session.phase !== 'end' && session.phase !== 'tiebreaker') return;
     const last = game.rounds.at(-1);
     if (!isFinal(last) || session.final?.roundId !== last.id) return;
     const next = nextUndo(session);
@@ -1674,7 +1675,10 @@
       next?.log === 'action'
         ? `step:${last.id}` in JSON.parse(session.actionLog!.at(-1)!.before)
         : !!next && session.scoreLog.some((e) => !e.undone && stepOf(e) === next.id && e.clueId === finalTag(last.id));
-    if (ofFinal) backFromEnd();
+    if (!ofFinal) return;
+    // (The tiebreaker's countdown goes with it, as 🏁 Back to results stops it.)
+    app.live.timer = null;
+    backFromEnd();
   }
 
   /**

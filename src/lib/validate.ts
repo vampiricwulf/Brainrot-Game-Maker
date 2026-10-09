@@ -137,7 +137,7 @@ export function validate(game: Game): Problem[] {
       text: `${plural(deleted.length, 'deleted file')} still used (${plural(deleted.reduce((n, id) => n + (usage.get(id) ?? 0), 0), 'place')}): not saved with the game. Undo the delete, or take ${deleted.length === 1 ? 'it' : 'them'} off those slides`,
       tab: 'media',
       level: 'warn',
-      player: `${plural(deleted.length, 'media file')} missing from this game: ask whoever made it for a new copy`,
+      player: `${plural(deleted.length, 'file')} used on slides but missing from this game: ask whoever made it for a new copy`,
     });
   const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
   // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).

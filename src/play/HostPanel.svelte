@@ -27,6 +27,7 @@
   import type { LogTab } from './ScoreLog.svelte';
   import { app, toast } from '../lib/app.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
+  import { teamsOn } from '../lib/buzz';
   import { scoresWindow } from '../lib/sync.svelte';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
@@ -225,6 +226,8 @@
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
+  /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
+  const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const buzz = $derived(app.live.buzz);
   const lockedNames = $derived(
     (buzz?.lockedOut ?? [])
@@ -940,7 +943,7 @@
     <span class="group g-lists">
       <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
       <!-- The game's rules go with its players (Most players). -->
-      <button onclick={onplayers}>👥 Players</button>
+      <button onclick={onplayers}>{teams ? '👥 Teams' : '👥 Players'}</button>
       <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ Rules</button>
     </span>
     <span class="divider" aria-hidden="true"></span>

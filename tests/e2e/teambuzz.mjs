@@ -237,11 +237,11 @@ try {
   assert((await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann'), 'right: the team scores, and both teammates see it ("Your team got it!")');
   await host.keyboard.press('Escape');
 
-  // ---------- 👥 Players mid-game is a list of teams too: a new row is a team, and removing one says its phones go ----------
-  await host.getByRole('button', { name: '👥 Players' }).click();
+  // ---------- 👥 Teams mid-game (not Players): a new row is a team, and removing one says its phones go ----------
+  await host.getByRole('button', { name: '👥 Teams' }).click();
   const teamsDialog = host.getByRole('dialog', { name: 'Teams' });
   await teamsDialog.waitFor();
-  assert((await teamsDialog.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'mid-game with Teams on, 👥 Players opens 👥 Teams');
+  assert((await teamsDialog.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'mid-game with Teams on, the host panel’s 👥 Teams opens the list of teams');
   await teamsDialog.getByRole('button', { name: '＋ Add team' }).click();
   assert((await teamsDialog.getByRole('textbox', { name: 'Team 3 name' }).inputValue()) === 'Team 3', 'its ＋ Add team adds "Team 3" (not "Player 3")');
   await teamsDialog.getByRole('button', { name: 'Remove Player 2' }).click();
