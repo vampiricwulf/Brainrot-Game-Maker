@@ -45,6 +45,30 @@ describe('running buttons that point nowhere', () => {
   });
 });
 
+describe('stat buttons that change nothing', () => {
+  it('store nothing, log nothing and play no Damage sound (so an item used for nothing is kept)', () => {
+    const ctx = setup();
+    const hp = { ...newStatField('HP'), id: 'hp', start: 10, min: 0, max: 10 };
+    ctx.game.statFields = [hp];
+    // Never touched (10/10): HP = 10, or 99 (kept to the max), leaves it as it was, with no value stored.
+    runAction(ctx, { id: '1', do: 'stat', field: 'hp', op: 'set', amount: 10, who: 'selected' });
+    runAction(ctx, { id: '2', do: 'stat', field: 'hp', op: 'set', amount: 99, who: 'selected' });
+    expect(ctx.session.stats?.a?.hp).toBeUndefined();
+    expect(ctx.session.actionLog ?? []).toHaveLength(0);
+    runAction(ctx, { id: '3', do: 'stat', field: 'hp', op: 'set', amount: 0, who: 'selected' });
+    expect(statValue(ctx.game, ctx.session, 'a', hp)).toBe(0);
+    expect(ctx.session.actionLog).toHaveLength(1);
+    // Poison at 0 HP takes nothing: no Damage sound, no step. With HP left, it hurts.
+    runAction(ctx, { id: '4', do: 'stat', field: 'hp', op: 'add', amount: -3, who: 'selected' });
+    expect(ctx.live.blip).toBeFalsy();
+    expect(ctx.session.actionLog).toHaveLength(1);
+    runAction(ctx, { id: '5', do: 'stat', field: 'hp', op: 'set', amount: 2, who: 'selected' });
+    runAction(ctx, { id: '6', do: 'stat', field: 'hp', op: 'add', amount: -3, who: 'selected' });
+    expect(statValue(ctx.game, ctx.session, 'a', hp)).toBe(0);
+    expect(ctx.live.blip?.key).toBe('hurt');
+  });
+});
+
 describe('typed steps', () => {
   it('a negative number turns a move round; never 0', () => {
     expect(typedSteps(1, 3)).toBe(3);

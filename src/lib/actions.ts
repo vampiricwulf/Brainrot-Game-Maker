@@ -8,7 +8,7 @@ import { parseDice } from './tools';
 import { actionProblem, objectsWhere } from './refs';
 import { applyScore, nameList } from './session';
 import { activeParty, moveTo, override, partyOn } from './rpg';
-import { addStat, giveItem, itemDef, logged, setStat, statFields, takeItem } from './toolset';
+import { addStat, clampStat, giveItem, itemDef, logged, setStat, statFields, statValue, takeItem } from './toolset';
 
 export interface RunContext {
   game: Game;
@@ -142,11 +142,16 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const who = targets(ctx, a.who);
       if (!f) return 'That stat no longer exists';
       if (!who.length) return 'Pick who it’s for first';
+      let moved = 0;
       logged(session, `${text} (${names(ctx, who)})`, () => {
-        for (const id of who) a.op === 'set' ? setStat(session, id, f, a.amount) : addStat(game, session, id, f, a.amount);
+        for (const id of who) {
+          if (a.op === 'add') moved += Math.abs(addStat(game, session, id, f, a.amount));
+          // (Not for a player already there: storing a start value would count as a change, and an item used up for nothing.)
+          else if (JSON.stringify(statValue(game, session, id, f)) !== JSON.stringify(clampStat(f, a.amount))) setStat(session, id, f, a.amount);
+        }
       });
-      // Damage (HP down…), not money spent.
-      if (a.op === 'add' && a.amount < 0 && !f.currency) blip(live, 'hurt');
+      // Damage (HP down…), not money spent; not when nobody lost any (all at their min).
+      if (moved && a.amount < 0 && !f.currency) blip(live, 'hurt');
       return `${text}: ${names(ctx, who)}`;
     }
     case 'item': {

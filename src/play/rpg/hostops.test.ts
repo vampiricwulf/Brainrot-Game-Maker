@@ -151,6 +151,24 @@ describe('dragging avatars on the RPG stage', () => {
     expect(sendPartiesOn(game, session, beach, start)).toBe(`Party 2 → ${game.worlds![0].maps[0].screens[0].name}`);
   });
 
+  it('leaves a party whose avatars are all hidden where it is (it had no dot to drag)', () => {
+    const { game, session, st, start, beach } = withBeach();
+    // Cat walks to the Beach and hides; then Ann & Bob walk there too.
+    splitOff(game, session, ['p2']);
+    stepParty(game, session, 'e');
+    st.positions.p2.hidden = true;
+    const ab = st.parties.find((p) => p.members.includes('p0'))!;
+    st.active = ab.id;
+    stepParty(game, session, 'e');
+    expect(Object.values(st.positions).every((p) => p.screen === beach.screen)).toBe(true);
+    expect(sendPartiesOn(game, session, beach, start)).toMatch(new RegExp(`^${ab.name} → `));
+    expect([st.positions.p0.screen, st.positions.p1.screen, st.positions.p2.screen]).toEqual([start.screen, start.screen, beach.screen]);
+    // A party with a dot goes whole, a hidden member too.
+    st.positions.p1.hidden = true;
+    sendPartiesOn(game, session, start, beach);
+    expect([st.positions.p0.screen, st.positions.p1.screen]).toEqual([beach.screen, beach.screen]);
+  });
+
   it('doesn’t step under the round’s title card (nobody would see it)', () => {
     const { game, session, st, start, beach } = withBeach();
     session.intro = { stage: 'title', revealed: 0 };

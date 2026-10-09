@@ -111,13 +111,15 @@ export function sendPlayers(
 
 /**
  * The players on a map screen were dragged onto another (the minimap's or the full map's dots): every party standing
- * there goes, as the dots dragged showed them all. Returns what to tell the host.
+ * there goes, as the dots dragged showed them all. (Not a party whose avatars are all hidden: it had no dot to drag.
+ * A party with a dot goes whole, hidden members too.) Returns what to tell the host.
  */
 export function sendPartiesOn(game: Game, session: Session, from: ScreenRef, to: ScreenRef): string | null {
   if (session.intro) return START_FIRST;
   const { st } = rpgNow(game, session);
   if (!st) return null;
-  const parties = st.parties.filter((p) => partyScreen(st, p)?.screen === from.screen);
+  const dot = (m: string) => st.positions[m]?.screen === from.screen && !st.positions[m].hidden;
+  const parties = st.parties.filter((p) => partyScreen(st, p)?.screen === from.screen && p.members.some(dot));
   return sendPlayers(game, session, parties.flatMap((p) => p.members), to, { label: parties.length === 1 ? parties[0].name : undefined });
 }
 
