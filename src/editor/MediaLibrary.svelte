@@ -1,10 +1,13 @@
 <!-- Every file in the game, with usage counts and cleanup (spec §5.5), and everything that plays from the internet. -->
 <script lang="ts">
   import PageHeader from './PageHeader.svelte';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
+  import { isGameFile } from '../lib/fileio';
+  import { isThemeFile } from '../lib/themefile';
+  import { flash } from '../lib/nav.svelte';
   import { uniqueMediaName } from '../lib/medianame';
   import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
   import { allEmbeds, allSlides, mediaUsage } from '../lib/usage';
@@ -105,6 +108,13 @@
   let picked = $state<string[]>([]);
   let anchor: string | null = null;
   const pickedRefs = $derived(game.media.filter((m) => picked.includes(m.id)));
+  // A filter that hides a selected card takes it out of the selection (Delete only acts on what's on show).
+  $effect(() => {
+    const on = new Set(shown.map((m) => m.id));
+    untrack(() => {
+      if (picked.some((id) => !on.has(id))) picked = picked.filter((id) => on.has(id));
+    });
+  });
   function pick(e: MouseEvent, m: MediaRef): void {
     // Not a click on the card's own buttons, player or name box.
     if ((e.target as HTMLElement).closest('button, input, audio, video, a')) return;
@@ -219,22 +229,27 @@
     toast(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}.${rest}${r.errors.length ? ' ' + r.errors.join(' ') : ''}`);
   }
 
-  /** Add files to the game (＋ Add files…, or dropped on this page). */
+  /** Add files to the game (＋ Add files…, or dropped on this page). The last one's card scrolls into view and flashes. */
   async function addFiles(files: File[]): Promise<void> {
+    let last: MediaRef | undefined;
     for (const f of files) {
       try {
         const ref = await addMediaFile(game, f);
         warnIfUnplayable(ref);
+        last = ref;
       } catch (e) {
         toast((e as Error).message);
       }
     }
+    if (last) flash(`media:${last.id}`);
   }
 
   async function upload(): Promise<void> {
     await addFiles(await pickFiles(`${ACCEPT.any},${ACCEPT.font}`, true));
   }
 
+  /** A game or theme file (an exported .html game, a .zip, a .bak backup, a .brainrot-theme…): the editor opens it. */
+  const notMedia = (f: File) => isGameFile(f.name) || isThemeFile(f.name);
   /** Files are being dragged over the page. */
   let dropping = $state(false);
   function over(e: DragEvent): void {
@@ -245,7 +260,7 @@
   function drop(e: DragEvent): void {
     dropping = false;
     // A game file isn't media: the editor opens it, as when it's dropped anywhere else.
-    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => !/\.(brainrot|jbr|json)$/i.test(f.name));
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => !notMedia(f));
     if (!files.length) return;
     e.preventDefault();
     addFiles(files);
@@ -263,7 +278,8 @@
   function cardDrop(e: DragEvent, m: MediaRef): void {
     dropOn = null;
     const f = e.dataTransfer?.files[0];
-    if (!hasFiles(e) || !f) return;
+    // (A game or theme file goes on to the editor, which opens it.)
+    if (!hasFiles(e) || !f || notMedia(f)) return;
     e.preventDefault();
     e.stopPropagation();
     void replaceWith(m, f);
@@ -302,7 +318,7 @@
     <div class="link">
       <LinkField
         autofocus={false}
-        onmedia={() => {}}
+        onmedia={(ref) => flash(`media:${ref.id}`)}
         hint="Add from a link: the game saves a copy when the site allows it, e.g. https://files.catbox.moe/abc123.mp3"
       />
     </div>

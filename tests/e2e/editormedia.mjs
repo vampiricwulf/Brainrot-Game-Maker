@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace } from './helpers.mjs';
+import { addClassicRounds, answerReplace, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -136,6 +136,16 @@ try {
   await cards.nth(0).locator('.meta').click({ modifiers: ['Shift'] });
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('');
   assert((await page.locator('.card.picked').count()) === 1, 'a Shift+click with a filter on picks no hidden card');
+  // A filter that hides a selected card takes it out of the selection: Delete selected never takes a file not on show.
+  await cards.nth(0).locator('.meta').click();
+  await page.getByRole('searchbox', { name: 'Filter files' }).fill('pasted');
+  await cards.nth(0).getByRole('checkbox').check();
+  await page.getByRole('button', { name: '🗑 Delete selected (1)' }).waitFor();
+  await page.getByRole('searchbox', { name: 'Filter files' }).fill('');
+  assert(
+    (await page.locator('.card.picked').count()) === 1 && (await page.locator('.card.picked .nm').innerText()) === 'pasted.png',
+    'a card hidden by the filter leaves the selection (only the one ticked with the filter on stays selected)',
+  );
   await cards.nth(0).locator('.meta').click();
   await cards.nth(2).locator('.meta').click({ modifiers: ['Shift'] });
   await cards.nth(1).locator('.meta').click({ modifiers: ['Control'] });
@@ -162,6 +172,35 @@ try {
   await page.keyboard.press('Delete');
   assert((await cards.count()) === 2, 'Delete on a Select checkbox removes the selected file');
   await page.keyboard.press('Control+z');
+  // A file added here scrolls into view and flashes (on a full page it landed below the fold, with no sign).
+  await page.evaluate(() => {
+    window.__flashed = [];
+    new MutationObserver((rs) => rs.forEach((r) => r.target.classList.contains('flash') && window.__flashed.push(r.target.dataset.place))).observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    });
+  });
+  await drop(page.locator('.library'), [['added.png', 'image/png']]);
+  const addedPlace = await cards.filter({ hasText: 'added.png' }).getAttribute('data-place');
+  const flashed = await page.waitForFunction((p) => window.__flashed.includes(p), addedPlace, { timeout: 5000 }).then(() => true, () => false);
+  assert(flashed, 'a file added on the Media page flashes its new card');
+  await page.keyboard.press('Control+z');
+  await cards.filter({ hasText: 'added.png' }).waitFor({ state: 'detached' });
+  // A game or theme file dropped on the page (or on a card) isn't media: the editor opens it.
+  const okAsk = async (text) => {
+    const ask = page.getByRole('alertdialog').filter({ hasText: text });
+    await ask.waitFor();
+    await ask.getByRole('button', { name: 'OK' }).click();
+  };
+  await drop(page.locator('.library'), [['Neon.brainrot-theme', 'application/octet-stream']]);
+  await okAsk('can’t be used as a theme');
+  await drop(cards.nth(1), [['Trivia Night.html', 'text/html']]);
+  await okAsk('no game inside');
+  assert(
+    (await cards.count()) === 3 && (await names())[1] === 'Show logo.png' && !(await toast.allInnerTexts()).some((t) => t.includes('isn\'t a supported')),
+    'a theme file or an exported .html game dropped on the Media page goes to the editor, which opens it (not refused as media)',
+  );
 
   // ---------- Slide right-click menus ----------
   await page.locator('nav > button.round-tab').first().click();
@@ -345,6 +384,42 @@ try {
   await media.click();
   await card('other.png').locator('img').waitFor();
   assert((await page.locator('.missing-box').count()) === 0 && !!(await undoTitle()), '🗑 Delete in Open… keeps the files this game’s undo history can bring back');
+
+  // ---------- 🔊 Sounds: a sound whose file is missing (a .json export has none) is picked again on its own row ----------
+  {
+    const first = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const a = await first.newPage();
+    a.on('pageerror', (e) => errors.push(`[export] ${e.message}`));
+    await a.goto(pathToFileURL(file).href);
+    await addClassicRounds(a);
+    await a.getByRole('button', { name: '🔊 Sounds' }).click();
+    await a.getByRole('button', { name: 'Choose file for Round intro' }).click();
+    const [fc] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+    await fc.setFiles({ name: 'intro-music.wav', mimeType: 'audio/wav', buffer: Buffer.from('intro') });
+    await a.getByText('🔊 intro-music.wav').waitFor();
+    const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);
+    const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const b = await fresh.newPage();
+    b.on('pageerror', (e) => errors.push(`[fresh] ${e.message}`));
+    await b.goto(pathToFileURL(file).href);
+    await openGameFile(b, await json.path());
+    await first.close();
+    await b.locator('.problems').getByText('1 sound file missing: see 🔊 Sounds').click();
+    const row = b.locator('.sound', { hasText: 'Round intro' });
+    await row.getByText('⚠ intro-music.wav is missing: plays the built-in sound').waitFor();
+    const [pick] = await Promise.all([b.waitForEvent('filechooser'), row.getByRole('button', { name: '🔗 Find file…' }).click()]);
+    await pick.setFiles({ name: 'intro-music.wav', mimeType: 'audio/wav', buffer: Buffer.from('intro') });
+    await row.locator('.file', { hasText: '🔊 intro-music.wav' }).waitFor();
+    // (The checklist is worked out again a moment later.)
+    const nothingMissing = await b
+      .waitForFunction(() => ![...document.querySelectorAll('.problems .problem')].some((p) => p.textContent.includes('missing')), null, { timeout: 5000 })
+      .then(() => true, () => false);
+    assert(
+      (await b.getByRole('button', { name: '🖼 Media (1)' }).count()) === 1 && nothingMissing,
+      '🔗 Find file… on a missing sound’s row puts that file back (same name, no second copy) and the checklist stops saying a file is missing',
+    );
+    await fresh.close();
+  }
 
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
   console.log('\nEditor media E2E passed.');

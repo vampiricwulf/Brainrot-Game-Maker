@@ -11,6 +11,17 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-09
+
+### Added
+- Play: a 🔇 Stop sounds button in the host panel (and Shift+M) while a round intro's music may still be playing; it works in RPG, board-game and slides rounds, which have no tile to stop it. (29aadf5)
+- 🔊 Sounds: a missing sound file can be picked again from its own row with 🔗 Find file… (it used to add a renamed copy, and the checklist warning stayed); a sound whose online link has expired says so and offers the same button. (2e64d01, 29aadf5)
+
+### Fixed
+- A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
+- A long Round intro track stops when the first tile opens (it played under the clues to its end); a new round's intro or the Final's think music replaces one still playing. (2e64d01, 29aadf5)
+- 🖼 Media: a file hidden by the filter no longer stays selected (Delete selected removed files you couldn't see); dropping an exported .html game, a .zip, a .bak or a .brainrot-theme there opens it as elsewhere; files added scroll into view and flash; pasting a link to a file already in the game says it was reused, not stored. (2e64d01)
+
 ## 2026-10-08
 
 ### Added

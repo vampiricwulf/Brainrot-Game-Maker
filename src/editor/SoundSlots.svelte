@@ -3,7 +3,11 @@
   One whose file is missing plays the built-in sound (as in the game), and says so.
 -->
 <script lang="ts">
-  import { app } from '../lib/app.svelte';
+  import { app, toast } from '../lib/app.svelte';
+  import { pickFile } from '../lib/fileio';
+  import { attachBlobSwap, stepAsync } from '../lib/history.svelte';
+  import { linkLifetime } from '../lib/links';
+  import { ACCEPT, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import { CUES, cueFileMissing, cueVolume, hasBuiltin, type CueKey } from '../lib/sounds';
   import { cueHere, loaded, soundUrl } from '../play/cues';
@@ -27,6 +31,23 @@
   function choose(key: CueKey, id: string): void {
     audio[key] = id;
     setOn(key, true);
+  }
+  /**
+   * A missing file picked again (or the file of a link that expired, stored in the game in its place): every place that
+   * uses it gets it back, as 🖼 Media's 🔗 Replace file…. Undo takes it out.
+   */
+  async function findFile(id: string): Promise<void> {
+    const f = await pickFile(ACCEPT.audio);
+    if (!f) return;
+    try {
+      await stepAsync(`Reconnected “${nameOf(id)}”`, async () => {
+        const before = await stashMedia(id);
+        await replaceMediaFile(app.game, id, f);
+        attachBlobSwap({ id, before, after: await stashMedia(id) });
+      });
+    } catch (e) {
+      toast((e as Error).message);
+    }
   }
   /** How loud it plays: full volume is left out of the game (older games play everything at full volume). */
   function setVolume(key: CueKey, v: number): void {
@@ -53,8 +74,16 @@
     el.src = previewUrl = url;
     el.volume = cueVolume(app.game, key);
     previewing = key;
-    // A ▶ on another sound before this one started aborts this one: that doesn't stop the other's ■.
-    el.play().catch(() => previewing === key && previewUrl === url && (previewing = null));
+    // A ▶ on another sound before this one started aborts this one: that doesn't stop the other's ■. Any other failure
+    // is a file that doesn't load (most often an online link that stopped working): it says so.
+    el.play().catch((e: unknown) => {
+      if (previewing === key && previewUrl === url) previewing = null;
+      if ((e as { name?: string } | null)?.name === 'AbortError') return;
+      const name = nameOf(audio[key]);
+      toast(
+        `${name ? `“${name}”` : 'This sound'} didn't play: its file or link may no longer work (🖼 Media › Check link).${hasBuiltin(key) ? ' In the game the built-in sound plays instead.' : ''}`,
+      );
+    });
   }
   // Changing its volume while it plays is heard at once; switching it off or taking its file away stops it.
   $effect(() => {
@@ -75,6 +104,7 @@
     {@const off = isOff(key)}
     {@const builtin = hasBuiltin(key)}
     {@const missing = cueFileMissing(app.game, key, loaded)}
+    {@const ref = v ? app.game.media.find((m) => m.id === v) : undefined}
     {@const vol = cueVolume(app.game, key)}
     <div class="sound" class:off>
       {#if builtin}
@@ -91,7 +121,18 @@
       {#if off}
         <span class="muted small">Off{#if v} <span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
       {:else if v && missing}
-        <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : 'plays nothing'}</span>
+        <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it. -->
+        {#if ref?.url && linkLifetime(ref) === 'expired'}
+          <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {builtin ? 'plays the built-in sound' : 'plays nothing'} (add the file again)</span>
+        {:else}
+          <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : 'plays nothing'}</span>
+        {/if}
+        <!-- (Not for a file deleted from the game: there's nothing left to put it back in.) -->
+        {#if ref}
+          <button class="small primary" onclick={() => findFile(v)}
+            title={ref.url ? 'Pick the file on this computer: the game keeps it in place of the link, everywhere it’s used' : "Pick the file again: every place it's used gets it back"}
+            >🔗 Find file…</button>
+        {/if}
       {:else if v}
         <span class="file" title={nameOf(v)}>🔊 {nameOf(v)}</span>
       {:else if builtin}

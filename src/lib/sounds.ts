@@ -1,6 +1,7 @@
 // The game's sound cues: which ones there are, the built-in sounds (made here, like the test chime, so no sound file
 // ships with the app), and when a spinning wheel ticks. Playing them is in src/play/cues.ts.
 import { wavFile } from './audio';
+import { linkLifetime } from './links';
 import type { Game, GameAudio } from './model';
 import { segmentAngles } from './tools';
 
@@ -42,13 +43,15 @@ export const BUILTIN = 'builtin:';
 type CueGame = Pick<Game, 'audio' | 'soundsOff'> & Partial<Pick<Game, 'media' | 'soundVolume'>>;
 
 /**
- * The audio file chosen for a cue is missing: not among the game's files (deleted, or never came with it), or (`has`:
- * whether a file is loaded) not loaded.
+ * The audio file chosen for a cue is missing: not among the game's files (deleted, or never came with it), an online
+ * link the site says has expired, or (`has`: whether a file is loaded) not loaded.
  */
 export function cueFileMissing(game: CueGame, key: CueKey, has?: (id: string) => boolean): boolean {
   const v = game.audio?.[key];
   if (!v) return false;
-  return (!!game.media && !game.media.some((m) => m.id === v)) || (!!has && !has(v));
+  if ((!!game.media && !game.media.some((m) => m.id === v)) || (!!has && !has(v))) return true;
+  const ref = game.media?.find((m) => m.id === v);
+  return !!ref?.url && linkLifetime(ref) === 'expired';
 }
 
 /**
