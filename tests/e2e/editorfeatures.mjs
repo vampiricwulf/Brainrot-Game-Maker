@@ -83,7 +83,12 @@ try {
   await page.keyboard.press('Control+z');
   assert((await page.locator('.cat textarea').count()) === 4, 'one Ctrl+Z puts the board back');
 
-  // A column pasted on a category's name fills it.
+  // A column pasted on a category's name fills it. (Another category's name typed in first: see Ctrl+Z below.)
+  await page.locator('[data-cat-name="0"]').click();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('Movies');
+  await page.keyboard.press('Tab');
+  const oldName = await page.locator('[data-cat-name="1"]').inputValue();
   await page.locator('[data-cat-name="1"]').focus();
   await page.evaluate(() => {
     const el = document.querySelector('[data-cat-name="1"]');
@@ -93,6 +98,18 @@ try {
   });
   assert((await page.locator('[data-cat-name="1"]').inputValue()) === 'Snacks', 'a column pasted on a category’s name names it');
   assert((await page.locator('[data-tile="1,1"]').innerText()).includes('Cheesy triangles'), 'and fills its tiles top down');
+  const pasteStep = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(pasteStep === 'Undo: Pasted 2 clues into “Snacks” (Ctrl+Z)', `its step is named as the toast says (${pasteStep})`);
+  // Ctrl+Z in the renamed box takes the paste back (it was the browser's own undo of the name typed before).
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((n) => document.querySelector('[data-cat-name="1"]')?.value === n, oldName, { timeout: 3000 }).catch(() => {});
+  const undone = await page.locator('.cat textarea').evaluateAll((els) => els.slice(0, 2).map((e) => e.value));
+  assert(
+    undone.join('|') === `Movies|${oldName}` && !(await page.locator('[data-tile="1,1"]').innerText()).includes('Cheesy'),
+    `one Ctrl+Z right after takes the paste back, and only it (${undone.join(' | ')})`,
+  );
+  await page.keyboard.press('Control+y');
+  await page.waitForFunction(() => document.querySelector('[data-cat-name="1"]')?.value === 'Snacks', null, { timeout: 3000 });
 
   // ---------- Find ----------
   await page.locator('nav > button.round-tab').nth(2).click();
