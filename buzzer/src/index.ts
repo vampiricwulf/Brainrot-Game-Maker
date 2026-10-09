@@ -5,13 +5,13 @@
  * (a buzz's grace window, under a second) keeps the room awake while it runs; a room restarted in the middle of one
  * finishes it from storage (see room.ts).
  *
- * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT) and DAILY_ROOMS a day in all
- * (RoomCounter, one Durable Object for the whole server). Looking rooms up and connecting are limited per
- * address too (LOOKUP_LIMIT, SOCKET_LIMIT), so a script can't try every code to find live rooms.
+ * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT), ADDRESS_ROOMS a day per address and
+ * DAILY_ROOMS a day in all (RoomCounter, one Durable Object for the whole server). Looking rooms up and connecting are
+ * limited per address too (LOOKUP_LIMIT, SOCKET_LIMIT), so a script can't try every code to find live rooms.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { BUZZ_PROTOCOL, ROOM_ALPHABET, ROOM_CODE_LENGTH, isRoomCode, type NewRoom, type RoomToHost, type RoomToPhone } from '../../src/lib/buzzproto';
-import { BUSY_TODAY, countRoom, TOO_MANY_LOOKUPS, TOO_MANY_ROOMS, type DayCount } from './limits';
+import { addressKey, BUSY_TODAY, countRoom, TOO_MANY_LOOKUPS, TOO_MANY_ROOMS, TOO_MANY_TODAY, type DayCount } from './limits';
 import { Room, emptyRoom, type PhoneSaved, type RoomSaved } from './room';
 
 export interface Env {
@@ -72,8 +72,11 @@ export default {
     // Cloudflare sets CF-Connecting-IP to the caller's address (a caller can't choose it).
     const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
     if (path === '/api/rooms' && request.method === 'POST') {
-      if (!(await env.NEW_ROOM_LIMIT.limit({ key: ip })).success) return json({ error: TOO_MANY_ROOMS }, 429);
-      if (!(await env.ROOM_COUNTER.getByName('rooms').take())) return json({ error: BUSY_TODAY }, 503);
+      const who = addressKey(ip);
+      if (!(await env.NEW_ROOM_LIMIT.limit({ key: who })).success) return json({ error: TOO_MANY_ROOMS }, 429);
+      const took = await env.ROOM_COUNTER.getByName('rooms').take(who);
+      if (took === 'address') return json({ error: TOO_MANY_TODAY }, 429);
+      if (took === 'busy') return json({ error: BUSY_TODAY }, 503);
       for (let i = 0; i < 10; i++) {
         const code = randomCode();
         const hostToken = randomToken();
@@ -341,12 +344,12 @@ export class BuzzRoom extends DurableObject<Env> {
 
 /** Counts the rooms made today (one instance, 'rooms', for the whole server). */
 export class RoomCounter extends DurableObject<Env> {
-  /** One more room: false when today's cap is reached. */
-  async take(): Promise<boolean> {
-    const next = countRoom(await this.ctx.storage.get<DayCount>('today'), Date.now());
-    if (!next) return false;
+  /** One more room for address key `who`: 'busy' when today's cap is reached, 'address' when that address's is. */
+  async take(who: string): Promise<'ok' | 'busy' | 'address'> {
+    const next = countRoom(await this.ctx.storage.get<DayCount>('today'), Date.now(), who);
+    if (typeof next === 'string') return next;
     await this.ctx.storage.put('today', next);
-    return true;
+    return 'ok';
   }
 }
 
