@@ -517,6 +517,12 @@ async function tileTools() {
   await host.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor();
   await stage('.timer').waitFor({ state: 'detached' });
+  // Nobody buzzed: the answer closed the buzzers, and their row says so (not "✔ Answered: reveal the answer").
+  await host.locator('.panel [data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
+  assert(
+    (await host.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await host.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    'the answer shown with the buzzers open: the buzzers’ row says they stay closed, with no 🔔 Open the buzzers or ↺ Reset buzzers (both would refuse)',
+  );
   // The saved wheel (W), over the answer: closing it starts no countdown over the answer.
   await host.keyboard.press('w');
   await stage('.ov .wheel').waitFor();
@@ -575,6 +581,18 @@ async function tileTools() {
   await stage('.ov .wheel').waitFor();
   await host.locator('.panel [data-buzzrow]', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
   assert((await host.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0, 'a wheel tile with nothing to ask: the buzzers’ row says there’s nothing to buzz on, with no ↺ Reset buzzers');
+  // R and U there: nothing to reveal and nothing to buzz on (no "Answer is showing", no "Clue over" on the phones).
+  await host.keyboard.press('r');
+  await host.locator('.toast', { hasText: 'Nothing to reveal: this tile is just its wheel' }).waitFor();
+  assert(
+    !(await host.locator('.panel .status').innerText()).includes('Answer is showing') &&
+      (await host.locator('.panel [data-buzzrow]', { hasText: 'Nothing to buzz on' }).count()) === 1 &&
+      (await host.evaluate(() => window.__states.at(-1)?.phase)) === 'lobby',
+    'R on a wheel tile with nothing to ask says there’s nothing to reveal (no "Answer is showing", the phones stay in the lobby)',
+  );
+  await host.keyboard.press('u');
+  await host.locator('.toast', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
+  assert(true, 'and U says there’s nothing to buzz on (not "Close the wheel first: the question isn’t on screen yet")');
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();
 

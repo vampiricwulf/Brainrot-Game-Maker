@@ -195,6 +195,9 @@ try {
   const chip = page.locator('.panel .p').first();
   await chip.getByRole('button', { name: /^Wrong:/ }).click();
   await chip.locator('.mark').waitFor();
+  // (Well within the warning's own 5 s.)
+  await page.locator('.toast', { hasText: 'is picked with no points given' }).waitFor({ state: 'detached', timeout: 2000 });
+  assert(true, 'points given put that warning away (it doesn’t stay saying nobody got any)');
   assert(
     (await chip.locator('.mark').innerText()).startsWith('✘ −$400') &&
       (await chip.getByRole('button', { name: /^Wrong:/ }).isDisabled()) &&

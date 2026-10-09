@@ -168,6 +168,12 @@ body:has([aria-modal='true']) .toast {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Single window: a window inside the host panel (.in-panel) keeps the stage viewers see clear, and so does its toast,
+   at the panel's foot. */
+body:has(.in-panel [aria-modal='true']) .toast {
+  top: auto;
+  bottom: 8px;
+}
 
 /* Every window (role="dialog"): a .modal box in a .modal-backdrop. Its title (h2.modal-title) top left, a ✕ top right
    (named "Close"), and its buttons in the footer: Cancel (ghost) on the left of them, the main one rightmost. The big

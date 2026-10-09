@@ -1,7 +1,7 @@
 <script lang="ts">
   import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
-  import { app, toast } from '../lib/app.svelte';
+  import { app, hint, toast } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
@@ -364,6 +364,24 @@
       }
     });
   });
+  // Beside the stage: a toast goes under the host panel's status line, so the 📱 chip and the ⏱ countdown on it stay in
+  // sight (a toast about a phone asking to join says to click that chip).
+  $effect(() => {
+    void hideControls;
+    if (!side) return;
+    const el = document.querySelector<HTMLElement>('.play > .panel > .status');
+    if (!el) return;
+    const set = () => document.body.style.setProperty('--toast-top', `${Math.round(el.getBoundingClientRect().bottom + 6)}px`);
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    set();
+    window.addEventListener('resize', set);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', set);
+      document.body.style.removeProperty('--toast-top');
+    };
+  });
   $effect(() => {
     if (dual || !(showKeys || showPlayers || showRules || showLog || showSound)) return void (panelBox = null);
     let ro: ResizeObserver | undefined;
@@ -677,14 +695,14 @@
   }
 
   function award(sign: 1 | -1, ids = selected, amt = amount, picker = true): void {
-    if (!ids.length) return toast(`Select a player first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
+    if (!ids.length) return hint(`Select a ${pregameTeams ? 'team' : 'player'} first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
     // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
     if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);
     // A Daily Double wagered at 0, or a clue worth 0 (not a wheel or dice tile with nothing to judge), is still right or
     // wrong: a 0 result is logged.
     const zero =
       amt === 0 && session.phase === 'clue' && (session.dd?.stage === 'question' || (!session.dd && info?.value === 0 && !toolOnlyClue(info.clue)));
-    if (!amt && !zero) return toast('Enter an amount first');
+    if (!amt && !zero) return hint('Enter an amount first');
     const batch = newId();
     const events = zero
       ? logZero(session, ids, reasonNow(), info?.clue.id, sign > 0, batch)
@@ -738,11 +756,11 @@
   /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
   function tiebreakWin(sign: 1 | -1, ids: string[]): void {
     const id = ids[0];
-    if (sign < 0) return toast('Nothing to deduct: type an amount, or select the winner and ＋ Award');
-    if (ids.length > 1) return toast('Select the one player who won the tiebreaker');
+    if (sign < 0) return hint('Nothing to deduct: type an amount, or select the winner and ＋ Award');
+    if (ids.length > 1) return hint(`Select the one ${pregameTeams ? 'team' : 'player'} who won the tiebreaker`);
     // (Tied, settled or not: picking the other one replaces a wrong pick, as a step of its own.)
-    if (!tiedForFirst(session).some((p) => p.id === id)) return toast(`${playerName(session, id)} isn’t tied for first`);
-    if (session.rollOffWinner === id && session.tiebreakClue) return toast(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
+    if (!tiedForFirst(session).some((p) => p.id === id)) return hint(`${playerName(session, id)} isn’t tied for first`);
+    if (session.rollOffWinner === id && session.tiebreakClue) return hint(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
     logged(session, `${playerName(session, id)} won the tiebreaker clue`, () => {
       session.rollOffWinner = id;
       session.tiebreakClue = true;
@@ -898,8 +916,10 @@
   /** U or 🔔 Open the buzzers: everyone who hasn't missed this clue may buzz. While someone is answering: everyone (0). */
   function openBuzzers(all = false): void {
     if (!buzzing) return;
-    if (toolFirst) return toast(`Close the ${info?.clue.type === 'dice' ? 'dice' : 'wheel'} first: the question isn’t on screen yet`);
-    if (session.revealed) return toast('The answer is showing: the buzzers stay closed');
+    // (A wheel or dice tile with nothing to ask: no question comes once its tool closes. The buzzers' row says the same.)
+    if (info && toolOnlyClue(info.clue)) return hint(`Nothing to buzz on: this tile is just its ${info.clue.type === 'dice' ? 'dice' : 'wheel'}`);
+    if (toolFirst) return hint(`Close the ${info?.clue.type === 'dice' ? 'dice' : 'wheel'} first: the question isn’t on screen yet`);
+    if (session.revealed) return hint('The answer is showing: the buzzers stay closed');
     if (all || buzz.phase === 'answering') {
       if (selected.length || buzz.lockedOut.length) toast('Buzzers open for everyone');
       selected = [];
@@ -1148,7 +1168,8 @@
   function addPhonePlayer(conn: string, name: string): void {
     // (Not added at all: their phone would never hear it, and wait to be let in for good.)
     if (remote.status !== 'online') return roomOffline();
-    if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (⚖ Game rules › Most players)`);
+    if (session.players.length >= game.settings.maxPlayers)
+      return toast(`The game is full: ${game.settings.maxPlayers} ${pregameTeams ? 'teams' : 'players'} at most (⚖ Game rules › Most players)`);
     let who = clip(name.trim(), SEAT_NAME_MAX) || `Player ${session.players.length + 1}`;
     // Never a second "Ann": the new one is "Ann 2".
     const taken = (n: string) => session.players.some((x) => x.name.trim().toLowerCase() === n.toLowerCase());
@@ -1408,6 +1429,10 @@
       if (o.revealed) playCue(app.live, game, 'reveal');
       return;
     }
+    // A wheel or dice tile with nothing to ask has no answer: no "Answer is showing", reveal sound or "Clue over" on the
+    // phones. (One an older save has revealed still hides.)
+    if (session.phase === 'clue' && info && !session.revealed && toolOnlyClue(info.clue))
+      return hint(`Nothing to reveal: this tile is just its ${info.clue.type === 'dice' ? 'dice' : 'wheel'}`);
     const wasFinalQuestion = session.phase === 'final' && session.finalStep === 'question';
     revealStep(session);
     if (answerShowing(session)) {
@@ -1731,7 +1756,7 @@
     // Their wager is up: they're judged before anyone else is spotlit (N never skips past them).
     // (One with no wager in yet can't be judged: N goes on, as the main button says.)
     if (f && cur && f.shown[cur] && !f.results[cur] && typeof f.wagers[cur] === 'number')
-      return toast(`Mark ${playerName(session, cur)} right (C) or wrong (X) first`);
+      return hint(`Mark ${playerName(session, cur)} right (C) or wrong (X) first`);
     const r = finalAdvance(session);
     // (Screen readers hear who is spotlit and their wager: they're on the stage and in the rows, not the status line.)
     const now = session.final?.current;
@@ -1749,7 +1774,7 @@
         announce(`Everyone is judged: press N again to ${game.rounds[session.currentRound + 1] ? 'go on' : 'finish'}`);
       }
     } else if (r === 'waiting' && session.final?.current)
-      toast(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
+      hint(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
   }
 
   /** Judge a player in the final reveal (their wager goes up with it). */
@@ -2641,7 +2666,7 @@
     const { round, bs } = boardNow(game, session);
     if (!round || !bs) return false;
     if (bs.fork) {
-      toast(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
+      hint(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
       return true;
     }
     // D then Enter at once: the dice (or the wheel) are still going on screen, and the move would end them early (the
@@ -2666,7 +2691,7 @@
       // Nothing to move (it used to fall through to the award, which asked for a player).
       const id = currentPlayer(bs);
       const moved = !!id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0);
-      toast(moved ? 'Moved this turn: N for the next turn' : `Roll first (D), or type the steps`);
+      hint(moved ? 'Moved this turn: N for the next turn' : `Roll first (D), or type the steps`);
       return true;
     }
     toast(moveNow(game, session, steps, way), 3000);
@@ -2765,7 +2790,7 @@
       if (d && session.intro) {
         // (Not under the round's title card: nobody would see the party move.)
         e.preventDefault();
-        toast(START_FIRST);
+        hint(START_FIRST);
         return;
       }
       if (d) {
@@ -2867,7 +2892,7 @@
       case 'd':
         // Board games: roll (or spin) the round's own mover (not under the round's title card: nobody would see it).
         if (session.phase === 'boardgame' && session.intro) {
-          toast('Start the round first (N, or click the title card)');
+          hint('Start the round first (N, or click the title card)');
           break;
         }
         if (session.phase === 'boardgame') {
@@ -2906,7 +2931,7 @@
         } else if (session.phase === 'boardgame') {
           // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
           const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
-          if (fork && !e.shiftKey) toast(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
+          if (fork && !e.shiftKey) hint(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
           else {
             const t = turnNow(game, session, e.shiftKey ? -1 : 1);
             if (t) toast(t, 4000);
@@ -3978,12 +4003,12 @@
   .show-controls:focus-visible {
     opacity: 1;
   }
-  /* The host panel beside the stage: messages show over it, not over the stage, at its top (at its foot they'd cover
-     the nav buttons: 👥 Players, Exit). */
+  /* The host panel beside the stage: messages show over it, not over the stage, at its top under the status line (its
+     📱 chip and ⏱ stay in sight; at its foot they'd cover the nav buttons: 👥 Players, Exit). */
   :global(body:has(.play.side) .toast) {
     left: auto;
     right: 12px;
-    top: 12px;
+    top: var(--toast-top, 12px);
     bottom: auto;
     transform: none;
     max-width: 400px;

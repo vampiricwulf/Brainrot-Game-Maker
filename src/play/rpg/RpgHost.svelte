@@ -5,7 +5,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
-  import { app, toast } from '../../lib/app.svelte';
+  import { app, hint, toast } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
@@ -265,7 +265,7 @@
 
   /** Move the party (or these players) to the screen picked on the minimap. */
   function moveHere(who?: string[], label?: string): void {
-    if (session.intro) return void ((picked = null), toast(START_FIRST));
+    if (session.intro) return void ((picked = null), hint(START_FIRST));
     if (!picked || !world || !st) return;
     const to = picked;
     const s = st;

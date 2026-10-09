@@ -76,16 +76,44 @@ export function toastMs(msg: string): number {
 
 /** Where the host is (the editor, the pre-game screen, the game): a toast belongs to the place it was said in. */
 const place = (): string => `${app.screen}|${app.pregame}`;
-/** The place the toast showing now was said in, and when. */
+/**
+ * The moment in the game (the clue, the Daily Double's step, the Final's reveal, a score given, a turn taken…): a hint
+ * said in one ("Select a player first") is put away once it changes.
+ */
+const scene = (): string => {
+  const s = app.session;
+  if (!s || app.screen !== 'play' || app.pregame) return '';
+  const c = s.currentClue;
+  return [
+    s.phase,
+    s.currentRound,
+    c ? `${c.round}.${c.cat}.${c.row}` : '',
+    s.dd?.stage,
+    s.intro?.stage,
+    s.finalStep,
+    s.final?.current,
+    s.revealed,
+    s.scoreLog.length,
+    // (The last one's id: the log is kept to a set length.)
+    s.actionLog?.at(-1)?.id,
+    s.rollOffWinner,
+    app.live.toolTile,
+  ].join(',');
+};
+/** The place the toast showing now was said in, and when; and the moment in the game, for a hint. */
 let toastPlace = '';
 let toastAt = 0;
+let toastScene = '';
 
 // Going somewhere else (into the game, back to the editor) puts away a toast said a while before it ("Added a sample
-// game: press ▶ Play…" is about the editor). One said on the way there (Exit's "Game discarded") stays.
+// game: press ▶ Play…" is about the editor). One said on the way there (Exit's "Game discarded") stays. A hint goes as
+// soon as the game moves on (the host did what it asked, or went on to something else: N twice at once too).
 $effect.root(() => {
   $effect(() => {
     const now = place();
-    if (app.toast && toastPlace && toastPlace !== now && Date.now() - toastAt > 500) {
+    const sc = scene();
+    const moved = (toastPlace && toastPlace !== now && Date.now() - toastAt > 500) || (toastScene && toastScene !== sc);
+    if (app.toast && moved) {
       clearTimeout(toastTimer);
       app.toast = '';
     }
@@ -96,9 +124,19 @@ $effect.root(() => {
 export function toast(msg: string, ms = toastMs(msg)): void {
   app.toast = msg;
   toastPlace = place();
+  toastScene = '';
   toastAt = Date.now();
   // Screen readers hear it from the page's live region (the toast itself comes and goes too fast to be read reliably).
   announce(msg);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (app.toast = ''), ms);
+}
+
+/**
+ * A toast that says what to do first ("Select a player first"): put away once the game moves on, not left contradicting
+ * it. (Said last, once the moment is as it stays: a change after it in the same handler would put it away at once.)
+ */
+export function hint(msg: string, ms = toastMs(msg)): void {
+  toast(msg, ms);
+  toastScene = scene();
 }

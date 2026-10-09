@@ -363,6 +363,17 @@ try {
   const inBg = await exitIn();
   assert(inRpg.x === inBg.x && inRpg.y === inBg.y, `🚪 Exit is in the same place in RPG and board-game rounds (${inRpg.x},${inRpg.y})`);
   assert(inBg.right - inBg.x < 4 && inBg.bottom - inBg.y < 4, 'in the fixed bar’s bottom-right cell');
+  // A toast beside the stage shows under the status line (its 📱 chip and ⏱ countdown stay in sight), over the panel.
+  await p2.keyboard.press('Enter');
+  const bgToast = p2.locator('.toast', { hasText: 'Roll first (D), or type the steps' });
+  await bgToast.waitFor();
+  const tb = await bgToast.boundingBox();
+  const sideStatus = await p2.locator('.play > .panel > .status').boundingBox();
+  const sidePanel = await p2.locator('.play > .panel').boundingBox();
+  assert(
+    tb.y >= sideStatus.y + sideStatus.height - 1 && tb.x >= sidePanel.x - 1,
+    `beside the stage a toast shows under the status line, over the panel (it starts at ${Math.round(tb.y)}, the status line ends at ${Math.round(sideStatus.y + sideStatus.height)})`,
+  );
   // A double-click on ◀ Prev round goes back one round, not two (its second click lands on the new ◀ Prev round).
   await p2.waitForTimeout(450);
   await p2.getByRole('button', { name: '◀ Prev round' }).dblclick();
@@ -469,6 +480,19 @@ try {
       assert(hb.y >= sb.y + sb.height - 1, `🔊 Sound mid-game opens its help in the host panel, not over the stage (it starts at ${Math.round(hb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
       await p4.keyboard.press('Escape');
       await help.waitFor({ state: 'detached' });
+    } else if (w === 1200) {
+      // 👥 Players opens in the host panel: a toast said meanwhile stays off the stage too (at the panel's foot).
+      await p4.locator('.panel').getByRole('button', { name: '👥 Players' }).click();
+      const roster = p4.getByRole('dialog', { name: 'Players' });
+      await roster.waitFor();
+      await roster.getByLabel('Color for Cyrus').fill(crowdColors[1]);
+      const clash = p4.locator('.toast', { hasText: 'Another player already has that color' });
+      await clash.waitFor();
+      const cb = await clash.boundingBox();
+      const sb = await p4.locator('.stage-box').boundingBox();
+      assert(cb.y >= sb.y + sb.height - 1, `${w}×${h}: with 👥 Players open in the host panel, a toast shows under the stage, not over it (it starts at ${Math.round(cb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
+      await roster.getByRole('button', { name: 'Close', exact: true }).click();
+      await roster.waitFor({ state: 'detached' });
     } else if (w === 1024) {
       await p4.waitForTimeout(450);
       await p4.locator('.rn button', { hasText: '▶' }).click();

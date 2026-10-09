@@ -6,6 +6,8 @@
   import { onDestroy, tick, untrack } from 'svelte';
   import { announce } from '../../lib/announce';
   import { toast } from '../../lib/app.svelte';
+  import { teamsOn } from '../../lib/buzz';
+  import { buzzerOn } from '../../lib/remote.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { finalName, formatPoints, MAX_POINTS, roundName, type Game, type Session, type WagerSource } from '../../lib/model';
@@ -60,6 +62,8 @@
   const f = $derived(session.final);
   const sym = $derived(game.settings.currencySymbol);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
+  /** Phone buzzer teams: each row is a team, and the buttons say so ("Next team ▶"). */
+  const noun = $derived(buzzerOn(game.settings) && teamsOn(game.settings) ? 'team' : 'player');
   const problems = $derived(finalWagerProblems(session, override));
   const wagersOk = $derived(finalWagersOk(session, override));
   const names = (ids: string[]) => nameList(ids.map((id) => byId[id]?.name ?? '?'));
@@ -220,7 +224,7 @@
     if (session.finalStep === 'reveal' && unjudged && !askFinish) {
       askFinish = true;
       setAsk({
-        text: `${unjudged} player${unjudged === 1 ? '' : 's'} not judged yet · finish anyway?`,
+        text: `${unjudged} ${noun}${unjudged === 1 ? '' : 's'} not judged yet · finish anyway?`,
         ok: 'Finish',
         cancel: 'Keep judging',
         onok: next,
@@ -279,8 +283,8 @@
     // Their wager is up: judging them is next (N waits for it).
     if (fs && cur && !fs.results[cur] && hasWager(fs, cur)) return { label: '✔ Right', judge: cur };
     if (fs && cur && fs.order.every((id) => id === cur || fs.results[id]))
-      return { label: 'Next player ▶', disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
-    return { label: 'Next player ▶' };
+      return { label: `Next ${noun} ▶`, disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
+    return { label: `Next ${noun} ▶` };
   });
 
   // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room). In a
@@ -309,7 +313,7 @@
     // Everyone sat out: straight on (finalNext skips the question and the reveals).
     wagers: f && !f.players.length ? goOn : 'Show question ▶',
     question: 'Reveal answer ▶',
-    answer: 'Start player reveals ▶',
+    answer: `Start ${noun} reveals ▶`,
     reveal: goOn,
   });
 
@@ -433,13 +437,13 @@
       {#if f.phonesLocked && phones.some((id) => f.players.includes(id))}
         <span class="muted small">📱 The question was on screen: phones can’t send wagers any more (type any change here).</span>
       {:else if phones.some((id) => f.players.includes(id))}
-        <span class="muted small">📱 Players with a phone can send their wager from it, and change it until you show the question.</span>
+        <span class="muted small">📱 {noun === 'team' ? 'Teams' : 'Players'} with a phone can send their wager from it, and change it until you show the question.</span>
       {:else if phoneNote}
         <span class="muted small">{phoneNote}</span>
       {/if}
       {#if !f.players.length}
         <!-- Nobody to wager or reveal: the button goes on to the next round (or the end). -->
-        <span class="nobody" role="status">Nobody is playing this Final: tick a player to play it, or go on.</span>
+        <span class="nobody" role="status">Nobody is playing this Final: tick a {noun} to play it, or go on.</span>
       {/if}
       <label class="check small" title="Ticked, a wager can be more than the player's score. Untick to hold wagers to it (max: their score).">
         <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} data-limits /> Ignore the limits
@@ -450,7 +454,7 @@
         <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
         <span class="muted small">
           Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
-          C / X judge them, then N goes to the next player · Shift+N back · 1–9 spotlight · C right · X wrong.
+          C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
         </span>
       </details>
       <div class="order" role="list" aria-label="Reveal order" bind:this={orderEl}>
