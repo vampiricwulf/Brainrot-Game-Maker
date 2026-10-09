@@ -201,6 +201,16 @@ try {
   assert((await page.locator('.fj .wagers input[data-wager]').count()) === 2, 'a player ticked out on the wager screen loses their wager box');
   await page.keyboard.press('Control+z');
   assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z brings a player back into the Final');
+  // A player added on the wager screen (👥 Players) plays it at once, as the round lets players at $0 play; Ctrl+Z takes
+  // them out of both.
+  await page.getByRole('button', { name: '👥 Players' }).click();
+  await page.getByRole('dialog', { name: 'Players' }).getByRole('button', { name: '＋ Add player' }).click();
+  await page.getByRole('dialog', { name: 'Players' }).getByRole('button', { name: 'Done' }).click();
+  await page.locator('.fj .wagers input[data-plays]:checked').nth(3).waitFor();
+  assert((await page.locator('.fj .wagers .wrow.out').count()) === 0, 'a player added on the wager screen (👥 Players) plays the Final at once (the round lets players at $0 play)');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 3);
+  assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z takes them out of the game and the Final');
   // ✎ Set the score… from a plate's menu (the Final has no score chips): what isn't a number is asked again, saying so;
   // "−$200" reads; and the wager row shows that score (not the $0 they can wager). (Forced: the plate is a button that's
   // off while nothing is done by clicking it, and its right-click menu still comes up.)

@@ -810,6 +810,46 @@ try {
     await context.close();
   }
 
+  // ---------- 8. Two Finals back to back: the second one's title card plays the round intro too ----------
+  {
+    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    await context.addInitScript(() => {
+      window.__plays = [];
+      const real = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        window.__plays.push(this.src);
+        return real.call(this);
+      };
+    });
+    const page = watch(await context.newPage(), 'two finals');
+    await page.goto(fileUrl);
+    await addClassicRounds(page);
+    await page.getByRole('button', { name: '＋ Add round' }).click();
+    await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
+    await playWithPlayers(page, 2);
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    await page.locator('.board .tile').first().waitFor();
+    const introPlayed = () => window.__plays.some((s) => s.endsWith('#roundIntro'));
+    await page.evaluate(() => (window.__plays = []));
+    await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
+    await page.getByRole('button', { name: 'Final Jeopardy! ▶' }).click();
+    await page.waitForTimeout(450);
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await page.locator('.title-card .round-name').filter({ hasText: 'Final Jeopardy!' }).waitFor();
+    await page.waitForFunction(introPlayed);
+    await page.getByRole('button', { name: 'Start the round ▶' }).click();
+    // Nobody plays the first one: its main button goes straight on to the second.
+    for (const name of ['Player 1', 'Player 2']) await page.locator('.fj .wagers .wrow', { hasText: name }).locator('input[data-plays]').uncheck();
+    await page.evaluate(() => (window.__plays = []));
+    await page.waitForTimeout(450);
+    await page.getByRole('button', { name: 'Next: Final round 2 ▶' }).click();
+    await page.locator('.title-card .round-name').filter({ hasText: 'Final round 2' }).waitFor();
+    await page.waitForFunction(introPlayed);
+    assert(true, 'a Final straight after another Final plays the round intro with its title card, as every other round does');
+    await context.close();
+  }
+
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Audio E2E passed.');
 } finally {

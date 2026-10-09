@@ -299,6 +299,32 @@ describe('wagerAsk (the wagers phones may send)', () => {
     expect(wagerAsk(game, session, true)?.open).toBe(false);
     session.finalStep = 'wagers';
     expect(wagerAsk(game, session, true)?.open).toBe(false);
+    // Then to the round before and back to the Final: still locked.
+    goToRound(session, game, 0);
+    goToRound(session, game, fi);
+    expect([session.finalStep, wagerAsk(game, session, true)?.open]).toEqual(['wagers', false]);
+  });
+
+  it("a phone's Final wager put back by an Undo (not the last one it sent) reads as the host's", () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a'], 500, 'x');
+    goToRound(session, game, 1);
+    session.intro = null;
+    finalChoose(session, 'b', false);
+    finalChoose(session, 'c', false);
+    // The phone sent $300, then $400 (its count 2): the host took both, then undid the second.
+    finalSetWager(session, 'a', 300, 'phone');
+    const view = () => {
+      const st = hostState(game, session, newBuzz(), 0, { wager: wagerAsk(game, session, true, { a: 2 }, { a: 400 }) });
+      return phoneView(st, 'a', null, null, { amount: 400, n: 2 }).wager;
+    };
+    expect(wagerAsk(game, session, true, { a: 2 }, { a: 400 })!.seats).toEqual([{ id: 'a', max: 500, amount: 300, fromHost: true, got: 2 }]);
+    expect(view()).toMatchObject({ amount: 300, host: true });
+    // Redo: the one it sent last is in again.
+    finalSetWager(session, 'a', 400, 'phone');
+    expect(wagerAsk(game, session, true, { a: 2 }, { a: 400 })!.seats).toEqual([{ id: 'a', max: 500, amount: 400, got: 2 }]);
+    expect(view()).toMatchObject({ amount: 400, sent: true });
+    expect(view()).not.toHaveProperty('host');
   });
 
   it('none on the board or during an ordinary clue', () => {

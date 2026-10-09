@@ -165,9 +165,15 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
  * The wagers phones may send now (HostState.wager), or null: a Daily Double's player before the question shows (locked
  * once it's up), the Final's players on its wager screen (locked through the question and the answer). Each with their
  * max (held to it only when the host turned the limits on: `limitsOff` false), the wager the host has for them, and
- * `got`: the last phone wager the host took for each (Session.remote.wagerGot).
+ * `got`: the last phone wager the host took for each (Session.remote.wagerGot), `gotAmounts` how much it was.
  */
-export function wagerAsk(game: Game, session: Session, limitsOff: boolean, got: Record<Id, number> = {}): WagerAsk | null {
+export function wagerAsk(
+  game: Game,
+  session: Session,
+  limitsOff: boolean,
+  got: Record<Id, number> = {},
+  gotAmounts: Record<Id, number> = {},
+): WagerAsk | null {
   const here = (id: Id | undefined): id is Id => !!id && session.players.some((p) => p.id === id);
   const cap = (n: number) => Math.max(0, Math.min(WAGER_MAX, Math.floor(n)));
   const seat = (id: Id, max: number, amount: number | undefined, fromHost: boolean) => ({
@@ -191,7 +197,9 @@ export function wagerAsk(game: Game, session: Session, limitsOff: boolean, got: 
     const step = session.finalStep ?? 'wagers';
     if (step !== 'wagers' && step !== 'question' && step !== 'answer') return null;
     const ids = f.players.filter(here);
-    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers' && !f.phonesLocked, ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, id), f.wagers[id], !wagerFromPhone(f, id))) };
+    // A phone's wager put back by an Undo (not the last one it sent): the host's, as the phone should say.
+    const host = (id: Id) => !wagerFromPhone(f, id) || (gotAmounts[id] !== undefined && f.wagers[id] !== gotAmounts[id]);
+    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers' && !f.phonesLocked, ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, id), f.wagers[id], host(id))) };
   }
   return null;
 }
