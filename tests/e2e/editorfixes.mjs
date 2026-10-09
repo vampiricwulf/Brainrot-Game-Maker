@@ -2,7 +2,8 @@
 // Daily Doubles, standard dice tiles, wheels and dice made where they're picked, stat presets, RPG doorways and
 // characters, the world's menu, one set of ↶ ↷, and the theme's clue text and preview. Also: Enter in a category's
 // name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, ＋ buttons that put the
-// focus on what they add, and a board's six columns fitting a narrower window.
+// focus on what they add, and a board's six columns fitting a narrower window. Also: an RPG screen pasted into
+// another game bringing the items and stats its objects use.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -400,6 +401,27 @@ try {
   await answerReplace(page, 'Discard');
   await page.locator('.data-notice', { hasText: '“Only a title and a theme” was replaced.' }).waitFor();
   assert(true, 'New asks before replacing a game with only a title and theme changes, and keeps it in Recent games');
+
+  // ---------- An RPG screen pasted into another game brings the items and stats its objects use ----------
+  await page.getByRole('button', { name: /Try a sample game/ }).click();
+  await tabs.filter({ hasText: 'Adventure' }).click();
+  await page.getByRole('button', { name: 'Screen Forest' }).click();
+  await page.keyboard.press('Control+c');
+  await page.locator('.toast', { hasText: 'Copied Forest' }).waitFor();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await page.locator('.first-round .mode', { hasText: 'RPG' }).click();
+  await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).focus();
+  await page.keyboard.press('Control+v');
+  await page.getByRole('button', { name: 'Screen Forest' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: '◀ Back to the map' }).waitFor();
+  const picks = [];
+  for (const name of ['Potion', 'Gold coins']) {
+    await page.locator('.layers-box .row').filter({ hasText: name }).locator('.name').click();
+    picks.push((await page.locator('.insp select').evaluateAll((els) => els.map((e) => e.selectedOptions[0]?.textContent?.trim()))).join(', '));
+  }
+  assert(picks[0].includes('Potion') && picks[1].includes('Gold') && !picks.join().includes('Deleted'), `a screen pasted into another game keeps its Potion and Gold (${picks.join(' | ')})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('editorfixes: all passed');
