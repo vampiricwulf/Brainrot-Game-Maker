@@ -11,7 +11,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { modal } from '../lib/modal';
   import { findAll, type Hit } from '../lib/find';
-  import { goTo, placeKey } from '../lib/nav.svelte';
+  import { FOCUSABLE, goTo, placeKey } from '../lib/nav.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -46,8 +46,12 @@
         (flashed?.matches('button, input, textarea, select, [tabindex]') ? flashed : flashed?.querySelector<HTMLElement>('input, textarea, select, button'));
       // (What opens there can take a few frames: a clue editor, a space's card.)
       if (!target && ++frames < 30) return void requestAnimationFrame(tryNow);
-      // (Nothing there takes it, e.g. a world no round plays: the editor's page does.)
-      const to = target ?? document.querySelector('main')?.querySelector<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)');
+      // (Nothing there takes it, e.g. a world no round plays: the editor's page does, as for History's Go there. Only while
+      // the focus is lost: not once it's somewhere, e.g. in a field clicked into while the toast shows.)
+      const now = document.activeElement;
+      if (!target && now && now !== document.body && now.isConnected) return;
+      const page = document.querySelector('main')?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [];
+      const to = target ?? [...page].find((el) => !el.closest('[inert]'));
       if (!to) return;
       // After what opened has put the focus where it wants it.
       requestAnimationFrame(() => {

@@ -135,10 +135,15 @@
     } else if (place.tab === 'world') {
       // The round on screen if it plays that world, else the first round that does (a world no round plays stays put).
       const on = typeof tab === 'number' ? game.rounds[tab] : undefined;
-      const playing = rpgRounds(game).filter((r) => r.world === place.world);
+      const rpg = rpgRounds(game);
+      const playing = rpg.filter((r) => r.world === place.world);
       const r = playing.find((x) => x === on) ?? playing[0];
       if (r) tab = game.rounds.indexOf(r);
-      else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`);
+      else {
+        // (With no RPG round left to pick it in, says how to add one.)
+        const how = rpg.length ? 'pick it in an RPG round' : 'add an RPG round (＋ Add round › 🗺 RPG) and pick it there';
+        toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: ${how} to see it`);
+      }
     } else if (place.tab === 'play') {
       // The players, the rules… are on the ▶ Play screen: Go there opens it, at that part.
       if (!game.rounds.length) return void toast('That’s on the ▶ Play screen: add a round first (＋ Add round)');

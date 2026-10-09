@@ -148,6 +148,36 @@ try {
   await page.locator('#find-hit-3[aria-selected="true"]').waitFor();
   assert(true, 'and moving the pointer over a result picks it');
   await page.keyboard.press('Escape');
+  // A world no round plays (its round deleted, no RPG round left): Find says how to add one to see it, and the focus,
+  // lost when Find closed, goes to the editor's page. Not when it's been put somewhere while Find waited for the screen.
+  const adventure = page.locator('nav > button.round-tab', { hasText: 'Adventure' });
+  await adventure.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: /Delete round/ }).click();
+  await adventure.waitFor({ state: 'detached' });
+  await page.keyboard.press('Control+f');
+  await find.fill('cave');
+  const worldHit = page.getByRole('option', { name: /Sample world/ }).first();
+  await worldHit.click();
+  await page.locator('.toast', { hasText: "isn't played by any round" }).waitFor();
+  assert((await toast()).includes('add an RPG round (＋ Add round › 🗺 RPG) and pick it there'), `with no RPG round left, Find’s toast for a world no round plays says to add one (${await toast()})`);
+  await page.waitForFunction(() => document.activeElement?.closest('main'), null, { timeout: 10000 });
+  assert(true, 'and the focus, lost, goes to the editor’s page');
+  await page.keyboard.press('Control+f');
+  await find.fill('cave');
+  // (In the page, frame by frame: the Board game's tab takes the focus a frame after the click, then Find gives up
+  // waiting for the screen after 30.)
+  const kept = await worldHit.evaluate(async (hit) => {
+    const frame = () => new Promise((ok) => requestAnimationFrame(ok));
+    hit.click();
+    await frame();
+    const tab = [...document.querySelectorAll('nav > button.round-tab')].find((t) => t.textContent.includes('Board game'));
+    tab.focus();
+    for (let i = 0; i < 40; i++) await frame();
+    return document.activeElement === tab;
+  });
+  assert(kept, 'but focus put somewhere meanwhile stays there');
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await adventure.waitFor();
 
   // ---------- Templates, Copy / Paste round ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
