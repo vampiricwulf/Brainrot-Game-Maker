@@ -1971,7 +1971,7 @@
     } else bgSpace = bgSpace === id ? null : id;
   }
 
-  /** Players added by "＋ Add 3 sample players", by id → their sample name. */
+  /** Players (or teams) added by "＋ Add 3 sample players" ("…sample teams"), by id → their sample name. */
   const samples = new Map<string, string>();
   /** Every player's start score as last seen before the game (one deleted, then brought back by an Undo, keeps it). */
   const startScores = new Map<string, number>();
@@ -2216,7 +2216,8 @@
   });
 
   function addSamplePlayers(): void {
-    for (const name of ['Alex', 'Sam', 'Jordan']) {
+    // Teams get team names (people's names would read as players on stream), numbered as ＋ Add team numbers them.
+    for (const name of pregameTeams ? ['Team 1', 'Team 2', 'Team 3'] : ['Alex', 'Sam', 'Jordan']) {
       if (session.players.length >= game.settings.maxPlayers) break;
       const id = newId();
       samples.set(id, name);
@@ -2887,8 +2888,8 @@
           {/if}
           {#if !session.players.length}
             <div class="row">
-              <span class="warn">Add players to start: ＋ Add player, or</span>
-              <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
+              <span class="warn">Add {pregameTeams ? 'teams' : 'players'} to start: ＋ Add {pregameTeams ? 'team' : 'player'}, or</span>
+              <button onclick={addSamplePlayers}>＋ Add 3 sample {pregameTeams ? 'teams' : 'players'}</button>
             </div>
           {/if}
         </section>
@@ -3281,22 +3282,28 @@
       onchange={commitRoster}
       ondrop={commitRoster}
     >
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Players" use:modal>
-        <div class="row"><h2 class="modal-title">👥 Players</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
-        <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
+      <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
+      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal>
+        <div class="row"><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
+        <p class="muted">Add, remove, rename or recolor {pregameTeams ? 'teams' : 'players'}. To change a score, click it in the host panel.</p>
         <PlayerList
           bind:players={session.players}
           max={game.settings.maxPlayers}
           inGame
+          teams={pregameTeams}
+          members={pregameTeams && session.remote ? teamMembers : undefined}
           onremove={(id) => (removing = id)}
           onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
         />
         {#if removingPlayer}
           {@const p = removingPlayer}
+          {@const n = pregameTeams && session.remote ? teamMembers(p.id).length : 0}
           <div class="ask" role="alert">
             <span>
-              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? Their points leave the scoreboard. You can restore them
-              here.
+              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? {pregameTeams ? 'Its' : 'Their'} points leave the scoreboard. You
+              can restore {pregameTeams ? 'it' : 'them'} here.
+              <!-- (Its phones lose their place on it: a restored team is picked again from the phones.) -->
+              {#if n}{n === 1 ? 'The 1 person on it goes' : `The ${n} people on it go`} back to picking a team on their phone{n === 1 ? '' : 's'}.{/if}
             </span>
             <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
             <button class="small" onclick={() => (removing = null)} use:takeFocus>Keep</button>

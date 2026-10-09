@@ -10,7 +10,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, addPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -86,8 +86,19 @@ try {
   const host = watch(await hostCtx.newPage(), 'host');
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
-  await playWithPlayers(host, 2);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
+  // An empty list with Teams on: what it says, and its sample rows, are teams.
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await card.getByLabel(/Buzzer mode/).check();
+  await card.getByLabel(/Teams: people join a team/).check();
+  const emptyRoster = host.locator('[data-place="play:players"]');
+  assert((await emptyRoster.locator('.warn').innerText()).startsWith('Add teams to start: ＋ Add team, or'), 'with Teams on and nobody yet, the list says to add teams (＋ Add team)');
+  await emptyRoster.getByRole('button', { name: '＋ Add 3 sample teams' }).click();
+  const samples = await emptyRoster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
+  assert(samples.join() === 'Team 1,Team 2,Team 3', `＋ Add 3 sample teams adds teams with team names, not people's (${samples.join(', ')})`);
+  for (const t of samples) await emptyRoster.getByRole('button', { name: `Delete ${t}` }).click();
+  await card.getByLabel(/Teams: people join a team/).uncheck();
+  await addPlayers(host, 2);
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel('Open the buzzers').selectOption('host');
   const teamsBox = card.getByLabel(/Teams: people join a team/);
@@ -225,6 +236,21 @@ try {
   await al.waitForFunction((b) => document.getElementById('me').textContent !== b, before);
   assert((await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann'), 'right: the team scores, and both teammates see it ("Your team got it!")');
   await host.keyboard.press('Escape');
+
+  // ---------- 👥 Players mid-game is a list of teams too: a new row is a team, and removing one says its phones go ----------
+  await host.getByRole('button', { name: '👥 Players' }).click();
+  const teamsDialog = host.getByRole('dialog', { name: 'Teams' });
+  await teamsDialog.waitFor();
+  assert((await teamsDialog.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'mid-game with Teams on, 👥 Players opens 👥 Teams');
+  await teamsDialog.getByRole('button', { name: '＋ Add team' }).click();
+  assert((await teamsDialog.getByRole('textbox', { name: 'Team 3 name' }).inputValue()) === 'Team 3', 'its ＋ Add team adds "Team 3" (not "Player 3")');
+  await teamsDialog.getByRole('button', { name: 'Remove Player 2' }).click();
+  const removeAsk = (await teamsDialog.locator('.ask').innerText()).replace(/\s+/g, ' ');
+  assert(removeAsk.includes('Its points leave the scoreboard') && removeAsk.includes('The 1 person on it goes back to picking a team on their phone.'), `removing a team says its phones go back to picking a team (${removeAsk})`);
+  await teamsDialog.getByRole('button', { name: 'Keep', exact: true }).click();
+  await teamsDialog.getByRole('button', { name: 'Remove Team 3' }).click();
+  await teamsDialog.getByRole('button', { name: 'Remove', exact: true }).click();
+  await teamsDialog.getByRole('button', { name: 'Done' }).click();
 
   // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
   await host.getByRole('button', { name: 'Exit' }).click();
