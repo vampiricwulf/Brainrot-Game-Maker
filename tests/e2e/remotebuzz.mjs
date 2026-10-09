@@ -479,8 +479,28 @@ try {
   await stateIs((s) => s.seats.length === 5);
   assert((await page.evaluate(() => window.__room.posts)) === 2 && (await closes()) === 0, 'same room, same seats: nobody joins again');
 
+  // ---------- ▶ Next game… from the results: the phones wait for the next game (not the last one's places) ----------
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  await page.waitForTimeout(450);
+  await page.locator('.rn > button').last().click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
+  if ((await page.locator('.panel .status').innerText()).includes('Title card')) await page.keyboard.press('n');
+  const plays = page.locator('.fj .wagers input[data-plays]');
+  await plays.first().waitFor();
+  for (let i = 0; i < (await plays.count()); i++) await plays.nth(i).uncheck();
+  await page.getByRole('button', { name: 'Finish game ▶' }).click();
+  await stateIs((s) => s.over === true);
+  const chooser = page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
+  await page.getByRole('button', { name: '▶ Next game…' }).click();
+  const openList = page.getByRole('dialog', { name: 'Open a game' });
+  if ((await Promise.race([chooser.then(() => 'picker'), openList.waitFor().then(() => 'list')])) === 'list') await page.keyboard.press('Escape');
+  await stateIs((s) => s.status?.text === 'The host is setting up — hang on' && !s.over);
+  assert(true, 'game over › ▶ Next game…: the phones are told the host is setting up (no longer where they came)');
+
   // ---------- ✕ Close the room ----------
-  await page.getByRole('button', { name: '◀ Back to editor' }).click();
   await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   await roomBar.waitFor({ state: 'detached' });

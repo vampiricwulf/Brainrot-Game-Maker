@@ -9,7 +9,7 @@ import {
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
-  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList,
+  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown,
 } from './session';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
@@ -1084,6 +1084,33 @@ describe('tiebreaker roll-off', () => {
     // Scores changed so the winner isn't tied for first any more: the roll-off no longer counts.
     setScore(session, 'b', 400);
     expect(standings(session)[0].player.id).toBe('a');
+  });
+});
+
+describe('co-winners', () => {
+  it('settle only the tie they were declared for (a score fixed into a different tie leaves that one open)', () => {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#e6194b' },
+      { id: 'b', name: 'Bob', color: '#3cb44b' },
+      { id: 'c', name: 'Cat', color: '#4363d8' },
+    ];
+    const session = newSession(game);
+    setScore(session, 'a', 400);
+    setScore(session, 'b', 400);
+    expect(winnerKnown(session)).toBe(false);
+    session.coWinners = ['a', 'b'];
+    expect([coWinnersHold(session), winnerKnown(session)]).toEqual([true, true]);
+    // Bob fixed down: Ann wins alone.
+    setScore(session, 'b', 0);
+    expect([coWinnersHold(session), winnerKnown(session)]).toEqual([false, true]);
+    // Cat fixed up to Ann's score: a tie nobody declared.
+    setScore(session, 'c', 400);
+    expect(tiedLeaders(session).map((p) => p.id)).toEqual(['a', 'c']);
+    expect([coWinnersHold(session), winnerKnown(session)]).toEqual([false, false]);
+    // Older saves kept no names: any tie counts as settled.
+    session.coWinners = true;
+    expect([coWinnersHold(session), winnerKnown(session)]).toEqual([true, true]);
   });
 });
 

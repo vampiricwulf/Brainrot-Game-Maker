@@ -1,7 +1,7 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, places, playerName, slidesRound, tiedLeaders } from '../lib/session';
+  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, places, playerName, slidesRound, tiedLeaders } from '../lib/session';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -12,7 +12,7 @@
   const finalRound = $derived(currentFinal(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const picker = $derived(session.players.find((p) => p.id === session.currentPickerId));
-  const ties = $derived(session.phase === 'end' && !session.coWinners ? tiedLeaders(session) : []);
+  const ties = $derived(session.phase === 'end' && !coWinnersHold(session) ? tiedLeaders(session) : []);
   // RPG and board-game rounds: where the party is, whose turn it is, and the notes that go with them.
   const rpg = $derived(rpgNow(game, session));
   const here = $derived(rpg.world && rpg.st ? findIn(rpg.world, focusRef(rpg.st) ?? { map: '', screen: '' }) : null);

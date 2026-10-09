@@ -981,7 +981,18 @@ export function tiedForFirst(session: Session): Player[] {
  * tiebreaker clue, co-winners). The winner fanfare plays only then.
  */
 export function winnerKnown(session: Session): boolean {
-  return !tiedLeaders(session).length || !!session.coWinners;
+  return !tiedLeaders(session).length || coWinnersHold(session);
+}
+
+/**
+ * Co-winners were declared for this tie: everyone level on the top score now was one of them (a score fixed since into a
+ * different tie leaves it open). Older saves kept no names: any tie.
+ */
+export function coWinnersHold(session: Session): boolean {
+  const co = session.coWinners;
+  if (!Array.isArray(co)) return !!co;
+  const tied = tiedForFirst(session);
+  return tied.length > 0 && tied.every((p) => co.includes(p.id));
 }
 
 export function startTiebreaker(session: Session): void {

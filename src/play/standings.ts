@@ -1,14 +1,14 @@
 // The standings as one line of text, for chat or Discord (📋 Copy standings, at the end and in 📊 Scores).
 import { toast } from '../lib/app.svelte';
 import { formatPoints, type Game, type Session } from '../lib/model';
-import { places, tiedLeaders } from '../lib/session';
+import { coWinnersHold, places, tiedLeaders } from '../lib/session';
 
 /** "🏆 Brainrot Night: 🥇 Sam $4,200 · 🥈 Alex $3,100 · 🥉 Jo $0". Tied players share a place and a medal. */
 export function standingsText(game: Game, session: Session): string {
   const medals = ['🥇', '🥈', '🥉'];
   const sym = game.settings.currencySymbol;
   const ranked = places(session).map((r) => `${medals[r.place - 1] ?? `${r.place}.`} ${r.player.name} ${formatPoints(r.score, sym)}`);
-  const co = session.coWinners && tiedLeaders(session).length ? ' (co-winners)' : '';
+  const co = coWinnersHold(session) && tiedLeaders(session).length ? ' (co-winners)' : '';
   return `🏆 ${game.title}${co}: ${ranked.join(' · ')}`;
 }
 

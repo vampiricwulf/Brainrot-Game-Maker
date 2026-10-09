@@ -1139,6 +1139,24 @@ await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
 assert(true, 'co-winners declared on the winner screen');
 await shot('9-winner');
+// They settle that tie only: scores fixed into a different tie leave that one open (Undo puts them back).
+const fixScore = async (i, to) => {
+  await page.locator('.panel .p').nth(i).locator('.score').click();
+  await page.locator('.panel .score-edit').fill(to);
+  await page.keyboard.press('Enter');
+};
+await fixScore(1, '0');
+await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes('Player 1 wins'));
+await fixScore(2, '850');
+await page.locator('.panel').getByText('Tie for first:').waitFor();
+assert(
+  (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player 1 & Player 3') && !(await page.locator('.panel').innerText()).includes('Co-winners declared'),
+  'co-winners declared for one tie don’t settle a different one (a score fixed since): it is open again',
+);
+await page.keyboard.press('Control+z');
+await page.keyboard.press('Control+z');
+await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
+assert(true, 'undoing the fixes brings the declared co-winners back');
 
 // Tools work any time: wheel from the launcher with a confirmed score effect (undoable).
 await page.getByRole('button', { name: '🎡 Wheel' }).click();

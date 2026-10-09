@@ -4,7 +4,7 @@
   import { getContext, onDestroy } from 'svelte';
   import { NEXT_GAME } from './nextgame';
   import { isFinal, roundName, type Game, type Session } from '../../lib/model';
-  import { nameList, tiedForFirst, tiedLeaders } from '../../lib/session';
+  import { coWinnersHold, nameList, tiedForFirst, tiedLeaders } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
   import { hostAsk, offerNext } from './slots.svelte';
@@ -30,7 +30,7 @@
     /** New game with the same players, via the pre-game screen. */
     onrematch: () => void;
   } = $props();
-  const ties = $derived(session.coWinners ? [] : tiedLeaders(session));
+  const ties = $derived(coWinnersHold(session) ? [] : tiedLeaders(session));
   /** Level on the top score, settled or not (a settled tie says how, while there still is one). */
   const level = $derived(tiedForFirst(session));
   const lastIndex = $derived(game.rounds.length - 1);
@@ -75,7 +75,8 @@
       {/if}
       <button
         onclick={() => {
-          logged(session, 'Co-winners declared', () => (session.coWinners = true));
+          // (Who they are: a different tie later, after a score is fixed, is still to settle.)
+          logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id)));
           oncowinners?.();
         }}>🤝 Declare co-winners</button
       >
@@ -87,7 +88,7 @@
     {session.tiebreakClue ? '❓' : '🎲'}
     {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker {session.tiebreakClue ? 'clue' : 'roll-off'}.
   </div>
-{:else if session.coWinners && level.length}
+{:else if coWinnersHold(session) && level.length}
   <div class="muted">🤝 Co-winners declared.</div>
 {/if}
 <!-- The way back quiet on the left, the rematch (it clears the results) at the far end. -->

@@ -265,6 +265,20 @@ try {
   await page.keyboard.press('r');
   await tbPips.waitFor({ state: 'detached' });
   assert((await page.locator('.stage-box').innerText()).includes('Tiebreaker answer'), 'R reveals its answer (the dots go)');
+  // The winner selected and ＋ Award at Amount 0: the panel says who won. Selecting the other tied player instead changes it.
+  const pts = (await page.locator('.panel .p .score').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
+  const tiedAt = pts.flatMap((v, i) => (v === Math.max(...pts) ? [i] : []));
+  const chipName = async (i) => (await page.locator('.panel .p .sel').nth(i).innerText()).replace(/^\d+\s*/, '').trim();
+  const [first, other] = [await chipName(tiedAt[0]), await chipName(tiedAt[1])];
+  await page.locator('.panel .status').click();
+  await page.keyboard.press(String(tiedAt[0] + 1));
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: `${first} won the tiebreaker: 🏁 Back to results` }).waitFor();
+  assert(true, `once ${first} is picked (Amount 0), the panel says so and to go back to the results`);
+  await page.keyboard.press(String(tiedAt[1] + 1));
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: `${other} won the tiebreaker` }).waitFor();
+  assert(!(await page.locator('.toast').allInnerTexts()).some((t) => t.includes('isn’t tied for first')), `selecting ${other} (tied too) and ＋ Award changes the winner (not "isn’t tied for first")`);
 
   for (const what of ['exit', 'undo', 'log']) {
     const at = Object.entries(states).map(([k, v]) => `${k} ${v[what].x},${v[what].y}`);
