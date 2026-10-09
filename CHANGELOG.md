@@ -55,6 +55,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Saving: the undo history no longer disappears after a reload or a reopen from Recent games once a theme preset was put on a game with its own clue font, board picture, banner or green-screen background; Replace… on a file a Recent game also uses changes it in this game only; older packs with two files of the same extension-less name open with both. (a3660dd)
 - During a game: if storage fills up, the message says the game in progress isn't being saved (not "use Save"), the host panel keeps showing "⚠ Not saving" and closing the tab asks first; reloading right after awarding points or using a tile no longer loses that action; a damaged copy of the game in progress no longer leaves the builder stuck on Loading. (a3660dd, 45fbb82)
 - Big files: a game pack over about 2 GB says it's too big to open (it blamed an incomplete download), Save and desktop autosave warn when they write one that big, and opening a big game shows "Opening …" in the header while the editor waits. (a3660dd, 45fbb82)
+- After storage filled up during a game, discarding or ending that game no longer leaves "Autosave unavailable here: use Save" up until the next edit: a small write checks at once whether there's room again.
 
 ## 2026-10-08
 

@@ -310,11 +310,15 @@ export const clearPlay = () => {
   dropPlayRescue();
   // A write of it that failed isn't tried again (that would bring it back), and is no longer waited for.
   playGen++;
-  failed.delete('play');
+  const dropped = failed.delete('play');
   return safe(async () => {
     await del(playKey);
     const files = playFileKey('');
     await delMany((await keys()).filter((k) => typeof k === 'string' && k.startsWith(files)));
+  }).then(async () => {
+    // Its failed write was the only one waiting: nothing else would tell the watcher how writes go now (the header's
+    // "use Save" would stay until the next edit), so a write says it, and is tried again until it goes through.
+    if (dropped && !failed.size) await write('probe', probe);
   });
 };
 
@@ -372,10 +376,15 @@ export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number)
 }
 
 /** Can we write to IndexedDB here? (Some browsers block it for files opened from disk or in private windows.) */
+/** A small write and its removal: does storage take writes here, now? */
+async function probe(): Promise<void> {
+  await set('__probe', Date.now());
+  await del('__probe');
+}
+
 export async function testStorage(): Promise<boolean> {
   return (await safe(async () => {
-    await set('__probe', Date.now());
-    await del('__probe');
+    await probe();
     return true;
   })) ?? false;
 }

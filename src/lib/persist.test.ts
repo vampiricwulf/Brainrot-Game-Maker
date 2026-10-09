@@ -78,6 +78,27 @@ describe('the game in progress cleared while storage is full', () => {
     expect(db.has('playSession')).toBe(false);
   });
 
+  it('with nothing else waiting, a write after it says how writes go now (no "use Save" left up)', async () => {
+    const heard: (string | null)[] = [];
+    watchWrites((err, key) => heard.push(err ? (key ?? 'failed') : null));
+    io.full = true;
+    expect(await savePlay(game, session)).toBe(false);
+    // Room again by the time it's cleared: the write after it goes through, and says so.
+    io.full = false;
+    await clearPlay();
+    expect(heard).toEqual(['play', null]);
+    // Still full when it's cleared: that write is kept and tried again until it goes through.
+    heard.length = 0;
+    io.full = true;
+    expect(await savePlay(game, session)).toBe(false);
+    await clearPlay();
+    expect(heard).toEqual(['play', 'probe']);
+    io.full = false;
+    expect(await retryWrites()).toBe(true);
+    expect(heard.at(-1)).toBe(null);
+    watchWrites(() => {});
+  });
+
   it('a write of it under way as it is cleared, failing then, is not kept to try again', async () => {
     let release = () => {};
     io.hold = new Promise((r) => (release = r));
