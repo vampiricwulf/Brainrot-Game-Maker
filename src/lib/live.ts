@@ -196,6 +196,15 @@ export function overlayDoneAt(o: Overlay): number {
   return 0;
 }
 
+/**
+ * The tool on stage: the overlay up, or the one under the scores (S put them over it, and S again brings it back), so
+ * a wheel or dice still going under them is waited for.
+ */
+export function toolOverlay(live: Live): Overlay | null {
+  const o = live.overlay;
+  return o?.kind === 'scoreboard' ? (o.under ?? null) : o;
+}
+
 export function timerRemaining(t: TimerState, now = Date.now()): number {
   const run = t.startedAt === null ? 0 : (now - t.startedAt) / 1000;
   return Math.max(0, t.total - t.elapsed - run);

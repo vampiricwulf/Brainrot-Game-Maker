@@ -14,7 +14,7 @@
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
-  import { cuesAfter, type Live, type SoundCue, type StageAction } from '../lib/live';
+  import { cuesAfter, toolOverlay, type Live, type SoundCue, type StageAction } from '../lib/live';
   import { plateCenter } from './flow';
   import { autofit } from '../lib/autofit';
   import SlideView from '../lib/slide/SlideView.svelte';
@@ -411,7 +411,7 @@
   {:else}
     <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown.
          (The scores up over the tool: it's still to close.) -->
-    {@const tool = live.overlay?.kind === 'scoreboard' ? live.overlay.under : live.overlay}
+    {@const tool = toolOverlay(live)}
     {@const waiting = tool?.kind === info.clue.type && !session.revealed}
     <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
     {@const at = clueSlideIndex(session, info.clue)}

@@ -13,7 +13,7 @@
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, forViewers, wagerFromPhone, coWinnersHold,
   } from '../lib/session';
-  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type Live, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
@@ -1370,8 +1370,7 @@
    */
   function toolBusy(): boolean {
     // (Under the scores too: it's still going, and comes back with S.)
-    const top = app.live.overlay;
-    const o = top?.kind === 'scoreboard' ? top.under : top;
+    const o = toolOverlay(app.live);
     if ((o?.kind !== 'dice' && o?.kind !== 'wheel' && o?.kind !== 'rolloff') || Date.now() >= overlayDoneAt(o)) return false;
     toast(`Still ${o.kind === 'wheel' ? 'spinning' : 'rolling'}: wait for it to land`);
     return true;
@@ -2424,8 +2423,11 @@
 
   function removeFromGame(id: string): void {
     removing = null;
-    // Their sheet on stage: it goes too (viewers were left with a dimmed, empty stage).
-    if (app.live.overlay?.kind === 'sheet' && app.live.overlay.playerId === id) app.live.overlay = null;
+    // Their sheet on stage: it goes too (viewers were left with a dimmed, empty stage). Under the scores too: S or Esc
+    // would bring it back empty.
+    const o = app.live.overlay;
+    if (o?.kind === 'sheet' && o.playerId === id) app.live.overlay = null;
+    else if (o?.kind === 'scoreboard' && o.under?.kind === 'sheet' && o.under.playerId === id) o.under = undefined;
     removePlayer(session, id);
     selected = selected.filter((x) => x !== id);
   }
@@ -2481,8 +2483,8 @@
       return true;
     }
     // D then Enter at once: the dice (or the wheel) are still going on screen, and the move would end them early (the
-    // count isn't in the Steps box until they've landed).
-    const o = app.live.overlay;
+    // count isn't in the Steps box until they've landed). Under the scores too.
+    const o = toolOverlay(app.live);
     if (round.mover.kind !== 'step' && (o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) {
       toast(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: Enter again once it lands`);
       return true;

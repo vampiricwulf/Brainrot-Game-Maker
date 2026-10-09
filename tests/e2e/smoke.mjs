@@ -1169,11 +1169,31 @@ await page.getByRole('button', { name: 'Punishment Wheel', exact: true }).click(
 await page.getByRole('button', { name: 'Spin!' }).click();
 await page.locator('.ac').waitFor({ timeout: 8000 });
 const deltaText = await page.locator('.ac .delta').first().innerText();
+const allScores = async () => (await page.locator('.panel .p .score').allInnerTexts()).join();
+const scoresAre = (want) => page.waitForFunction((w) => [...document.querySelectorAll('.panel .p .score')].map((e) => e.innerText).join() === w, want);
+const unbankrupt = await allScores();
 await page.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
-assert(/−\$850/.test(deltaText), `bankrupt previews the change (${deltaText}) and applies on Confirm`);
-await page.keyboard.press('Escape');
+await page.locator('.ac').waitFor({ state: 'detached' });
+const bankrupt = await allScores();
+assert(/−\$850/.test(deltaText) && bankrupt !== unbankrupt, `bankrupt previews the change (${deltaText}) and applies on Confirm (${bankrupt})`);
+// Ctrl+Z of it (the points went to the wrong player) brings its card back; Ctrl+Y gives them again and the card goes.
 await page.keyboard.press('Control+z');
-assert(await page.getByText('$850').first().isVisible(), 'score effect is undoable like any score change');
+await page.locator('.ac').waitFor();
+await scoresAre(unbankrupt);
+assert(true, 'Ctrl+Z of a confirmed score effect undoes it, and its card is back to confirm again');
+await page.keyboard.press('Control+y');
+await page.locator('.ac').waitFor({ state: 'detached' });
+await scoresAre(bankrupt);
+assert(true, 'Ctrl+Y gives it again, and the card goes again');
+// A card skipped stays skipped: an Undo of the step before it doesn't bring it back.
+await page.keyboard.press('w');
+await page.locator('.ac').waitFor({ timeout: 8000 });
+await page.locator('.ac').getByRole('button', { name: 'Skip' }).click();
+await page.locator('.ac').waitFor({ state: 'detached' });
+await page.keyboard.press('Control+z');
+await scoresAre(unbankrupt);
+assert((await page.locator('.ac').count()) === 0, 'score effect is undoable like any score change, and a skipped card stays hidden through it');
+await page.keyboard.press('Escape');
 
 // Dice: quick 2d6 shows a total.
 await page.getByRole('button', { name: '🎲 Dice' }).click();
