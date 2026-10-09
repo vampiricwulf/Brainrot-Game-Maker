@@ -17,6 +17,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Play: a 🔇 Stop sounds button in the host panel (and Shift+M) while a round intro's music may still be playing; it works in RPG, board-game and slides rounds, which have no tile to stop it. (29aadf5)
 - 🔊 Sounds: a missing sound file can be picked again from its own row with 🔗 Find file… (it used to add a renamed copy, and the checklist warning stayed); a sound whose online link has expired says so and offers the same button. (2e64d01, 29aadf5)
 
+### Changed
+- Score plates: when they're too narrow for the points symbol, every plate on the bar drops it together ("1.2K | 800 | 2K", not "$1K | 800 | $2K"). (a75568f)
+
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
 - A long Round intro track stops when the first tile opens (it played under the clues to its end); a new round's intro or the Final's think music replaces one still playing. (2e64d01, 29aadf5)
@@ -31,6 +34,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Rounds: the sample game added to a game with rounds names its rounds apart ('Jeopardy! (2)'); Paste round names the copy in History and Undo and puts the cursor in its name; the 'Welcome and rules' template, or a pasted slides round, says when it went to the start of the game. (336da69)
 - Single window: the stage no longer shrinks when a clue opens or a player is picked (a long name on ＋ Award / − Deduct is cut short with …, and windows up to 1280px wide leave out the key hints, still in the tooltips); 🔊 Sound opened during a game shows in the host panel instead of covering the stage viewers see. (a7006d3, 747c5d4)
 - The board editor's columns narrow to fit the window, so all six categories show on a 1024px laptop; on a short window every Final wager box fits without scrolling. (a7006d3)
+- Scores on the stage plates (and the scores-only window beside its countdown) no longer get cut off mid-number with many players: they get shorter instead ("$1K", "1,200"); hover a plate for the full score. (a679621, a75568f)
+- ✎ Set the score… understands "1,000", "$500", "−$200", a dash pasted from chat and "500 pts"; if what's typed isn't a number it stays open and says so (it closed as if set). (a679621, a75568f)
+- Restoring an old score change in 📜 Log › Scores no longer gives that player the board when someone else has answered since; a $0 clue can be marked right or wrong (it said "Enter an amount first"). (a679621)
+- Start scores are rounded to whole points and capped at the most points allowed ("$250.5" showed on stream), and so are Final wagers; with the limits off, a Final wager box's tooltip shows the real score of a player below zero (it said $0); a Daily Double wager below 0 says so instead of "over the max". (a679621, a75568f)
 
 ## 2026-10-08
 

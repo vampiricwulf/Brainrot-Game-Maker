@@ -7,7 +7,7 @@
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
   import { tick } from 'svelte';
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
-  import { newId } from '../lib/model';
+  import { newId, wholePoints } from '../lib/model';
   import { toast } from '../lib/app.svelte';
   import { showMenu } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
@@ -265,7 +265,15 @@
       />
       <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {#if showScores}
-        <input class="score" type="number" bind:value={p.startScore} aria-label="{p.name || `Player ${i + 1}`}'s start score" />
+        <!-- (Whole points, within what reads on screen: made so once it's typed, not while the box is cleared to retype.) -->
+        <input
+          class="score"
+          type="number"
+          step="1"
+          bind:value={p.startScore}
+          onchange={() => (p.startScore = wholePoints(p.startScore) ?? 0)}
+          aria-label="{p.name || `Player ${i + 1}`}'s start score"
+        />
       {/if}
       <button class="ghost tiny" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
       <button class="ghost tiny" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>

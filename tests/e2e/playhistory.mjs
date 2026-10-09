@@ -201,6 +201,37 @@ try {
   assert((await page.locator('.fj .wagers input[data-wager]').count()) === 2, 'a player ticked out on the wager screen loses their wager box');
   await page.keyboard.press('Control+z');
   assert((await page.locator('.fj .wagers input[data-plays]:checked').count()) === 3, 'Ctrl+Z brings a player back into the Final');
+  // ✎ Set the score… from a plate's menu (the Final has no score chips): what isn't a number is asked again, saying so;
+  // "−$200" reads; and the wager row shows that score (not the $0 they can wager). (Forced: the plate is a button that's
+  // off while nothing is done by clicking it, and its right-click menu still comes up.)
+  const plate3 = page.locator('.stage-box .plate', { hasText: 'Player 3' });
+  await plate3.click({ button: 'right', force: true });
+  await page.getByRole('menuitem', { name: '✎ Set the score…' }).click();
+  const scoreAsk = page.getByRole('group', { name: 'Player 3’s score:' });
+  await scoreAsk.getByRole('textbox').fill('abc');
+  await scoreAsk.getByRole('textbox').press('Enter');
+  await page.locator('.toast', { hasText: '“abc” isn’t a number' }).waitFor();
+  assert((await scoreAsk.count()) === 1 && (await plate3.locator('.score').innerText()) === '$400', 'Set the score with no number in it says so, and stays open (the score as it was)');
+  await scoreAsk.getByRole('textbox').fill('−$200');
+  await scoreAsk.getByRole('textbox').press('Enter');
+  await scoreAsk.waitFor({ state: 'detached' });
+  assert((await plate3.locator('.score').innerText()) === '−$200', 'a score typed as “−$200” reads (a symbol and a minus sign around the number)');
+  const row3 = page.locator('.fj .wagers .wrow', { hasText: 'Player 3' });
+  const tip3 = await row3.locator('input[data-wager]').getAttribute('title');
+  assert(tip3 === 'No limit now (their score: −$200)', `the wager box of a player below 0 says their real score in its tooltip (${tip3})`);
+  // (Back to $400 the same way, before the wagers.)
+  await plate3.click({ button: 'right', force: true });
+  await page.getByRole('menuitem', { name: '✎ Set the score…' }).click();
+  await scoreAsk.getByRole('textbox').fill('400');
+  await scoreAsk.getByRole('textbox').press('Enter');
+  await scoreAsk.waitFor({ state: 'detached' });
+  assert((await plate3.locator('.score').innerText()) === '$400', 'and a plain number still sets it ($400)');
+  // A wager past the most points is kept at the most, and its box says so (not a digit typed on past it).
+  const wager1 = page.locator('.fj .wagers input[data-wager]').first();
+  await wager1.fill('1000000000000');
+  await wager1.press('9');
+  await page.locator('.toast', { hasText: 'At most $1,000,000,000,000' }).waitFor();
+  assert((await wager1.inputValue()) === '1000000000000', `a wager typed on past the most points shows the most in its box (${await wager1.inputValue()})`);
   for (let i = 0; i < 3; i++) await page.locator('.fj .wagers input[data-wager]').nth(i).fill(String((i + 1) * 100));
   // A wager already in is changed in its box: one step, named with the old and the new amount.
   await page.locator('.fj .wagers input[data-wager]').first().fill('150');
@@ -228,6 +259,17 @@ try {
   await page.keyboard.press('l');
   assert(/’s wager: \$\d+ → \$120$/.test((await history())[0]), 'changing it in the reveals is a step too');
   await page.keyboard.press('Escape');
+  // Already at the most points, a bigger one typed there puts the most back in the box (not the digits typed).
+  await rowBox.fill('1000000000000');
+  await rowBox.press('Enter');
+  // (The wager screen's own "At most" gone first, so the one waited for is this box's.)
+  await page.locator('.toast', { hasText: 'At most' }).waitFor({ state: 'detached' });
+  await rowBox.fill('10000000000009');
+  await rowBox.press('Enter');
+  await page.locator('.toast', { hasText: 'At most $1,000,000,000,000' }).waitFor();
+  assert((await rowBox.inputValue()) === '1000000000000', `in the reveals too, a wager past the most shows the most in its box (${await rowBox.inputValue()})`);
+  await rowBox.fill('120');
+  await rowBox.press('Enter');
   await firstRow.getByRole('button', { name: 'Show wager' }).click();
   await page.waitForFunction(() => document.querySelector('.spot-wager')?.textContent?.includes('120'));
   assert((await rowBox.count()) === 0, 'Show wager puts the changed wager on screen, and the field goes');
