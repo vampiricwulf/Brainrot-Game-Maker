@@ -578,6 +578,9 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page);
+  // (The new game, with no rounds, has arrived: until then the old one's round tabs are still there, and
+  // addClassicRounds would take them for this game's and add none.)
+  await page.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
   await addClassicRounds(page);
   await page.locator('.grid .tile').first().click();
   await clue.waitFor();
