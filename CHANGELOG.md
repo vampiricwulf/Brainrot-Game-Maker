@@ -16,12 +16,15 @@ in plain words for the people who make and host games. Anything committed but no
 ### Added
 - Play: a 🔇 Stop sounds button in the host panel (and Shift+M) while a round intro's music may still be playing; it works in RPG, board-game and slides rounds, which have no tile to stop it. (29aadf5)
 - 🔊 Sounds: a missing sound file can be picked again from its own row with 🔗 Find file… (it used to add a renamed copy, and the checklist warning stayed); a sound whose online link has expired says so and offers the same button. (2e64d01, 29aadf5)
+- The tiebreaker has its own host notes box, shown in the host column and found by 🔍 Find as Tiebreaker > Notes. (352b56e)
 
 ### Changed
 - Score plates: when they're too narrow for the points symbol, every plate on the bar drops it together ("1.2K | 800 | 2K", not "$1K | 800 | $2K"). (a75568f)
 - The 'Try a sample game' card and 'The sample game' menu item say what they add; the editor's key list says ? doesn't work while a window like the clue editor is open. (c94bbf1)
 - RPG action buttons and the log say where and what: "Go to Lake", "Reveal Hidden chest (Road)", "Hide …" (they said only Go there, Reveal, Hide). (3ba3958)
 - '↶ Reopen a tile…' is a menu: the arrow keys look through it and Enter picks (↓ on it put a tile back at once); ↓ in 'Go to round' asks before leaving the round. (4bcc729)
+- Tiebreaker: N runs its main button (next slide, the answer, then Back to results), and the ? key list has a Tiebreaker clue section; it names who's tied, asks for the winner, says when points given there settled the tie, and the first N with no winner picked warns before leaving. (352b56e, 72030e2)
+- Slide dots on stream turn into a count ("3 / 45") past 20 slides, so they stay on the stage. (352b56e)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -70,6 +73,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Media links (Open link, Open on YouTube, Test link, Check) open in a window cut loose from the host page, so a linked page can't pose as the scores window to read the answers, press the host's keys or send the host tab elsewhere; a reloaded host page takes back only its own scores window. In the desktop app links open at the link again, not a blank window. (0b41cbd, 86e9158)
 - Teams: a phone that joins a team after its answer was sent no longer sees that answer (so a rival can't read it), and once the answers lock it says "The host has it" instead of "None sent". (7aae53a, 4983936)
 - Phone buzzer server: one address can start at most 20 rooms a day (IPv6 counted by /56, and at most 100 a day from one /48), so one script can no longer use up everyone's daily rooms. Takes effect when the buzzer server is redeployed. (5215d64, 7ef136e)
+- Ctrl+Z on the results or the tiebreaker goes back to the Final's reveals when a slides outro comes after the Final (it took back a judgment out of sight). (352b56e)
+- A tiebreaker ticked on but left empty is on the checklist (its line opens the empty box), and the end screen offers it only once it has a question. (352b56e)
+- Resume with my edits keeps the slide that was on screen, even when slides before it were added or taken out or it became the first. Slides rounds' host notes keep their line breaks. (352b56e, 72030e2)
 
 ## 2026-10-08
 

@@ -85,10 +85,11 @@ describe('Find', () => {
     if (r.mode !== 'boardgame') throw new Error('no board game');
     r.winNotes = 'Collect three flamingos';
     expect(findAll(g, 'flamingos')[0].focus).toBe('main [data-field="win-notes"]');
-    g.tiebreaker = { questionSlide: textSlide('Zebrafish question'), answerSlide: textSlide('Zebrafish answer') };
+    g.tiebreaker = { questionSlide: textSlide('Zebrafish question'), answerSlide: textSlide('Zebrafish answer'), hostNotes: 'Closest zebrafish count wins' };
     expect(findAll(g, 'zebrafish').map((h) => [h.where, h.focus])).toEqual([
       ['Tiebreaker › Question', 'main [data-field="q"]'],
       ['Tiebreaker › Answer', 'main [data-field="a"]'],
+      ['Tiebreaker › Notes', 'main [data-field="notes"]'],
     ]);
   });
 

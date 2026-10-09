@@ -133,6 +133,14 @@ export function validate(game: Game): Problem[] {
         level: 'info',
       });
   });
+  // The tiebreaker once ticked on: a tie at the end offers it as the main button, so an empty one puts a blank slide on stream.
+  const tb = game.tiebreaker;
+  if (tb) {
+    if (!questionSlides(tb).some(slideHasContent))
+      out.push({ text: 'The tiebreaker has no question', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'q' } });
+    if (!slideHasContent(tb.answerSlide))
+      out.push({ text: 'The tiebreaker has no answer', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'a' } });
+  }
 
   out.push(...statsProblems(game), ...toolButtonProblems(game));
 

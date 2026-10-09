@@ -125,7 +125,8 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   if (tb) {
     look('❓', slideWords(tb.questionSlide), `Tiebreaker › Question${tb.extraSlides?.length ? ' 1' : ''}`, { tab: 'tiebreaker', side: 'q' }, 'main [data-field="q"]');
     tb.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `Tiebreaker › Question ${j + 2}`, { tab: 'tiebreaker', side: 'q', slide: sl.id }, 'main [data-field="q"]'));
-    look('💬', [...slideWords(tb.answerSlide), tb.hostNotes], 'Tiebreaker › Answer', { tab: 'tiebreaker', side: 'a' }, 'main [data-field="a"]');
+    look('💬', slideWords(tb.answerSlide), 'Tiebreaker › Answer', { tab: 'tiebreaker', side: 'a' }, 'main [data-field="a"]');
+    look('📝', [tb.hostNotes], 'Tiebreaker › Notes', { tab: 'tiebreaker' }, 'main [data-field="notes"]');
   }
   return hits;
 }

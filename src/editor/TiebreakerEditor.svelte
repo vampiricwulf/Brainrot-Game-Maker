@@ -48,7 +48,7 @@
       const tb = app.game.tiebreaker;
       const on = e.currentTarget.checked;
       // Unticking throws the tiebreaker away at once: when it had something in it, the note at the bottom offers Undo.
-      const lost = !on && !!tb && [...questionSlides(tb), tb.answerSlide].some(slideHasContent);
+      const lost = !on && !!tb && ([...questionSlides(tb), tb.answerSlide].some(slideHasContent) || !!tb.hostNotes?.trim());
       step(
         on ? 'Tiebreaker on' : 'Tiebreaker off',
         () => {
@@ -86,6 +86,11 @@
     <label class="field">
       Answer (hidden until revealed)
       <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(tb.answerSlide)} oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value) && followClueText(app.game, [tb.answerSlide])}></textarea>
+    </label>
+    <!-- (Across both columns: the rule the host judges by, say "closest without going over wins".) -->
+    <label class="field notes">
+      Host notes (never shown on stream)
+      <textarea rows="1" data-field="notes" value={tb.hostNotes ?? ''} oninput={(e) => (tb.hostNotes = e.currentTarget.value)}></textarea>
     </label>
   </div>
   <SlideTabs holder={tb} bind:side={tbSide} bind:qi what="tiebreaker" place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })} />
@@ -126,6 +131,9 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     margin-top: 12px;
+  }
+  .quick .notes {
+    grid-column: 1 / -1;
   }
   .quick textarea {
     resize: none;

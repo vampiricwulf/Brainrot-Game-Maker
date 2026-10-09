@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { setSlideText, type BoardRound } from './model';
+import { questionSlides, setSlideText, textSlide, type BoardRound } from './model';
+import { addClueSlide } from './ops';
 import { validate } from './validate';
 
 describe('the checklist', () => {
@@ -26,6 +27,22 @@ describe('the checklist', () => {
       { tab: 'round', round: final.id, part: { kind: 'final', side: 'q' } },
       { tab: 'round', round: final.id, part: { kind: 'final', side: 'a' } },
     ]);
+  });
+
+  it('warns of a tiebreaker ticked on but not written (a tie would put its blank slide on stream), and goes to that side', () => {
+    const game = jeopardyGame();
+    const mine = () => validate(game).filter((p) => p.tab === 'tiebreaker');
+    expect(mine()).toEqual([]);
+    game.tiebreaker = { questionSlide: textSlide(), answerSlide: textSlide() };
+    expect(mine()).toEqual([
+      { text: 'The tiebreaker has no question', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'q' } },
+      { text: 'The tiebreaker has no answer', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'a' } },
+    ]);
+    // A question on any of its question slides will do.
+    addClueSlide(game.tiebreaker, 0);
+    setSlideText(questionSlides(game.tiebreaker)[1], 'Closest wins');
+    setSlideText(game.tiebreaker.answerSlide, '42');
+    expect(mine()).toEqual([]);
   });
 
   it('says when more Daily Doubles are placed than the ⭐ box says (not a warning: they all play)', () => {

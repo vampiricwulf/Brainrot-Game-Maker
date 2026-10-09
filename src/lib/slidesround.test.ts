@@ -1,11 +1,11 @@
 // A slides round: slides shown in order (an introduction), nothing to answer.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { gameProblem, migrateGame, newSlidesRound, questionSlides, setSlideText, slideText, type Game, type SlidesRound } from './model';
-import { addClueSlide, clone, reidRound, textStyleTargets } from './ops';
+import { gameProblem, isFinal, migrateGame, newSlidesRound, questionSlides, setSlideText, slideText, type Game, type SlidesRound } from './model';
+import { addClueSlide, clone, deleteClueSlide, moveClueSlide, reidRound, textStyleTargets } from './ops';
 import { clueSlides } from './cluetext';
 import { randomizeDailyDoubles } from './session';
-import type { BoardRound, TextEl } from './model';
+import type { BoardRound, Session, TextEl } from './model';
 import { backToLastRound, clueSlideIndex, goToRound, newSession, rebaseSession, shownQuestionSlide, slidePosition, stepSlide } from './session';
 import { allSlides } from './usage';
 import { validate } from './validate';
@@ -65,6 +65,74 @@ describe('slides round', () => {
     const edited = clone(game);
     rebaseSession(s, game, edited);
     expect([s.phase, s.slide]).toEqual(['slides', 1]);
+  });
+
+  it('Resume with my edits keeps the slide on screen when slides were added or taken out before it', () => {
+    const { game } = withIntro();
+    const s = newSession(game);
+    goToRound(s, game, 0);
+    stepSlide(s, game, 1);
+    stepSlide(s, game, 1);
+    // A slide added after the first: "Let’s go" is now the 4th.
+    const added = clone(game);
+    addClueSlide(added.rounds[0] as SlidesRound, 0);
+    rebaseSession(s, game, added);
+    expect(slideText(shownQuestionSlide(s, added.rounds[0] as SlidesRound))).toBe('Let’s go');
+    expect(s.slide).toBe(3);
+    // "Rules" taken out again: back to the 3rd.
+    const fewer = clone(added);
+    const intro = fewer.rounds[0] as SlidesRound;
+    intro.extraSlides = intro.extraSlides!.filter((x) => slideText(x) !== 'Rules');
+    rebaseSession(s, added, fewer);
+    expect(slideText(shownQuestionSlide(s, intro))).toBe('Let’s go');
+    expect(s.slide).toBe(2);
+  });
+
+  it('Resume with my edits keeps the slide on screen when it becomes the first, or stops being the first', () => {
+    const { game } = withIntro();
+    const shown = (s: Session, g: Game) => slideText(shownQuestionSlide(s, g.rounds[0] as SlidesRound));
+    const onSlide = (k: number) => {
+      const s = newSession(game);
+      goToRound(s, game, 0);
+      for (let i = 0; i < k; i++) stepSlide(s, game, 1);
+      return s;
+    };
+    // On "Rules" (the 2nd), "Welcome" taken out: "Rules" is the first now (with no id), and stays on screen.
+    let s = onSlide(1);
+    const fewer = clone(game);
+    deleteClueSlide(fewer.rounds[0] as SlidesRound, 0);
+    rebaseSession(s, game, fewer);
+    expect([shown(s, fewer), s.slide]).toEqual(['Rules', undefined]);
+    // On "Rules", moved up to first.
+    s = onSlide(1);
+    const up = clone(game);
+    moveClueSlide(up.rounds[0] as SlidesRound, 1, -1);
+    rebaseSession(s, game, up);
+    expect([shown(s, up), s.slide]).toEqual(['Rules', undefined]);
+    // On "Welcome" (the first, with no id), moved down to second.
+    s = onSlide(0);
+    const down = clone(game);
+    moveClueSlide(down.rounds[0] as SlidesRound, 0, 1);
+    rebaseSession(s, game, down);
+    expect([shown(s, down), s.slide]).toEqual(['Welcome', 1]);
+  });
+
+  it('as the closing Final with a slides outro after it, the end screen goes back to the Final’s reveals', () => {
+    const { game, intro } = withIntro();
+    game.rounds.push(game.rounds.splice(game.rounds.indexOf(intro), 1)[0]);
+    const fi = game.rounds.findIndex(isFinal);
+    expect(fi).toBe(game.rounds.length - 2);
+    const s = newSession(game);
+    goToRound(s, game, fi);
+    // (Played to its reveals, then on through the outro to the results.)
+    s.finalStep = 'reveal';
+    goToRound(s, game, fi + 1);
+    goToRound(s, game, game.rounds.length);
+    backToLastRound(s, game, fi);
+    expect([s.phase, s.currentRound, s.finalStep]).toEqual(['final', fi, 'reveal']);
+    // (Without an index: the last round, the outro on its last slide.)
+    backToLastRound(s, game);
+    expect([s.phase, s.currentRound, s.slide]).toEqual(['slides', game.rounds.length - 1, 2]);
   });
 
   it('is a kind of round a file can have, and its slides are walked (media, find, history)', () => {

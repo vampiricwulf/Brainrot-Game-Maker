@@ -5,7 +5,7 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type ClueRef } from '../lib/model';
+  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
@@ -739,6 +739,8 @@
   function tiebreakWin(sign: 1 | -1, ids: string[]): void {
     const id = ids[0];
     if (sign < 0) return toast('Nothing to deduct: type an amount, or select the winner and ＋ Award');
+    // (Points given here settled it.)
+    if (!tiedForFirst(session).length) return toast('Nobody is tied for first any more: 🏁 Back to results');
     if (ids.length > 1) return toast('Select the one player who won the tiebreaker');
     // (Tied, settled or not: picking the other one replaces a wrong pick, as a step of its own.)
     if (!tiedForFirst(session).some((p) => p.id === id)) return toast(`${playerName(session, id)} isn’t tied for first`);
@@ -1791,24 +1793,28 @@
   });
 
   /**
-   * On the results (or the tiebreaker clue opened from them), the next Undo belongs to the last round's Final (one of its
+   * On the results (or the tiebreaker clue opened from them), the next Undo belongs to the game's closing Final (one of its
    * judgments, or one of its steps, which only land in a Final on screen): back to its reveals first, so it's taken back
    * there (not out of sight, or not at all).
    */
   function undoIntoFinal(): void {
     if (session.phase !== 'end' && session.phase !== 'tiebreaker') return;
-    const last = game.rounds.at(-1);
-    if (!isFinal(last) || session.final?.roundId !== last.id) return;
+    // The closing Final: the last round, or the last one before a slides outro ("Thanks for watching").
+    const fi = game.rounds.findIndex((r) => isFinal(r) && r.id === session.final?.roundId);
+    const fin = game.rounds[fi];
+    if (!isFinal(fin) || !game.rounds.slice(fi + 1).every(isSlides)) return;
     const next = nextUndo(session);
     // (Its steps by the Final step they kept, not by round: steps taken on the results are in the last round too.)
     const ofFinal =
       next?.log === 'action'
-        ? `step:${last.id}` in JSON.parse(session.actionLog!.at(-1)!.before)
-        : !!next && session.scoreLog.some((e) => !e.undone && stepOf(e) === next.id && e.clueId === finalTag(last.id));
+        ? `step:${fin.id}` in JSON.parse(session.actionLog!.at(-1)!.before)
+        : !!next && session.scoreLog.some((e) => !e.undone && stepOf(e) === next.id && e.clueId === finalTag(fin.id));
     if (!ofFinal) return;
     // (The tiebreaker's countdown goes with it, as 🏁 Back to results stops it.)
     app.live.timer = null;
-    backFromEnd();
+    app.live.sound = null;
+    app.live.overlay = null;
+    backToLastRound(session, game, fi);
   }
 
   /**
@@ -2925,8 +2931,11 @@
           else if (hostNext && !hostNext.disabled) hostNext.run();
           else slideStep(1);
         } else if (session.phase === 'tiebreaker') {
-          // The tiebreaker's question slides: N the next, Shift+N the one before.
-          slideStep(e.shiftKey ? -1 : 1);
+          // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);
+          // Shift+N the slide before.
+          if (e.shiftKey) slideStep(-1);
+          else if (hostNext && !hostNext.disabled) hostNext.run();
+          else slideStep(1);
         } else if (session.phase === 'slides') {
           // A slides round: N the next slide, then (after the last) the next round, as the main button says.
           if (e.shiftKey) slideStep(-1);

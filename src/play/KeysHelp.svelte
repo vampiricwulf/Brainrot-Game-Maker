@@ -91,6 +91,15 @@
       ],
     },
     {
+      title: 'Tiebreaker clue',
+      keys: [
+        ['N', 'The main button: the next question slide, the answer, then back to the results'],
+        ['Shift+N', 'The question slide before'],
+        ['R', 'Reveal the answer (again: hide it)'],
+        ['1 – 9, then Enter', 'The winner (Amount 0: no points)'],
+      ],
+    },
+    {
       title: 'RPG',
       keys: [
         ['N', 'Title card: start the round'],

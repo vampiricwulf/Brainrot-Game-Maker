@@ -366,12 +366,12 @@
     const place = (round && isBoard(round) && boardPlace(game, round)) || line.place;
     // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels & Dice: it flashes there.
     if (place?.tab === 'stats' || place?.tab === 'tools') return void goTo(place);
-    if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world')) return;
+    if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world' && place.tab !== 'tiebreaker')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
-    // A Final's side or a Slides round's slide: its quick text box (the one with nothing in it).
-    if (part?.kind === 'final' || part?.kind === 'slides') {
-      const field = part.kind === 'final' && part.side === 'a' ? 'a' : 'q';
+    // A Final's side, a Slides round's slide or the tiebreaker's side: its quick text box (the one with nothing in it).
+    if (part?.kind === 'final' || part?.kind === 'slides' || place.tab === 'tiebreaker') {
+      const field = (part?.kind === 'final' && part.side === 'a') || (place.tab === 'tiebreaker' && place.side === 'a') ? 'a' : 'q';
       return void tick()
         .then(tick)
         .then(() => document.querySelector<HTMLElement>(`main [data-field="${field}"]`)?.focus());
