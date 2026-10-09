@@ -1081,7 +1081,8 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
 
 /** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
 function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string {
-  if (!a.text) return '';
+  // Seated after the answers began: one is in, but this phone isn't shown it (as for wagers).
+  if (!a.text) return a.hidden ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.` : '';
   const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
   if (typed && typed !== a.text) return `Not sent yet: tap Change answer to send it. What the host has: “${a.text}”`;
   return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host shows the answer.`;
@@ -1102,6 +1103,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   }
   const state = answerState(a, team);
   $('answer-state').textContent = answerSending ? 'Sending…' : state;
+  // Green for what's in and shown; plain for "not shown here".
+  $('answer-state').classList.toggle('plain-note', !!a.hidden && !a.text);
   $('answer-err').textContent = answerErr;
   $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
   const hostGone = renderFoot(v, sym);

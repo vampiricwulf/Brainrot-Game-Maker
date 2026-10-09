@@ -1882,6 +1882,62 @@ describe('answers (everyone answers on their phone)', () => {
     expect(g.pa.last('view')!.view.answer).toMatchObject({ id: 'clue1', open: false, text: 'Doge' });
     expect(g.hostAll('answer')).toHaveLength(1);
   });
+
+  it("teams: someone who joins a team after its answer was sent is told one is in, not what it says", () => {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    g.send({ t: 'state', state: st() });
+    const join = (conn: string, seatId: string, name: string) => {
+      const p = g.phone(conn);
+      p.send({ t: 'join', seatId, name });
+      return p;
+    };
+    const ann = join('ann', 'a', 'Ann');
+    const al = join('al', 'a', 'Al');
+    g.send({ t: 'state', state: st({ answers: ask() }) });
+    g.t.now += 1000;
+    ann.send({ t: 'answer', id: 'clue1', text: 'George Washington' });
+    expect(al.last('view')!.view.answer).toMatchObject({ text: 'George Washington', by: 'Ann' });
+    g.t.now += 1000;
+    // Bea from Blue changes her name and joins Red to read their answer: she sees one is in, never the words.
+    const spy = join('spy', 'a', 'Bea');
+    expect(spy.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: true, hidden: true });
+    expect(said(spy.msgs())).not.toContain('Washington');
+    // Nor what Ann sends after Bea joined (it's still a teammate's, not hers).
+    g.t.now += 1000;
+    ann.send({ t: 'answer', id: 'clue1', text: 'John Adams' });
+    expect(al.last('view')!.view.answer).toMatchObject({ text: 'John Adams' });
+    expect(said(spy.msgs())).not.toContain('Adams');
+    // What the newcomer sends herself, she sees (and so does the team).
+    spy.send({ t: 'answer', id: 'clue1', text: 'Lincoln' });
+    expect(spy.last('view')!.view.answer).toMatchObject({ text: 'Lincoln', byYou: true });
+    expect(spy.last('view')!.view.answer!.hidden).toBeUndefined();
+    expect(ann.last('view')!.view.answer).toMatchObject({ text: 'Lincoln', by: 'Bea' });
+    // A new clue counts her in.
+    g.send({ t: 'state', state: st({ answers: ask({ id: 'clue2' }) }) });
+    g.t.now += 1000;
+    ann.send({ t: 'answer', id: 'clue2', text: 'Grant' });
+    expect(spy.last('view')!.view.answer).toMatchObject({ id: 'clue2', text: 'Grant', by: 'Ann' });
+  });
+
+  it("a seat taken after its answer was sent doesn't show it", () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Shiba Inu' });
+    g.pa.send({ t: 'leave' });
+    g.t.now += 1000;
+    const other = g.phone('other');
+    other.send({ t: 'join', seatId: 'a' });
+    expect(other.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: true, hidden: true });
+    expect(said(other.msgs())).not.toContain('Shiba');
+    // Coming back with the seat's token (a reload) is the same claim: nothing changes.
+    const token = other.last('joined')!.token;
+    const again = g.phone('again');
+    again.send({ t: 'join', seatId: 'a', token });
+    expect(again.last('view')!.view.answer).toMatchObject({ hidden: true });
+    expect(said(again.msgs())).not.toContain('Shiba');
+  });
 });
 
 describe('wagers', () => {

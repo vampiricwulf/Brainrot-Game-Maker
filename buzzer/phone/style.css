@@ -316,6 +316,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 #answer-form { width: 100%; max-width: 420px; gap: 10px; }
 #answer-in { resize: none; }
 #answer-state { color: #6fdc8c; font-weight: 600; }
+#answer-state.plain-note { color: var(--muted); font-weight: 400; }
 #wager-head { font-size: 22px; margin: 0; text-align: center; }
 #wager-in { text-align: center; font-size: 34px; font-weight: 800; }
 #wager-state { color: #6fdc8c; font-weight: 600; }

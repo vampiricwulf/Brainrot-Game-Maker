@@ -52,7 +52,8 @@
  * One sent while the host is away reaches it when it is back (unless it already took it: WagerSeat.got). A phone that
  * took its seat (teams: joined its team) after the round began sees no amount it didn't send itself: not the host's,
  * not a teammate's (whoever has the code could otherwise tap a free seat or join a rival team to read theirs). It is
- * told one is in, and can still send its own.
+ * told one is in, and can still send its own. The same for the words sent on a ✍ clue (HostState.answers): a phone
+ * seated (teams: on the team) after the answers began sees only what it sent itself.
  *
  * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
  * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and for FLOOD_BLOCK_MS a
@@ -206,8 +207,8 @@ export interface RoomSaved {
   clueLeft?: Record<string, string>;
   /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat; at: when the round began. */
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
-  /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat. */
-  answers?: { id: string; seats: Record<string, SentAnswer> };
+  /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat; at: when the round began. */
+  answers?: { id: string; seats: Record<string, SentAnswer>; at?: number };
   /** Seat id → when its token was handed out (a phone coming back with it keeps the time; see Wagers above). */
   seatedAt?: Record<string, number>;
   /**
@@ -503,7 +504,7 @@ export class Room {
     const ans = next.answers;
     if (!ans) {
       /* kept */
-    } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {} };
+    } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
@@ -1184,9 +1185,10 @@ export class Room {
     // (Line breaks are spaces: "George⏎Washington" stays two words.)
     const words = typeof text === 'string' ? cleanName(text.replace(/[\t\r\n]+/g, ' '), ANSWER_MAX) : '';
     if (!words) return no('bad');
-    const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {} });
+    const now = this.deps.now();
+    const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {}, at: now });
     const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
-    const a: SentAnswer = { text: words, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
+    const a: SentAnswer = { text: words, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, at: now, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
     sent.seats[p.seatId] = a;
     this.deps.toPhone(p.conn, { t: 'answered', id, ok: true });
     this.tellAnswer(id, p.seatId, a);
@@ -1387,8 +1389,14 @@ export class Room {
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
           !out && st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
-        const typed = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers.seats[p.seatId] : undefined;
-        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
+        const asked = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers : undefined;
+        let typed = asked?.seats[p.seatId];
+        // The same for answers: seated (teams: on the team) since the answers began, only what it sent itself.
+        const ansLate = asked?.at !== undefined && since !== undefined && since > asked.at;
+        const ownAnswer = m ? typed?.member === p.member : typed?.at !== undefined && typed.at >= (since ?? 0);
+        const ansHidden = ansLate && !!typed && !ownAnswer;
+        if (ansHidden) typed = undefined;
+        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
         if (out && view.you) view.you = { ...view.you, lockedOut: true, out: true };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
