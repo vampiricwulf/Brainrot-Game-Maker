@@ -304,6 +304,20 @@ try {
   await ann.locator('main').getByText('Your seat moved to another tab or phone. Tap your name to take it back here.').waitFor();
   const annSeat = ann.getByRole('button', { name: /^Ann/ });
   assert(await annSeat.isEnabled(), 'the seat moved to another tab: Ann’s own seat is still tappable here');
+  // The first tab's connection blips: back, it doesn't take the seat by itself (only a tap does), so the tab in use
+  // keeps it. (The room hears a score change after the first tab is back: the second tab still shows Ann's buzzer.)
+  const annTap = taps.get(ann);
+  const annRoutes = annTap.routes.length;
+  annTap.drop();
+  for (let i = 0; i < 80 && annTap.routes.length === annRoutes; i++) await sleep(250);
+  await ann.locator('#overlay').waitFor({ state: 'hidden' });
+  setState({ scores: { a: 250, b: 400 } });
+  await ann2.locator('#me').getByText('250').waitFor();
+  assert(
+    annTap.routes.length > annRoutes && (await big(ann2).innerText()) === 'Ann' && (await ann.getByRole('heading', { name: 'Tap your name' }).isVisible()),
+    'after a dropped connection the first tab stays on the seat list: the tab in use keeps Ann’s seat',
+  );
+  setState({ scores: { a: 200, b: 400 } });
   await annSeat.click();
   await big(ann).getByText('Ann').waitFor();
   assert(true, 'and tapping it takes it back here (with the token: no "taken")');
@@ -318,11 +332,12 @@ try {
   await bob.getByRole('button', { name: 'Pick a seat' }).click();
   await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isEnabled(), "kicked: Bob's seat is free again");
-  // Even a phone that missed the kick (offline) can't come back with the old token.
+  // Even a phone that missed the kick (offline) can't come back with the old token: it's told the host took it off the
+  // seat straight away (not "Tap your name again", which would be refused too).
   await bob.evaluate(([k, v]) => localStorage.setItem(k, v), [key, bobSaved]);
   await bob.reload();
-  await bob.locator('main').getByText('Your seat was given back. Tap your name again.').waitFor();
-  assert(await bob.getByRole('button', { name: 'Bob' }).isEnabled(), 'the revoked token is refused; Bob picks again');
+  await bob.locator('#seats-note').getByText('The host took you off that seat').waitFor();
+  assert((await bob.evaluate((k) => localStorage.getItem(k), key)) === null, 'the revoked token is refused, saying the host took Bob off that seat (and forgotten)');
   // A kicked phone can't just tap the same name again (a troll with the code from the stream), even after a reload.
   await bob.getByRole('button', { name: 'Bob' }).click();
   await bob.locator('#seats-note').getByText('The host took you off that seat').waitFor();

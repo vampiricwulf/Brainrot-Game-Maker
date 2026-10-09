@@ -56,6 +56,12 @@
     remote.phones.filter((p) => p.seatId === id && p.member).sort((a, b) => Number(b.connected) - Number(a.connected));
   const waiting = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)));
   const full = $derived(session.players.length >= max);
+  /**
+   * The room can't be reached right now: nothing these buttons say would get to it (they're greyed out), and its last
+   * list of phones is stale (no ✔ joined from it).
+   */
+  const down = $derived(remote.status !== 'online');
+  const downTitle = 'The buzzer room isn’t reachable right now';
   /** Phones open on the join screen that haven't picked a name (teams: a team) yet. */
   const picking = $derived(remote.phones.filter((p) => !p.seatId && !p.pendingName && p.connected).length);
 </script>
@@ -74,18 +80,19 @@
           <span class="away" data-phone-offline={p.id}>📵 offline {awayFor(at, now)}</span>
         {/if}
         {#if ms.length}
-          <button class="ghost small x" onclick={() => onkick(p.id)} aria-label="Take everyone off {p.name}" title="Take everyone off this team: those phones can't join it again for 2 minutes">✕</button>
+          <button class="ghost small x" onclick={() => onkick(p.id)} disabled={down} aria-label="Take everyone off {p.name}" title={down ? downTitle : "Take everyone off this team: those phones can't join it again for 2 minutes"}>✕</button>
         {/if}
       </li>
       {#each ms as m (m.member)}
         <li class="member" style:--c={p.color}>
           <span class="name" dir="auto">{m.name}</span>
-          {#if m.connected}<span class="ok">✔ joined</span>{:else}<span class="away">… phone away</span>{/if}
+          {#if down}<span class="muted">room out of reach</span>{:else if m.connected}<span class="ok">✔ joined</span>{:else}<span class="away">… phone away</span>{/if}
           {#if onmove && session.players.length > 1}
             <select
               class="small move"
               aria-label="Move {m.name} to another team"
               value=""
+              disabled={down}
               onchange={(e) => {
                 const to = e.currentTarget.value;
                 e.currentTarget.value = '';
@@ -99,7 +106,7 @@
             </select>
           {/if}
           {#if onkickmember}
-            <button class="ghost small x" onclick={() => m.member && onkickmember(p.id, m.member, m.name ?? '')} aria-label="Take {m.name} off {p.name}" title="Take them off the team: that phone can't join it again for 2 minutes">✕</button>
+            <button class="ghost small x" onclick={() => m.member && onkickmember(p.id, m.member, m.name ?? '')} disabled={down} aria-label="Take {m.name} off {p.name}" title={down ? downTitle : "Take them off the team: that phone can't join it again for 2 minutes"}>✕</button>
           {/if}
         </li>
       {/each}
@@ -107,7 +114,9 @@
     <li style:--c={p.color}>
       <span class="dot" aria-hidden="true"></span>
       <span class="name" dir="auto">{p.name}</span>
-      {#if ph?.connected}
+      {#if ph && down}
+        <span class="muted">phone: room out of reach</span>
+      {:else if ph?.connected}
         <span class="ok">✔ joined</span>
       {:else if ph}
         {@const at = phoneAwaySince(p.id)}
@@ -121,11 +130,12 @@
             class="small free"
             class:ghost={ph.connected}
             onclick={() => onkick(p.id, true)}
+            disabled={down}
             aria-label="Free {p.name}’s seat (moved phone)"
-            title="They're on a new phone or browser: free the seat so they can tap their name there. Blocks nobody."
+            title={down ? downTitle : "They're on a new phone or browser: free the seat so they can tap their name there. Blocks nobody."}
           >Free seat</button>
         {/if}
-        <button class="ghost small kick" onclick={() => onkick(p.id)} aria-label="Take {p.name}’s seat back from their phone" title="Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)">✕ Kick</button>
+        <button class="ghost small kick" onclick={() => onkick(p.id)} disabled={down} aria-label="Take {p.name}’s seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>✕ Kick</button>
       {/if}
     </li>
     {/if}
@@ -156,8 +166,8 @@
     {#each waiting as w (w.conn)}
       <div class="ask">
         <span>📱 <b>{w.pendingName}</b> wants to join</span>
-        <button class="good small" disabled={full} title={full ? 'The game is full (⚖ Game rules › Most players)' : 'Add them as a new player'} onclick={() => onadd(w.conn, w.pendingName ?? '')}>✔ Add</button>
-        <button class="small" onclick={() => onreject(w.conn)} aria-label="Turn {w.pendingName} away" title="Turn them away">✕</button>
+        <button class="good small" disabled={full || down} title={down ? downTitle : full ? 'The game is full (⚖ Game rules › Most players)' : 'Add them as a new player'} onclick={() => onadd(w.conn, w.pendingName ?? '')}>✔ Add</button>
+        <button class="small" onclick={() => onreject(w.conn)} disabled={down} aria-label="Turn {w.pendingName} away" title={down ? downTitle : 'Turn them away'}>✕</button>
       </div>
     {/each}
   </div>

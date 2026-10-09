@@ -20,7 +20,7 @@
     type SavedPlay,
     type SavedRoom,
   } from './lib/persist';
-  import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
+  import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, remote, sendHostState } from './lib/remote.svelte';
   import { setupState } from './lib/buzz';
   import { joinUrl } from './lib/buzzproto';
   import { openPack } from './lib/pack';
@@ -245,6 +245,18 @@
     await clearRoom();
     if (!quiet) toast('Buzzer room closed');
   }
+
+  // A room kept in the editor that ended meanwhile (closed elsewhere, or unused for hours while the app was closed) is
+  // forgotten: the bar doesn't say it's open, and ▶ Play or Resume don't go back into it. Not one another window took
+  // (4000): that one is still open, and closing it here would end it for that window too.
+  $effect(() => {
+    const r = kept.room;
+    if (!r || remote.status !== 'error' || remote.code !== r.remote.code || (remote.closedCode !== 4004 && remote.closedCode !== 4003)) return;
+    untrack(() => {
+      toast(`Buzzer room ${r.remote.code} has ended: ▶ Play starts a new one`, 6000);
+      void closeKeptRoom(true);
+    });
+  });
 
   /**
    * Another tab takes over editing (or, in a player-only file, playing): write the last changes, then leave the
@@ -667,7 +679,11 @@
     const saved = app.resumable;
     if (saved && saved.session.phase !== 'end' && !(await ask(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`, { ok: 'Discard', cancel: 'Keep', danger: true })))
       return;
+    // Its own room goes with it (the phones are told the game is over), as with Exit › Discard & leave. A room kept open
+    // in the editor belongs to the stream and stays (its bar has ✕ Close the room).
+    const room = saved?.session.remote;
     app.resumable = null;
+    if (room && kept.room?.remote.code !== room.code) endRoom(room);
     await clearPlay();
     toast('Saved game discarded');
   }

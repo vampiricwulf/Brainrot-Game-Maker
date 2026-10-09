@@ -125,7 +125,8 @@
   {/if}
   {#if !base || !settings.buzzer}
     <!-- Nothing to start until it's on. -->
-  {:else if !remote.code || remote.status === 'off'}
+  {:else if !remote.code || remote.status === 'off' || remote.status === 'error'}
+    <!-- (A room that ended or was lost: why, and a new one. Its code, link and QR code would only share a dead room.) -->
     <p class="muted small">
       Start the room, then share the link or the code on stream. The room runs online: this computer and the players’
       phones need the internet (any network: they don’t have to be on yours).
@@ -158,9 +159,6 @@
           {:else}
             <span class="muted small" role="status">{joined} of {session.players.length} players joined</span>
           {/if}
-        {:else if remote.status === 'error'}
-          <span class="warn small" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</span>
-          <button class="small" onclick={onstart}>Start a new room</button>
         {:else}
           <span class="warn small" role="status">⚠ Reconnecting to the buzzer room…</span>
         {/if}

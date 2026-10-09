@@ -372,6 +372,31 @@ describe('seats', () => {
     expect(back.last('denied')?.reason).toBe('blocked');
   });
 
+  it('a phone kicked while it is away, back with its old token, hears it was kicked (not "tap your name again")', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    const bob = g.phone('b1', '203.0.113.5');
+    bob.send({ t: 'join', seatId: 'b', device: 'dev-b' });
+    const token = bob.last('joined')!.token;
+    g.room.phoneClose('b1');
+    g.send({ t: 'kick', seatId: 'b' });
+    const back = g.phone('b2', '203.0.113.5');
+    back.send({ t: 'join', seatId: 'b', token, device: 'dev-b' });
+    expect(back.last('denied')?.reason).toBe('blocked');
+    // Freed instead (no block): the old token is only out of date, and a tap on the name takes the seat.
+    const cat = g.phone('c1', '198.51.100.9');
+    cat.send({ t: 'join', seatId: 'c', device: 'dev-c' });
+    const catToken = cat.last('joined')!.token;
+    g.room.phoneClose('c1');
+    g.send({ t: 'kick', seatId: 'c', block: false });
+    const catBack = g.phone('c2', '198.51.100.9');
+    catBack.send({ t: 'join', seatId: 'c', token: catToken, device: 'dev-c' });
+    expect(catBack.last('denied')?.reason).toBe('bad-token');
+    catBack.send({ t: 'join', seatId: 'c', device: 'dev-c' });
+    expect(catBack.last('joined')?.seatId).toBe('c');
+  });
+
   it('a kick keeps the address off that seat too: a new device id doesn\'t get round it', () => {
     const g = setup();
     g.room.hostOpen();
@@ -1679,6 +1704,12 @@ describe('teams', () => {
     expect(g.room.saved.members![id]).toBeUndefined();
     g.al.send({ t: 'join', seatId: 'a', name: 'Al', device: 'dev-al' });
     expect(g.al.last('denied')?.reason).toBe('blocked');
+    // That browser back with its old token (a reload, a phone that missed the kick): told it was taken off (not "pick
+    // your team again").
+    const alToken = g.al.last('joined')!.token;
+    const alBack = g.phone('al2');
+    alBack.send({ t: 'join', seatId: 'a', token: alToken, device: 'dev-al' });
+    expect(alBack.last('denied')?.reason).toBe('blocked');
     g.al.send({ t: 'join', seatId: 'b', name: 'Al', device: 'dev-al' });
     expect(g.al.last('joined')).toMatchObject({ seatId: 'b' });
     // A member id that isn't on that team does nothing.

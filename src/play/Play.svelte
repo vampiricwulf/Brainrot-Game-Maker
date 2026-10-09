@@ -1093,8 +1093,13 @@
     if (b.rank === 1 && (b.armId !== buzz.armId || !buzzPlayer(b.seatId, b.by))) resendHostState();
   }
 
+  /** What the phones list's buttons say when the room can't be told (its connection is down): nothing was done. */
+  const roomOffline = () => toast('The buzzer room isn’t reachable right now: try again once it’s back', 4000);
+
   /** Someone asked to join from their phone: a new player (an undoable step mid-game), then their phone gets the seat. */
   function addPhonePlayer(conn: string, name: string): void {
+    // (Not added at all: their phone would never hear it, and wait to be let in for good.)
+    if (remote.status !== 'online') return roomOffline();
     if (session.players.length >= game.settings.maxPlayers) return toast(`The game is full: ${game.settings.maxPlayers} players at most (⚖ Game rules › Most players)`);
     let who = clip(name.trim(), SEAT_NAME_MAX) || `Player ${session.players.length + 1}`;
     // Never a second "Ann": the new one is "Ann 2".
@@ -1114,20 +1119,25 @@
   }
 
   function kickPhone(seatId: string, free = false): void {
-    if (!kickSeat(seatId, free)) return;
-    if (free) toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
+    if (!kickSeat(seatId, free)) return roomOffline();
+    // 🔒 Locked seats take no tap on a name, a freed one's too: the lock has to come off for them to get back in.
+    if (free && session.remote?.locked)
+      toast(`${playerName(session, seatId)}'s seat is free, but 🔒 seats are locked: untick Lock seats so they can tap their name on their new phone (lock them again once they're in)`, 6000);
+    else if (free) toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
     else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
     else toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
   }
 
   /** Teams: one person off their team (their phone can't join it again for 2 minutes; another team it can). */
   function kickTeamMember(seatId: string, member: string, name: string): void {
-    if (kickMember(seatId, member)) toast(`${name} is off ${playerName(session, seatId)} (that phone can't join it again for 2 minutes)`, 4000);
+    if (!kickMember(seatId, member)) return roomOffline();
+    toast(`${name} is off ${playerName(session, seatId)} (that phone can't join it again for 2 minutes)`, 4000);
   }
 
   /** Teams: put one person on another team. */
   function moveTeamMember(member: string, seatId: string, name: string): void {
-    if (moveMember(member, seatId)) toast(`${name} moved to ${playerName(session, seatId)}`);
+    if (!moveMember(member, seatId)) return roomOffline();
+    toast(`${name} moved to ${playerName(session, seatId)}`);
   }
 
   // Whatever the phones need to know (the players, scores, the buzzers, the clue's words) goes to the room as it changes.
@@ -2053,7 +2063,10 @@
       const m = p.avatar && !game.media.some((x) => x.id === p.avatar) ? app.game.media.find((x) => x.id === p.avatar) : undefined;
       if (m) game.media.push($state.snapshot(m));
     }
-    // This game now replaces any older saved one (autosave starts once pre-game is over), its room too.
+    // This game now replaces any older saved one (autosave starts once pre-game is over), its room too: closed (its
+    // phones are told the game is over), unless this game took it over (Keep & leave, then ▶ Play).
+    const old = app.resumable?.session.remote;
+    if (old && old.code !== session.remote?.code) endRoom(old);
     app.resumable = null;
     void clearRoom();
     app.pregame = false;
@@ -2079,6 +2092,10 @@
   /** Buzzer mode is on and the room is up: its code, and the players whose phones are in. */
   const roomUp = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const phonesIn = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
+  /** Who has joined, as the Start bar and the checklist say it: no count while the room is out of reach (its list is stale). */
+  const joinedText = $derived(
+    remote.status === 'online' ? `${phonesIn} of ${session.players.length} joined` : remote.status === 'connecting' ? 'connecting…' : '⚠ reconnecting to the buzzer room…',
+  );
   /** Start was pressed with Buzzer mode on but no room: the bar asks (start it first, or play without phones). */
   let askNoRoom = $state(false);
   $effect(() => {
@@ -3125,8 +3142,8 @@
           />
         {:else if roomUp}
           <!-- The code stays in sight above the fold, however far the 📱 card is scrolled. -->
-          <span class="small room-note" role="status">
-            📱 Room <b>{remote.code}</b> · {phonesIn} of {session.players.length} joined
+          <span class="small room-note" class:warn={remote.status !== 'online'} role="status">
+            📱 Room <b>{remote.code}</b> · {joinedText}
           </span>
         {/if}
         {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
@@ -3444,9 +3461,10 @@
         {:else}🖥 Single window: viewers see this window. Press H in the game to hide the controls.{/if}
       </li>
       {#if phonesOn}
-        <li class:done={roomUp && phonesIn > 0}>
+        <li class:done={roomUp && remote.status === 'online' && phonesIn > 0}>
           {#if !roomUp}📱 Buzzer mode is on: <button class="link-btn" onclick={startRoomHere}>start the room</button> so players can join.
-          {:else}📱 Room {remote.code} open: {phonesIn} of {session.players.length} joined.{/if}
+          {:else if remote.status !== 'online'}📱 Room {remote.code}: {joinedText}
+          {:else}📱 Room {remote.code} open: {joinedText}.{/if}
         </li>
       {/if}
       {#if wantAudience}
@@ -3525,6 +3543,9 @@
   }
   .room-note {
     color: var(--good, var(--text));
+  }
+  .room-note.warn {
+    color: var(--warn);
   }
   .live-check ul {
     margin: 0;

@@ -931,8 +931,9 @@ export class Room {
     if (p.seatId === seatId) return; // already there
     const held = this.s.tokens[seatId];
     if (token !== undefined) {
-      // A token names one claim of one seat: a kicked or freed seat's old token doesn't take it back.
-      if (held !== token) return deny(held ? 'taken' : 'bad-token');
+      // A token names one claim of one seat: a kicked or freed seat's old token doesn't take it back. (A phone kicked
+      // while it was away hears it was kicked, not "tap your name again": that would be refused too.)
+      if (held !== token) return deny(held ? 'taken' : this.blockedFrom(p, seatId) ? 'blocked' : 'bad-token');
       // Coming back: the socket that held it (another tab, a dead connection) is detached.
       for (const o of this.phones.values()) if (o !== p && o.seatId === seatId) {
         o.seatId = null;
@@ -953,13 +954,18 @@ export class Room {
     }
     if (held) return deny('taken');
     if (this.s.state.locked) return deny('locked');
-    const block = this.s.blocks?.[seatId];
-    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device))));
-    if (kicked && block.until > this.deps.now()) return deny('blocked');
+    if (this.blockedFrom(p, seatId)) return deny('blocked');
     if (this.turnedAway(p)) return;
     if (p.seatId) this.freeSeat(p.seatId);
     delete p.pendingName;
     this.seat(p, seatId);
+  }
+
+  /** The host kicked this phone off seat (teams: team) `seatId` a moment ago: it can't take it again yet. */
+  private blockedFrom(p: Phone, seatId: string): boolean {
+    const block = this.s.blocks?.[seatId];
+    if (!block || block.until <= this.deps.now()) return false;
+    return block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device)));
   }
 
   /**
@@ -973,7 +979,7 @@ export class Room {
     const members = (this.s.members ??= {});
     if (token !== undefined) {
       const id = Object.keys(members).find((k) => members[k].token === token);
-      if (!id) return deny('bad-token');
+      if (!id) return deny(this.blockedFrom(p, seatId) ? 'blocked' : 'bad-token');
       if (p.member === id) return;
       for (const o of this.phones.values()) if (o !== p && o.member === id) this.unseat(o);
       if (p.member) this.dropMember(p.member);
@@ -986,9 +992,7 @@ export class Room {
     if (!name) return deny('need-name');
     if (p.member && members[p.member]?.seatId === seatId && members[p.member].name === name) return; // already there
     if (st.locked) return deny('locked');
-    const block = this.s.blocks?.[seatId];
-    const kicked = block && (block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device))));
-    if (kicked && block.until > this.deps.now()) return deny('blocked');
+    if (this.blockedFrom(p, seatId)) return deny('blocked');
     const key = (a: string) => a.toLocaleLowerCase().replace(/\s+/g, '');
     const here = (id: string) => [...this.phones.values()].some((o) => o.member === id);
     const same = Object.keys(members).find((k) => k !== p.member && key(members[k].name) === key(name));
