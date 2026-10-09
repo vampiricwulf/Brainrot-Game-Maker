@@ -94,7 +94,7 @@
       title: 'RPG',
       keys: [
         ['N', 'Title card: start the round'],
-        ['← ↑ → ↓', 'Move the party one screen that way (while a video or sound is on screen they seek it instead: use the numpad or Alt+arrows)'],
+        ['← ↑ → ↓', 'Move the party one screen that way (not while a video or sound is on screen: ← / → seek it then, so use the numpad or Alt+arrows)'],
         ['Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],
         ['Alt+Q W E A D Z X C / Alt+arrows', 'Move the party (laptop keys)'],
         ['J', 'The full map: jump the party (or some players) to any screen'],

@@ -2,6 +2,7 @@
 // Everything here is made fresh each time (new ids), and uses no media files.
 import { newBoardGameRound, newBoardSpace, setNameShown, SPACE_COLORS } from './boardgame';
 import { PLAYER_PALETTE } from './colors';
+import { describeAction } from './actions';
 import {
   newFinalRound,
   newId,
@@ -155,7 +156,9 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
   boss.x = 760;
   boss.y = 420;
   lair.slide.elements.push(boss, chest);
-  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power). Bought a Sword? Use it first (its owner's sheet › Use: +4 ${power.name}). Beaten: press Reveal for the treasure and +500.`;
+  // (A Sword the game already had may do something else when used, or nothing: the note says what it does, if anything.)
+  const swordTip = sword.onUse?.length ? ` Bought a Sword? Use it first (its owner's sheet › Use: ${sword.onUse.map((a) => describeAction(game, a)).join(', ')}).` : '';
+  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power).${swordTip} Beaten: press Reveal for the treasure and +500.`;
   game.worlds = [...(game.worlds ?? []), world];
   return { id: newId(), name, mode: 'rpg', world: world.id, start: { map: world.maps[0].id, screen: village.id } };
 }

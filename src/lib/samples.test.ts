@@ -7,6 +7,7 @@ import { movePlayer, nameShown, spaceKindOf, startSpace, walk } from './boardgam
 import { runAction } from './actions';
 import { newLive } from './live';
 import { statNumber } from './toolset';
+import { presetStat } from './rpgpresets';
 
 describe('the sample game', () => {
   it('is a complete game of every mode, with nothing to fix', () => {
@@ -91,7 +92,25 @@ describe('round templates', () => {
     const sword = game.items!.find((x) => x.name === 'Sword')!;
     for (const a of sword.onUse!) runAction({ game, session, live: newLive(), selected: [], chosen: ['a'] }, a);
     expect(statNumber(game, session, 'a', power)).toBeGreaterThan(boss);
-    expect(lair.hostNotes).toMatch(/Sword/);
+    expect(lair.hostNotes).toMatch(/Sword\? Use it first .*Use: Power \+4\)/);
+  });
+
+  it('the Mini quest keeps a Sword the game already had, and its note only promises what that Sword’s Use does', () => {
+    const plain = newGame();
+    plain.items = [{ id: 'own', name: 'Sword', stackable: false, description: 'Just for show.' }];
+    const r = TEMPLATES.find((t) => t.label === 'Mini quest')!.make(plain);
+    if (!isRpg(r)) throw new Error('not an RPG');
+    expect(plain.items.filter((x) => x.name === 'Sword')).toEqual([{ id: 'own', name: 'Sword', stackable: false, description: 'Just for show.' }]);
+    expect(plain.shops![0].stock.some((s) => s.item === 'own')).toBe(true);
+    // No Use button on its sheet: no Sword tip in the lair's note.
+    expect(plain.worlds![0].maps[0].screens[2].hostNotes).not.toMatch(/Sword/);
+    // One that does something: the note says what.
+    const healing = newGame();
+    presetStat(healing, 'HP');
+    const hp = healing.statFields!.find((f) => f.name === 'HP')!;
+    healing.items = [{ id: 'own', name: 'Sword', stackable: false, onUse: [{ id: 'u', do: 'stat', field: hp.id, op: 'add', amount: 2, who: 'ask' }] }];
+    TEMPLATES.find((t) => t.label === 'Mini quest')!.make(healing);
+    expect(healing.worlds![0].maps[0].screens[2].hostNotes).toMatch(/Use: HP \+2\)/);
   });
 
   it('the 20-space loop goes round, and its “back 3” spaces send players back', () => {
