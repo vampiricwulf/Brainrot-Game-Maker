@@ -624,6 +624,9 @@ try {
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.locator('.resume-card').waitFor();
   await card.getByLabel(/Buzzer mode/).uncheck();
+  // (The players added before the reload are the game's own only once the game itself is saved, which a slow machine
+  // may not have done by then: a fresh game needs some to start.)
+  if (!(await page.locator('.pregame input.name').count())) await addPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   assert(true, 'so does starting a fresh game instead of resuming it (Start game replaces the kept game, its room too)');
