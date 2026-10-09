@@ -13,7 +13,7 @@
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, forViewers, wagerFromPhone, coWinnersHold,
   } from '../lib/session';
-  import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
@@ -440,6 +440,16 @@
       }
     });
   });
+  // Under the cover, a countdown started meanwhile (a tile opened, the Final's question, T) waits too, and goes on after it.
+  $effect(() => {
+    const t = app.live.timer;
+    if (!app.live.cover || !t || t.expired || t.startedAt === null) return;
+    untrack(() => {
+      if (!coverHeld) return;
+      toggleTimer(app.live);
+      coverHeld.timer = app.live.timer;
+    });
+  });
   // "Ignore the limits" is for the wagers being entered now: the next Final starts with them off again (the default).
   $effect(() => {
     void session.phase;
@@ -680,7 +690,14 @@
       if (missed.length) events.push(...logZero(session, missed, reasonNow(), info?.clue.id, false, batch));
     }
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
-    if (events.length && sign > 0) stopTimer('right');
+    // (A ✍ clue: one right answer doesn't end the others' time; showing the answer does.)
+    if (events.length && sign > 0 && !everyone) {
+      // The countdown it stops, for an Undo of this award while the clue is still open.
+      const t = app.live.timer;
+      if (t && !t.expired && timerRemaining(t) > 0 && stopsTimer(session.phase, 'right'))
+        timerSteps.set(batch, { clue: info?.clue.id, timer: $state.snapshot(t) as TimerState, at: Date.now() });
+      stopTimer('right');
+    }
     // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out, and the next in the buzz order
     // answers (with nobody left in it, the buzzers open for the rest).
     const b = app.live.buzz;
@@ -752,6 +769,8 @@
   );
   /** Buzzer mode, while a clue is open (a Daily Double has its one player; a ✍ clue has everyone answer): players buzz in. */
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
+  /** A wheel or dice tile's own tool is still up: its question isn't on screen yet, so nobody buzzes and phones get no text. */
+  const toolFirst = $derived(!!info && tileToolUp(app.live, info.clue) && !session.revealed);
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
   const playerIds = () => session.players.map((p) => p.id);
@@ -767,6 +786,25 @@
     roomQueue = null;
     setBuzz(to);
     selected = to.phase === 'answering' && to.answering ? [to.answering] : [];
+  }
+
+  /** Right answers that stopped a running countdown (by their step): an Undo puts it back with the time it had left. */
+  const timerSteps = new Map<string, { clue: string | undefined; timer: TimerState; at: number }>();
+  /** A right answer undone or redone while its clue is still open (the answer not up): its countdown comes back, or stops again. */
+  function timerFollow(events: { batchId?: string; id: string }[], undone: boolean): void {
+    const key = events.length ? (events[0].batchId ?? events[0].id) : '';
+    const s = timerSteps.get(key);
+    if (!s || session.phase !== 'clue' || s.clue !== info?.clue.id || session.revealed) return;
+    if (undone) {
+      // (Not over a countdown the host started meanwhile.)
+      if (!app.live.timer) app.live.timer = timerResumed(s.timer, s.at);
+      return;
+    }
+    // Redone: it stops again, kept as it is now for the next Undo (none running now: nothing to bring back).
+    const t = app.live.timer;
+    if (t && !t.expired && timerRemaining(t) > 0) timerSteps.set(key, { ...s, timer: $state.snapshot(t) as TimerState, at: Date.now() });
+    else timerSteps.delete(key);
+    stopTimer('right');
   }
 
   function setBuzz(b: BuzzState): void {
@@ -788,9 +826,10 @@
 
   // The buzzers follow the clue: a tile opening (or a resumed game opening on one) starts them afresh, open at once or
   // closed until the host opens them (📱 Phone buzzers); leaving it (back to the board, a Daily Double) puts them away.
+  // On a wheel or dice tile they start once its own tool closes (its question comes up then).
   let buzzClue: string | null = null;
   $effect(() => {
-    const key = buzzing ? clueKey(session.currentClue) : null;
+    const key = buzzing && !toolFirst ? clueKey(session.currentClue) : null;
     untrack(() => {
       if (key === buzzClue && app.live.buzz) return;
       buzzClue = key;
@@ -817,7 +856,8 @@
   $effect(() => {
     const one = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
     const none = !selected.length;
-    const on = buzzing;
+    // (A player picked while a wheel or dice tile's tool is up answers once it closes.)
+    const on = buzzing && !toolFirst;
     untrack(() => {
       const b = app.live.buzz;
       if (!on) {
@@ -852,6 +892,7 @@
   /** U or 🔔 Open the buzzers: everyone who hasn't missed this clue may buzz. While someone is answering: everyone (0). */
   function openBuzzers(all = false): void {
     if (!buzzing) return;
+    if (toolFirst) return toast(`Close the ${info?.clue.type === 'dice' ? 'dice' : 'wheel'} first: the question isn’t on screen yet`);
     if (session.revealed) return toast('The answer is showing: the buzzers stay closed');
     if (all || buzz.phase === 'answering') {
       if (selected.length || buzz.lockedOut.length) toast('Buzzers open for everyone');
@@ -1263,6 +1304,7 @@
     amount = c?.value ?? null;
     app.live.timer = null;
     app.live.overlay = null;
+    delete app.live.toolTile;
     // The round intro's music (a whole theme song, maybe) stops once a tile opens, so it doesn't play under the clues.
     playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen', !!introNonce);
     introNonce = undefined;
@@ -1277,6 +1319,8 @@
       if (d) openDice(app.live, d);
       else toast('This tile has no dice chosen');
     } else autoTimer();
+    // The tile's own wheel or dice (not one opened over the clue later): closing it shows the question.
+    if (app.live.overlay && (c?.clue.type === 'wheel' || c?.clue.type === 'dice')) app.live.toolTile = c.clue.id;
   }
 
   // ---------- Tools (dice / wheel / roll-off) ----------
@@ -1424,12 +1468,14 @@
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
     app.live.overlay = null;
-    // Only the tile's own wheel or dice: closing the scores or a roll mid-clue leaves the clue and its countdown as they are.
-    if (session.phase !== 'clue' || !info || o?.kind !== info.clue.type) return;
-    // A wheel/dice tile shows its question once the tool is closed, and its countdown starts. One with nothing to ask
-    // is done: no empty slide, no countdown.
+    // Only the tile's own wheel or dice: closing the scores, or a roll or a wheel opened mid-clue (the same kind too),
+    // leaves the clue and its countdown as they are.
+    if (session.phase !== 'clue' || !info || o?.kind !== info.clue.type || app.live.toolTile !== info.clue.id) return;
+    delete app.live.toolTile;
+    // A wheel/dice tile shows its question once the tool is closed, and its countdown starts (not over its answer,
+    // revealed meanwhile). One with nothing to ask is done: no empty slide, no countdown.
     if (toolOnlyClue(info.clue)) back();
-    else if (!questionSlides(info.clue).every(blankSlide)) autoTimer();
+    else if (!session.revealed && !questionSlides(info.clue).every(blankSlide)) autoTimer();
   }
 
   // A Daily Double's wager fixed in the Amount box once its question is up (a typo on the splash): the wager is that now,
@@ -1460,6 +1506,7 @@
     selected = [];
     amount = null;
     app.live.timer = null;
+    delete app.live.toolTile;
     // The keys go on from the tile that was open (the arrow keys move from it), not from the top of the page.
     if (clueId) void tick().then(() => document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${clueId}"]`)?.focus({ preventScroll: true }));
   }
@@ -1606,10 +1653,10 @@
     introNext(session, game);
   }
 
-  // Auto-advance through category reveals when set to 'auto'.
+  // Auto-advance through category reveals when set to 'auto'. (Not under the cover: it goes on, from where it was, after.)
   $effect(() => {
     const i = session.intro;
-    if (!i || app.pregame) return;
+    if (!i || app.pregame || app.live.cover) return;
     const mode = game.settings.roundIntro.categoryReveal;
     const delay = i.stage === 'title' ? 0 : i.stage === 'fill' ? 1900 : mode === 'auto' ? 1300 : 0;
     if (!delay || (i.stage === 'categories' && mode !== 'auto')) return;
@@ -1726,6 +1773,7 @@
     if (!events.length) return null;
     undone.push({ log: 'score', id: stepOf(events[0]) });
     buzzFollow(events, true);
+    timerFollow(events, true);
     return describeStep(session, events, sym);
   }
 
@@ -1749,6 +1797,7 @@
     }
     const events = redo(session);
     buzzFollow(events, false);
+    timerFollow(events, false);
     return after(events.length ? describeStep(session, events, sym) : null);
   }
 

@@ -1,6 +1,7 @@
 <!--
   A ✍ clue: everyone types an answer on their phone and only the host sees them, here. ✔ / ✘ on each marks it right or
-  wrong (the clue's value, as ＋ Award / − Deduct would), once per player; Ctrl+Z takes one back.
+  wrong (the clue's value, as ＋ Award / − Deduct would), once per player; Ctrl+Z takes one back. In a single window
+  (viewers see this panel) only who has answered shows until the answer is up; then the words, to judge.
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
@@ -11,6 +12,7 @@
     clueId,
     phones = [],
     open,
+    dual = true,
     onjudge,
   }: {
     game: Game;
@@ -20,6 +22,8 @@
     phones?: string[];
     /** Phones can still send (the answer isn't on screen). */
     open: boolean;
+    /** An audience window is open: this panel is off stream. */
+    dual?: boolean;
     onjudge: (playerId: string, sign: 1 | -1) => void;
   } = $props();
 
@@ -36,26 +40,44 @@
 <section class="answers" aria-label="Answers from phones">
   <div class="head">
     <b>✍ Everyone answers</b>
-    <span class="muted small" role="status">{inCount} of {session.players.length} in · only you see them{open ? '' : ' · locked (the answer is showing)'}</span>
+    <span class="muted small" role="status"
+      >{inCount} of {session.players.length} in · {dual ? 'only you see them' : 'viewers see this window: the answers show here once the answer is up'}{open ? '' : ' · locked (the answer is showing)'}</span
+    >
   </div>
-  <ul>
-    {#each session.players as p (p.id)}
-      {@const a = answers[p.id]}
-      {@const j = judged[p.id]}
-      <li data-answer-row={p.id}>
-        <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
-        <span class="text" class:muted={!a} dir="auto"
-          >{#if a}“{a.text}”{#if a.by}<span class="muted small"> · {a.by}</span>{/if}{:else if phones.includes(p.id)}waiting…{:else}no phone connected{/if}</span
+  {#if dual || !open}
+    <ul>
+      {#each session.players as p (p.id)}
+        {@const a = answers[p.id]}
+        {@const j = judged[p.id]}
+        <li data-answer-row={p.id}>
+          <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
+          <span class="text" class:muted={!a} dir="auto"
+            >{#if a}“{a.text}”{#if a.by}<span class="muted small"> · {a.by}</span>{/if}{:else if phones.includes(p.id)}waiting…{:else}no phone connected{/if}</span
+          >
+          {#if j}
+            <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
+          {:else}
+            <button class="good small" onclick={() => onjudge(p.id, 1)} aria-label="{p.name} is right" title="Right: + the clue's value">✔</button>
+            <button class="bad small" onclick={() => onjudge(p.id, -1)} aria-label="{p.name} is wrong" title="Wrong: − the clue's value (if the rules take points)">✘</button>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+  {:else}
+    <!-- Single window, answers still open: on one line, who has answered (✔), never the words. -->
+    <p class="small in">
+      {#each session.players as p (p.id)}
+        {@const a = answers[p.id]}
+        <span
+          class="who"
+          style:background={p.color}
+          style:color={textOn(p.color)}
+          data-answer-in={p.id}
+          title={a ? 'Answer in' : phones.includes(p.id) ? 'Waiting…' : 'No phone connected'}>{p.name} {a ? '✔' : '…'}</span
         >
-        {#if j}
-          <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
-        {:else}
-          <button class="good small" onclick={() => onjudge(p.id, 1)} aria-label="{p.name} is right" title="Right: + the clue's value">✔</button>
-          <button class="bad small" onclick={() => onjudge(p.id, -1)} aria-label="{p.name} is wrong" title="Wrong: − the clue's value (if the rules take points)">✘</button>
-        {/if}
-      </li>
-    {/each}
-  </ul>
+      {/each}
+    </p>
+  {/if}
 </section>
 
 <style>
@@ -71,13 +93,20 @@
     align-items: baseline;
     flex-wrap: wrap;
   }
+  /* Rows side by side (3 a line in the box): the words showing in a single window take less of the stage's height. */
   ul {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 4px 16px;
+  }
+  .in {
+    margin: 0;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 4px 8px;
   }
   li {
     display: flex;

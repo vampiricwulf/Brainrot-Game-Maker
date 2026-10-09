@@ -6,6 +6,8 @@
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
   import { boardNow, busyZones } from './boardgame/bgops';
+  import { app } from '../lib/app.svelte';
+  import { tileToolUp } from '../lib/live';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
@@ -55,7 +57,17 @@
     <!-- A clue with several question slides: the one on screen, and the next one coming. -->
     {@const slides = questionSlides(info.clue)}
     {@const at = clueSlideIndex(session, info.clue)}
-    <div class="label">Question{slides.length > 1 ? ` · slide ${at + 1} of ${slides.length}` : ''} {session.revealed ? '' : session.dd && session.dd.stage !== 'question' ? '(not shown yet)' : '(on screen)'}</div>
+    <!-- (A wheel or dice tile's question comes up once its tool closes.) -->
+    <div class="label">
+      Question{slides.length > 1 ? ` · slide ${at + 1} of ${slides.length}` : ''}
+      {session.revealed
+        ? ''
+        : session.dd && session.dd.stage !== 'question'
+          ? '(not shown yet)'
+          : tileToolUp(app.live, info.clue)
+            ? `(after the ${info.clue.type === 'dice' ? 'dice' : 'wheel'})`
+            : '(on screen)'}
+    </div>
     <div class="q">{slideText(slides[at]) || '—'}</div>
     {#if !session.revealed && slides[at + 1]}
       <div class="label">Next slide</div>

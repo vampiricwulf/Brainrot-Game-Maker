@@ -1,13 +1,15 @@
 // What viewers see in single-window mode, and around the game: the honest "viewers can see this" warnings, the stage
 // keeping its size (a clue opening, the Final's steps), the in-panel key list, score pops, the stream cards (Starting
 // soon with a countdown, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings; a
-// crowded 720p game; and 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
-// the ✔ marks, a long tie heading on the end screen).
+// crowded 720p game; 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
+// the ✔ marks, a long tie heading on the end screen); and wheel and dice tiles in buzzer mode (the question, the buzzers
+// and the countdown wait for the tile's own tool, and only for it), a countdown started under the cover, Undo bringing
+// back a countdown, everyone missing, and the stage's size with a long host note and the buzzers' row.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -342,6 +344,193 @@ async function viewers() {
   await ctx.close();
 }
 
+/**
+ * Wheel and dice tiles with questions, in a single window with buzzer mode on (a fake room that keeps what it's sent):
+ * while the tile's own wheel is up nobody can buzz and the phones get no question; dice rolled over a dice tile's question
+ * leave it on stream and its countdown going; a wheel closed over the answer starts no countdown. Also: the stage keeps
+ * its size with a long host note and the buzzers' row, Undo of a right answer brings back its countdown, everyone missing
+ * makes 👁 Reveal answer the main button, and a tile opened under the cover keeps its countdown paused.
+ */
+async function tileTools() {
+  console.log('Wheel and dice tiles, the countdown and the buzzers (single window, buzzer mode):');
+  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const NOTE = 'Accept Shiba or Shiba Inu. If they say Akita, ask them to be more specific; if they say Corgi, it is wrong. The picture on the next slide is of the same dog, taken in 2010 by its owner in Japan.';
+  const clue = (id, type, q, extra = {}) => ({ id, value: null, type, questionSlide: slide(q), answerSlide: slide(`${q}: the answer`), ...extra });
+  const game = {
+    id: 'g_tools', version: 2, title: 'Tile tools',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 20, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 12, stream: {} },
+    players: [['Ann', '#e6194b'], ['Bob', '#3cb44b'], ['Cy', '#4363d8']].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
+    rounds: [
+      {
+        id: 'r_t', name: 'Tools', mode: 'board', values: [200, 400, 600], dailyDoubleCount: 0,
+        categories: [
+          { id: 'c0', title: 'Spin', clues: [clue('qw', 'wheel', 'Wheel question', { wheelId: 'w1' }), clue('qd', 'dice', 'Dice question', { diceId: 'std:d6' }), clue('qc', 'standard', 'Covered question')] },
+          { id: 'c1', title: 'Plain', clues: [clue('qn', 'standard', 'Noted question', { hostNotes: NOTE }), clue('qp', 'standard', 'Plain question'), clue('qe', 'standard', 'Spare question')] },
+        ],
+      },
+    ],
+    media: [], audio: {}, dice: [], theme: {},
+    wheels: [{ id: 'w1', name: 'Spinner', spinDurationMs: 500, removeAfterLanding: false, segments: [{ id: 's1', label: 'Go', color: '#e6194b', weight: 1 }, { id: 's2', label: 'Stop', color: '#3cb44b', weight: 1 }] }],
+  };
+  const gameFile = resolve('test-results/stream-tools.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  // A fake buzzer room (as in remotebuzz.mjs): room BCDF, keeping every state the host sends it.
+  await ctx.addInitScript(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
+      if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: 'https://buzz.test' }));
+    } catch {}
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, init) =>
+      String(url) === 'https://buzz.test/api/rooms' && init?.method === 'POST'
+        ? new Response(JSON.stringify({ code: 'BCDF', hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } })
+        : realFetch(url, init);
+    window.__states = [];
+    window.WebSocket = class {
+      static OPEN = 1;
+      constructor() {
+        this.readyState = 0;
+        setTimeout(() => {
+          this.readyState = 1;
+          this.onopen?.({});
+          this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now() }) });
+        }, 20);
+      }
+      send(d) {
+        const m = JSON.parse(d);
+        if (m.t === 'state') window.__states.push(m.state);
+      }
+      close() {
+        this.readyState = 3;
+      }
+    };
+  });
+  const host = await ctx.newPage();
+  host.on('pageerror', (e) => errors.push(`[tools] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await openGameFile(host, gameFile);
+  await host.getByText(/^Opened “/).waitFor();
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  const card = host.getByRole('region', { name: 'Phone buzzers' });
+  await card.getByLabel(/Buzzer mode/).check();
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByLabel('Room code BCDF').waitFor();
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  const skip = host.getByRole('button', { name: 'Skip intro' });
+  if (await skip.isVisible().catch(() => false)) await skip.click();
+  const stage = (sel) => host.locator(`.stage-box ${sel}`);
+  const tileOf = (id) => stage(`.board .tile[data-clue="${id}"]`);
+  const clueOpen = () => host.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+  const timerNum = async () => +(await stage('.timer .num').innerText());
+  /** Until the countdown on stage is at `n` seconds or less. */
+  const timerAtMost = (n) => host.waitForFunction((n) => +(document.querySelector('.stage-box .timer .num')?.textContent ?? 99) <= n, n);
+  const stageH = async () => {
+    await host.waitForTimeout(400);
+    return Math.round((await stage('.stage').boundingBox()).height);
+  };
+  await tileOf('qn').waitFor();
+
+  // A long host note, and the buzzers' row: the stage keeps its size when the clue opens.
+  const onBoard = await stageH();
+  await tileOf('qn').click();
+  await clueOpen();
+  const noted = await stageH();
+  assert(
+    noted === onBoard && (await host.locator('.panel .status .notes').getAttribute('title')).includes(NOTE),
+    `single window in buzzer mode, a clue with a long host note keeps the stage's size (${onBoard} / ${noted} px; the note on one line, all of it in its tooltip)`,
+  );
+  // Undo of a right answer: its countdown comes back with the time it had left.
+  await timerAtMost(18);
+  const left = await timerNum();
+  await host.keyboard.press('1');
+  await host.keyboard.press('Enter');
+  await stage('.timer').waitFor({ state: 'detached' });
+  await host.keyboard.press('Control+z');
+  await stage('.timer .num').waitFor();
+  const back = await timerNum();
+  assert(back > 0 && back <= left, `Ctrl+Z on a right answer brings back the countdown it stopped, with the time it had left (${left} → ${back})`);
+  await host.keyboard.press('Escape');
+  await tileOf('qp').waitFor();
+
+  // Everyone misses: the answer is next (not a 🔔 Open the buzzers that does nothing).
+  await tileOf('qp').click();
+  await clueOpen();
+  for (const [key, missed] of [['1', 'Ann'], ['2', 'Ann, Bob'], ['3', 'Ann, Bob, Cy']]) {
+    await host.keyboard.press(key);
+    await host.keyboard.press('Shift+Enter');
+    await host.locator('.panel [data-buzzrow]', { hasText: `Missed: ${missed}` }).waitFor();
+  }
+  assert(
+    (await mainLabel(host)) === '👁 Reveal answer' && (await host.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
+    `everyone missed: the main button is 👁 Reveal answer, with no 🔔 Open the buzzers (${await mainLabel(host)})`,
+  );
+  await host.keyboard.press('Escape');
+  await tileOf('qw').waitFor();
+
+  // A wheel tile: its question, the buzzers and the countdown wait for the wheel.
+  const sentBefore = await host.evaluate(() => window.__states.length);
+  await tileOf('qw').click();
+  await stage('.ov .wheel').waitFor();
+  await host.locator('.panel [data-buzzrow]', { hasText: 'The buzzers wait for the question (after the wheel)' }).waitFor();
+  await host.keyboard.press('w');
+  await host.locator('.tc .result').waitFor();
+  assert(
+    (await stage('.slide-area').count()) === 0 && (await host.evaluate((n) => window.__states.slice(n).filter((s) => s.clue || s.phase !== 'lobby').length, sentBefore)) === 0,
+    'a wheel tile: while its wheel is up nobody can buzz and the phones get no question (the host panel says they wait for it)',
+  );
+  await host.keyboard.press('Escape');
+  await stage('.slide-area').waitFor();
+  await host.waitForFunction(() => {
+    const s = window.__states.at(-1);
+    return s?.phase === 'armed' && s.clue?.text === 'Wheel question';
+  });
+  await stage('.timer').waitFor();
+  assert(true, 'closed, its question comes up with its countdown, and the buzzers open (the phones get the words then)');
+  await host.keyboard.press('r');
+  await stage('[data-slide="answer"]').waitFor();
+  await stage('.timer').waitFor({ state: 'detached' });
+  // The saved wheel (W), over the answer: closing it starts no countdown over the answer.
+  await host.keyboard.press('w');
+  await stage('.ov .wheel').waitFor();
+  await host.keyboard.press('Escape');
+  await stage('.ov').waitFor({ state: 'detached' });
+  assert((await stage('.timer').count()) === 0 && (await stage('[data-slide="answer"]').count()) === 1, 'a wheel opened over the answer and closed starts no countdown over it');
+  await host.keyboard.press('Escape');
+  await tileOf('qd').waitFor();
+
+  // A dice tile: dice rolled over its question (D) leave it on stream, and its countdown going.
+  await tileOf('qd').click();
+  await stage('.ov').waitFor();
+  await host.keyboard.press('d');
+  await host.locator('.tc .result').waitFor();
+  await host.keyboard.press('Escape');
+  await stage('.timer .num').waitFor();
+  await timerAtMost(18);
+  await host.keyboard.press('d');
+  await host.locator('.tc .result').waitFor();
+  assert((await stage('.slide-area').count()) === 1, 'dice rolled over a dice tile’s question leave the question on stream');
+  await host.keyboard.press('Escape');
+  await stage('.ov').waitFor({ state: 'detached' });
+  const after = await timerNum();
+  assert(after <= 18, `closing them leaves its countdown going, not started again (${after} s left)`);
+  await host.keyboard.press('Escape');
+  await tileOf('qc').waitFor();
+
+  // Under the cover (K): a tile opened meanwhile keeps its countdown paused until the cover comes off.
+  await host.keyboard.press('k');
+  await stage('.cover').waitFor();
+  await tileOf('qc').dispatchEvent('click');
+  await stage('.timer.paused').waitFor();
+  await host.waitForTimeout(1300);
+  assert((await timerNum()) === 20 && (await stage('.timer.paused').count()) === 1, 'a tile opened under the cover: its countdown waits, paused at 20');
+  await host.keyboard.press('k');
+  await stage('.cover').waitFor({ state: 'detached' });
+  await timerAtMost(19);
+  assert(true, 'uncovered, it runs');
+  await ctx.close();
+}
+
 /** The next round, from a host page. */
 async function nextRoundOf(p) {
   await p.waitForTimeout(450);
@@ -478,6 +667,7 @@ try {
 
   await crowd();
   await viewers();
+  await tileTools();
 
   assert(!dialogs.length, 'no browser dialogs' + (dialogs.length ? ': ' + dialogs.join(' | ') : ''));
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
