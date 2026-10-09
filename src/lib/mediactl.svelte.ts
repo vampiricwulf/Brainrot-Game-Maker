@@ -203,8 +203,22 @@ export { youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl } from './links'
 /** What the host is told when openMediaPopup fails. */
 export const POPUP_FAILED = "Couldn't open the link. If the browser blocked the popup, allow popups for this file.";
 
-/** Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. */
+/**
+ * Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. False if
+ * the popup was blocked.
+ */
 export function openMediaPopup(url: string): boolean {
   if (!isWebUrl(url)) return false;
-  return !!window.open(url, 'jb-media', 'popup=yes,width=1280,height=720');
+  // Cut loose at once, before the link loads: the page there gets no handle on this one (it could say hello as the
+  // scores window, press the host's keys, or send this tab somewhere else). Each link gets a window of its own. The
+  // link goes in the request itself, not about:blank first: the desktop app's window is built for the URL asked for,
+  // and WebView2 loads that. ('noopener' would cut it loose too, but window.open then returns null, as when blocked.)
+  const w = window.open(url, '_blank', 'popup=yes,width=1280,height=720');
+  if (!w) return false;
+  try {
+    w.opener = null;
+  } catch {
+    // (Not this page's to change: it can't reach this page anyway.)
+  }
+  return true;
 }

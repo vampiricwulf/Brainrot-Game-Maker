@@ -44,8 +44,15 @@ export type AudienceEvent =
 /** A key pressed in the audience window, for the host's shortcuts (the host clicked it to allow sound, and kept typing). */
 export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'>;
 
-/** hello `scores`: from the scores-only window (one a reloaded host page doesn't know yet says so until it's found). */
-export type AudienceMsg = { type: 'hello'; scores?: boolean } | { type: 'audience-event'; event: AudienceEvent } | { type: 'key'; key: AudienceKey } | { type: 'bye' };
+/**
+ * hello `scores`: from the scores-only window (one a reloaded host page doesn't know yet says so until it's found), with
+ * `key`, the host page's key from its address (SCORES_PARAM): only a window that has it is taken back.
+ */
+export type AudienceMsg =
+  | { type: 'hello'; scores?: boolean; key?: string }
+  | { type: 'audience-event'; event: AudienceEvent }
+  | { type: 'key'; key: AudienceKey }
+  | { type: 'bye' };
 
 /**
  * Envelope on the BroadcastChannel (it also reaches other same-origin tabs, so say who's talking). `page`: the host
@@ -58,6 +65,34 @@ export const AUDIENCE_HASH = '#audience';
 /** The scores-only window: the score plates and the countdown, for a lower-third capture in OBS. */
 export const SCORES_HASH = '#audience-scores';
 export const CHANNEL_NAME = 'brainrot-games-sync';
+/** The scores window's address carries its host page's key (?scores=…), and its hellos say it. */
+export const SCORES_PARAM = 'scores';
+const SCORES_KEY = 'jb.scoresKey';
+let scoresKeyMem = '';
+
+/**
+ * This tab's key for its scores window. Kept across a reload (the same address, so window.open finds the window without
+ * reloading it): a window the page opened before says it, and nothing else knows it (a page opened from a media link
+ * could otherwise say hello as the scores window, and get the whole game with its answers).
+ */
+function scoresKey(): string {
+  try {
+    let k = sessionStorage.getItem(SCORES_KEY);
+    if (!k) sessionStorage.setItem(SCORES_KEY, (k = newId()));
+    return k;
+  } catch {
+    return (scoresKeyMem ||= newId());
+  }
+}
+
+/**
+ * Where messages to the other windows may go: this page's own site when it is served over http(s), as the desktop app's
+ * is (a window that went somewhere else gets nothing), else anywhere ('*': pages opened from disk have a "null" origin,
+ * which can't be named).
+ */
+export function syncTarget(): string {
+  return location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : '*';
+}
 
 /** The audience window's title: Discord and OBS list the window by it ("My Game · Audience"). */
 export function audienceTitle(game: Game | undefined): string {
@@ -105,15 +140,14 @@ function post(msg: HostMsg): void {
   // The scores window only shows the game's state (no sound, no media controls).
   if (scoresWin && !scoresWin.closed && SCORES_MSGS.has(msg.type)) {
     try {
-      scoresWin.postMessage(msg, '*');
+      scoresWin.postMessage(msg, syncTarget());
     } catch (err) {
       console.warn('Scores window sync failed', err);
     }
   }
   if (win && !win.closed) {
     try {
-      // file:// pages have an opaque "null" origin, so a specific targetOrigin can't be used.
-      win.postMessage(msg, '*');
+      win.postMessage(msg, syncTarget());
     } catch (err) {
       console.warn('Audience sync failed', err);
     }
@@ -249,8 +283,9 @@ export function onAudienceKey(fn: (key: AudienceKey) => void): () => void {
 if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location.hash !== SCORES_HASH) {
   window.addEventListener('message', (e: MessageEvent<AudienceMsg>) => {
     if (scoresWin && e.source === scoresWin) return fromScores(e.data);
-    // The scores window an earlier load of this page opened: it's this page's again (Exit closes it, keys reach Play).
-    if (!scoresWin && e.data?.type === 'hello' && e.data.scores && e.source && e.source !== win) {
+    // The scores window an earlier load of this page opened (it knows this tab's key): it's this page's again (Exit
+    // closes it, keys reach Play).
+    if (!scoresWin && e.data?.type === 'hello' && e.data.scores && e.data.key === scoresKey() && e.source && e.source !== win) {
       adoptScores(e.source as Window);
       return fromScores(e.data);
     }
@@ -346,7 +381,7 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
   // It may be the window an earlier load of this page opened (window.open found it by its name, and didn't reload it):
   // it says hello again, with whether it may play sound. (A new window says hello itself once it has loaded.)
   try {
-    win.postMessage({ type: 'ping' } satisfies HostMsg, '*');
+    win.postMessage({ type: 'ping' } satisfies HostMsg, syncTarget());
   } catch {
     // Not loaded yet: it says hello itself.
   }
@@ -364,7 +399,7 @@ export const scoresWindow = $state({ open: false });
 function fromScores(msg: AudienceMsg): void {
   if (msg?.type === 'hello') {
     // Everything it needs, to it alone: the files (fonts, avatars) too.
-    const to = (m: HostMsg) => scoresWin?.postMessage(m, '*');
+    const to = (m: HostMsg) => scoresWin?.postMessage(m, syncTarget());
     // (The overlays first, as for the audience window.)
     if (last.live) to({ type: 'live', live: last.live });
     if (last.game) {
@@ -392,7 +427,10 @@ export function openScoresWindow(): boolean {
     scoresWin.focus();
     return true;
   }
-  const w = window.open(location.href.split('#')[0] + SCORES_HASH, 'jb-audience-scores', 'popup=yes,width=1280,height=240');
+  const url = new URL(location.href);
+  url.searchParams.set(SCORES_PARAM, scoresKey());
+  url.hash = SCORES_HASH;
+  const w = window.open(url.href, 'jb-audience-scores', 'popup=yes,width=1280,height=240');
   if (!w) return false;
   adoptScores(w);
   return true;
@@ -418,7 +456,7 @@ export function closeScoresWindow(): void {
 export function closeAudienceWindow(): void {
   const msg: HostMsg = { type: 'close' };
   try {
-    if (win && !win.closed) win.postMessage(msg, '*');
+    if (win && !win.closed) win.postMessage(msg, syncTarget());
     channel?.postMessage({ from: 'host', msg, page: location.href.split('#')[0] } satisfies ChannelMsg);
   } catch {
     // Gone already: nothing to tell.

@@ -629,6 +629,11 @@ try {
   }
   assert(statuses.join() === '200,200,200,200,200,200,429', `the 7th new room in a minute from one address is refused (${statuses.join()})`);
   assert(refused.body.error === 'Too many new rooms — wait a minute' && refused.cors === '*', 'with a 429 the app can read: "Too many new rooms — wait a minute"');
+  // IPv6 counts by the first 56 bits: a new address in the same /56 for every room is still one address.
+  const v6 = [];
+  for (let i = 0; i < 7; i++)
+    v6.push((await fetch(`${base}/api/rooms`, { method: 'POST', headers: { Origin: 'null', 'CF-Connecting-IP': `2001:db8:1:2a0${i}::${i + 1}` } })).status);
+  assert(v6.join() === '200,200,200,200,200,200,429', `so are 7 from addresses in one IPv6 /56 (${v6.join()})`);
   assert((await fetch(`${base}/api/rooms`, { method: 'POST' })).status === 200, 'another address can still make one');
   // Looking codes up is limited too (60 a minute), so a script can't try them all to find live rooms.
   const s2 = new Date().getSeconds();

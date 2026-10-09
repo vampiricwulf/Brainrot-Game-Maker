@@ -138,6 +138,8 @@ export interface SentAnswer {
   /** Teams: the member who sent it (id) and their name. */
   member?: string;
   by?: string;
+  /** Added later: when the room took it (a phone seated after the answers began sees only what it sent since). */
+  at?: number;
 }
 
 /** Answers, as one phone sees them: its own seat's only. */
@@ -150,6 +152,11 @@ export interface PhoneAnswer {
   text?: string;
   by?: string;
   byYou?: boolean;
+  /**
+   * Added later: an answer is in, but this phone doesn't see it (it took its seat, or joined its team, after the answers
+   * began). Sending one replaces it.
+   */
+  hidden?: boolean;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -266,7 +273,8 @@ export interface MemberRef {
 /**
  * `me`: this phone's team member (teams). `by`: the member whose buzz has the answering team answering (teams; null
  * when the host picked the team itself). `late`: this phone took its seat (or joined its team) after the wager round
- * began, so it isn't told the wager the host has (the room passes only what it sent itself as `sent`).
+ * began, so it isn't told the wager the host has (the room passes only what it sent itself as `sent`). `answerHidden`:
+ * the same for answers: the seat has one this phone isn't shown (the room leaves it out of `answer`).
  */
 export function phoneView(
   s: HostState,
@@ -276,6 +284,7 @@ export function phoneView(
   sent?: SentWager | null,
   late = false,
   answer?: SentAnswer | null,
+  answerHidden = false,
 ): PhoneView {
   const seat = seatId ? s.seats.find((x) => x.id === seatId) : undefined;
   const a = s.phase === 'answering' && s.answering ? s.seats.find((x) => x.id === s.answering) : undefined;
@@ -295,12 +304,12 @@ export function phoneView(
     ...wagerView(s, seatId, me, sent, late),
     ...finalView(s, seat?.id),
     ...(s.colorPick && seat && !s.teams ? { colorPick: { taken: s.seats.filter((x) => x.id !== seat.id).map((x) => x.color.toLowerCase()) } } : {}),
-    ...answerView(s, seat?.id, me, answer),
+    ...answerView(s, seat?.id, me, answer, answerHidden),
   };
 }
 
 /** The answers part of a phone's view: its own seat's words only. */
-function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | null, sent?: SentAnswer | null): Pick<PhoneView, 'answer'> {
+function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | null, sent?: SentAnswer | null, hidden = false): Pick<PhoneView, 'answer'> {
   const a = s.answers;
   if (!a || !seatId) return {};
   const mine = a.seats.some((x) => x.id === seatId);
@@ -310,6 +319,7 @@ function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | n
       open: a.open,
       mine,
       ...(mine && sent ? { text: sent.text, ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
+      ...(mine && !sent && hidden ? { hidden: true } : {}),
     },
   };
 }

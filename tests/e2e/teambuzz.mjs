@@ -303,6 +303,15 @@ try {
     'Al sends the team’s answer: it fills in Ann’s box too (it had the focus, but she typed nothing)',
   );
   assert(!(await bea.content()).includes('Poodle'), 'the other team doesn’t see it');
+  // Someone joining the team now (from the other team, under another name, to read it) is told one is in, not what.
+  const mal = await phone('Mal', 'Player 1');
+  await mal.locator('#answer-state').getByText('Your team’s answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.').waitFor();
+  assert(!(await mal.content()).includes('Poodle') && (await mal.locator('#answer-in').inputValue()) === '', 'someone who joins the team after its answer was sent is told one is in, never what it says');
+  // Showing the answer locks them: still "in", not "None sent".
+  await host.keyboard.press('r');
+  await big(mal).getByText('Answers locked').waitFor();
+  await small(mal).getByText('The host has it (not shown on this phone)').waitFor();
+  assert(!(await mal.content()).includes('Poodle'), 'once the answers lock, that phone says the host has the team’s answer (not “None sent”), still without what it says');
   await host.keyboard.press('Escape');
 
   // ---------- 👥 Teams mid-game (not Players): a new row is a team, and removing one says its phones go ----------
