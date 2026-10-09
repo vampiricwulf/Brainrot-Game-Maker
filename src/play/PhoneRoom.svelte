@@ -57,8 +57,11 @@
   });
   /** The options' changes: Teams with phones in the room asks first, as closing the room does. */
   const setOption: SetBuzzSetting = (key, value, label) => {
-    if (key === 'buzzTeams' && seatedPhones && !!value !== !!settings.buzzTeams) switching = !!value;
-    else onset(key, value, label);
+    if (key === 'buzzTeams' && seatedPhones && !!value !== !!settings.buzzTeams) {
+      // One question at a time: the newest one wins (a "Close the room?" still up goes).
+      closing = null;
+      switching = !!value;
+    } else onset(key, value, label);
   };
   /** The browser says there's no network (it can be wrong the other way, never this way round for long). */
   let offline = $state(typeof navigator !== 'undefined' && navigator.onLine === false);
