@@ -294,6 +294,8 @@ try {
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   assert(true, 'D rolls the dice and fills in the steps');
+  const diceTip = await page.getByRole('button', { name: '🎲 Dice' }).getAttribute('title');
+  assert(diceTip.includes('round’s own dice'), `and the 🎲 Dice button’s tooltip says D rolls the round’s own dice (${diceTip})`);
   // The dice don't stay on stream into another round.
   assert((await page.locator('.stage-box .ov').count()) === 1, 'the dice are on the stage');
   await page.getByRole('button', { name: '◀ Prev round' }).click();

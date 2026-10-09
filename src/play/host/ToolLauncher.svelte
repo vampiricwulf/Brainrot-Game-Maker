@@ -96,7 +96,7 @@
 
 <div class="tl" class:open={!!menu}>
   <div class="pop">
-    <button onclick={(e) => toggle('dice', e)} title="D rolls the last dice" aria-haspopup="dialog" aria-expanded={menu === 'dice'}>🎲 Dice</button>
+    <button onclick={(e) => toggle('dice', e)} title={session.phase === 'boardgame' ? 'D rolls the round’s own dice (or spins its wheel)' : 'D rolls the last dice again'} aria-haspopup="dialog" aria-expanded={menu === 'dice'}>🎲 Dice</button>
     {#if menu === 'dice'}
       <div class="menu" role="dialog" aria-label="Dice" use:anchored={at}>
         <div class="grid">

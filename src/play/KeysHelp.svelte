@@ -54,7 +54,6 @@
         ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
         ['N during a clue', 'The main button (bottom right): the next slide, open the buzzers, reveal the answer, then back to the board'],
         ['Shift+N during a clue', 'A clue with several slides: the slide before'],
-        ['Arrows, Enter', 'On the board: move between tiles, open one'],
         ['R', 'Reveal the answer (again: hide it); the countdown stops'],
         ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
@@ -95,6 +94,7 @@
       title: 'RPG',
       keys: [
         ['N', 'Title card: start the round'],
+        ['← ↑ → ↓', 'Move the party one screen that way (not while a video or sound is on screen: ← / → seek it then, so use the numpad or Alt+arrows)'],
         ['Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],
         ['Alt+Q W E A D Z X C / Alt+arrows', 'Move the party (laptop keys)'],
         ['J', 'The full map: jump the party (or some players) to any screen'],

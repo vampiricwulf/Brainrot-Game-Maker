@@ -1049,7 +1049,7 @@
             <button class="sample" onclick={showSample}>
               <span class="icon" aria-hidden="true">✨</span>
               <b>Try a sample game</b>
-              <span class="muted small">A small board, an adventure, a board game and a Final, all filled in and ready to play</span>
+              <span class="muted small">An introduction, a small board, an adventure, a board game and a Final, all filled in and ready to play</span>
             </button>
             <div class="modes">
               {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}

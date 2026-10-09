@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Changed
 - Score plates: when they're too narrow for the points symbol, every plate on the bar drops it together ("1.2K | 800 | 2K", not "$1K | 800 | $2K"). (a75568f)
+- The 'Try a sample game' card and 'The sample game' menu item say what they add; the editor's key list says ? doesn't work while a window like the clue editor is open. (c94bbf1)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -49,6 +50,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones: one asleep when the buzzer room closed says "The game is over" when it wakes (it said "Reconnecting…" for ever), while one that only lost Wi-Fi for a moment keeps trying; a tab whose seat moved to another tab no longer takes it back by itself; one kicked while asleep is told so. (9edcace, d87a803)
 - Buzzer room: discarding a kept game, or starting a fresh one instead, closes its room (phones waited for hours); a room left open in the editor that has ended is forgotten, with a note, and the pre-game screen offers a new one. (9edcace)
 - While the buzzer room can't be reached, the phones list says so and greys out Add, turn away, Free seat, Kick and Move (a phone could be stuck waiting), and the Start bar and Going live? checklist stop showing an old joined count; Free seat with 🔒 seats locked says to untick the lock so the player can tap their name. (9edcace, d87a803)
+- Help: in an RPG round the ? list and the host panel say the arrow keys move the party (← and → seek a video or sound on screen instead); in a board-game round the 🎲 Dice tooltip says D rolls the round's own dice; a repeated row about the board's arrow keys is gone. (c94bbf1, aae7945)
+- The sample game's Final and Daily Double clues are right (Twitch's Just Chatting, and the 'only in Ohio' meme); rounds added from a template or the sample game use 🎨 Theme › Clue text like a blank round; the Mini quest's boss can be beaten (the shop's Sword gives +4 Power when used, and the lair's note says so). (c94bbf1, aae7945)
 
 ## 2026-10-08
 

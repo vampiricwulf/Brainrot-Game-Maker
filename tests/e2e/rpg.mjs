@@ -153,6 +153,14 @@ async function bigWorld() {
   await host.keyboard.press('ArrowUp');
   await host.waitForTimeout(800);
   assert(!southOf.includes('Village') && (await there()).includes('Village'), `the arrow keys move the party (↓ to ${southOf}, ↑ back)`);
+  // The ? list says so, among the RPG keys.
+  await host.keyboard.press('?');
+  const keyList = host.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await keyList.waitFor();
+  const rpgKeys = await keyList.locator('section').filter({ has: host.getByRole('heading', { name: 'RPG', exact: true }) }).innerText();
+  assert(rpgKeys.includes('← ↑ → ↓'), 'the ? list has the arrow keys among the RPG keys');
+  await host.keyboard.press('Escape');
+  await keyList.waitFor({ state: 'detached' });
   // Under ⏸ Cover, viewers hear nothing new: a step there and back makes no sound on stream.
   await host.keyboard.press('b');
   await aud.locator('.cover').waitFor();
