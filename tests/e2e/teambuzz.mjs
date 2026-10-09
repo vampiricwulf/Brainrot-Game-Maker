@@ -314,6 +314,14 @@ try {
   assert(!(await mal.content()).includes('Poodle'), 'once the answers lock, that phone says the host has the team’s answer (not “None sent”), still without what it says');
   await host.keyboard.press('Escape');
 
+  // ---------- The host's words say team: Enter with no team picked ----------
+  await host.locator('.stage-box .board .tile:not(.used)').first().click();
+  await host.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await host.keyboard.press('Enter');
+  await host.locator('.toast', { hasText: /^Select a team first/ }).waitFor();
+  assert(true, 'Enter with no team picked says “Select a team first” (not a player)');
+  await host.keyboard.press('Escape');
+
   // ---------- 👥 Teams mid-game (not Players): a new row is a team, and removing one says its phones go ----------
   await host.getByRole('button', { name: '👥 Teams' }).click();
   const teamsDialog = host.getByRole('dialog', { name: 'Teams' });

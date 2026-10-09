@@ -7,7 +7,7 @@
 <script lang="ts">
   import { modal } from '../../lib/modal';
   import { untrack } from 'svelte';
-  import { toast } from '../../lib/app.svelte';
+  import { hint, toast } from '../../lib/app.svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import type { Game, Screen, ScreenRef, Session, World, WorldState } from '../../lib/model';
   import { activeParty, findIn, focusRef, moveTo, screenElements, screenSlide } from '../../lib/rpg';
@@ -71,13 +71,14 @@
   /** The players on a screen were dragged onto another: every party there goes (all the dots dragged). */
   function moveDots(from: ScreenRef, to: ScreenRef): void {
     const text = sendPartiesOn(game, session, from, to);
-    if (text) toast(text);
+    // (Under the title card: a hint, gone once the round starts.)
+    if (text) (text === START_FIRST ? hint : toast)(text);
   }
 
   /** Move the party (or these players) to the picked screen, then close. */
   function go(players?: string[], label?: string): void {
     // (Not under the round's title card: nobody would see them move.)
-    if (session.intro) return void toast(START_FIRST);
+    if (session.intro) return void hint(START_FIRST);
     if (!picked || !found) return;
     const to = picked;
     const who = players ?? party?.members ?? [];

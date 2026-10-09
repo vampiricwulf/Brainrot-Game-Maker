@@ -25,7 +25,7 @@
   import type { RpgAsk } from './rpg/hostops';
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
-  import { app, toast } from '../lib/app.svelte';
+  import { app, hint, toast } from '../lib/app.svelte';
   import { dropMenu } from '../lib/menustate.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
   import { teamsOn } from '../lib/buzz';
@@ -295,7 +295,7 @@
     wagers: dual ? 'Category on screen · taking wagers (only you see them)' : 'Category on screen · taking wagers (viewers can see them in this window)',
     question: 'Question on screen',
     answer: 'Answer on screen',
-    reveal: 'Player reveals',
+    reveal: teams ? 'Team reveals' : 'Player reveals',
   });
   /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
   const cancelBlocked = $derived(!ddWager && !!info && clueScored(session, info.clue.id));
@@ -474,6 +474,8 @@
   const gotIt = $derived(session.phase === 'clue' && (!!buzz?.done || Object.values(marks).some((m) => m.right)));
   /** Buzzer mode: every player has missed this clue (only ↺ Reset lets them buzz again): the answer comes next. */
   const allMissed = $derived(buzzing && session.players.length > 0 && session.players.every((p) => buzz?.lockedOut.includes(p.id)));
+  /** The answer is on screen: the buzzers stay closed (🙈 Hide answer lets them open again). */
+  const answerUp = $derived(session.phase === 'clue' && session.revealed);
   /** Someone is answering (picked, or the buzz): ＋ Award is the main button then, and the NEXT cell goes quiet. */
   // (Not while a Daily Double has question slides still to show: its player hasn't heard it all, Next slide ▶ is next.)
   const answering = $derived(session.phase === 'clue' && !ddWager && !!selected.length && canAward && !(session.dd && moreSlides));
@@ -488,7 +490,7 @@
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
       if (moreSlides && slidePos)
         return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
-      if (buzzClosed && !gotIt && !allMissed) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
+      if (buzzClosed && !gotIt && !allMissed && !answerUp) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
       if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
       return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: doneUnscored };
     }
@@ -511,7 +513,7 @@
     if (answering && id && warnedFor !== id && !Object.keys(marks).length) {
       warnedFor = id;
       const who = session.players.filter((p) => selected.includes(p.id)).map((p) => p.name).join(', ');
-      toast(`${who || 'A player'} is picked with no points given: Enter awards, Shift+Enter marks wrong, or N again closes without points`, 5000);
+      hint(`${who || 'A player'} is picked with no points given: Enter awards, Shift+Enter marks wrong, or N again closes without points`, 5000);
       return;
     }
     onback();
@@ -591,10 +593,10 @@
       {/if}
       {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted">·</span>
-      {#if session.revealed}
-        <span class="revealed">Answer is showing</span>
-      {:else if toolOnly}
+      {#if toolOnly}
         <span class="muted">No question on this tile</span>
+      {:else if session.revealed}
+        <span class="revealed">Answer is showing</span>
       {:else if ddWager}
         <span class="muted">Daily Double: who found it, and their wager</span>
       {:else}
@@ -848,7 +850,7 @@
             <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
             {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
           {/if}
-          {#if buzzClosed && next?.run !== openBuzzers && !tieNames && !allMissed}
+          {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
             <button onclick={openBuzzers} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           {/if}
           {#if !toolOnly && next?.run !== onreveal}
@@ -899,6 +901,8 @@
             {/if}
             {#if tieNames}
               <span class="tie" role="status">Tie: {tieNames} <span class="muted hint">· 🎲 Roll for it, or pick one (1–{Math.min(9, session.players.length) || 9})</span></span>
+            {:else if answerUp && !selected.length}
+              <span class="muted hint">Answer on screen: the buzzers stay closed (🙈 Hide answer to open them again)</span>
             {:else if buzz?.phase === 'armed' && !selected.length}
               {#if !phonesDown}
                 <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
@@ -918,8 +922,8 @@
             {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
             {@render buzzExtra?.()}
             <span class="spacer"></span>
-            <!-- (Not while they're put away for the tile's own tool: nobody can buzz yet.) -->
-            {#if buzz?.phase !== 'lobby'}
+            <!-- (Not while they're put away for the tile's own tool: nobody can buzz yet. Nor with the answer on screen.) -->
+            {#if buzz?.phase !== 'lobby' && !answerUp}
               <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
             {/if}
           </div>

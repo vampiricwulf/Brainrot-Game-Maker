@@ -502,9 +502,12 @@ try {
   await page.locator('.toast', { hasText: 'Start the round first' }).waitFor();
   await page.locator('.rh .mapbox .cell[aria-label="Overworld · Screen B1"]').dblclick();
   assert((await where()).includes('Start') && (await page.locator('.stage-box .title-card').count()) === 1, `under the title card the pad and a double-click on the minimap don’t move the party (${await where()})`);
-  // Clicking it goes on.
+  await page.getByRole('button', { name: 'Go East', exact: true }).click();
+  await page.locator('.toast', { hasText: 'Start the round first' }).waitFor();
+  // Clicking it goes on (and puts the pad's hint away).
   await page.locator('.stage-box .title-card').click();
   await page.locator('.rh').waitFor();
+  assert((await page.locator('.toast', { hasText: 'Start the round first' }).count()) === 0, 'starting the round puts the pad’s “Start the round first” away');
   assert((await where()).includes('Start'), `the party starts on the start screen (${await where()})`);
   assert((await page.locator('.rpg .avatar').count()) === 2, 'both avatars are on the stage');
   assert((await page.locator('.rpg .strip .card').count()) === 2, 'the stats strip shows every player');

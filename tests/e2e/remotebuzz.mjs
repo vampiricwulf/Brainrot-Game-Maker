@@ -386,6 +386,12 @@ try {
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
   assert(true, 'N does it: the answer is showing');
+  // The answer on screen: the buzzers stay closed, and their row says so (no 🔔 Open the buzzers or ↺ Reset that refuse).
+  await page.locator('.panel [data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
+  assert(
+    (await page.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await page.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    'with the answer on screen the buzzers’ row says they stay closed, with no 🔔 Open the buzzers or ↺ Reset buzzers',
+  );
 
   // ---------- A dropped connection: reconnect with the same code ----------
   // (The room it comes back to can free a seat without blocking anyone.)
@@ -423,6 +429,18 @@ try {
   await page.keyboard.press('Escape');
   await stateIs((s) => s.phase === 'lobby' && !s.clue && s.lockedOut.length === 0);
   assert(true, 'back to the board: the phones go back to the lobby');
+  // The answer shown before anyone opened the buzzers: ▦ Done ▶ board is next, not a 🔔 Open the buzzers that refuses.
+  await page.locator('.stage-box .board .tile:not(.used)').first().click();
+  await stateIs((s) => s.phase === 'closed' && !!s.clue);
+  await page.keyboard.press('r');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
+  await page.locator('.panel [data-next]', { hasText: '▦ Done ▶ board' }).waitFor();
+  assert(
+    (await page.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
+    'R before the buzzers were opened: the main button is ▦ Done ▶ board, with no 🔔 Open the buzzers',
+  );
+  await page.keyboard.press('Escape');
+  await stateIs((s) => s.phase === 'lobby' && !s.clue);
   await shot('rb-4-host');
 
   // ---------- The audience window closed by accident: the host panel says so, and Reopen brings it back ----------

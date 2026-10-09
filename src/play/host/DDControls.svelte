@@ -6,6 +6,8 @@
   import { ddCap, score } from '../../lib/session';
   import { offerNext } from './slots.svelte';
   import { toast } from '../../lib/app.svelte';
+  import { teamsOn } from '../../lib/buzz';
+  import { buzzerOn } from '../../lib/remote.svelte';
 
   let {
     game,
@@ -76,6 +78,8 @@
   const fromPhone = $derived(session.dd?.draftFrom === 'phone' && wager === session.dd?.draft);
   const hasPhone = $derived(!!playerId && phones.includes(playerId));
   let wagerBox = $state<HTMLInputElement>();
+  /** Phone buzzer teams: each row is a team, and what it says here too ("Pick a team."). */
+  const noun = $derived(buzzerOn(game.settings) && teamsOn(game.settings) ? 'team' : 'player');
   const sym = $derived(game.settings.currencySymbol);
   const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
   const valid = $derived(!!playerId && wager !== null && wager >= 0 && (override || wager <= cap));
@@ -119,7 +123,7 @@
 
 <div class="dd">
   <b>Daily Double!</b>
-  <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a player.</span>{/if}</span>
+  <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{/if}</span>
   <div class="row">
     {#each session.players as p, i (p.id)}
       <button
@@ -129,7 +133,7 @@
         style:color={playerId === p.id ? textOn(p.color) : undefined}
         aria-pressed={playerId === p.id}
         onclick={() => pick(p.id)}
-        title={i < 9 ? `Key ${i + 1} (before a wager is typed)` : undefined}
+        title={i < 9 ? (playerId ? 'Click to change who found it (number keys pick only while nobody is picked)' : `Key ${i + 1}`) : undefined}
       >
         {#if i < 9}<span class="key">{i + 1}</span>{/if}{p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
@@ -181,9 +185,9 @@
           >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}Their phone can send the wager: it fills in here (only you see it).</span
         >
       {:else if playerId}
-        <span class="muted">📱 No phone for this player: type their wager.</span>
+        <span class="muted">📱 No phone for this {noun}: type their wager.</span>
       {:else}
-        <span class="muted">📱 Once you pick them, a player with a phone can send their wager from it.</span>
+        <span class="muted">📱 Once you pick them, a {noun} with a phone can send their wager from it.</span>
       {/if}
     </span>
   {:else if phoneNote}

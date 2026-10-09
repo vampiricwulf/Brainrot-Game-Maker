@@ -5,7 +5,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
-  import { app, toast } from '../../lib/app.svelte';
+  import { app, hint, toast } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
@@ -237,7 +237,8 @@
 
   function go(d: Dir8): void {
     const why = stepParty(game, session, d);
-    if (why) toast(why);
+    // (Under the title card: a hint, gone once the round starts.)
+    if (why) (why === START_FIRST ? hint : toast)(why);
   }
 
   /** Split view on or off; on with every party in one place, it says why the stage still shows one screen. */
@@ -265,7 +266,7 @@
 
   /** Move the party (or these players) to the screen picked on the minimap. */
   function moveHere(who?: string[], label?: string): void {
-    if (session.intro) return void ((picked = null), toast(START_FIRST));
+    if (session.intro) return void ((picked = null), hint(START_FIRST));
     if (!picked || !world || !st) return;
     const to = picked;
     const s = st;
@@ -287,7 +288,7 @@
   /** The players on a minimap screen were dragged onto another: every party there goes (all the dots dragged). */
   function moveDots(from: ScreenRef, to: ScreenRef): void {
     const text = sendPartiesOn(game, session, from, to);
-    if (text) toast(text);
+    if (text) (text === START_FIRST ? hint : toast)(text);
   }
 
   /** The players to move for one dragged: the whole selection when they're part of it. */

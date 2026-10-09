@@ -147,7 +147,7 @@ describe('Final wagers', () => {
     finalNextStep(session, game);
     finalNextStep(session, game);
     expect(session.finalStep).toBe('reveal');
-    expect(undoAction(session, game)?.text).toBe('Player reveals started');
+    expect(undoAction(session, game)?.text).toBe('Reveals started');
     expect(session.finalStep).toBe('answer');
     expect(undoAction(session, game)?.text).toBe('Final answer shown');
     expect(session.finalStep).toBe('question');

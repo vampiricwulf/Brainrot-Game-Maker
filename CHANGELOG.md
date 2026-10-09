@@ -27,6 +27,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Slide dots on stream turn into a count ("3 / 45") past 20 slides, so they stay on the stage. (352b56e)
 - Board games: a backward count (a wheel's "Back 2") labels its buttons "◀ Back 2" / "▶ Forward 2"; the fork's "which way?" buttons scroll into view, and in one window the hint says to click the space on the stage. (19d795b, 5549121)
 - Open… lists exported .htm pages too, and Import rounds… and Use a theme from another game can pick an exported web page (.html/.htm) or a desktop backup (.brainrot.bak), from the same list of game files as Open…. (31a4e27, 83c0198)
+- Host hints: "do this first" messages (Select a player first, Enter an amount first, Roll first, Start the round first, a board game's "already moved this turn" or "pick which way first", and the RPG pad under a title card) go away as soon as the host does it or the game moves on, instead of staying up into the next turn. (f4e9be0, 98d766c)
+- Phone-buzzer teams: the Final's status and buttons, the Daily Double, the tiebreaker, "Ignore the limits" and a few toasts say team. (f4e9be0, 98d766c)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -82,6 +84,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Import clues: a quote that starts a cell is kept unless it closes at the cell's end ('"I'll be back" was said…'), and a quote never closed no longer swallows the rows after it; a sheet that writes each category name once (merged cells or blanks below) gives its rows that category; Choose file… and the items' Import CSV… read Excel's Windows CSVs and UTF-16, so é, “ ” and – no longer come in as �. (fb51ab5)
 - Ctrl+Z right after a column pasted on a category name undoes the paste (it undid a name typed in another category). (17a77fc)
 - Pasting from another game: slide items, a whole slide and board images come in as one undo step with their files; a screen, slide items or buttons bring the items, shops and stats they use (a pasted Potion pick-up no longer reads "Deleted item", and a Give item, Shop or Stat button keeps its target); Ctrl+Z or Ctrl+Y of such a paste stays where it was pasted. Ctrl+C with words selected in the slide editor copies the words. (aa2fb87, 2357927, 96ecb6c)
+- Buzzer mode: with the answer on screen the buzzers' row says they stay closed, and the 🔔 Open the buzzers and ↺ Reset buttons that would only refuse are gone. R on a wheel or dice tile says there's nothing to reveal, and U that there's nothing to buzz on. (f4e9be0)
+- Toasts: in one window, one said while 👥 Players, ⌨ keys or 🔊 Sound is open shows at the host panel's foot, not over the stage; beside an RPG or board-game stage they sit under the status line, clear of the 📱 chip and the ⏱ countdown. The Daily Double's player chips no longer promise a number key once someone is picked. (f4e9be0)
 
 ## 2026-10-08
 
