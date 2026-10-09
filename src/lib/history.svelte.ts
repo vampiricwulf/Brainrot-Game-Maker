@@ -6,7 +6,7 @@
 import { app, toast } from './app.svelte';
 import { applyOps, diff, mediaIdsIn, mergeOps, opsSize, PathGone, type Op } from './historyops';
 import { loadGameMedia, pruneMedia, registerLinks, restoreStash } from './media.svelte';
-import { describe, type Place } from './historylabel';
+import { describe, placeWhere, type Place } from './historylabel';
 import { newId, type Game } from './model';
 import { prefs } from './prefs.svelte';
 import { isTextField } from './undokeys';
@@ -274,12 +274,16 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
   // (A file replaced by one with the same name and size changes only its bytes.)
   const file: Place = { tab: 'media', media: blobs[0]?.id };
   const d = ops.length ? describe(ops, before, after, label) : { label: label ?? 'Replaced a file', icon: '🖼', where: 'Media', place: file, undoPlace: file };
+  // An editor's own place on another tab than the changes (Clue text restyles every clue from the Theme page): where
+  // it is says that tab too, as Undo and Redo show it.
+  const where = opts.place && opts.place.tab !== d.place?.tab ? (placeWhere(opts.place) ?? d.where) : d.where;
   const entry: HistoryEntry = {
     id: newId(),
     ts: wasPending ? since : Date.now(),
     end: Date.now(),
     ops,
     ...d,
+    where,
     place: opts.place ?? d.place,
     undoPlace: opts.place ?? d.undoPlace,
     explicit: isExplicit,

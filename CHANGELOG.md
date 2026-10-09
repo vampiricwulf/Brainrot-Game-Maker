@@ -39,6 +39,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Restoring an old score change in 📜 Log › Scores no longer gives that player the board when someone else has answered since; a $0 clue can be marked right or wrong (it said "Enter an amount first"). (a679621)
 - Start scores are rounded to whole points and capped at the most points allowed ("$250.5" showed on stream), and so are Final wagers; with the limits off, a Final wager box's tooltip shows the real score of a player below zero (it said $0); a Daily Double wager below 0 says so instead of "over the max". (a679621, a75568f)
 - Board games: dice or a wheel that land while the scores (S) are up still fill in the Steps box, so Enter moves (it asked for a roll, and D rolled again); the score box in the host panel reads "$500", "1,000" or "500 pts" like ✎ Set the score…; with a symbol of two or more characters ("R$") a bar of many plates drops it on every plate, not some.
+- Stream: an audience window left on the "Starting soon" card while you're in the editor follows every change (theme, banner, title…), and a picture, sound or font replaced in Media (or put back with Undo) changes there too, without reopening it. (b9abd3a)
+- Pastel and other light themes: the room code on stream, wagers, places and the Scores overlay's title are white on their dark boxes (purple was hard to read), and a category name over its picture gets an outline that suits its colour. (b9abd3a, 00bf68f)
+- 🎨 Theme: Undo and Redo of Clue text or a whole theme stay on the Theme page and name it (they opened the first clue); the page warns when the Clue text colour is hard to read on the tiles; an SVG banner or background comes in with an imported theme file; a wide banner's thumbnail keeps its buttons in the settings column. (b9abd3a, 00bf68f)
 
 ## 2026-10-08
 

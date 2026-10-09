@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { contrast, textOn, toHex } from './colors';
+import { contrast, mixHex, textOn, toHex } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -178,9 +178,10 @@ export function headerBackground(t: Theme, col: number): string {
 /**
  * How well the board's words read on what's behind them (WCAG contrast, 1 … 21; null where a color can't be read):
  * the values on every tile color (the tile, the alternating one, the gradient's end), and the category names on every
- * category color, and the slides' text and scores on the tile color. Under 3 is hard to read on a stream.
+ * category color, the slides' text and scores on the tile color, and the clues in the Clue text color on it (null
+ * without one). Under 3 is hard to read on a stream.
  */
-export function themeReadability(t: Theme): { values: number | null; names: number | null; text: number | null } {
+export function themeReadability(t: Theme): { values: number | null; names: number | null; text: number | null; clue: number | null } {
   const worst = (text: string | undefined, on: (string | undefined)[]): number | null => {
     const fg = toHex(text);
     const bgs = on.map(toHex).filter((c): c is string => !!c);
@@ -191,6 +192,9 @@ export function themeReadability(t: Theme): { values: number | null; names: numb
     names: worst(t.boardText, [t.headerBg ?? t.tile, t.header2, t.headerGradient]),
     // The slides' text and the scores, on the tile color (the slides' and score plates' background).
     text: worst(stageText(t), [t.tile]),
+    // The clues' main text in the Clue text color, kept when another theme is put on (plain white is drawn in the
+    // slides' text color: TextBox).
+    clue: worst(clueTextColor(t), [t.tile]),
   };
 }
 
@@ -306,6 +310,11 @@ export function presetEdited(t: Theme): boolean {
   return !!p && PRESET_LOOK.some((k) => (k === 'stageText' ? stageText(t) : t[k]).toLowerCase() !== (p[k] ?? '').toLowerCase());
 }
 
+/** The Clue text color the clues are drawn in, or undefined: none, or plain white (drawn in the slides' text color). */
+export function clueTextColor(t: Pick<Theme, 'clueColor'>): string | undefined {
+  return t.clueColor && !/^#?(fff|ffffff)$/i.test(t.clueColor.trim()) ? t.clueColor : undefined;
+}
+
 /** The color of text on the tile color. A game from before it was a theme color gets its preset's while it keeps the
  * preset's tiles, else black or white, whichever reads better on them. */
 export function stageText(t: Pick<Theme, 'preset' | 'tile' | 'stageText'>): string {
@@ -313,6 +322,13 @@ export function stageText(t: Pick<Theme, 'preset' | 'tile' | 'stageText'>): stri
   const p = PRESETS[t.preset]?.theme;
   if (p?.stageText && p.tile.toLowerCase() === t.tile.toLowerCase()) return p.stageText;
   return textOn(t.tile) === '#000' ? '#000000' : '#ffffff';
+}
+
+/** Whether `text` reads (3:1 or better) on the dark boxes laid over each of the colors `behind`. */
+function onDarkBoxes(text: string, behind: string[]): boolean {
+  const fg = toHex(text);
+  if (!fg) return true;
+  return behind.every((c) => [0.55, 0.72].every((dark) => contrast(fg, mixHex(toHex(c) ?? '#000000', '#000000', dark)) >= 3));
 }
 
 /** CSS custom properties for a theme (inherit into Board, ScoreBar, slides…). */
@@ -338,8 +354,15 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     // Hard drop shadows behind words on the tiles: black on dark tiles; a soft light one on light tiles, where a black
     // one smears dark words once the stream is compressed.
     '--tile-shadow': light ? 'rgba(255, 255, 255, 0.75)' : '#000',
+    // The outline round a category name over its picture (any colors behind it), by the names' own color: black round
+    // light names, a light halo round dark ones (Pastel's). A name color that can't be read keeps the black one.
+    '--name-shadow': textOn(toHex(th.boardText) ?? '#ffffff') === '#000' ? '#000' : 'rgba(255, 255, 255, 0.75)',
     // The Daily Double splash is purple: the value color on it, unless that's too close (Pastel's purple), then white.
     '--dd-text': contrast(th.value, '#7a00ff') >= 3 ? th.value : '#ffffff',
+    // The room code (and the wagers and places on stream) sit on dark boxes laid over the tiles or the score bar (55%
+    // black on the Starting soon card, about 72% for the 📱 badge): the value color on them, unless it's too close to
+    // those (Pastel's purple), then white.
+    '--value-on-dark': onDarkBoxes(th.value, [th.tile, th.scoreBarBg]) ? th.value : '#ffffff',
     '--board-image': boardImageUrl ? cssUrl(boardImageUrl) : 'none',
     ...lookVars(th),
   };

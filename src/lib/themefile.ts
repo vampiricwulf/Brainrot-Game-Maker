@@ -148,7 +148,9 @@ export async function themeFileText(name: string, theme: Theme, media: readonly 
   return { text: JSON.stringify(file, null, 1), leftOut };
 }
 
-const IMAGE_MIME = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
+// (An SVG, as an uploaded logo can be: the preview shows it as a picture, where it runs nothing, and it's cleaned when
+// it's stored, as an upload is: themeapply.ts.)
+const IMAGE_MIME = /^image\/(png|jpeg|gif|webp|avif|bmp|svg\+xml)$/;
 const FONT_MIME = /^(font\/[\w.+-]+|application\/(font-[\w.+-]+|x-font-[\w.+-]+|vnd\.ms-fontobject|octet-stream))$/;
 
 /** What a parsed theme file or code (JSON) holds, checked. Throws a ThemeError saying what's wrong. */

@@ -145,7 +145,8 @@ describe('theme files', () => {
       theme: { tile: '#123456', sparkle: 'max', boardImage: 'nope' },
       media: [
         { id: '../evil', kind: 'image', mime: 'image/png', data: 'AAAA' },
-        { id: 'svg1', kind: 'image', mime: 'image/svg+xml', data: 'AAAA' },
+        { id: 'html1', kind: 'image', mime: 'text/html', data: 'AAAA' },
+        { id: 'svg2', kind: 'font', mime: 'image/svg+xml', data: 'AAAA' },
         { id: 'bad64', kind: 'image', mime: 'image/png', data: '!!!' },
         'junk',
       ],
@@ -157,6 +158,19 @@ describe('theme files', () => {
     expect('sparkle' in back.theme).toBe(false);
     expect(back.theme.boardImage).toBeUndefined();
     expect(back.media).toEqual([]);
+  });
+
+  it('bring an SVG banner in (an uploaded logo can be one; it is cleaned when it is stored, themeapply.ts)', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="9" height="9"/></svg>';
+    const text = JSON.stringify({
+      format: THEME_FORMAT,
+      version: 1,
+      theme: { ...presetTheme('classic'), banner: 'logo1' },
+      media: [{ id: 'logo1', name: 'logo.svg', kind: 'image', mime: 'image/svg+xml', data: btoa(svg) }],
+    });
+    const back = parseThemeFile(text);
+    expect(back.theme.banner).toBe('logo1');
+    expect(back.media.map((m) => m.ref)).toEqual([{ id: 'logo1', name: 'logo.svg', mime: 'image/svg+xml', size: svg.length, kind: 'image' }]);
   });
 });
 

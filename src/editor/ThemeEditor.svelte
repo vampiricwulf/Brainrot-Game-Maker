@@ -23,6 +23,7 @@
     BANNER_DEFAULT,
     BANNER_MAX,
     BANNER_MIN,
+    clueTextColor,
     LOOK_RANGES,
     lookNumber,
     stageText,
@@ -60,10 +61,13 @@
   // A pretend game in progress for the preview.
   const demo = $derived(themeDemo(shown, view === 'clue' ? firstBoard : view, view === 'clue'));
 
-  /** The game's clue text: a font or color for the main text of every question and answer (the note offers Undo). */
+  /**
+   * The game's clue text: a font or color for the main text of every question and answer (the note offers Undo). It
+   * restyles clues all over the game, so Undo and Redo show it here, on the Theme page, not at the first clue.
+   */
   function clueText(key: 'font' | 'color', to: string | undefined): void {
     const what = key === 'font' ? 'font' : 'color';
-    step(`Clue text ${what}: ${to ? (key === 'font' ? to.split(',')[0].replace(/'/g, '') : to) : 'each clue’s own'}`, () => setClueText(game, key, to), { notify: true });
+    step(`Clue text ${what}: ${to ? (key === 'font' ? to.split(',')[0].replace(/'/g, '') : to) : 'each clue’s own'}`, () => setClueText(game, key, to), { notify: true, place: { tab: 'theme' } });
   }
   const live = newLive();
 
@@ -135,7 +139,7 @@
         if (k === 'clueFont' || k === 'clueColor') setClueText(game, k === 'clueFont' ? 'font' : 'color', look[k]);
         else set(k, $state.snapshot(look[k]) as never);
       }
-    }, { notify: true });
+    }, { notify: true, place: { tab: 'theme' } });
   }
 
   function pasteColor(k: keyof Theme, c: string): void {
@@ -261,9 +265,10 @@
         </select>
       </label>
       <label class="check clue-color" data-k="clueColor" data-name="Clue text color" data-color>
+        <!-- (The color the clues are drawn in: plain white is drawn in the slides' text color.) -->
         <input
           type="color"
-          value={t.clueColor ?? hex(stageText(t), FACTORY_COLOR)}
+          value={hex(clueTextColor(t) ?? stageText(t), FACTORY_COLOR)}
           onchange={(e) => clueText('color', e.currentTarget.value)}
           aria-label="Clue text color"
         />
@@ -271,6 +276,9 @@
         {#if t.clueColor}<button class="small ghost" onclick={() => clueText('color', undefined)} title="Back to each clue's own color" aria-label="Back to each clue's own color">↺</button>{/if}
       </label>
     </div>
+    {#if hard(readable.clue)}
+      <p class="warn small" role="status">⚠ The clue text color is hard to read on the tile color ({readable.clue.toFixed(1)}:1): pick one further from it, or ↺ for each clue’s own.</p>
+    {/if}
     <p class="muted small">
       The main text of every question and answer, and of new ones (text you styled yourself keeps its look). With no font
       here, new text uses {FACTORY_FONT.split(',')[0].replace(/'/g, '')}.
@@ -571,8 +579,14 @@
   .tip {
     margin: 16px 0 0;
   }
-  img {
+  /* A picture's thumbnail: a wide banner shrinks (whole, letterboxed) rather than pushing its buttons out of the column,
+     under the preview. */
+  .pop img {
     height: 30px;
+    max-width: 9em;
+    min-width: 0;
+    flex: 0 1 auto;
+    object-fit: contain;
     border-radius: 4px;
   }
   .side {

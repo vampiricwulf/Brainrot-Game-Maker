@@ -30,6 +30,19 @@ describe('stage text', () => {
     expect(themeStyle(presetTheme('pastel'))).toContain('--stage-text: #4a3b5c');
   });
 
+  it('the room code on its dark box: the value color, or white where that is too close to the box (Pastel’s purple)', () => {
+    expect(themeStyle(presetTheme('pastel'))).toContain('--value-on-dark: #ffffff');
+    for (const p of ['classic', 'dark', 'neon'] as const) expect(themeStyle(presetTheme(p))).toContain(`--value-on-dark: ${presetTheme(p).value}`);
+  });
+
+  it('outlines a category name over its picture by the names’ own color: black round light ones, a light halo round dark ones', () => {
+    const pastel = presetTheme('pastel');
+    expect(themeStyle(pastel)).toContain('--name-shadow: rgba(255, 255, 255, 0.75)');
+    // White names on dark headers, still on Pastel's light tiles.
+    expect(themeStyle({ ...pastel, headerBg: '#4a3b5c', boardText: '#ffffff' })).toContain('--name-shadow: #000;');
+    for (const p of ['classic', 'dark', 'neon'] as const) expect(themeStyle(presetTheme(p))).toContain('--name-shadow: #000;');
+  });
+
   it('a game from before it was a theme color: its preset’s, or black / white by its own tiles', () => {
     const { stageText: _, ...old } = presetTheme('pastel');
     expect(stageText(old)).toBe('#4a3b5c');
@@ -168,5 +181,15 @@ describe('readability', () => {
     expect(themeReadability({ ...t, header2: '#f0f0f0' }).names!).toBeLessThan(1.5);
     expect(themeReadability({ ...t, headerBg: '#eeeeee' }).names!).toBeLessThan(1.5);
     expect(themeReadability({ ...t, value: 'none' }).values).toBeNull();
+  });
+
+  it('checks the Clue text color the clues are drawn in, kept when another theme is put on', () => {
+    const pastel = presetTheme('pastel');
+    expect(themeReadability(presetTheme('classic')).clue).toBeNull();
+    expect(themeReadability({ ...presetTheme('classic'), clueColor: '#ffcc00' }).clue!).toBeGreaterThan(3);
+    // Yellow clues kept on Pastel's pink tiles.
+    expect(themeReadability({ ...pastel, clueColor: '#ffcc00' }).clue!).toBeLessThan(1.5);
+    // Plain white is drawn in the slides' text color, which `text` checks.
+    expect(themeReadability({ ...pastel, clueColor: '#FFFFFF' }).clue).toBeNull();
   });
 });

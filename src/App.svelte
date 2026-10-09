@@ -365,6 +365,8 @@
     watch.subscribe(saveEditorSoon);
     watch.subscribe(checkSoon);
     watch.subscribe(compareSoon);
+    // An audience window left open on the Starting soon card follows every edit (the theme, the banner, the title…).
+    watch.subscribe(soonCardLater);
     compareSoon();
     saveEditorSoon();
     startHistory(game, watch);
@@ -728,8 +730,8 @@
   }
 
   // In the editor, an audience window left open shows the "Starting soon" card of the game in the editor, with the
-  // buzzer room's code when one is open (viewers can join for the next game). A moment after the title changes, and at
-  // once when the room or the game does.
+  // buzzer room's code when one is open (viewers can join for the next game). A moment after any change to the game
+  // (the editor's watcher, startWatch), and at once when the room or the game does.
   function soonCard(): void {
     if (app.screen !== 'editor' || !audience.open || !mayPlay()) return;
     const r = kept.room?.remote;
@@ -742,10 +744,6 @@
     void app.game;
     void kept.room?.remote.code;
     untrack(soonCard);
-  });
-  $effect(() => {
-    void app.game.title;
-    untrack(() => loaded && app.screen === 'editor' && audience.open && soonCardLater());
   });
 
   /** The bar's ✕ for the audience window (OBS's capture goes black): asked first. */

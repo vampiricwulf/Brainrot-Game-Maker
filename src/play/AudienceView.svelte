@@ -749,7 +749,8 @@
     font-family: var(--value-font);
     font-size: 48px;
     letter-spacing: 0.12em;
-    color: var(--value);
+    /* (White where the value color is too close to the dark box: Pastel's purple, theme.ts.) */
+    color: var(--value-on-dark, var(--value));
   }
   .jb-link {
     font-size: 22px;
@@ -983,7 +984,7 @@
     font-size: 120px;
     letter-spacing: 0.12em;
     line-height: 1;
-    color: var(--value);
+    color: var(--value-on-dark, var(--value));
   }
   .join-link {
     font-size: 36px;
@@ -1228,7 +1229,7 @@
     font-size: 64px;
   }
   .spot-wager b {
-    color: var(--value);
+    color: var(--value-on-dark, var(--value));
   }
   .spot-result,
   .spot-hold {
@@ -1310,7 +1311,7 @@
   }
   .rank {
     width: 60px;
-    color: var(--value);
+    color: var(--value-on-dark, var(--value));
   }
   .nm {
     padding: 2px 20px;
