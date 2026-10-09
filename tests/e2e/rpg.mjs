@@ -773,9 +773,18 @@ try {
   await page.keyboard.press('Control+z');
   await shopTc.getByText('Short by 🪙1 for Potion.').waitFor();
   assert(true, 'Ctrl+Z takes the gold back and the row says so again');
+  // Other price… at a price still too much: the row says the gap at that price, and Sell anyway charges that price.
+  const priceBox = shopTc.getByRole('spinbutton', { name: 'Price' });
+  await shopTc.getByRole('button', { name: 'Other price…' }).click();
+  await priceBox.fill('2');
+  await priceBox.press('Enter');
+  await shopTc.getByText('Short by 🪙2 for Potion.').waitFor();
+  await shopTc.getByRole('button', { name: 'Other price…' }).click();
+  assert((await priceBox.inputValue()) === '2', `Other price… again starts at the price typed (${await priceBox.inputValue()})`);
+  await shopTc.getByRole('button', { name: 'Cancel' }).click();
   await shopTc.getByRole('button', { name: 'Sell anyway' }).click();
   assert((await potions()) === 2, 'selling anyway adds it to the buyer’s inventory');
-  assert((await shopTc.innerText()).includes('Player 1 🪙-1'), 'and their gold goes below zero');
+  assert((await shopTc.innerText()).includes('Player 1 🪙-2'), `and their gold goes below zero, by the price typed (${await shopTc.innerText()})`);
   await shopTc.getByRole('button', { name: /^Potion( ×\d+)? →/ }).first().click();
   assert((await potions()) === 1, 'selling back takes one away');
   // Click a ware on the stage to buy it; short of gold, the host picks what happens.

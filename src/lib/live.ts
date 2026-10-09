@@ -117,7 +117,7 @@ export type Overlay =
       /** Who's buying (default: the player who opened it). */
       buyer?: Id;
       /** A purchase the buyer can't afford, waiting for the host's call (host panel only); `price`: one typed in. */
-      short?: { item: Id; error: string; price?: number };
+      short?: { item: Id; price?: number };
     };
 
 /** A wheel spun alongside the main one: its own slices, spin and result. */

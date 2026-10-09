@@ -335,6 +335,25 @@ describe('action log', () => {
     expect([w().parties.length, w().split]).toEqual([1, false]);
   });
 
+  it('keeps the host’s split view when undoing a step that added a party, with two parties left', () => {
+    const { game, session } = setup();
+    const pos = (screen: string) => ({ map: 'm', screen, x: 0, y: 0 });
+    const p1 = { id: 'p1', name: 'Party 1', members: ['a'] };
+    const p2 = { id: 'p2', name: 'Party 2', members: ['b', 'c'] };
+    session.worlds = { w: { positions: { a: pos('s1'), b: pos('s2'), c: pos('s2') }, parties: [p1, p2], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false, split: false } };
+    const w = () => session.worlds!.w;
+    logged(session, 'Split off Cat', () => (w().parties = [p1, { ...p2, members: ['b'] }, { id: 'p3', name: 'Party 3', members: ['c'] }]));
+    // Between steps the host turns split view on, and after Redo off again.
+    w().split = true;
+    undoAction(session, game);
+    expect([w().parties.length, w().split]).toEqual([2, true]);
+    redoAction(session, game);
+    expect([w().parties.length, w().split]).toEqual([3, true]);
+    w().split = false;
+    undoAction(session, game);
+    expect([w().parties.length, w().split]).toEqual([2, false]);
+  });
+
   it('undoes improvising on the game being played: a new screen, a renamed object, a live edit', () => {
     const { game, session } = setup();
     const world = newWorld('W');
