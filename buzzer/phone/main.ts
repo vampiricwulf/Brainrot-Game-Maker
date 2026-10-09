@@ -267,9 +267,9 @@ function probe(): void {
 
 /**
  * The socket is gone: try again with backoff (unless the game is over). `wait`: try again after this long instead.
- * `code`: what it closed with.
+ * `closeCode`: what it closed with.
  */
-function dropped(s: WebSocket, wait?: number, code?: number): void {
+function dropped(s: WebSocket, wait?: number, closeCode?: number): void {
   if (ws !== s) return;
   detach(s);
   ws = null;
@@ -291,7 +291,7 @@ function dropped(s: WebSocket, wait?: number, code?: number): void {
   render();
   if (notice?.final) return;
   // 4004: the room is gone (closed, or ended after hours, while this phone was away): no point trying again.
-  if (code === 4004) return ended();
+  if (closeCode === 4004) return ended();
   const full = notice?.full ? Math.min(30_000, 3000 * 2 ** Math.max(0, fullTries - 1)) : undefined;
   const delay = wait ?? full ?? Math.min(8000, 500 * 2 ** attempts) * (0.75 + Math.random() * 0.5);
   attempts++;

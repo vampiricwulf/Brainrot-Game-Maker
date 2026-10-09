@@ -193,6 +193,8 @@ try {
   assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'), 'reconnecting: the Start bar says so instead of “1 of 3 joined”');
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '“Going live?” no longer ticks the room off');
   assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'and Player 1 isn’t shown as ✔ joined from the stale list');
+  const p2Row = await card.locator('li', { hasText: 'Player 2' }).innerText();
+  assert(p2Row.includes('room out of reach') && !p2Row.includes('waiting'), 'nor Player 2 as waiting for a phone: the room is out of reach');
   assert(
     (await card.getByRole('button', { name: '✔ Add' }).isDisabled()) &&
       (await card.getByRole('button', { name: 'Turn Zed away' }).isDisabled()) &&

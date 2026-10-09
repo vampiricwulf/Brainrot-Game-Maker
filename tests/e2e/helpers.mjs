@@ -135,7 +135,8 @@ export const confirmStrip = (page) => page.locator('.panel .confirm');
  * A page's WebSocket (a phone's, or the host's), passed through Playwright: `delay` ms each way (a slow network), when
  * each buzz reached the server (`sent`), when each armed view reached the page (`armedAt`), and `rewrite` to change a
  * buzz on its way. `drop()` cuts the connection (both ends see it close), `stall()` makes it go silent without closing
- * (a phone asleep in the background), and `blocked` turns new connections away (the network is down).
+ * (a phone asleep in the background), and `blocked` turns new connections away (the network is down). Each of `routes`
+ * notes the code the server closed it with (`closed`).
  */
 export async function tap(page) {
   const t = { delay: 0, sent: [], armedAt: {}, rewrite: null, blocked: false, routes: [] };
@@ -149,8 +150,12 @@ export async function tap(page) {
   await page.routeWebSocket(/\/ws\//, (ws) => {
     if (t.blocked) return void ws.close({ code: 1011, reason: 'offline' }).catch(() => {});
     const server = ws.connectToServer();
-    const route = { ws, server, dead: false };
+    const route = { ws, server, dead: false, closed: 0 };
     t.routes.push(route);
+    server.onClose((code, reason) => {
+      route.closed = code;
+      ws.close({ code, reason }).catch(() => {});
+    });
     const later = (fn) => (t.delay ? setTimeout(fn, t.delay) : fn());
     const toServer = (m) =>
       later(() => {

@@ -466,6 +466,32 @@ try {
   assert(kept.seatId === 'c' && catTap2.routes.length > routes, 'a press while "Checking connection…" on a dead socket still counts, sent once reconnected');
   setState({ phase: 'lobby', clue: null });
 
+  // Ann's phone is off the network for a while (no Wi-Fi, asleep): after a few tries it checks whether the room is
+  // still there. It is, so it keeps trying, and she's back on her buzzer once online again (not "The game is over").
+  // (Online again the moment it asks, in step with the phone: its next try gets through.)
+  let asked = '';
+  const checking = (r) => {
+    const path = new URL(r.url()).pathname;
+    if (!path.startsWith('/api/rooms/')) return;
+    asked = path;
+    annTap.blocked = false;
+  };
+  ann.on('request', checking);
+  annTap.blocked = true;
+  annTap.drop();
+  for (let i = 0; i < 240 && !asked; i++) await sleep(250);
+  ann.off('request', checking);
+  annTap.blocked = false;
+  await ann.locator('#overlay').waitFor({ state: 'hidden' });
+  assert(
+    asked === `/api/rooms/${room.code}` && (await ann.locator('main').getByText('The game is over').count()) === 0 && (await big(ann).innerText()) === 'Ann',
+    `a phone offline for a while checks its own room (${asked}), finds it still open, and keeps trying: never "The game is over"`,
+  );
+  setState({ scores: { ...hs.scores, a: 300 } });
+  await ann.locator('#me').getByText('300').waitFor();
+  assert(true, 'and back online, Ann is in her seat again');
+  setState({ scores: { ...hs.scores, a: 200 } });
+
   // 24 open pages that do nothing (viewers, extra tabs) don't lock a real player out: the longest idle one makes way.
   await bob.close();
   await eve.close();

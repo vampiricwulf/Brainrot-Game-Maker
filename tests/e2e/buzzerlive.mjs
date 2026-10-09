@@ -349,7 +349,13 @@ try {
   p2Tap.blocked = false;
   await p2.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await p2.locator('main').getByText('The game is over').waitFor();
-  assert(p2Tap.routes.length - p2Routes <= 1 && (await p2.locator('#overlay').isHidden()), `a phone asleep when the room closed says the game is over when it wakes (${p2Tap.routes.length - p2Routes} connection, no retrying)`);
+  // (Told by the room it's gone, 4004, on the connection it makes: not from the check a phone makes after a few tries.
+  // Two at most: a retry starting just as it wakes is replaced.)
+  const woke = p2Tap.routes.slice(p2Routes);
+  assert(
+    woke.length >= 1 && woke.length <= 2 && woke.some((r) => r.closed === 4004) && (await p2.locator('#overlay').isHidden()),
+    `a phone asleep when the room closed says the game is over when it wakes (${woke.length} connection, closed with ${woke.map((r) => r.closed).join()}; no retrying)`,
+  );
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Buzzer live E2E passed.');

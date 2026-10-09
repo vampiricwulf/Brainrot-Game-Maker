@@ -58,7 +58,7 @@
   const full = $derived(session.players.length >= max);
   /**
    * The room can't be reached right now: nothing these buttons say would get to it (they're greyed out), and its last
-   * list of phones is stale (no ✔ joined from it).
+   * list of phones is stale or gone (no ✔ joined from it, and no "waiting" or "nobody yet" either).
    */
   const down = $derived(remote.status !== 'online');
   const downTitle = 'The buzzer room isn’t reachable right now';
@@ -74,7 +74,7 @@
       <li style:--c={p.color} class="team">
         <span class="dot" aria-hidden="true"></span>
         <span class="name" dir="auto">{p.name}</span>
-        <span class="muted">{ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
+        <span class="muted">{down ? 'room out of reach' : ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
         {#if phoneAwaySince(p.id) !== null}
           {@const at = phoneAwaySince(p.id) ?? now}
           <span class="away" data-phone-offline={p.id}>📵 offline {awayFor(at, now)}</span>
@@ -114,7 +114,7 @@
     <li style:--c={p.color}>
       <span class="dot" aria-hidden="true"></span>
       <span class="name" dir="auto">{p.name}</span>
-      {#if ph && down}
+      {#if down}
         <span class="muted">phone: room out of reach</span>
       {:else if ph?.connected}
         <span class="ok">✔ joined</span>
