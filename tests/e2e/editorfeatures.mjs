@@ -320,6 +320,9 @@ try {
   const before = (await tabs()).length;
   await page.getByRole('button', { name: '＋ Add round' }).click();
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
+  // (As Open… does, it lists the web page a game was exported as, and the desktop app's backups.)
+  const accept = ((await chooser.element().getAttribute('accept')) ?? '').split(',');
+  assert(['.brainrot', '.json', '.html', '.bak'].every((x) => accept.includes(x)), `Import rounds… can pick an exported page or a backup (${accept.join(',')})`);
   await chooser.setFiles(other);
   const pick = page.getByRole('dialog', { name: 'Import rounds' });
   await pick.getByLabel(/Adventure/).check();
