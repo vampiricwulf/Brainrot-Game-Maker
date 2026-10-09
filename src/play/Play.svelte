@@ -548,6 +548,7 @@
         t.elapsed = t.total;
         t.startedAt = null;
         t.expired = true;
+        t.expiredAt = Date.now();
         playCue(app.live, game, 'timesUp');
       }
     }, 150);

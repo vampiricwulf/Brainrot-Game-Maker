@@ -3,8 +3,8 @@
   playing without restarting when the party moves between screens that share it.
 -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import { applySink } from '../../lib/audioout.svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { playAndReport } from '../../lib/audioout.svelte';
 
   let { src, volume = 0.6 }: { src: string | undefined; volume?: number } = $props();
   const FADE_MS = 900;
@@ -40,8 +40,23 @@
     el.dataset.src = url;
     players.push(el);
     current = el;
-    void applySink(el).then(() => el.play().catch(() => {}));
+    // Reported like any game sound: a block brings back "Click to enable sound" and tells the host.
+    void playAndReport(el);
     fade(el, volume);
+  });
+
+  // A track the browser blocked starts on the click (or key) that lets the window play sound: the same track goes on
+  // across screens that share it, so nothing else would start it.
+  onMount(() => {
+    const retry = () => {
+      if (current?.paused && !current.error) void playAndReport(current);
+    };
+    window.addEventListener('pointerup', retry);
+    window.addEventListener('keydown', retry);
+    return () => {
+      window.removeEventListener('pointerup', retry);
+      window.removeEventListener('keydown', retry);
+    };
   });
 
   onDestroy(() => {

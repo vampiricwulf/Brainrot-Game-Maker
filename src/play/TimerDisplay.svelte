@@ -22,6 +22,11 @@
   const frac = $derived(timer.total ? left / timer.total : 0);
   const done = $derived(timer.expired || left <= 0);
   const urgent = $derived(!done && left <= 5);
+  /**
+   * TIME'S UP's moment (its slam and fade, or reduced motion's 3 s): a window opened or reloaded later doesn't play it
+   * again over the question. (Not marked yet: this window's own 0, a moment before the host's, shows it at once.)
+   */
+  const fresh = $derived(timer.expiredAt === undefined ? !timer.expired : now - timer.expiredAt < 3200);
 </script>
 
 <div
@@ -35,7 +40,7 @@
   <div class="num">{Math.ceil(left)}</div>
   <div class="bar"><div class="fill" style:width="{frac * 100}%"></div></div>
 </div>
-{#if done}
+{#if done && fresh}
   <div class="timesup">TIME'S UP!</div>
 {/if}
 

@@ -1,5 +1,6 @@
 // Streaming the sound: the 🔊 Sound help, Test sound in single and dual mode, blocked sounds reported to the
-// host, the Game audio output picker, and the desktop app's settings (with a stand-in for its native side).
+// host (an RPG round's music too, which starts on the click), the Game audio output picker, and the desktop app's
+// settings (with a stand-in for its native side).
 // Headless Chromium has no speakers, and it's launched with autoplay allowed (as after a click in each
 // window), so a blocking browser and fake speakers are simulated with init scripts where a check needs them.
 import { chromium } from 'playwright-core';
@@ -807,6 +808,58 @@ try {
     await page.waitForFunction(introPlaying, false);
     await stop.waitFor({ state: 'detached' });
     assert(true, 'the host panel’s 🔇 Stop sounds (there while a round intro may play) stops it, and then goes away');
+    await context.close();
+  }
+
+  // ---------- 8. RPG music the browser blocked: the host is told, and it starts on the click that allows sound ----------
+  {
+    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    await context.route('https://files.catbox.moe/**', (r) =>
+      r.fulfill({ status: 200, contentType: 'audio/wav', headers: { 'Cache-Control': 'no-store' }, body: wav(4) }),
+    );
+    await context.addInitScript(() => {
+      if (location.hash !== '#audience') return;
+      // As in 2.: sound is blocked there until the window is clicked. Each play() of the music is noted.
+      let clicked = false;
+      addEventListener('pointerdown', () => (clicked = true), true);
+      Object.defineProperty(navigator, 'userActivation', { get: () => ({ hasBeenActive: clicked, isActive: false }) });
+      const real = HTMLMediaElement.prototype.play;
+      window.__music = [];
+      HTMLMediaElement.prototype.play = function () {
+        if (this.src.endsWith('/music.wav') && !window.__music.includes(this)) window.__music.push(this);
+        if (!clicked && !this.muted) return Promise.reject(new DOMException('play() needs a click first', 'NotAllowedError'));
+        return real.call(this);
+      };
+    });
+    const slide = (color) => ({ background: { color }, elements: [] });
+    const screen = (id, col) => ({ id, name: `Field ${col}`, col, row: 0, slide: slide(col ? '#234' : '#432') });
+    const game = {
+      id: 'g_music', version: 2, title: 'Music',
+      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
+      players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }, { id: 'p2', name: 'Bob', color: '#3cb44b' }],
+      rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
+      // (No round-intro sound: the music is the only sound the window blocks.)
+      media: [{ id: 'm_music', name: 'music.wav', mime: 'audio/wav', size: 0, kind: 'audio', url: 'https://files.catbox.moe/music.wav' }],
+      audio: {}, soundsOff: { roundIntro: true }, wheels: [], dice: [], theme: {}, statFields: [], items: [],
+      worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm_main', name: 'Overworld', cols: 2, rows: 1, screens: [screen('s_0', 0), screen('s_1', 1)], visibility: 'full', showExits: true, revealNeighbors: true, diagonals: false, wrap: false, transition: 'cut', music: 'm_music' }] }],
+    };
+    const page = watch(await context.newPage(), 'rpg music');
+    await page.goto(fileUrl);
+    await openGameFile(page, { name: 'Music.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(game)) });
+    await page.getByText(/^Opened “/).waitFor();
+    await page.getByRole('button', { name: '▶ Play' }).click();
+    await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
+    const [aud] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+    watch(aud, 'rpg music audience');
+    await aud.getByText('🔊 Click to enable sound').waitFor();
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.locator('.rh').waitFor();
+    await page.getByText('The audience window blocked a sound').waitFor();
+    assert((await aud.evaluate(() => window.__music.length)) === 1 && (await aud.evaluate(() => window.__music[0].paused)), 'RPG music the audience window blocks is reported to the host');
+    await aud.locator('.aud').click({ position: { x: 40, y: 40 } });
+    await page.getByText(/Click the audience window once|blocked a sound/).waitFor({ state: 'detached' });
+    await aud.waitForFunction(() => window.__music.length === 1 && !window.__music[0].paused);
+    assert(true, 'the click that lets the audience window play sound starts that music (no new screen needed)');
     await context.close();
   }
 
