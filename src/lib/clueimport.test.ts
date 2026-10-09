@@ -141,3 +141,27 @@ describe('clue import: review fixes', () => {
     expect(plan.leftOut).toEqual(['Cat 11', 'Cat 12']);
   });
 });
+
+describe('clue import: sheets as they copy', () => {
+  it('a cell that starts with a quoted title keeps its quotes; a quote never closed is just text', () => {
+    expect(parseTable('Movies\t200\t"I’ll be back" was said in this film\tThe Terminator')).toEqual([['Movies', '200', '"I’ll be back" was said in this film', 'The Terminator']]);
+    expect(parseTable('"A" b\t"A" or "B"')).toEqual([['"A" b', '"A" or "B"']]);
+    expect(parseTable('"A\tB\nC\tD')).toEqual([
+      ['"A', 'B'],
+      ['C', 'D'],
+    ]);
+    // Quoted cells still hold line breaks, doubled quotes, and spaces after the closing quote.
+    expect(parseTable('"Line 1\nLine 2"\t"Say ""hi"""\t""\tx')).toEqual([['Line 1\nLine 2', 'Say "hi"', '', 'x']]);
+    expect(parseTable('"b" ,c\n')).toEqual([['b', 'c']]);
+  });
+
+  it('a category written once over its rows (merged or blank cells below it) is theirs too', () => {
+    const clues = cluesFromTable(parseTable('Movies\t200\tQ1\tA1\n\t400\tQ2\tA2\n\t600\tQ3\tA3\nMusic\t200\tQ4\tA4\n\t400\tQ5\tA5'));
+    expect(clues.map((c) => c.category)).toEqual(['Movies', 'Movies', 'Movies', 'Music', 'Music']);
+    const plan = planImport(newRound('R', 2, [200, 400, 600]), clues, 'replace');
+    expect(plan.round.categories.map((c) => c.title)).toEqual(['Movies', 'Music']);
+    expect([q(plan.round, 0, 2), q(plan.round, 1, 1)]).toEqual(['Q3', 'Q5']);
+    // With a header too; rows before any name still take the fallback.
+    expect(cluesFromTable(parseTable('Category,Question,Answer\n,Q0,A0\nGeo,Q1,A1\n,Q2,A2'), 'Old').map((c) => c.category)).toEqual(['Old', 'Geo', 'Geo']);
+  });
+});

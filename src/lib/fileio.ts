@@ -204,6 +204,21 @@ export function parseGame(text: string): Game {
 export const GAME_FILES = '.brainrot,.brainrot-theme,.jbr,.zip,.json,.html,.bak,.bak2,application/json,application/zip,text/html';
 export const isGameFile = (name: string) => /\.(brainrot|jbr|zip|json|html?)(\.bak\d*)?$/i.test(name);
 
+/**
+ * A text file's words: UTF-8, or UTF-16 by its BOM (Excel's "Unicode Text"); one that isn't valid UTF-8 is read as
+ * Windows-1252, as Excel's "CSV (Comma delimited)" saves on Windows.
+ */
+export async function readTextFile(f: Blob): Promise<string> {
+  const b = new Uint8Array(await f.arrayBuffer());
+  if (b[0] === 0xff && b[1] === 0xfe) return new TextDecoder('utf-16le').decode(b);
+  if (b[0] === 0xfe && b[1] === 0xff) return new TextDecoder('utf-16be').decode(b);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(b);
+  } catch {
+    return new TextDecoder('windows-1252').decode(b);
+  }
+}
+
 export function pickFile(accept: string): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');

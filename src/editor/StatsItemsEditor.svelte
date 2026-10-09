@@ -13,7 +13,7 @@
   import { copyItem, copyShop, copyStat, moveTo } from '../lib/listedit';
   import { dropMenu, showMenu } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
-  import { pickFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
+  import { pickFile, readTextFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allActions, worldObjects } from '../lib/refs';
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, shopCurrencyGone, SCORE_CURRENCY, statRangeProblem } from '../lib/toolset';
@@ -250,7 +250,7 @@
   async function importCsv(): Promise<void> {
     const file = await pickFile('.csv,text/csv');
     if (!file) return;
-    const rows = parseCsv(await file.text());
+    const rows = parseCsv(await readTextFile(file));
     const head = rows[0]?.map((h) => h.trim().toLowerCase()) ?? [];
     const col = (name: string) => head.indexOf(name);
     // A header row is any first row naming a column the file can have (not only "name").
