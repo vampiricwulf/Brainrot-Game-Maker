@@ -1,6 +1,8 @@
 // ✍ Everyone answers: a clue where every player types an answer on their phone, against the real buzzer room (buzzer/
 // under `wrangler dev`). Only the host sees the answers; the stream sees who has answered (in a single window the host
-// panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Needs `npm ci` in buzzer/.
+// panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Then, with an audience
+// window, a second ✍ clue: the host judges while answers are still open, and a ✔ leaves the others' countdown going.
+// Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -90,6 +92,11 @@ try {
   await editor.locator('[data-field="q"]').fill('Name a dog breed');
   await editor.getByLabel(/Everyone answers/).check();
   await editor.getByRole('button', { name: /Done/ }).click();
+  // (And the next one along, for the audience window's part.)
+  await host.locator('.tile').nth(1).click();
+  await editor.locator('[data-field="q"]').fill('Name a cat breed');
+  await editor.getByLabel(/Everyone answers/).check();
+  await editor.getByRole('button', { name: /Done/ }).click();
   assert(true, 'a clue is set to ✍ Everyone answers in the clue editor');
 
   await playWithPlayers(host, 2);
@@ -170,6 +177,38 @@ try {
   await host.keyboard.press('r');
   await host.waitForTimeout(800);
   assert((await p1.locator('#buzz-big').innerText()) === 'Answers locked' && (await p1.locator('#answer-form').isHidden()), 'hiding the answer again doesn’t open them: nobody changes theirs after seeing it');
+
+  // ---------- With an audience window: the host panel is off stream ----------
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box .board').waitFor();
+  const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
+  watch(aud, 'audience');
+  await aud.locator('.board').waitFor();
+  await host.locator('.stage-box .board .tile[data-row="0"][data-cat="1"]').click();
+  for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
+  // A countdown (T): this game has none of its own.
+  await host.keyboard.press('t');
+  await aud.locator('.timer').waitFor();
+  await p1.getByLabel(/Your answer/).fill('Siamese');
+  await p1.getByLabel(/Your answer/).press('Enter');
+  await p2.getByLabel(/Your answer/).fill('Bulldog');
+  await p2.getByLabel(/Your answer/).press('Enter');
+  await row('Player 1').getByText('“Siamese”').waitFor();
+  await row('Player 2').getByText('“Bulldog”').waitFor();
+  assert(
+    (await answersBox.getByRole('status').innerText()).includes('only you see them') &&
+      (await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).count()) === 1 &&
+      (await row('Player 2').getByRole('button', { name: 'Player 2 is wrong' }).count()) === 1,
+    'with an audience window, the host sees the words with ✔ / ✘ while answers are still open',
+  );
+  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).click();
+  await row('Player 1').getByText('✔ Right').waitFor();
+  // (Its score pop on stream: the audience window has the state after the ✔.)
+  await aud.locator('.pop', { hasText: 'Player 1' }).first().waitFor();
+  assert((await aud.locator('.timer').count()) === 1, '✔ on one answer leaves the countdown going for the others');
+  await host.keyboard.press('r');
+  await aud.locator('.timer').waitFor({ state: 'detached' });
+  assert(true, 'showing the answer ends it');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Everyone answers E2E passed.');

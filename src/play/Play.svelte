@@ -1329,6 +1329,11 @@
     const o = app.live.overlay;
     if (o?.kind === 'dice') lastDice = o.preset;
   });
+  // The tile's own wheel or dice replaced (dice rolled over it, a roll-off, a slice's pop-up): it's gone, so a wheel or
+  // dice opened later isn't taken for it. (The scores over it don't count: it's still up under them.)
+  $effect(() => {
+    if (app.live.toolTile && !(info && tileToolUp(app.live, info.clue))) untrack(() => delete app.live.toolTile);
+  });
 
   /** Roll-offs whose result was already applied (closing one early applies it; the timer then mustn't again). */
   const rollOffsApplied = new Set<string>();

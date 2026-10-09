@@ -45,7 +45,7 @@
     >
   </div>
   {#if dual || !open}
-    <ul>
+    <ul class:dense={!dual}>
       {#each session.players as p (p.id)}
         {@const a = answers[p.id]}
         {@const j = judged[p.id]}
@@ -93,13 +93,18 @@
     align-items: baseline;
     flex-wrap: wrap;
   }
-  /* Rows side by side (3 a line in the box): the words showing in a single window take less of the stage's height. */
   ul {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  /* A single window (on stream): rows side by side (2 a line in the box), so the words take less of the stage's height. */
+  ul.dense {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 4px 16px;
   }
   .in {
@@ -123,9 +128,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* On a crowded row a long name gives way (cut short, …), not the answer: it keeps room for a few words a line. */
+  li .who {
+    flex-shrink: 1;
+    min-width: 3em;
+  }
   .text {
     flex: 1;
-    min-width: 0;
+    min-width: 8em;
     overflow-wrap: anywhere;
   }
   .mark {

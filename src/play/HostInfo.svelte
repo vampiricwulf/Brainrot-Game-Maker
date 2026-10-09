@@ -1,7 +1,7 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, places, playerName, slidesRound, tiedLeaders } from '../lib/session';
+  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -57,10 +57,10 @@
     <!-- A clue with several question slides: the one on screen, and the next one coming. -->
     {@const slides = questionSlides(info.clue)}
     {@const at = clueSlideIndex(session, info.clue)}
-    <!-- (A wheel or dice tile's question comes up once its tool closes.) -->
+    <!-- (A wheel or dice tile's question comes up once its tool closes. One with nothing to ask is just its tool: no word.) -->
     <div class="label">
       Question{slides.length > 1 ? ` · slide ${at + 1} of ${slides.length}` : ''}
-      {session.revealed
+      {session.revealed || toolOnlyClue(info.clue)
         ? ''
         : session.dd && session.dd.stage !== 'question'
           ? '(not shown yet)'

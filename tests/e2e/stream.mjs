@@ -4,7 +4,7 @@
 // crowded 720p game; 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
 // the ✔ marks, a long tie heading on the end screen); and wheel and dice tiles in buzzer mode (the question, the buzzers
 // and the countdown wait for the tile's own tool, and only for it), a countdown started under the cover, Undo bringing
-// back a countdown, everyone missing, and the stage's size with a long host note and the buzzers' row.
+// back a countdown, everyone missing, and the stage's size with a long host note, the buzzers' row and a Daily Double.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -347,8 +347,9 @@ async function viewers() {
 /**
  * Wheel and dice tiles with questions, in a single window with buzzer mode on (a fake room that keeps what it's sent):
  * while the tile's own wheel is up nobody can buzz and the phones get no question; dice rolled over a dice tile's question
- * leave it on stream and its countdown going; a wheel closed over the answer starts no countdown. Also: the stage keeps
- * its size with a long host note and the buzzers' row, Undo of a right answer brings back its countdown, everyone missing
+ * leave it on stream and its countdown going; a wheel closed over the answer starts no countdown; once dice replace a
+ * wheel tile's wheel, a wheel opened later isn't taken for it. Also: the stage keeps its size with a long host note and
+ * the buzzers' row, and on a Daily Double's question; Undo of a right answer brings back its countdown, everyone missing
  * makes 👁 Reveal answer the main button, and a tile opened under the cover keeps its countdown paused.
  */
 async function tileTools() {
@@ -362,10 +363,11 @@ async function tileTools() {
     players: [['Ann', '#e6194b'], ['Bob', '#3cb44b'], ['Cy', '#4363d8']].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
     rounds: [
       {
-        id: 'r_t', name: 'Tools', mode: 'board', values: [200, 400, 600], dailyDoubleCount: 0,
+        id: 'r_t', name: 'Tools', mode: 'board', values: [200, 400, 600], dailyDoubleCount: 1,
         categories: [
           { id: 'c0', title: 'Spin', clues: [clue('qw', 'wheel', 'Wheel question', { wheelId: 'w1' }), clue('qd', 'dice', 'Dice question', { diceId: 'std:d6' }), clue('qc', 'standard', 'Covered question')] },
           { id: 'c1', title: 'Plain', clues: [clue('qn', 'standard', 'Noted question', { hostNotes: NOTE }), clue('qp', 'standard', 'Plain question'), clue('qe', 'standard', 'Spare question')] },
+          { id: 'c2', title: 'More', clues: [clue('qx', 'wheel', 'Second wheel question', { wheelId: 'w1' }), clue('qdd', 'dailyDouble', 'Double question'), { ...clue('qo', 'wheel', '', { wheelId: 'w1' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
         ],
       },
     ],
@@ -496,6 +498,58 @@ async function tileTools() {
   await host.keyboard.press('Escape');
   await stage('.ov').waitFor({ state: 'detached' });
   assert((await stage('.timer').count()) === 0 && (await stage('[data-slide="answer"]').count()) === 1, 'a wheel opened over the answer and closed starts no countdown over it');
+  await host.keyboard.press('Escape');
+  await tileOf('qd').waitFor();
+
+  // Dice rolled over a wheel tile's wheel (D after the spin), then closed: the question is up. A wheel opened later (W)
+  // isn't the tile's own: the question stays on stream, the buzzers stay as they are, and closing it starts no countdown.
+  await tileOf('qx').click();
+  await stage('.ov .wheel').waitFor();
+  await host.keyboard.press('w');
+  await host.locator('.tc .result').waitFor();
+  await host.keyboard.press('d');
+  await host.locator('.tc').getByRole('button', { name: 'Roll again' }).waitFor();
+  await host.keyboard.press('Escape');
+  await stage('.ov').waitFor({ state: 'detached' });
+  await stage('.slide-area').waitFor();
+  await host.keyboard.press('1');
+  await host.keyboard.press('Shift+Enter');
+  const missedAnn = host.locator('.panel [data-buzzrow]', { hasText: 'Missed: Ann' });
+  await missedAnn.waitFor();
+  await host.keyboard.press('w');
+  await stage('.ov .wheel').waitFor();
+  assert(
+    (await stage('.slide-area').count()) === 1 &&
+      (await missedAnn.count()) === 1 &&
+      (await host.locator('.panel [data-buzzrow]', { hasText: 'The buzzers wait' }).count()) === 0 &&
+      (await host.evaluate(() => window.__states.at(-1)?.phase)) !== 'lobby',
+    'dice rolled over a wheel tile’s wheel: a wheel opened later isn’t the tile’s own (the question stays on stream, Ann stays missed)',
+  );
+  await host.keyboard.press('Escape');
+  await stage('.ov').waitFor({ state: 'detached' });
+  assert((await stage('.timer').count()) === 0 && (await missedAnn.count()) === 1, 'closing that wheel starts no countdown (nor clears who missed)');
+  await host.keyboard.press('Escape');
+  await tileOf('qd').waitFor();
+
+  // A Daily Double's question has no buzzers: their row keeps its room, so the stage keeps the board's size there too.
+  const boardH = await stageH();
+  await tileOf('qdd').click();
+  const wager = host.locator('.dd input[type=number]');
+  await wager.waitFor();
+  await host.locator('.dd .chip', { hasText: 'Ann' }).click();
+  await wager.fill('100');
+  await wager.press('Enter');
+  await clueOpen();
+  const ddH = await stageH();
+  assert(ddH === boardH, `single window in buzzer mode, a Daily Double's question keeps the stage's size too (${boardH} / ${ddH} px)`);
+  await host.keyboard.press('Escape');
+  await tileOf('qd').waitFor();
+
+  // A wheel tile with nothing to ask: no question to wait for while its wheel is up.
+  await tileOf('qo').click();
+  await stage('.ov .wheel').waitFor();
+  await host.locator('.panel [data-buzzrow]', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
+  assert((await host.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0, 'a wheel tile with nothing to ask: the buzzers’ row says there’s nothing to buzz on, with no ↺ Reset buzzers');
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();
 
