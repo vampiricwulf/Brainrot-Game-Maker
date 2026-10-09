@@ -78,7 +78,10 @@ try {
   await picker.waitFor();
   await shot('em-1-picker');
   await drop(picker, [['logo.png', 'image/png']]);
-  assert((await picker.count()) === 0 && (await banner.locator('img').count()) === 1, 'a file dropped on an open picker is picked at once');
+  // (The file is read first: a busy machine takes a moment.)
+  await picker.waitFor({ state: 'detached' });
+  await banner.locator('img').waitFor();
+  assert((await banner.locator('img').count()) === 1, 'a file dropped on an open picker is picked at once');
   await banner.getByRole('button', { name: 'Change…' }).click();
   await picker.waitFor();
   await page.evaluate(
