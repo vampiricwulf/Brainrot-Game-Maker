@@ -42,6 +42,11 @@ async function bigWorld() {
     shape('el_door', 'Dungeon door', 200, 300, { class: 'doorway', to: { map: 'm_dun', screen: 'd_1' } }),
     shape('el_gold', 'Gold pile', 900, 300, { class: 'currency', field: 'f_gold', amount: 10 }),
     shape('el_trap', 'Trap', 1400, 300, { class: 'hazard', actions: [{ id: 'a_trap', do: 'stat', field: 'f_hp', op: 'add', amount: -3, who: 'party' }] }),
+    shape('el_heap', 'Coin heap', 200, 650, { class: 'currency', field: 'f_gold', amount: 10 }),
+    shape('el_cat', 'Riddle cat', 1550, 650, {
+      class: 'npc',
+      actions: [{ id: 'a_ask', do: 'question', value: 100, question: { background: { color: '#123' }, elements: [text('t_q', 'What has keys but no locks?', 700, 400)] }, answer: { background: { color: '#123' }, elements: [text('t_a', 'A piano', 700, 400)] } }],
+    }),
   );
   screens[1].exits = { e: { kind: 'blocked', note: 'A wall of fire' } };
   const map = (id, name, cols, rows, list, visibility) => ({ id, name, cols, rows, screens: list, visibility, showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut' });
@@ -53,9 +58,9 @@ async function bigWorld() {
     media: [], audio: {}, wheels: [], dice: [], theme: {},
     statFields: [
       { id: 'f_hp', name: 'HP', type: 'number', start: 10, min: 0, max: 10, display: 'hearts', audience: 'hud' },
-      { id: 'f_gold', name: 'Gold', type: 'number', start: 5, min: 0, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' },
+      { id: 'f_gold', name: 'Gold', type: 'number', start: 5, min: 0, max: 15, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' },
     ],
-    items: [],
+    items: [{ id: 'i_helmet', name: 'Helmet', stackable: false, wearable: { slot: 'head' } }],
     worlds: [{ id: 'w1', name: 'World', maps: [map('m_main', 'Overworld', 20, 20, screens, 'discovered'), map('m_dun', 'Dungeon', 1, 1, [{ id: 'd_1', name: 'Dungeon 1', col: 0, row: 0, slide: { background: { color: '#222' }, elements: [] } }], 'hidden')] }],
   };
   mkdirSync(resolve('test-results'), { recursive: true });
@@ -196,6 +201,48 @@ async function bigWorld() {
   await pick.click();
   await host.waitForTimeout(300);
   assert((await host.locator('.rpg .strip .card').first().innerText()).includes('🪙15') && (await cues(aud)).includes('pickUp'), 'Ann gets it, with the Pick up sound');
+  // Ann is at her most (🪙15) now: with nobody picked, the next pile goes to the first one here with room. Picking her
+  // anyway says she can't carry more, and the card stays open to pick someone else.
+  await host.keyboard.press('Escape');
+  await host.locator('.rh .objs button', { hasText: 'Coin heap' }).click();
+  const heap = host.getByRole('dialog', { name: 'Object: Coin heap' });
+  const heapPick = heap.getByRole('button', { name: /picks up/ });
+  assert((await heapPick.innerText()) === '✋ Bob picks up 🪙10', `with nobody picked, a pile goes to the first one here with room (${await heapPick.innerText()})`);
+  await heap.locator('.who').getByRole('button', { name: 'Ann' }).click();
+  await heapPick.click();
+  await host.locator('.toast', { hasText: 'Ann can’t carry any more Gold' }).waitFor();
+  assert(await heap.isVisible(), 'picking up with a full purse says so and keeps the card open');
+  await host.keyboard.press('Escape');
+  await heap.waitFor({ state: 'detached' });
+
+  // A question pop-up (the Riddle cat's): the host sees its answer before it's revealed, viewers don't.
+  await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click();
+  await host.getByRole('dialog', { name: 'Object: Riddle cat' }).getByRole('button', { name: 'Ask the question' }).click();
+  await aud.waitForFunction(() => document.body.innerText.includes('What has keys but no locks?'));
+  const hostInfo = host.locator('.stage-area > .info');
+  await hostInfo.locator('.a', { hasText: 'A piano' }).waitFor();
+  assert(/answer \(hidden from viewers\)/i.test(await hostInfo.innerText()) && !(await aud.locator('body').innerText()).includes('A piano'), 'a question pop-up shows the host its answer before it’s revealed, and not viewers');
+  await host.keyboard.press('r');
+  await aud.waitForFunction(() => document.body.innerText.includes('A piano'));
+  assert(/answer \(on screen\)/i.test(await hostInfo.innerText()), 'revealed, the host’s column says the answer is on screen');
+  await host.keyboard.press('Escape');
+  await host.keyboard.press('Escape');
+  await host.getByRole('dialog', { name: 'Object: Riddle cat' }).waitFor({ state: 'detached' });
+
+  // Two Helmets (not stackable: a row each), both worn: one helmet on Ann's avatar, and the panel keeps up. (The
+  // players' cards are folded away in a short window: open them for this, then fold them again.)
+  const cardsToggle = host.getByRole('button', { name: /Players: stats & inventory/ });
+  await cardsToggle.click();
+  const annCard = host.locator('.rh .pc').first();
+  for (let i = 0; i < 2; i++) await annCard.getByLabel('Give Ann an item').selectOption({ label: 'Helmet' });
+  for (let i = 1; i <= 2; i++) {
+    await annCard.getByRole('button', { name: 'Equip', exact: true }).first().click();
+    await annCard.getByRole('button', { name: 'Unequip', exact: true }).nth(i - 1).waitFor();
+  }
+  await aud.locator('.avatar[data-player-id="p1"] .gear').first().waitFor();
+  assert((await aud.locator('.avatar[data-player-id="p1"] .gear').count()) === 1 && !errors.length, 'two Helmets worn show one helmet on the avatar, with no page error');
+  await cardsToggle.click();
+  await annCard.waitFor({ state: 'detached' });
 
   // Cy & Dee split off and walk south (viewers follow them); the Trap at the Village hurts the party standing there.
   await host.keyboard.press('Escape');
@@ -449,7 +496,13 @@ try {
   await page.waitForTimeout(450);
   const yes = page.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible()) await yes.click();
-  // The round opens on its title card: clicking it goes on.
+  // The round opens on its title card. The pad and the minimap don't move the party under it (nobody would see it).
+  await page.locator('.stage-box .title-card').waitFor();
+  await page.getByRole('button', { name: 'Go East', exact: true }).click();
+  await page.locator('.toast', { hasText: 'Start the round first' }).waitFor();
+  await page.locator('.rh .mapbox .cell[aria-label="Overworld · Screen B1"]').dblclick();
+  assert((await where()).includes('Start') && (await page.locator('.stage-box .title-card').count()) === 1, `under the title card the pad and a double-click on the minimap don’t move the party (${await where()})`);
+  // Clicking it goes on.
   await page.locator('.stage-box .title-card').click();
   await page.locator('.rh').waitFor();
   assert((await where()).includes('Start'), `the party starts on the start screen (${await where()})`);
@@ -482,6 +535,13 @@ try {
   // Viewers (single window) never get the secret Potion or the arrival point drawn, nor a click target for them.
   assert((await page.locator('.rpg .hit').count()) === 0, 'secret objects and arrival points get no click target on the viewers’ stage');
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'the secret Potion is not drawn for viewers');
+  // The arrival point is never shown to viewers: its card says so, with no Reveal button that would do nothing.
+  await page.locator('.rh .objs').getByRole('button', { name: /^Arrival point/ }).click();
+  const arrival = page.getByRole('dialog', { name: 'Object: Arrival point' });
+  await arrival.getByText('Never shown to viewers').waitFor();
+  assert((await arrival.getByRole('button', { name: /Reveal to viewers/ }).count()) === 0, 'an arrival point’s card says it’s never shown to viewers, with no Reveal button');
+  await page.keyboard.press('Escape');
+  await arrival.waitFor({ state: 'detached' });
 
   // The locked gate asks first (in its card), and only goes through on the answer.
   const gateListed = await page.locator('.rh .objs').getByRole('button', { name: /Gate/ }).innerText();

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { runAction, targets, typedSteps, type RunContext } from './actions';
+import { describeAction, runAction, targets, typedSteps, type RunContext } from './actions';
 import { ensureBoard, newBoardGameRound } from './boardgame';
 import { newLive } from './live';
-import { newGame, type Action } from './model';
+import { newGame, newShapeEl, type Action } from './model';
 import { addScreenBeside, ensureWorld, moveTo, newRpgRound, newWorld } from './rpg';
 import { newSession } from './session';
 import { newStatField, statValue } from './toolset';
@@ -120,5 +120,29 @@ describe('who “the party” is', () => {
     runAction({ ...ctx, at: map.screens[0].id }, { id: '2', do: 'move', to: { map: map.id, screen: cave.id }, who: 'party' });
     expect([st.positions.a.screen, st.positions.b.screen, st.positions.c.screen]).toEqual([cave.id, cave.id, village.id]);
     expect(st.parties.map((p) => p.members)).toEqual([ab.members, ['c']]);
+  });
+});
+
+describe('button labels', () => {
+  it('say where a move goes, and what a reveal or hide shows and on which screen', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const round = newRpgRound(game);
+    game.rounds = [round];
+    const map = game.worlds![0].maps[0];
+    const road = addScreenBeside(map, map.screens[0], 'e', 'Road')!;
+    const lake = addScreenBeside(map, road, 'e', 'Lake')!;
+    const chest = { ...newShapeEl('rect'), name: 'Hidden chest', secret: true };
+    road.slide.elements.push(chest);
+    const reveal: Action = { id: '1', do: 'reveal', object: chest.id };
+    expect(describeAction(game, { id: '2', do: 'move', to: { map: map.id, screen: lake.id } })).toBe('Go to Lake');
+    expect(describeAction(game, reveal)).toBe('Reveal Hidden chest (Road)');
+    expect(describeAction(game, { id: '3', do: 'hide', object: chest.id })).toBe('Hide Hidden chest (Road)');
+    // The log says the same (the card puts the object's name first).
+    const session = newSession(game);
+    const st = ensureWorld(session, game, round)!;
+    runAction({ game, session, live: newLive(), world: game.worlds![0], st, selected: [] }, reveal, `Elder: ${describeAction(game, reveal)}`);
+    expect(session.actionLog?.at(-1)?.text).toBe('Elder: Reveal Hidden chest (Road)');
+    expect(st.objects[chest.id].shown).toBe(true);
   });
 });

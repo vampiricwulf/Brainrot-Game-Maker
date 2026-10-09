@@ -74,6 +74,9 @@ export function addStat(game: Game, session: Session, playerId: string, field: S
   const lo = Math.min(field.min ?? -Infinity, before);
   const hi = Math.max(field.max ?? Infinity, before);
   const after = Math.min(hi, Math.max(lo, before + (Number(delta) || 0)));
+  // No change, no write: a stat still at its start value isn't stored, and storing it would count as a change
+  // (an item's Use would be used up for nothing, and + at the max would log a step).
+  if (after === before) return 0;
   session.stats ??= {};
   session.stats[playerId] ??= {};
   session.stats[playerId][field.id] = after;
@@ -660,6 +663,8 @@ export function wornItems(game: Game, session: Session, playerId: string): ItemD
     .filter((e) => e.equipped)
     .map((e) => itemDef(game, e.item))
     // (Not a secret one: it would show on stream on the avatar, though the sheet keeps it out of the list.)
-    .filter((d): d is ItemDef => !!d?.wearable && !d.secret);
+    .filter((d): d is ItemDef => !!d?.wearable && !d.secret)
+    // Two copies of one item worn show once: AvatarToken keys its gear by item id, and a repeated key would throw and stop every update.
+    .filter((d, i, all) => all.findIndex((x) => x.id === d.id) === i);
 }
 

@@ -501,11 +501,15 @@ export function classIcon(c: ObjectClass | '' | undefined): string | undefined {
   return c ? OBJECT_CLASSES.find(([v]) => v === c)?.[1].split(' ')[0] : undefined;
 }
 
-/** Visible to viewers? Secret objects, hotspots, spawn points and blockers are host-only unless revealed. */
+/** Objects viewers never see, whatever the host does: hotspots, arrival points and no-go areas. */
+export function neverShown(el: SlideElement): boolean {
+  return (el.kind === 'shape' && !!el.hotspot) || el.role?.class === 'spawn' || el.role?.class === 'blocker';
+}
+
+/** Visible to viewers? Secret objects are host-only unless revealed; hotspots, spawn points and blockers always are. */
 export function audienceSees(el: SlideElement, o: ObjectOverride | undefined): boolean {
   if (o?.taken) return false;
-  if (el.kind === 'shape' && el.hotspot) return false;
-  if (el.role?.class === 'spawn' || el.role?.class === 'blocker') return false;
+  if (neverShown(el)) return false;
   if (o?.shown !== undefined) return o.shown;
   return !el.secret;
 }

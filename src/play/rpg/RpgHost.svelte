@@ -28,7 +28,7 @@
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
   import {
-    addLive, centredOn, focusParty, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, partyOn, regroupAll, rpgNow, sendPlayers, splitOff, stepParty, toggleMap,
+    addLive, centredOn, focusParty, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, sendPartiesOn, splitOff, START_FIRST, stepParty, toggleMap,
     type RpgAsk, type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
@@ -265,6 +265,7 @@
 
   /** Move the party (or these players) to the screen picked on the minimap. */
   function moveHere(who?: string[], label?: string): void {
+    if (session.intro) return void ((picked = null), toast(START_FIRST));
     if (!picked || !world || !st) return;
     const to = picked;
     const s = st;
@@ -283,10 +284,9 @@
     if (again) moveHere();
   }
 
-  /** The players on a minimap screen were dragged onto another: their party goes (the followed one, if it's there). */
+  /** The players on a minimap screen were dragged onto another: every party there goes (all the dots dragged). */
   function moveDots(from: ScreenRef, to: ScreenRef): void {
-    const pt = st && partyOn(st, from.screen);
-    const text = pt && sendPlayers(game, session, pt.members, to, { label: pt.name });
+    const text = sendPartiesOn(game, session, from, to);
     if (text) toast(text);
   }
 

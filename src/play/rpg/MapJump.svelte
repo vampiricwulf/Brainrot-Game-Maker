@@ -14,7 +14,7 @@
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
-  import { moveChoices, partyOn, sendPlayers } from './hostops';
+  import { moveChoices, sendPartiesOn, START_FIRST } from './hostops';
   import MapView from './MapView.svelte';
 
   let {
@@ -68,15 +68,16 @@
     ]);
   }
 
-  /** The players on a screen were dragged onto another: their party goes (the followed one, if it's there). */
+  /** The players on a screen were dragged onto another: every party there goes (all the dots dragged). */
   function moveDots(from: ScreenRef, to: ScreenRef): void {
-    const pt = partyOn(st, from.screen);
-    const text = pt && sendPlayers(game, session, pt.members, to, { label: pt.name });
+    const text = sendPartiesOn(game, session, from, to);
     if (text) toast(text);
   }
 
   /** Move the party (or these players) to the picked screen, then close. */
   function go(players?: string[], label?: string): void {
+    // (Not under the round's title card: nobody would see them move.)
+    if (session.intro) return void toast(START_FIRST);
     if (!picked || !found) return;
     const to = picked;
     const who = players ?? party?.members ?? [];
