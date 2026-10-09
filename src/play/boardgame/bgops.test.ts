@@ -8,7 +8,7 @@ import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import type { Action } from '../../lib/model';
 import { moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
-import { openPlayerWheel, quickDice, rollDice } from '../../lib/overlay';
+import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 describe('board game: the round’s mover', () => {
   it('a wheel move is one per turn, as a dice one is; a slice saying “Back 2” moves back', () => {
@@ -72,6 +72,12 @@ describe('board game: the round’s mover', () => {
     rollMover(game, session, live);
     expect(live.overlay).toBe(rolled);
     expect(session.rollLog).toHaveLength(1);
+    // The scores put up over them (S): they're still rolling under there, and come back with S.
+    toggleScoreboard(live);
+    expect(rollMover(game, session, live)).toMatch(/Still rolling/);
+    expect(session.rollLog).toHaveLength(1);
+    toggleScoreboard(live);
+    expect(live.overlay).toBe(rolled);
     if (rolled?.kind === 'dice') rolled.startedAt -= rolled.duration;
     rollMover(game, session, live);
     expect(session.rollLog).toHaveLength(2);

@@ -7,7 +7,7 @@ import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
-import { overlayDoneAt, type Live } from '../../lib/live';
+import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
 
 /** The board-game round being played and its state (undefined outside one). */
 export function boardNow(game: Game, session: Session) {
@@ -149,9 +149,12 @@ export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay'
 export function rollMover(game: Game, session: Session, live: Live): string | null {
   const { round } = boardNow(game, session);
   if (!round) return 'No board';
-  // Still rolling or spinning: D again waits for it, like Roll again.
+  // Still rolling or spinning: D again waits for it, like Roll again. Under the scores too, with a word why (nothing on
+  // screen says).
   const o = live.overlay;
-  if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return null;
+  const going = toolOverlay(live);
+  if ((going?.kind === 'dice' || going?.kind === 'wheel') && Date.now() < overlayDoneAt(going))
+    return going === o ? null : `Still ${going.kind === 'wheel' ? 'spinning' : 'rolling'}: wait for it to land`;
   const m = round.mover;
   if (m.kind === 'step') return 'This board moves one space at a time: pick the way in the host panel';
   // At a fork: the way first (a roll now would do nothing). This turn's move made: a roll now would be moved again by

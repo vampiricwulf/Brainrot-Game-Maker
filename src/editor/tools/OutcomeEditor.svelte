@@ -12,11 +12,14 @@
     outcome,
     placeholder = 'Label',
     labelkey,
+    dice = false,
   }: {
     outcome: Outcome;
     placeholder?: string;
     /** Keys in the label box (a wheel's Enter for the next slice). */
     labelkey?: (e: KeyboardEvent) => void;
+    /** A die face or a dice total: "+ dice total × N" means something (a wheel has no roll). */
+    dice?: boolean;
   } = $props();
   let open = $state(false);
   let picking = $state<MediaKind | null>(null);
@@ -31,6 +34,8 @@
     ['steal', 'Steal points from someone'],
     ['swapScores', 'Swap scores with someone'],
   ];
+  // (A wheel slice already saved with it keeps it listed, with a warning: the menu would show some other effect.)
+  const actions = $derived(ACTIONS.filter(([k]) => k !== 'addRollTimes' || dice || outcome.scoreAction?.kind === 'addRollTimes'));
 
   function setAction(kind: string): void {
     const defaults: Record<string, ScoreAction> = {
@@ -104,12 +109,13 @@
         {@const a = outcome.scoreAction}
         <div class="row sub">
           <select value={a.kind} onchange={(e) => setAction(e.currentTarget.value)} aria-label="What it does to the score">
-            {#each ACTIONS as [k, l]}<option value={k}>{l}</option>{/each}
+            {#each actions as [k, l]}<option value={k}>{l}</option>{/each}
           </select>
           {#if a.kind === 'addPoints' || a.kind === 'setScore'}
             <input type="number" class="n2" aria-label="Points" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} />
           {:else if a.kind === 'addRollTimes'}
             × <input type="number" class="n2" aria-label="Times the roll" bind:value={() => a.multiplier, (v) => keepNum(v, (n) => (a.multiplier = n))} onchange={(e) => shown(e, a.multiplier)} />
+            {#if !dice}<span class="warn small" role="status">A wheel has no dice roll: this never gives points. Pick another effect.</span>{/if}
           {:else if a.kind === 'multiplyScore'}
             × <input type="number" step="0.5" class="n2" aria-label="Times the score" bind:value={() => a.factor, (v) => keepNum(v, (n) => (a.factor = n))} onchange={(e) => shown(e, a.factor)} />
           {:else if a.kind === 'steal'}

@@ -270,12 +270,25 @@ try {
   const stageNames = await page.locator('.stage .space .label').allInnerTexts();
   assert(stageNames.join() === 'Start', `one window: the stage shows only the names ticked to show (${stageNames.join()})`);
 
-  // Right-click a token: make it their turn.
-  await page.locator('.stage .on-board[data-player="Player 2"]').click({ button: 'right' });
+  // O: the roll-off's winner goes first, the host panel says so as the stage does (nobody "picks" in a board game).
+  await page.keyboard.press('o');
+  const rolledOff = page.locator('[data-tool-controls]', { hasText: 'goes first.' });
+  await rolledOff.waitFor({ timeout: 15000 });
+  const goesFirst = (await rolledOff.innerText()).match(/(Player \d) goes first\./)?.[1];
+  await page.keyboard.press('Escape');
+  await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
+  assert(!!goesFirst && (await page.locator('.stage .turn-banner').innerText()).includes(goesFirst), `O: "${goesFirst} goes first." on the host panel, and it's their turn`);
+
+  // Right-click a token: make it their turn (the player the roll-off didn't pick: the winner's item is greyed out), then
+  // Player 1's again.
+  const other = goesFirst === 'Player 2' ? 'Player 1' : 'Player 2';
+  await page.locator(`.stage .on-board[data-player="${other}"]`).click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🎲 Make it their turn' }).click();
-  assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 2'), "right-click a token: make it their turn");
-  await page.locator('.stage .on-board[data-player="Player 1"]').click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '🎲 Make it their turn' }).click();
+  assert((await page.locator('.stage .turn-banner').innerText()).includes(other), `right-click a token: make it their turn (${other})`);
+  if (other !== 'Player 1') {
+    await page.locator('.stage .on-board[data-player="Player 1"]').click({ button: 'right' });
+    await page.getByRole('menu').getByRole('menuitem', { name: '🎲 Make it their turn' }).click();
+  }
 
   // Roll with D: the result fills in the steps.
   await page.keyboard.press('d');

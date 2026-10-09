@@ -102,7 +102,7 @@
         {#if d.customFaces}
           <div class="faces">
             {#each d.customFaces as face, fi}
-              <div class="face"><span class="muted n0">{fi + 1}</span><OutcomeEditor outcome={face} placeholder="Face {fi + 1}" /></div>
+              <div class="face"><span class="muted n0">{fi + 1}</span><OutcomeEditor outcome={face} placeholder="Face {fi + 1}" dice /></div>
             {/each}
           </div>
           {@const lines = faceLines(pasted[d.id] ?? '')}
@@ -147,7 +147,7 @@
           aria-label="To"
           onchange={(e) => (t.min > t.max && ([t.min, t.max] = [t.max, t.min]), shown(e, t.max))}
         />
-        <OutcomeEditor outcome={t.outcome} placeholder="What happens" />
+        <OutcomeEditor outcome={t.outcome} placeholder="What happens" dice />
         <button class="ghost small" onclick={() => preset.totalOutcomes?.splice(i, 1)} aria-label="Delete this total" title="Delete">🗑</button>
       </div>
     {/each}

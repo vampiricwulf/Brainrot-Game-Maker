@@ -4,7 +4,10 @@ import { newLive, overlayDoneAt } from './live';
 import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
-import { addWheel, editWheel, openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinWheel, startRollOff, wheelPool, wheelSpentUp } from './overlay';
+import {
+  addWheel, editWheel, openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinSegments, spinWheel,
+  startRollOff, toggleScoreboard, wheelPool, wheelSpentUp,
+} from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
 import { validate } from './validate';
@@ -98,7 +101,7 @@ describe('editing a wheel for one spin', () => {
     const pool = wheelPool(o, session, game);
     pool[0].off = true; // Ann sits this one out
     pool[1].weight = 3;
-    editWheel(o, pool);
+    editWheel(o, pool, session, game);
     expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['Bob', 3], ['Cat', 1]]);
     // A player who joins later gets a normal chance; Ann stays out.
     session.players.push({ id: 'd', name: 'Dee', color: '#ffffff', startScore: 0 });
@@ -127,7 +130,7 @@ describe('editing a wheel for one spin', () => {
     pool[2].off = true;
     pool[0].weight = 5;
     pool[1].label = 'B!';
-    editWheel(o, pool);
+    editWheel(o, pool, session, game);
     for (let i = 0; i < 20; i++) {
       spinWheel(live, session, game);
       expect(['A', 'B!']).toContain(o.segments[o.result!].label);
@@ -155,6 +158,46 @@ describe('a wheel whose slices land once', () => {
     expect(wheelSpentUp(o, session, game)).toBe(false);
     spinWheel(live, session, game);
     expect(session.rollLog).toHaveLength(3);
+  });
+
+  it('edited for the spin, keeps the slices that landed (off the wheel until Restore, and in an Overwrite)', () => {
+    const { game, session, live } = withPlayers();
+    const w = newWheel('Once', ['A', 'B', 'C', 'D']);
+    w.removeAfterLanding = true;
+    game.wheels.push(w);
+    openWheel(live, session, w);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    spinWheel(live, session, game);
+    const landed = o.segments[o.result!].id;
+    // The edit box lists it switched on (not "off": Restore would never bring it back, Overwrite would delete it)…
+    const pool = wheelPool(o, session, game);
+    expect(pool.map((s) => [s.id, !!s.off])).toEqual(w.segments.map((s) => [s.id, false]));
+    pool[0].weight = 2;
+    editWheel(o, pool, session, game);
+    // …but the wheel on screen, and every spin, leave it out.
+    expect(o.segments.map((s) => s.id)).toEqual(w.segments.map((s) => s.id).filter((id) => id !== landed));
+    // Restored: it's back for the next spin.
+    session.removedSegments![w.id] = [];
+    expect(spinSegments(o, session, game).map((s) => s.id)).toEqual(w.segments.map((s) => s.id));
+  });
+});
+
+describe('the scores over a tool', () => {
+  it('S puts the scores over the wheel on screen, and S again brings that wheel back (its result too)', () => {
+    const { game, session, live } = withPlayers();
+    openPlayerWheel(live, session);
+    spinWheel(live, session, game);
+    const wheel = live.overlay!;
+    toggleScoreboard(live);
+    expect(live.overlay?.kind).toBe('scoreboard');
+    toggleScoreboard(live);
+    expect(live.overlay).toBe(wheel);
+    // Nothing under them: they just go.
+    live.overlay = null;
+    toggleScoreboard(live);
+    toggleScoreboard(live);
+    expect(live.overlay).toBeNull();
   });
 });
 
@@ -244,7 +287,7 @@ describe('Reset on a wheel that is not saved', () => {
     const pool = wheelPool(o, session, game);
     pool[1].off = true;
     pool[0].weight = 5;
-    editWheel(o, pool);
+    editWheel(o, pool, session, game);
     expect(o.segments.map((s) => s.label)).toEqual(['A', 'C']);
     resetWheelEdits(o, session, game);
     expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);

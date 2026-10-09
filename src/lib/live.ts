@@ -104,7 +104,12 @@ export type Overlay =
       startedAt: number;
       roundMs: number;
     }
-  | { kind: 'scoreboard'; nonce: string }
+  | {
+      kind: 'scoreboard';
+      nonce: string;
+      /** What the scores went up over (a wheel, dice, a roll-off, a pop-up…): S again, or Close, brings it back. */
+      under?: Overlay;
+    }
   /** A slide shown over whatever is on air (a sign, dialogue, a jump-scare); with `answer`, a question to reveal. */
   | { kind: 'popup'; nonce: string; slide: Slide; answer?: Slide; revealed?: boolean; value?: number; title?: string }
   /** One player's full sheet: avatar, stats, inventory. */
@@ -189,6 +194,15 @@ export function overlayDoneAt(o: Overlay): number {
   // Matches RollOffView: the winner shows 1.6s into the last round.
   if (o.kind === 'rolloff') return o.startedAt + (o.rounds.length - 1) * o.roundMs + ROLLOFF_REVEAL_MS;
   return 0;
+}
+
+/**
+ * The tool on stage: the overlay up, or the one under the scores (S put them over it, and S again brings it back), so
+ * a wheel or dice still going under them is waited for.
+ */
+export function toolOverlay(live: Live): Overlay | null {
+  const o = live.overlay;
+  return o?.kind === 'scoreboard' ? (o.under ?? null) : o;
 }
 
 export function timerRemaining(t: TimerState, now = Date.now()): number {

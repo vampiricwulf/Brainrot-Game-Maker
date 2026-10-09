@@ -206,10 +206,25 @@ export function rollOutcome(r: DiceRoll): { main?: Outcome; others: { i: number;
   return { main: first?.face, others: rest.filter((x) => x.face.scoreAction || x.face.timerSeconds || x.face.actions?.length) };
 }
 
+/** A rolled die as shown and logged: its face's label, else its number (a face left blank, a picture face). */
+export const faceText = (d: RolledDie): string => d.face?.label.trim() || String(d.value);
+
+/** What a roll's outcome is called: its label, else (left blank) the total it's for, or the number of the die it came up on. */
+export function outcomeText(r: DiceRoll): string {
+  const main = rollOutcome(r).main;
+  if (!main) return '';
+  if (main.label.trim()) return main.label.trim();
+  if (r.totalOutcome) return String(r.total);
+  const die = r.dice.find((d) => d.face === main);
+  return die ? faceText(die) : '';
+}
+
 export function describeRoll(r: DiceRoll): string {
-  const faces = r.dice.map((d) => d.face?.label ?? String(d.value));
+  const faces = r.dice.map(faceText);
   const main = r.dice.length > 1 && r.dice.every((d) => !d.face) ? `${faces.join(' + ')} = ${r.total}` : faces.join(', ');
-  return r.totalOutcome ? `${main} → ${r.totalOutcome.label}` : main;
+  // (A total's outcome left blank: just the dice, no "→" to nothing.)
+  const t = r.totalOutcome?.label.trim();
+  return t ? `${main} → ${t}` : main;
 }
 
 /**
@@ -218,7 +233,8 @@ export function describeRoll(r: DiceRoll): string {
  */
 export function rollResult(r: DiceRoll): string {
   if (r.dice.length < 2 || r.dice.some((d) => d.face)) return describeRoll(r);
-  return `${r.total}${r.totalOutcome ? ` → ${r.totalOutcome.label}` : ''} (${r.dice.map((d) => d.value).join(' + ')})`;
+  const t = r.totalOutcome?.label.trim();
+  return `${r.total}${t ? ` → ${t}` : ''} (${r.dice.map((d) => d.value).join(' + ')})`;
 }
 
 // ---------- Roll-off ("who goes first") ----------
@@ -354,6 +370,7 @@ export function actionDeltas(
   return d;
 }
 
+/** Returns the score step it made (its batchId): undone, the score log says so. */
 export function applyAction(
   session: Session,
   game: Game,
@@ -362,11 +379,12 @@ export function applyAction(
   source: Id | undefined,
   reason: string,
   rollTotal = 0,
-): void {
+): string {
   const deltas = actionDeltas(session, a, targets, source, rollTotal);
   // One undo step for the whole effect (a swap or steal changes two scores).
   const batchId = newId();
   for (const [id, delta] of Object.entries(deltas)) applyScore(session, game, [id], delta, reason, undefined, true, batchId);
+  return batchId;
 }
 
 // ---------- Roll log ----------

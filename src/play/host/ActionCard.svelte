@@ -20,7 +20,8 @@
     reason: string;
     rollTotal?: number;
     defaultTargets?: string[];
-    ondone: (applied: boolean) => void;
+    /** `batch`: the score step it applied (an Undo of it brings the card back). */
+    ondone: (applied: boolean, batch?: string) => void;
   } = $props();
 
   const sym = $derived(game.settings.currencySymbol);
@@ -55,6 +56,8 @@
 
 <div class="ac">
   <div><b>Score effect:</b> {describeAction(action, sym)} <span class="muted small">(only if you confirm)</span></div>
+  <!-- (A wheel slice saved with it: say why Confirm never lights up.) -->
+  {#if action.kind === 'addRollTimes' && !rollTotal}<div class="warn small" role="status">No dice were rolled: this gives no points (Skip it).</div>{/if}
   <div class="row">
     <span class="muted small">For:</span>
     {#each session.players as p (p.id)}
@@ -86,10 +89,7 @@
     <button
       class="good small"
       disabled={!ready}
-      onclick={() => {
-        applyAction(session, game, action, targets, source, reason, rollTotal);
-        ondone(true);
-      }}>Confirm</button>
+      onclick={() => ondone(true, applyAction(session, game, action, targets, source, reason, rollTotal))}>Confirm</button>
   </div>
 </div>
 

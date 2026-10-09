@@ -13,7 +13,7 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Id, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
-  import { overlayDoneAt } from '../../lib/live';
+  import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
   import { boardNow, busyZones, moveNow, moverDiceName, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
@@ -134,7 +134,8 @@
     // A whole number, at most MAX_STEPS (a typo of 100000 isn't walked).
     n = n === null ? null : clampSteps(n);
     if (!n) return void toast('How many spaces? Roll first, or type a number');
-    const o = app.live.overlay;
+    // (Under the scores too: the move would end them unseen.)
+    const o = toolOverlay(app.live);
     if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void toast('Still rolling…');
     const before = { n, last: JSON.stringify([bs?.last ?? null, bs?.turns ?? 0]), turn: turnId };
     toast(moveNow(game, session, n, choose, who), 3000);
