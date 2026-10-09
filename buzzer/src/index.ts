@@ -5,9 +5,10 @@
  * (a buzz's grace window, under a second) keeps the room awake while it runs; a room restarted in the middle of one
  * finishes it from storage (see room.ts).
  *
- * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT), ADDRESS_ROOMS a day per address and
- * DAILY_ROOMS a day in all (RoomCounter, one Durable Object for the whole server). Looking rooms up and connecting are
- * limited per address too (LOOKUP_LIMIT, SOCKET_LIMIT), so a script can't try every code to find live rooms.
+ * Making a room is limited (limits.ts): 6 a minute per address (NEW_ROOM_LIMIT), ADDRESS_ROOMS a day per address
+ * (NETWORK_ROOMS per IPv6 /48) and DAILY_ROOMS a day in all (RoomCounter, one Durable Object for the whole server).
+ * Looking rooms up and connecting are limited per address too (LOOKUP_LIMIT, SOCKET_LIMIT), so a script can't try every
+ * code to find live rooms.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { BUZZ_PROTOCOL, ROOM_ALPHABET, ROOM_CODE_LENGTH, isRoomCode, type NewRoom, type RoomToHost, type RoomToPhone } from '../../src/lib/buzzproto';
@@ -344,7 +345,7 @@ export class BuzzRoom extends DurableObject<Env> {
 
 /** Counts the rooms made today (one instance, 'rooms', for the whole server). */
 export class RoomCounter extends DurableObject<Env> {
-  /** One more room for address key `who`: 'busy' when today's cap is reached, 'address' when that address's is. */
+  /** One more room for address key `who`: 'busy' when today's cap is reached, 'address' when its (or its /48's) is. */
   async take(who: string): Promise<'ok' | 'busy' | 'address'> {
     const next = countRoom(await this.ctx.storage.get<DayCount>('today'), Date.now(), who);
     if (typeof next === 'string') return next;

@@ -144,12 +144,15 @@ So nobody can use up the Free plan's daily quotas for everyone:
   binding has no extra cost, works on the Free plan, and works in `wrangler dev` (counted locally). Its counts are kept
   per Cloudflare location and are not exact; that is fine for this.
 - **20 new rooms a day per address** (UTC days, `ADDRESS_ROOMS` in `src/limits.ts`), so one script can't use up the
-  day's rooms for everyone: then 429 `{"error":"Too many new rooms from here today — try again tomorrow"}`.
+  day's rooms for everyone: then 429 `{"error":"Too many new rooms from here today — try again tomorrow"}`. The same
+  for **100 a day per IPv6 /48** (`NETWORK_ROOMS`), its /56s together.
 - **1000 new rooms a day in all** (`DAILY_ROOMS`): then 503 `{"error":"The buzzer server is busy today — try again
   tomorrow"}`. Both daily counts are kept by one SQLite-backed Durable Object (`RoomCounter`).
 
 An address is an IPv4 address as it is, or an IPv6 address's first 56 bits (`addressKey`): a home gets a /56 or more
-and a phone a /64, so taking a new address for every room doesn't get round these.
+and a phone a /64, so taking a new address for every room doesn't get round these. A /48 holds 256 /56s and anyone can
+get one free from a tunnel broker, hence its own cap (`networkKey`); it is looser, as homes often get their /56 from an
+ISP's shared /48.
 
 The app shows these words where Start the room failed. Inside a room, phones are limited too (messages a second, join
 attempts a minute: see `room.ts`). Looking a room up (`GET /api/rooms/:code`) and connecting (`/ws/`) are limited per
