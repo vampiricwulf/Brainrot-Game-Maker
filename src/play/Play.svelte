@@ -477,8 +477,11 @@
     untrack(() => {
       // ✎ Edit board is for the board on screen: another round starts without it.
       setEditing(false);
-      const k = app.live.overlay?.kind;
-      if (k === 'shop' || k === 'sheet' || k === 'popup' || k === 'dice' || k === 'wheel') app.live.overlay = null;
+      const o = app.live.overlay;
+      const gone = (k?: string) => k === 'shop' || k === 'sheet' || k === 'popup' || k === 'dice' || k === 'wheel';
+      if (gone(o?.kind)) app.live.overlay = null;
+      // The scores over one of them stay up, but closing them doesn't bring it back in the new round.
+      else if (o?.kind === 'scoreboard' && gone(o.under?.kind)) o.under = undefined;
     });
   });
   /** The round's party or turn order takes in the players added or removed. */
@@ -1366,7 +1369,9 @@
    * a used slice already gone), with a word why.
    */
   function toolBusy(): boolean {
-    const o = app.live.overlay;
+    // (Under the scores too: it's still going, and comes back with S.)
+    const top = app.live.overlay;
+    const o = top?.kind === 'scoreboard' ? top.under : top;
     if ((o?.kind !== 'dice' && o?.kind !== 'wheel' && o?.kind !== 'rolloff') || Date.now() >= overlayDoneAt(o)) return false;
     toast(`Still ${o.kind === 'wheel' ? 'spinning' : 'rolling'}: wait for it to land`);
     return true;
@@ -1393,6 +1398,8 @@
 
   function closeOverlay(): void {
     const o = app.live.overlay;
+    // The scores over a wheel, dice or a pop-up: closing them shows it again (its result and score card are still to come).
+    if (o?.kind === 'scoreboard' && o.under) return void (app.live.overlay = o.under);
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
     app.live.overlay = null;

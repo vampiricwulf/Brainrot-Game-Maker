@@ -3,7 +3,7 @@ import { jeopardyGame } from './testgame';
 import { newId } from './model';
 import { applyScore, newSession, score } from './session';
 import {
-  actionDeltas, activeSegments, applyAction, diceCount, initials, newWheel, parseDice, planRollOff, rollPreset, rollResult, segmentAngles, sliceAt,
+  actionDeltas, activeSegments, applyAction, describeRoll, diceCount, initials, newWheel, outcomeText, parseDice, planRollOff, rollPreset, rollResult, segmentAngles, sliceAt,
   sliceLabel, spinSeconds, spinTarget, uniqueLabels, weightedIndex, wheelUsedUp, isRespin, MIN_WEIGHT, sliceWeight,
 } from './tools';
 
@@ -111,9 +111,11 @@ describe('score actions', () => {
   it('applies an action as undoable log entries, even below zero', () => {
     const { game, session } = setup();
     game.settings.allowNegativeScores = false;
-    applyAction(session, game, { kind: 'addPoints', amount: -500 }, ['p1'], undefined, 'Wheel');
+    const batch = applyAction(session, game, { kind: 'addPoints', amount: -500 }, ['p1'], undefined, 'Wheel');
     expect(score(session, 'p1')).toBe(-200);
     expect(session.scoreLog.at(-1)?.reason).toBe('Wheel');
+    // The step it made, for the host's score card (an Undo of it brings the card back).
+    expect(session.scoreLog.at(-1)?.batchId).toBe(batch);
   });
 
   it('shares a steal among the players it is for, never the victim, in whole points that add up to what was taken', () => {
@@ -226,6 +228,23 @@ describe('what a result is called', () => {
     expect(rollResult(roll)).toBe('14 (3 + 5 + 6)');
     expect(rollResult({ ...roll, totalOutcome: { label: 'Sip' } })).toBe('14 → Sip (3 + 5 + 6)');
     expect(rollResult({ dice: [{ sides: 20, value: 7 }], total: 7 })).toBe('7');
+  });
+
+  it('names a die face left blank (a picture face) by its number, and leaves out a blank total outcome', () => {
+    const pic = { label: ' ', media: 'm1', scoreAction: { kind: 'addPoints' as const, amount: 500 } };
+    const one = { dice: [{ sides: 2, value: 2, face: pic }], total: 2 };
+    expect(describeRoll(one)).toBe('2');
+    expect(rollResult(one)).toBe('2');
+    expect(outcomeText(one)).toBe('2');
+    // Its outcome on the second die: that die's number, not the total.
+    const two = { dice: [{ sides: 6, value: 4, face: { label: 'Sip' } }, { sides: 6, value: 5, face: pic }], total: 9 };
+    expect(describeRoll(two)).toBe('Sip, 5');
+    expect(outcomeText(two)).toBe('5');
+    const plain = { dice: [3, 5].map((value) => ({ sides: 6, value })), total: 8, totalOutcome: { label: '', details: 'Everyone drinks' } };
+    expect(describeRoll(plain)).toBe('3 + 5 = 8');
+    expect(rollResult(plain)).toBe('8 (3 + 5)');
+    expect(outcomeText(plain)).toBe('8');
+    expect(outcomeText({ ...plain, totalOutcome: { label: 'Party' } })).toBe('Party');
   });
 });
 

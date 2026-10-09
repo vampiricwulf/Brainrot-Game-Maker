@@ -98,16 +98,19 @@ export function wheelPool(o: WheelLike, session: Session, game: Game): PoolSlice
   if (o.players) return playerSegments(session);
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
   if (!preset) return copy(o.segments);
-  // Slices already used ("remove after landing") start switched off.
-  const active = new Set(activeSegments(session, preset).map((s) => s.id));
-  return copy(preset.segments).map((s) => (active.has(s.id) ? s : { ...s, off: true }));
+  // (Slices that landed stay listed and switched on: the spin leaves them out until they're restored. Switched off,
+  // Restore wouldn't bring them back, and Overwrite would delete them.)
+  return copy(preset.segments);
 }
 
-/** Change this run of the wheel only (the saved wheel stays as it is). Clears the last result. */
-export function editWheel(o: WheelLike, pool: PoolSlice[]): void {
+/**
+ * Change this run of the wheel only (the saved wheel stays as it is). Clears the last result. The wheel on screen
+ * leaves out the slices that landed, as the spin does.
+ */
+export function editWheel(o: WheelLike, pool: PoolSlice[], session: Session, game: Game): void {
   if (!o.players && !o.wheelId && !o.pool) o.base = copy(o.segments);
   o.pool = copy(pool);
-  o.segments = onSlices(pool);
+  o.segments = spinSegments(o, session, game);
   o.spin = null;
   o.result = null;
   if ('kind' in o) o.tagged = undefined;
@@ -127,9 +130,9 @@ export function resetWheelEdits(o: WheelLike, session: Session, game: Game): voi
 
 /**
  * The slices a wheel spins with now: this run's edits (players added or removed since still count), else the saved
- * wheel as it stands (used slices out), else the current players.
+ * wheel as it stands, else the current players. A "land once" wheel's used slices are out either way.
  */
-function spinSegments(o: WheelLike, session: Session, game: Game): WheelSegment[] {
+export function spinSegments(o: WheelLike, session: Session, game: Game): WheelSegment[] {
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
   if (o.pool) {
     if (o.players) o.pool = mergePlayers(o.pool, session);
@@ -294,6 +297,8 @@ export function startRollOff(live: Live, session: Session, playerIds: string[], 
   );
 }
 
+/** The scores on screen, over whatever is up (a wheel still to land, a result still to act on): S again puts it back. */
 export function toggleScoreboard(live: Live): void {
-  live.overlay = live.overlay?.kind === 'scoreboard' ? null : { kind: 'scoreboard', nonce: newId() };
+  const o = live.overlay;
+  live.overlay = o?.kind === 'scoreboard' ? (o.under ?? null) : { kind: 'scoreboard', nonce: newId(), ...(o ? { under: o } : {}) };
 }

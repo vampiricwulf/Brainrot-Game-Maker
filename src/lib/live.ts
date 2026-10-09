@@ -104,7 +104,12 @@ export type Overlay =
       startedAt: number;
       roundMs: number;
     }
-  | { kind: 'scoreboard'; nonce: string }
+  | {
+      kind: 'scoreboard';
+      nonce: string;
+      /** What the scores went up over (a wheel, dice, a roll-off, a pop-up…): S again, or Close, brings it back. */
+      under?: Overlay;
+    }
   /** A slide shown over whatever is on air (a sign, dialogue, a jump-scare); with `answer`, a question to reveal. */
   | { kind: 'popup'; nonce: string; slide: Slide; answer?: Slide; revealed?: boolean; value?: number; title?: string }
   /** One player's full sheet: avatar, stats, inventory. */

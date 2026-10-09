@@ -13,14 +13,19 @@
 
   let rows = $state<PoolSlice[]>(untrack(() => wheelPool(o, session, game)));
   const preset = $derived(o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined);
+  /** A "land once" wheel's slices that have landed: listed, but out of the spin until they're restored. */
+  const used = $derived(new Set(preset?.removeAfterLanding ? (session.removedSegments?.[preset.id] ?? []) : []));
+  /** Switched on: what Overwrite saves (the landed ones too). */
   const on = $derived(onSlices(rows));
-  const total = $derived(on.reduce((a, s) => a + s.weight, 0));
+  /** What the next spin can land on (every slice once all have landed: the wheel waits for Restore). */
+  const spinning = $derived(on.some((s) => !used.has(s.id)) ? on.filter((s) => !used.has(s.id)) : on);
+  const total = $derived(spinning.reduce((a, s) => a + s.weight, 0));
   const chance = (s: PoolSlice) => (s.off || s.weight <= 0 || !total ? '—' : `${Math.round((s.weight / total) * 1000) / 10}%`);
 
   /** Put the edits on the wheel (this run only). */
   function apply(): void {
     if (!on.length) return toast('Keep at least one slice on the wheel');
-    editWheel(o, rows);
+    editWheel(o, rows, session, game);
   }
 
   function reset(): void {
@@ -59,7 +64,8 @@
     const wheel: WheelPreset = {
       id: newId(),
       name,
-      segments: on.map((s) => ({ ...s, id: newId() })),
+      // (Not the slices that landed: they would be back on the new wheel.)
+      segments: spinning.map((s) => ({ ...s, id: newId() })),
       spinDurationMs: preset?.spinDurationMs ?? 5000,
       removeAfterLanding: preset?.removeAfterLanding ?? false,
     };
@@ -69,7 +75,7 @@
     o.name = name;
     o.players = undefined;
     rows = JSON.parse(JSON.stringify(wheel.segments));
-    editWheel(o, rows);
+    editWheel(o, rows, session, game);
     // (An exported player-only file keeps it with this game in progress only.)
     toast(app.playerOnly ? `Saved "${name}" for the rest of this game` : `Saved "${name}" with the game's wheels`);
   }
@@ -83,7 +89,7 @@
       if (w) w.segments = JSON.parse(JSON.stringify(on));
     });
     rows = JSON.parse(JSON.stringify(on));
-    editWheel(o, rows);
+    editWheel(o, rows, session, game);
     toast(`"${preset.name}" updated`);
   }
 </script>
@@ -99,7 +105,7 @@
       </thead>
       <tbody>
         {#each rows as s, i (s.id)}
-          <tr class:off={s.off}>
+          <tr class:off={s.off || used.has(s.id)}>
             <td><input type="checkbox" checked={!s.off} aria-label={`Include ${s.label}`} onchange={(e) => ((s.off = !e.currentTarget.checked), apply())} /></td>
             <td>
               {#if o.players}
@@ -127,7 +133,7 @@
                 onchange={(e) => ((s.weight = Math.max(0, +e.currentTarget.value || 0)), apply())}
               />
             </td>
-            <td class="pct">{chance(s)}</td>
+            <td class="pct">{#if used.has(s.id) && !s.off}<span class="muted small" title="It already landed: Restore brings it back">landed</span>{:else}{chance(s)}{/if}</td>
             <td>
               {#if !o.players}
                 <button class="ghost small" aria-label={`Remove ${s.label}`} title="Remove" onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>−</button>

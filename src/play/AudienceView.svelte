@@ -409,8 +409,10 @@
       </div>
     </div>
   {:else}
-    <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown. -->
-    {@const waiting = live.overlay?.kind === info.clue.type && !session.revealed}
+    <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown.
+         (The scores up over the tool: it's still to close.) -->
+    {@const tool = live.overlay?.kind === 'scoreboard' ? live.overlay.under : live.overlay}
+    {@const waiting = tool?.kind === info.clue.type && !session.revealed}
     <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
     {@const at = clueSlideIndex(session, info.clue)}
     {@const quiet = session.revealed || at > 0}

@@ -116,6 +116,11 @@
     text-shadow: 4px 4px 0 #000;
     text-align: center;
     line-height: 1.05;
+    /* One line, as the size above allows for (a long name ends in …: the result chip stays on the stage). */
+    max-width: var(--size);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .res {
     min-height: calc(var(--size) / 9);

@@ -157,6 +157,19 @@ try {
   assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a player')), 'D while the wheel spins waits for it (and says why)');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#wheelLand')), null, { timeout: 10000 });
   assert((await played(page, 'wheelTick')) === 0, '…and lands with a ding (none of it in the host’s window)');
+  // S puts the scores up over it; S again, or Esc, brings the wheel back with its result (not lost).
+  const tools = page.locator('[data-tool-controls]');
+  const landedOn = await tools.locator('.result').innerText();
+  await page.keyboard.press('s');
+  await aud.locator('.ov .sb').waitFor();
+  await page.keyboard.press('s');
+  await aud.locator('.ov .sb').waitFor({ state: 'detached' });
+  assert((await aud.locator('.ov svg.wheel').count()) === 1 && (await tools.locator('.result').innerText()) === landedOn, `S over the wheel shows the scores, and S again brings the wheel back (${landedOn})`);
+  await page.keyboard.press('s');
+  await aud.locator('.ov .sb').waitFor();
+  await page.keyboard.press('Escape');
+  await aud.locator('.ov .sb').waitFor({ state: 'detached' });
+  assert((await aud.locator('.ov svg.wheel').count()) === 1 && (await tools.locator('.result').innerText()) === landedOn, 'Esc on those scores goes back to the wheel too');
   await page.keyboard.press('Escape');
   // A ready-made wheel spins as it is, on the audience's screen.
   await page.getByRole('button', { name: '🎡 Wheel' }).click();

@@ -3,13 +3,13 @@
   one, in the main cell: the card keeps the result, the actions and spinning or rolling again.
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
-  import { addWheel, removeWheel, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
-  import { isRespin, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
+  import { addWheel, removeWheel, rollDice, spinSegments, spinWheel, wheelSpentUp } from '../../lib/overlay';
+  import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
@@ -31,9 +31,16 @@
     return () => clearInterval(id);
   });
   const busy = $derived(!!o && now < overlayDoneAt(o));
-  let actionDone = $state<string | null>(null);
-  /** Score effects of the other wheels already applied or dismissed (by spin and wheel). */
-  let doneKeys = $state<string[]>([]);
+  /**
+   * Score cards dealt with, by card (spin or roll, and which wheel or die): skipped (true), or the score step they
+   * applied, so an Undo of it brings the card back (the points went to the wrong player).
+   */
+  let done = $state<Record<string, string | true>>({});
+  const cardDone = (key: string): boolean => {
+    const d = done[key];
+    return d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone));
+  };
+  const finish = (key: string) => (applied: boolean, batch?: string) => (done[key] = applied && batch ? batch : true);
   /** The added wheel whose edit box is open (by its key). */
   let editExtra = $state<string | null>(null);
   const editedExtra = $derived(o?.kind === 'wheel' ? o.extra?.find((w) => w.key === editExtra) : undefined);
@@ -43,8 +50,10 @@
     if (o?.kind === 'dice' && o.roll) return rollOutcome(o.roll).main;
     return undefined;
   });
-  /** What the outcome is called: a slice left blank is "Slice 3". */
-  const outcomeName = $derived(o?.kind === 'wheel' && o.result !== null ? sliceLabel(o.segments[o.result], o.result) : (outcome?.label ?? ''));
+  /** What the outcome is called: a slice left blank is "Slice 3", a die face left blank its number. */
+  const outcomeName = $derived(
+    o?.kind === 'wheel' && o.result !== null ? sliceLabel(o.segments[o.result], o.result) : o?.kind === 'dice' && o.roll ? outcomeText(o.roll) : '',
+  );
   const resultText = $derived.by(() => {
     if (o?.kind === 'wheel' && o.spin && (o.result !== null || o.extra?.length))
       return [o.result !== null ? sliceLabel(o.segments[o.result], o.result) : '', ...(o.extra ?? []).map((w) => (w.result !== null ? sliceLabel(w.segments[w.result], w.result) : ''))]
@@ -96,6 +105,12 @@
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
     toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a, `${from}: ${describeAction(game, a)}`), 3000);
+    // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
+    // the Amount box, where R, Esc and N mean nothing.
+    void tick().then(() => {
+      const f = document.activeElement;
+      if (!f || f === document.body) document.querySelector<HTMLElement>('.panel [data-next]:not(:disabled)')?.focus({ preventScroll: true });
+    });
   }
 
   /** The wheel landed on a "Spin again" slice: spinning again is the main button. */
@@ -181,7 +196,15 @@
         {#if spent && !busy}<span class="warn small" role="status">Every slice has landed: Restore to spin again</span>
         {:else if again && landed}<span class="small" role="status">↻ It landed on {outcomeName}: spin again (W)</span>{/if}
         {#if removed}
-          <button class="ghost small" onclick={() => o.wheelId && session.removedSegments && (session.removedSegments[o.wheelId] = [])}>
+          <button
+            class="ghost small"
+            onclick={() => {
+              if (!o.wheelId || !session.removedSegments) return;
+              session.removedSegments[o.wheelId] = [];
+              // Back on the wheel on screen now, not only at the next spin (unless it's showing a result).
+              for (const w of [o, ...(o.extra ?? [])]) if (w.wheelId === o.wheelId && !w.spin) w.segments = spinSegments(w, session, game);
+            }}
+          >
             Restore {removed} used slice{removed === 1 ? '' : 's'}
           </button>
         {/if}
@@ -193,7 +216,8 @@
         {#if !busy && o.purpose === 'buzz'}
           <span>Answering order: {o.ranking.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(' → ')}</span>
         {:else if !busy}
-          <span>{session.players.find((p) => p.id === o.winner)?.name} {o.purpose === 'tiebreak' ? 'wins the game.' : 'picks first.'}</span>
+          <!-- (What it did: the board's picker, else, as viewers are told, who goes first; a board game's turn.) -->
+          <span>{session.players.find((p) => p.id === o.winner)?.name} {o.purpose === 'tiebreak' ? 'wins the game.' : session.phase === 'board' || session.phase === 'clue' ? 'picks first.' : 'goes first.'}</span>
         {:else}<span class="muted">Rolling…</span>{/if}
       {:else if o.kind === 'popup'}
         <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
@@ -210,6 +234,9 @@
         <b>🛒 {game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}</b>
       {:else}
         <b>📊 Scoreboard on screen</b>
+        {#if o.kind === 'scoreboard' && o.under}
+          <span class="muted small">Close (or S) puts the {o.under.kind === 'rolloff' ? 'roll-off' : o.under.kind === 'popup' ? 'pop-up' : o.under.kind} back</span>
+        {/if}
         <button class="small" onclick={() => copyText(standingsText(game, session), 'Standings copied: paste them in chat')} title="The standings as one line of text, for chat">
           📋 Copy standings
         </button>
@@ -229,14 +256,14 @@
     {/if}
     {#if !busy}
       {#each otherFaces as f (f.i)}
-        {@const label = f.face.label || `Die ${f.i + 1}`}
+        {@const label = f.face.label.trim() || (o.kind === 'dice' && o.roll?.dice[f.i] ? faceText(o.roll.dice[f.i]) : `Die ${f.i + 1}`)}
         {@const diceName = o.kind === 'dice' ? o.name : ''}
         <div class="row">
           <span class="muted small">Die {f.i + 1} → {label}:</span>
           {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a)}</button>{/each}
           {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
         </div>
-        {#if f.face.scoreAction && !doneKeys.includes(`${actionKey}-die${f.i}`)}
+        {#if f.face.scoreAction && !cardDone(`${actionKey}-die${f.i}`)}
           {#key `${actionKey}-die${f.i}`}
             <ActionCard
               action={f.face.scoreAction}
@@ -245,7 +272,7 @@
               reason={`Dice: ${diceName} → ${label}`}
               rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
               defaultTargets={chosen}
-              ondone={() => (doneKeys = [...doneKeys, `${actionKey}-die${f.i}`])}
+              ondone={finish(`${actionKey}-die${f.i}`)}
             />
           {/key}
         {/if}
@@ -258,7 +285,7 @@
             {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
-          {#if r.seg.scoreAction && !doneKeys.includes(`${actionKey}-${r.w.key}`)}
+          {#if r.seg.scoreAction && !cardDone(`${actionKey}-${r.w.key}`)}
             {#key `${actionKey}-${r.w.key}`}
               <ActionCard
                 action={r.seg.scoreAction}
@@ -267,7 +294,7 @@
                 reason={`Wheel: ${r.w.name} → ${label}`}
                 rollTotal={0}
                 defaultTargets={chosen}
-                ondone={() => (doneKeys = [...doneKeys, `${actionKey}-${r.w.key}`])}
+                ondone={finish(`${actionKey}-${r.w.key}`)}
               />
             {/key}
           {/if}
@@ -311,7 +338,7 @@
           <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱ Start {outcome.timerSeconds}s</button>
         {/if}
       </div>
-      {#if outcome?.scoreAction && actionDone !== actionKey}
+      {#if outcome?.scoreAction && !cardDone(actionKey)}
         {#key actionKey}
           <ActionCard
             action={outcome.scoreAction}
@@ -320,7 +347,7 @@
             reason={`${o.kind === 'wheel' ? 'Wheel' : 'Dice'}: ${o.name} → ${outcomeName}`}
             rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
             defaultTargets={chosen}
-            ondone={() => (actionDone = actionKey)}
+            ondone={finish(actionKey)}
           />
         {/key}
       {/if}

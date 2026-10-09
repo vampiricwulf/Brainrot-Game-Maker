@@ -4,7 +4,7 @@
   import type { Overlay } from '../../lib/live';
   import type { Game } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
-  import { rollOutcome } from '../../lib/tools';
+  import { faceText, outcomeText, rollOutcome } from '../../lib/tools';
   import Die from './Die.svelte';
   import OutcomeCard from './OutcomeCard.svelte';
 
@@ -29,10 +29,15 @@
       const v = 1 + ((Math.floor(now / 70) * 7919 + i * 104729) % d.sides);
       return d.face ? '?' : String(v);
     }
-    return d.face?.label ?? String(d.value);
+    // (A face left blank, a picture face: its number.)
+    return faceText(d);
   };
   // (The same one the host's card acts on.)
   const outcome = $derived(o.roll ? rollOutcome(o.roll).main : undefined);
+  /** A card with a picture or words under its label: the whole stage, as a wheel's (under the dice it ran off the bottom). */
+  const big = $derived(!!outcome && !!(outcome.media || outcome.details));
+  // It covers the dice: it comes a moment after they settle, so viewers see the faces and the total first.
+  const showCard = $derived(!rolling && !!outcome && (!big || (!!o.roll && now >= o.startedAt + o.duration + 900)));
 </script>
 
 <div class="wrap">
@@ -47,8 +52,8 @@
   {#if o.roll && !rolling && o.preset.showTotal !== false && o.roll.dice.length > 1 && o.roll.dice.every((d) => !d.face)}
     <div class="total">Total: {o.roll.total}</div>
   {/if}
-  {#if !rolling && outcome}
-    <div class="reveal"><OutcomeCard {outcome} {game} {role} /></div>
+  {#if showCard && outcome && o.roll}
+    <div class="reveal" class:big><OutcomeCard {outcome} {game} {role} fallback={outcomeText(o.roll)} /></div>
   {/if}
 </div>
 
@@ -96,11 +101,18 @@
     display: flex;
     justify-content: center;
   }
-  .reveal :global(.card) {
+  .reveal.big {
+    top: 0;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.35);
+  }
+  .reveal:not(.big) :global(.card) {
     max-height: 520px;
     padding: 24px 50px;
   }
-  .reveal :global(.label) {
+  .reveal:not(.big) :global(.label) {
     font-size: 80px;
   }
 </style>
