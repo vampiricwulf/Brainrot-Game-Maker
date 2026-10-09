@@ -101,6 +101,10 @@ describe('step labels', () => {
     expect(step((g) => (board(g).categories[0].clues[0].type = 'dailyDouble')).label).toBe(`Made ${cat} $200 a Daily Double`);
     expect(step((g) => (board(g).categories[0].clues[0].type = 'wheel')).label).toBe(`Made ${cat} $200 a wheel tile`);
     expect(step((g) => (board(g).categories[0].clues[0].empty = true)).label).toBe(`Left ${cat} $200 empty`);
+    // ✍ Everyone answers ticked, and unticked (the clue editor takes the field away).
+    const everyone = step((g) => (board(g).categories[0].clues[0].everyone = true));
+    expect(everyone.label).toBe(`Made ${cat} $200 ✍ Everyone answers`);
+    expect(describeStep(diff(everyone.after, everyone.before), everyone.after, everyone.before).label).toBe(`Took ✍ Everyone answers off ${cat} $200`);
     // A value changed: the tile as it was, and what it is now.
     const valued = step((g) => (board(g).categories[0].clues[1].value = 750));
     expect(valued.label).toBe(`Changed ${cat} $400 to $750`);

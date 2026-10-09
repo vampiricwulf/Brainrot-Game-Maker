@@ -2,11 +2,11 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, isSlides, playableClues, questionSlides, PLAYER_WHEEL, roundName, type Action, type BoardRound, type Game } from './model';
+import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, isSlides, playableClues, questionSlides, roundName, type Action, type BoardRound, type Game } from './model';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent } from './usage';
-import { tileDice } from './tools';
+import { toolChosen } from './tools';
 import type { Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
 import { statsProblems } from './toolset';
@@ -112,9 +112,8 @@ export function validate(game: Game): Problem[] {
     const noA = playable.filter((c) => !tools.includes(c) && !slideHasContent(c.answerSlide)).length;
     if (noQ) out.push({ text: `${r.name}: ${plural(noQ, 'clue')} with no question`, tab: i, level: 'warn' });
     if (noA) out.push({ text: `${r.name}: ${plural(noA, 'clue')} with no answer`, tab: i, level: 'warn' });
-    const broken = tools.filter((c) =>
-      c.type === 'wheel' ? c.wheelId !== PLAYER_WHEEL && !game.wheels.some((w) => w.id === c.wheelId) : !tileDice(game, c.diceId),
-    ).length;
+    // (The board editor says so on the tile, by the same rule.)
+    const broken = tools.filter((c) => !toolChosen(game, c)).length;
     if (broken) out.push({ text: `${r.name}: ${plural(broken, 'wheel/dice tile')} with nothing chosen`, tab: i, level: 'warn' });
     const dds = dailyDoublesShort(round);
     // Not a problem: Start game puts the rest on the board at random (a new board wants 1 and has none).

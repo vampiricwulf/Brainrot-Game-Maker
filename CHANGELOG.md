@@ -57,6 +57,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Big files: a game pack over about 2 GB says it's too big to open (it blamed an incomplete download), Save and desktop autosave warn when they write one that big, and opening a big game shows "Opening …" in the header while the editor waits. (a3660dd, 45fbb82)
 - After storage filled up during a game, discarding or ending that game no longer leaves "Autosave unavailable here: use Save" up until the next edit: a small write checks at once whether there's room again.
 - Audience window: a clue's sound or video the host paused or muted stays where it was when the window is reloaded, or closed and opened again (it played again from the start with sound); RPG music the browser blocked there says so and starts on the click; TIME'S UP isn't slammed in again by a reload or by opening the scores window. (6793d3e, 0643a46)
+- Board editor: a picture on a tile no longer covers its value or badges; tiles show ✍ for everyone-answers clues and their "Tile shows" text, and screen readers hear a tile's type; wheel and dice tiles say "No wheel chosen" or "No dice chosen" instead of asking for a question and answer they don't need; after Delete row, Move row or a tile drag the keys stay on the board. (dbefb23, 0577b3b)
+- Clue editor: Undo of ＋ Add wheel… or ＋ Add dice… stays on the clue (it jumped to Wheels & Dice); Undo and Redo of a question slide added, moved or deleted open the slide it changed; Ctrl+D on an only question slide duplicates it (it opened the browser's bookmark dialog); History names ✍ Everyone answers being ticked or unticked. (dbefb23, 0577b3b)
 
 ## 2026-10-08
 

@@ -88,7 +88,7 @@
       <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(tb.answerSlide)} oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value) && followClueText(app.game, [tb.answerSlide])}></textarea>
     </label>
   </div>
-  <SlideTabs holder={tb} bind:side={tbSide} bind:qi what="tiebreaker" />
+  <SlideTabs holder={tb} bind:side={tbSide} bind:qi what="tiebreaker" place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })} />
   {#key slideKey}
     <SlideEditor
       slide={tbSide === 'q' ? qslide : tb.answerSlide}

@@ -832,6 +832,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   }
   if (own && at.noun === 'clue' && k === 'type')return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
   if (own && at.noun === 'clue' && k === 'empty') return v ? `Left ${tile} empty` : `Made ${tile} playable again`;
+  if (own && at.noun === 'clue' && k === 'everyone') return v ? `Made ${tile} ✍ Everyone answers` : `Took ✍ Everyone answers off ${tile}`;
   if (own && at.noun === 'clue' && k === 'value') {
     const sym = after.settings.currencySymbol;
     const r = byId<Round>(after.rounds, op.p[1]);

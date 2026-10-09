@@ -85,6 +85,8 @@ export interface SavedHistory {
 export interface StepOptions {
   /** Where to show the step when its ops alone can't say (a restyle across 12 slides). */
   place?: Place;
+  /** Where it shows once undone, when that isn't `place` (a question slide deleted: the slide that was open). */
+  undoPlace?: Place;
   during?: 'play';
   /** Show "‹label› · Undo" once it's made (for editors without a notice of their own). */
   notify?: boolean;
@@ -285,7 +287,7 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
     ...d,
     where,
     place: opts.place ?? d.place,
-    undoPlace: opts.place ?? d.undoPlace,
+    undoPlace: opts.undoPlace ?? opts.place ?? d.undoPlace,
     explicit: isExplicit,
     sealed: isExplicit,
     size: opsSize(ops),

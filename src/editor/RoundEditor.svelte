@@ -6,10 +6,11 @@
   import { app } from '../lib/app.svelte';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, slidesOfClue, type BoardRound, type Clue } from '../lib/model';
+  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, slidesOfClue, type BoardRound, type Clue, type ClueType } from '../lib/model';
   import { placeNewPicture } from '../lib/editing';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
+  import { toolChosen } from '../lib/tools';
   import {
     addCategory,
     categoryHasContent,
@@ -213,6 +214,9 @@
 
   // ---------- Tiles ----------
 
+  /** A tile's type, as its name says it to a screen reader (its badge on the board). */
+  const TILE_KIND: Record<ClueType, string> = { standard: '', dailyDouble: ', Daily Double', wheel: ', wheel tile', dice: ', dice tile' };
+
   /** "Memes $400" */
   function tileName(p: TilePos): string {
     const cat = round.categories[p.cat];
@@ -252,6 +256,8 @@
         { notify, place: tilePlace(to.cat, c.id) },
       );
     } else step(`Swapped ${a} and ${b}`, () => swapClues(round, from, to), { place: tilePlace(to.cat, clue.id) });
+    // (The focus goes with it when it was on the board.)
+    focusTile(to.cat, to.row);
     cursor = to;
   }
 
@@ -568,13 +574,21 @@
   }
 
   // Done at once: the note at the bottom offers Undo.
+  // (From a tile's menu, the keys stay on the board: on the tile now in its place, or the one above.)
   function removeRow(row: number): void {
+    const onBoard = !!gridEl?.contains(document.activeElement);
+    const ci = cur.cat;
     step(`Deleted row ${row + 1} of ${name}`, () => deleteRow(round, row), { notify: true, place: rowsPlace() });
+    if (onBoard) void tick().then(() => focusTile(ci, Math.min(row, round.values.length - 1), true));
   }
 
+  // (From a tile's menu, the focus goes with the tile.)
   function shiftRow(from: number, to: number): void {
-    if (step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in ${name}`, () => moveRow(round, from, to), { place: rowsPlace() }) && cursor.row === from)
+    const onBoard = !!gridEl?.contains(document.activeElement);
+    if (step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in ${name}`, () => moveRow(round, from, to), { place: rowsPlace() }) && cursor.row === from) {
       cursor = { cat: cursor.cat, row: to };
+      if (onBoard) void tick().then(() => focusTile(cursor.cat, to, true));
+    }
   }
 
   function rowItems(row: number): MenuEntry[] {
@@ -820,10 +834,23 @@
         {@const p = { cat: ci, row }}
         {@const target = dropTarget === `t${ci}-${row}`}
         {@const value = clue.empty ? `row ${row + 1}` : formatPoints(clueValue(round, row, clue), sym)}
-        {@const what = clue.empty ? 'empty space' : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}`}
+        <!-- A wheel or dice tile's question is optional: what it needs is its wheel or dice (as the checklist says). -->
+        {@const tool = clue.type === 'wheel' || clue.type === 'dice'}
+        {@const noTool = tool && !clue.empty && !toolChosen(app.game, clue)}
+        {@const everyone = !!clue.everyone && clue.type === 'standard' && !clue.empty}
+        {@const faceText = clue.empty ? '' : (clue.tileFace?.text ?? '')}
+        <!-- (What its badges say, for a screen reader.) -->
+        {@const kind = clue.empty
+          ? ''
+          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type]}${everyone ? ', everyone answers' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
+        {@const what = clue.empty
+          ? 'empty space'
+          : tool
+            ? `${q || kinds.join(', ') || 'no question'}${noTool ? `, no ${clue.type} chosen` : ''}`
+            : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}`}
         <button
           class="tile"
-          aria-label="{categoryLabel(cat) || `Category ${ci + 1}`}, {value}: {what}"
+          aria-label="{categoryLabel(cat) || `Category ${ci + 1}`}, {value}{kind}: {what}"
           class:empty={clue.empty}
           class:drop={target}
           class:lifted={tileDrag?.cat === ci && tileDrag.row === row}
@@ -846,24 +873,28 @@
           ondragend={tileDragEnd}
         >
           {#if target && tileDrag}<span class="swap">{dropCopy ? '⧉ Copy here' : '⇄ Swap'}</span>{/if}
-          {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
           <span class="val">
+            <!-- (In the value's line, so the value and its badges go beside it or under it, never under the picture.) -->
+            {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
             {clue.empty ? 'EMPTY' : formatPoints(clueValue(round, row, clue), sym)}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}
             {#if clue.type === 'dailyDouble' && !clue.empty}<span class="dd" title="Daily Double">⭐ DD</span>{/if}
             {#if clue.type === 'wheel' && !clue.empty}<span class="dd" title="Wheel tile">🎡</span>{/if}
             {#if clue.type === 'dice' && !clue.empty}<span class="dd" title="Dice tile">🎲</span>{/if}
+            {#if everyone}<span class="dd" title="Everyone answers, in secret on their phones">✍</span>{/if}
             {#if clue.extraSlides?.length && !clue.empty}
               {@const n = clue.extraSlides.length + 1}
               <span class="dd" title="{n} question slides, shown in order before the answer">▤ {n}</span>
             {/if}
           </span>
+          {#if faceText}<span class="badge face-text" title="The board shows this on the tile instead of the value">“{faceText}”</span>{/if}
           {#if !clue.empty}
-            <span class="q" class:missing={!q && !kinds.length}>{q || (kinds.length ? '' : 'No question yet')}</span>
+            <span class="q" class:missing={!tool && !q && !kinds.length}>{q || (kinds.length || tool ? '' : 'No question yet')}</span>
             {#if kinds.length}
               <span class="kinds">{kinds.map((k) => ({ image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
             {/if}
-            {#if !a}<span class="missing small">No answer</span>{/if}
+            {#if !a && !tool}<span class="missing small">No answer</span>{/if}
+            {#if noTool}<span class="missing small">No {clue.type} chosen</span>{/if}
           {/if}
         </button>
       {/each}
@@ -1084,10 +1115,10 @@
   .tile {
     position: relative;
   }
+  /* Floated in the value's line (the value and its badges flow beside it, or under it on a narrow tile). */
   .tile .face {
-    position: absolute;
-    right: 6px;
-    top: 6px;
+    float: right;
+    margin: 0 0 2px 4px;
     width: 44px;
     height: 30px;
     object-fit: contain;
@@ -1128,10 +1159,17 @@
     border-radius: 4px;
     padding: 0 4px;
     margin-left: 4px;
+    /* (A badge that doesn't fit beside the value goes under it whole, not split across two lines.) */
+    white-space: nowrap;
   }
   .badge {
     font-size: 12px;
     color: var(--muted);
+  }
+  .face-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .q {
     font-size: 12px;

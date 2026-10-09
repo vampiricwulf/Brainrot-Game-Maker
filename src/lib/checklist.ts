@@ -1,7 +1,7 @@
 // The editor's checklist in the sidebar: the problems validate() finds, one line a round, and where a click on it goes.
-import { isBoard, PLAYER_WHEEL, roundName, type BoardRound, type Game } from './model';
+import { isBoard, roundName, type BoardRound, type Game } from './model';
 import type { Place } from './historylabel';
-import { tileDice } from './tools';
+import { toolChosen } from './tools';
 import { slideHasContent } from './usage';
 import type { Problem } from './validate';
 
@@ -25,11 +25,7 @@ function unfinished(game: Game, round: BoardRound, firstOnly = false) {
     for (const c of cat.clues) {
       if (c.empty) continue;
       const tool = c.type === 'wheel' || c.type === 'dice';
-      const done = tool
-        ? c.type === 'wheel'
-          ? c.wheelId === PLAYER_WHEEL || game.wheels.some((w) => w.id === c.wheelId)
-          : !!tileDice(game, c.diceId)
-        : slideHasContent(c.questionSlide) && slideHasContent(c.answerSlide);
+      const done = tool ? toolChosen(game, c) : slideHasContent(c.questionSlide) && slideHasContent(c.answerSlide);
       if (!done) out.push({ category: cat.id, clue: c.id });
       if (firstOnly && out.length) return out;
     }

@@ -344,6 +344,12 @@ describe('undo history: named steps', () => {
     // On the same tab, the changes say better where.
     step('Renamed a category', () => (board(g).categories[0].title = 'Memes'), { place: { tab: 'round', round: g.rounds[0].id } });
     expect(history.entries[1].where).toBe('Jeopardy! › Memes');
+    // Undone, somewhere else than redone (the place can be filled in as the step is made).
+    const id = g.rounds[0].id;
+    const place = { tab: 'round' as const, round: id, part: { kind: 'category' as const, category: 'a' } };
+    step('Renamed it again', () => ((board(g).categories[0].title = 'Lore'), (place.part.category = 'b')), { place, undoPlace: { tab: 'round', round: id } });
+    expect(history.entries[2].place).toEqual({ tab: 'round', round: id, part: { kind: 'category', category: 'b' } });
+    expect(history.entries[2].undoPlace).toEqual({ tab: 'round', round: id });
   });
 
   it('names the next step with nameStep()', async () => {

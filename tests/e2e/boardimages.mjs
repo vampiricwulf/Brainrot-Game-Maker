@@ -121,6 +121,27 @@ try {
     'dropped tile images fill down the column',
   );
   assert(true, '…and carry on at the top of the next column');
+  // A tile's picture never covers its badges or its value (a Daily Double made of it, at 1280).
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await editorTile(2, 4).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
+  await editorTile(2, 4).locator('.dd', { hasText: 'DD' }).waitFor();
+  const overlap = await editorTile(2, 4).evaluate((t) => {
+    const img = t.querySelector('img.face');
+    const f = img.getBoundingClientRect();
+    // (Every piece of the value's line but the picture: its text and its badges.)
+    const pieces = [...t.querySelector('.val').childNodes].filter((n) => n !== img && n.textContent.trim());
+    const rects = pieces.flatMap((n) => {
+      const range = document.createRange();
+      range.selectNode(n);
+      return [...range.getClientRects()];
+    });
+    return rects.some((r) => r.left < f.right && r.right > f.left && r.top < f.bottom && r.bottom > f.top);
+  });
+  assert(!overlap, 'a tile image never covers the tile’s value or its ⭐ DD badge');
+  await page.keyboard.press('Control+z');
+  await editorTile(2, 4).locator('.dd', { hasText: 'DD' }).waitFor({ state: 'detached' });
+  await page.setViewportSize({ width: 1400, height: 900 });
   await shot('bi-1-round');
 
   // ---------- Board images ----------

@@ -1,8 +1,8 @@
 <!--
   The slide tabs of a clue that isn't on a board (the tiebreaker, a Final): its question slides in the order they show,
   then the answer, with ＋ Add slide and, with several, ◀ Earlier / Later ▶ / ⧉ Duplicate / 🗑 Delete slide. On a tab:
-  ←/→ (Home/End) open the slide beside it; on a question slide's tab Alt+←/→ move it, Ctrl+D duplicates it, Delete
-  deletes it. Each change is one named step.
+  ←/→ (Home/End) open the slide beside it; on a question slide's tab Ctrl+D duplicates it (even the only one), and with
+  several Alt+←/→ move it, Delete deletes it. Each change is one named step.
 -->
 <script module lang="ts">
   /** What tells a slide apart, so the slide editor starts afresh on another one (the first one has no id). */
@@ -18,7 +18,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { step } from '../lib/history.svelte';
-  import { questionSlides } from '../lib/model';
+  import type { Place, Side } from '../lib/nav.svelte';
+  import { questionSlides, type ExtraSlide, type Slide } from '../lib/model';
   import { addClueSlide, deleteClueSlide, duplicateClueSlide, moveClueSlide, type SlideHolder } from '../lib/ops';
 
   let {
@@ -26,24 +27,43 @@
     side = $bindable(),
     qi = $bindable(),
     what,
+    place,
     plain = false,
   }: {
     holder: SlideHolder;
     /** Slides with nothing to answer (a slides round): no Answer tab, and they're "Slide 1, 2…". */
     plain?: boolean;
-    side: 'q' | 'a';
+    side: Side;
     /** The question slide open (0: the first), kept while the Answer tab is open. */
     qi: number;
     /** For the steps' names: "tiebreaker" ("Added tiebreaker question slide 2"). */
     what: string;
+    /** Where a question slide (its id; none: the first) or the answer is, for an undo or redo to show it. */
+    place: (side: Side, slide?: string) => Place;
   } = $props();
 
   const qslides = $derived(questionSlides(holder));
   const at = $derived(Math.min(qi, Math.max(0, qslides.length - 1)));
 
-  /** A change to the question slides as one named step; the slide it returns opens. */
+  /** The question slide `s` (the first one has no id), or the answer: where a slide change shows. */
+  const placeOf = (s: Slide | undefined, sd: Side = 'q'): Place => place(sd, sd === 'q' ? (s as Partial<ExtraSlide> | undefined)?.id : undefined);
+  /**
+   * A change to the question slides as one named step; the slide it returns opens. Undone, the slide open before shows
+   * again (an undo brings the slides back with their ids); redone, the one it opened (as the clue editor's do).
+   */
   function slides(label: string, fn: () => number, notify = false): void {
-    const to = step(plain ? label.replace(' question slide', ' slide') : label, fn, notify ? { notify: true } : undefined);
+    const undoPlace = side === 'a' ? placeOf(undefined, 'a') : placeOf(qslides[at]);
+    const opened = placeOf(qslides[at]);
+    const to = step(
+      plain ? label.replace(' question slide', ' slide') : label,
+      () => {
+        const i = fn();
+        // (Filled in once it's made: the history reads the place after.)
+        Object.assign(opened, placeOf(questionSlides(holder)[i]));
+        return i;
+      },
+      { place: opened, undoPlace, notify },
+    );
     side = 'q';
     qi = to;
   }
@@ -78,15 +98,20 @@
       if (e.key === 'Home') return open(0);
       if (e.key === 'End') return open(plain ? n - 1 : n);
     }
+    if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      // (Even the only slide; never the browser's Bookmark this page, on the Answer tab either.)
+      e.preventDefault();
+      if (side === 'q') {
+        duplicateSlide();
+        focusTab();
+      }
+      return;
+    }
     if (side === 'a' || n < 2) return;
     if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault();
       const d = e.key === 'ArrowLeft' ? -1 : 1;
       if (at + d >= 0 && at + d < n) moveSlide(d);
-      focusTab();
-    } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
-      e.preventDefault();
-      duplicateSlide();
       focusTab();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) {
       e.preventDefault();
