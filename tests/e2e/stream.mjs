@@ -285,6 +285,15 @@ async function viewers() {
   await host.keyboard.press('Escape');
   await aud.locator('.board .tile').first().waitFor();
   await badge.waitFor();
+  // A clue in the usual text box (its frame nearly the whole slide): the code goes in a corner its words leave free.
+  await host.locator('.board .tile').nth(1).click();
+  await aud.locator('.slide-area').waitFor();
+  await badge.waitFor();
+  const clueCorner = await badge.getAttribute('data-corner');
+  assert(clueCorner === 'br' && (await badge.locator('.jb-link').count()) === 1, `on a clue the whole join badge goes in the corner its words leave free (${clueCorner})`);
+  await host.keyboard.press('Escape');
+  await aud.locator('.board .tile').first().waitFor();
+  await badge.waitFor();
 
   // The Final: its category in the theme's clue font; each ✔ above its plate, never over the score.
   await nextRoundOf(host);

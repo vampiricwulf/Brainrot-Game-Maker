@@ -40,9 +40,10 @@
   let stockBox = $state<HTMLInputElement>();
 
   // Each goes into its box (the button that asked keeps the focus otherwise, and typing would reach the shortcuts).
+  // A price typed in before (and still short) starts the box again.
   function otherPrice(item: string): void {
     asking = { what: 'price', item };
-    typed = shopPrice(game, shop!, item);
+    typed = o?.short?.price ?? shopPrice(game, shop!, item);
     tick().then(() => priceBox?.select());
   }
 
@@ -133,10 +134,14 @@
       {/each}
     </div>
   {/if}
-  {#if o.short}
+  <!-- (Worked out from the buyer's money now: an Undo, a sale or a score change can shrink the gap or close it.) -->
+  {@const gap = o.short ? (o.short.price ?? shopPrice(game, shop, o.short.item)) - balance(game, session, shop, buyer) : 0}
+  {#if o.short && gap > 0}
     {@const it = o.short.item}
+    <!-- (Short at a price typed in: Sell anyway sells at that price.) -->
+    {@const at = o.short.price}
     <div class="row warn" role="alert">
-      <span>{o.short.error} for {itemDef(game, it)?.name}.</span>
+      <span>Short by {formatPrice(game, shop, gap)} for {itemDef(game, it)?.name}.</span>
       {#if asking?.what === 'price' && asking.item === it}
         <label class="check">
           Price
@@ -145,7 +150,7 @@
         <button class="small" onclick={answer}>Sell</button>
         <button class="small ghost" onclick={() => (asking = null)}>Cancel</button>
       {:else}
-        <button class="small" onclick={() => purchase(it, { allowShort: true })}>Sell anyway</button>
+        <button class="small" onclick={() => purchase(it, { allowShort: true, price: at })}>Sell anyway</button>
         <button class="small" onclick={() => purchase(it, { price: 0 })}>Give it free</button>
         <button class="small" onclick={() => otherPrice(it)}>Other price…</button>
         <button class="small ghost" onclick={() => (o.short = undefined)}>Cancel</button>

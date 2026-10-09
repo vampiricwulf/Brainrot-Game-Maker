@@ -35,6 +35,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Image editor: a caption font just picked shows once it loads (Apply waits for it); Ctrl+Z and Ctrl+Y work while a slider, colour or list has the focus; Remove crop and Reset all set the crop shape back to Free. (56551cb)
 - Player files: a drawing or file added during play comes back after a reload or Resume game; the same file open in a second tab waits, paused, with Play here instead (both tabs overwrote the saved game); resuming in one window no longer closes another page's audience window; the start screen shows the audience window's line and warns when it's closed by accident; ⬇ Download as .brainrot shows its progress and ignores extra clicks; the buzzer-room line names the button that goes back into the room. (3ace03b, 4b3d8c8)
 - In a browser that blocks site data, the builder opens its editor (it said the game was open in another tab, with no way out), and player files still play there, saying they can't save progress. (4b3d8c8)
+- Stream: the join code shows on clues, in a corner the words leave free (a text box's whole frame counted as taken, so it was hidden on almost every clue). (78d7354)
+- RPG rounds: a currency pile with no currency set stays put when picked up (it vanished and gave nothing), and the checklist warns about it; the shop's "Short by" row follows the buyer's money (Undo, Redo and score changes update or clear it); "Sell anyway" after "Other price…" charges the price typed; undoing a Regroup brings split view back. (78d7354, 739919e)
+- Board games: deleting a space during play no longer says "? moved to Start". (78d7354)
 
 ## 2026-10-05
 

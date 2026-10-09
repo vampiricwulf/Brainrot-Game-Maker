@@ -34,7 +34,7 @@ export function shopBuy(
     toast(result.text, 3000);
   } else if (result.error === 'Sold out') toast(`${itemDef(game, item)?.name} is sold out`);
   else {
-    o.short = { item, error: result.error };
+    o.short = { item, price: opts.price };
     toast(`${result.error}: choose in the shop controls`, 3000);
   }
 }

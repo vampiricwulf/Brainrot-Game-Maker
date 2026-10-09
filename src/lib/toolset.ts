@@ -428,7 +428,9 @@ function restore(session: Session, json: string, game?: Game): void {
     if ((PARTS as readonly string[]).includes(k)) {
       const part = (v ?? {}) as Record<string, Record<string, unknown>>;
       const now = session[k as (typeof PARTS)[number]] as Record<string, Record<string, unknown>> | undefined;
-      for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id]) part[id][f] = now[id][f];
+      // (A step only turns split view off by leaving one party: with one party now, the snapshot's split stands, so
+      // undoing a Regroup puts split view back.)
+      for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id] && !(f === 'split' && ((now[id].parties as unknown[] | undefined)?.length ?? 0) < 2)) part[id][f] = now[id][f];
       Object.assign(session, { [k]: part });
     } else if ((HOST as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? undefined });
     else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);
