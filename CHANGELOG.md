@@ -29,6 +29,8 @@ in plain words for the people who make and host games. Anything committed but no
 - 🔍 Find: the result under a resting mouse no longer takes the highlight, so Enter opens the top result; a match on an RPG screen opens that screen's look with the object selected; tiebreaker and 'How to win' matches put the cursor in their box; a result in a world no round plays says to add an RPG round. (336da69, c2ffc3e)
 - Checklist: a Final's missing question or answer opens that side, and a Slides round's empty slide opens that slide, with the cursor in its text. (336da69)
 - Rounds: the sample game added to a game with rounds names its rounds apart ('Jeopardy! (2)'); Paste round names the copy in History and Undo and puts the cursor in its name; the 'Welcome and rules' template, or a pasted slides round, says when it went to the start of the game. (336da69)
+- Single window: the stage no longer shrinks when a clue opens or a player is picked (a long name on ＋ Award / − Deduct is cut short with …, and windows up to 1280px wide leave out the key hints, still in the tooltips); 🔊 Sound opened during a game shows in the host panel instead of covering the stage viewers see. (a7006d3, 747c5d4)
+- The board editor's columns narrow to fit the window, so all six categories show on a 1024px laptop; on a short window every Final wager box fits without scrolling. (a7006d3)
 
 ## 2026-10-08
 

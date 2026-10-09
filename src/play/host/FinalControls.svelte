@@ -368,6 +368,7 @@
                 value={w ?? ''}
                 placeholder="wager"
                 aria-label="{p.name}’s wager"
+                title={override ? `No limit now (their score: ${formatPoints(cap, sym)})` : cap ? `Max ${formatPoints(cap, sym)}` : `Can only wager ${formatPoints(0, sym)}`}
                 class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
                 oninput={(e) => finalSetWager(session, p.id, e.currentTarget.value === '' ? undefined : +e.currentTarget.value)}
                 onfocus={() => {
@@ -402,9 +403,11 @@
                   >{w === undefined ? '📱 waiting…' : '📱 can still send'}</span
                 >
               {/if}
-              <span class="muted small">
-                {override ? `their score ${formatPoints(cap, sym)} (no limit now)` : cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}
-              </span>
+              <!-- The max only while the limits apply: ignored, their score is beside their name already and the ticked box
+                   says so (the row stays short: on a short window more wager boxes fit in sight). -->
+              {#if !override}
+                <span class="muted small">{cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}</span>
+              {/if}
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
               <span class="muted small">{f.chosen?.[p.id] === false || score(session, p.id) > 0 ? 'sits out' : 'sits out: no points to wager (tick to let them play)'}</span>

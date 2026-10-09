@@ -13,7 +13,18 @@
   import InlineAsk from './host/InlineAsk.svelte';
 
   // windowTitle: the audience window's title, which Discord lists it by.
-  let { dual, windowTitle, onclose }: { dual: boolean; windowTitle: string; onclose: () => void } = $props();
+  let {
+    dual,
+    windowTitle,
+    onclose,
+    area = null,
+  }: {
+    dual: boolean;
+    windowTitle: string;
+    onclose: () => void;
+    /** Single window, mid-game: the host panel's box, where the help stays (the stage viewers see stays clear). */
+    area?: { top: number; left: number; width: number; height: number } | null;
+  } = $props();
 
   const exe = inTauri();
   const capture = captureProblem();
@@ -116,7 +127,16 @@
   {/if}
 {/snippet}
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+<div
+  class="backdrop"
+  class:in-panel={!!area}
+  style:top={area ? `${area.top}px` : undefined}
+  style:left={area ? `${area.left}px` : undefined}
+  style:width={area ? `${area.width}px` : undefined}
+  style:height={area ? `${area.height}px` : undefined}
+  role="presentation"
+  onclick={(e) => e.target === e.currentTarget && onclose()}
+>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" use:modal>
     <div class="row">
       <h2 class="modal-title">🔊 Streaming the sound</h2>
@@ -324,6 +344,11 @@
     grid-template-columns: minmax(0, 1fr);
     place-items: center;
     padding: 16px;
+  }
+  /* Single window: over the host panel only, never the stage viewers see. */
+  .backdrop.in-panel {
+    inset: auto;
+    padding: 8px;
   }
   .modal {
     outline: none;

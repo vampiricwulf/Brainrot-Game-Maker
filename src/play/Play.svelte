@@ -323,10 +323,10 @@
     void finalUnjudged(session).length;
     finishArmed = false;
   });
-  // H hid the controls, but a list (?, L, 👥 Players, ⚖ Rules) or a wager to type (a Daily Double's, the Final's) needs
-  // them: they come back for it, and hide again once it's done (unless the host pressed H meanwhile).
+  // H hid the controls, but a list (?, L, 👥 Players, ⚖ Rules, 🔊 Sound) or a wager to type (a Daily Double's, the
+  // Final's) needs them: they come back for it, and hide again once it's done (unless the host pressed H meanwhile).
   const needControls = $derived(
-    (!dual && (showKeys || showPlayers || showRules || showLog)) ||
+    (!dual && (showKeys || showPlayers || showRules || showLog || showSound)) ||
       (session.phase === 'clue' && session.dd?.stage === 'splash') ||
       (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
   );
@@ -365,7 +365,7 @@
     });
   });
   $effect(() => {
-    if (dual || !(showKeys || showPlayers || showRules || showLog)) return void (panelBox = null);
+    if (dual || !(showKeys || showPlayers || showRules || showLog || showSound)) return void (panelBox = null);
     let ro: ResizeObserver | undefined;
     const read = () => {
       const el = document.querySelector<HTMLElement>('.play > .panel');
@@ -3160,7 +3160,7 @@
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. The page's main part, named
        by the game's title (for screen readers). -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <main class="play" class:hidden={hideControls} class:side class:dual class:roomy={!dual && (showKeys || showPlayers || showRules || showLog)} oncontextmenu={playerMenuAt} use:focusRescue>
+  <main class="play" class:hidden={hideControls} class:side class:dual class:roomy={!dual && (showKeys || showPlayers || showRules || showLog || showSound)} oncontextmenu={playerMenuAt} use:focusRescue>
     <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
@@ -3458,8 +3458,9 @@
 {#if showSettings}
   <SettingsDialog at="buzzer" onclose={() => (showSettings = false)} />
 {/if}
-{#if showSound}
-  <AudioHelp {dual} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
+{#if showSound && (dual || app.pregame || panelBox)}
+  <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. -->
+  <AudioHelp {dual} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
 {/if}
 
 <style>

@@ -460,8 +460,16 @@
     return { update: fit, destroy: () => el.removeEventListener('input', fit) };
   }
 
-  /** Narrower columns for more categories, so 10 still fit across without scrolling sideways. */
-  const colMin = $derived(Math.min(140, Math.floor(1000 / round.categories.length) - 6));
+  /** The board's width: the columns fit it, so none runs past a narrow window unseen. */
+  let wrapW = $state(0);
+  /**
+   * Narrower columns for more categories or a narrower window, so they fit across without scrolling sideways (down to
+   * 90px a column; below that the board scrolls).
+   */
+  const colMin = $derived.by(() => {
+    const n = round.categories.length;
+    return Math.max(90, Math.min(140, Math.floor(((wrapW || 1000) - 6 * (n - 1)) / n)));
+  });
 
   function moveCat(from: number, to: number): void {
     if (to < 0 || to >= round.categories.length || to === from) return;
@@ -722,8 +730,8 @@
   </div>
 {/if}
 
-<div class="grid-wrap">
-  <div class="grid" class:many={round.categories.length >= 8} bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
+<div class="grid-wrap" bind:clientWidth={wrapW}>
+  <div class="grid" class:many={round.categories.length >= 8 || colMin < 120} bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
     {#each round.categories as cat, ci (cat.id)}
       <div
         class="cat"
@@ -954,7 +962,7 @@
     overflow-wrap: break-word;
     hyphens: auto;
   }
-  /* Ten narrow columns: smaller names, so a word like GEOGRAPHY still fits on a line. */
+  /* Narrow columns (ten, or a narrow window): smaller names, so a word like GEOGRAPHY still fits on a line. */
   .grid.many .cat textarea:not(.sub) {
     font-size: 12px;
     padding-inline: 2px;
