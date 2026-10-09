@@ -5,7 +5,9 @@
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
 // button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
-// on a narrow window the fixed bar stays on one line (🚪 Exit at the right).
+// on a narrow window the fixed bar stays on one line (🚪 Exit at the right). With six players in a single window (at
+// 1366×768 and 1024×768) the stage keeps one size from the board to a clue and with a player picked, 🔊 Sound opens in
+// the host panel, and every Final wager box is in sight.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -404,6 +406,74 @@ try {
   await p3.locator('.stage-box .board .tile').first().click();
   await p3.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   await oneLine('in a clue');
+
+  // A crowded single window (six players, longer names): the stage keeps one size from the board to a clue and with a
+  // player picked, 🔊 Sound opens in the host panel (not over the stage), and every Final wager box is in sight.
+  console.log('A crowded single window:');
+  const crowdFile = resolve('test-results/hostlayout-crowd.json');
+  const crowd = ['Annabelle', 'Bobby Tables', 'Cyrus', 'Deedee', 'Eleanor', 'Frankie'];
+  const crowdColors = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'];
+  writeFileSync(
+    crowdFile,
+    JSON.stringify({ ...game, id: 'g_layout_crowd', players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })), rounds: [board, game.rounds[3]] }),
+  );
+  for (const [w, h] of [
+    [1366, 768],
+    [1024, 768],
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    const p4 = await ctx.newPage();
+    p4.on('pageerror', (e) => errors.push(e.message));
+    await p4.goto(pathToFileURL(file).href);
+    await openGameFile(p4, crowdFile);
+    await p4.getByText(/^Opened “/).waitFor();
+    await p4.getByRole('button', { name: '▶ Play' }).click();
+    await p4.getByRole('button', { name: 'Start game ▶' }).click();
+    await p4.getByRole('button', { name: 'Skip intro' }).click();
+    await p4.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
+    const stageH = async () => Math.round((await p4.locator('.stage-box').boundingBox()).height);
+    const onBoard = await stageH();
+    assert((await p4.locator('.panel .p button.quick:visible').count()) === 0, `${w}×${h}: on the board the chips keep ✔ / ✘'s place, unseen`);
+    await p4.locator('.stage-box .board .tile').first().click();
+    await p4.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+    const inClue = await stageH();
+    await p4.keyboard.press('2');
+    await p4.locator('.panel .award button.good', { hasText: 'Bobby Tables' }).waitFor();
+    const picked = await stageH();
+    assert(onBoard === inClue && inClue === picked, `${w}×${h}: the stage keeps one size from the board to a clue and with a player picked (${onBoard} / ${inClue} / ${picked})`);
+    await p4.keyboard.press('Escape');
+    await p4.keyboard.press('Escape');
+    await p4.locator('.stage-box .board').waitFor();
+    if (w === 1366) {
+      await p4.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+      const help = p4.getByRole('dialog', { name: 'Streaming the sound' });
+      await help.waitFor();
+      const hb = await help.boundingBox();
+      const sb = await p4.locator('.stage-box').boundingBox();
+      assert(hb.y >= sb.y + sb.height - 1, `🔊 Sound mid-game opens its help in the host panel, not over the stage (it starts at ${Math.round(hb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
+      await p4.keyboard.press('Escape');
+      await help.waitFor({ state: 'detached' });
+    } else {
+      await p4.waitForTimeout(450);
+      await p4.locator('.rn button', { hasText: '▶' }).click();
+      await confirmStrip(p4).waitFor();
+      await p4.waitForTimeout(450);
+      await confirmStrip(p4).getByRole('button', { name: 'Yes', exact: true }).click();
+      await p4.locator('.fj .wagers input[data-wager]').first().waitFor();
+      // (In sight: what's at the middle of each box is the box, not clipped by the panel's scrolling part.)
+      const hidden = await p4.evaluate(() =>
+        [...document.querySelectorAll('.fj input[data-wager], .fj input[data-limits]')]
+          .filter((el) => {
+            const r = el.getBoundingClientRect();
+            return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) !== el;
+          })
+          .map((el) => el.getAttribute('aria-label') ?? 'Ignore the limits'),
+      );
+      assert(hidden.length === 0, `${w}×${h}: every wager box and “Ignore the limits” are in sight on the Final's wager screen${hidden.length ? ` (not: ${hidden.join(', ')})` : ''}`);
+      assert((await p4.locator('.fj input[data-wager]').first().getAttribute('title')).startsWith('No limit now'), 'with the limits ignored, a wager box says so in its tooltip');
+    }
+    await ctx.close();
+  }
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Host layout e2e passed');
 } finally {

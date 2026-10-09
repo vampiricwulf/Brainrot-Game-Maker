@@ -431,6 +431,8 @@
    */
   const quickFor = (id: string) =>
     game.settings.deductOnWrong && session.phase === 'clue' && !!info && !toolOnly && (session.dd?.stage !== 'question' || session.dd.playerId === id);
+  /** On the board and through a clue the chips keep one width (the mark's place, and ✔ / ✘'s, kept where unused). */
+  const chipSlots = $derived(session.phase === 'board' || (session.phase === 'clue' && !!info));
 
   // ---------- The NEXT cell: one main button ----------
   /** Buzzer mode: the buzzers are closed, nobody answering or picked. */
@@ -685,9 +687,10 @@
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}
-          <!-- During a clue, the mark's place is kept (empty until they're marked): the chips keep their width, so ✔ / ✘
-               never move under the host's cursor and the row doesn't wrap and shrink the stage. -->
-          {#if session.phase === 'clue' && info}
+          <!-- On the board and during a clue, the mark's place is kept (empty until they're marked), and ✔ / ✘'s where they
+               aren't offered (the board, a wheel tile, another player's Daily Double): the chips keep one width, so
+               opening a clue never wraps the row and shrinks the stage, and ✔ / ✘ never move under the host's cursor. -->
+          {#if chipSlots}
             {@const m = marks[p.id]}
             <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:empty={!m}>
               {#if m}{m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}{/if}
@@ -712,6 +715,12 @@
               title={was === false ? `${p.name} is marked wrong on this clue (− Deduct takes more)` : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
               >✘</button
             >
+          {:else if chipSlots && game.settings.deductOnWrong}
+            <!-- (Hidden copies with the same classes: exactly as wide as the real ones.) -->
+            <span class="quick-slot" aria-hidden="true" inert>
+              <button class="small quick" tabindex="-1" disabled aria-label="Right">✔</button>
+              <button class="small quick" tabindex="-1" disabled aria-label="Wrong">✘</button>
+            </span>
           {/if}
         </div>
       {/each}
@@ -871,7 +880,10 @@
           </button>
           <!-- (Buzzer mode: the buzzers' own things are on their row, above.) -->
           {#if selected.length && !buzzing}
-            <button class="ghost" onclick={() => (selected = [])} title="Esc">Clear selection</button>
+            <!-- (Just ✕ on a narrow window, so the row stays one line: see the media query.) -->
+            <button class="ghost clear" onclick={() => (selected = [])} title="Clear selection (Esc)" aria-label="Clear selection"
+              ><span class="word">Clear selection</span><span class="x" aria-hidden="true">✕</span></button
+            >
           {:else if session.phase === 'board'}
             <button class="ghost" onclick={() => (adjust = false)}>Done</button>
           {:else if !toolOnly && !buzzing}
@@ -1187,14 +1199,29 @@
     order: 1;
     flex-basis: 100%;
   }
+  .clear .x {
+    display: none;
+  }
   /* A narrow window under the stage: the fixed bar's buttons a little smaller, so 🚪 Exit stays on its line at the right
-     instead of wrapping to the left under ↶ Undo, and the Amount row's too, so a clue's buttons stay on one line. */
+     instead of wrapping to the left under ↶ Undo, and the Amount row's too, so a clue's buttons stay on one line (a
+     player picked too: ＋ Award and − Deduct without their keys, which are in their tooltips, and Clear selection as ✕). */
   @media (max-width: 1180px) {
     .panel:not(.side) > .act :global(button) {
       padding: 5px 9px;
     }
     .panel:not(.side) .award input {
       width: 80px;
+    }
+    .panel:not(.side) .award kbd,
+    .panel:not(.side) .clear .word {
+      display: none;
+    }
+    .panel:not(.side) .clear .x {
+      display: inline;
+    }
+    /* (The folded row as tall as the Amount row is here.) */
+    .panel:not(.side) .flow {
+      min-height: 30px;
     }
     .panel:not(.side) > .fixed :global(button) {
       padding: 5px 8px;
@@ -1346,6 +1373,11 @@
   }
   .quick {
     padding: 4px 8px;
+  }
+  /* ✔ / ✘'s place where they aren't offered: unseen, but as wide (the chip's gap still applies). */
+  .quick-slot {
+    display: contents;
+    visibility: hidden;
   }
   .right {
     color: var(--good);

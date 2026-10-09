@@ -1,8 +1,8 @@
 // Editor polish at 1280×720: the first screen, the sidebar and its checklist, board values, category names and tools,
 // Daily Doubles, standard dice tiles, wheels and dice made where they're picked, stat presets, RPG doorways and
 // characters, the world's menu, one set of ↶ ↷, and the theme's clue text and preview. Also: Enter in a category's
-// name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, and ＋ buttons that put the
-// focus on what they add.
+// name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, ＋ buttons that put the
+// focus on what they add, and a board's six columns fitting a narrower window.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -114,6 +114,14 @@ try {
   assert(sideways <= 1, `ten categories fit across at 1280 (${sideways}px over)`);
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   assert((await page.locator('.cat').count()) === 6, 'back to six');
+  // A narrower window (a 1024 laptop, half a 1920 screen): the six columns narrow to fit, none runs past the edge.
+  for (const w of [1024, 960]) {
+    await page.setViewportSize({ width: w, height: 720 });
+    await page.waitForFunction(() => document.querySelector('.grid-wrap').scrollWidth - document.querySelector('.grid-wrap').clientWidth <= 1, null, { timeout: 3000 }).catch(() => {});
+    const over = await page.locator('.grid-wrap').evaluate((g) => g.scrollWidth - g.clientWidth);
+    assert(over <= 1, `six categories fit across a ${w}px window (${over}px over)`);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   assert((await page.getByText('Rows (questions per category)').count()) === 1, 'the rows field says rows');
   // Enter in a category's name goes to its top tile (Shift+Enter is a new line); a new line left at its end goes.
   const cat3 = page.locator('[data-cat-name="2"]');
