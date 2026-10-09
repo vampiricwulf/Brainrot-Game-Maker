@@ -199,8 +199,12 @@ export interface PhoneView {
    * whether that's this phone; `you` is this phone's team.
    */
   answering: { name: string; color: string; you: boolean; by?: string; byYou?: boolean } | null;
-  /** This phone's player (teams: its team, with member: the name this phone joined it as); null until it has a seat. */
-  you: (Seat & { score: number; lockedOut: boolean; member?: string }) | null;
+  /**
+   * This phone's player (teams: its team, with member: the name this phone joined it as); null until it has a seat.
+   * Teams: out (added later, by the room) with lockedOut: this member had their go on this clue on another team (the
+   * host moved them, or they left it), though this team hasn't answered.
+   */
+  you: (Seat & { score: number; lockedOut: boolean; member?: string; out?: boolean }) | null;
   // ---- Added later (optional: an older room leaves them out) ----
   /** The clue is over: who got it (null: not said). */
   done?: { by: { name: string; color: string; you: boolean } | null };

@@ -45,11 +45,12 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   was (`by` on the host's `buzz` and queue, `answering.by` in the phones' view); while the room is still collecting,
   a teammate who reacted faster becomes the team's time; after that, a teammate's buzz only hears where the team
   stands. A lock-out locks the whole team; an early buzz only the member who jumped. Someone the host moves during a
-  clue off a team in it (it buzzed, or is answering) or out of it sits out the rest of that clue on the new team too,
-  until everyone may buzz again (↺ Reset) or the next clue. `kick` with `member` takes one
-  person off a team (kept off that team for 2 minutes), without it everyone on the team. Turning teams on or off lets
-  every seat and member go. Nobody asks to join as a new player in teams; at most 64 members are kept (those gone
-  longest make room).
+  clue off a team in it (it buzzed, or is answering) or out of it sits out the rest of that clue on the new team too
+  (their phone's `you.out`), until everyone may buzz again (↺ Reset) or the next clue; so does someone who leaves such
+  a team and joins another from the same phone (its `device` id, else the same connection). `kick` with `member`
+  takes one person off a team (kept off that team for 2 minutes), without it everyone on the team. Turning teams on or
+  off lets every seat and member go. Nobody asks to join as a new player in teams; at most 64 members are kept (those
+  gone longest make room).
 - **Wagers** (`wager` in the host's state: a round id, `dd` or `final`, `open`, `limit`, and per seat its `max`, the
   host's `amount`, `fromHost` and `got`): each seat in it sends its own wager from its phone (`wager` with the round id
   and a whole number from 0 to 1,000,000,000; teams: anyone on the team, the newest counts). The room takes it only
@@ -97,7 +98,7 @@ the deny reason `need-name`; and wagers: `'wagers'` in `welcome.features`, `Host
 the host type them, and says so); and `'free'` in `welcome.features` with `kick.block` (an app that doesn't see it
 offers only the kick), `seats[].away`, `kicked.freed`, and `HostState.over` with `PhoneView.final` (where a phone's
 seat came when the game is over) and `HostState.winner` (with `over`: a tiebreaker put that seat 1st on its own, and
-the seats it tied with share 2nd). The old
+the seats it tied with share 2nd); and `you.out` (teams: this member sits the rest of the clue out, see Teams). The old
 phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
 
 ## Fair timing

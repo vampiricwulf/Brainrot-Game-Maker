@@ -49,6 +49,12 @@
   let closing = $state<'close' | 'off' | null>(null);
   /** Asking before turning Teams on (true) or off (false) with phones in the room: every phone picks again. */
   let switching = $state<boolean | null>(null);
+  /** Still a question: phones in the room, Teams not that way already (an undo), and not closing the room instead. */
+  const asking = $derived(switching !== null && !!seatedPhones && !!settings.buzzTeams !== switching && !closing);
+  // Nothing left to ask: the question goes for good (it doesn't come back if phones join again later).
+  $effect(() => {
+    if (switching !== null && !asking) switching = null;
+  });
   /** The options' changes: Teams with phones in the room asks first, as closing the room does. */
   const setOption: SetBuzzSetting = (key, value, label) => {
     if (key === 'buzzTeams' && seatedPhones && !!value !== !!settings.buzzTeams) switching = !!value;
@@ -188,7 +194,7 @@
       </div>
     </div>
   {/if}
-  {#if switching !== null}
+  {#if asking}
     <div class="ask" role="alertdialog" aria-label="Turn teams {switching ? 'on' : 'off'}?">
       <span>
         {seatedPhones}

@@ -1585,8 +1585,10 @@ describe('teams', () => {
     g.send({ t: 'move', member: g.memberOf('al')!, seatId: 'b' });
     // Wrong: Red is out, and with nobody else in line the buzzers open again (a new arm, a new race).
     g.arm(2, { lockedOut: ['a'] });
-    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: true });
+    // (out: his phone says he was on another team for this one, not that Blue already answered.)
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: true, out: true });
     expect(g.bea.last('view')!.view.you?.lockedOut).toBe(false);
+    expect(g.bea.last('view')!.view.you?.out).toBeUndefined();
     g.t.now += 300;
     g.al.send({ t: 'buzz', armId: 2, reactMs: 200 });
     expect(g.al.last('result')?.outcome).toBe('locked');
@@ -1596,6 +1598,7 @@ describe('teams', () => {
     // ↺ Reset: everyone may buzz again, Al too (for Blue).
     g.arm(3);
     expect(g.al.last('view')!.view.you?.lockedOut).toBe(false);
+    expect(g.al.last('view')!.view.you?.out).toBeUndefined();
     g.t.now += 300;
     g.al.send({ t: 'buzz', armId: 3, reactMs: 200 });
     expect(g.room.saved.race!.queue.map((b) => [b.seatId, b.by])).toEqual([['b', 'Al']]);
@@ -1626,6 +1629,45 @@ describe('teams', () => {
     g.arm(3);
     expect(g.ann.last('view')!.view.you).toMatchObject({ id: 'a', lockedOut: false });
     expect(g.al.last('view')!.view.you?.lockedOut).toBe(false);
+  });
+
+  it('someone who leaves a team in the clue and joins another on the same phone sits out the rest of it too', () => {
+    const g = teams();
+    g.arm(1);
+    g.al.send({ t: 'buzz', armId: 1, reactMs: 200 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state?.answering).toBe('a');
+    // A new name on the same team is no second go: Ann, back on Red as Annie, isn't out (her team is answering).
+    g.ann.send({ t: 'leave' });
+    g.ann.send({ t: 'join', seatId: 'a', name: 'Annie', device: 'dev-ann' });
+    expect(g.ann.last('view')!.view.you).toMatchObject({ id: 'a', member: 'Annie', lockedOut: false });
+    expect(g.ann.last('view')!.view.you?.out).toBeUndefined();
+    // Al changes team or name on his phone (leave, then Blue as someone new): out of the rest of this clue.
+    g.al.send({ t: 'leave' });
+    g.al.send({ t: 'join', seatId: 'b', name: 'Alan', device: 'dev-al' });
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', member: 'Alan', lockedOut: true, out: true });
+    expect(g.al.last('view')!.view.canQueue).toBeUndefined();
+    expect(g.bea.last('view')!.view.canQueue).toBe(true);
+    // Wrong: the buzzers open again for Blue, not for him.
+    g.arm(2, { lockedOut: ['a'] });
+    g.t.now += 300;
+    g.al.send({ t: 'buzz', armId: 2, reactMs: 200 });
+    expect(g.al.last('result')?.outcome).toBe('locked');
+    expect(g.room.saved.race!.queue).toHaveLength(0);
+    // Out already, leaving and joining again doesn't shake it off (not even on the same team).
+    g.al.send({ t: 'leave' });
+    g.al.send({ t: 'join', seatId: 'b', name: 'Al', device: 'dev-al' });
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', member: 'Al', lockedOut: true, out: true });
+    // Annie (on Red, out now) joins Blue straight from the team list: the same.
+    g.ann.send({ t: 'join', seatId: 'b', name: 'Annie', device: 'dev-ann' });
+    expect(g.ann.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: true, out: true });
+    // The next clue, nobody is out.
+    g.send({ t: 'state', state: g.st() });
+    expect(g.room.saved.clueOut).toBeUndefined();
+    expect(g.room.saved.clueLeft).toBeUndefined();
+    g.arm(3);
+    expect(g.al.last('view')!.view.you).toMatchObject({ id: 'b', lockedOut: false });
+    expect(g.al.last('view')!.view.you?.out).toBeUndefined();
   });
 
   it('the host kicks one member (kept off that team a while) or a whole team', () => {

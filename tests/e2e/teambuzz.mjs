@@ -2,7 +2,8 @@
 // `wrangler dev`, local), and people join teams from the real phone page with their own names. Two on one team: whoever
 // buzzes first answers for it, the host and viewers see who ("Al (Player 1)"), a teammate's later buzz is no new place
 // in the order, and a wrong answer locks out the whole team. The host moves someone to another team and takes someone
-// off; a phone reload comes back on its team. Needs `npm ci` in buzzer/.
+// off; a phone reload comes back on its team. Teams on or off with phones in the room asks first. On a ✍ clue, one
+// member's answer fills in their teammates' boxes. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -86,6 +87,12 @@ try {
   const host = watch(await hostCtx.newPage(), 'host');
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
+  // The second clue is a ✍ one (everyone answers on their phone; teams: anyone on the team, for it).
+  await host.locator('.tile').nth(1).click();
+  const editor = host.getByRole('dialog', { name: 'Edit clue' });
+  await editor.locator('[data-field="q"]').fill('Name a dog breed');
+  await editor.getByLabel(/Everyone answers/).check();
+  await editor.getByRole('button', { name: /Done/ }).click();
   await playWithPlayers(host, 2);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
@@ -170,6 +177,15 @@ try {
   await ask.waitFor();
   const asked = (await ask.innerText()).replace(/\s+/g, ' ');
   assert(asked.startsWith('3 phones are in the room: turning teams off sends them all back to tap their name.') && (await teamsBox.isChecked()), `Teams off with people on teams asks first, and the box stays ticked meanwhile (${asked})`);
+  // ✕ Close the room meanwhile: that's the question now (one at a time), and the Teams one is gone for good.
+  await card.getByRole('button', { name: '✕ Close the room' }).click();
+  const closeAsk = card.getByRole('alertdialog', { name: 'Close the room?' });
+  await closeAsk.waitFor();
+  assert((await card.getByRole('alertdialog').count()) === 1, 'closing the room while it asks about Teams: only the room’s question shows');
+  await closeAsk.getByRole('button', { name: 'Keep it open' }).click();
+  await closeAsk.waitFor({ state: 'detached' });
+  assert((await card.getByRole('alertdialog').count()) === 0, 'kept open: the Teams question doesn’t come back on its own');
+  await teamsBox.click();
   await ask.getByRole('button', { name: 'Keep teams on' }).click();
   await ask.waitFor({ state: 'detached' });
   assert((await teamsBox.isChecked()) && (await card.getByText('3 people on 2 of 2 teams').isVisible()), 'kept on: nobody is sent back');
@@ -179,7 +195,17 @@ try {
   await ann.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert((await ann.locator('#seats-note').innerText()) === 'The host turned teams off. Tap your name.', 'turned off: the phones say so ("The host turned teams off. Tap your name.")');
   await card.getByText('0 of 2 players joined').waitFor();
+  // Ann taps a player's name: Teams on again asks first too, and her phone says why it's back at "Pick your team".
+  await ann.getByRole('button', { name: 'Player 1' }).click();
+  await card.getByText('1 of 2 players joined').waitFor();
   await teamsBox.click();
+  const askOn = card.getByRole('alertdialog', { name: 'Turn teams on?' });
+  await askOn.waitFor();
+  const askedOn = (await askOn.innerText()).replace(/\s+/g, ' ');
+  assert(askedOn.startsWith('1 phone is in the room: turning teams on sends it back to pick a team.') && !(await teamsBox.isChecked()), `Teams on with a phone on a player asks first, and the box stays unticked meanwhile (${askedOn})`);
+  await askOn.getByRole('button', { name: 'Turn teams on' }).click();
+  await ann.getByRole('heading', { name: 'Pick your team' }).waitFor();
+  assert((await ann.locator('#seats-note').innerText()) === 'The host switched to teams. Pick your team.', 'turned on: the phone says so ("The host switched to teams. Pick your team.")');
   for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [al, 'Al', 'Player 1'], [bea, 'Bea', 'Player 2']]) {
     await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
     await p.getByRole('button', { name: team }).click();
@@ -188,7 +214,7 @@ try {
     await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
   }
   await card.getByText('3 people on 2 of 2 teams').waitFor();
-  assert(true, 'with nobody on a team, Teams goes on without asking; people pick their team again');
+  assert(true, 'people pick their team again');
 
   // ---------- A clue: whoever on a team buzzes first answers for it ----------
   const big = (p) => p.locator('#buzz-big');
@@ -250,6 +276,22 @@ try {
   await big(al).getByText('Your team got it!').waitFor();
   await al.waitForFunction((b) => document.getElementById('me').textContent !== b, before);
   assert((await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann'), 'right: the team scores, and both teammates see it ("Your team got it!")');
+  await host.keyboard.press('Escape');
+
+  // ---------- A ✍ clue: one answer per team; a teammate's fills the others' boxes ----------
+  await host.locator('.stage-box .board .tile').nth(1).click();
+  for (const p of [ann, al, bea]) await p.locator('#answer-in').waitFor();
+  assert((await ann.locator('#answer-label').innerText()) === 'Your team’s answer (only the host and your team see it)', 'a ✍ clue: every member gets the team’s answer box, which says the team sees it too');
+  // Ann's box has the focus (it takes it as it opens) and she typed nothing: Al's answer for the team fills it.
+  await ann.locator('#answer-in').focus();
+  await al.locator('#answer-in').fill('Poodle');
+  await al.getByRole('button', { name: 'Send answer' }).click();
+  await ann.locator('#answer-state').getByText('✔ Al sent it for your team: “Poodle”').waitFor();
+  assert(
+    (await ann.locator('#answer-in').inputValue()) === 'Poodle' && (await ann.evaluate(() => document.activeElement?.id)) === 'answer-in',
+    'Al sends the team’s answer: it fills in Ann’s box too (it had the focus, but she typed nothing)',
+  );
+  assert(!(await bea.content()).includes('Poodle'), 'the other team doesn’t see it');
   await host.keyboard.press('Escape');
 
   // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
