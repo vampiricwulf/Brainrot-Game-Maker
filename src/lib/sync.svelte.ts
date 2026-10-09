@@ -8,7 +8,7 @@
 //   (e.g. the desktop app had to create the window through its own window API).
 // The audience window picks one link, so nothing is processed twice.
 import { getBlob } from './media.svelte';
-import { applyLocal, remoteMedia, type MediaCmd, type MediaState } from './mediactl.svelte';
+import { applyLocal, onLocalMediaChange, remoteMedia, type MediaCmd, type MediaState } from './mediactl.svelte';
 import { newId, type Game, type Session } from './model';
 import type { Live } from './live';
 import { inTauri } from './platform';
@@ -166,8 +166,50 @@ function onSound(ev: SoundReport): void {
   else if (!ev.test && ev.reason === 'blocked') sound.cueBlocked = true;
 }
 
+/**
+ * What the audience window's media was doing when it said hello again (reloaded, or closed and reopened): an element
+ * that starts over there (from 0:00, with sound) is put back where it was once its length is known, paused or muted if
+ * it was. Like mediactl's restore for a slide coming back.
+ */
+let mediaWas: Record<string, { paused: boolean; muted: boolean; time: number; at: number; until: number; fresh?: boolean; seeked?: boolean }> = {};
+
+function restoreMedia(id: string, st: MediaState): void {
+  const was = mediaWas[id];
+  if (!was) return;
+  if (Date.now() > was.until) return void delete mediaWas[id];
+  if (!was.fresh) {
+    // Only one that started over on a new page (it first reports with no length yet). One in a window that said hello
+    // again without reloading isn't put back, though its file sent there again does start it over.
+    if (st.duration > 0) return void delete mediaWas[id];
+    was.fresh = true;
+  } else if (!was.seeked) {
+    if (!(Number.isFinite(st.duration) && st.duration > 0)) return; // its length first, so the seek lands
+    was.seeked = true;
+    const t = was.time + (was.paused ? 0 : (Date.now() - was.at) / 1000);
+    // One that would have ended meanwhile stays at its end (play() there would start it over); a loop goes round.
+    if (t >= st.duration && !st.loop) was.paused = true;
+    post({ type: 'media-cmd', cmd: { el: id, op: 'seek', value: st.loop ? t % st.duration : Math.min(t, st.duration) } });
+    post({ type: 'media-cmd', cmd: { el: id, op: was.paused ? 'pause' : 'play' } });
+    // Muted again if the host muted it (never unmuted from here: that would stop a muted autoplay before a click).
+    if (was.muted && !st.muted) post({ type: 'media-cmd', cmd: { el: id, op: 'muted', value: true } });
+    // Paused: an autoplay starting it a moment later is stopped again.
+    if (was.paused) was.until = Date.now() + 1500;
+    else delete mediaWas[id];
+  } else if (was.paused && !st.paused) {
+    delete mediaWas[id];
+    post({ type: 'media-cmd', cmd: { el: id, op: 'pause' } });
+  }
+}
+
 function fromAudience(msg: AudienceMsg): void {
   if (msg?.type === 'hello') {
+    const at = Date.now();
+    mediaWas = {};
+    for (const [k, m] of Object.entries(remoteMedia))
+      // Not a site's own player (it can't be sought), nor one that hadn't loaded yet (it starts afresh anyway). Muted
+      // only if the host muted it, not a blocked autoplay's fallback.
+      if (m.kind !== 'external' && m.duration > 0)
+        mediaWas[k] = { paused: m.paused, muted: m.muted && !m.blocked, time: m.time, at, until: at + 10000 };
     for (const k of Object.keys(remoteMedia)) delete remoteMedia[k];
     audience.open = true;
     sound.cueBlocked = false;
@@ -176,8 +218,10 @@ function fromAudience(msg: AudienceMsg): void {
   } else if (msg?.type === 'audience-event') {
     const ev = msg.event;
     if (ev.kind === 'media') {
-      if (ev.state) remoteMedia[ev.id] = ev.state;
-      else delete remoteMedia[ev.id];
+      if (ev.state) {
+        remoteMedia[ev.id] = ev.state;
+        restoreMedia(ev.id, ev.state);
+      } else delete remoteMedia[ev.id];
     } else if (ev.kind === 'activation') {
       audience.activated = ev.active;
       if (ev.active) sound.cueBlocked = false;
@@ -222,6 +266,9 @@ if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location
   window.addEventListener('beforeunload', () => post({ type: 'bye' }));
   // Sounds this window plays itself (single-window mode; in dual mode its copy is silent).
   onSoundReport((r) => !audience.open && onSound(r));
+  // Media this window's copy took off while the audience window was closed went there too: reopened, the window
+  // doesn't put it back where it was if the same one shows again by then (a clue opened again starts afresh).
+  onLocalMediaChange((id, st) => !st && !audience.open && delete remoteMedia[id]);
 }
 
 /** `lost`: closed some other way than the host closing it (see audience.lost). */

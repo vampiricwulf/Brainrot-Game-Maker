@@ -28,6 +28,8 @@ export interface TimerState {
   /** Seconds already elapsed before the current run. */
   elapsed: number;
   expired: boolean;
+  /** Date.now() when it ran out: TIME'S UP shows for its moment then, not again in a window opened or reloaded later. */
+  expiredAt?: number;
   /** The seconds it was started with (↺ Restart goes back to them, whatever +10/−10 did since). */
   start?: number;
 }
@@ -252,6 +254,7 @@ export function addTime(live: Live, seconds: number): void {
   if (t.expired) {
     if (seconds <= 0) return;
     Object.assign(t, { total: t.elapsed + seconds, startedAt: Date.now(), expired: false });
+    delete t.expiredAt;
     return;
   }
   t.total += Math.max(seconds, -timerRemaining(t));

@@ -4,7 +4,8 @@
 // crowded 720p game; 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
 // the ✔ marks, a long tie heading on the end screen); and wheel and dice tiles in buzzer mode (the question, the buzzers
 // and the countdown wait for the tile's own tool, and only for it), a countdown started under the cover, Undo bringing
-// back a countdown, everyone missing, and the stage's size with a long host note, the buzzers' row and a Daily Double.
+// back a countdown, everyone missing, and the stage's size with a long host note, the buzzers' row and a Daily Double;
+// TIME'S UP joined partway in a window reloaded during it, and not shown again in one reloaded after it.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -163,6 +164,30 @@ async function crowd() {
   const onBar = await aud.locator('.pop').boundingBox();
   assert(onBar.x >= 0 && onBar.x + onBar.width <= 1280.5, `back on the board, the pop over the last plate stays on the stage (${JSON.stringify(onBar)})`);
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-crowd.png` });
+
+  // TIME'S UP slams in once, when the countdown runs out: an audience window reloaded during its moment joins it where
+  // it is by then, and one reloaded after it (or the scores window) shows only the red 0 clock.
+  const secs = host.getByLabel('Timer seconds');
+  await secs.fill('1');
+  await secs.press('Enter');
+  await aud.locator('.timesup').waitFor();
+  await host.locator('.tc .left.done').waitFor();
+  await aud.reload();
+  await aud.locator('.timer.done').waitFor();
+  // (Its animations start partway, by a negative delay; or it's gone already, if the reload outlasted its moment.)
+  const joined = await aud.evaluate(() => {
+    const e = document.querySelector('.timesup');
+    return e ? getComputedStyle(e).animationDelay : 'gone';
+  });
+  assert(joined === 'gone' || joined.startsWith('-'), `an audience window reloaded during TIME'S UP joins it partway, rather than slamming it in again (${joined})`);
+  // Its moment is counted from the host's 0, the same in every window: once it's over here, a reload doesn't bring it back.
+  await aud.locator('.timesup').waitFor({ state: 'detached' });
+  await aud.reload();
+  await aud.locator('.timer.done').waitFor();
+  assert((await aud.locator('.timesup').count()) === 0, "a reloaded audience window shows the countdown at 0, without TIME'S UP again");
+  await sc.reload();
+  await sc.locator('.clock .timer.done').waitFor();
+  assert((await sc.locator('.timesup').count()) === 0, "so does a reloaded scores window");
   await ctx.close();
 }
 

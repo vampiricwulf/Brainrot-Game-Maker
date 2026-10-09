@@ -34,11 +34,13 @@ describe('the countdown', () => {
     const live = newLive();
     startTimer(live, 5);
     // As the host's watcher marks it.
-    Object.assign(live.timer!, { elapsed: 5, startedAt: null, expired: true });
+    Object.assign(live.timer!, { elapsed: 5, startedAt: null, expired: true, expiredAt: Date.now() });
     addTime(live, -10);
     expect(live.timer!.expired).toBe(true);
     addTime(live, 10);
     expect([live.timer!.expired, timerRemaining(live.timer!)]).toEqual([false, 10]);
+    // Its next run-out is a new moment for TIME'S UP (the old one's time is forgotten).
+    expect(live.timer!.expiredAt).toBeUndefined();
     vi.advanceTimersByTime(4000);
     expect(timerRemaining(live.timer!)).toBe(6);
   });

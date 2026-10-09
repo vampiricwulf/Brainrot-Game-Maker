@@ -1,5 +1,6 @@
 // Media on the stage in play: clicking a video, or a sound's speaker icon, plays or pauses it instead of
-// revealing the answer — in one window, and from the host's copy in dual-window mode (the audience plays it).
+// revealing the answer — in one window, and from the host's copy in dual-window mode (the audience plays it). A sound
+// the host paused stays paused where it was when the audience window is reloaded, or closed and opened again.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -90,6 +91,13 @@ try {
   await position.getByLabel('X', { exact: true }).fill('0');
   await position.getByLabel('Y', { exact: true }).fill('0');
   await page.getByRole('button', { name: 'Done' }).click();
+  // A second clue whose sound plays by itself when it opens (8 s: still going when the audience window reloads).
+  await page.locator('.tile').nth(1).click();
+  await page.getByRole('button', { name: '🔊 Audio' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+  await fc.setFiles({ name: 'song.wav', mimeType: 'audio/wav', buffer: wav(8) });
+  assert(await page.locator('.insp').getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
+  await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForTimeout(900);
   await page.evaluate(
     () =>
@@ -176,6 +184,39 @@ try {
   await page.locator('.stage-box .full').click({ position: { x: 10, y: 10 } });
   await aud.getByText('The answer text').waitFor();
   assert(true, 'clicking elsewhere on the slide still reveals the answer');
+
+  // The sound that plays by itself, paused by the host: the audience window reloaded (OBS, F5) or closed and opened
+  // again keeps it paused where it was, rather than playing it again from 0:00 with sound.
+  await page.keyboard.press('Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await guard();
+  await page.locator('.stage-box .board .tile').nth(1).click();
+  const song = '.full audio';
+  await aud.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 1.5, song);
+  await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
+  await waitPaused(aud, song, true);
+  const at = await aud.locator(song).evaluate((a) => a.currentTime);
+  const heldAt = (p) =>
+    p.waitForFunction(([s, t]) => {
+      const a = document.querySelector(s);
+      return !!a && a.paused && a.readyState >= 1 && Math.abs(a.currentTime - t) < 0.3;
+    }, [song, at]);
+  await aud.reload();
+  await heldAt(aud);
+  // (Past the moment its autoplay could start it again.)
+  await aud.waitForTimeout(1700);
+  let now = await aud.locator(song).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
+  assert(now.paused && Math.abs(now.t - at) < 0.3, `a reloaded audience window keeps the paused sound where it was (${at.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+  await page.locator('.mc').getByRole('button', { name: 'Play' }).waitFor();
+  assert(true, "and the host's media row still says it's paused");
+  await aud.close();
+  await page.locator('[data-audience-lost]').waitFor();
+  const [aud2] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Reopen (A)' }).click()]);
+  aud2.on('pageerror', (e) => errors.push('[audience 2] ' + e.message));
+  await heldAt(aud2);
+  await aud2.waitForTimeout(1700);
+  now = await aud2.locator(song).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
+  assert(now.paused && Math.abs(now.t - at) < 0.3, `closed and opened again, it's still paused where it was (${now.t.toFixed(1)} s)`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nStage media E2E passed.');
