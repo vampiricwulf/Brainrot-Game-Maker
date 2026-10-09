@@ -25,6 +25,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Wheels: a "land once" wheel edited for the spin keeps its landed slices (Restore brings them back, and Overwrite no longer deletes them); with two wheels spinning together a long name stays on one line, so the result stays on screen; "+ dice total × N" is offered only for dice. (ff4f097)
 - Dice: a result with a picture or details fills the stage once the dice settle (it ran off the bottom over the dice and total); a blank custom face (a picture-only one) shows and logs its number, so the host gets the result and its score card. (ff4f097)
 - After a slice's "Ask the question" or "Show slide", the keys go back to the main button (R, Esc and N work); Ctrl+Z of a confirmed wheel or dice score brings its score card back; the host's roll-off result says "goes first" like the stream; removing a player whose sheet is under the scores removes the sheet too. (ff4f097, c4e4452)
+- Clearing the undo history no longer makes a game that was never saved count as saved (New and Open… asked nothing, and with autosave down the tab closed without a warning). (336da69)
+- 🔍 Find: the result under a resting mouse no longer takes the highlight, so Enter opens the top result; a match on an RPG screen opens that screen's look with the object selected; tiebreaker and 'How to win' matches put the cursor in their box; a result in a world no round plays says to add an RPG round. (336da69, c2ffc3e)
+- Checklist: a Final's missing question or answer opens that side, and a Slides round's empty slide opens that slide, with the cursor in its text. (336da69)
+- Rounds: the sample game added to a game with rounds names its rounds apart ('Jeopardy! (2)'); Paste round names the copy in History and Undo and puts the cursor in its name; the 'Welcome and rules' template, or a pasted slides round, says when it went to the start of the game. (336da69)
 
 ## 2026-10-08
 

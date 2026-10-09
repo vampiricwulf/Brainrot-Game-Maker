@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findAll, snippet } from './find';
-import { newGame } from './model';
+import { newGame, textSlide } from './model';
 import { addSampleGame } from './samples';
 
 describe('Find', () => {
@@ -55,6 +55,41 @@ describe('Find', () => {
     expect(button).toHaveLength(1);
     expect(button[0].where).toBe(`${r.name} › Space “${s.name}” › Buttons`);
     expect(button[0].place).toMatchObject({ tab: 'round', part: { kind: 'space', space: s.id } });
+  });
+
+  it('opens a screen on the look that has the words, with what has them selected, and names a screen found by its notes', () => {
+    const g = newGame();
+    addSampleGame(g);
+    const w = g.worlds![0];
+    const m = w.maps[0];
+    const cave = m.screens.find((s) => s.name === 'Cave')!;
+    const cat = cave.slide.elements.find((e) => e.name === 'Riddle cat')!;
+    const screen = { tab: 'world', world: w.id, map: m.id, screen: cave.id, inSlide: true };
+    // By its name, and by what it says.
+    expect(findAll(g, 'riddle').find((h) => h.icon === '🧩')?.place).toEqual({ ...screen, element: cat.id });
+    expect(findAll(g, 'cave is yours').find((h) => h.icon === '🧩')?.place).toEqual({ ...screen, element: cat.id });
+    cave.variants = [{ id: 'fire', name: 'On fire', slide: JSON.parse(JSON.stringify(cave.slide)) }];
+    expect(findAll(g, 'riddle').filter((h) => h.icon === '🧩').map((h) => h.place)).toEqual([
+      { ...screen, element: cat.id },
+      { ...screen, look: 'fire', element: cat.id },
+    ]);
+    cave.hostNotes = 'Bring a torch';
+    expect(findAll(g, 'torch')[0].where).toBe(`${w.name} › ${m.name} › Screen “Cave”`);
+    expect(findAll(g, 'torch')[0].place).toEqual({ tab: 'world', world: w.id, map: m.id, screen: cave.id });
+  });
+
+  it('puts the focus in the field that has the words for a tiebreaker and a board game’s How to win', () => {
+    const g = newGame();
+    addSampleGame(g);
+    const r = g.rounds.find((x) => x.mode === 'boardgame')!;
+    if (r.mode !== 'boardgame') throw new Error('no board game');
+    r.winNotes = 'Collect three flamingos';
+    expect(findAll(g, 'flamingos')[0].focus).toBe('main [data-field="win-notes"]');
+    g.tiebreaker = { questionSlide: textSlide('Zebrafish question'), answerSlide: textSlide('Zebrafish answer') };
+    expect(findAll(g, 'zebrafish').map((h) => [h.where, h.focus])).toEqual([
+      ['Tiebreaker › Question', 'main [data-field="q"]'],
+      ['Tiebreaker › Answer', 'main [data-field="a"]'],
+    ]);
   });
 
   it('shortens long text around the match', () => {

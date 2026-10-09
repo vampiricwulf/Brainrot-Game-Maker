@@ -126,7 +126,8 @@ export function flash(key: string): void {
   });
 }
 
-const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
+/** What can take the focus (the first of these in the editor's page is where it goes when nothing else does). */
+export const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Once what a request opened is on screen, the focus goes there: to what flashes (`key`, or the first field in it), else

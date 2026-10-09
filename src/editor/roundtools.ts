@@ -13,9 +13,15 @@ import { addSampleGame, TEMPLATES, type Template } from '../lib/samples';
 import { validate } from '../lib/validate';
 import type { MenuEntry } from '../lib/menustate.svelte';
 
+/** A game's first slides round is its introduction, so it goes first: said, as it isn't where new rounds usually go. */
+function saidIfFirst(game: Game, at: number): void {
+  if (at === 0 && game.rounds.length > 1 && game.rounds[0].mode === 'slides')
+    toast(`Added “${roundName(game.rounds[0], 0)}” at the start of the game: drag its tab to move it`);
+}
+
 /** A round from a template: its step is named after the round it makes ("Added round “Jeopardy!”"), not the template. */
 export function addTemplate(game: Game, t: Template): number {
-  return step(null, () => {
+  const at = step(null, () => {
     const round = t.make(game);
     // A second "Jeopardy!" is "Jeopardy! (2)".
     if (round.name) round.name = uniqueName(game.rounds.map((r, i) => roundName(r, i)), round.name, false);
@@ -24,10 +30,18 @@ export function addTemplate(game: Game, t: Template): number {
     nameStep(`Added round “${roundName(round, at)}” (${t.label})`);
     return at;
   });
+  saidIfFirst(game, at);
+  return at;
 }
 
 export function addSample(game: Game): number {
-  const at = step('Added the sample game', () => addSampleGame(game));
+  const at = step('Added the sample game', () => {
+    const at = addSampleGame(game);
+    // Added to a game with rounds: a second "Jeopardy!" is "Jeopardy! (2)", as for a template.
+    const names = game.rounds.slice(0, at).map((r, i) => roundName(r, i));
+    for (const r of game.rounds.slice(at)) names.push((r.name = uniqueName(names, r.name, false)));
+    return at;
+  });
   toast('Added a sample game: press ▶ Play to try it, or change anything');
   return at;
 }
@@ -43,12 +57,16 @@ export function pasteRound(game: Game, after?: number): number | null {
   const b = clipboard.round;
   if (!b) return null;
   const copied: string[] = [];
-  const at = step(`Pasted round “${bundleName(b)}”`, () => {
+  const at = step(null, () => {
     const at = after === undefined ? placeFor(game, b.round) : after + 1;
     const r = addBundledRound(game, b, at, copied);
-    return game.rounds.indexOf(r);
+    const i = game.rounds.indexOf(r);
+    // Named after the round it adds ("Jeopardy! (copy)"), so two pastes are told apart.
+    nameStep(`Pasted round “${roundName(r, i)}”`);
+    return i;
   });
   if (copied.length) toast(copiesMessage(copied, 'the copied round'));
+  else saidIfFirst(game, at);
   return at;
 }
 

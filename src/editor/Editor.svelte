@@ -135,10 +135,15 @@
     } else if (place.tab === 'world') {
       // The round on screen if it plays that world, else the first round that does (a world no round plays stays put).
       const on = typeof tab === 'number' ? game.rounds[tab] : undefined;
-      const playing = rpgRounds(game).filter((r) => r.world === place.world);
+      const rpg = rpgRounds(game);
+      const playing = rpg.filter((r) => r.world === place.world);
       const r = playing.find((x) => x === on) ?? playing[0];
       if (r) tab = game.rounds.indexOf(r);
-      else toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: pick it in an RPG round to see it`);
+      else {
+        // (With no RPG round left to pick it in, says how to add one.)
+        const how = rpg.length ? 'pick it in an RPG round' : 'add an RPG round (＋ Add round › 🗺 RPG) and pick it there';
+        toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: ${how} to see it`);
+      }
     } else if (place.tab === 'play') {
       // The players, the rules… are on the ▶ Play screen: Go there opens it, at that part.
       if (!game.rounds.length) return void toast('That’s on the ▶ Play screen: add a round first (＋ Add round)');
@@ -344,8 +349,8 @@
   // ---------- Checklist ----------
 
   /**
-   * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen or
-   * a board game's space has the focus).
+   * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen, a
+   * board game's space, a Final's question or answer, a Slides round's empty slide has the focus).
    */
   function goFix(line: ChecklistLine): void {
     // The game's name: its box at the top, selected to type over.
@@ -364,6 +369,13 @@
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
+    // A Final's side or a Slides round's slide: its quick text box (the one with nothing in it).
+    if (part?.kind === 'final' || part?.kind === 'slides') {
+      const field = part.kind === 'final' && part.side === 'a' ? 'a' : 'q';
+      return void tick()
+        .then(tick)
+        .then(() => document.querySelector<HTMLElement>(`main [data-field="${field}"]`)?.focus());
+    }
     const key =
       part?.kind === 'clue'
         ? `clue:${part.clue}`
@@ -917,7 +929,7 @@
                   disabled: !clipboard.round,
                   onclick: () => {
                     const at = pasteRound(game, i);
-                    if (at !== null) tab = at;
+                    if (at !== null) showNew(at);
                   },
                 },
                 { sep: true },

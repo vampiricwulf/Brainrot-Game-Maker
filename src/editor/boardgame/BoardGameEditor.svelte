@@ -782,7 +782,7 @@
     </label>
   </div>
   <div class="row settings">
-    <label class="field grow">How to win<input bind:value={round.winNotes} placeholder="e.g. Own 3 Flamingos and get back to Start" /></label>
+    <label class="field grow">How to win<input bind:value={round.winNotes} data-field="win-notes" placeholder="e.g. Own 3 Flamingos and get back to Start" /></label>
     <label class="check small"><input type="checkbox" bind:checked={round.winPublic} /> Show it on the board</label>
     <label class="field grow">Host notes (never shown on stream)<input bind:value={round.hostNotes} data-field="round-notes" /></label>
   </div>

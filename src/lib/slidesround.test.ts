@@ -82,6 +82,10 @@ describe('slides round', () => {
     expect(mine()).toEqual([]);
     setSlideText(questionSlides(intro)[1], '');
     expect(mine().map((m) => m.text)).toEqual(['Introduction: slide 2 is empty']);
+    // Its line goes to that slide.
+    expect(mine()[0].place).toEqual({ tab: 'round', round: intro.id, part: { kind: 'slides', slide: intro.extraSlides![0].id } });
+    setSlideText(questionSlides(intro)[0], '');
+    expect(mine()[0].place).toEqual({ tab: 'round', round: intro.id, part: { kind: 'slides' } });
   });
 
   it('a copy gets fresh ids for its slides', () => {

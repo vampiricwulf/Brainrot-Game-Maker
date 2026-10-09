@@ -1,5 +1,6 @@
-// A slides round: an introduction of several slides, in one round. The host makes it in the editor (it goes first),
-// then plays through it with N (Shift+N back) and goes on to the board after the last slide.
+// A slides round: an introduction of several slides, in one round. The host makes it in the editor (it goes first, a
+// template one too, which says so; the checklist goes to an empty slide, and to a Final's missing answer), then plays
+// through it with N (Shift+N back) and goes on to the board after the last slide.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -23,6 +24,13 @@ const roundNames = async () => (await page.locator('nav > button.round-tab').all
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
+  // A slides template goes first too, and says so (taken back after).
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /Welcome and rules/ }).click();
+  await page.locator('.toast', { hasText: 'at the start of the game: drag its tab to move it' }).waitFor();
+  assert((await roundNames())[0] === 'Introduction', 'the 🖼 Welcome and rules template goes first, and says so');
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 2);
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Slides/ }).click();
   assert((await roundNames()).join('|') === 'Introduction|Jeopardy!|Final Jeopardy!', `the first slides round is the introduction: it goes first (${(await roundNames()).join(', ')})`);
@@ -31,9 +39,23 @@ try {
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Slide 2' }).waitFor();
   assert((await page.getByRole('tab', { name: /Answer/ }).count()) === 0, 'its tabs are Slide 1, Slide 2 (no Answer)');
+  // The checklist's line for an empty slide opens that slide, with the focus in its text.
+  await page.getByRole('tab', { name: 'Slide 1' }).click();
+  await page.locator('nav .problem', { hasText: 'Introduction: slide 2 is empty' }).click();
+  await page.locator('label.quick', { hasText: 'Text (slide 2 of 2)' }).waitFor();
+  await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 });
+  assert(true, 'the checklist line for an empty slide opens that slide, with the focus in its text');
   await text.fill('Rules: be nice');
   await page.getByRole('tab', { name: 'Slide 1' }).click();
   assert((await text.inputValue()) === 'Welcome to the show', 'each slide keeps its own text');
+  // A Final's line goes to the side with nothing on it (here its answer), from another round.
+  await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
+  await page.locator('main [data-field="q"]').fill('The final question');
+  await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
+  await page.locator('nav .problem', { hasText: 'Final Jeopardy! has no answer' }).click();
+  await page.getByRole('tab', { name: /^Answer slide/, selected: true }).waitFor();
+  await page.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 });
+  assert(true, "a Final's line for its missing answer opens its Answer side, with the focus in the Answer box");
 
   // ---------- Playing it ----------
   await playWithPlayers(page, 2);

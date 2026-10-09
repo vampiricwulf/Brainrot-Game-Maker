@@ -649,6 +649,20 @@ describe('undo history: saved with the draft', () => {
     expect(savedSinceChange()).toBe(false);
   });
 
+  it("doesn't count clearing the history as saving the game", () => {
+    step(null, () => (g.title = 'One'));
+    clear();
+    expect(savedSinceChange()).toBe(false);
+    // Saved just before: still saved, and a change after that isn't.
+    step(null, () => (g.title = 'Two'));
+    mark('saved', 'Saved');
+    clear();
+    expect(history.marks).toEqual([expect.objectContaining({ kind: 'saved', at: 0 })]);
+    expect(savedSinceChange()).toBe(true);
+    step(null, () => (g.title = 'Three'));
+    expect(savedSinceChange()).toBe(false);
+  });
+
   it('keeps the whole history for a recent game, and writes its steps when it comes back', () => {
     step(null, () => (g.title = 'One'));
     step(null, () => (g.title = 'Two'));
