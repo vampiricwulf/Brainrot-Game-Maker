@@ -1,7 +1,7 @@
 // The editor's checklist in the sidebar: the problems validate() finds, one line a round, and where a click on it goes.
-import { isBoard, PLAYER_WHEEL, roundName, type BoardRound, type Clue, type Game } from './model';
+import { isBoard, roundName, type BoardRound, type Game } from './model';
 import type { Place } from './historylabel';
-import { tileDice } from './tools';
+import { toolChosen } from './tools';
 import { slideHasContent } from './usage';
 import type { Problem } from './validate';
 
@@ -16,10 +16,6 @@ export interface ChecklistLine {
   /** The first thing to finish in it (a board's first unfinished tile, an RPG's screen, a board game's space). */
   place?: Place;
 }
-
-/** A wheel or dice tile has its wheel or dice (one still in the game, or a built-in one); any other tile needs none. */
-export const toolChosen = (game: Game, c: Clue): boolean =>
-  c.type === 'wheel' ? c.wheelId === PLAYER_WHEEL || game.wheels.some((w) => w.id === c.wheelId) : c.type === 'dice' ? !!tileDice(game, c.diceId) : true;
 
 /** A tile that still needs something: a question and an answer, or for a wheel or dice tile, its wheel or dice. */
 function unfinished(game: Game, round: BoardRound, firstOnly = false) {

@@ -79,7 +79,7 @@
     <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
   </label>
 </div>
-<SlideTabs holder={round} bind:side bind:qi what="Final" />
+<SlideTabs holder={round} bind:side bind:qi what="Final" place={(sd, slide) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: sd, slide } })} />
 {#key `${round.id}-${slideKey}`}
   <SlideEditor
     slide={side === 'q' ? qslide : round.answerSlide}

@@ -49,7 +49,7 @@
   {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
   <textarea rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
 </label>
-<SlideTabs holder={round} bind:side bind:qi what="the round’s" plain />
+<SlideTabs holder={round} bind:side bind:qi what="the round’s" plain place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })} />
 {#key `${round.id}-${slideKeyOf(slide)}`}
   <SlideEditor {slide} styletargets={styleTargets} quickfield="q" placeholder="Click to type on the slide" />
 {/key}

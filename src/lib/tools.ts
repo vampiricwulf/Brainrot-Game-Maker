@@ -1,7 +1,7 @@
 // Dice, wheel and roll-off logic (spec §5.6, §6.6). Pure functions; the UI animates the precomputed results.
 import {
-  formatPoints, newId, type DicePreset, type Game, type Id, type Outcome, type RollEvent, type ScoreAction, type Session,
-  type WheelPreset, type WheelSegment,
+  formatPoints, newId, PLAYER_WHEEL, type Clue, type DicePreset, type Game, type Id, type Outcome, type RollEvent, type ScoreAction,
+  type Session, type WheelPreset, type WheelSegment,
 } from './model';
 import { applyScore, score } from './session';
 import { numberFieldValue } from './numfield';
@@ -164,6 +164,10 @@ export function tileDice(game: Pick<Game, 'dice'>, id: string | undefined): Dice
   const d = parseDice(name);
   return d ? { id, name, showTotal: d.count > 1, dice: [{ id: 'std', sides: d.sides, count: d.count }] } : undefined;
 }
+
+/** A wheel or dice tile has its wheel or dice (one still in the game, or a built-in one); any other tile needs none. */
+export const toolChosen = (game: Pick<Game, 'wheels' | 'dice'>, c: Clue): boolean =>
+  c.type === 'wheel' ? c.wheelId === PLAYER_WHEEL || game.wheels.some((w) => w.id === c.wheelId) : c.type === 'dice' ? !!tileDice(game, c.diceId) : true;
 
 export interface RolledDie {
   sides: number;

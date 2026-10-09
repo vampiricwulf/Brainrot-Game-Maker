@@ -192,6 +192,15 @@ try {
   assert((await values()) === '200,400,600,800,1000' && (await notice.innerText()).startsWith('Deleted row 2'), 'Delete row, with a note');
   // From a tile's menu, the keys stay on the board: on the tile now in its place, and on the tile moved with its row.
   assert(await focusComes('0,1'), `after Delete row from a tile's menu, the focus is on the tile now in its place (${await focused()})`);
+  // The last row's tiles go with it: the focus goes to the tile above.
+  await tile(0, 4).click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: /Delete row 5/ }).click();
+  assert((await values()) === '200,400,600,800' && (await focusComes('0,3')), `after Delete row on the last row, the focus is on the tile above (${await focused()})`);
+  await key('ArrowUp');
+  assert((await focused()) === '0,2', 'and the arrows go on from there');
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  await page.getByLabel('Row 5 value', { exact: true }).waitFor({ timeout: 3000 });
+  assert((await values()) === '200,400,600,800,1000', 'Undo brings the last row back');
   await tile(0, 0).click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Move row down/ }).click();
   assert((await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'), `after Move row down from a tile's menu, the focus goes with the tile (${await focused()})`);
@@ -247,6 +256,13 @@ try {
   assert((await undoTitle()).startsWith('Undo: Added Final question slide 2'), `＋ Add slide on the Final is one named step (${await undoTitle()})`);
   await page.getByPlaceholder('Type the final question…').fill('Then the real question');
   assert(await slideShows('Then the real question'), "the Final's quick field writes on its second question slide");
+  // Moved and then undone, the slide that moved back shows (not the first one), as on a clue.
+  await page.getByRole('button', { name: 'Move slide earlier' }).click();
+  await page.getByRole('tab', { name: 'Question 1', selected: true }).waitFor({ timeout: 3000 });
+  await page.locator('main').click({ position: { x: 4, y: 4 } });
+  await key('Control+z');
+  const movedBack = await page.getByRole('tab', { name: 'Question 2', selected: true }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+  assert(movedBack && (await page.getByPlaceholder('Type the final question…').inputValue()) === 'Then the real question', 'Ctrl+Z puts the Final’s moved slide back, and shows it there');
   await page.getByRole('button', { name: '🗑 Delete slide' }).click();
   await page.getByRole('tab', { name: 'Question slide' }).waitFor();
   assert(await slideShows('Best meme of 2020?'), '🗑 Delete slide leaves the first question slide as it was');

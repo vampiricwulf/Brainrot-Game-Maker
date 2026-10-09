@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newRound, PLAYER_WHEEL, setSlideText, type BoardRound } from './model';
 import { validate } from './validate';
-import { checklistLines, toolChosen } from './checklist';
+import { checklistLines } from './checklist';
 import { newRpgRound, newScreen } from './rpg';
 import { raceRound } from './samples';
-import { STD_DICE, tileDice } from './tools';
+import { STD_DICE, tileDice, toolChosen } from './tools';
 import { FACTORY_FONT, followClueText, setClueText, setTheme } from './cluetext';
 
 const fill = (r: BoardRound) => r.categories.forEach((c) => c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A'))));
@@ -108,6 +108,8 @@ describe('dice tiles', () => {
     // A wheel deleted from Wheels & Dice: none chosen.
     clue.wheelId = 'gone';
     expect(toolChosen(game, clue)).toBe(false);
+    // (The checklist's line counts it by the same rule.)
+    expect(validate(game).some((p) => p.text.includes('1 wheel/dice tile with nothing chosen'))).toBe(true);
     clue.type = 'dice';
     clue.diceId = `${STD_DICE}2d6`;
     expect(toolChosen(game, clue)).toBe(true);

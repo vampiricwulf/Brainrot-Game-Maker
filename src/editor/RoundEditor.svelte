@@ -10,7 +10,7 @@
   import { placeNewPicture } from '../lib/editing';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
-  import { toolChosen } from '../lib/checklist';
+  import { toolChosen } from '../lib/tools';
   import {
     addCategory,
     categoryHasContent,
