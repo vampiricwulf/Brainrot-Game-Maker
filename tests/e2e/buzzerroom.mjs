@@ -559,6 +559,14 @@ try {
   assert((await small(ann).innerText()) === 'with $700 🎉', `game over: "You came 1st / with $700 🎉" (${await small(ann).innerText()})`);
   await big(dee).getByText('You came 3rd').waitFor();
   assert(true, 'and the others their own place ("You came 3rd")');
+  // A tie for first the tiebreaker settled: its winner came 1st, the one it beat 2nd (not "You tied for 1st" on both).
+  setState({ scores: { a: 700, b: 400, c: 0, d: 700 }, winner: 'd' });
+  await big(dee).getByText('You came 1st').waitFor();
+  await big(ann).getByText('You came 2nd').waitFor();
+  assert(true, 'a tie for first settled by a tiebreaker: "You came 1st" for its winner, "You came 2nd" for the other');
+  setState({ scores: { a: 700, b: 400, c: 0, d: 100 }, winner: undefined });
+  await big(ann).getByText('You came 1st').waitFor();
+  await big(dee).getByText('You came 3rd').waitFor();
 
   // The host closes the room.
   host.send({ t: 'close' });

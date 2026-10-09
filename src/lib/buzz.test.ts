@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { finalName, newImageEl, newTextEl, textSlide, type BoardRound, type FinalRound } from './model';
-import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, newSession, openClue } from './session';
+import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, newSession, openClue, places } from './session';
 import {
   buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, wagerAsk,
   whoBuzzed,
@@ -239,6 +239,28 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(hostState(game, session, newBuzz(), 0).over).toBe(true);
     session.phase = 'board';
     expect(hostState(game, session, newBuzz(), 0).over).toBeUndefined();
+  });
+
+  it('game over after a tiebreaker: the room is told who won it, so the phones rank as the end screen does', () => {
+    const { game, session } = setup();
+    session.phase = 'end';
+    // Ann and Bo tied for first (0 each); Bo won the roll-off.
+    session.rollOffWinner = 'b';
+    const s = hostState(game, session, newBuzz(), 0);
+    expect(s).toMatchObject({ over: true, winner: 'b' });
+    expect(places(session).map((p) => [p.player.id, p.place])).toEqual([
+      ['b', 1],
+      ['a', 2],
+    ]);
+    expect(phoneView(s, 'b').final).toEqual({ place: 1 });
+    expect(phoneView(s, 'a').final).toEqual({ place: 2 });
+    // No tie any more (a score fixed later): nothing to settle.
+    applyScore(session, game, ['a'], 100, 'x');
+    expect('winner' in hostState(game, session, newBuzz(), 0)).toBe(false);
+    // Not over: no winner either.
+    applyScore(session, game, ['b'], 100, 'x');
+    session.phase = 'board';
+    expect('winner' in hostState(game, session, newBuzz(), 0)).toBe(false);
   });
 
   it('question text: text boxes top to bottom', () => {

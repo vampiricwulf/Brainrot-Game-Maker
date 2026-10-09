@@ -192,6 +192,18 @@ export interface RoomSaved {
   members?: Record<string, Member>;
   /** Teams: member id → when their early-buzz lock ends (an early buzz locks the member, not the team). */
   memberLocks?: Record<string, number>;
+  /**
+   * Teams: members the host moved during this clue off a team that buzzed on it, is answering it or is out of it (or
+   * who left one like that and joined another, see clueLeft): out of the rest of the clue on their new team too, until
+   * ↺ Reset or the next clue.
+   */
+  clueOut?: string[];
+  /**
+   * Teams: phones (their device id, else the connection) whose member left a team in the clue going on (see inClue),
+   * and that team ('' when they were out of the clue already): who they join as next on another team is out of it
+   * too. Cleared with clueOut.
+   */
+  clueLeft?: Record<string, string>;
   /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat; at: when the round began. */
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
   /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat. */
@@ -464,6 +476,11 @@ export class Room {
       this.newRace(next.armId, now);
     }
     delete next.rollOrder;
+    // Back on the board, or everyone may buzz again (↺ Reset, a new clue): nobody is out any more.
+    if (next.phase === 'lobby' || (prev && next.armId !== prev.armId && !next.lockedOut.length)) {
+      delete this.s.clueOut;
+      delete this.s.clueLeft;
+    }
     this.s.state = next;
     // Teams turned on or off: every seat and member is let go (phones pick again: a team, or their own name).
     if (prev && !!prev.teams !== !!next.teams) {
@@ -601,7 +618,10 @@ export class Room {
   /** Teams: the host puts a member (and their phone) on another team. */
   private move(member: string, seatId: string): void {
     const m = this.s.members?.[member];
-    if (!m || !this.s.state?.teams || !this.s.state.seats.some((x) => x.id === seatId) || m.seatId === seatId) return;
+    const st = this.s.state;
+    if (!m || !st?.teams || !st.seats.some((x) => x.id === seatId) || m.seatId === seatId) return;
+    // Moved during a clue off a team in it: no second go for the new team on this clue.
+    if (this.inClue(m.seatId, member) && !this.s.clueOut?.includes(member)) (this.s.clueOut ??= []).push(member);
     m.seatId = seatId;
     for (const p of this.phones.values()) {
       if (p.member !== member) continue;
@@ -612,6 +632,27 @@ export class Room {
       this.deps.toPhone(p.conn, { t: 'joined', seatId, token: m.token, name: m.name });
     }
     this.save();
+  }
+
+  /**
+   * Teams: whether team `seatId` (with its member `member`) is in the clue going on: they or a teammate buzzed on it,
+   * it's answering it, or it's out of it.
+   */
+  private inClue(seatId: string, member: string): boolean {
+    const st = this.s.state;
+    if (!st || st.phase === 'lobby') return false;
+    return st.answering === seatId || st.lockedOut.includes(seatId) || !!this.s.race?.queue.some((b) => b.seatId === seatId || b.member === member);
+  }
+
+  /**
+   * Teams: member `id` leaves their team on phone p (to join again, maybe on another team). During a clue their team
+   * is in, or one they're out of, the phone keeps that (clueLeft): no second go on it as someone new on another team.
+   */
+  private noteLeft(p: Phone, id: string): void {
+    const m = this.s.members?.[id];
+    if (!m) return;
+    const out = !!this.s.clueOut?.includes(id);
+    if (out || this.inClue(m.seatId, id)) (this.s.clueLeft ??= {})[p.device || p.conn] = out ? '' : m.seatId;
   }
 
   /** Teams: forgets a member (left, kicked, their team gone); their phone is unseated (told so when kicked or freed). */
@@ -801,6 +842,7 @@ export class Room {
         break;
       case 'leave':
         if (p.member) {
+          this.noteLeft(p, p.member);
           this.dropMember(p.member);
           this.save();
         } else if (p.seatId && this.s.state?.teams) {
@@ -953,8 +995,10 @@ export class Room {
     if (same && here(same)) return deny('name-taken');
     if (this.turnedAway(p)) return;
     if (same) this.dropMember(same);
-    if (p.member) this.dropMember(p.member);
-    else if (p.seatId) this.unseat(p);
+    if (p.member) {
+      this.noteLeft(p, p.member);
+      this.dropMember(p.member);
+    } else if (p.seatId) this.unseat(p);
     delete p.pendingName;
     // Full: the members gone longest make room (there are always some: fewer phones than that can connect).
     const ids = Object.keys(members);
@@ -968,6 +1012,12 @@ export class Room {
     while (members[id]) id = `m${this.deps.token().slice(0, 15)}`;
     const m: Member = { seatId, name, token: this.deps.token(), at: this.deps.now() };
     members[id] = m;
+    // This phone left a team in the clue going on (see noteLeft): on another team, out of the rest of it too.
+    const left = this.s.clueLeft?.[p.device || p.conn];
+    if (left !== undefined) {
+      delete this.s.clueLeft![p.device || p.conn];
+      if (left !== seatId) (this.s.clueOut ??= []).push(id);
+    }
     this.seatMember(p, id, m);
   }
 
@@ -1054,7 +1104,7 @@ export class Room {
       return;
     }
     if (armId !== st.armId) return result('late');
-    if (st.lockedOut.includes(seatId)) return result('locked');
+    if (st.lockedOut.includes(seatId) || (member && this.s.clueOut?.includes(member))) return result('locked');
     const until = (member ? this.s.memberLocks?.[member] : this.s.earlyLocks[seatId]) ?? 0;
     if (until > now) return result('locked', { lockedUntil: until });
     let race = this.s.race;
@@ -1327,11 +1377,15 @@ export class Room {
         const own = m ? sent?.member === p.member : sent?.at !== undefined && sent.at >= (since ?? 0);
         if (late && sent && !own) sent = undefined;
         const race = this.s.race;
+        // Teams: moved here off a team in this clue, or out of it (see move, clueLeft): out of it too, as a team that
+        // missed (and the phone can say why: their new team hasn't answered).
+        const out = !!p.member && !!this.s.clueOut?.includes(p.member);
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
-          st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
+          !out && st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
         const typed = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers.seats[p.seatId] : undefined;
         const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
+        if (out && view.you) view.you = { ...view.you, lockedOut: true, out: true };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
           p.lastView = key;
@@ -1473,6 +1527,7 @@ export function cleanState(x: unknown): HostState | null {
     extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats };
   }
   if (x.over === true) extra.over = true;
+  if (extra.over && typeof x.winner === 'string' && ids.has(x.winner)) extra.winner = x.winner;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);
     const wseats: WagerSeat[] = [];

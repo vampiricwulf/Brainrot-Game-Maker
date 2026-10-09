@@ -197,6 +197,8 @@ try {
   await mainButton(host).click();
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $700', 'Show question locks it: the phone says “Wager locked · Your wager: $700”');
+  await big(bo).getByText('Player 1 is answering').waitFor();
+  assert((await small(bo).innerText()) === 'Daily Double', 'and the other phones say “Player 1 is answering · Daily Double” (no longer “wagering…”)');
   assert(await noneOf(aud, [700, 777]), 'the audience window still has no amount (until the host shows the wager)');
   // Right: Player 1 has 700 to wager in the Final.
   await host.getByRole('button', { name: 'Right: Player 1 +$700' }).click();
@@ -280,7 +282,7 @@ try {
     const p = await phonePage(code2, name);
     await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
     await p.getByRole('button', { name: team }).click();
-    await p.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill(name);
+    await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill(name);
     await p.getByRole('button', { name: 'Join the team' }).click();
     await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
     return p;
@@ -303,6 +305,8 @@ try {
   await sendWager(al, 300);
   await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 $300 from phone ✔ · sent by Al').waitFor();
   await amy.locator('#wager-state').getByText('✔ Al sent $300 for your team').waitFor();
+  assert((await amy.locator('#wager-in').inputValue()) === '300', 'his teammate’s box fills in with it (it had the focus as it opened, but she typed nothing)');
+  assert((await amy.locator('#wager-label').innerText()) === 'Wager (only the host and your team see it)', 'teams: the box says the team sees the wager too');
   assert(await noneOf(cy, [300]), 'Al sends the team’s wager: the host sees “sent by Al”, his teammate sees it, the other team doesn’t');
   await sendWager(amy, 450);
   await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 $450 from phone ✔ · sent by Amy').waitFor();
@@ -315,7 +319,7 @@ try {
   await cy.locator('#leave').click();
   await cy.getByRole('heading', { name: 'Pick your team' }).waitFor();
   await cy.getByRole('button', { name: 'Player 1' }).click();
-  await cy.getByRole('textbox', { name: 'Your name (your team sees it)' }).fill('Spy');
+  await cy.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Spy');
   await cy.getByRole('button', { name: 'Join the team' }).click();
   await form(cy).waitFor();
   await cy.locator('#wager-state').getByText('wager is in with the host (not shown').waitFor();

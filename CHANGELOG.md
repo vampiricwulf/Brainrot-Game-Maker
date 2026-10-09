@@ -11,6 +11,18 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-08
+
+### Changed
+- Turning Teams on or off while phones are in the room asks first (every phone has to pick again), and the phones then say which way it went. (af3bdf8, 79e4ba2)
+- The phone's name box says everyone sees the name (it shows on stream); with teams, the wager and answer boxes say your team sees them too. (af3bdf8)
+
+### Fixed
+- Phones on a team show the team's wager or ✍ answer as soon as a teammate (or the host) sends it, instead of an empty box; anything typed and not sent yet is kept. (af3bdf8)
+- During a Daily Double, the other phones say "… is answering" once the question is up (they said "is wagering…" until the clue closed). (af3bdf8)
+- After a roll-off or tiebreaker clue settles a tie for first, the winner's phone says "You came 1st" and the others "You came 2nd", like the end screen (they all said "You tied for 1st"); this needs the updated buzzer server. (af3bdf8)
+- Teams: someone who changes team in the middle of a clue (moved by the host, or on their own phone) can't buzz again for the new team on that clue; they can after ↺ Reset or on the next clue. (af3bdf8, 79e4ba2)
+
 ## 2026-10-05
 
 ### Fixed
