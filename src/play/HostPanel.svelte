@@ -10,7 +10,7 @@
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -27,6 +27,7 @@
   import type { LogTab } from './ScoreLog.svelte';
   import { app, toast } from '../lib/app.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
+  import { teamsOn } from '../lib/buzz';
   import { scoresWindow } from '../lib/sync.svelte';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
@@ -225,6 +226,8 @@
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
+  /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
+  const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const buzz = $derived(app.live.buzz);
   const lockedNames = $derived(
     (buzz?.lockedOut ?? [])
@@ -260,6 +263,12 @@
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(ddWager ? null : slidePosition(session, game));
+  /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
+  const tbWinner = $derived(
+    session.phase === 'tiebreaker' && session.tiebreakClue && tiedForFirst(session).some((p) => p.id === session.rollOffWinner)
+      ? session.players.find((p) => p.id === session.rollOffWinner)
+      : undefined,
+  );
   /** More question slides to show before the answer. */
   const moreSlides = $derived(!!slidePos && !answerShowing(session) && slidePos.at < slidePos.of);
   const nextSlide = () => onslide(1);
@@ -582,7 +591,11 @@
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      <span class="muted">Select the winner and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
+      {#if tbWinner}
+        <span class="muted">{tbWinner.name} won the tiebreaker: 🏁 Back to results (or select someone else and ＋ Award to change it).</span>
+      {:else}
+        <span class="muted">Select the winner and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
+      {/if}
     {:else}
       <b>Game over</b>
       <span class="muted hint">Click a score to fix it.</span>
@@ -930,7 +943,7 @@
     <span class="group g-lists">
       <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
       <!-- The game's rules go with its players (Most players). -->
-      <button onclick={onplayers}>👥 Players</button>
+      <button onclick={onplayers}>{teams ? '👥 Teams' : '👥 Players'}</button>
       <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ Rules</button>
     </span>
     <span class="divider" aria-hidden="true"></span>

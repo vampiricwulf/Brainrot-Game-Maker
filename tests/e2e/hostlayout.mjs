@@ -242,6 +242,20 @@ try {
   }
   await page.locator('.fj .pl').first().waitFor();
   states.reveals = await look();
+  // Finished early with nobody judged, Ctrl+Z on the results goes back into the Final: its answer, then its question.
+  await page.locator('.fj button.ghost', { hasText: 'Finish game ▶' }).click();
+  await page.waitForTimeout(450);
+  await confirmStrip(page).getByRole('button', { name: 'Finish', exact: true }).click();
+  await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('Control+z');
+  await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+  await page.keyboard.press('Control+z');
+  await page.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
+  assert(true, 'finished early with nobody judged, Ctrl+Z on the results goes back to the Final’s answer, then its question');
+  await page.keyboard.press('Control+Shift+z');
+  await page.keyboard.press('Control+Shift+z');
+  await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
   for (let i = 0; i < 3; i++) await page.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
   await mainButton(page).click();
   await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
@@ -265,6 +279,35 @@ try {
   await page.keyboard.press('r');
   await tbPips.waitFor({ state: 'detached' });
   assert((await page.locator('.stage-box').innerText()).includes('Tiebreaker answer'), 'R reveals its answer (the dots go)');
+  // The winner selected and ＋ Award at Amount 0: the panel says who won. Selecting the other tied player instead changes it.
+  const pts = (await page.locator('.panel .p .score').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
+  const tiedAt = pts.flatMap((v, i) => (v === Math.max(...pts) ? [i] : []));
+  const chipName = async (i) => (await page.locator('.panel .p .sel').nth(i).innerText()).replace(/^\d+\s*/, '').trim();
+  const [first, other] = [await chipName(tiedAt[0]), await chipName(tiedAt[1])];
+  await page.locator('.panel .status').click();
+  await page.keyboard.press(String(tiedAt[0] + 1));
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: `${first} won the tiebreaker: 🏁 Back to results` }).waitFor();
+  assert(true, `once ${first} is picked (Amount 0), the panel says so and to go back to the results`);
+  await page.keyboard.press(String(tiedAt[1] + 1));
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: `${other} won the tiebreaker` }).waitFor();
+  assert(!(await page.locator('.toast').allInnerTexts()).some((t) => t.includes('isn’t tied for first')), `selecting ${other} (tied too) and ＋ Award changes the winner (not "isn’t tied for first")`);
+  // Ctrl+Z on the tiebreaker clue: its picks undo there, one at a time. Then the last Final judgment goes back to the
+  // reveals (not out of sight), that player unjudged, the tiebreaker's countdown stopped.
+  await page.keyboard.press('t');
+  await page.locator('.stage-box .timer').waitFor();
+  await page.keyboard.press('Control+z');
+  await page.locator('.panel .status', { hasText: `${first} won the tiebreaker` }).waitFor();
+  await page.keyboard.press('Control+z');
+  await page.locator('.panel .status', { hasText: 'Select the winner' }).waitFor();
+  assert((await page.locator('.panel .status').innerText()).includes('Tiebreaker'), 'Ctrl+Z on the tiebreaker clue takes its picks back there, one at a time');
+  await page.keyboard.press('Control+z');
+  await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+  assert(
+    (await page.locator('.fj .pl').nth(2).getByRole('button', { name: '✔ Right' }).getAttribute('aria-pressed')) === 'false' && (await page.locator('.stage-box .timer').count()) === 0,
+    'then Ctrl+Z goes back to the Final’s reveals, the last player unjudged there (the countdown stopped)',
+  );
 
   for (const what of ['exit', 'undo', 'log']) {
     const at = Object.entries(states).map(([k, v]) => `${k} ${v[what].x},${v[what].y}`);

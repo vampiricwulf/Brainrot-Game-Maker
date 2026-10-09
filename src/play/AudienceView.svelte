@@ -7,7 +7,7 @@
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, newTextEl, roundName, type ClueRef, type Slide, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
+  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Rect } from '../lib/joinspot';
   import { holdWhile, provideCover } from '../lib/hold';
@@ -277,7 +277,7 @@
   const barReserve = $derived((codeSpot === 'bar' ? JOIN_ROOM : 0) + (timerBar ? TIMER_ROOM : 0));
   const ties = $derived(tiedLeaders(session));
   /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
-  const tieOpen = $derived(!!ties.length && !session.coWinners);
+  const tieOpen = $derived(!!ties.length && !coWinnersHold(session));
   const winners = $derived.by(() => {
     if (ties.length) return ties;
     const top = standings(session)[0];

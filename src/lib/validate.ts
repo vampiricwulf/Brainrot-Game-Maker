@@ -19,6 +19,8 @@ export interface Problem {
   level: 'warn' | 'info';
   /** Where in the round it is (the screen, the space…), for the checklist to go to. */
   place?: Place;
+  /** What it means in a player-only file, which can't add or swap files (none: the same text). */
+  player?: string;
 }
 
 /** "1 clue", "3 clues" ("category" → "categories"). */
@@ -135,13 +137,26 @@ export function validate(game: Game): Problem[] {
       text: `${plural(deleted.length, 'deleted file')} still used (${plural(deleted.reduce((n, id) => n + (usage.get(id) ?? 0), 0), 'place')}): not saved with the game. Undo the delete, or take ${deleted.length === 1 ? 'it' : 'them'} off those slides`,
       tab: 'media',
       level: 'warn',
+      player: `${plural(deleted.length, 'file')} used on slides but missing from this game: ask whoever made it for a new copy`,
     });
   const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
   // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
   const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && missing.has(id)));
-  if (cues.size) out.push({ text: `${plural(cues.size, 'sound file')} missing: see 🔊 Sounds`, tab: 'sounds', level: 'warn' });
+  if (cues.size)
+    out.push({
+      text: `${plural(cues.size, 'sound file')} missing: see 🔊 Sounds`,
+      tab: 'sounds',
+      level: 'warn',
+      player: `${plural(cues.size, 'sound file')} missing from this game (the built-in sound plays instead)`,
+    });
   const others = [...missing].filter((id) => !cues.has(id)).length;
-  if (others) out.push({ text: `${plural(others, 'media file')} missing`, tab: 'media', level: 'warn' });
+  if (others)
+    out.push({
+      text: `${plural(others, 'media file')} missing`,
+      tab: 'media',
+      level: 'warn',
+      player: `${plural(others, 'media file')} missing from this game: ask whoever made it for a new copy`,
+    });
   // (A live link already played when it was added; its type is often unknown from the address.)
   const unplayable = game.media.filter((m) => !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
   if (unplayable) out.push({ text: `${plural(unplayable, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
@@ -152,8 +167,20 @@ export function validate(game: Game): Problem[] {
   const life = links.map((m) => linkLifetime(m));
   const expired = life.filter((l) => l === 'expired').length;
   const temporary = life.filter((l) => l === 'temporary').length;
-  if (expired) out.push({ text: `${plural(expired, 'online link')} expired: add ${expired === 1 ? 'that file' : 'those files'} again`, tab: 'media', level: 'warn' });
-  if (temporary) out.push({ text: `${plural(temporary, 'online link')} ${temporary === 1 ? 'stops' : 'stop'} working soon (temporary upload sites): save a copy or add the files`, tab: 'media', level: 'warn' });
+  if (expired)
+    out.push({
+      text: `${plural(expired, 'online link')} expired: add ${expired === 1 ? 'that file' : 'those files'} again`,
+      tab: 'media',
+      level: 'warn',
+      player: `${plural(expired, 'online link')} expired: ask whoever made this game for a new copy`,
+    });
+  if (temporary)
+    out.push({
+      text: `${plural(temporary, 'online link')} ${temporary === 1 ? 'stops' : 'stop'} working soon (temporary upload sites): save a copy or add the files`,
+      tab: 'media',
+      level: 'warn',
+      player: `${plural(temporary, 'online link')} ${temporary === 1 ? 'stops' : 'stop'} working soon (temporary upload sites)`,
+    });
   return out;
 }
 

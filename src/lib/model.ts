@@ -683,8 +683,8 @@ export interface Session {
   finals?: Record<Id, { state: FinalState; step: FinalStep }>;
   /** Tiebreaker clue showing the answer. */
   tiebreakerRevealed?: boolean;
-  /** The host declared the tied leaders co-winners. */
-  coWinners?: boolean;
+  /** The host declared the tied leaders co-winners: who they were (true, from older saves: whoever is tied). */
+  coWinners?: boolean | Id[];
   /** Won the tiebreaker roll-off (or the tiebreaker clue) for first place: ranked above the players tied with them. */
   rollOffWinner?: Id;
   /** rollOffWinner won the tiebreaker clue (not a roll-off). */

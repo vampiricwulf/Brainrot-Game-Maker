@@ -22,6 +22,10 @@ in plain words for the people who make and host games. Anything committed but no
 - During a Daily Double, the other phones say "… is answering" once the question is up (they said "is wagering…" until the clue closed). (af3bdf8)
 - After a roll-off or tiebreaker clue settles a tie for first, the winner's phone says "You came 1st" and the others "You came 2nd", like the end screen (they all said "You tied for 1st"); this needs the updated buzzer server. (af3bdf8)
 - Teams: someone who changes team in the middle of a clue (moved by the host, or on their own phone) can't buzz again for the new team on that clue; they can after ↺ Reset or on the next clue. (af3bdf8, 79e4ba2)
+- Teams: the host panel's 👥 Teams window (named so mid-game) adds "Team 3" rather than "Player 3", shows who is on each team, and removing a team says its people go back to picking a team on their phone; with nobody added yet, the pre-game screen says to add teams and its sample adds Team 1–3. (d911075, 625aa04)
+- End of game: Ctrl+Z on the results screen, or on the tiebreaker clue before a winner is picked, goes back to the Final's reveals when it undoes a judgment there (it changed the winner out of sight or did nothing); during the tiebreaker clue the panel says who won it, and picking the other tied player changes the winner; declared co-winners count only for the tie they were declared for; the scores-only window no longer highlights the last picker on the results or during the tiebreaker. (c9c219b, 625aa04)
+- After ▶ Next game… (or Keep & leave after a game), the phones say the host is setting up instead of still showing their place from the last game. (c9c219b)
+- Player files: the players and rules set up before the game are kept on ◀ Back and ▶ Play again; the pre-game "things to check" no longer point to screens only the builder has (missing files and expired links say to ask whoever made the game for a new copy). (ed16d2a, 625aa04)
 
 ## 2026-10-05
 

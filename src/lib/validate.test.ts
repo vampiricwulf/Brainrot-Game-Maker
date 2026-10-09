@@ -37,10 +37,17 @@ describe('the checklist', () => {
     game.audio.right = 'gone';
     game.audio.wrong = 'gone';
     expect(validate(game).filter((p) => p.text.includes('missing'))).toEqual([
-      { text: '1 sound file missing: see 🔊 Sounds', tab: 'sounds', level: 'warn' },
+      // (A player-only file has no 🔊 Sounds: its own words.)
+      { text: '1 sound file missing: see 🔊 Sounds', tab: 'sounds', level: 'warn', player: '1 sound file missing from this game (the built-in sound plays instead)' },
     ]);
     game.media.push({ id: 'm2', name: 'pic.png', kind: 'image' } as never);
-    expect(validate(game).find((p) => p.text === '1 media file missing')).toMatchObject({ tab: 'media' });
+    expect(validate(game).find((p) => p.text === '1 media file missing')).toMatchObject({
+      tab: 'media',
+      player: '1 media file missing from this game: ask whoever made it for a new copy',
+    });
+    // One deleted but still on a tile too: its own words in a player-only file (not two identical lines).
+    (game.rounds[0] as BoardRound).categories[0].clues[0].tileFace = { image: 'deleted1' };
+    expect(validate(game).find((p) => p.text.includes('deleted file'))?.player).toBe('1 file used on slides but missing from this game: ask whoever made it for a new copy');
   });
 
   it('sends player problems to the Play screen, where players are set', () => {

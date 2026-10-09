@@ -5,13 +5,13 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, type ClueRef } from '../lib/model';
+  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalBack, finalJudge, finalShow, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
+    finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
-    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedLeaders, winnerKnown,
-    finalSetWager, forViewers, wagerFromPhone,
+    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
+    finalSetWager, forViewers, wagerFromPhone, coWinnersHold,
   } from '../lib/session';
   import { addTime, newLive, overlayDoneAt, startTimer, timerRemaining, toggleTimer, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -694,7 +694,9 @@
     const id = ids[0];
     if (sign < 0) return toast('Nothing to deduct: type an amount, or select the winner and ＋ Award');
     if (ids.length > 1) return toast('Select the one player who won the tiebreaker');
-    if (!tiedLeaders(session).some((p) => p.id === id)) return toast(`${playerName(session, id)} isn’t tied for first`);
+    // (Tied, settled or not: picking the other one replaces a wrong pick, as a step of its own.)
+    if (!tiedForFirst(session).some((p) => p.id === id)) return toast(`${playerName(session, id)} isn’t tied for first`);
+    if (session.rollOffWinner === id && session.tiebreakClue) return toast(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
     logged(session, `${playerName(session, id)} won the tiebreaker clue`, () => {
       session.rollOffWinner = id;
       session.tiebreakClue = true;
@@ -1143,7 +1145,9 @@
     if (app.test || !phonesOn || !r || !inRoom(r.code)) return false;
     const players = $state.snapshot(session.players).map((p) => (app.pregame ? p : { ...p, startScore: 0 }));
     const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players, screen: 'editor', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
-    sendHostState(hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked }), true);
+    // (Not the last game's places: after ▶ Next game… the phones wait for the next one.)
+    const { over: _over, ...st } = hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked });
+    sendHostState(st, true);
     keepRoomOpen = true;
     kept.room = saved;
     void saveRoom(saved);
@@ -1657,10 +1661,32 @@
   });
 
   /**
+   * On the results (or the tiebreaker clue opened from them), the next Undo belongs to the last round's Final (one of its
+   * judgments, or one of its steps, which only land in a Final on screen): back to its reveals first, so it's taken back
+   * there (not out of sight, or not at all).
+   */
+  function undoIntoFinal(): void {
+    if (session.phase !== 'end' && session.phase !== 'tiebreaker') return;
+    const last = game.rounds.at(-1);
+    if (!isFinal(last) || session.final?.roundId !== last.id) return;
+    const next = nextUndo(session);
+    // (Its steps by the Final step they kept, not by round: steps taken on the results are in the last round too.)
+    const ofFinal =
+      next?.log === 'action'
+        ? `step:${last.id}` in JSON.parse(session.actionLog!.at(-1)!.before)
+        : !!next && session.scoreLog.some((e) => !e.undone && stepOf(e) === next.id && e.clueId === finalTag(last.id));
+    if (!ofFinal) return;
+    // (The tiebreaker's countdown goes with it, as 🏁 Back to results stops it.)
+    app.live.timer = null;
+    backFromEnd();
+  }
+
+  /**
    * One Undo: whichever came last, a score change or a step (an RPG or board-game move, an item, a tile marked played, the
    * picker, a Players or Final change). Returns what it took back, or null with nothing to undo.
    */
   function undoOnce(): string | null {
+    undoIntoFinal();
     const next = nextUndo(session);
     if (next?.log === 'action') {
       const a = undoAction(session, game)!;
@@ -1971,7 +1997,7 @@
     } else bgSpace = bgSpace === id ? null : id;
   }
 
-  /** Players added by "＋ Add 3 sample players", by id → their sample name. */
+  /** Players (or teams) added by "＋ Add 3 sample players" ("…sample teams"), by id → their sample name. */
   const samples = new Map<string, string>();
   /** Every player's start score as last seen before the game (one deleted, then brought back by an Undo, keeps it). */
   const startScores = new Map<string, number>();
@@ -2084,7 +2110,8 @@
       .map((p) => {
         const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
-        return { text: p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined };
+        // (A player-only file can't add or swap files: its own words for those.)
+        return { text: app.playerOnly && p.player ? p.player : p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined };
       })
       .filter((p) => p.level === 'warn' || p.ddRound !== undefined);
   });
@@ -2130,6 +2157,11 @@
 
   /** The editor holds this same game (after resuming an older save it may not; a player-only file has no editor). */
   const editorHasIt = () => !app.playerOnly && app.game.id === game.id;
+  /**
+   * The app's copy of this game (the editor's, or a player-only file's own) keeps what the pre-game screen sets up: ◀ Back
+   * and ▶ Play again find the players and rules as they were left (as setStream keeps the stream's words).
+   */
+  const keepsSetup = () => app.game.id === game.id;
 
   /**
    * The pre-game screen is where the game's players are set: each change to the list here (a name, a color, a picture,
@@ -2155,7 +2187,7 @@
     rosterSeen = { s: session, key, list };
     untrack(() => {
       keepRoster(game, list, before);
-      if (editorHasIt()) keepRoster(app.game, list, before);
+      if (keepsSetup()) keepRoster(app.game, list, before);
     });
   });
 
@@ -2172,7 +2204,7 @@
     if (!rulesSeen || rules === rulesSeen) return void (rulesSeen = rules);
     rulesSeen = rules;
     untrack(() => {
-      if (!editorHasIt()) return;
+      if (!keepsSetup()) return;
       const to = app.game.settings as unknown as Record<string, unknown>;
       for (const k of RULES) {
         const v = $state.snapshot(game.settings[k]);
@@ -2216,7 +2248,8 @@
   });
 
   function addSamplePlayers(): void {
-    for (const name of ['Alex', 'Sam', 'Jordan']) {
+    // Teams get team names (people's names would read as players on stream), numbered as ＋ Add team numbers them.
+    for (const name of pregameTeams ? ['Team 1', 'Team 2', 'Team 3'] : ['Alex', 'Sam', 'Jordan']) {
       if (session.players.length >= game.settings.maxPlayers) break;
       const id = newId();
       samples.set(id, name);
@@ -2667,7 +2700,7 @@
       case 'o': {
         if (toolBusy()) break;
         // On a tie for first at the end: the tied leaders roll for the win (not "Who goes first?").
-        const ties = session.phase === 'end' && !session.coWinners ? tiedLeaders(session) : [];
+        const ties = session.phase === 'end' && !coWinnersHold(session) ? tiedLeaders(session) : [];
         if (ties.length) rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak');
         else rolloff(session.players.map((p) => p.id), game.settings.rollOffDie || 20);
         break;
@@ -2887,8 +2920,8 @@
           {/if}
           {#if !session.players.length}
             <div class="row">
-              <span class="warn">Add players to start: ＋ Add player, or</span>
-              <button onclick={addSamplePlayers}>＋ Add 3 sample players</button>
+              <span class="warn">Add {pregameTeams ? 'teams' : 'players'} to start: ＋ Add {pregameTeams ? 'team' : 'player'}, or</span>
+              <button onclick={addSamplePlayers}>＋ Add 3 sample {pregameTeams ? 'teams' : 'players'}</button>
             </div>
           {/if}
         </section>
@@ -3281,22 +3314,28 @@
       onchange={commitRoster}
       ondrop={commitRoster}
     >
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Players" use:modal>
-        <div class="row"><h2 class="modal-title">👥 Players</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
-        <p class="muted">Add, remove, rename or recolor players. To change a score, click it in the host panel.</p>
+      <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
+      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal>
+        <div class="row"><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
+        <p class="muted">Add, remove, rename or recolor {pregameTeams ? 'teams' : 'players'}. To change a score, click it in the host panel.</p>
         <PlayerList
           bind:players={session.players}
           max={game.settings.maxPlayers}
           inGame
+          teams={pregameTeams}
+          members={pregameTeams && session.remote ? teamMembers : undefined}
           onremove={(id) => (removing = id)}
           onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
         />
         {#if removingPlayer}
           {@const p = removingPlayer}
+          {@const n = pregameTeams && session.remote ? teamMembers(p.id).length : 0}
           <div class="ask" role="alert">
             <span>
-              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? Their points leave the scoreboard. You can restore them
-              here.
+              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? {pregameTeams ? 'Its' : 'Their'} points leave the scoreboard. You
+              can restore {pregameTeams ? 'it' : 'them'} here.
+              <!-- (Its phones lose their place on it: a restored team is picked again from the phones.) -->
+              {#if n}{n === 1 ? 'The 1 person on it goes' : `The ${n} people on it go`} back to picking a team on their phone{n === 1 ? '' : 's'}.{/if}
             </span>
             <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
             <button class="small" onclick={() => (removing = null)} use:takeFocus>Keep</button>

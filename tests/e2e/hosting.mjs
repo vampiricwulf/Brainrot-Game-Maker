@@ -398,6 +398,34 @@ try {
   assert((await cues(page, 'winner')) === winner + 1, 'the winner fanfare plays once the roll-off settles the tie');
   await page.keyboard.press('Escape');
 
+  // ---------- The scores window on the results: nobody lit as the picker (nobody picks) ----------
+  const pickerChips = await page.locator('.panel .p.picker').count();
+  assert(pickerChips > 0, 'a picker is still set going into the results (what the scores window must not light)');
+  const [scoresWin] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
+  watch(scoresWin, 'scores');
+  await scoresWin.locator('.strip .plate').first().waitFor();
+  assert((await scoresWin.locator('.strip .plate.picker').count()) === 0, `the scores window lights nobody on the results (the host panel has ${pickerChips} picker)`);
+  await Promise.all([scoresWin.waitForEvent('close'), page.locator('.panel button[aria-label="Close the scores window"]').click()]);
+
+  // ---------- Ctrl+Z on the results: what was done there undoes there; a Final judgment goes back to its reveals ----------
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('Control+z');
+  await page.locator('.tie').waitFor();
+  assert((await status()).includes('Game over'), 'Ctrl+Z on the results takes the roll-off back there (the tie is back)');
+  // (The scores fixed on the results, one Ctrl+Z each, then the last Final judgment.)
+  for (let i = 0; i < 5 && (await status()).includes('Game over'); i++) {
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(150);
+  }
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
+  const judged = () => page.locator('.fj .pl').nth(2).getByRole('button', { name: '✔ Right' }).getAttribute('aria-pressed');
+  assert((await judged()) === 'false', 'a Final judgment undone from the results goes back to the reveals, that player unjudged there');
+  await page.keyboard.press('Control+Shift+z');
+  await page.waitForFunction(() => document.querySelectorAll('.fj .pl')[2]?.querySelector('button[aria-pressed="true"]'));
+  assert((await status()).includes('Player reveals'), 'Redo brings the judgment back in the reveals');
+  await page.getByRole('button', { name: 'Finish game ▶' }).click();
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Game over'));
+
   // ---------- Resume asks how the game is shown, and comes back covered ----------
   await page.keyboard.press('k');
   await stage('.cover').waitFor();
