@@ -4,7 +4,10 @@
 // keeping a turned picture's size (and Use original its old one), the image editor's tool options and slider undo,
 // Replace redoing edits, the History's names for these, pastes from Word and from another tab, nudging off the slide,
 // Tab saying which item it picked, Shift+F10's menu, the several-items panel's Back and Lock, Move to the slide's… beside X and Y, a
-// turn that settles on level, and the History's names for line-ups, restacks, duplicates and pastes.
+// turn that settles on level, and the History's names for line-ups, restacks, duplicates and pastes. Also: the text Color
+// box on Pastel (and ↺ Theme colour), Ctrl+I in the Text field (and Ctrl+Z after it), Ctrl+Z on an image editor slider, a
+// new crop starting Free, a caption's font drawn once it loads, and Ctrl+V of items or a picture in the clue's Question
+// box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -113,6 +116,39 @@ try {
   // ---------- The main text box ----------
   await click(960, 540);
   await insp.locator('textarea').fill('Hi');
+  // On Pastel the words are drawn in its dark slide text: the Color box shows that colour (it said white), and white
+  // picked there is white (it stayed the theme's dark colour).
+  const textColor = insp.locator('input[type=color]').first();
+  const drawnColor = () => canvas.locator('.slide .el .text').first().evaluate((e) => getComputedStyle(e).color);
+  const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  const pastelText = await textColor.inputValue();
+  assert(pastelText !== '#ffffff' && (await drawnColor()) === rgb(pastelText), `the Color box shows the dark colour the text is drawn in (${pastelText})`);
+  await textColor.fill('#ffffff');
+  assert((await drawnColor()) === 'rgb(254, 254, 254)', `white picked in it makes the words white (${await drawnColor()})`);
+  // ↺ Theme colour beside it goes back to the theme's dark text (only Undo could, once a colour was picked).
+  const themeColour = insp.getByRole('button', { name: '↺ Theme colour' });
+  await themeColour.click();
+  assert(
+    (await drawnColor()) === rgb(pastelText) && (await textColor.inputValue()) === pastelText && (await themeColour.count()) === 0,
+    `↺ Theme colour draws the words in the theme's text colour again (${await drawnColor()})`,
+  );
+  // Ctrl+I in the Text field (where typing on the slide puts the cursor) makes it italic, as on the canvas.
+  const textField = insp.locator('textarea');
+  const italic = () => insp.getByRole('button', { name: 'Italic' }).getAttribute('aria-pressed');
+  await textField.focus();
+  await page.keyboard.press('Control+i');
+  assert((await italic()) === 'true', 'Ctrl+I in the Text field makes the text box italic');
+  await page.keyboard.press('Control+i');
+  assert((await italic()) === 'false', 'and again makes it upright');
+  // Typed in, then Ctrl+I, then Ctrl+Z: it takes back the italic, then the typing (the field's own undo took the letters
+  // back first, the italic staying, and the next Ctrl+Z brought them back as a step of their own).
+  await page.keyboard.press('End');
+  await page.keyboard.type(' there');
+  await page.keyboard.press('Control+i');
+  await page.keyboard.press('Control+z');
+  assert((await italic()) === 'false' && (await textField.inputValue()) === 'Hi there', `Ctrl+Z after typing and Ctrl+I takes back the italic, the words staying (${await textField.inputValue()})`);
+  await page.keyboard.press('Control+z');
+  assert((await textField.inputValue()) === 'Hi', `and the next Ctrl+Z the typing (${await textField.inputValue()})`);
   const size = insp.locator('label.field', { hasText: 'Max size' }).locator('input');
   await size.fill('');
   await size.press('Tab');
@@ -248,6 +284,40 @@ try {
   assert((await bright.inputValue()) === '103' && (await ie.getByRole('button', { name: '↶ Undo' }).isEnabled()), 'arrow keys on a slider can be undone');
   await ie.getByRole('button', { name: '↶ Undo' }).click();
   assert((await bright.inputValue()) === '100', 'one Undo takes back the whole burst');
+  // Ctrl+Z with the focus still on the slider does too (a slider has no undo of its own: the key did nothing there).
+  await bright.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Control+z');
+  assert((await bright.inputValue()) === '100', 'Ctrl+Z on the slider takes back its burst');
+  // A crop removed, then ✂ Crop again: it starts free (16:9 stayed pressed, and the first drag snapped to it).
+  await ie.getByRole('button', { name: '✂ Crop' }).click();
+  await ie.getByRole('button', { name: '16:9' }).click();
+  await ie.getByRole('button', { name: 'Remove crop' }).click();
+  await ie.getByRole('button', { name: '✂ Crop' }).click();
+  assert(
+    (await ie.getByRole('button', { name: '16:9' }).getAttribute('aria-pressed')) === 'false' && (await ie.getByRole('button', { name: 'Free', exact: true }).getAttribute('aria-pressed')) === 'true',
+    'after Remove crop, a new crop starts Free',
+  );
+  await ie.getByRole('button', { name: 'Remove crop' }).click();
+  // A caption's font picked from the list shows once it has loaded: the picture wasn't drawn again until another edit, so
+  // that edit (Flip H twice, which changes nothing) used to change the font shown.
+  await ie.getByRole('button', { name: '🅣 Text' }).click();
+  await ie.getByRole('button', { name: '＋ Add text in the middle' }).click();
+  const preview = () => ie.locator('.canvas-host canvas').evaluate((c) => c.toDataURL());
+  // (One of the bundled fonts nothing on the page has used yet: the Theme tab's previews loaded some.)
+  const fresh = await ie.getByLabel('Caption font').evaluate((sel) => {
+    const waiting = new Set([...document.fonts].filter((f) => f.status === 'unloaded').map((f) => f.family.replace(/["']/g, '')));
+    return [...sel.options].find((o) => waiting.has(o.value.split(',')[0].replace(/["']/g, '').trim()))?.value;
+  });
+  await ie.getByLabel('Caption font').selectOption(fresh);
+  await page.waitForFunction((f) => document.fonts.check(`900 40px ${f}`), fresh);
+  await page.waitForTimeout(300);
+  const loaded = await preview();
+  await ie.getByRole('button', { name: '⇋ Flip H' }).click();
+  await ie.getByRole('button', { name: '⇋ Flip H' }).click();
+  await page.waitForTimeout(300);
+  assert((await preview()) === loaded, `a caption font picked from the list shows once it has loaded (${fresh})`);
+  await ie.getByRole('button', { name: '🗑 Delete text' }).click();
   await ie.getByRole('button', { name: '✋ Move' }).click();
   await page.getByRole('button', { name: '⟳ 90°' }).click();
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
@@ -383,6 +453,47 @@ try {
   await page.keyboard.press('Control+v');
   assert((await undoTitle()).startsWith('Undo: Pasted shape “Rectangle”'), `Ctrl+V is “Pasted shape “Rectangle”” (${await undoTitle()})`);
   await page.keyboard.press('Control+z');
+  // The same Ctrl+V in the clue's Question box (where the keys are when a clue opens): the copied item goes on the slide
+  // (its "1 slide item" went into the question), and so does a picture pasted there (it was dropped).
+  const qBox = clue.locator('[data-field="q"]');
+  const question = await qBox.inputValue();
+  const items0 = (await drawn()).length;
+  await qBox.focus();
+  await page.keyboard.press('Control+v');
+  assert((await qBox.inputValue()) === question && (await drawn()).length === items0 + 1, `Ctrl+V in the Question box pastes the copied item on the slide (the question stays “${question}”)`);
+  /** A paste of a picture (and `words`, if any) in the box: whether the page took it (else it's the box's own paste). */
+  const pastePicture = (box, words = '') =>
+    box.evaluate(async (el, words) => {
+      const c = new OffscreenCanvas(20, 10);
+      c.getContext('2d').fillRect(0, 0, 20, 10);
+      const d = new DataTransfer();
+      d.items.add(new File([await c.convertToBlob({ type: 'image/png' })], 'shot.png', { type: 'image/png' }));
+      if (words) d.setData('text/plain', words);
+      const e = new ClipboardEvent('paste', { clipboardData: d, bubbles: true, cancelable: true });
+      el.dispatchEvent(e);
+      return e.defaultPrevented;
+    }, words);
+  const pictures = () => canvas.locator('.slide .el img').count();
+  const pics0 = await pictures();
+  await pastePicture(qBox);
+  await page.waitForFunction((n) => document.querySelectorAll('.canvas .slide .el img').length > n, pics0);
+  assert((await qBox.inputValue()) === question, 'a picture pasted in the Question box goes on the slide');
+  // Words with a picture of them alongside (LibreOffice, Keynote) go in the box as words, not on the slide as a picture.
+  const pics1 = await pictures();
+  const tookWords = await pastePicture(qBox, 'Copied from LibreOffice');
+  await page.waitForTimeout(400);
+  assert(!tookWords && (await pictures()) === pics1, 'words pasted with a picture of them are left to the Question box');
+  // In the Answer box, with the Question slide open, a picture would land on the question (it did): it says where to go.
+  const aBox = clue.locator('[data-field="a"]');
+  const answer = await aBox.inputValue();
+  await pastePicture(aBox);
+  await toast.filter({ hasText: 'Open the Answer slide to paste a picture on it' }).waitFor();
+  await page.waitForTimeout(400);
+  assert((await pictures()) === pics1 && (await aBox.inputValue()) === answer, 'a picture pasted in the Answer box doesn’t go on the open Question slide');
+  await canvas.focus();
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((n) => document.querySelectorAll('.canvas .slide .el').length === n, items0);
   // One item: Move to the slide's… sits with X and Y, and names where it went.
   await click(1750, 550);
   const toLeft = position.getByRole('button', { name: "Move to the slide's left edge" });

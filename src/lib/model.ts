@@ -1076,10 +1076,17 @@ export function slideText(slide: Slide): string {
   return slide.elements.find((e) => e.kind === 'text')?.text ?? '';
 }
 
-export function setSlideText(slide: Slide, text: string): void {
-  const el = slide.elements.find((e) => e.kind === 'text');
-  if (el) el.text = text;
-  else slide.elements.push(newTextEl(text));
+/**
+ * Set the slide's primary text. Returns the text box it made when the slide had none (its text was deleted): on top of
+ * the rest, so a picture doesn't hide it.
+ */
+export function setSlideText(slide: Slide, text: string): TextEl | undefined {
+  const el = slide.elements.find((e): e is TextEl => e.kind === 'text');
+  if (el) return void (el.text = text);
+  const t = newTextEl(text);
+  t.zIndex = Math.max(0, ...slide.elements.map((e) => e.zIndex)) + 1;
+  slide.elements.push(t);
+  return t;
 }
 
 /** A clue's question slides in the order they show (the first, then its extra slides). */

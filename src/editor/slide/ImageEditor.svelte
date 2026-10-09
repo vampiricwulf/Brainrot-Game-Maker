@@ -12,6 +12,7 @@
   import { aspectCrop, fitAspect, resizeAround } from '../../lib/editing';
   import { fontChoices } from '../../lib/fonts';
   import { linkHost } from '../../lib/links';
+  import { isTextField } from '../../lib/undokeys';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
@@ -99,13 +100,25 @@
     if (!untrack(() => source?.url)) load();
   });
 
+  /** Bumped when web fonts finish loading: a caption drawn in a font that wasn't loaded yet is drawn again (as autofit does). */
+  let fontsTick = $state(0);
+  onMount(() => {
+    const f = () => fontsTick++;
+    document.fonts?.addEventListener?.('loadingdone', f);
+    return () => document.fonts?.removeEventListener?.('loadingdone', f);
+  });
+  /** The captions' fonts, loaded (a canvas draws a font that isn't yet in a fallback). */
+  const captionFonts = (e: ImageEdits) => Promise.all(e.texts.map((c) => document.fonts?.load(`900 40px ${c.font}`).catch(() => {})));
+
   // Re-render the preview (capped at ~1200px) whenever the edits change. While cropping it shows the whole picture
   // (with its captions and stickers), the crop box over it.
   let raf = 0;
   $effect(() => {
     const snap = JSON.stringify(edits);
     const t = tool;
+    void fontsTick;
     if (!img) return;
+    void captionFonts(edits);
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       const e = JSON.parse(snap) as ImageEdits;
@@ -298,7 +311,11 @@
 
   function startCrop(): void {
     tool = 'crop';
-    edits.crop ??= { x: 0, y: 0, w: 1, h: 1 };
+    // A fresh crop (none yet, removed, reset or undone away) starts free, as its full-picture box is.
+    if (!edits.crop) {
+      edits.crop = { x: 0, y: 0, w: 1, h: 1 };
+      cropAspect = 'free';
+    }
   }
 
   function setAspect(a: 'free' | number): void {
@@ -332,6 +349,7 @@
   function resetAll(): void {
     commit();
     edits = { ...defaultEdits(), v: 2 };
+    cropAspect = 'free';
     selectedId = null;
   }
 
@@ -347,6 +365,8 @@
     if (!img || !source) return;
     saving = true;
     try {
+      // (A font picked a moment ago may still be loading: saved in it, not in a fallback.)
+      await captionFonts(edits);
       const canvas = renderForSave(img, JSON.parse(JSON.stringify(edits)));
       const alpha = /png|gif|webp|svg/.test(source.mime) || edits.rotate % 90 !== 0;
       const type = alpha ? 'image/png' : 'image/jpeg';
@@ -386,7 +406,10 @@
   }
 
   function onkey(e: KeyboardEvent): void {
-    const typing = (e.target as HTMLElement)?.closest?.('input, textarea, select');
+    // A field of any kind: Esc leaves it and Delete stays its own. Only a box that's typed in keeps Ctrl+Z / Ctrl+Y (its
+    // own undo): a slider, colour, checkbox or list has none, so there they undo the image's edits.
+    const inField = !!(e.target as HTMLElement)?.closest?.('input, textarea, select');
+    const typing = isTextField(e.target);
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     if (mod && k === 'enter') {
@@ -404,13 +427,13 @@
     } else if (e.key === 'Escape') {
       e.stopImmediatePropagation();
       // Esc in a field (e.g. the meme caption) just leaves the field; while it asks, Esc keeps editing.
-      if (typing) (e.target as HTMLElement).blur();
+      if (inField) (e.target as HTMLElement).blur();
       else if (discarding) discarding = false;
       else cancel();
     } else if (e.altKey && e.key.startsWith('Arrow')) {
       // Not the clue editor's Prev/Next: that would drop this dialog and its edits.
       e.stopImmediatePropagation();
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !typing) {
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !inField) {
       e.stopImmediatePropagation();
       removeSelected();
     }
@@ -508,7 +531,7 @@
               <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a as 'free' | number)}>{l}</button>
             {/each}
           </div>
-          <button class="small" onclick={() => (commit(), (edits.crop = undefined), (tool = 'move'))}>Remove crop</button>
+          <button class="small" onclick={() => (commit(), (edits.crop = undefined), (cropAspect = 'free'), (tool = 'move'))}>Remove crop</button>
           <button class="small primary" onclick={() => (tool = 'move')}>Done cropping</button>
         {/if}
 

@@ -61,6 +61,8 @@
     slide,
     styletargets,
     stylecategory = false,
+    stylescope,
+    quickfield,
     placeholder,
     badge,
     fill = false,
@@ -72,6 +74,13 @@
     styletargets?: (el: TextEl, scope: string) => TextEl[];
     /** Offer "this category" in "Use this style elsewhere" (a clue's slides, not the Final's). */
     stylecategory?: boolean;
+    /** The slides "Use this style elsewhere" starts on (a Final's questions + answers: it mostly has one question slide). */
+    stylescope?: string;
+    /**
+     * The host's quick box (its data-field) that holds this slide's main text: Ctrl+V of a picture or copied items there
+     * puts them here (in the other side's box, it says to open that slide).
+     */
+    quickfield?: 'q' | 'a';
     /** Shown in the slide's main text box while it's empty. */
     placeholder?: string;
     /** A ribbon in the canvas corner, e.g. "ANSWER". */
@@ -265,6 +274,11 @@
     if (!slide.elements.some((e) => e.kind === 'text') && !at) {
       // No main text any more (it was deleted): bring it back full-slide and shrink-to-fit.
       t = newTextEl('');
+      // A clue's main text comes back in the theme's clue text (the hosts with styletargets are the clue-type slides).
+      if (styletargets) {
+        t.font = game.theme.clueFont ?? t.font;
+        t.color = game.theme.clueColor ?? t.color;
+      }
     } else {
       t = newTextEl('New text', { x: 460, y: 390, w: 1000, h: 300 });
       t.size = 90;
@@ -563,7 +577,8 @@
     // Locked items don't move, but the others line up with them (spacing evenly is only for the ones that move).
     const fixed = spacing ? [] : held;
     if (free.length) undoApi.step(ALIGNED[how][free.length + fixed.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H, fixed));
-    if (spacing && held.length) tell(lockedNote(held.length));
+    // Said when locked items were left out of spacing, or when nothing could move at all (as a nudge says it).
+    if (held.length && (spacing || !free.length)) tell(lockedNote(held.length));
   }
 
   // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
@@ -612,6 +627,15 @@
   function typing(e: Event): boolean {
     return !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
   }
+  /**
+   * The host's quick Question / Answer / Text boxes (outside the editor), which hold its slides' main text: 'this' for
+   * the one of the slide shown here, 'other' for the one of the slide that isn't (a clue's Answer while its Question is open).
+   */
+  function quickBox(e: Event): 'this' | 'other' | null {
+    const box = (e.target as HTMLElement)?.closest?.<HTMLElement>('[data-field="q"], [data-field="a"]');
+    if (!quickfield || !box || root?.contains(box)) return null;
+    return box.dataset.field === quickfield ? 'this' : 'other';
+  }
   /** Focus is on a button or link, where Enter and Space belong to that control. */
   function onControl(e: Event): boolean {
     return !!(e.target as HTMLElement)?.closest?.('button, a[href], summary');
@@ -657,6 +681,25 @@
     if (e.key === 'Escape' && typing(e) && !picker && root?.contains(e.target as Node)) {
       const field = e.target as HTMLElement;
       setTimeout(() => !e.defaultPrevented && document.activeElement === field && field.blur());
+      return;
+    }
+    // Bold / italic / underline in the text box's own Text field too (where typing on the slide puts the cursor): a
+    // textarea has none of its own.
+    const bk = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (bk === 'b' || bk === 'i' || bk === 'u') && !picker && textArea && e.target === textArea && single?.kind === 'text') {
+      e.preventDefault();
+      const t = single;
+      edit(() => {
+        if (bk === 'b') t.weight = t.weight >= 700 ? 400 : 700;
+        else {
+          const key = bk === 'i' ? 'italic' : 'underline';
+          t[key] = !t[key];
+        }
+      });
+      // The typing in the field is a step of its own now, under this one: Ctrl+Z goes through the history (this, then
+      // the typing), not the field's own undo first, which would come back as a step on top. (The editor's Ctrl+Z
+      // follows the field from its focusin, see createFieldTracker: as if just focused, it has no typing of its own.)
+      textArea.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
       return;
     }
     if (typing(e) || picker) return;
@@ -822,14 +865,41 @@
   }
 
   function onpaste(e: ClipboardEvent): void {
-    if (!inCharge() || typing(e) || previewing) return;
+    if (!inCharge() || previewing) return;
     const data = e.clipboardData;
     const files = data?.files;
     const text = data?.getData('text/plain') ?? '';
     // (Word, PowerPoint and Excel put a picture of the text alongside it: the text is what was meant.)
-    if (files?.length && !officeTextPaste(data?.getData('text/html') ?? '', text, files.length)) {
+    const pictures = !!files?.length && !officeTextPaste(data?.getData('text/html') ?? '', text, files.length);
+    if (typing(e)) {
+      // In the quick Question / Answer box of the slide shown (where the keys are when a clue opens), words go in as
+      // words (even with a picture of them alongside, as LibreOffice and Keynote put there); a picture alone, or copied
+      // items with no words ("1 slide item"), go on the slide. In the other side's box they'd land on a slide that isn't
+      // shown, so it says where to paste them. Other fields keep their paste.
+      const box = quickBox(e);
+      if (!box) return;
+      const picture = pictures && !text.trim();
+      const items = pastingOurs(data ?? null) && /^\d+ slide items?$/.test(clipboard.text);
+      if (box === 'other' && (picture || items)) {
+        e.preventDefault();
+        return void toast(`Open the ${quickfield === 'q' ? 'Answer' : 'Question'} slide to paste ${picture ? 'a picture' : 'the items'} on it`);
+      }
+      if (picture) {
+        e.preventDefault();
+        return void dropFiles(files!, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
+      }
+      if (items) {
+        e.preventDefault();
+        pasteItems();
+      } else if (pastingGone(data ?? null)) {
+        e.preventDefault();
+        toast('Those items were copied in another tab or before the page reloaded: copy them again here');
+      }
+      return;
+    }
+    if (pictures) {
       e.preventDefault();
-      dropFiles(files, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
+      dropFiles(files!, { x: SLIDE_W / 2, y: SLIDE_H / 2 });
       return;
     }
     if (pastingOurs(data ?? null)) {
@@ -1124,6 +1194,7 @@
         <Inspector
           el={single}
           {game}
+          onTile={!slide.background.color && !slide.background.gradient && !slide.background.image}
           fit={fits[single.id]}
           bind:textArea
           onorder={order}
@@ -1138,6 +1209,7 @@
           }}
           onapplystyle={styletargets ? applyStyle : undefined}
           {stylecategory}
+          {stylescope}
           onuploadfont={(from) => {
             replacing = null;
             picker = 'font';

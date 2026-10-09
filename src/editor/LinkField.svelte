@@ -47,11 +47,16 @@
   let fetched = $state(false);
   let controller: AbortController | null = null;
   let input = $state<HTMLInputElement>();
+  /** The box went away (another slide or clue, the clue closed, ✕): a download still going stops, and says so. */
+  let gone = false;
 
   onMount(() => {
     if (untrack(() => initial)) go();
     else if (untrack(() => autofocus)) input?.focus();
-    return () => controller?.abort();
+    return () => {
+      gone = true;
+      controller?.abort();
+    };
   });
 
   function go(kind?: LinkKind): void {
@@ -98,7 +103,11 @@
       if (added.saved) warnIfUnplayable(r);
       onmedia(r, added);
     } catch (e) {
-      if (isAbort(e)) return;
+      if (isAbort(e)) {
+        // (Cancel and a newer link say nothing more; a box that closed has nowhere else to show it stopped.)
+        if (gone) toast('Stopped downloading the link: its box closed. Paste the link again to add it.');
+        return;
+      }
       error = e instanceof LinkError || e instanceof Error ? e.message : String(e);
       // A Drive file the desktop app couldn't download may still play in Drive's own player; otherwise just say why.
       if (link.drive && onembed && e instanceof LinkError && /drive-(quota|no-download|page)/.test(e.problem.problem)) drive = { link, step: 'video' };

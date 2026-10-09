@@ -13,6 +13,9 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## 2026-10-08
 
+### Added
+- Slide editor: Ctrl+B, Ctrl+I and Ctrl+U work in a text box's Text field too (Ctrl+Z takes back the style first, then the typing); on a theme with dark slide text, "↺ Theme colour" beside a text box's Color puts it back to the theme's text colour. (56551cb, d213ca8)
+
 ### Changed
 - Turning Teams on or off while phones are in the room asks first (every phone has to pick again), and the phones then say which way it went. (af3bdf8, 79e4ba2)
 - The phone's name box says everyone sees the name (it shows on stream); with teams, the wager and answer boxes say your team sees them too. (af3bdf8)
@@ -26,6 +29,10 @@ in plain words for the people who make and host games. Anything committed but no
 - End of game: Ctrl+Z on the results screen, or on the tiebreaker clue before a winner is picked, goes back to the Final's reveals when it undoes a judgment there (it changed the winner out of sight or did nothing); during the tiebreaker clue the panel says who won it, and picking the other tied player changes the winner; declared co-winners count only for the tie they were declared for; the scores-only window no longer highlights the last picker on the results or during the tiebreaker. (c9c219b, 625aa04)
 - After ▶ Next game… (or Keep & leave after a game), the phones say the host is setting up instead of still showing their place from the last game. (c9c219b)
 - Player files: the players and rules set up before the game are kept on ◀ Back and ▶ Play again; the pre-game "things to check" no longer point to screens only the builder has (missing files and expired links say to ask whoever made the game for a new copy). (ed16d2a, 625aa04)
+- Clue editor: a picture or copied slide items pasted (Ctrl+V) in the Question or Answer box go on that slide when it's the one open (items went in as the words "1 slide item", and pictures did nothing); in the other box it says to open that slide first. Words still paste as words. (56551cb, d213ca8)
+- Clue editor: a question or answer typed again after its text box was deleted comes back on top of the pictures, in the theme's clue font and colour; a 🌐 Link download that stops because its box closed says so; on a theme with dark slide text, a text box's Color shows the colour the words are drawn in, and white can be picked; "Move to the slide's…" on a locked item says it skipped it. (56551cb)
+- In the Final and the tiebreaker, "Use this style elsewhere … in this round" styles only their own slides (it restyled every board clue). (56551cb, d213ca8)
+- Image editor: a caption font just picked shows once it loads (Apply waits for it); Ctrl+Z and Ctrl+Y work while a slider, colour or list has the focus; Remove crop and Reset all set the crop shape back to Free. (56551cb)
 
 ## 2026-10-05
 

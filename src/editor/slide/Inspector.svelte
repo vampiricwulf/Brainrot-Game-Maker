@@ -6,12 +6,15 @@
   import type { EntranceType, Fit, Game, SlideElement, TextEl } from '../../lib/model';
   import { openMediaPopup } from '../../lib/mediactl.svelte';
   import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, formatWhen, linkHost } from '../../lib/links';
+  import { stageText } from '../../lib/theme';
+  import { toHex } from '../../lib/colors';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import NumField from './NumField.svelte';
 
   let {
     el,
     game,
+    onTile = false,
     fit,
     textArea = $bindable(),
     onorder,
@@ -20,6 +23,7 @@
     onreplace,
     onapplystyle,
     stylecategory = false,
+    stylescope,
     onuploadfont,
     oneditimage,
     onedit,
@@ -28,6 +32,8 @@
   }: {
     el: SlideElement;
     game: Game;
+    /** Nothing of the slide's own behind its text: plain white text is drawn in the theme's stage text colour. */
+    onTile?: boolean;
     /** A text element's size as drawn on the canvas (after shrink-to-fit). */
     fit?: FitResult;
     textArea?: HTMLTextAreaElement;
@@ -40,6 +46,8 @@
     onapplystyle?: (el: TextEl, scope: string) => void;
     /** Offer "this category" scopes for it. */
     stylecategory?: boolean;
+    /** The scope it starts on (else this category's questions, or this round's). */
+    stylescope?: string;
     /** Upload a font: a picker drops from `from`, the ＋ button. */
     onuploadfont: (from: HTMLElement) => void;
     oneditimage?: () => void;
@@ -58,6 +66,18 @@
   /** Start at / Stop at: empty is none, and never before 0. */
   const seconds = (v: string) => (v === '' || !Number.isFinite(+v) ? undefined : Math.max(0, +v));
   const lock = (on: boolean) => edit(() => (el.locked = on || undefined));
+
+  const WHITE = /^#?(fff|ffffff)$/i;
+  const themeText = $derived(toHex(stageText(game.theme)) ?? '#ffffff');
+  /** Drawn in the theme's stage text colour rather than its own (TextBox's `themed`): the Color box shows that one. */
+  const themedText = $derived(el.kind === 'text' && onTile && !el.background && WHITE.test(el.color.trim()));
+  function setTextColor(t: TextEl, v: string): void {
+    // White picked where white means "the theme's colour" (a dark one, as Pastel's): kept white, as a white no eye can
+    // tell apart.
+    t.color = onTile && !t.background && WHITE.test(v) && !WHITE.test(themeText) ? '#fefefe' : v;
+  }
+  /** A colour of its own there instead: the Color box can't pick the theme's again (white is white), so ↺ does. */
+  const ownOnTile = $derived(el.kind === 'text' && onTile && !el.background && !themedText && !WHITE.test(themeText));
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
   const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
@@ -85,7 +105,7 @@
   }
 
   // svelte-ignore state_referenced_locally
-  let applyScope = $state(stylecategory ? 'cat-q' : 'round-q');
+  let applyScope = $state(stylescope ?? (stylecategory ? 'cat-q' : 'round-q'));
 </script>
 
 <!-- A file that plays from its link: say so, and offer to save a copy. -->
@@ -125,7 +145,13 @@
           <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted"> · showing {fit.size}</span>{/if}</span>
           <NumField min={8} max={600} bind:value={el.size} fallback={110} />
         </label>
-        <label class="field">Color<input type="color" bind:value={el.color} /></label>
+        <!-- (↺ outside the label: a click on it, gone as it's done, would open the colour picker.) -->
+        <div class="color">
+          <label class="field">Color<input type="color" value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} /></label>
+          {#if ownOnTile}
+            <button class="small" onclick={() => ((el as TextEl).color = '#ffffff')} title="Back to the theme's text colour (it follows the theme when that changes)">↺ Theme colour</button>
+          {/if}
+        </div>
       </div>
       {#if fit?.overflow && el.text}
         <p class="warn">
@@ -431,6 +457,12 @@
   }
   .sub {
     padding-left: 24px;
+  }
+  .color {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 6px;
   }
   .toggles button {
     padding: 4px 8px;

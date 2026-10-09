@@ -5,6 +5,7 @@
   import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
   import { questionSlides, setSlideText, slideText, type SlidesRound, type TextEl } from '../lib/model';
+  import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import SlideTabs, { slideKeyOf } from './SlideTabs.svelte';
 
@@ -46,11 +47,11 @@
 <!-- Quick text: the slide's main text, so a plain slide never needs the canvas. -->
 <label class="field quick">
   {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
-  <textarea rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value)}></textarea>
+  <textarea rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
 </label>
 <SlideTabs holder={round} bind:side bind:qi what="the round’s" plain />
 {#key `${round.id}-${slideKeyOf(slide)}`}
-  <SlideEditor {slide} styletargets={styleTargets} placeholder="Click to type on the slide" />
+  <SlideEditor {slide} styletargets={styleTargets} quickfield="q" placeholder="Click to type on the slide" />
 {/key}
 
 <style>

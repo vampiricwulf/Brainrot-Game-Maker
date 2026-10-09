@@ -141,6 +141,10 @@ try {
   await clickAt(60, 1000);
   assert((await inspectorKind()) === 'none', 'clicking a spot with only the locked picture selects nothing');
   await layers.filter({ hasText: 'cover.png' }).locator('.name').click();
+  // Move to the slide's… leaves it too, and says why (it used to do nothing, silently).
+  await pos.getByRole('button', { name: "Move to the slide's bottom edge" }).click();
+  assert((await page.locator('.notice').innerText()).includes('Skipped 1 locked item'), "Move to the slide's… on a locked item says it skipped it");
+  await layers.filter({ hasText: 'cover.png' }).locator('.name').click();
   await page.keyboard.press('Delete');
   assert((await layers.count()) === 2, 'Delete keeps a locked item');
   assert((await page.locator('.notice').innerText()).includes('Skipped 1 locked item'), 'and says it skipped it');
