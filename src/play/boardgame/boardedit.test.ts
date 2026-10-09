@@ -86,6 +86,19 @@ describe('editing a board during play: the operations', () => {
     expect(round.spaces).toHaveLength(11);
   });
 
+  it('deleting a space moves a removed player’s kept place too, but names only those still playing', () => {
+    const { session, round, bs, id } = setup();
+    bs.positions.a = { space: id('Space 5') };
+    // Cat was taken out in 👥 Players: her place is kept, for if she comes back.
+    bs.positions.c = { space: id('Space 5') };
+    const d = deleteLiveSpace(session, round, bs, id('Space 5'))!;
+    expect(d.text).toBe('Deleted space “Space 5” (Ann moved to Space 4)');
+    expect(bs.positions.c.space).toBe(id('Space 4'));
+    bs.positions.a = { space: id('Space 6') };
+    expect(deleteLiveSpace(session, round, bs, id('Space 4'))!.text).toBe('Deleted space “Space 4”');
+    expect(bs.positions.c.space).toBe(id('Space 3'));
+  });
+
   it('deleting Start moves Start; a space nobody leads to sends its players on, or to the nearest', () => {
     const { session, round, bs, id } = setup();
     round.start = id('Start');

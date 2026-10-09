@@ -318,6 +318,23 @@ describe('action log', () => {
     expect([w().parties.length, w().active, w().split]).toEqual([1, 'p1', false]);
   });
 
+  it('puts split view back on when undoing a Regroup that turned it off', () => {
+    const { game, session } = setup();
+    const pos = (screen: string) => ({ map: 'm', screen, x: 0, y: 0 });
+    const p1 = { id: 'p1', name: 'Party 1', members: ['a'] };
+    const p2 = { id: 'p2', name: 'Party 2', members: ['b'] };
+    session.worlds = { w: { positions: { a: pos('s1'), b: pos('s2') }, parties: [p1, p2], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false, split: true } };
+    const w = () => session.worlds!.w;
+    logged(session, 'Regroup', () => {
+      w().parties = [{ ...p1, members: ['a', 'b'] }];
+      w().split = false;
+    });
+    undoAction(session, game);
+    expect([w().parties.length, w().split]).toEqual([2, true]);
+    redoAction(session, game);
+    expect([w().parties.length, w().split]).toEqual([1, false]);
+  });
+
   it('undoes improvising on the game being played: a new screen, a renamed object, a live edit', () => {
     const { game, session } = setup();
     const world = newWorld('W');

@@ -195,6 +195,14 @@ describe('objects and items on the RPG stage', () => {
     expect(st.objects[gold.id].taken).toBe(true);
   });
 
+  it('leaves a pile of currency where it is when the game has no currency to give', () => {
+    const { game, session, st, gold } = withLoot();
+    game.statFields = [];
+    gold.role.field = undefined as never;
+    expect(pickUp(game, session, st, gold, 'p1')).toBe('Gold gives no currency: add one in 📊 Stats & Items');
+    expect(st.objects[gold.id]).toBeUndefined();
+  });
+
   it('gives an item to another player, or drops it where it was dragged on the stage', () => {
     const { game, session, st, potion } = withLoot();
     pickUp(game, session, st, potion, 'p0');

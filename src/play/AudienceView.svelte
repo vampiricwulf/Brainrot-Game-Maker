@@ -9,7 +9,7 @@
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, newTextEl, roundName, type ClueRef, type Slide, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
   import { onMount, untrack } from 'svelte';
-  import { joinSpot, type Rect } from '../lib/joinspot';
+  import { joinSpot, type Ink, type Rect } from '../lib/joinspot';
   import { holdWhile, provideCover } from '../lib/hold';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
@@ -241,6 +241,34 @@
   const buzzNow = $derived(
     !!live.room && game.settings.buzzArm === 'host' && session.phase === 'clue' && !session.dd && !session.revealed && live.buzz?.phase === 'armed' && !live.overlay,
   );
+  /** Where each text box's words are on the slide shown (a text box's empty frame isn't something the join code would cover). */
+  let ink = $state<Ink>({});
+  function inkOf(area: HTMLElement) {
+    const measure = () => {
+      const out: Ink = {};
+      for (const el of area.querySelectorAll<HTMLElement>('[data-el]')) {
+        const inner = el.querySelector<HTMLElement>(':scope > .text > .inner');
+        // (offsetTop/offsetHeight: local slide px inside the item, whatever the stage's scale or an entrance's transform.)
+        if (inner?.offsetHeight) out[el.dataset.el!] = { y: inner.offsetTop, h: inner.offsetHeight };
+      }
+      if (Object.entries(out).some(([id, r]) => ink[id]?.y !== r.y || ink[id]?.h !== r.h)) ink = { ...ink, ...out };
+    };
+    // Re-measured when autofit or fonts change a box's height; a new slide's boxes (question -> answer) are watched too.
+    const ro = new ResizeObserver(measure);
+    const watch = () => {
+      ro.disconnect();
+      area.querySelectorAll('.text > .inner').forEach((n) => ro.observe(n));
+    };
+    const mo = new MutationObserver(watch);
+    mo.observe(area, { childList: true, subtree: true });
+    watch();
+    return {
+      destroy: () => {
+        ro.disconnect();
+        mo.disconnect();
+      },
+    };
+  }
   /**
    * In a corner over a slide: one with nothing of the slide (nor the caption, slide dots or countdown) under it, smaller
    * if need be; with every corner taken it isn't shown. (A title card's middle is the round's name: its corner is free.)
@@ -269,7 +297,7 @@
     }
     const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : sr ? questionSlides(sr).length : 1;
     if (of > 1) taken.push({ x: 960 - (50 * of + 22) / 2, y: 1080 - 31 - 40, w: 50 * of + 22, h: 40 });
-    return joinSpot(slide, taken, bandScale ?? 1);
+    return joinSpot(slide, taken, bandScale ?? 1, ink);
   });
   /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
   const codeShown = $derived(!!codeSpot && !live.overlay && (codeSpot !== 'corner' || !!spot));
@@ -395,7 +423,7 @@
         data-slide={session.revealed ? 'answer' : at + 1}
         in:scale={{ start: quiet ? 0.98 : 0.15, duration: quiet ? 200 : 450 }}
       >
-        {#if !waiting}<div class="slide-area" style:scale={bandScale}><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
+        {#if !waiting}<div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
       </div>
     {/key}
     <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
@@ -492,7 +520,7 @@
   {@const srOf = questionSlides(sr).length}
   {#key `${sr.id}-${srAt}`}
     <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade={{ duration: 300 }}>
-      <div class="slide-area" style:scale={bandScale}><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
+      <div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
     </div>
   {/key}
   {#if srOf > 1}
@@ -513,7 +541,7 @@
       data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
       in:fade={{ duration: 300 }}
     >
-      <div class="slide-area" style:scale={bandScale}><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
+      <div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
       <div class="final-label small">TIEBREAKER</div>
     </div>
   {/key}

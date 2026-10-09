@@ -35,6 +35,18 @@ describe('joinSpot (the join code on a slide)', () => {
     expect(joinSpot(slide([1500, 900, 400, 160]), [{ x: 0, y: 0, w: 1920, h: 150 }])).toEqual({ corner: 'bl', small: false });
   });
 
+  it('a text box takes the room of its words, when measured, not of its whole frame', () => {
+    // A new text box's frame is nearly the whole slide: one short line in its middle leaves every corner free.
+    const s = slide([120, 90, 1680, 900]);
+    expect(joinSpot(s)).toBeNull();
+    expect(joinSpot(s, [], 1, { [s.elements[0].id]: { y: 380, h: 140 } })).toEqual({ corner: 'br', small: false });
+    // Words filling nearly all of it: only the small badge fits, under them.
+    expect(joinSpot(s, [], 1, { [s.elements[0].id]: { y: 30, h: 830 } })).toEqual({ corner: 'br', small: true });
+    // A box with a fill shows its whole frame.
+    Object.assign(s.elements[0], { background: { color: '#000', padding: 20, radius: 0 } });
+    expect(joinSpot(s, [], 1, { [s.elements[0].id]: { y: 380, h: 140 } })).toBeNull();
+  });
+
   it('a turned item takes the room of its turned box', () => {
     // 1000×100 bar turned 90°: 100 wide, 1000 tall, centred on (1810, 540): reaches the right corners.
     const s = slide([1310, 490, 1000, 100]);

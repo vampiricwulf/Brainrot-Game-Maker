@@ -766,6 +766,13 @@ try {
   await shopTc.getByRole('button', { name: /^Potion ·/ }).click();
   await shopTc.getByText('Short by 🪙1 for Potion.').waitFor();
   assert(true, 'short of gold, the host is asked');
+  // The row follows the buyer's gold: with enough it goes, and Ctrl+Z (taking the gold back) brings it back.
+  await firstCard.getByRole('button', { name: 'Player 1 Gold plus 1' }).click();
+  await shopTc.getByText(/^Short by/).waitFor({ state: 'detached' });
+  assert(true, 'with the gold to pay, the host is no longer told they are short');
+  await page.keyboard.press('Control+z');
+  await shopTc.getByText('Short by 🪙1 for Potion.').waitFor();
+  assert(true, 'Ctrl+Z takes the gold back and the row says so again');
   await shopTc.getByRole('button', { name: 'Sell anyway' }).click();
   assert((await potions()) === 2, 'selling anyway adds it to the buyer’s inventory');
   assert((await shopTc.innerText()).includes('Player 1 🪙-1'), 'and their gold goes below zero');

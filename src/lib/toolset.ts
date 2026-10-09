@@ -423,12 +423,14 @@ const SHOWN: Record<string, string[]> = { worlds: ['mapShown', 'split'], boardga
 function restore(session: Session, json: string, game?: Game): void {
   const followed = Object.fromEntries(Object.entries(session.worlds ?? {}).map(([id, st]) => [id, st.active]));
   const partiesWere = Object.fromEntries(Object.entries(session.worlds ?? {}).map(([id, st]) => [id, st.parties.map((p) => p.id).join()]));
+  const partyIds = (w: unknown) => ((w as { parties?: { id: string }[] } | null | undefined)?.parties ?? []).map((p) => p.id).join();
   // Older saves kept the whole score log here too: it's left alone (a step's own points are in its `score`).
   for (const [k, v] of Object.entries(JSON.parse(json))) {
     if ((PARTS as readonly string[]).includes(k)) {
       const part = (v ?? {}) as Record<string, Record<string, unknown>>;
       const now = session[k as (typeof PARTS)[number]] as Record<string, Record<string, unknown>> | undefined;
-      for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id]) part[id][f] = now[id][f];
+      // (A step that merged or split parties turned split view off itself: undoing or redoing it puts that back too.)
+      for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id] && !(f === 'split' && partyIds(part[id]) !== partyIds(now[id]))) part[id][f] = now[id][f];
       Object.assign(session, { [k]: part });
     } else if ((HOST as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? undefined });
     else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);

@@ -133,10 +133,12 @@
       {/each}
     </div>
   {/if}
-  {#if o.short}
+  <!-- (Worked out from the buyer's money now: an Undo, a sale or a score change can shrink the gap or close it.) -->
+  {@const gap = o.short ? (o.short.price ?? shopPrice(game, shop, o.short.item)) - balance(game, session, shop, buyer) : 0}
+  {#if o.short && gap > 0}
     {@const it = o.short.item}
     <div class="row warn" role="alert">
-      <span>{o.short.error} for {itemDef(game, it)?.name}.</span>
+      <span>Short by {formatPrice(game, shop, gap)} for {itemDef(game, it)?.name}.</span>
       {#if asking?.what === 'price' && asking.item === it}
         <label class="check">
           Price

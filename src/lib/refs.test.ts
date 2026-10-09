@@ -26,6 +26,16 @@ describe('what points nowhere', () => {
     expect(objectPointsNowhere(game, { id: 'o', kind: 'shape', role: { class: 'shop' } } as never, world)).toBe(true);
   });
 
+  it('a pile of currency with no currency in the game (none chosen, none to fall back on)', () => {
+    const { game, world } = withWorld();
+    const pile = { id: 'o', kind: 'shape', role: { class: 'currency', amount: 10 } } as never;
+    expect(objectPointsNowhere(game, pile, world)).toBe(true);
+    game.statFields = [{ id: 'hp', name: 'HP', type: 'number', start: 0, audience: 'hud', display: 'counter' }];
+    expect(objectPointsNowhere(game, pile, world)).toBe(true);
+    game.statFields.push({ id: 'gold', name: 'Gold', type: 'number', start: 0, audience: 'hud', display: 'counter', currency: true });
+    expect(objectPointsNowhere(game, pile, world)).toBe(false);
+  });
+
   it('Move by dice the app can’t read', () => {
     const r = newBoardGameRound('B');
     r.mover = { kind: 'dice', dice: '2d6+1' };

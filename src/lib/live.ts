@@ -116,8 +116,8 @@ export type Overlay =
       shopId: Id;
       /** Who's buying (default: the player who opened it). */
       buyer?: Id;
-      /** A purchase the buyer can't afford, waiting for the host's call (host panel only). */
-      short?: { item: Id; error: string };
+      /** A purchase the buyer can't afford, waiting for the host's call (host panel only); `price`: one typed in. */
+      short?: { item: Id; error: string; price?: number };
     };
 
 /** A wheel spun alongside the main one: its own slices, spin and result. */

@@ -1,6 +1,7 @@
 // Where the phone buzzers' join code goes on a slide (1920×1080 stage coordinates): a corner with nothing of the slide
 // under it, so it never covers a word or a picture. Full size first, then just the code; nowhere free, not at all.
 import type { Slide, SlideElement } from './model';
+import { textBleed } from './textfx';
 
 export type Corner = 'br' | 'tr' | 'tl' | 'bl';
 export interface Rect {
@@ -9,6 +10,8 @@ export interface Rect {
   w: number;
   h: number;
 }
+/** Each text box's words, measured on the stage: their top and height inside its frame (slide px). */
+export type Ink = Record<string, { y: number; h: number }>;
 
 const W = 1920;
 const H = 1080;
@@ -44,13 +47,23 @@ export function cornerRect(corner: Corner, size: { w: number; h: number }): Rect
 
 /**
  * The first free corner for the badge on `slide`, full size or small. `scale`: the slide drawn smaller from the bottom
- * middle (under a countdown). `taken`: other things on screen there (the caption, the slide dots, the countdown). An
- * item filling (nearly) the whole stage is a backdrop, not something the badge would hide.
+ * middle (under a countdown). `taken`: other things on screen there (the caption, the slide dots, the countdown). `ink`:
+ * where text boxes' words are, when measured. An item filling (nearly) the whole stage is a backdrop, not something the
+ * badge would hide.
  */
-export function joinSpot(slide: Slide | undefined, taken: Rect[] = [], scale = 1): { corner: Corner; small: boolean } | null {
+export function joinSpot(slide: Slide | undefined, taken: Rect[] = [], scale = 1, ink: Ink = {}): { corner: Corner; small: boolean } | null {
   const boxes = (slide?.elements ?? []).flatMap((e) => {
-    const b = seen(e);
+    let b = seen(e);
     if (!b) return [];
+    // A text box with no fill shows only its words: the empty rest of its frame (a new box's is nearly the whole slide) is free.
+    const w = ink[e.id];
+    if (w && e.kind === 'text' && !e.background && e.rotation % 360 === 0) {
+      const m = textBleed(e) + 8;
+      const y0 = Math.max(e.y, e.y + w.y - m);
+      const y1 = Math.min(e.y + e.h, e.y + w.y + w.h + m);
+      if (y1 <= y0) return [];
+      b = { x: e.x, y: y0, w: e.w, h: y1 - y0 };
+    }
     const x0 = Math.max(0, b.x);
     const y0 = Math.max(0, b.y);
     const x1 = Math.min(W, b.x + b.w);

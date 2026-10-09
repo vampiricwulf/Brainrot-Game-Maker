@@ -74,7 +74,8 @@ export function objectPointsNowhere(game: Game, el: SlideElement, world: World):
   if ((r.class === 'npc' || r.class === 'shop') && r.shop && !game.shops?.some((s) => s.id === r.shop)) return true;
   // A shop with no shop chosen has nothing to sell (its card has no 🛒).
   if (r.class === 'shop' && !r.shop) return true;
-  if (r.class === 'currency' && r.field && !game.statFields?.some((f) => f.id === r.field)) return true;
+  // (A pile with no currency chosen gives the first currency, as picking it up does; with none, it points nowhere.)
+  if (r.class === 'currency' && !(r.field ? game.statFields?.some((f) => f.id === r.field) : game.statFields?.some((f) => f.type === 'number' && f.currency))) return true;
   return (r.actions ?? []).some((a) => actionProblem(game, a, { world }) !== null);
 }
 

@@ -249,6 +249,8 @@ export function pickUp(game: Game, session: Session, st: WorldState, el: SlideEl
   let text = `${names(session, [playerId])} picks up ${objectName(el)}`;
   // Currency: only what fits under the player's max; the rest stays on the screen.
   const f = role?.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined;
+  // (No currency in the game: nothing to give, so the pile stays where it is.)
+  if (role?.class === 'currency' && !f) return `${objectName(el)} gives no currency: add one in 📊 Stats & Items`;
   const amount = pileAmount(st, el);
   const fits = f ? Math.min(amount, statRoom(game, session, playerId, f)) : amount;
   if (f && amount > 0 && fits <= 0) return `${names(session, [playerId])} can’t carry any more ${f.name} (at most ${formatStat(f, f.max ?? 0)})`;

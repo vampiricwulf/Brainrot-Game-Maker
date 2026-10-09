@@ -137,7 +137,9 @@ export function deleteLiveSpace(session: Session, round: BoardGameRound, bs: Boa
     for (const a of [...(x.onPass ?? []), ...(x.onLand ?? [])]) if (a.do === 'goto' && a.space === id) a.space = undefined;
   if (bs) rehome(round, bs);
   const who = (pid: Id) => session.players.find((p) => p.id === pid)?.name ?? '?';
-  const went = moved.length && to ? ` (${nameList(moved.map((m) => who(m.playerId)))} moved to ${to.name})` : '';
+  // (A player taken out keeps their place, moved too, for if they come back; the log names only those still playing.)
+  const named = moved.filter((m) => session.players.some((p) => p.id === m.playerId));
+  const went = named.length && to ? ` (${nameList(named.map((m) => who(m.playerId)))} moved to ${to.name})` : '';
   return { moved, bridged, text: `Deleted space “${s.name}”${went}` };
 }
 
