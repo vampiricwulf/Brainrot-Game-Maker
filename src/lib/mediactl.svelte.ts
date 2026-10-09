@@ -209,16 +209,16 @@ export const POPUP_FAILED = "Couldn't open the link. If the browser blocked the 
  */
 export function openMediaPopup(url: string): boolean {
   if (!isWebUrl(url)) return false;
-  // Opened blank and cut loose before the link loads: the page there gets no handle on this one (it could say hello as
-  // the scores window, press the host's keys, or send this tab somewhere else). So each link gets a window of its own:
-  // this page can't reach the last one any more to load another link in it.
-  const w = window.open('', '_blank', 'popup=yes,width=1280,height=720');
+  // Cut loose at once, before the link loads: the page there gets no handle on this one (it could say hello as the
+  // scores window, press the host's keys, or send this tab somewhere else). Each link gets a window of its own. The
+  // link goes in the request itself, not about:blank first: the desktop app's window is built for the URL asked for,
+  // and WebView2 loads that. ('noopener' would cut it loose too, but window.open then returns null, as when blocked.)
+  const w = window.open(url, '_blank', 'popup=yes,width=1280,height=720');
   if (!w) return false;
   try {
     w.opener = null;
   } catch {
     // (Not this page's to change: it can't reach this page anyway.)
   }
-  w.location.href = url;
   return true;
 }

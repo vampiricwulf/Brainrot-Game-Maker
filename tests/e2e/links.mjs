@@ -408,7 +408,7 @@ await page.locator('.mc').getByRole('button', { name: '▶ Show player' }).click
 await frame.waitFor();
 assert(true, 'Show player puts it back');
 const [pop] = await Promise.all([context.waitForEvent('page'), page.locator('.mc').getByRole('button', { name: 'Open player window ↗' }).click()]);
-// (It opens blank, then goes to the link.)
+// (Its first address can still be about:blank while the link starts loading.)
 await pop.waitForURL(`https://drive.google.com/file/d/${DRIVE_VID}/preview`, { waitUntil: 'commit' });
 assert(true, "Open player window opens Drive's player in its own window");
 await pop.waitForLoadState();
