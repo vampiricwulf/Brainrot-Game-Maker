@@ -5,7 +5,7 @@
 import { deleteSave, listSaves, saveToSaves, type SaveEntry } from './desktop.svelte';
 import { safeFilename } from './fileio';
 import type { Game } from './model';
-import { buildPack } from './pack';
+import { buildPack, MAX_PACK_READ } from './pack';
 
 /** The short tag of a game's id that its autosaves carry. */
 export function autosaveTag(gameId: string): string {
@@ -24,9 +24,10 @@ function slotOf(name: string, tag: string): number {
 
 /**
  * Where the next autosave goes: the first slot not written yet, else the oldest; and this game's autosaves to delete
- * then: slots past the number kept (it was lowered), and the slot's copy under an older title.
+ * then: slots past the number kept (it was lowered), and the slot's copy under an older title. `big`: the pack is too
+ * big to be opened again (see MAX_PACK_READ), so it goes in a slot already holding one of those when there is one.
  */
-export function planAutosave(game: Pick<Game, 'title' | 'id'>, saves: SaveEntry[], keep: number): { name: string; drop: SaveEntry[] } {
+export function planAutosave(game: Pick<Game, 'title' | 'id'>, saves: SaveEntry[], keep: number, big = false): { name: string; drop: SaveEntry[] } {
   const tag = autosaveTag(game.id);
   const mine = saves.map((s) => ({ s, n: slotOf(s.name, tag) })).filter((x) => x.n > 0);
   // Both folders count: autosaves go to Documents when the app's folder can't be written. The newest copy of a slot wins.
@@ -35,19 +36,24 @@ export function planAutosave(game: Pick<Game, 'title' | 'id'>, saves: SaveEntry[
   let slot = 1;
   while (slot <= keep && slots.has(slot)) slot++;
   if (slot > keep) slot = [...slots].sort((a, b) => a[1] - b[1])[0][0];
+  // (Rotating would replace, one by one, the older autosaves that still open with ones that don't.)
+  const over = big ? mine.filter((x) => x.n <= keep && x.s.modified === slots.get(x.n) && x.s.size >= MAX_PACK_READ) : [];
+  if (over.length) slot = over.sort((a, b) => b.s.modified - a.s.modified)[0].n;
   const name = autosaveName(game, slot);
   // (Windows file names ignore case: "my quiz (…)" after a retitle to "My Quiz" is the file just written, not an old one.)
   const same = (a: string) => a.toLowerCase() === name.toLowerCase();
   return { name, drop: mine.filter((x) => x.n > keep || (x.n === slot && !same(x.s.name))).map((x) => x.s) };
 }
 
-/** Write one autosave. Returns where it went. */
-export async function autosave(game: Game, keep: number): Promise<string> {
+/** Write one autosave. Returns where it went, and how big it is (see MAX_PACK_READ). */
+export async function autosave(game: Game, keep: number): Promise<{ path: string; bytes: number }> {
   // (The setting's box left empty or at 0 while typing: at least one is kept.)
   keep = Math.max(1, Math.floor(keep) || 3);
-  const { name, drop } = planAutosave(game, await listSaves(), keep);
   const { blob } = await buildPack(game);
+  const big = blob.size >= MAX_PACK_READ;
+  const { name, drop } = planAutosave(game, await listSaves(), keep, big);
   const { path } = await saveToSaves(name, blob, 'overwrite');
-  for (const s of drop) await deleteSave(s).catch((err) => console.warn(`Could not delete the old autosave ${s.name}`, err));
-  return path;
+  // (One too big to open again deletes nothing: the older autosaves may be the only ones that still open.)
+  if (!big) for (const s of drop) await deleteSave(s).catch((err) => console.warn(`Could not delete the old autosave ${s.name}`, err));
+  return { path, bytes: blob.size };
 }

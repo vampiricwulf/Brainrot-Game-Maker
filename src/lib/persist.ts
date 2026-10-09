@@ -37,9 +37,12 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
   }
 }
 
-/** Told how each write went (null: it worked), so the app can say when autosave stops working (e.g. storage is full). */
-let onWrite: (err: unknown) => void = () => {};
-export function watchWrites(fn: (err: unknown) => void): void {
+/**
+ * Told how each write went (null: it worked), so the app can say when autosave stops working (e.g. storage is full).
+ * A failure comes with what failed to be written (see write).
+ */
+let onWrite: (err: unknown, key?: string) => void = () => {};
+export function watchWrites(fn: (err: unknown, key?: string) => void): void {
   onWrite = fn;
 }
 
@@ -65,7 +68,7 @@ export async function write(key: string, fn: () => Promise<void>): Promise<boole
   } catch (err) {
     console.warn('Autosave failed:', err);
     failed.set(key, fn);
-    onWrite(err);
+    onWrite(err, key);
     return false;
   }
   if (failed.size) return retryWrites();
@@ -85,7 +88,7 @@ export function retryWrites(): Promise<boolean> {
           await fn();
           if (failed.get(key) === fn) failed.delete(key);
         } catch (err) {
-          onWrite(err);
+          onWrite(err, key);
           return false;
         }
       }
@@ -256,28 +259,48 @@ export function rescuePlay(game: Game, session: Session, cover = false): void {
 /** The game in progress: the stored one, or the copy written as the page went away when it's newer (see rescuePlay). */
 export async function loadPlay(): Promise<SavedPlay | undefined> {
   const stored = await safe(() => get<SavedPlay>(playKey));
-  let r: Partial<SavedPlay> | null = null;
   try {
-    r = JSON.parse(localStorage.getItem(playRescueKey()) ?? 'null');
+    const r = JSON.parse(localStorage.getItem(playRescueKey()) ?? 'null') as Partial<SavedPlay> | null;
+    const session = r?.session && typeof r.session === 'object' ? r.session : null;
+    if (r && session && typeof r.savedAt === 'number' && !(stored && stored.savedAt >= r.savedAt)) {
+      // (Only its session fitted: its game is the stored one, when that's the same game.)
+      const game = r.game && typeof r.game === 'object' ? r.game : stored?.game?.id === session.gameId ? stored.game : undefined;
+      if (game) return { game, session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}) };
+    }
+    // (Out of date: it would only take room the draft's rescue copy may need.)
+    if (r) dropPlayRescue();
   } catch {
-    // None, or not readable.
+    // None, or not readable (a copy that isn't one is dropped).
+    dropPlayRescue();
   }
-  if (r?.session && typeof r.savedAt === 'number' && !(stored && stored.savedAt >= r.savedAt)) {
-    // (Only its session fitted: its game is the stored one, when that's the same game.)
-    const game = r.game ?? (stored?.game.id === r.session.gameId ? stored.game : undefined);
-    if (game) return { game, session: r.session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}) };
-  }
-  // (Out of date: it would only take room the draft's rescue copy may need.)
-  if (r) dropPlayRescue();
   return stored;
 }
-export const savePlay = (game: Game, session: Session, cover = false) =>
-  write('play', async () => {
+/** Goes up when the game in progress is cleared: a write of it from before then (tried again, say) writes nothing. */
+let playGen = 0;
+/** Writes of the game in progress under way (one started as the page goes away may not finish). */
+let playWrites = 0;
+/** The game in progress may not be stored as it stands: a write of it is under way, or failed and waits to be tried again. */
+export const playUnsure = (): boolean => playWrites > 0 || failed.has('play');
+export const savePlay = (game: Game, session: Session, cover = false) => {
+  const gen = playGen;
+  return write('play', async () => {
+    // (Discarded or over since: it isn't written back.)
+    if (gen !== playGen) return;
     const savedAt = Date.now();
-    await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}) } satisfies SavedPlay);
+    playWrites++;
+    try {
+      await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}) } satisfies SavedPlay);
+    } catch (err) {
+      // (Failed once it was cleared: there's nothing left to keep, so nothing to try again.)
+      if (gen === playGen) throw err;
+      return;
+    } finally {
+      playWrites--;
+    }
     // Written: a rescue copy from before this write is out of date.
     if (playRescuedAt <= savedAt) dropPlayRescue();
   });
+};
 /**
  * A player-only file's file added during its game (a drawing, a file dropped on the stage): kept with its saved game,
  * each one written once (see storePlayFiles), and deleted with it.
@@ -285,6 +308,9 @@ export const savePlay = (game: Game, session: Session, cover = false) =>
 export const playFileKey = (id: string) => `${playKey}:file:${id}`;
 export const clearPlay = () => {
   dropPlayRescue();
+  // A write of it that failed isn't tried again (that would bring it back), and is no longer waited for.
+  playGen++;
+  failed.delete('play');
   return safe(async () => {
     await del(playKey);
     const files = playFileKey('');
@@ -340,6 +366,8 @@ export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number)
     t = setTimeout(run, ms);
   };
   call.flush = run;
+  /** A call waits to run. */
+  call.pending = () => pending !== null;
   return call;
 }
 

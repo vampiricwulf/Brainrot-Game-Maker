@@ -10,6 +10,7 @@
     rescueDraft,
     rescuePlay,
     loadPlay,
+    playUnsure,
     applyRoomSettings,
     loadRoom,
     retryWrites,
@@ -25,7 +26,7 @@
   import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, sendHostState } from './lib/remote.svelte';
   import { setupState } from './lib/buzz';
   import { joinUrl } from './lib/buzzproto';
-  import { openPack } from './lib/pack';
+  import { MAX_PACK_READ, openPack } from './lib/pack';
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
   import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia, storePlayFiles } from './lib/media.svelte';
@@ -291,7 +292,9 @@
   // A write that fails after the start (the disk or the browser's storage is full) switches the header to "use Save",
   // saying so once. Failed writes are tried again (on the next write, and every little while), and the header says ✓
   // Autosaved again only once all of them went through. A player-only file has no Save: its game restarts on refresh.
-  watchWrites((err) => {
+  watchWrites((err, key) => {
+    // (Heard after every write: one of the game in progress that went through clears it, whatever else still fails.)
+    app.playUnstored = unstored('play');
     if (!loaded) return;
     if (!err) {
       if (!app.storageOk) toast('Autosave works again: everything is saved', 4000);
@@ -300,8 +303,9 @@
     }
     if (app.storageOk) {
       const full = err instanceof DOMException && err.name === 'QuotaExceededError';
-      // (Save writes the game, not the game in progress: its scores are only in this window.)
-      const playing = app.screen === 'play' && !app.pregame && !app.test;
+      // (Save writes the game, not the game in progress: its scores are only in this window. Its write can fail back in
+      // the editor too, after Exit › Keep & leave.)
+      const playing = key === 'play' || (app.screen === 'play' && !app.pregame && !app.test);
       const then = playing
         ? "the game in progress isn't being saved: don't close or reload this window until it works again"
         : playerOnly
@@ -321,8 +325,9 @@
   // played, or kept to resume when its last write failed and waits to be tried again): the browser asks first.
   onMount(() => {
     const warn = (e: BeforeUnloadEvent) => {
+      // (While autosave fails, a host action whose write waits a moment for more clicks counts too.)
       const playing = app.screen === 'play' && !app.pregame && !app.test;
-      const playLost = mayPlay() && (unstored('play') || (playing && !app.storageOk));
+      const playLost = mayPlay() && (unstored('play') || (playing && !app.storageOk && savePlaySoon.pending()));
       const editLost = editing && !app.storageOk && hasWork(app.game) && !savedSinceChange();
       if (!playLost && !editLost) return;
       e.preventDefault();
@@ -349,6 +354,8 @@
   let autosaving = false;
   let lastAutosaveAt = Date.now();
   let autosavedRev = 0;
+  /** The last autosave was too big to be opened again, and that was said (once, until one is small enough again). */
+  let autosaveTooBig = false;
 
   // The editor's checklist, worked out from the watcher's plain copy a moment after changes stop: reading the whole
   // game through its proxies on every keystroke made typing in a clue lag in big games. (Whether files are missing
@@ -398,10 +405,17 @@
       if (rev === autosavedRev || !game.rounds.length) return;
       autosaving = true;
       try {
-        const path = await whileWriting(() => autosave(game, prefs.autosaveKeep));
+        const { path, bytes } = await whileWriting(() => autosave(game, prefs.autosaveKeep));
         autosavedRev = rev;
         app.fileAutosave = { path, at: Date.now() };
         mark('autosaved', `Autosaved to ${path.split(/[\\/]/).pop()}`, point);
+        // Written whole, but it can't be opened again (as Save says): said now, while the game is here to make smaller.
+        if (bytes >= MAX_PACK_READ && !autosaveTooBig)
+          toast(
+            `Autosaved, but this game is ${(bytes / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened again, so the next autosaves go in this same file and the others are kept. Move big videos to 🌐 links (or trim them).`,
+            8000,
+          );
+        autosaveTooBig = bytes >= MAX_PACK_READ;
       } catch (err) {
         console.warn('Autosave failed', err);
         toast(`Autosave failed: ${err instanceof Error ? err.message : err}`, 5000);
@@ -433,9 +447,12 @@
         rescueDraft(watch.value(), rescueHistory());
         saveEditorSoon();
       }
-      // The game in progress too: its write waits a moment for more host clicks, so the last one may not be stored yet.
+      // The game in progress too, when the last host click may not be stored yet: its write waits a moment for more
+      // clicks, is under way, or failed. (Not on every hide: no write would follow to drop the copy, and copies of games
+      // long over would pile up.)
       const { playGame, session } = app;
-      if (loaded && mayPlay() && app.screen === 'play' && !app.pregame && !app.test && session && playWatch && playWatched === playGame)
+      const inPlay = loaded && mayPlay() && app.screen === 'play' && !app.pregame && !app.test;
+      if (inPlay && session && playWatch && playWatched === playGame && (savePlaySoon.pending() || playUnsure()))
         rescuePlay(playWatch.value(), $state.snapshot(session), !!app.live.cover);
       saveEditorSoon.flush();
       savePlaySoon.flush();
@@ -687,6 +704,8 @@
       return;
     app.resumable = null;
     await clearPlay();
+    // (A write of it that failed is dropped with it.)
+    app.playUnstored = false;
     toast('Saved game discarded');
   }
 
@@ -719,6 +738,7 @@
       if (session.phase === 'end' || !keep) {
         app.resumable = null;
         clearPlay();
+        app.playUnstored = false;
         if (!keep && session.phase !== 'end') toast('Game discarded');
       } else
         app.resumable = {

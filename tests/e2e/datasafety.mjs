@@ -322,7 +322,17 @@ try {
   const leaveGame = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
   await page.close({ runBeforeUnload: true });
   assert((await leaveGame) === 'beforeunload' && !page.isClosed(), 'closing the tab then asks first, though the game itself was saved');
-  await page.evaluate(() => (window.__full = false));
+  // Discarded while still full: nothing is left to lose (its failed write goes with it).
+  await page.getByRole('button', { name: /Exit/ }).click();
+  const discard = page.getByRole('button', { name: 'Discard & leave', exact: true });
+  await discard.waitFor();
+  // (The ask ignores clicks for 400 ms after it shows: the second half of a double-click on Exit.)
+  await page.waitForTimeout(450);
+  await discard.click();
+  await page.locator('.toast', { hasText: 'Game discarded' }).waitFor();
+  const leaveEditor = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
+  await page.close({ runBeforeUnload: true });
+  assert((await leaveEditor) === 'closed', 'so closing the tab asks nothing once the game in progress is discarded');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('Data safety E2E passed.');

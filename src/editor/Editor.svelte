@@ -545,8 +545,20 @@
 
   async function openSave(s: SaveEntry): Promise<void> {
     saveList = null;
+    // (Read into memory in one piece, like any game file: one too big for that fails, after a long wait.)
+    if (s.size >= MAX_PACK_READ)
+      return void tell(`“${s.name}” is ${(s.size / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened (the file itself is likely fine). Open an older save or autosave of it instead.`);
+    if (opening) return void toast(`Still opening “${opening}”…`);
     try {
-      await openFile(await readSave(s));
+      // A big one takes a while to read: the header says so meanwhile, as for any game file.
+      opening = s.name;
+      let file: File;
+      try {
+        file = await readSave(s);
+      } finally {
+        opening = null;
+      }
+      await openFile(file);
     } catch (e) {
       void tell((e as Error).message);
     }

@@ -613,7 +613,7 @@
       <span class="muted hint">Click a score to fix it.</span>
     {/if}
     {#if app.live.cover}<span class="covered">⏸ Viewers see the cover</span>{/if}
-    {#if !app.storageOk && !app.test}
+    {#if app.playUnstored && !app.test}
       <span class="unsaved" title="Storage is full or blocked: the scores aren't being saved, so closing or reloading this window loses them">⚠ Not saving</span>
     {/if}
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}

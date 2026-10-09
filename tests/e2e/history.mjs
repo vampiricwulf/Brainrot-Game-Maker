@@ -297,6 +297,16 @@ try {
   await page.getByRole('button', { name: /🖼 Media/ }).click();
   await page.waitForTimeout(300);
   assert((await imageWidth()) === 80, 'Ctrl+Z after two reloads brings the removed file back, showing');
+  // And New, then ↶ Reopen previous game (the game kept in Recent games), right after another preset over the font.
+  await page.getByRole('button', { name: '🎨 Theme' }).click();
+  await page.locator('.preset', { hasText: 'Brainrot Neon' }).click();
+  await header.locator('button[title^="Undo: Theme preset: Brainrot Neon"]').waitFor();
+  const kept = await historyTab.innerText();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page, 'Discard');
+  await page.getByRole('button', { name: '↶ Reopen previous game' }).click();
+  await page.locator('.toast', { hasText: 'Reopened “' }).waitFor();
+  assert((await historyTab.innerText()) === kept, `New, then ↶ Reopen previous game keeps them too (${kept})`);
 
   // ---------- Changes made while hosting are steps too ----------
   // (The board wants a Daily Double again: addClassicRounds asked for none.)

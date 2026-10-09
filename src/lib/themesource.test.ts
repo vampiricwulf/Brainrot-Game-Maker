@@ -11,13 +11,13 @@ const mine = (id: string, name: string, theme: Theme): MyTheme => ({ id, name, t
 const party = mine('m1', 'Party night', { ...presetTheme('classic'), value: '#ff0000', tileRadius: 20 });
 
 describe('where a game’s theme came from', () => {
-  it('a preset put on over a clue font comes back from migrateGame with its keys in another order, the same otherwise', () => {
+  it('a preset put on over a clue font comes back from migrateGame the same, whatever the order of its keys', () => {
     const g = newGame();
     g.theme = { ...withPreset({ ...g.theme, clueFont: "'Oswald', sans-serif" }, 'dark'), source: { kind: 'preset', id: 'dark' } };
     const plain = JSON.stringify(g);
     const back = migrateGame(JSON.parse(plain));
-    // (Comparing the text dropped the undo history at a reload: App.svelte and Editor.svelte compare what's in it.)
-    expect(JSON.stringify(back)).not.toBe(plain);
+    // (migrateGame put the theme's `source` back before the clue font, and comparing the text dropped the undo history
+    // at a reload: App.svelte and Editor.svelte compare what's in it.)
     expect(sameContent(back, JSON.parse(plain))).toBe(true);
   });
 

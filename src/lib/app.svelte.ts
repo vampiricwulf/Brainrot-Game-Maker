@@ -24,6 +24,11 @@ export const app = $state<{
   onAir: boolean;
   /** IndexedDB autosave works in this browser. */
   storageOk: boolean;
+  /**
+   * The game in progress isn't stored: its last write failed (storage full…) and waits to be tried again, so it's only
+   * in this window. (Another write failing, a big file's, doesn't make it so.)
+   */
+  playUnstored: boolean;
   /** Set while the host edits the game being played (a screen live): the slide editors work on it instead. */
   editGame: Game | null;
   /** Desktop app: the last autosave file written (⚙ Settings → Autosave). */
@@ -48,6 +53,7 @@ export const app = $state<{
   toast: '',
   onAir: false,
   storageOk: true,
+  playUnstored: false,
   editGame: null,
   fileAutosave: null,
   playerOnly: false,
