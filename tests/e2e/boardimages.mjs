@@ -200,6 +200,8 @@ try {
 
   // ---------- Banner above the board ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
+  // (On Pastel, the light theme: its dark category names over their pictures are checked in the game below.)
+  await page.locator('.preset', { hasText: 'Pastel' }).click();
   await page.locator('.row:has-text("Banner above the board")').getByRole('button', { name: 'Choose…' }).click();
   await page.locator('.picker .item').first().click();
   await page.locator('.preview .banner img').waitFor();
@@ -227,6 +229,8 @@ try {
   await page.locator('.board .tile').first().waitFor();
   assert((await page.locator('.board .header .title.has-image img').count()) === 2, 'category headers show their images');
   assert((await page.locator('.board .header .caption').innerText()).trim().toLowerCase() === 'memes', 'the name shows over the image');
+  const captionShadow = await page.locator('.board .header .caption').evaluate((e) => getComputedStyle(e).textShadow);
+  assert(captionShadow.includes('rgba(255, 255, 255, 0.75)') && !captionShadow.includes('rgb(0, 0, 0)'), `on Pastel its dark letters have a light outline, not a black one, to read on a dark picture (${captionShadow})`);
   assert((await page.locator('.board .tile img').count()) === 3, 'tiles show their images');
   assert((await page.locator('.board-screen .banner img').count()) === 1, 'the banner shows above the board');
   const op = await page.locator('.layer.above .el').evaluateAll((els) => els.map((e) => e.style.opacity));

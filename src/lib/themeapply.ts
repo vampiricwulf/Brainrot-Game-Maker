@@ -1,7 +1,7 @@
 // A shared theme (a file or a code) used in the game: the pictures and uploaded fonts a file carries are stored first,
 // then the theme and its files go into the game in one undo step (ThemeShare).
 import { uploadedFamily } from './fonts';
-import { fileDigest, putMedia, storedBlob } from './media.svelte';
+import { fileDigest, putMedia, sanitizeSvg, storedBlob } from './media.svelte';
 import { newId, type Game, type MediaRef } from './model';
 import { missingFonts, themeFiles, withMyTheme } from './mytheme';
 import type { Theme } from './theme';
@@ -10,17 +10,19 @@ import type { SharedTheme } from './themefile';
 /**
  * Store a shared theme's files. Each keeps its id, unless this browser already has another file under it (another
  * version of the same picture): that one comes in under a new id. Returns the refs to add to the game, and the ids changed.
+ * An SVG is cleaned first, as an uploaded one is (its scripts, foreignObjects, handlers and javascript: links).
  */
 export async function storeThemeFiles(shared: SharedTheme): Promise<{ refs: MediaRef[]; ids: Map<string, string> }> {
   const refs: MediaRef[] = [];
   const ids = new Map<string, string>();
   for (const f of shared.media) {
+    const blob = f.ref.mime === 'image/svg+xml' ? new Blob([sanitizeSvg(await f.blob.text())], { type: f.ref.mime }) : f.blob;
     const stored = await storedBlob(f.ref.id);
-    const same = stored && (await fileDigest(stored)) === (await fileDigest(f.blob));
+    const same = stored && (await fileDigest(stored)) === (await fileDigest(blob));
     const id = !stored || same ? f.ref.id : newId();
     if (id !== f.ref.id) ids.set(f.ref.id, id);
-    await putMedia(id, f.blob);
-    refs.push({ ...f.ref, id });
+    await putMedia(id, blob);
+    refs.push({ ...f.ref, id, size: blob.size });
   }
   return { refs, ids };
 }

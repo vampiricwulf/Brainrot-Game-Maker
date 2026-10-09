@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -60,6 +60,31 @@ try {
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await bg(preview, 1, 1)) === CLASSIC_TILE, 'a game without the new looks: every tile the tile color');
   const plainShadow = await preview.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).boxShadow);
   assert(plainShadow.includes('rgba(0, 0, 0, 0.35)') && plainShadow.includes('3px'), `and the same dark 3px edge inside each tile (${plainShadow})`);
+
+  // ---------- Clue text: Undo stays on the Theme page; a kept color too close to new tiles is pointed out ----------
+  const clueFont = page.getByRole('combobox', { name: 'Clue text font' });
+  // (What an undo or redo did: the note under the page, or a toast over a window opened on top of it.)
+  const said = (text) => page.locator('.history-notice, .toast', { hasText: text }).first().waitFor();
+  const onThemePage = async () => (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page' && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0;
+  await clueFont.selectOption({ label: 'Anton' });
+  await page.keyboard.press('Control+z');
+  await said('Undid Clue text font');
+  assert((await onThemePage()) && (await clueFont.inputValue()) === '', 'Ctrl+Z of a Clue text font (it restyles every clue) stays on the Theme page, no clue editor opens');
+  await page.keyboard.press('Control+y');
+  await said('Redid Clue text font');
+  assert((await onThemePage()) && (await clueFont.inputValue()).includes('Anton'), 'and so does Ctrl+Y');
+  await page.keyboard.press('Control+z');
+  await said('Undid Clue text font');
+  const clueWarn = page.getByRole('status').filter({ hasText: 'clue text color is hard to read' });
+  await page.getByLabel('Clue text color').fill('#ffcc00');
+  assert((await clueWarn.count()) === 0, 'yellow clue text on the blue tiles: no note');
+  await page.locator('.preset', { hasText: 'Pastel' }).click();
+  await clueWarn.waitFor();
+  assert(true, 'Pastel keeps the yellow clue text, on its pink tiles: a note says it’s hard to read');
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await clueWarn.waitFor({ state: 'detached' });
+  assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await page.getByLabel('Clue text color').inputValue()) === '#ffffff', 'Ctrl+Z twice: Classic and the clues’ own color again');
 
   // ---------- Alternating tiles and categories ----------
   await openSection('Tiles');
@@ -315,6 +340,61 @@ try {
   assert((await aud.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'and the rounded corners');
   await shot('3-audience', aud);
   await aud.close();
+
+  // ---------- An audience window left on the Starting soon card follows the editor ----------
+  // (In a copy of its own: this one's display and game stay as they are.)
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const host = await ctx2.newPage();
+  host.on('pageerror', (e) => errors.push(`[soon] ${e.message}`));
+  host.on('dialog', (d) => d.accept());
+  await host.goto(pathToFileURL(file).href);
+  await addClassicRounds(host);
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  const [soon] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  soon.on('pageerror', (e) => errors.push(`[soon audience] ${e.message}`));
+  const soonTitle = soon.locator('.soon .round-name');
+  await soonTitle.waitFor();
+  await host.getByRole('button', { name: '◀ Back to editor' }).click();
+  await host.getByRole('button', { name: '🎨 Theme' }).click();
+  await host.locator('.preset', { hasText: 'Pastel' }).click();
+  // (Pastel's purple values.)
+  const PASTEL_VALUE = 'rgb(122, 76, 255)';
+  await soon.waitForFunction((c) => getComputedStyle(document.querySelector('.soon .round-name')).color === c, PASTEL_VALUE, { timeout: 10000 }).catch(() => {});
+  const soonColor = await soonTitle.evaluate((e) => getComputedStyle(e).color);
+  assert(soonColor === PASTEL_VALUE, `a theme put on in the editor shows on the audience window’s Starting soon card (${soonColor})`);
+  // A wide banner: on the card too, and its thumbnail leaves Change… and ✕ in the settings column (not under the preview).
+  const bannerRow = host.locator('.row.pop', { hasText: 'Banner above the board' });
+  const wide = await host.evaluateHandle((b64) => {
+    const d = new DataTransfer();
+    d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'logo.png', { type: 'image/png' }));
+    return d;
+  }, png(255, 140, 0, 160, 16).toString('base64'));
+  for (const type of ['dragenter', 'dragover', 'drop']) await bannerRow.getByRole('button', { name: 'Choose…' }).dispatchEvent(type, { dataTransfer: wide });
+  const cardImg = soon.locator('.soon .card-img');
+  await cardImg.waitFor();
+  assert(true, 'a banner put on in the editor shows on the Starting soon card');
+  const column = await host.locator('.controls').evaluate((e) => e.getBoundingClientRect().right);
+  const thumb = await bannerRow.locator('img').boundingBox();
+  const change = await bannerRow.getByRole('button', { name: 'Change…' }).boundingBox();
+  const remove = await bannerRow.getByRole('button', { name: 'Remove banner' }).boundingBox();
+  assert(thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5, `a wide banner's thumbnail shrinks: Change… and ✕ stay in the settings column (✕ ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`);
+  // Its file replaced in 🖼 Media (the same id, new bytes): the card shows the new picture.
+  const firstSrc = await cardImg.getAttribute('src');
+  await host.getByRole('button', { name: /^🖼 Media/ }).click();
+  const [replacing] = await Promise.all([host.waitForEvent('filechooser'), host.locator('.card').first().getByRole('button', { name: 'Replace…' }).click()]);
+  await replacing.setFiles({ name: 'logo2.png', mimeType: 'image/png', buffer: png(0, 0, 255, 160, 16) });
+  await soon.waitForFunction((was) => document.querySelector('.soon .card-img')?.getAttribute('src') !== was, firstSrc, { timeout: 10000 }).catch(() => {});
+  const pixel = await cardImg.evaluate(async (img) => {
+    await img.decode().catch(() => {});
+    const c = document.createElement('canvas');
+    c.width = c.height = 4;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, 4, 4);
+    return [...g.getImageData(1, 1, 1, 1).data].slice(0, 3).join(',');
+  });
+  assert(pixel === '0,0,255', `a file replaced in 🖼 Media reaches the open audience window (its banner is ${pixel})`);
+  await ctx2.close();
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('themes: all passed');

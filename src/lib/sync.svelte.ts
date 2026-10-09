@@ -88,7 +88,8 @@ let nativeWin: { close(): Promise<void> } | null = null;
 let closedPoll: ReturnType<typeof setInterval> | undefined;
 /** The audience window said hello on the BroadcastChannel, so send there. */
 let viaChannel = false;
-const sentMedia = new Set<string>();
+/** The file sent for each id: one replaced under the same id (Replace…, its Undo, a relink) goes again. */
+const sentMedia = new Map<string, Blob>();
 const last: { game?: Game; session?: Session; live?: Live } = {};
 
 function makeChannel(): BroadcastChannel | null {
@@ -130,11 +131,11 @@ function sendMedia(game: Game): void {
   const items: { id: string; blob: Blob }[] = [];
   for (const ref of game.media) {
     // Live links have no file: the audience window plays them from the link too (registerLinks).
-    if (sentMedia.has(ref.id) || ref.url) continue;
+    if (ref.url) continue;
     const blob = getBlob(ref.id);
-    if (!blob) continue;
+    if (!blob || sentMedia.get(ref.id) === blob) continue;
     items.push({ id: ref.id, blob });
-    sentMedia.add(ref.id);
+    sentMedia.set(ref.id, blob);
   }
   if (items.length) post({ type: 'media', items });
 }

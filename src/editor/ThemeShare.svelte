@@ -83,7 +83,9 @@
     const missing = missingFonts(m.theme, game.media).length;
     const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
     if (sameContent(next, cur)) return void toast(`This game already looks like “${m.name}”${note}`);
-    step(`Theme: “${m.name}”`, () => setTheme(game, next), { notify: true });
+    // (Its clue text restyles clues all over the game: Undo and Redo show it here, on the Theme page, not at the first
+    // clue. So do the other whole themes below.)
+    step(`Theme: “${m.name}”`, () => setTheme(game, next), { notify: true, place: { tab: 'theme' } });
     if (note) toast(`Used “${m.name}”${note}`);
   }
 
@@ -276,7 +278,7 @@
         addMedia(g, add);
         setTheme(g, next);
       },
-      { notify: true },
+      { notify: true, place: { tab: 'theme' } },
     );
   }
 
@@ -295,7 +297,7 @@
     step(`Theme from “${other.title}”`, () => {
       addMedia(g, themeMedia(other));
       setTheme(g, clone(other.theme));
-    }, { notify: true });
+    }, { notify: true, place: { tab: 'theme' } });
   }
 </script>
 
