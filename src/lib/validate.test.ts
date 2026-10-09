@@ -18,6 +18,16 @@ describe('the checklist', () => {
     expect(texts().some((t) => t.includes('(s)'))).toBe(false);
   });
 
+  it("goes to a Final's side that has nothing on it", () => {
+    const game = jeopardyGame();
+    const final = game.rounds[1];
+    const places = () => validate(game).filter((p) => p.tab === 1).map((p) => p.place);
+    expect(places()).toEqual([
+      { tab: 'round', round: final.id, part: { kind: 'final', side: 'q' } },
+      { tab: 'round', round: final.id, part: { kind: 'final', side: 'a' } },
+    ]);
+  });
+
   it('says when more Daily Doubles are placed than the ⭐ box says (not a warning: they all play)', () => {
     const game = jeopardyGame();
     const round = game.rounds[0] as BoardRound;

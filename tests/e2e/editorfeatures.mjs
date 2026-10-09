@@ -126,6 +126,28 @@ try {
   await page.getByRole('option', { name: /Category/ }).first().click();
   await page.waitForFunction(() => document.activeElement?.closest('[data-place^="category:"]'), null, { timeout: 3000 });
   assert(true, 'and a category its name');
+  // A character's line: its screen opens, with the character picked (its Layers row has the focus).
+  await page.keyboard.press('Control+f');
+  await find.fill('cave is yours');
+  await find.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.closest('[data-place^="el:"]')?.textContent?.includes('Riddle cat'), null, { timeout: 3000 });
+  assert(true, 'a character’s line found by Find opens its screen with the character picked');
+  await page.getByRole('button', { name: /Back to the map/ }).click();
+  // A list drawn under a pointer resting there keeps the top result picked (moving the pointer picks one).
+  const found = page.getByRole('listbox', { name: 'Found' }).getByRole('option');
+  await page.keyboard.press('Control+f');
+  await find.fill('space');
+  const fourth = await found.nth(3).boundingBox();
+  await page.keyboard.press('Escape');
+  await page.mouse.move(fourth.x + 40, fourth.y + fourth.height / 2);
+  await page.keyboard.press('Control+f');
+  await found.nth(3).waitFor();
+  await page.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+  assert((await found.and(page.locator('[aria-selected="true"]')).getAttribute('id')) === 'find-hit-0', 'Find opened again over a resting pointer keeps its top result picked');
+  await page.mouse.move(fourth.x + 60, fourth.y + fourth.height / 2);
+  await page.locator('#find-hit-3[aria-selected="true"]').waitFor();
+  assert(true, 'and moving the pointer over a result picks it');
+  await page.keyboard.press('Escape');
 
   // ---------- Templates, Copy / Paste round ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -146,6 +168,26 @@ try {
   t = await tabs();
   assert(t.some((x) => x.includes('Jeopardy! (copy)')), `Paste round adds a copy (${t.join(' | ')})`);
   assert((await page.locator('[data-cat-name="1"]').inputValue()) === 'Snacks', 'with its clues');
+  const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert((await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy)” (Ctrl+Z)', `its step is named after the round it added (${await undoTitle()})`);
+  // From a round's menu, after it: the copy's name has the focus too.
+  await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
+  await page.getByRole('menuitem', { name: /Paste round “Jeopardy!” after it/ }).click();
+  await page.waitForFunction(() => document.activeElement?.hasAttribute('data-round-name') && document.activeElement.value === 'Jeopardy! (copy 2)', null, { timeout: 3000 });
+  assert((await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy 2)” (Ctrl+Z)', 'Paste round after it (a tab’s menu) puts the focus on the copy’s name, and its step names it');
+  // The sample game added to a game that has rounds: its rounds of the same names are told apart ("Board game (2)" is
+  // the template's), and taken back after.
+  const rounds = (await tabs()).length;
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /The sample game/ }).click();
+  await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n + 4, rounds);
+  const added = (await tabs()).slice(rounds).map((x) => x.replace(/^\S+\s/, '').trim());
+  assert(added.join('|') === 'Jeopardy! (2)|Adventure (2)|Board game (3)|Final Jeopardy! (2)', `the sample game added to a game with rounds names its rounds apart (${added.join(', ')})`);
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, rounds);
+  // (And the second paste: the sample's board game is played below, 3 rounds in.)
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n - 1, rounds);
 
   // ---------- Board-game space buttons in the editor ----------
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).first().click();

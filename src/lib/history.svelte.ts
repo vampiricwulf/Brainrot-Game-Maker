@@ -613,21 +613,29 @@ export function wholeHistory(): { saved: SavedHistory; steps: StoredStep[] } {
   return { saved: savedIndex(''), steps: h.entries.map(stored) };
 }
 
+/** The save mark where the game is now, if any. */
+const savedMark = (): Mark | undefined => h.marks.find((m) => m.at === h.index && (m.kind === 'saved' || m.kind === 'autosaved'));
+
 /**
  * The game was saved to a file since its last change (Save, or the desktop app's autosave file), or nothing has changed
  * since it arrived. (An export doesn't count: Export JSON leaves the files out.)
  */
 export function savedSinceChange(): boolean {
   if (h.pending) return false;
-  if (h.marks.some((m) => m.at === h.index && (m.kind === 'saved' || m.kind === 'autosaved'))) return true;
-  // Brought back as it was when the page closed: its last changes were never saved anywhere.
-  return !h.entries.length && h.origin.kind !== 'rescued';
+  if (savedMark()) return true;
+  // Nothing changed since it arrived. Not when brought back as it was when the page closed (its last changes were never
+  // saved anywhere), nor after the history was cleared or restarted over changes (clearing a game saved just before
+  // keeps its save mark).
+  return !h.entries.length && h.origin.kind !== 'rescued' && h.origin.kind !== 'cleared' && h.origin.kind !== 'restarted';
 }
 
 /** Forget every step. */
 export function clear(): void {
   commit();
+  const saved = savedMark();
   restart({ kind: 'cleared', label: 'History cleared' });
+  // Saved just before: still saved (the mark is stored with the history, so a reload agrees).
+  if (saved) h.marks = [{ ...saved, at: 0 }];
 }
 
 /**

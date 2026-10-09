@@ -46,11 +46,13 @@
         (flashed?.matches('button, input, textarea, select, [tabindex]') ? flashed : flashed?.querySelector<HTMLElement>('input, textarea, select, button'));
       // (What opens there can take a few frames: a clue editor, a space's card.)
       if (!target && ++frames < 30) return void requestAnimationFrame(tryNow);
-      if (!target) return;
+      // (Nothing there takes it, e.g. a world no round plays: the editor's page does.)
+      const to = target ?? document.querySelector('main')?.querySelector<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)');
+      if (!to) return;
       // After what opened has put the focus where it wants it.
       requestAnimationFrame(() => {
-        target.focus();
-        if (target === field && target instanceof HTMLInputElement) target.select();
+        to.focus();
+        if (to === field && to instanceof HTMLInputElement) to.select();
       });
     };
     requestAnimationFrame(tryNow);
@@ -118,7 +120,8 @@
     {#if hits.length}
       <div class="hits" id="find-hits" role="listbox" aria-label="Found" bind:this={listEl}>
         {#each hits as h, i (i)}
-          <!-- (One Tab stop: ↑/↓ in the box pick a result, which it announces.) -->
+          <!-- (One Tab stop: ↑/↓ in the box pick a result, which it announces. The pointer picks one only when it moves:
+               a list drawn under a pointer resting there doesn't take the pick from the top result.) -->
           <button
             class="hit"
             class:on={i === at}
@@ -128,7 +131,7 @@
             tabindex="-1"
             aria-selected={i === at}
             onclick={() => go(h)}
-            onmouseenter={() => (at = i)}
+            onmousemove={() => (at = i)}
           >
             <span class="icon" aria-hidden="true">{h.icon}</span>
             <span class="txt">

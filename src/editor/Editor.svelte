@@ -344,8 +344,8 @@
   // ---------- Checklist ----------
 
   /**
-   * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen or
-   * a board game's space has the focus).
+   * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen, a
+   * board game's space, a Final's question or answer, a Slides round's empty slide has the focus).
    */
   function goFix(line: ChecklistLine): void {
     // The game's name: its box at the top, selected to type over.
@@ -364,6 +364,13 @@
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
+    // A Final's side or a Slides round's slide: its quick text box (the one with nothing in it).
+    if (part?.kind === 'final' || part?.kind === 'slides') {
+      const field = part.kind === 'final' && part.side === 'a' ? 'a' : 'q';
+      return void tick()
+        .then(tick)
+        .then(() => document.querySelector<HTMLElement>(`main [data-field="${field}"]`)?.focus());
+    }
     const key =
       part?.kind === 'clue'
         ? `clue:${part.clue}`
@@ -917,7 +924,7 @@
                   disabled: !clipboard.round,
                   onclick: () => {
                     const at = pasteRound(game, i);
-                    if (at !== null) tab = at;
+                    if (at !== null) showNew(at);
                   },
                 },
                 { sep: true },

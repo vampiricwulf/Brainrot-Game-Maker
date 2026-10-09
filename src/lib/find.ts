@@ -87,20 +87,30 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       }
       for (const z of r.zones)
         look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], match(z.name) ? `${rn} › Zone` : `${rn} › Zone “${z.name}”`, { tab: 'round', round: r.id, part: { kind: 'zone', zone: z.id } });
-      look('🏆', [r.winNotes], `${rn} › How to win`, { tab: 'round', round: r.id });
+      look('🏆', [r.winNotes], `${rn} › How to win`, { tab: 'round', round: r.id }, 'main [data-field="win-notes"]');
     }
   });
 
   for (const w of game.worlds ?? [])
     for (const m of w.maps)
       for (const s of m.screens) {
-        const place: Place = { tab: 'world', world: w.id, map: m.id, screen: s.id };
+        const place = { tab: 'world', world: w.id, map: m.id, screen: s.id } as const;
         const where = `${w.name} › ${m.name}`;
-        look('🗺', [s.name, s.hostNotes], `${where} › Screen`, place);
-        // What's on it, in each of its looks (and what its characters say).
-        for (const v of [{ name: '', slide: s.slide }, ...(s.variants ?? [])]) {
-          const said = v.slide.elements.flatMap((e) => (e.role?.dialogue ? slideWords(e.role.dialogue) : []));
-          look('🧩', [...slideWords(v.slide), ...said], `${where} › ${s.name}${v.name ? ` (${v.name})` : ''}`, place);
+        // (Found by its notes: where says which screen it is.)
+        look('🗺', [s.name, s.hostNotes], match(s.name) ? `${where} › Screen` : `${where} › Screen “${s.name}”`, place);
+        // What's on it, in each of its looks (and what its characters say): the screen editor opens on that look, with
+        // the thing that has the words selected (as History's Go there).
+        for (const v of [{ id: undefined as string | undefined, name: '', slide: s.slide }, ...(s.variants ?? [])]) {
+          const els = v.slide.elements;
+          const said = els.flatMap((e) => (e.role?.dialogue ? slideWords(e.role.dialogue) : []));
+          // (The same one the text shown comes from: a text or a name first, then what's said.)
+          const el = els.find((e) => match(e.kind === 'text' ? e.text : undefined) || match(e.name)) ?? els.find((e) => !!e.role?.dialogue && slideWords(e.role.dialogue).some(match));
+          look('🧩', [...slideWords(v.slide), ...said], `${where} › ${s.name}${v.name ? ` (${v.name})` : ''}`, {
+            ...place,
+            inSlide: true,
+            ...(v.id ? { look: v.id } : {}),
+            ...(el ? { element: el.id } : {}),
+          });
         }
       }
 
@@ -113,9 +123,9 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   for (const m of game.media) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {
-    look('❓', slideWords(tb.questionSlide), `Tiebreaker › Question${tb.extraSlides?.length ? ' 1' : ''}`, { tab: 'tiebreaker', side: 'q' });
-    tb.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `Tiebreaker › Question ${j + 2}`, { tab: 'tiebreaker', side: 'q', slide: sl.id }));
-    look('💬', [...slideWords(tb.answerSlide), tb.hostNotes], 'Tiebreaker › Answer', { tab: 'tiebreaker', side: 'a' });
+    look('❓', slideWords(tb.questionSlide), `Tiebreaker › Question${tb.extraSlides?.length ? ' 1' : ''}`, { tab: 'tiebreaker', side: 'q' }, 'main [data-field="q"]');
+    tb.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `Tiebreaker › Question ${j + 2}`, { tab: 'tiebreaker', side: 'q', slide: sl.id }, 'main [data-field="q"]'));
+    look('💬', [...slideWords(tb.answerSlide), tb.hostNotes], 'Tiebreaker › Answer', { tab: 'tiebreaker', side: 'a' }, 'main [data-field="a"]');
   }
   return hits;
 }

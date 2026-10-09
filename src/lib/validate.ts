@@ -62,8 +62,10 @@ export function validate(game: Game): Problem[] {
   game.rounds.forEach((round, i) => {
     const name = roundName(round, i);
     if (isFinal(round)) {
-      if (!slideHasContent(round.questionSlide)) out.push({ text: `${name} has no question`, tab: i, level: 'warn' });
-      if (!slideHasContent(round.answerSlide)) out.push({ text: `${name} has no answer`, tab: i, level: 'warn' });
+      // (Each goes to its side.)
+      const onSide = (side: 'q' | 'a'): Place => ({ tab: 'round', round: round.id, part: { kind: 'final', side } });
+      if (!slideHasContent(round.questionSlide)) out.push({ text: `${name} has no question`, tab: i, level: 'warn', place: onSide('q') });
+      if (!slideHasContent(round.answerSlide)) out.push({ text: `${name} has no answer`, tab: i, level: 'warn', place: onSide('a') });
       if (round.wasOff)
         out.push({
           text: `${name} was switched off in the old game: kept because something is written in it, and plays last. Delete the round if it shouldn't play`,
@@ -82,7 +84,14 @@ export function validate(game: Game): Problem[] {
     }
     if (isSlides(round)) {
       const blank = questionSlides(round).flatMap((s, n) => (slideHasContent(s) ? [] : [n + 1]));
-      if (blank.length) out.push({ text: `${name}: slide${blank.length > 1 ? 's' : ''} ${blank.join(', ')} ${blank.length > 1 ? 'are' : 'is'} empty`, tab: i, level: 'warn' });
+      // (It goes to the first empty one.)
+      if (blank.length)
+        out.push({
+          text: `${name}: slide${blank.length > 1 ? 's' : ''} ${blank.join(', ')} ${blank.length > 1 ? 'are' : 'is'} empty`,
+          tab: i,
+          level: 'warn',
+          place: { tab: 'round', round: round.id, part: { kind: 'slides', ...(blank[0] > 1 ? { slide: round.extraSlides![blank[0] - 2].id } : {}) } },
+        });
       return;
     }
     const r = { ...round, name };
