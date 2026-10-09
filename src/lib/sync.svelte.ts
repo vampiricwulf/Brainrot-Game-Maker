@@ -47,8 +47,12 @@ export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctr
 /** hello `scores`: from the scores-only window (one a reloaded host page doesn't know yet says so until it's found). */
 export type AudienceMsg = { type: 'hello'; scores?: boolean } | { type: 'audience-event'; event: AudienceEvent } | { type: 'key'; key: AudienceKey } | { type: 'bye' };
 
-/** Envelope on the BroadcastChannel (it also reaches other same-origin tabs, so say who's talking). */
-export type ChannelMsg = { from: 'host'; msg: HostMsg } | { from: 'audience'; msg: AudienceMsg };
+/**
+ * Envelope on the BroadcastChannel (it also reaches other same-origin tabs, so say who's talking). `page`: the host
+ * page's address without its #hash, on a close (every page opened from disk shares the channel: a close is only for the
+ * audience window of the page that sent it, whose address is that plus #audience).
+ */
+export type ChannelMsg = { from: 'host'; msg: HostMsg; page?: string } | { from: 'audience'; msg: AudienceMsg };
 
 export const AUDIENCE_HASH = '#audience';
 /** The scores-only window: the score plates and the countdown, for a lower-third capture in OBS. */
@@ -367,7 +371,7 @@ export function closeAudienceWindow(): void {
   const msg: HostMsg = { type: 'close' };
   try {
     if (win && !win.closed) win.postMessage(msg, '*');
-    channel?.postMessage({ from: 'host', msg } satisfies ChannelMsg);
+    channel?.postMessage({ from: 'host', msg, page: location.href.split('#')[0] } satisfies ChannelMsg);
   } catch {
     // Gone already: nothing to tell.
   }

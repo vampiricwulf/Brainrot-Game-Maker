@@ -7,7 +7,7 @@ import { del, delMany, get, getMany, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
 import { clipboard } from './clipboard.svelte';
-import { askToKeepStorage, loadPlay, unstored, write } from './persist';
+import { askToKeepStorage, loadPlay, playFileKey, unstored, write } from './persist';
 import { recentMedia } from './recent';
 import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, parseMediaLink, type LinkKind, type MediaLink } from './links';
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
@@ -19,7 +19,8 @@ const blobs = new Map<string, Blob>();
 /** id → object URL (or the web link of a live-link file), reactive so components re-render when media arrives. */
 export const mediaUrls = $state<Record<string, string>>({});
 
-const KEY = (id: string) => `media:${id}`;
+/** Where a file is stored: the builder's store, or a player-only file's saved game (see storePlayFiles). */
+const KEY = (id: string) => (playFiles ? playFileKey(id) : `media:${id}`);
 
 function forget(id: string): void {
   if (mediaUrls[id]?.startsWith('blob:')) URL.revokeObjectURL(mediaUrls[id]);
@@ -55,7 +56,10 @@ export async function storedBlob(id: string): Promise<Blob | undefined> {
   }
 }
 
-/** An exported player-only file: its files stay in memory and never touch the stored ones (see keepInMemory). */
+/**
+ * An exported player-only file: its pack's files stay in memory and never touch the stored ones (see keepInMemory).
+ * (Files added during its game are stored with that game: storePlayFiles.)
+ */
 let memoryOnly = false;
 /**
  * Keep files in memory only, for an exported player-only file: every copy of the app opened from disk shares one
@@ -65,9 +69,20 @@ export function keepInMemory(): void {
   memoryOnly = true;
 }
 
+/** A player-only file whose pack is open: the files added from now on are stored with its saved game. */
+let playFiles = false;
+/**
+ * Call once a player-only file's pack is open: a file added during play (a drawing, a file dropped on the stage) is
+ * stored with its saved game, so Resume after a reload brings it back. Never in the builder's store: its pruneMedia
+ * would delete it, as no builder game uses it.
+ */
+export function storePlayFiles(): void {
+  playFiles = true;
+}
+
 /** Write a file's bytes (what's in memory under `id`, or none) to storage; tried again later if it fails. */
 function store(id: string): Promise<boolean> {
-  if (memoryOnly) return Promise.resolve(true);
+  if (memoryOnly && !playFiles) return Promise.resolve(true);
   return write(KEY(id), async () => {
     const blob = blobs.get(id);
     if (blob) await set(KEY(id), blob);

@@ -134,8 +134,12 @@
     const onmsg = (e: MessageEvent<HostMsg>) => {
       if (e.source === window.opener) handle(e.data);
     };
+    // A close on the channel is for the audience window of the page that sent it: another page opened from disk (the
+    // builder, an exported game) closing its own leaves this one up. (The desktop app's own window has another address
+    // than its page, and is closed by the app anyway.)
+    const forMe = (d: ChannelMsg & { from: 'host' }) => d.msg?.type !== 'close' || !d.page || d.page === location.href.split('#')[0] || inTauri();
     const onchannel = (e: MessageEvent<ChannelMsg>) => {
-      if (e.data?.from === 'host') handle(e.data.msg);
+      if (e.data?.from === 'host' && forMe(e.data)) handle(e.data.msg);
     };
     if (viaOpener) window.addEventListener('message', onmsg);
     else channel!.addEventListener('message', onchannel);
@@ -145,7 +149,7 @@
     if (viaOpener && !scores) {
       try {
         closer = new BroadcastChannel(CHANNEL_NAME);
-        closer.onmessage = (e: MessageEvent<ChannelMsg>) => e.data?.from === 'host' && e.data.msg?.type === 'close' && handle(e.data.msg);
+        closer.onmessage = (e: MessageEvent<ChannelMsg>) => e.data?.from === 'host' && e.data.msg?.type === 'close' && forMe(e.data) && handle(e.data.msg);
       } catch {
         closer = null;
       }

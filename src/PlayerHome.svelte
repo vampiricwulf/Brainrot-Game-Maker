@@ -45,15 +45,25 @@
       .join(' · ');
   });
 
+  /** While the pack is built (a big game takes a few seconds): the button says so, and another click waits for it. */
+  let packing = $state(false);
+  /** Percent done meanwhile. */
+  let packPct = $state<number | null>(null);
   async function download(): Promise<void> {
+    if (packing) return;
+    packing = true;
+    packPct = null;
     try {
-      const { where, missing } = await savePack($state.snapshot(game));
+      const { where, missing } = await savePack($state.snapshot(game), (done, total) => (packPct = total ? Math.floor((done / total) * 100) : null));
       const left = missing.length ? ` (${missing.length} file${missing.length === 1 ? '' : 's'} weren’t in this copy, so they aren’t in the pack)` : '';
       toast(`${where}: open it in the Brainrot Games Maker to edit${left}`, 6000);
     } catch (e) {
       // (The save picker closed: nothing to say.)
       if (isCancel(e)) return;
       toast(`Couldn't download the game pack: ${(e as Error).message}`, 6000);
+    } finally {
+      packing = false;
+      packPct = null;
     }
   }
   const style = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
@@ -93,7 +103,9 @@
     {#if !app.storageOk}
       <p class="warn small">This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game.</p>
     {/if}
-    <button class="ghost small" onclick={download}>⬇ Download as .brainrot (to edit in the builder)</button>
+    <button class="ghost small" onclick={download} disabled={packing}>
+      {packing ? `⬇ Packing the game…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Download as .brainrot (to edit in the builder)'}
+    </button>
     <!-- Someone who made it, testing their export: their games are where they left them. -->
     <p class="muted small">This file plays this one game. It can't change it, and your own games in the builder aren't touched.</p>
   </div>

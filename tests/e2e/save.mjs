@@ -115,12 +115,72 @@ try {
   await player.goto(pathToFileURL(saved).href);
   await player.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
   assert(true, 'the exported HTML opens as a player');
+  // ⬇ Download as .brainrot: a second click while the pack is built starts no second download.
+  let packs = 0;
+  player.on('download', () => packs++);
+  const firstPack = player.waitForEvent('download');
+  await player.getByRole('button', { name: /Download as \.brainrot/ }).dblclick();
+  await firstPack;
+  await player.waitForTimeout(1000);
+  assert(packs === 1, `a double click on ⬇ Download as .brainrot downloads the game pack once (${packs})`);
+
+  // The builder's audience window (OBS's capture) stays up while the player file, opened from disk beside it, resumes
+  // its game in one window: that closes only the player file's own audience window.
+  await a.getByRole('button', { name: '▶ Play' }).click();
+  const [audA] = await Promise.all([a.waitForEvent('popup'), a.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  await a.getByRole('button', { name: '◀ Back to editor' }).click();
+  await audA.locator('.soon-text').waitFor();
+  await playWithPlayers(player, 2);
+  await player.locator('.mode', { hasText: 'Single window' }).click();
+  await player.getByRole('button', { name: 'Start game ▶' }).click();
+  await player.getByRole('button', { name: 'Skip intro' }).click();
+  const keepAndLeave = async () => {
+    await player.getByRole('button', { name: '🚪 Exit' }).click();
+    await player.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
+    await player.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  };
+  await keepAndLeave();
+  await player.getByRole('button', { name: 'Resume game' }).click();
+  await player.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await player.locator('.panel').waitFor();
+  await player.waitForTimeout(1000);
+  assert(!audA.isClosed(), "resuming in one window in the player file leaves the builder's audience window up");
+  await a.locator('.status-bar [data-audience-open]').getByRole('button', { name: 'Close the audience window' }).click();
+  await a.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();
+  if (!audA.isClosed()) await audA.waitForEvent('close', { timeout: 3000 });
+  // The player file's start screen between games: its audience window's line, as over the builder's editor.
+  await player.bringToFront();
+  const [audP] = await Promise.all([player.waitForEvent('popup'), player.keyboard.press('a')]);
+  await audP.locator('.board').waitFor();
+  await keepAndLeave();
+  await audP.locator('.soon-text').waitFor();
+  await player.locator('.home').waitFor();
+  await player.locator('.status-bar [data-audience-open]').waitFor();
+  assert(true, 'the player file’s start screen says its audience window is up (on “Starting soon”), with its ✕');
+  await audP.close();
+  await player.locator('.status-bar [data-audience-lost]').waitFor();
+  assert(true, 'and warns when it is closed by accident (viewers see nothing), with Reopen');
+
+  // The same file opened twice: one tab plays and saves its game at a time (they'd overwrite each other's), as in the
+  // builder.
+  const player2 = await context.newPage();
+  player2.on('pageerror', (e) => errors.push(`[player 2] ${e.message}`));
+  await player2.goto(pathToFileURL(saved).href);
+  await player2.getByRole('heading', { name: 'This game is open in another tab' }).waitFor({ timeout: 20000 });
+  assert((await player2.getByRole('button', { name: 'Resume game' }).count()) === 0, 'the same player file opened again waits, paused');
+  await player2.getByRole('button', { name: 'Play here instead' }).click();
+  await player2.getByRole('button', { name: 'Resume game' }).waitFor({ timeout: 20000 });
+  await player.getByRole('button', { name: 'Play here instead' }).waitFor();
+  assert(true, 'Play here instead: the first tab pauses, the second one has the game in progress');
+  await player.close();
+  await player2.close();
 
   // Reopening the saved pack restores the game and its files. The game being edited has a round now, so Open… asks first.
   dialogs.length = 0;
   await openGameFile(a, await pack.path());
   await answerReplace(a, 'Discard');
-  await a.locator('nav > button.round-tab').waitFor({ state: 'detached' });
+  // (Both round tabs go: .first() waits for that whatever the open's timing, where two still up failed the wait.)
+  await a.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
   assert(dialogs.length === 0, 'Open… asks before replacing a game with unsaved changes (in the page, not a browser dialog)');
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert((await a.locator('input.title').inputValue()) === 'Two tabs', 'the saved pack opens again with its files');
