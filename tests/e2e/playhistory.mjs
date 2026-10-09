@@ -186,6 +186,18 @@ try {
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Alice: Landed on'), 'Enter with nobody selected moves the rolled steps');
   await page.keyboard.press('n');
+  // 🎲 Roll reached with Tab, then Enter: it turns off while the dice roll and the keys go to a button near it (a
+  // player's chip), but Enter still moves once they land (it doesn't press that button).
+  const roll = page.locator('.panel [data-next]', { hasText: '🎲 Roll' });
+  await roll.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]') && document.activeElement.textContent?.includes('🎲 Roll'));
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'Player 2: Landed on' }).waitFor();
+  assert(true, `🎲 Roll pressed with Enter (Tab there): Enter moves once the dice land (the keys were on ${await page.evaluate(() => document.activeElement?.textContent?.trim())})`);
   await page.keyboard.press('Shift+N');
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Alice'), 'Shift+N goes back a turn');
 
@@ -283,6 +295,8 @@ try {
   assert(true, `the spotlight and N's wager are said (“${await said()}”)`);
   await page.keyboard.press('Shift+N');
   assert((await spot()) === order[1], 'Shift+N spotlights the player before');
+  await page.waitForFunction((n) => (document.getElementById('live-region')?.dataset.said ?? '').includes(`Spotlight: ${n}`), order[1]);
+  assert(true, 'and says so');
   await page.locator('.stage-box .plate', { hasText: order[0] }).click();
   assert((await spot()) === order[0], 'clicking a score plate spotlights that player');
   await page.locator('.stage-box .plate', { hasText: order[0] }).click({ button: 'right' });

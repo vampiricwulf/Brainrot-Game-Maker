@@ -243,6 +243,40 @@ try {
   assert(true, 'and Enter there opens it again (not “Select a player first”)');
   await page.keyboard.press('Escape');
   await rulesDlg.waitFor({ state: 'detached' });
+  // Clicked with the mouse instead, Enter there still awards once Esc gives it the keys back.
+  const scoreOf = (i) => page.locator('.panel .p').nth(i).locator('.score').innerText();
+  const scoreNot = (i, was) => page.waitForFunction(([i, was]) => document.querySelectorAll('.panel .p .score')[i]?.textContent?.trim() !== was, [i, was]);
+  await page.locator('.board .tile:not(.used)').first().click();
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
+  let was = await scoreOf(0);
+  await rulesBtn.click();
+  await rulesDlg.waitFor();
+  await page.keyboard.press('Escape');
+  await rulesDlg.waitFor({ state: 'detached' });
+  assert(await rulesBtn.evaluate((b) => b === document.activeElement), '⚖ Rules clicked, then Esc: the keys are back on it');
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  await scoreNot(0, was);
+  assert((await rulesDlg.count()) === 0, 'and 1, Enter award Player 1 there (Enter doesn’t open ⚖ Game rules again)');
+  // ＋ Award reached with the keys: it turns off once pressed, and the keys go to a button near it, but 2, Enter still
+  // award (not ▦ Done ▶ board, which would close the clue).
+  const awardBtn = page.locator('.panel').getByRole('button', { name: /^＋ Award/ });
+  await page.keyboard.press('1');
+  await awardBtn.focus();
+  was = await scoreOf(0);
+  await page.keyboard.press('Enter');
+  await scoreNot(0, was);
+  await page.waitForFunction(() => {
+    const a = document.activeElement;
+    return !!a?.matches('.panel button:not(:disabled)') && !a.getAttribute('aria-label')?.startsWith('＋ Award');
+  });
+  was = await scoreOf(1);
+  await page.keyboard.press('2');
+  await page.keyboard.press('Enter');
+  await scoreNot(1, was);
+  assert((await page.locator('.board').count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
+  await page.keyboard.press('Escape');
+  await page.locator('.board').waitFor();
   await page.getByRole('button', { name: '👥 Players' }).click();
   const playersDlg = page.getByRole('dialog', { name: 'Players' });
   const ariaFocused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? 'BODY');

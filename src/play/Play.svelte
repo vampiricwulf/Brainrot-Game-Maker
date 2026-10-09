@@ -1579,7 +1579,7 @@
    * Another round is up: the button pressed for it is gone (the round buttons are new for each round), so the keys go on
    * from the new board's tile, not from the top of the page (nor the panel's first button, the timer's Start); with no
    * tile to pick, from the panel's main button (a title card, a board game, a Final), else the round's own first one (an
-   * Adventure).
+   * Adventure's, not a tool card's).
    */
   function boardFocus(): void {
     void tick().then(() => {
@@ -1588,7 +1588,7 @@
       (
         document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]:not(:disabled)') ??
         document.querySelector<HTMLElement>('.play .panel [data-next]:not(:disabled)') ??
-        document.querySelector<HTMLElement>('.play .panel .mode-host button:not(:disabled)')
+        document.querySelector<HTMLElement>('.play .panel .mode-host:not(.tools) button:not(:disabled)')
       )?.focus({ preventScroll: true });
     });
   }
@@ -1987,7 +1987,7 @@
     const reveal: MenuEntry[] =
       session.phase === 'final' && session.finalStep === 'reveal' && f?.order.includes(id)
         ? [
-            { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => (f.current = id) },
+            { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => spotlight(id) },
             { label: 'Show wager', disabled: !!f.shown[id], onclick: () => finalShow(session, id) },
             { label: `✔ Right${f.current === id ? ' (C)' : ''}`, onclick: () => judge(id, true) },
             { label: `✘ Wrong${f.current === id ? ' (X)' : ''}`, onclick: () => judge(id, false) },
@@ -2055,13 +2055,18 @@
     return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
   }
 
-  /** A score plate on the stage during the Final reveals: spotlight that player (their wager stays hidden until N). */
+  /**
+   * A score plate on the stage (or its menu's 🔦 Spotlight) during the Final reveals: spotlight that player (their wager
+   * stays hidden until N).
+   */
   function spotlight(id: string): void {
     const f = session.final;
     if (!f || session.finalStep !== 'reveal') return;
     const round = currentFinal(session, game);
-    if (f.order.includes(id)) f.current = id;
-    else toast(`${playerName(session, id)} isn't playing ${round ? finalName(round) : 'this Final'}`);
+    if (f.order.includes(id)) {
+      f.current = id;
+      announce(`Spotlight: ${playerName(session, id)}`);
+    } else toast(`${playerName(session, id)} isn't playing ${round ? finalName(round) : 'this Final'}`);
   }
 
   /**
@@ -2676,12 +2681,14 @@
   }
 
   // What the keyboard moved the focus to: with Tab (or Shift+Tab), or the app after a key (a window closed, ▲▼, a
-  // strip's Cancel), never the main button (see onfocusin). (Not :focus-visible: browsers show a clicked button's focus
-  // too, once any key is pressed.) A Tab that moved nothing here (out to the browser's address bar) doesn't count for
-  // the next click.
+  // strip's Cancel), never the main button nor one clicked with the mouse (see onfocusin). (Not :focus-visible: browsers
+  // show a clicked button's focus too, once any key is pressed.) A Tab that moved nothing here (out to the browser's
+  // address bar) doesn't count for the next click.
   let tabbing = false;
   /** The last thing the host used was the keyboard (not the mouse). */
   let viaKeys = false;
+  /** The button the mouse last pressed (until Tab reaches it): Enter there awards, even once a window gives it back. */
+  let pointed: Element | null = null;
   let tabbedTo: EventTarget | null = null;
 
   /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
@@ -2877,8 +2884,9 @@
           }
         }
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
-          if (e.shiftKey) finalBack(session);
-          else finalRevealNext();
+          if (e.shiftKey) {
+            if (finalBack(session) && session.final?.current) announce(`Spotlight: ${playerName(session, session.final.current)}`);
+          } else finalRevealNext();
         } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
           // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
         } else if (session.phase === 'clue') {
@@ -2988,17 +2996,20 @@
     tabbing = e.key === 'Tab';
     viaKeys = true;
   }}
-  onpointerdowncapture={() => {
+  onpointerdowncapture={(e) => {
     tabbing = false;
     viaKeys = false;
+    pointed = e.target instanceof Element ? e.target.closest('button, [role="button"]') : null;
   }}
   onfocusin={(e) => {
     const el = e.target instanceof Element ? e.target : null;
-    // The main button never counts, unless Tabbed to: "1, Enter" still awards with the keys on it. Nor does the rescue's
-    // guess at the nearest button (the one with the keys turned off or went away) where Enter is a shortcut (awards,
-    // moves), unless the keyboard had gone to the one that went: D, then Enter still moves in a board game.
-    const guess = rescuing() && !tabbedTo && (awardOpen(session) || session.phase === 'boardgame');
-    tabbedTo = el && (tabbing || (viaKeys && !guess && !el.matches('[data-next]'))) ? el : null;
+    // The main button never counts, unless Tabbed to: "1, Enter" still awards with the keys on it. Nor does a button
+    // clicked with the mouse that the app gives the keys back to (its window closed with Esc). Nor, where Enter is a
+    // shortcut (awards, moves), the rescue's guess at the nearest button (the one with the keys turned off or went away):
+    // it may change the game (▦ Done ▶ board after ＋ Award, a player's chip after 🎲 Roll).
+    const guess = rescuing() && awardOpen(session);
+    if (tabbing && el === pointed) pointed = null;
+    tabbedTo = el && (tabbing || (viaKeys && !guess && el !== pointed && !el.matches('[data-next]'))) ? el : null;
     tabbing = false;
     fields.focusin(e);
   }}

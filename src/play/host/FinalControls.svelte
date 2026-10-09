@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';
+  import { announce } from '../../lib/announce';
   import { toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
@@ -487,7 +488,11 @@
               class="name"
               style:background={p?.color}
               style:color={p ? textOn(p.color) : undefined}
-              onclick={() => (f.current = id)}
+              onclick={() => {
+                f.current = id;
+                // (Screen readers hear it: the spotlight is on the stage, not the status line.)
+                announce(`Spotlight: ${p?.name ?? '?'}`);
+              }}
               onkeydown={(e) => {
                 // Alt+↑/↓ moves them in the order.
                 if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
