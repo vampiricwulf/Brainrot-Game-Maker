@@ -8,7 +8,7 @@
   import type { Game, Session } from '../lib/model';
   import { newLive, type Live } from '../lib/live';
   import { newSession } from '../lib/session';
-  import { CHANNEL_NAME, audienceTitle, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
+  import { CHANNEL_NAME, SCORES_PARAM, audienceTitle, syncTarget, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { applyLocal, localMedia, onLocalMediaChange } from '../lib/mediactl.svelte';
   import { onSoundReport, playChime, setAudioOut, watchSinks } from '../lib/audioout.svelte';
@@ -53,9 +53,12 @@
   // created itself) through a BroadcastChannel. Only one link is used so nothing is handled twice.
   let channel: BroadcastChannel | null = null;
   function send(msg: AudienceMsg): void {
-    if (window.opener) window.opener.postMessage(msg, '*');
+    if (window.opener) window.opener.postMessage(msg, syncTarget());
     else channel?.postMessage({ from: 'audience', msg } satisfies ChannelMsg);
   }
+  /** The scores window says its host page's key (from its address): a reloaded host page takes back only that one. */
+  const hello = (): AudienceMsg =>
+    scores ? { type: 'hello', scores: true, key: new URLSearchParams(location.search).get(SCORES_PARAM) ?? undefined } : { type: 'hello' };
 
   onMount(() => {
     const viaOpener = !!window.opener;
@@ -112,7 +115,7 @@
           // audience window the page didn't open itself (the desktop app's), which a reloaded page only finds by its hello.
           if ((scores && viaOpener) || (!scores && !viaOpener)) {
             clearInterval(rejoin);
-            rejoin = setInterval(() => send(scores ? { type: 'hello', scores: true } : { type: 'hello' }), 1500);
+            rejoin = setInterval(() => send(hello()), 1500);
           }
           break;
         case 'ping':
@@ -172,7 +175,7 @@
       send({ type: 'audience-event', event });
     });
     const offSinks = watchSinks();
-    send(scores ? { type: 'hello', scores: true } : { type: 'hello' });
+    send(hello());
     send({ type: 'audience-event', event: { kind: 'activation', active: activated } });
     poke();
     return () => {

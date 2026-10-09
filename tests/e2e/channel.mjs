@@ -135,6 +135,46 @@ try {
   assert((await aud2.locator('.board').count()) === 1, 'and shows the game');
   assert((await clickOnce.count()) === 0, 'it says it may play sound: no false "Click the audience window once"');
 
+  // A page the host opened (as from a media link) that says hello as the scores window, with no key or a wrong one,
+  // gets nothing: not the game, not a scores window's place.
+  const foreign = await host2.evaluate(
+    () =>
+      new Promise((done) => {
+        window.__foreign = done;
+        const w = window.open('', '_blank', 'popup=yes,width=300,height=200');
+        const s = w.document.createElement('script');
+        // (Messages from one window to another arrive in order: the host's answers to the hellos come before 'probe'.)
+        s.textContent = `const got = [];
+          addEventListener('message', (e) => (e.data === 'probe' ? (opener.__foreign(got), close()) : got.push(e.data?.type)));
+          opener.postMessage({ type: 'hello', scores: true }, '*');
+          opener.postMessage({ type: 'hello', scores: true, key: 'a guess' }, '*');
+          opener.postMessage('marker', '*');`;
+        addEventListener('message', function mark(e) {
+          if (e.source !== w || e.data !== 'marker') return;
+          removeEventListener('message', mark);
+          w.postMessage('probe', '*');
+        });
+        w.document.body.append(s);
+      }),
+  );
+  const closeScores = host2.locator('.panel button[aria-label="Close the scores window"]');
+  assert(foreign.length === 0 && (await closeScores.count()) === 0, `a page the host opened that says hello as the scores window gets nothing (${foreign.join(', ')})`);
+  // The real scores window (Shift+A), left open while the host page reloads, is taken back: it knows the page's key.
+  const [sc] = await Promise.all([host2.waitForEvent('popup'), host2.keyboard.press('Shift+A')]);
+  sc.on('pageerror', (e) => errors.push('[scores] ' + e.message));
+  await sc.locator('.strip .plate').first().waitFor();
+  await host2.reload();
+  await host2.getByRole('button', { name: 'Resume game' }).click();
+  await host2.locator('.mode-ask .mode.on').waitFor();
+  await host2.waitForFunction(() => document.activeElement?.classList.contains('on'));
+  await host2.keyboard.press('Enter');
+  await host2.locator('.panel').waitFor();
+  await closeScores.waitFor();
+  await sc.locator('.strip .plate').first().waitFor();
+  assert(true, 'a scores window left open while the host page reloads is taken back, and shows the scores');
+  await Promise.all([sc.waitForEvent('close'), closeScores.click()]);
+  assert(sc.isClosed(), 'and the host panel’s ▭ closes it');
+
   // Leaving the game keeps the audience window (OBS's capture source) up, on the "Starting soon" card.
   await host2.getByRole('button', { name: '🚪 Exit' }).click();
   await host2.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
