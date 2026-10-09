@@ -25,7 +25,7 @@
 </script>
 
 <div class="tc row" bind:this={box}>
-  <span class="muted">⏱</span>
+  <span class="muted" aria-hidden="true">⏱</span>
   {#if t}
     <!-- A running countdown isn't read out every second by the status line; "Time's up" is, once. -->
     <b class="left" class:done={t.expired} data-quiet={t.expired ? undefined : ''}>{t.expired ? "Time's up" : `${left}s`}</b>

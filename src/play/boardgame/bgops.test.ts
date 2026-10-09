@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { announce } from '../../lib/announce';
 import { newGame } from '../../lib/model';
 import { newLive } from '../../lib/live';
 import { ensureBoard, movePlayer, newBoardGameRound } from '../../lib/boardgame';
@@ -9,6 +10,9 @@ import { runAction } from '../../lib/actions';
 import type { Action } from '../../lib/model';
 import { moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
+
+// (What screen readers are told.)
+vi.mock('../../lib/announce', async (real) => ({ ...(await real<typeof import('../../lib/announce')>()), announce: vi.fn() }));
 
 describe('board game: the round’s mover', () => {
   it('a wheel move is one per turn, as a dice one is; a slice saying “Back 2” moves back', () => {
@@ -221,9 +225,10 @@ describe('board game: the host’s moves on the stage', () => {
     expect(run({ id: '5', do: 'again' })).toBe('Roll again: Cat');
     expect(turnNow(game, session)).toBe('Cat’s turn again');
     expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', 'Cat’s turn again']);
-    // An ordinary next turn: nothing to say.
+    // An ordinary next turn: nothing to say (screen readers are still told whose turn it is).
     expect(turnNow(game, session)).toBeNull();
     expect(bs().order[bs().turn]).toBe('a');
+    expect(announce).toHaveBeenLastCalledWith('Ann’s turn');
   });
 
   it('only runs the board-game actions in a board-game round', () => {

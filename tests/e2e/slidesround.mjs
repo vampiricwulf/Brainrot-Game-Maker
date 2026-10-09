@@ -81,6 +81,19 @@ try {
   if (process.env.SCREENSHOTS) await page.screenshot({ path: `${process.env.SCREENSHOTS}/slides-host.png` });
   await page.getByRole('button', { name: 'Next round ▶' }).first().waitFor();
   assert(true, 'on the last slide the main button is Next round ▶');
+  // Go to round with the keyboard: on a closed list ↓ picks the next round, so it asks first (a round played out goes on
+  // at once only when picked with the mouse); Cancel gives the keys back to the list, on this round again.
+  const goTo = page.getByRole('combobox', { name: 'Go to round' });
+  await goTo.focus();
+  await page.keyboard.press('ArrowDown');
+  const strip = page.locator('.panel .confirm');
+  await strip.getByText('Leave Introduction for Jeopardy!?').waitFor();
+  assert((await stage.locator('[data-slide="2"]').count()) === 1, '↓ on Go to round asks before leaving the round (it doesn’t jump)');
+  await page.waitForFunction(() => document.activeElement?.closest('.panel .confirm') && document.activeElement.textContent?.trim() === 'Cancel');
+  await page.keyboard.press('Enter');
+  await strip.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => document.activeElement?.matches('select[aria-label="Go to round"]'));
+  assert((await goTo.locator('option:checked').innerText()).includes('Introduction'), 'Cancel puts the keys back on Go to round, on this round');
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)
   await page.waitForTimeout(500);
   // A click on the stage does what it says too.

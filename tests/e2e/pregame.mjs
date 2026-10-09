@@ -62,6 +62,14 @@ try {
   await page.waitForTimeout(900);
   assert((await names()).join() === 'Bo,Cy', 'Enter in a name adds the next player, typing in their name');
   assert((await page.getByRole('button', { name: 'Move Bo down' }).count()) === 1 && (await page.getByRole('button', { name: 'Move Cy up' }).count()) === 1, '▲/▼ say whose they are');
+  // ▲▼ with the keyboard: the keys stay on the moved row's arrow (the other one at an end), so Enter moves it again.
+  await page.getByRole('button', { name: 'Move Bo down' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Move Bo up');
+  assert((await names()).join() === 'Cy,Bo', '▼ moves Bo down, and the keys go to Bo’s ▲ (▼ is off at the end)');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Move Bo down');
+  assert((await names()).join() === 'Bo,Cy', 'and Enter there moves Bo back up');
   // Wide windows put the rules beside the players: a player's row still fits on one line there.
   for (const [width, height] of [[1280, 720], [1366, 768], [1400, 900], [1920, 1080]]) {
     await page.setViewportSize({ width, height });

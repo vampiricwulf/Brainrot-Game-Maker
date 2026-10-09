@@ -4,7 +4,7 @@
   button (rightmost, filled red when it can't easily be taken back). In the box, Enter answers and Esc cancels.
 -->
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
 
   let {
     text,
@@ -46,12 +46,30 @@
   let typed = $state(untrack(() => value));
   let box = $state<HTMLInputElement>();
   let cancelBtn = $state<HTMLButtonElement>();
+  /** What had the keys when it asked (🚪 Exit, Next round ▶…): Cancel gives them back there. */
+  let opener: HTMLElement | null = null;
   // Into the box, with the text it starts with selected so typing replaces it. (Not `autofocus`: that leaves the focus
   // on the button that asked, where typing would reach the host's shortcuts.)
   onMount(() => {
+    const a = document.activeElement;
+    // (Not another question's Cancel: a question asked again in its place keeps the first one's opener out of reach.)
+    opener = a instanceof HTMLElement && a !== document.body && !a.closest('.ia') ? a : null;
     if (box) box.select();
     else if (focusCancel) cancelBtn?.focus();
   });
+  /**
+   * Cancelled: the keys go back to what asked, not to the first button of the panel around (which may be one that
+   * changes the game), unless the cancel put them somewhere itself.
+   */
+  function cancelled(): void {
+    const back = opener;
+    oncancel();
+    void tick().then(() => {
+      const at = document.activeElement;
+      if (at && at !== document.body && at.isConnected) return;
+      if (back?.isConnected && !back.closest('[inert]') && !back.matches(':disabled')) back.focus({ preventScroll: true });
+    });
+  }
   const blank = $derived(field !== undefined && !typed.trim());
   // A click right after the question shows (the second half of the double-click that asked it) isn't the answer.
   const shownAt = Date.now();
@@ -71,21 +89,21 @@
       aria-label={field}
       onkeydown={(e) => {
         if (e.key === 'Enter') answer();
-        else if (e.key === 'Escape') oncancel();
+        else if (e.key === 'Escape') cancelled();
       }}
     />
   {/if}
   <button
     class="small ghost"
     bind:this={cancelBtn}
-    onclick={oncancel}
+    onclick={cancelled}
     onkeydown={(e) => {
       // The keys stay here: Enter or Space presses Cancel, Esc cancels (neither reaches the host's shortcuts).
       if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
       else if (e.key === 'Escape') {
         e.stopPropagation();
         e.preventDefault();
-        oncancel();
+        cancelled();
       }
     }}>{cancel}</button
   >

@@ -85,7 +85,7 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click();
   // The board is up: the keys go on from its first open tile (arrows + Enter), and the status line says so.
   await page.waitForFunction(() => document.activeElement?.matches('.stage-box .board .tile:not(.used)'));
-  assert((await page.locator('.panel .status').innerText()).includes('Pick a tile on the board (arrows + Enter)'), 'the board comes up with its first open tile in focus: “Pick a tile on the board (arrows + Enter)”');
+  assert((await page.locator('.panel .status').innerText()).includes('Pick a tile on the board. (arrows + Enter)'), 'the board comes up with its first open tile in focus: “Pick a tile on the board. (arrows + Enter)”');
   // N on a clue does what the main button shows: 👁 Reveal answer, then ▦ Done ▶ board.
   // (The board takes its keys once it has settled.)
   await page.waitForTimeout(200);

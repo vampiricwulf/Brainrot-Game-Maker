@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { announce } from '../../lib/announce';
 import { newGame, newShapeEl, type Game, type Session, type SlideElement, type WorldState } from '../../lib/model';
 import { addScreenBeside, ensureWorld, newRpgRound, splitParty } from '../../lib/rpg';
 import { goToRound, newSession, score } from '../../lib/session';
@@ -7,6 +8,9 @@ import {
   addLive, avatarRange, avatarSpot, centredOn, droppedObject, dropEntry, giveEntry, groupDelta, joinPartyNow, liveText, moveChoices, moveGroup, objectMenu,
   objectRange, partyOn, pickUp, regroupAll, removeObject, sendPlayers, splitOff, stepParty, wayOffEdge,
 } from './hostops';
+
+// (What screen readers are told.)
+vi.mock('../../lib/announce', async (real) => ({ ...(await real<typeof import('../../lib/announce')>()), announce: vi.fn() }));
 
 /** An RPG round with three players standing on its start screen. */
 function setup(): { game: Game; session: Session; st: WorldState } {
@@ -125,12 +129,19 @@ describe('dragging avatars on the RPG stage', () => {
   });
 
   it('says which party moved once there are several', () => {
-    const { game, session } = withBeach();
+    const { game, session, map } = withBeach();
     expect(stepParty(game, session, 'e')).toBeNull();
     expect(session.actionLog?.at(-1)?.text).toBe('Party east');
+    // Screen readers hear where the party is now (it's on the stage, not in the status line).
+    expect(announce).toHaveBeenLastCalledWith('Party moved to Beach');
     splitOff(game, session, ['p2']);
     expect(stepParty(game, session, 'w')).toBeNull();
     expect(session.actionLog?.at(-1)?.text).toBe('Party 2 west');
+    expect(announce).toHaveBeenLastCalledWith(`Party 2 moved to ${map.screens[0].name}`);
+    // No way that side: it says why instead (a toast), and nothing is heard as a move.
+    vi.mocked(announce).mockClear();
+    expect(stepParty(game, session, 'n')).toBeTruthy();
+    expect(announce).not.toHaveBeenCalled();
   });
 
   it('offers a map screen to the followed party, the selected, each other party and everyone', () => {

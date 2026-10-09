@@ -26,6 +26,7 @@
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { dropMenu } from '../lib/menustate.svelte';
   import { buzzerOn } from '../lib/remote.svelte';
   import { teamsOn } from '../lib/buzz';
   import { scoresWindow } from '../lib/sync.svelte';
@@ -259,6 +260,15 @@
       : (clueSecs >= 1 ? clueSecs : 0) || game.settings.defaultTimerSeconds || 30,
   );
   const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
+  /** Picked from ↶ Reopen a tile…: back on the board. With the last one back that button goes, so the keys go to the tile. */
+  function reopenPicked(id: string): void {
+    onreopen(id);
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (a && a !== document.body && a.isConnected) return;
+      document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${id}"]`)?.focus({ preventScroll: true });
+    });
+  }
   // Only in the round it's from: reopening a tile of another round would change a board nobody is looking at.
   const lastClosedRef = $derived.by(() => {
     const ref = session.lastClosed && session.used[session.lastClosed] ? findClueRef(game, session.lastClosed) : null;
@@ -501,7 +511,7 @@
     if (answering && id && warnedFor !== id && !Object.keys(marks).length) {
       warnedFor = id;
       const who = session.players.filter((p) => selected.includes(p.id)).map((p) => p.name).join(', ');
-      toast(`${who || 'A player'} is picked with no points given: Enter awards, X marks wrong, or N again closes without points`, 5000);
+      toast(`${who || 'A player'} is picked with no points given: Enter awards, Shift+Enter marks wrong, or N again closes without points`, 5000);
       return;
     }
     onback();
@@ -532,7 +542,7 @@
       {:else if done}
         <span class="done">Round complete!</span>
       {:else}
-        <span class="muted">Pick a tile on the board <span class="hint">(arrows + Enter)</span>.</span>
+        <span class="muted">Pick a tile on the board. <span class="hint">(arrows + Enter)</span></span>
       {/if}
       {#if !session.intro && lastClosedRef && session.lastClosed}
         {@const id = session.lastClosed}
@@ -541,23 +551,15 @@
         </button>
       {/if}
       {#if !session.intro && used.length}
-        <select
-          class="small"
-          aria-label="Reopen a used tile"
+        <!-- A menu, not a list box: on a closed list box, ↓ (to look through it) would put a tile back at once. -->
+        <button
+          class="small ghost"
+          aria-haspopup="menu"
           title="Put a used tile back on the board (or right-click it on the board)"
-          onchange={(e) => {
-            const id = e.currentTarget.value;
-            e.currentTarget.value = '';
-            // Let go of the keys: shortcuts ignore a focused select, and arrow keys would reopen another tile.
-            e.currentTarget.blur();
-            if (id) onreopen(id);
-          }}
+          onclick={(e) => dropMenu(e, [{ heading: 'Put back on the board' }, ...used.map((t) => ({ label: clueName(game, t.ref), onclick: () => reopenPicked(t.id) }))])}
         >
-          <option value="">↶ Reopen a tile…</option>
-          {#each used as t (t.id)}
-            <option value={t.id}>{clueName(game, t.ref)}</option>
-          {/each}
-        </select>
+          ↶ Reopen a tile… ▾
+        </button>
       {/if}
     {:else if session.phase === 'clue' && info}
       <b>{categoryLabel(info.category)}</b>
@@ -1409,8 +1411,10 @@
   .p.on {
     box-shadow: 0 0 0 2px var(--c);
   }
+  /* (Read out as words, not "black star"; a browser without alt text for it keeps the plain star.) */
   .p.picker .sel::after {
     content: ' ★';
+    content: ' ★' / ', picks next';
   }
   .sel {
     font-weight: 700;
@@ -1462,9 +1466,6 @@
   }
   .small {
     font-size: 12px;
-  }
-  select.small {
-    padding: 2px 6px;
   }
   .award input {
     width: 110px;

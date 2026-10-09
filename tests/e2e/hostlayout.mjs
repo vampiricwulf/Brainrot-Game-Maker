@@ -201,9 +201,15 @@ try {
   assert(exitAsked.x === states.board.exit.x, '🚪 Exit keeps its place while it asks');
   await confirmStrip(page).getByRole('button', { name: 'Stay' }).click();
   await confirmStrip(page).waitFor({ state: 'detached' });
+  // The keys go back to what asked, not to the panel's first button (↶ Reopen …, which would change the game).
+  await page.waitForFunction(() => document.activeElement?.matches('.panel .fixed button') && document.activeElement.textContent?.includes('🚪 Exit'));
+  assert(true, 'Stay gives the keys back to 🚪 Exit');
 
   await nextRound();
   await page.locator('.panel .status', { hasText: 'Adventure' }).waitFor();
+  // A round with no tile to pick (nor a title card here): the keys go on from its own controls, not the timer's Start.
+  await page.waitForFunction(() => document.activeElement?.matches('.panel .mode-host button'));
+  assert(true, `Yes into an Adventure round puts the keys on its own controls (${await page.evaluate(() => document.activeElement?.textContent?.trim())})`);
   states.rpg = await look();
   await nextRound();
   await page.locator('.panel .status', { hasText: 'Board game' }).waitFor();
