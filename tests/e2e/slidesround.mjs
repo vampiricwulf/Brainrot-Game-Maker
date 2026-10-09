@@ -197,7 +197,8 @@ try {
   assert((await p2.locator('.panel .status b').innerText()) === 'Tiebreaker', 'N with a tied player picked and no winner given warns first; the tiebreaker stays up');
   await p2.keyboard.press('n');
   await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
-  assert(true, 'and N again goes back to the results');
+  await p2.locator('.toast', { hasText: 'hasn’t won yet' }).waitFor({ state: 'detached', timeout: 1000 });
+  assert(true, 'and N again goes back to the results, the warning put away (Enter there would do nothing)');
   await mainButton(p2).click();
   await p2.locator('.panel .status', { hasText: 'Select the winner' }).waitFor();
   // Points given in the tiebreaker settle it: the panel says so (not "Select the winner").

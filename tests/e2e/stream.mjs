@@ -529,6 +529,15 @@ async function tileTools() {
   await host.keyboard.press('Escape');
   await stage('.ov').waitFor({ state: 'detached' });
   assert((await stage('.timer').count()) === 0 && (await stage('[data-slide="answer"]').count()) === 1, 'a wheel opened over the answer and closed starts no countdown over it');
+  // 🙈 Hide answer (R): the buzzers are just closed again, not "answered" (🔔 Open the buzzers is next; phones: not Clue over).
+  await host.keyboard.press('r');
+  await stage('[data-slide="answer"]').waitFor({ state: 'detached' });
+  await host.locator('.panel [data-next]', { hasText: '🔔 Open the buzzers' }).waitFor();
+  await host.waitForFunction(() => { const s = window.__states.at(-1); return s && !s.answerShown && !s.done; });
+  assert(
+    !(await host.locator('.panel [data-buzzrow]').innerText()).includes('Answered'),
+    'the answer hidden again: 🔔 Open the buzzers is the main button, and the phones aren’t told the clue is over',
+  );
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();
 

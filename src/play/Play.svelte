@@ -918,6 +918,15 @@
   $effect(() => {
     if (buzzing && session.revealed && buzz.phase === 'armed') untrack(() => setBuzz(buzz));
   });
+  // The answer hidden again after it closed them with nobody answering: they're just closed, not "answered" (the host
+  // panel offers 🔔 Open the buzzers, the phones say Get ready, not Clue over). (A right answer's close names who.)
+  $effect(() => {
+    if (buzzing && session.phase === 'clue' && !session.revealed && buzz.phase === 'closed' && buzz.done && !buzz.doneBy)
+      untrack(() => {
+        const { done: _done, doneBy: _by, ...rest } = $state.snapshot(buzz) as BuzzState;
+        setBuzz(rest);
+      });
+  });
   // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
   // picked (or let go) by hand, a number key or a click in the host panel, answers (or the buzzers open again for the rest).
   $effect(() => {
@@ -2731,7 +2740,7 @@
       if (id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0)) {
         // (A player picked: Enter is their award.)
         if (selected.length) return false;
-        toast('Moved this turn: N for the next turn');
+        hint('Moved this turn: N for the next turn');
         return true;
       }
       const at = id ? bs.positions[id]?.space : undefined;
@@ -3000,16 +3009,17 @@
           // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
         } else if (session.phase === 'clue') {
           // Shift+N: a clue's question slide before. N: whatever the host panel's main button shows (the next slide,
-          // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…).
+          // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…). With the controls hidden the panel is gone and its
+          // last button out of date: as a click on the stage, the next slide, then the answer (never hidden again).
           if (e.shiftKey) slideStep(-1);
-          else if (hostNext && !hostNext.disabled) hostNext.run();
-          else slideStep(1);
+          else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
+          else if (!slideStep(1) && !answerShowing(session)) revealToggle();
         } else if (session.phase === 'tiebreaker') {
           // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);
-          // Shift+N the slide before.
+          // Shift+N the slide before. With the controls hidden, as a click on the stage (above).
           if (e.shiftKey) slideStep(-1);
-          else if (hostNext && !hostNext.disabled) hostNext.run();
-          else slideStep(1);
+          else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
+          else if (!slideStep(1) && !answerShowing(session)) revealToggle();
         } else if (session.phase === 'slides') {
           // A slides round: N the next slide, then (after the last) the next round, as the main button says.
           if (e.shiftKey) slideStep(-1);

@@ -335,6 +335,21 @@ describe('step labels', () => {
     expect(describeStep(diff(giving, gone), giving, gone)).toMatchObject({ label: 'Deleted item “Potion”', place: { tab: 'stats' } });
   });
 
+  it('shows buttons pasted on a wheel slice or an item, with the items they bring, where they were pasted', () => {
+    const before = sample();
+    before.items = [{ id: 'sword', name: 'Sword', stackable: false }];
+    const wheel = before.wheels[before.wheels.length - 1];
+    const give = { id: 'b1', do: 'item', item: 'potion', qty: 1, op: 'give' } as const;
+    const slice = structuredClone(before);
+    slice.items!.push({ id: 'potion', name: 'Potion', stackable: true });
+    slice.wheels[slice.wheels.length - 1].segments[0].actions = [{ ...give }];
+    expect(describeStep(diff(before, slice), before, slice, 'Pasted 1 button')).toMatchObject({ place: { tab: 'tools', wheel: wheel.id }, undoPlace: { tab: 'tools', wheel: wheel.id } });
+    const onItem = structuredClone(before);
+    onItem.items!.push({ id: 'potion', name: 'Potion', stackable: true });
+    onItem.items![0].onUse = [{ ...give }];
+    expect(describeStep(diff(before, onItem), before, onItem, 'Pasted 1 button')).toMatchObject({ place: { tab: 'stats', item: 'sword' } });
+  });
+
   it('says switches turned on and off in words, not field names', () => {
     const el = (g: Game) => screens(g)[1].slide.elements;
     const door = (g: Game) => {

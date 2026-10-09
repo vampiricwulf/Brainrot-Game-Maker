@@ -612,8 +612,13 @@ export function describe(all: readonly Op[], before: Game, after: Game, explicit
   const shown = all.filter((o) => opPath(o)[0] !== 'media');
   let ops = shown.length ? shown : all;
   // The same for wheels, dice, items, shops and stats added with what uses them (a screen pasted from another game, a
-  // new item put on a screen): the step shows there, not on 🎡 Wheels & Dice or 📊 Stats & Items.
-  if (ops.some((o) => !KITS.has(opPath(o)[0]))) ops = ops.filter((o) => !addsKit(o));
+  // new item put on a screen): the step shows there, not on 🎡 Wheels & Dice or 📊 Stats & Items. What uses them can be
+  // a kit's own buttons too (a wheel slice's, a die face's, an item's Use).
+  const uses = (o: Op) => {
+    const p = opPath(o);
+    return !KITS.has(p[0]) || (!addsKit(o) && p.some((s) => s === 'actions' || s === 'onUse'));
+  };
+  if (ops.some(uses)) ops = ops.filter((o) => !addsKit(o));
   const first = primary(ops);
   const list = asList(first);
   const op = list?.op ?? first;

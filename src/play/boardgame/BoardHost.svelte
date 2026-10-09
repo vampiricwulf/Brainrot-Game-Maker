@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { app, toast } from '../../lib/app.svelte';
+  import { app, hint, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { clampSteps, currentPlayer, MAX_STEPS, spaceById, waysOn } from '../../lib/boardgame';
@@ -86,7 +86,7 @@
         title: `Pick which way ${turnName} goes: the buttons under “which way?”, or ${dual ? 'a marked space' : 'the space'} on the stage`,
         run: () => {
           forkEl?.scrollIntoView({ block: 'nearest' });
-          toast(`Pick which way first (${Math.abs(bs.fork?.stepsLeft ?? 0)} to go): the buttons under “which way?”, or ${dual ? 'a marked space' : 'click the space on the stage'}`);
+          hint(`Pick which way first (${Math.abs(bs.fork?.stepsLeft ?? 0)} to go): the buttons under “which way?”, or ${dual ? 'a marked space' : 'click the space on the stage'}`);
         },
         also: [prev, next],
       };
@@ -107,16 +107,17 @@
 
   function roll(): void {
     const why = rollMover(game, session, app.live);
-    if (why) toast(why);
+    // (Each says what to do first: it goes once that's done, or the next turn starts.)
+    if (why) hint(why);
   }
 
   function move(n: number | null, choose?: string, who?: string): void {
     // A whole number, at most MAX_STEPS (a typo of 100000 isn't walked).
     n = n === null ? null : clampSteps(n);
-    if (!n) return void toast('How many spaces? Roll first, or type a number');
+    if (!n) return void hint('How many spaces? Roll first, or type a number');
     // (Under the scores too: the move would end them unseen.)
     const o = toolOverlay(app.live);
-    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void toast('Still rolling…');
+    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void hint('Still rolling…');
     toast(moveNow(game, session, n, choose, who), 3000);
     app.live.overlay = null;
     // Moved: the count is used up (a fork goes on with the steps left, not these).
@@ -124,7 +125,7 @@
   }
 
   function run(a: Action, who: string): void {
-    if (needsPlayers(a) && !who) return void toast('Pick who it’s for first');
+    if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
     toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a)), 3000);
   }
 
@@ -287,7 +288,7 @@
           onkeydown={(e) => {
             if (e.key !== 'Enter') return;
             // At a fork the move goes on with the steps it has left: these would replace them.
-            if (fork) return void toast(`${playerName(session, fork.playerId)} is at a fork: pick the way first`);
+            if (fork) return void hint(`${playerName(session, fork.playerId)} is at a fork: pick the way first`);
             move(steps);
             e.currentTarget.blur();
           }}
