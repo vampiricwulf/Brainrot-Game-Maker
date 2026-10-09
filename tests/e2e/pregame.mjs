@@ -419,6 +419,21 @@ try {
   await player.getByRole('button', { name: '▶ Play' }).click();
   const card = await player.locator('section[aria-label="Phone buzzers"]').innerText();
   assert(card.includes('This file has no phone buzzers') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'), `the player-only file says it has no phone buzzers, and doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
+  // Players and rules set up there stay through ◀ Back and ▶ Play again (the file's own copy of the game keeps them).
+  const playerNames = () => player.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));
+  const mostBox = (await openRules(player)).getByLabel('Most players');
+  const mostSet = String(Number(await mostBox.inputValue()) + 1);
+  await mostBox.fill(mostSet);
+  await mostBox.press('Tab');
+  await player.getByRole('button', { name: '＋ Add player' }).click();
+  await player.keyboard.type('Zed');
+  await player.keyboard.press('Tab');
+  const setUp = await playerNames();
+  await player.getByRole('button', { name: '◀ Back', exact: true }).click();
+  await player.getByRole('button', { name: '▶ Play' }).click();
+  await player.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  assert(setUp.at(-1) === 'Zed' && (await playerNames()).join() === setUp.join(), `a player-only file keeps the players set up through ◀ Back and ▶ Play (${setUp.join(', ')})`);
+  assert((await (await openRules(player)).getByLabel('Most players').inputValue()) === mostSet, `…and the rules (Most players ${mostSet})`);
   await player.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

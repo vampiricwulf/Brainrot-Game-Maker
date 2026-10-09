@@ -2084,7 +2084,8 @@
       .map((p) => {
         const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
-        return { text: p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined };
+        // (A player-only file can't add or swap files: its own words for those.)
+        return { text: app.playerOnly && p.player ? p.player : p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined };
       })
       .filter((p) => p.level === 'warn' || p.ddRound !== undefined);
   });
@@ -2130,6 +2131,11 @@
 
   /** The editor holds this same game (after resuming an older save it may not; a player-only file has no editor). */
   const editorHasIt = () => !app.playerOnly && app.game.id === game.id;
+  /**
+   * The app's copy of this game (the editor's, or a player-only file's own) keeps what the pre-game screen sets up: ◀ Back
+   * and ▶ Play again find the players and rules as they were left (as setStream keeps the stream's words).
+   */
+  const keepsSetup = () => app.game.id === game.id;
 
   /**
    * The pre-game screen is where the game's players are set: each change to the list here (a name, a color, a picture,
@@ -2155,7 +2161,7 @@
     rosterSeen = { s: session, key, list };
     untrack(() => {
       keepRoster(game, list, before);
-      if (editorHasIt()) keepRoster(app.game, list, before);
+      if (keepsSetup()) keepRoster(app.game, list, before);
     });
   });
 
@@ -2172,7 +2178,7 @@
     if (!rulesSeen || rules === rulesSeen) return void (rulesSeen = rules);
     rulesSeen = rules;
     untrack(() => {
-      if (!editorHasIt()) return;
+      if (!keepsSetup()) return;
       const to = app.game.settings as unknown as Record<string, unknown>;
       for (const k of RULES) {
         const v = $state.snapshot(game.settings[k]);
