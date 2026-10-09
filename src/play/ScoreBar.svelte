@@ -4,7 +4,7 @@
   import { autofit } from '../lib/autofit';
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { score } from '../lib/session';
-  import { plateScore } from './flow';
+  import { plateScores } from './flow';
 
   let {
     game,
@@ -15,6 +15,7 @@
     lit,
     ticks = [],
     reserve = 0,
+    width = 1920,
     phones = [],
   }: {
     game: Game;
@@ -30,6 +31,8 @@
     ticks?: string[];
     /** Room kept free at the right end (px), for the phone buzzers' join code. */
     reserve?: number;
+    /** How wide the bar is (px): the scores-only window's is narrower while its countdown is beside it. */
+    width?: number;
     /** Players with a phone buzzer connected (📱 on their plate). */
     phones?: string[];
   } = $props();
@@ -49,12 +52,19 @@
     if (top <= 0 || scores.every((s) => s === top)) return new Set<string>();
     return new Set(session.players.filter((_, i) => scores[i] === top).map((p) => p.id));
   });
+  /**
+   * Every score as its plate shows it, short enough for the plate's room (its padding is .score's below: 24px on a pill
+   * plate, else 8px).
+   */
+  const shown = $derived(
+    plateScores(session.players.map((p) => score(session, p.id)), sym, reserve, width, game.theme?.plateShape === 'pill' ? 24 : 8),
+  );
   const NAME = 36;
   const NAME_MIN = 28;
 </script>
 
 <div class="bar" style:padding-right={reserve ? `${24 + reserve}px` : undefined}>
-  {#each session.players as p (p.id)}
+  {#each session.players as p, i (p.id)}
     {@const s = score(session, p.id)}
     <button
       class="plate"
@@ -71,7 +81,7 @@
         <span class="fit" use:autofit={{ size: NAME, min: NAME_MIN, noBreak: true, enabled: true, text: p.name }}><span class="nm" dir="auto">{p.name}</span></span>
       </span>
       <span class="score" class:neg={s < 0}>
-        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm" title={formatPoints(s, sym)}>{plateScore(s, sym, session.players.length, reserve)}</span></span>
+        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm" title={formatPoints(s, sym)}>{shown[i]}</span></span>
       </span>
       {#if phones.includes(p.id)}<span class="phone" title="Phone buzzer connected" aria-label="Phone buzzer connected">📱</span>{/if}
       {#if ticks.includes(p.id)}<span class="tick" title="Wager in">✔</span>{/if}
@@ -192,6 +202,7 @@
   .score {
     flex: 1;
     min-height: 0;
+    /* (plateScores is told this: 24px on a pill plate, else 8px.) */
     padding: 0 max(8px, calc(var(--plate-radius, 14px) * 0.5));
     font-family: var(--value-font);
     font-weight: 800;

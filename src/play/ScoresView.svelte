@@ -27,11 +27,12 @@
   {#if session && !live.pregame && !live.cover && session.players.length}
     <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
       <!-- In a Final nobody picks: the spotlit player in its reveals is lit, else nobody (as on the stage); nor on the
-           results or the tiebreaker. -->
+           results or the tiebreaker. Beside the countdown the plates have its 280px less (their scores shortened to fit). -->
       <div class="plates">
         <ScoreBar
           {game}
           {session}
+          width={live.timer ? W - 280 : W}
           phones={live.phones}
           lit={session.phase === 'final'
             ? session.finalStep === 'reveal'

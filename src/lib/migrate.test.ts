@@ -287,6 +287,15 @@ describe('⚖ Game rules: what can be typed', () => {
     expect(typedPoints('-1,500.6')).toBe(-1501);
     expect(typedPoints('€1 000')).toBe(1000);
     expect(typedPoints('1e20')).toBe(MAX_POINTS);
+    // A dash pasted from a chat is a minus too (not a symbol, which would make it +200).
+    expect(typedPoints('–200')).toBe(-200);
+    expect(typedPoints('–$200')).toBe(-200);
+    expect(typedPoints('—200')).toBe(-200);
+    // The plate's own score with a word symbol ending in a period, and a word after the number that starts with K.
+    expect(typedPoints('500 pts.')).toBe(500);
+    expect(typedPoints('1,200 kr.')).toBe(1200);
+    expect(typedPoints('5 kr')).toBe(5);
+    expect(typedPoints('500 Kč')).toBe(500);
     // Nothing that reads as a number: null (asked again, not set to something else).
     expect(typedPoints('')).toBeNull();
     expect(typedPoints('abc')).toBeNull();
@@ -295,6 +304,9 @@ describe('⚖ Game rules: what can be typed', () => {
     expect(typedPoints('12abc34')).toBeNull();
     expect(typedPoints('1.5K')).toBeNull();
     expect(typedPoints('2m pts')).toBeNull();
+    expect(typedPoints('10 k')).toBeNull();
+    expect(typedPoints('1.5 K')).toBeNull();
+    expect(typedPoints('12 B')).toBeNull();
   });
 
   it('a name with nothing to see in it is blank', () => {

@@ -1347,14 +1347,20 @@ export function wholePoints(n: number | null | undefined): number | null {
 }
 
 /**
- * Points typed as text by the host (as wholePoints): "1,000", "$500", "−$200" or "500 pts" read too. Null when there's
- * no number in it, or a short form ("1.5K", "2M") that would read as far less than meant.
+ * Points typed as text by the host (as wholePoints): "1,000", "$500", "−$200", "–200" (a dash pasted from a chat) or
+ * "500 pts." read too. Null when there's no number in it, or a short form ("1.5K", "10 k", "2M") that would read as far
+ * less than meant.
  */
 export function typedPoints(text: string): number | null {
-  const t = text.replace(/[\s,_]/g, '').replace(/−/g, '-');
+  // (A word symbol may end in a period, "pts." or "kr.": not part of the number.)
+  const t = text
+    .replace(/[\s,_]/g, '')
+    .replace(/[−–—]/g, '-')
+    .replace(/(\p{L})\.$/u, '$1');
   if (t === '') return null;
   if (Number.isFinite(Number(t))) return wholePoints(Number(t));
-  if (/\d[kmb](?![a-z])/i.test(text.replace(/[,_]/g, ''))) return null;
+  // (A letter right after K, M or B makes it a word, "5 kr" or "500 Kč", not a thousand or a million.)
+  if (/\d\s*[kmb](?!\p{L})/iu.test(text.replace(/[,_]/g, ''))) return null;
   // A sign, a symbol in front ("$", "€"), the number, then a word after it ("pts") or a symbol.
   const m = /^(-?)[^\d.-]*(-?)(\d+(?:\.\d+)?)[^\d.]*$/.exec(t);
   return m ? wholePoints((m[1] || m[2] ? -1 : 1) * Number(m[3])) : null;

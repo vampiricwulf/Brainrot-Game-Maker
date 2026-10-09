@@ -65,13 +65,27 @@ const scoreWidth = (s: string) => [...s].reduce((w, c) => w + (c === ',' || c ==
 /**
  * A score as its plate shows it: the whole number when it fits at the smallest size scores shrink to, else shortened
  * ("$1.2B": cut down, never rounded up), so the number on stream is never one cut off in the middle ("$999,999,…").
+ * `width` is the bar's (the scores-only window's is narrower while its countdown is up); `pad` the score's padding each
+ * side (ScoreBar's .score: 24px on a pill plate, else 8px).
  */
-export function plateScore(n: number, sym: string, count: number, reserve = 0): string {
-  // The score's room (less the plate's border and padding).
-  const room = plateWidth(count, reserve) - 28;
+export function plateScore(n: number, sym: string, count: number, reserve = 0, width = 1920, pad = 8): string {
+  // The score's room: the plate less its borders (4px a side), its padding and the 4px kept for the digits' shadow.
+  const room = plateWidth(count, reserve, width) - 12 - 2 * pad;
   // Shorter and shorter until one fits (many players: narrow plates): "1,200 pts" → "1,200" → "1.2K" → "1K". A word
   // symbol goes before any digits do; "$" only at the very end.
   const bare = wordSymbol(sym) ? '' : sym;
   const forms = [formatPoints(n, sym), formatPoints(n, bare), compactPoints(n, sym, 1000), compactPoints(n, bare, 1000), compactPoints(n, bare, 1000, 0), compactPoints(n, '', 1000, 0)];
   return forms.find((s) => scoreWidth(s) <= room) ?? forms[forms.length - 1];
+}
+
+/**
+ * Every plate's score on one bar (as plateScore), with the symbol on all of them or on none, so the bar reads as one
+ * set ("1.2K | 800 | 2K", not "$1K | 800 | $2K"): once one plate has to drop it, they all do, each keeping the digits
+ * that fit.
+ */
+export function plateScores(scores: number[], sym: string, reserve = 0, width = 1920, pad = 8): string[] {
+  const own = scores.map((n) => plateScore(n, sym, scores.length, reserve, width, pad));
+  // (A plate that had to drop it shows what it would with no symbol at all.)
+  const plain = scores.map((n) => plateScore(n, '', scores.length, reserve, width, pad));
+  return own.some((s, i) => s === plain[i]) ? plain : own;
 }

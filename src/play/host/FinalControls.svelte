@@ -242,14 +242,17 @@
   function setWager(id: string, box: HTMLInputElement): void {
     const fs = f;
     const value = box.value;
-    // (At most what reads on screen, as finalSetWager keeps it: the step says what it is.)
-    const v = Math.min(MAX_POINTS, Number(value));
+    // (At most what reads on screen, as finalSetWager keeps it: the step and the box say what it is.)
+    const typed = Number(value);
+    const v = Math.min(MAX_POINTS, typed);
     const was = fs?.wagers[id];
     const back = (): void => {
       box.value = typeof was === 'number' ? String(was) : '';
     };
     if (!fs || value.trim() === '' || !Number.isFinite(v)) return back();
-    if (v === was) return;
+    if (typed > MAX_POINTS) toast(`At most ${formatPoints(MAX_POINTS, sym)}`, 3000);
+    // (Already the most: the box goes back to it, not the digits typed on past it.)
+    if (v === was) return void (typed !== v && back());
     const why = finalWagerRefused(session, id, v, override);
     if (why) back();
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
@@ -370,7 +373,17 @@
                 placeholder="wager"
                 aria-label="{p.name}’s wager"
                 class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
-                oninput={(e) => finalSetWager(session, p.id, e.currentTarget.value === '' ? undefined : +e.currentTarget.value)}
+                oninput={(e) => {
+                  const box = e.currentTarget;
+                  const v = box.value === '' ? undefined : +box.value;
+                  finalSetWager(session, p.id, v);
+                  // Past what reads on screen it's kept at the most, and the box says so (it's only written back when the
+                  // wager changes, so a digit typed on past it would stay).
+                  if (v !== undefined && v > MAX_POINTS) {
+                    box.value = String(MAX_POINTS);
+                    toast(`At most ${formatPoints(MAX_POINTS, sym)}`, 3000);
+                  }
+                }}
                 onfocus={() => {
                   wagerDone();
                   wagerStep = { id: p.id, was: f.wagers[p.id], ...sourceOf(f, p.id) };

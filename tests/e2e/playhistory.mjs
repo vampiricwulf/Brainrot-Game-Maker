@@ -225,6 +225,12 @@ try {
   await scoreAsk.getByRole('textbox').press('Enter');
   await scoreAsk.waitFor({ state: 'detached' });
   assert((await plate3.locator('.score').innerText()) === '$400', 'and a plain number still sets it ($400)');
+  // A wager past the most points is kept at the most, and its box says so (not a digit typed on past it).
+  const wager1 = page.locator('.fj .wagers input[data-wager]').first();
+  await wager1.fill('1000000000000');
+  await wager1.press('9');
+  await page.locator('.toast', { hasText: 'At most $1,000,000,000,000' }).waitFor();
+  assert((await wager1.inputValue()) === '1000000000000', `a wager typed on past the most points shows the most in its box (${await wager1.inputValue()})`);
   for (let i = 0; i < 3; i++) await page.locator('.fj .wagers input[data-wager]').nth(i).fill(String((i + 1) * 100));
   // A wager already in is changed in its box: one step, named with the old and the new amount.
   await page.locator('.fj .wagers input[data-wager]').first().fill('150');
@@ -252,6 +258,17 @@ try {
   await page.keyboard.press('l');
   assert(/’s wager: \$\d+ → \$120$/.test((await history())[0]), 'changing it in the reveals is a step too');
   await page.keyboard.press('Escape');
+  // Already at the most points, a bigger one typed there puts the most back in the box (not the digits typed).
+  await rowBox.fill('1000000000000');
+  await rowBox.press('Enter');
+  // (The wager screen's own "At most" gone first, so the one waited for is this box's.)
+  await page.locator('.toast', { hasText: 'At most' }).waitFor({ state: 'detached' });
+  await rowBox.fill('10000000000009');
+  await rowBox.press('Enter');
+  await page.locator('.toast', { hasText: 'At most $1,000,000,000,000' }).waitFor();
+  assert((await rowBox.inputValue()) === '1000000000000', `in the reveals too, a wager past the most shows the most in its box (${await rowBox.inputValue()})`);
+  await rowBox.fill('120');
+  await rowBox.press('Enter');
   await firstRow.getByRole('button', { name: 'Show wager' }).click();
   await page.waitForFunction(() => document.querySelector('.spot-wager')?.textContent?.includes('120'));
   assert((await rowBox.count()) === 0, 'Show wager puts the changed wager on screen, and the field goes');

@@ -6,7 +6,7 @@ import {
 import { cuesAfter, MAX_CUES, type SoundCue } from '../lib/live';
 import { finalNextStep, logged, revealStep, undoAction, redoAction } from '../lib/toolset';
 import { jeopardyGame } from '../lib/testgame';
-import { groupPops, plateCenter, plateScore, stopsTimer } from './flow';
+import { groupPops, plateCenter, plateScore, plateScores, stopsTimer } from './flow';
 
 function setup(players = 3) {
   const game = jeopardyGame();
@@ -79,6 +79,22 @@ describe('score pops', () => {
     expect(plateScore(1200, 'pts', 16)).toBe('1,200');
     expect(plateScore(5000, 'pts', 14, 250)).toBe('5,000');
     expect(plateScore(123_456, 'pts', 16)).toBe('123K');
+    // The scores-only window's bar beside its countdown (280px less): "$800" fits 18 plates of 1920px, not of 1640px.
+    expect(plateScore(800, '$', 18)).toBe('$800');
+    expect(plateScore(800, '$', 18, 0, 1640)).toBe('800');
+    // Pill plates pad their scores 24px a side, not 8px: 16 of them have room for "1K", not "1,200".
+    expect(plateScore(1200, 'pts', 16, 0, 1920, 24)).toBe('1K');
+  });
+
+  it('a bar of plates has its symbol on every score or on none', () => {
+    const zeros = (n: number) => Array<number>(n).fill(0);
+    // 20 plates: "$800" doesn't fit, so no plate keeps "$" ("$1K | 800 | $2K" otherwise), and "1.2K" fits without it.
+    expect(plateScores([1200, 800, 2000, 0, -800, ...zeros(15)], '$').slice(0, 5)).toEqual(['1.2K', '800', '2K', '0', '−800']);
+    // 16 plates: "0 pts" fits but "1,200 pts" doesn't.
+    expect(plateScores([0, 1200, ...zeros(14)], 'pts').slice(0, 2)).toEqual(['0', '1,200']);
+    // Room for them all: each keeps it, and its own form ("$999.9M" beside "$1,200").
+    expect(plateScores([1200, 0, 2000], '$')).toEqual(['$1,200', '$0', '$2,000']);
+    expect(plateScores([999_999_999, 1200, ...zeros(10)], '$').slice(0, 2)).toEqual(['$999.9M', '$1,200']);
   });
 });
 
