@@ -354,6 +354,9 @@ export function themeStyle(t: Theme | undefined, boardImageUrl?: string): string
     // Hard drop shadows behind words on the tiles: black on dark tiles; a soft light one on light tiles, where a black
     // one smears dark words once the stream is compressed.
     '--tile-shadow': light ? 'rgba(255, 255, 255, 0.75)' : '#000',
+    // The outline round a category name over its picture (any colors behind it), by the names' own color: black round
+    // light names, a light halo round dark ones (Pastel's). A name color that can't be read keeps the black one.
+    '--name-shadow': textOn(toHex(th.boardText) ?? '#ffffff') === '#000' ? '#000' : 'rgba(255, 255, 255, 0.75)',
     // The Daily Double splash is purple: the value color on it, unless that's too close (Pastel's purple), then white.
     '--dd-text': contrast(th.value, '#7a00ff') >= 3 ? th.value : '#ffffff',
     // The room code (and the wagers and places on stream) sit on dark boxes laid over the tiles or the score bar (55%

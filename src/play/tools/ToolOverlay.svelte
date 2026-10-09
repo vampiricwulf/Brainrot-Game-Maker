@@ -98,7 +98,8 @@
     margin: 0 0 calc(20px * var(--k));
     font-family: var(--value-font);
     font-size: calc(100px * var(--k));
-    color: var(--value);
+    /* (White where the value color is too close to the darkened tiles behind: Pastel's purple, theme.ts.) */
+    color: var(--value-on-dark, var(--value));
     text-shadow: 6px 6px 0 #000;
   }
   .line {
@@ -117,7 +118,7 @@
   }
   .rank {
     width: 60px;
-    color: var(--value);
+    color: var(--value-on-dark, var(--value));
   }
   .nm {
     padding: 0 20px;

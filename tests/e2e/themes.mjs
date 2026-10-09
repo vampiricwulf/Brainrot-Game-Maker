@@ -70,6 +70,8 @@ try {
   await page.keyboard.press('Control+z');
   await said('Undid Clue text font');
   assert((await onThemePage()) && (await clueFont.inputValue()) === '', 'Ctrl+Z of a Clue text font (it restyles every clue) stays on the Theme page, no clue editor opens');
+  const undidNote = await page.locator('.history-notice, .toast', { hasText: 'Undid Clue text font' }).first().innerText();
+  assert(/· Theme\b/.test(undidNote) && !undidNote.includes('Question'), `and its note says it was on the Theme page, not at a clue (${undidNote})`);
   await page.keyboard.press('Control+y');
   await said('Redid Clue text font');
   assert((await onThemePage()) && (await clueFont.inputValue()).includes('Anton'), 'and so does Ctrl+Y');

@@ -380,6 +380,34 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
   return at;
 }
 
+/**
+ * Where a place is, for people, as placeAt names its tab ('Theme'; 'Play › Players'): for a step an editor shows on
+ * another tab than its changes are in (Clue text, set on the Theme page, restyles every clue). Null for a round, a
+ * world or the history, whose names are in the game.
+ */
+export function placeWhere(place: Place): string | null {
+  switch (place.tab) {
+    case 'title':
+      return 'Game title';
+    case 'sounds':
+      return 'Sounds';
+    case 'theme':
+      return 'Theme';
+    case 'tools':
+      return 'Wheels & Dice';
+    case 'stats':
+      return 'Stats & Items';
+    case 'media':
+      return 'Media';
+    case 'tiebreaker':
+      return 'Tiebreaker';
+    case 'play':
+      return `Play › ${PLAY_PARTS[place.part][0]}`;
+    default:
+      return null;
+  }
+}
+
 /** Where an item on a clue's, a Final's or the tiebreaker's slide is (a restyle starts there but changes other slides). */
 export function itemPlace(game: Game, id: string): Place | null {
   const on = (s: Slide) => s.elements.some((e) => e.id === id);

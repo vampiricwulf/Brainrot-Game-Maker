@@ -337,6 +337,15 @@ describe('undo history: named steps', () => {
     expect(history.entries.map((e) => e.label)).toEqual(['Pasted two screens', 'Renamed round “Waited for”']);
   });
 
+  it('says where a step is by the place an editor gives it, when that is on another tab than its changes', () => {
+    // (Clue text, set on the Theme page, restyles every clue.)
+    step('Clue text font: Anton', () => (question(g).text = 'Restyled'), { place: { tab: 'theme' } });
+    expect(history.entries[0]).toMatchObject({ where: 'Theme', place: { tab: 'theme' }, undoPlace: { tab: 'theme' } });
+    // On the same tab, the changes say better where.
+    step('Renamed a category', () => (board(g).categories[0].title = 'Memes'), { place: { tab: 'round', round: g.rounds[0].id } });
+    expect(history.entries[1].where).toBe('Jeopardy! › Memes');
+  });
+
   it('names the next step with nameStep()', async () => {
     g.theme.preset = 'neon';
     nameStep('Theme preset: Neon', { notify: true });

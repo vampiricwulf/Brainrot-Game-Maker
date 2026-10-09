@@ -206,9 +206,13 @@
     align-items: flex-end;
     justify-content: center;
     overflow: hidden;
-    /* The theme's text shadow, as the headers' names have: black round light words, a light halo round dark ones
-       (Pastel's: a black outline hid them on a dark picture). */
-    text-shadow: 3px 3px 0 var(--tile-shadow, #000), -1px -1px 0 var(--tile-shadow, #000), 1px -1px 0 var(--tile-shadow, #000), -1px 1px 0 var(--tile-shadow, #000);
+    /* An outline by the names' own color (theme.ts): black round light words, a light halo round dark ones (Pastel's: a
+       black outline hid them on a dark picture). */
+    text-shadow:
+      3px 3px 0 var(--name-shadow, var(--tile-shadow, #000)),
+      -1px -1px 0 var(--name-shadow, var(--tile-shadow, #000)),
+      1px -1px 0 var(--name-shadow, var(--tile-shadow, #000)),
+      -1px 1px 0 var(--name-shadow, var(--tile-shadow, #000));
   }
   .title.revealing {
     animation: cat-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;

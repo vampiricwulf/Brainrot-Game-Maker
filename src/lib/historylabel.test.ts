@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
-import { describe as describeStep, placeAt, short } from './historylabel';
+import { describe as describeStep, placeAt, placeWhere, short } from './historylabel';
 import { newImageEl, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
@@ -365,5 +365,15 @@ describe('placeAt', () => {
     expect(at).toMatchObject({ noun: 'round', crumbs: ['Jeopardy!'], place: { tab: 'round', round: g.rounds[0].id } });
     expect(placeAt(g, ['players'])).toMatchObject({ place: { tab: 'play', part: 'players' }, crumbs: ['Play', 'Players'] });
     expect(placeAt(g, ['audio', 'buzz'])).toMatchObject({ place: { tab: 'sounds' }, crumbs: ['Sounds'] });
+  });
+
+  it('names a tab an editor shows its step on as placeAt does (none for a round)', () => {
+    const g = sample();
+    for (const path of [['title'], ['audio'], ['theme'], ['wheels'], ['statFields'], ['media'], ['tiebreaker'], ['players'], ['settings', 'stream']]) {
+      const at = placeAt(g, path);
+      expect(placeWhere(at.place!)).toBe(at.crumbs.join(' › '));
+    }
+    expect(placeWhere({ tab: 'theme' })).toBe('Theme');
+    expect(placeWhere({ tab: 'round', round: g.rounds[0].id })).toBeNull();
   });
 });
