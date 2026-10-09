@@ -526,12 +526,27 @@
     const tied = tiedForFirst(session);
     if (!tbWinner && warnedFor !== 'tiebreaker' && tied.some((p) => selected.includes(p.id))) {
       warnedFor = 'tiebreaker';
-      toast(`${pickedName || 'A tied player'} is picked but hasn’t won yet: Enter makes them the winner, or N again goes back without one`, 5000);
+      const noun = teams ? 'team' : 'player';
+      // (Enter takes exactly one: with more picked it asks for the one who won, so say that here.)
+      const what =
+        selected.length === 1
+          ? `${pickedName || `A tied ${noun}`} is picked but hasn’t won yet: Enter makes them the winner`
+          : `${selected.length} ${noun}s are picked and no winner given: pick just the ${noun} who won and press Enter`;
+      hint(`${what}, or N again goes back without one`, 5000);
       return;
     }
     warnedFor = null;
     ontiebreakerdone();
   }
+  // The warning holds for this visit to the tiebreaker and this winner. Leaving it (Ctrl+Z into the Final, the plain
+  // 🏁 Back to results), or a winner given or taken back, makes the next N warn again.
+  const tbVisit = $derived(session.phase === 'tiebreaker' ? `tb:${tbWinner?.id ?? ''}` : session.phase);
+  $effect(() => {
+    void tbVisit;
+    untrack(() => {
+      if (warnedFor === 'tiebreaker') warnedFor = null;
+    });
+  });
   const next = $derived(slots.offers.tool?.() ?? flow ?? slots.next());
   $effect(() => {
     nextAction = next;
