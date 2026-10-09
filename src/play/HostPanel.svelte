@@ -288,11 +288,16 @@
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   /** Why ＋ Award and − Deduct are off (their tooltip). */
   const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who answered first (1–${Math.min(9, session.players.length) || 9})`);
-  /** ＋ Award / − Deduct name who and how much, alike ("＋ Award Bob +$200", "− Deduct Bob −$200"). */
-  const scoreLabel = (word: string, sign: string): string => {
-    if (selected.length !== 1) return `${word}${selected.length ? ` (${selected.length})` : ''}`;
-    const p = session.players.find((x) => x.id === selected[0]);
-    return `${word} ${p?.name ?? ''}${amount ? ` ${sign}${formatPoints(Math.abs(amount), sym)}` : ''}`;
+  /** The one player picked, if one is (＋ Award and − Deduct name them). */
+  const pickedName = $derived(selected.length === 1 ? (session.players.find((x) => x.id === selected[0])?.name ?? '') : '');
+  /**
+   * ＋ Award / − Deduct name who and how much, alike ("＋ Award Bob +$200", "− Deduct Bob −$200"). On the button the name
+   * is apart from `head` and `tail`, so a crowded row cuts it short (…), never the amount; `text` is the whole label.
+   */
+  const scoreLabel = (word: string, sign: string) => {
+    const head = selected.length > 1 ? `${word} (${selected.length})` : word;
+    const tail = selected.length === 1 && amount ? `${sign}${formatPoints(Math.abs(amount), sym)}` : '';
+    return { head, tail, text: [head, pickedName, tail].filter(Boolean).join(' ') };
   };
   const awardLabel = $derived(scoreLabel('＋ Award', '+'));
   const deductLabel = $derived(scoreLabel('− Deduct', '−'));
@@ -871,12 +876,24 @@
               }}
             />
           </label>
+          <!-- ＋ Award / − Deduct's text: the name apart (in full in its tooltip, and in the button's name for screen
+               readers), so a crowded row cuts it short instead of wrapping: see .named. -->
+          {#snippet scoreText(l: { head: string; tail: string }, key: string)}
+            {l.head}{#if pickedName}<span class="who" dir="auto" title={pickedName}>{pickedName}</span>{/if}{l.tail}
+            <kbd aria-hidden="true">{key}</kbd>
+          {/snippet}
           <!-- Someone answering: ＋ Award is the main button (green). -->
-          <button class="good" class:primary={answering} disabled={!canAward} onclick={() => onaward(1)} title={canAward ? 'Enter' : awardWhyNot}>
-            {awardLabel} <kbd aria-hidden="true">⏎</kbd>
+          <button class="good named" class:primary={answering} disabled={!canAward} onclick={() => onaward(1)} title={canAward ? 'Enter' : awardWhyNot} aria-label={awardLabel.text}>
+            {@render scoreText(awardLabel, '⏎')}
           </button>
-          <button class="bad" disabled={!canAward || (session.phase === 'tiebreaker' && !amount)} onclick={() => onaward(-1)} title={canAward ? 'Shift+Enter' : awardWhyNot}>
-            {deductLabel} <kbd aria-hidden="true">⇧⏎</kbd>
+          <button
+            class="bad named"
+            disabled={!canAward || (session.phase === 'tiebreaker' && !amount)}
+            onclick={() => onaward(-1)}
+            title={canAward ? 'Shift+Enter' : awardWhyNot}
+            aria-label={deductLabel.text}
+          >
+            {@render scoreText(deductLabel, '⇧⏎')}
           </button>
           <!-- (Buzzer mode: the buzzers' own things are on their row, above.) -->
           {#if selected.length && !buzzing}
@@ -1202,22 +1219,25 @@
   .clear .x {
     display: none;
   }
-  /* A narrow window under the stage: the fixed bar's buttons a little smaller, so 🚪 Exit stays on its line at the right
-     instead of wrapping to the left under ↶ Undo, and the Amount row's too, so a clue's buttons stay on one line (a
-     player picked too: ＋ Award and − Deduct without their keys, which are in their tooltips, and Clear selection as ✕). */
-  @media (max-width: 1180px) {
-    .panel:not(.side) > .act :global(button) {
-      padding: 5px 9px;
-    }
-    .panel:not(.side) .award input {
-      width: 80px;
-    }
+  /* Up to 1280px wide under the stage: ＋ Award and − Deduct without their keys (they're in their tooltips) and Clear
+     selection as ✕, so a picked player's name has the room on the Amount row. */
+  @media (max-width: 1280px) {
     .panel:not(.side) .award kbd,
     .panel:not(.side) .clear .word {
       display: none;
     }
     .panel:not(.side) .clear .x {
       display: inline;
+    }
+  }
+  /* A narrow window under the stage: the fixed bar's buttons a little smaller, so 🚪 Exit stays on its line at the right
+     instead of wrapping to the left under ↶ Undo, and the Amount row's too, so a clue's buttons stay on one line. */
+  @media (max-width: 1180px) {
+    .panel:not(.side) > .act :global(button) {
+      padding: 5px 9px;
+    }
+    .panel:not(.side) .award input {
+      width: 80px;
     }
     /* (The folded row as tall as the Amount row is here.) */
     .panel:not(.side) .flow {
@@ -1393,6 +1413,22 @@
   }
   .award input {
     width: 110px;
+  }
+  /* ＋ Award and − Deduct take the room the row has, up to their whole label: on a crowded row (a long name, a narrow
+     window) the name is cut short (…) instead of the row wrapping, which would shrink the stage when a player is picked.
+     The amount never is. (Only when not even 12em each is left do they wrap.) */
+  .award .named {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 12em;
+    max-width: max-content;
+    overflow: hidden;
+  }
+  /* (So they get the room first, and what's left goes before the moment's other buttons.) */
+  .award > .spacer {
+    flex: none;
+    margin-left: auto;
   }
   /* ＋ Award as the main button: green, with a ring. */
   .award .good.primary:not(:disabled) {

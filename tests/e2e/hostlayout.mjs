@@ -6,8 +6,9 @@
 // the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
 // button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right). With six players in a single window (at
-// 1366×768 and 1024×768) the stage keeps one size from the board to a clue and with a player picked, 🔊 Sound opens in
-// the host panel, and every Final wager box is in sight.
+// 1366×768, 1200×720 and 1024×768) the stage keeps one size from the board to a clue and with a player picked (on a
+// $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), 🔊 Sound opens in the host
+// panel, and every Final wager box is in sight.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -125,7 +126,8 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .fixed button')?.title === 'Nothing to undo');
   await page.keyboard.press('1');
   states.answering = await look();
-  assert((await page.locator('.panel .award button.primary').innerText()).includes('Award Ann'), 'someone answering: ＋ Award is the main button (the NEXT cell goes quiet)');
+  // (Its whole label is its name: on the button the player's name is apart, to be cut short on a crowded row.)
+  assert((await page.locator('.panel .award button.primary').getAttribute('aria-label')).includes('Award Ann'), 'someone answering: ＋ Award is the main button (the NEXT cell goes quiet)');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
@@ -178,7 +180,7 @@ try {
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Slide 3 of 3'));
   assert((await pips.getAttribute('aria-label')) === 'Slide 3 of 3', 'the dots follow the slides');
-  assert((await page.locator('.panel .award button.primary').innerText()).includes('Award Bob'), 'on its last slide ＋ Award is the main button');
+  assert((await page.locator('.panel .award button.primary').getAttribute('aria-label')).includes('Award Bob'), 'on its last slide ＋ Award is the main button');
   await page.keyboard.press('r');
   await pips.waitFor({ state: 'detached' });
   assert(true, 'the dots go when the answer shows');
@@ -408,7 +410,8 @@ try {
   await oneLine('in a clue');
 
   // A crowded single window (six players, longer names): the stage keeps one size from the board to a clue and with a
-  // player picked, 🔊 Sound opens in the host panel (not over the stage), and every Final wager box is in sight.
+  // player picked (a $200 clue, then a $1,000 one), 🔊 Sound opens in the host panel (not over the stage), and every
+  // Final wager box is in sight.
   console.log('A crowded single window:');
   const crowdFile = resolve('test-results/hostlayout-crowd.json');
   const crowd = ['Annabelle', 'Bobby Tables', 'Cyrus', 'Deedee', 'Eleanor', 'Frankie'];
@@ -419,6 +422,7 @@ try {
   );
   for (const [w, h] of [
     [1366, 768],
+    [1200, 720],
     [1024, 768],
   ]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } });
@@ -434,16 +438,22 @@ try {
     const stageH = async () => Math.round((await p4.locator('.stage-box').boundingBox()).height);
     const onBoard = await stageH();
     assert((await p4.locator('.panel .p button.quick:visible').count()) === 0, `${w}×${h}: on the board the chips keep ✔ / ✘'s place, unseen`);
-    await p4.locator('.stage-box .board .tile').first().click();
-    await p4.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
-    const inClue = await stageH();
-    await p4.keyboard.press('2');
-    await p4.locator('.panel .award button.good', { hasText: 'Bobby Tables' }).waitFor();
-    const picked = await stageH();
-    assert(onBoard === inClue && inClue === picked, `${w}×${h}: the stage keeps one size from the board to a clue and with a player picked (${onBoard} / ${inClue} / ${picked})`);
-    await p4.keyboard.press('Escape');
-    await p4.keyboard.press('Escape');
-    await p4.locator('.stage-box .board').waitFor();
+    for (const value of ['$200', '$1,000']) {
+      await p4.locator('.stage-box .board .tile:not([disabled])', { hasText: value }).first().click();
+      await p4.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+      const inClue = await stageH();
+      await p4.keyboard.press('2');
+      const award = p4.locator('.panel .award button.good', { hasText: 'Bobby Tables' });
+      await award.waitFor();
+      const picked = await stageH();
+      assert(onBoard === inClue && inClue === picked, `${w}×${h}, a ${value} clue: the stage keeps one size from the board to a clue and with a player picked (${onBoard} / ${inClue} / ${picked})`);
+      // (Only the name may be cut short: nothing runs past ＋ Award's or − Deduct's edge, so the amount shows whole.)
+      const whole = await p4.locator('.panel .award button.named').evaluateAll((bs) => bs.length === 2 && bs.every((b) => b.scrollWidth <= b.clientWidth));
+      assert(whole && (await award.textContent()).includes(`+${value}`), `${w}×${h}, a ${value} clue: ＋ Award and − Deduct show the whole amount`);
+      await p4.keyboard.press('Escape');
+      await p4.keyboard.press('Escape');
+      await p4.locator('.stage-box .board').waitFor();
+    }
     if (w === 1366) {
       await p4.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
       const help = p4.getByRole('dialog', { name: 'Streaming the sound' });
@@ -453,7 +463,7 @@ try {
       assert(hb.y >= sb.y + sb.height - 1, `🔊 Sound mid-game opens its help in the host panel, not over the stage (it starts at ${Math.round(hb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
       await p4.keyboard.press('Escape');
       await help.waitFor({ state: 'detached' });
-    } else {
+    } else if (w === 1024) {
       await p4.waitForTimeout(450);
       await p4.locator('.rn button', { hasText: '▶' }).click();
       await confirmStrip(p4).waitFor();
