@@ -4,6 +4,9 @@ import { isBoardGame, isRpg, newGame } from './model';
 import { validate } from './validate';
 import { goToRound, newSession } from './session';
 import { movePlayer, nameShown, spaceKindOf, startSpace, walk } from './boardgame';
+import { runAction } from './actions';
+import { newLive } from './live';
+import { statNumber } from './toolset';
 
 describe('the sample game', () => {
   it('is a complete game of every mode, with nothing to fix', () => {
@@ -71,6 +74,24 @@ describe('round templates', () => {
       if (t.mode !== 'board') expect(validate(game).filter((p) => p.level === 'warn'), t.label).toEqual([]);
       if (isRpg(r)) expect(game.worlds?.find((w) => w.id === r.world)?.maps[0].screens).toHaveLength(t.label === 'Mini quest' ? 3 : 9);
     }
+  });
+
+  it('the Mini quest’s Sword, used, beats the boss (as its lair’s note says): without it, nobody can', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const r = TEMPLATES.find((t) => t.label === 'Mini quest')!.make(game);
+    if (!isRpg(r)) throw new Error('not an RPG');
+    game.rounds.push(r);
+    const power = game.statFields!.find((f) => f.name === 'Power')!;
+    const lair = game.worlds![0].maps[0].screens[2];
+    const boss = lair.slide.elements.find((e) => e.name === 'Boss')!.role!.stats!.find((x) => x.name === 'Power')!.value as number;
+    const session = newSession(game);
+    expect(statNumber(game, session, 'a', power)).toBeLessThan(boss);
+    // What its owner's sheet › Use does: it acts on them.
+    const sword = game.items!.find((x) => x.name === 'Sword')!;
+    for (const a of sword.onUse!) runAction({ game, session, live: newLive(), selected: [], chosen: ['a'] }, a);
+    expect(statNumber(game, session, 'a', power)).toBeGreaterThan(boss);
+    expect(lair.hostNotes).toMatch(/Sword/);
   });
 
   it('the 20-space loop goes round, and its “back 3” spaces send players back', () => {

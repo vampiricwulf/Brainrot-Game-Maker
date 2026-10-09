@@ -53,6 +53,7 @@ those from another copy of the same game but it differs, the other version comes
 | 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
+| 🖼 **Slides** | A few slides in a row (a welcome, the rules, a break); N goes from one to the next. |
 
 Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube, arranged freely.
 
@@ -282,7 +283,7 @@ The main ones (press `?` during the game for all of them):
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `J` / `V` / `G` (RPG) | Full map / map on screen / regroup everyone here |
 | `I` (RPG, board game) | Player sheet |
-| Numpad or `Alt`+arrows (RPG) | Move the party |
+| Arrows, numpad or `Alt`+arrows (RPG) | Move the party |
 | `E` (board game) | ✎ Edit board while you play |
 | `?` | Every key |
 

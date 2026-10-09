@@ -586,7 +586,7 @@
       <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
-      <span class="muted hint">Move with the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
+      <span class="muted hint">Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
       <span class="muted hint">

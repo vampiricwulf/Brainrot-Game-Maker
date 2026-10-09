@@ -13,7 +13,7 @@
         ['Ctrl+S', 'Save the game'],
         ['Ctrl+F', 'Find: clues, screens, spaces, items, wheels… anywhere in the game (↑ / ↓ and Enter go there)'],
         ['Esc', 'Close the window, picker or menu that’s open'],
-        ['?', 'This list (not while typing)'],
+        ['?', 'This list (not while typing, nor with a window such as the clue editor open: close it first)'],
         ['Drop a file', 'On a Choose… button, an icon, an avatar or an open picker: use it there. A game file dropped anywhere else opens (a .brainrot-theme file: on 🎨 Theme)'],
         ['Ctrl+V in a picker', 'Use a copied picture (or sound, video) file'],
       ],

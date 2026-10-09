@@ -123,7 +123,15 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
   const drink = potion(game);
   let sword = game.items?.find((x) => x.name === 'Sword');
   if (!sword) {
-    sword = { id: newId(), name: 'Sword', stackable: false, price: 8, description: 'A trusty blade for the boss fight.' };
+    // Used before the fight, it beats the boss's Power (everyone starts at 1).
+    sword = {
+      id: newId(),
+      name: 'Sword',
+      stackable: false,
+      price: 8,
+      description: `Use it before the boss fight: +4 ${power.name}.`,
+      onUse: [act({ do: 'stat', field: power.id, op: 'add', amount: 4, who: 'ask' })],
+    };
     game.items = [...(game.items ?? []), sword];
   }
   const shop = newShop(game, 'Village shop');
@@ -147,7 +155,7 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
   boss.x = 760;
   boss.y = 420;
   lair.slide.elements.push(boss, chest);
-  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power). Beaten: press Reveal for the treasure and +500.`;
+  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power). Bought a Sword? Use it first (its owner's sheet › Use: +4 ${power.name}). Beaten: press Reveal for the treasure and +500.`;
   game.worlds = [...(game.worlds ?? []), world];
   return { id: newId(), name, mode: 'rpg', world: world.id, start: { map: world.maps[0].id, screen: village.id } };
 }
@@ -297,8 +305,8 @@ function introRound(welcome = 'Welcome to the show!'): Round {
 // ---------- The sample game ----------
 
 /**
- * Add the sample game to `game`: a board, an adventure, a board game and a Final, three players (when there are none)
- * and the Gold and Potion they use. Returns the index of its first round.
+ * Add the sample game to `game`: an introduction (in a game of its own), a board, an adventure, a board game and a
+ * Final, three players (when there are none) and the Gold and Potion they use. Returns the index of its first round.
  */
 export function addSampleGame(game: Game): number {
   const at = game.rounds.length;
@@ -306,12 +314,12 @@ export function addSampleGame(game: Game): number {
     ['Memes', [['This Shiba Inu became the face of a cryptocurrency', 'Doge'], ['“Never gonna give you up” is the song of this prank', 'Rickrolling'], ['This frog says “feels good man”', 'Pepe']]],
     ['Gaming', [['A plumber in a red cap', 'Mario'], ['Blocks, creepers and diamonds', 'Minecraft'], ['“The cake is a lie” comes from this game', 'Portal']]],
     ['Internet', [['The site with the little blue bird, now called X', 'Twitter'], ['Short videos with a music note logo', 'TikTok'], ['Where streamers go live in purple', 'Twitch']]],
-    ['Brainrot', [['A toilet with a head, singing', 'Skibidi Toilet'], ['Extra points of charm', 'Rizz'], ['A city in Ohio, or anything odd', 'Only in Ohio']]],
+    ['Brainrot', [['A toilet with a head, singing', 'Skibidi Toilet'], ['Extra points of charm', 'Rizz'], ['Weird things happen “only in” this US state, says the meme', 'Ohio']]],
   ]);
   board.categories[3].clues[2].type = 'dailyDouble';
   const final = newFinalRound('Final Jeopardy!');
   final.category = 'Streaming';
-  setSlideText(final.questionSlide, 'This word means talking to the chat while you play');
+  setSlideText(final.questionSlide, 'Twitch’s category for streams where nobody plays a game: they just talk to chat');
   setSlideText(final.answerSlide, 'Just chatting');
   const rpg = sampleWorld(game);
   const bg = sampleBoardGame(game);
