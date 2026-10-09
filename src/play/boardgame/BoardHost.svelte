@@ -11,11 +11,11 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { clampSteps, currentPlayer, MAX_STEPS, spaceById, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { newId, type Action, type BoardSpace, type Game, type Id, type Session } from '../../lib/model';
+  import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, moverDiceName, moverResult, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { offerNext } from '../host/slots.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
@@ -33,7 +33,7 @@
     game: Game;
     session: Session;
     selected: string[];
-    /** The steps to move, typed or rolled (Enter moves them too). */
+    /** The steps to move, typed or rolled (Enter moves them too). The play screen fills and empties it (H hides this panel). */
     steps?: number | null;
     /** The space whose card is open (clicked on the stage). */
     space?: string | null;
@@ -83,47 +83,21 @@
     if (bs.fork)
       return {
         label: '🔀 Pick a way',
-        title: `Pick which way ${turnName} goes: the buttons under “which way?”, or a marked space on the stage`,
-        run: () => toast(`Pick which way first (${Math.abs(bs.fork?.stepsLeft ?? 0)} to go): the buttons under “which way?”, or a marked space`),
+        title: `Pick which way ${turnName} goes: the buttons under “which way?”, or ${dual ? 'a marked space' : 'the space'} on the stage`,
+        run: () => {
+          forkEl?.scrollIntoView({ block: 'nearest' });
+          toast(`Pick which way first (${Math.abs(bs.fork?.stepsLeft ?? 0)} to go): the buttons under “which way?”, or ${dual ? 'a marked space' : 'click the space on the stage'}`);
+        },
         also: [prev, next],
       };
     if (moved) return { ...next, also: [prev] };
     const also = [prev, next];
-    if (steps) return { label: `▶ Move ${steps}`, key: '⏎', title: `Enter: move ${turnName} ${steps} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
+    if (steps) return { label: `${steps < 0 ? '◀ Back' : '▶ Move'} ${Math.abs(steps)}`, key: '⏎', title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
     const wheel = round.mover.kind === 'wheel';
     return { label: wheel ? '🎡 Spin' : '🎲 Roll', key: 'D', title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, run: roll, also };
   });
 
-  // A new turn starts with no count: the last player's roll isn't theirs. A move (a way picked on the stage too) uses it up.
-  // An Undo of a move puts its count back (`last` and the turn count as they were before it), so Enter moves it again.
-  let movedFrom: { n: number; last: string; turn?: Id } | null = null;
-  $effect(() => {
-    const t = turnId;
-    const last = JSON.stringify([bs?.last ?? null, bs?.turns ?? 0]);
-    steps = movedFrom && movedFrom.turn === t && movedFrom.last === last ? movedFrom.n : null;
-  });
   const card = $derived(round && space ? spaceById(round, space) : undefined);
-
-  /** The number the round's dice or movement wheel just gave, to fill in the steps (no other dice or wheel). Under the scores too. */
-  const rolled = $derived(round ? moverResult(game, round, toolOverlay(app.live)) : null);
-  /** The roll or spin whose count already went in: S hiding or bringing back the tool doesn't put it back over a typed count or a new turn's empty box. */
-  let filledFrom: unknown = null;
-  $effect(() => {
-    // Every roll or spin, even one that comes up the same as the last (a new turn has emptied the box since). Once it
-    // has landed on stream (under the scores too): the count shows (and can move) no sooner than viewers see it.
-    const o = toolOverlay(app.live);
-    const key = o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null;
-    const r = rolled;
-    if (r === null || key === filledFrom) return;
-    const fill = () => {
-      filledFrom = key;
-      steps = r;
-    };
-    const wait = o && (o.kind === 'dice' || o.kind === 'wheel') ? overlayDoneAt(o) - Date.now() : 0;
-    if (wait <= 0) return void fill();
-    const t = setTimeout(fill, wait);
-    return () => clearTimeout(t);
-  });
 
   /** Next turn ▶ / ◀ Previous turn: a skip or a Roll again is said (it isn't the next player's turn). */
   function turnTold(delta: number): void {
@@ -143,9 +117,7 @@
     // (Under the scores too: the move would end them unseen.)
     const o = toolOverlay(app.live);
     if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void toast('Still rolling…');
-    const before = { n, last: JSON.stringify([bs?.last ?? null, bs?.turns ?? 0]), turn: turnId };
     toast(moveNow(game, session, n, choose, who), 3000);
-    movedFrom = before;
     app.live.overlay = null;
     // Moved: the count is used up (a fork goes on with the steps left, not these).
     steps = null;
@@ -199,6 +171,11 @@
   }
 
   let cardEl = $state<HTMLElement>();
+  /** The fork's "which way?" row: brought into view when a move stops there (a long turn order can push it down). */
+  let forkEl = $state<HTMLElement>();
+  $effect(() => {
+    if (forkEl) forkEl.scrollIntoView({ block: 'nearest' });
+  });
 
   /** Open a space's card from the Spaces… list, and go into it (its first button), so the keyboard carries on there. */
   function openCard(id: string): void {
@@ -316,8 +293,9 @@
           }}
         />
       </label>
-      <button disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">▶ Move {turnName} {steps ?? ''}</button>
-      <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>◀ Back {steps ?? ''}</button>
+      <!-- (A negative count, typed or a wheel's "Back 2", moves back: the buttons say which way they go.) -->
+      <button disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">{steps && steps < 0 ? '◀ Back' : '▶ Move'} {turnName} {steps ? Math.abs(steps) : ''}</button>
+      <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button>
       {/if}
       <span class="spacer"></span>
       <select
@@ -389,7 +367,7 @@
     {/if}
 
     {#if fork && forkSpace && !boardEdit.on}
-      <div class="row fork" role="alert">
+      <div class="row fork" role="alert" bind:this={forkEl}>
         <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
         <span class="muted small">(or click the space on the stage)</span>
         {#each forkWays as n (n)}

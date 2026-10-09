@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeAction, runAction, targets, typedSteps, type RunContext } from './actions';
-import { ensureBoard, newBoardGameRound } from './boardgame';
+import { ensureBoard, movePlayer, newBoardGameRound, nextTurn } from './boardgame';
 import { newLive } from './live';
 import { newGame, newShapeEl, type Action } from './model';
 import { addScreenBeside, ensureWorld, moveTo, newRpgRound, newWorld } from './rpg';
@@ -112,6 +112,25 @@ describe('who “the party” is', () => {
     runAction(ctx, { id: '3', do: 'steps', steps: 2, who: 'all' });
     expect([bs.positions.a.space, bs.positions.b.space]).toEqual([round.spaces[2].id, round.spaces[2].id]);
     expect(bs.last?.playerId).toBe('a');
+  });
+
+  it('a “Back 3” pressed where the move landed keeps the Start bonus it passed on the way (not on a later turn)', () => {
+    const { round, bs, ctx } = board();
+    const [start, s2, , , , , , , , , s11, s12] = round.spaces;
+    start.onPass = [{ id: 'bonus', do: 'score', amount: 200, who: 'party' }];
+    // Ann, on the last space, moves 2: past Start, onto Space 2 (a "Back 3" space).
+    bs.positions.a = { space: s12.id };
+    movePlayer(round, bs, 'a', 2);
+    expect(bs.last).toMatchObject({ passed: [start.id], landed: s2.id });
+    runAction({ ...ctx, chosen: ['a'] }, { id: 'b3', do: 'steps', steps: -3, who: 'party' });
+    expect(bs.positions.a.space).toBe(s11.id);
+    expect(bs.last?.landed).toBe(s11.id);
+    expect(bs.last?.passed).toContain(start.id);
+    // The next turn's "Back 3" (Bob's, then Ann's turn again): her last move's buttons aren't brought back.
+    nextTurn(bs);
+    nextTurn(bs);
+    runAction({ ...ctx, chosen: ['a'] }, { id: 'b3', do: 'steps', steps: -3, who: 'party' });
+    expect(bs.last?.passed).toEqual([]);
   });
 
   it('in an RPG, is the party standing where the object is (not the one viewers follow)', () => {

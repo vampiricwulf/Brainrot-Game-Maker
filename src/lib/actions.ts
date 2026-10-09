@@ -268,11 +268,15 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
  */
 function moveEach(board: BoardGameRound, bs: BoardGameState, who: string[], steps: number): string {
   const before = bs.last;
+  // The mover's buttons from this turn (the spaces passed, and the one landed on: landing counts as passing) stay offered
+  // after a "Back 3" from there, so a Start bonus passed on the way isn't lost by pressing that first.
+  const kept = before && (before.turn ?? 0) === (bs.turns ?? 0) ? [...before.passed, ...(before.landed ? [before.landed] : [])] : [];
   // (One player too: someone else's fork waiting for a way stays; a mover's own is replaced by where they get to now.)
   let fork = bs.fork && !who.includes(bs.fork.playerId) ? bs.fork : undefined;
   const lastOf: Record<string, BoardGameState['last']> = {};
   const said = who.map((id) => {
     const line = movePlayer(board, bs, id, steps);
+    if (bs.last && id === before?.playerId && kept.length) bs.last = { ...bs.last, passed: [...new Set([...kept, ...bs.last.passed])] };
     lastOf[id] = bs.last;
     fork ??= bs.fork;
     return line;

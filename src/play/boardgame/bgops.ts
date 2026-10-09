@@ -36,10 +36,18 @@ export function moveNow(game: Game, session: Session, steps: number, choose?: st
   if (!who) return 'No players';
   steps = clampSteps(steps);
   if (!steps) return 'How many spaces? Roll first, or type a number';
+  // (A fork's next leg goes on with the steps left: its Undo puts nothing in the Steps box, the first leg's Undo the count.)
+  const leg = bs.fork?.playerId === who;
+  const top = session.actionLog?.at(-1)?.id;
   let msg = '';
   logged(session, `${playerName(session, who)} moves ${steps}`, () => (msg = movePlayer(round, bs, who, steps, choose)));
+  const step = session.actionLog?.at(-1)?.id;
+  if (step && step !== top && !leg) moveCounts.set(step, steps);
   return `${playerName(session, who)}: ${msg}`;
 }
+
+/** The count each move was made with, by its undo step's id: an Undo of the move puts it back in the Steps box. */
+export const moveCounts = new Map<string, number>();
 
 /** Teleport players to a space or a zone (the ones not there already). Returns the log line. */
 export function sendNow(game: Game, session: Session, who: string[], to: { space?: string; zone?: string }): string | null {

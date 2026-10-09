@@ -65,7 +65,7 @@
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, override, refindPositions } from '../lib/rpg';
-  import { boardNow, moveNow, rollMover, runSpace, sendNow, setTurn, turnNow } from './boardgame/bgops';
+  import { boardNow, moveCounts, moveNow, moverResult, rollMover, runSpace, sendNow, setTurn, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -172,6 +172,36 @@
   let rpgAsk = $state<RpgAsk | null>(null);
   /** Board-game rounds: the steps typed or rolled in the host panel (Enter moves them). */
   let bgSteps = $state<number | null>(null);
+  // The Steps box's count is kept here, not in the host panel (H takes that away). A new turn starts with no count (the
+  // last player's roll isn't theirs), and a move uses it up; an Undo of a move puts its count back, so Enter moves it again.
+  /** Whose turn it is and their move so far, as text: a shuffle, an award or any other step leaves it (and the count) alone. */
+  const bgTurnKey = $derived.by(() => {
+    const { bs } = boardNow(game, session);
+    return bs ? JSON.stringify([currentPlayer(bs) ?? null, bs.turns ?? 0, bs.last ?? null]) : '';
+  });
+  $effect(() => {
+    void bgTurnKey;
+    // (The redo list read untracked: any step, a Shuffle say, starts it afresh, and that mustn't empty a roll waiting here.)
+    bgSteps = untrack(() => moveCounts.get(session.actionRedo?.at(-1)?.id ?? '')) ?? null;
+  });
+  /** The roll or spin whose count already went in: S hiding or bringing it back doesn't put it back over a typed count or a new turn's empty box. */
+  let bgFilledFrom: unknown = null;
+  $effect(() => {
+    // Every roll or spin of the round's own mover, once it has landed on stream (under the scores too).
+    const { round } = boardNow(game, session);
+    const o = toolOverlay(app.live);
+    const key = o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null;
+    const r = round ? moverResult(game, round, o) : null;
+    if (r === null || key === bgFilledFrom) return;
+    const fill = () => {
+      bgFilledFrom = key;
+      bgSteps = r;
+    };
+    const wait = o && (o.kind === 'dice' || o.kind === 'wheel') ? overlayDoneAt(o) - Date.now() : 0;
+    if (wait <= 0) return void fill();
+    const t = setTimeout(fill, wait);
+    return () => clearTimeout(t);
+  });
   /** RPG rounds: the full map was opened to send these players somewhere (from their menu). */
   let rpgMapSend = $state<{ players: string[]; label: string } | null>(null);
   /** Board-game rounds: the space whose card is open in the host panel (clicked on the stage). */
@@ -2655,6 +2685,13 @@
     let way: string | undefined;
     if (round.mover.kind === 'step') {
       const id = currentPlayer(bs);
+      // One space a turn: once they've moved, Enter doesn't move them on (the panel's → buttons still can, on purpose).
+      if (id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0)) {
+        // (A player picked: Enter is their award.)
+        if (selected.length) return false;
+        toast('Moved this turn: N for the next turn');
+        return true;
+      }
       const at = id ? bs.positions[id]?.space : undefined;
       const ways = id && at ? waysOn(round, at, bs.prev?.[id]) : [];
       if (ways.length !== 1) return false;

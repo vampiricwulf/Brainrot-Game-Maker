@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, mainButton, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -432,6 +432,10 @@ try {
   assert(!(await page.getByRole('button', { name: /Roll/ }).count()), 'one-space boards have no dice');
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 2' }).click();
   assert((await toast()).includes('Landed on Space 2'), 'a player moves one space');
+  // Enter then doesn't walk them on in the same turn (the → buttons still can, on purpose).
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await page.keyboard.press('Enter');
+  assert((await toast()).includes('Moved this turn: N for the next turn') && (await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).count()) === 1, `one space a turn: Enter after the move doesn't move them again (${await toast()})`);
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
@@ -539,6 +543,9 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Enter');
   assert((await toast()).includes('Bob is at a fork: pick the way first'), 'Enter at a fork says to pick the way');
+  // One window marks no ways on the stage: 🔀 Pick a way says to click the space there.
+  await mainButton(page).click();
+  assert((await toast()).includes('or click the space on the stage'), `one window: 🔀 Pick a way doesn't point at a “marked space” (${await toast()})`);
   await page.locator('.fork').getByRole('button', { name: '→ Merge' }).click();
   assert((await toast()).includes('Landed on Merge'), 'the fork’s other way leads to where the ways meet');
   // Back 1 from where the ways meet goes back the way Bob came (the Fork), not along the other way.
@@ -556,6 +563,8 @@ try {
   console.log('Twelve players on the board:');
   const crowd = { ...g, id: 'g_board_crowd', title: 'Board crowd', settings: { ...g.settings, maxPlayers: 12 } };
   crowd.players = ['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jay', 'Kim', 'Lou'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'][i] }));
+  // (With a zone to send them all to.)
+  crowd.rounds = [{ ...board, zones: [{ id: 'z_shadow', name: 'Shadow Realm', slide: { background: { color: '#2a0845' }, elements: [] } }] }];
   const crowdFile = resolve('test-results/boardgame-crowd.json');
   writeFileSync(crowdFile, JSON.stringify(crowd));
   const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -583,6 +592,21 @@ try {
   assert(lowest <= stripTop + 1, `no space is under the stats strip (lowest space ends at ${Math.round(lowest)}, the strip starts at ${Math.round(stripTop)})`);
   const tokensLow = await aud.locator('.tok.on-board').evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().bottom)));
   assert(tokensLow <= stripTop + 1, 'nor a token');
+  // Everyone sent to the zone, and it on screen: 12 tokens are wider than the board in one row, so they wrap (none is cut
+  // off at its edges).
+  await host.evaluate(() => document.activeElement?.blur?.());
+  await host.keyboard.press('0');
+  await host.getByLabel('Send to').selectOption({ label: '🌀 Shadow Realm' });
+  await host.getByLabel('On screen', { exact: true }).selectOption({ label: '📺 Shadow Realm' });
+  await aud.waitForFunction(() => document.querySelectorAll('.zone-players .tok').length === 12);
+  const inZone = await aud.locator('.zone-players').evaluate((z) => {
+    const area = z.closest('.play-area').getBoundingClientRect();
+    const rs = [...z.querySelectorAll('.tok, .tok *')].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
+    const rows = new Set([...z.querySelectorAll('.tok')].map((t) => Math.round(t.getBoundingClientRect().top))).size;
+    return { rows, left: Math.round(Math.min(...rs.map((r) => r.left)) - area.left), right: Math.round(area.right - Math.max(...rs.map((r) => r.right))) };
+  });
+  assert(inZone.left >= 0 && inZone.right >= 0, `12 players in a zone on screen: none cut off at the edges (${JSON.stringify(inZone)})`);
+  if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd-zone.png` });
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd.png` });
   await ctx2.close();
 
