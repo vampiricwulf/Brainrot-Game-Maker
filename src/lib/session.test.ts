@@ -774,7 +774,7 @@ describe('final wagers', () => {
     finalChoose(session, c, false);
     const d = newId();
     session.players.push({ id: d, name: 'P4', color: '#000004', startScore: 0 });
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound);
+    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [c, d]);
     expect(session.final!.players).toEqual([a, b, d]);
     expect([session.final!.wagers[d], session.final!.wagerFrom?.[d]]).toEqual([0, 'auto']);
     expect(session.final!.order.indexOf(d)).toBeLessThan(session.final!.order.indexOf(a));
@@ -782,12 +782,27 @@ describe('final wagers', () => {
     (game.rounds[1] as FinalRound).allowNonPositive = false;
     const e = newId();
     session.players.push({ id: e, name: 'P5', color: '#000005', startScore: 0 });
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound);
+    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [e]);
     expect(session.final!.players).toEqual([a, b, d]);
     applyScore(session, game, [e], 100, 'x');
     session.finalStep = 'question';
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound);
+    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [e]);
     expect(session.final!.players).toEqual([a, b, d]);
+  });
+
+  it('takes in only the players added by the change, not one whose score lets them play since', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b], 500, 'x');
+    goToRound(session, game, 1);
+    // P3 ($0) sits out under the TV rule; a score set on the wager screen doesn't bring them in by itself…
+    expect(session.final!.players).toEqual([a, b]);
+    applyScore(session, game, [c], 300, 'x');
+    // …nor does a later change that adds someone else (a rename, a newcomer).
+    const d = newId();
+    session.players.push({ id: d, name: 'P4', color: '#000004', startScore: 0 });
+    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [d]);
+    finalTakeNewcomers(session, game.rounds[1] as FinalRound, []);
+    expect(session.final!.players).toEqual([a, b]);
   });
 
   it('fills in 0 for a player at $0 ticked in on the wager screen', () => {

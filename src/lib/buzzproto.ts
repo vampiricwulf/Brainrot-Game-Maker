@@ -335,7 +335,8 @@ function finalView(s: HostState, seatId: string | undefined): Pick<PhoneView, 'f
 
 /**
  * The wager part of a phone's view: its own seat's max and amount only, never another seat's. `sent`: what a phone of
- * this seat sent (the room keeps it); the host's own amount wins once the host typed or changed it.
+ * this seat sent (the room keeps it); the host's own amount wins once the host typed or changed it, and once the wagers
+ * are locked over a send the host never took.
  */
 function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, sent?: SentWager | null, late = false): Pick<PhoneView, 'wager'> {
   const w = s.wager;
@@ -346,8 +347,10 @@ function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, s
     return { wager: { id: w.id, kind: w.kind, open: w.open, mine: false, ...(who ? { who } : {}) } };
   }
   // A phone's wager the host took, then cleared (an emptied box, an undo): gone, not still "sent".
-  const cleared = !!sent && own.got !== undefined && sent.n <= own.got && own.amount === undefined;
-  const phone = !!sent && !own.fromHost && !cleared;
+  const taken = !!sent && own.got !== undefined && sent.n <= own.got;
+  const cleared = taken && own.amount === undefined;
+  // Locked: one the host never took (sent just as the question showed) isn't the wager, the host's amount is.
+  const phone = !!sent && !own.fromHost && !cleared && (w.open || taken);
   const amount = phone ? sent.amount : late ? undefined : own.amount;
   return {
     wager: {

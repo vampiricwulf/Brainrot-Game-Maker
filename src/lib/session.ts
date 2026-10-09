@@ -767,14 +767,16 @@ export function finalChoose(session: Session, playerId: string, plays: boolean):
 }
 
 /**
- * Players who came in on the wager screen (👥 Players, a phone joining): in if their score lets them play, as startFinal
- * does on coming back to the Final; never anyone the host ticked in or out.
+ * Players who came in on the wager screen (`ids`: added or restored in 👥 Players, a phone joining), in the step that
+ * brings them in so its Undo takes them out of both: in if their score lets them play, as startFinal does on coming back
+ * to the Final; never anyone the host ticked in or out. Only those: a player already in the game isn't taken in at
+ * some other change (a score set since, an Undo or a Redo).
  */
-export function finalTakeNewcomers(session: Session, round: FinalRound): void {
+export function finalTakeNewcomers(session: Session, round: FinalRound, ids: string[]): void {
   const f = session.final;
   if (!f || session.phase !== 'final' || session.finalStep !== 'wagers' || f.roundId !== round.id) return;
   const add = session.players
-    .filter((p) => !f.players.includes(p.id) && f.chosen?.[p.id] === undefined && (round.allowNonPositive || score(session, p.id) > 0))
+    .filter((p) => ids.includes(p.id) && !f.players.includes(p.id) && f.chosen?.[p.id] === undefined && (round.allowNonPositive || score(session, p.id) > 0))
     .map((p) => p.id);
   if (!add.length) return;
   f.players = [...f.players, ...add];

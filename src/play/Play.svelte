@@ -495,21 +495,25 @@
       else if (o?.kind === 'scoreboard' && gone(o.under?.kind)) o.under = undefined;
     });
   });
-  /** The round's party or turn order takes in the players added or removed (a Final's wager screen: who can play it). */
-  function catchUp(): void {
+  /**
+   * The round's party or turn order takes in the players added or removed. A Final's wager screen takes in the players
+   * `added` (by the step under way only, so its Undo takes them out of the Final too).
+   */
+  function catchUp(added: string[] = []): void {
     const round = game.rounds[session.currentRound];
     // (After an Undo a party can be back on a screen deleted since: it goes to one that's there.)
     if (session.phase === 'rpg' && isRpg(round)) (ensureWorld(session, game, round), refindPositions(session, game));
     else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
-    else if (session.phase === 'final' && isFinal(round)) finalTakeNewcomers(session, round);
+    else if (session.phase === 'final' && isFinal(round)) finalTakeNewcomers(session, round, added);
   }
   // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
-  // catches up at once, not only when the round is next visited.
+  // catches up at once, not only when the round is next visited. (Nobody comes into a Final here: a player an Undo
+  // brings back from an earlier round would join it outside any step, and a Redo would leave them in it.)
   $effect(() => {
     void session.players.map((p) => p.id).join();
     void session.worlds;
     void session.boardgames;
-    untrack(catchUp);
+    untrack(() => catchUp());
   });
   // A player taken out by Undo (one added in 👥 Players) isn't selected any more either.
   $effect(() => {
@@ -1158,7 +1162,7 @@
     else
       logged(session, `Added ${who} (from their phone)`, () => {
         session.players.push(p);
-        catchUp();
+        catchUp([p.id]);
       });
     // The room has to know the seat before the phone takes it.
     sendHostState(roomState(), true);
@@ -2552,8 +2556,10 @@
 
   function commitRoster(): void {
     if (!rosterStep) return;
-    // The round's party or turn order takes the change in with it, so its Undo puts them back too.
-    catchUp();
+    // The round's party or turn order takes the change in with it, so its Undo puts them back too (a Final: the players
+    // added or restored by this change).
+    const had = new Set(rosterBefore.players.map((p) => p.id));
+    catchUp(session.players.filter((p) => !had.has(p.id)).map((p) => p.id));
     rosterStep(rosterChange(rosterBefore, { players: session.players, removed: session.removedPlayers }));
     beginRoster();
   }
