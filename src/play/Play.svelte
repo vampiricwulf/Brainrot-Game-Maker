@@ -174,15 +174,23 @@
   let bgSteps = $state<number | null>(null);
   // The Steps box's count is kept here, not in the host panel (H takes that away). A new turn starts with no count (the
   // last player's roll isn't theirs), and a move uses it up; an Undo of a move puts its count back, so Enter moves it again.
-  /** Whose turn it is and their move so far, as text: a shuffle, an award or any other step leaves it (and the count) alone. */
+  /**
+   * The round, whose turn it is and their move so far, as text: a shuffle, an award or any other step leaves it (and the
+   * count) alone. (The round too: the next board's first turn can look just like this one's.)
+   */
   const bgTurnKey = $derived.by(() => {
     const { bs } = boardNow(game, session);
-    return bs ? JSON.stringify([currentPlayer(bs) ?? null, bs.turns ?? 0, bs.last ?? null]) : '';
+    return bs ? JSON.stringify([session.currentRound, currentPlayer(bs) ?? null, bs.turns ?? 0, bs.last ?? null]) : '';
   });
   $effect(() => {
     void bgTurnKey;
-    // (The redo list read untracked: any step, a Shuffle say, starts it afresh, and that mustn't empty a roll waiting here.)
-    bgSteps = untrack(() => moveCounts.get(session.actionRedo?.at(-1)?.id ?? '')) ?? null;
+    // (The redo list read untracked: any step, a Shuffle say, starts it afresh, and that mustn't empty a roll waiting here.
+    // Only a move undone in this round: another round's count isn't for whoever's turn it is in this one.)
+    bgSteps =
+      untrack(() => {
+        const top = session.actionRedo?.at(-1);
+        return top && top.round === session.currentRound ? moveCounts.get(top.id) : undefined;
+      }) ?? null;
   });
   /** The roll or spin whose count already went in: S hiding or bringing it back doesn't put it back over a typed count or a new turn's empty box. */
   let bgFilledFrom: unknown = null;
