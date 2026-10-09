@@ -6,6 +6,7 @@
 import { del, delMany, get, getMany, keys, set } from 'idb-keyval';
 import { newId, type Game, type MediaKind, type MediaRef } from './model';
 import { uniqueMediaName } from './medianame';
+import { uploadedFamily } from './fonts';
 import { clipboard } from './clipboard.svelte';
 import { askToKeepStorage, loadPlay, playFileKey, unstored, write } from './persist';
 import { recentMedia } from './recent';
@@ -513,20 +514,35 @@ export function slideImageSize(id: string): Promise<{ w: number; h: number }> {
 
 const KIND_WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a video', audio: 'a sound', font: 'a font' };
 
+/** Every reference to file `from` in `node` points at `to`: its id, and an uploaded font's family in the font lists. */
+function moveMediaRefs(node: unknown, from: string, to: string, font: boolean): void {
+  if (!node || typeof node !== 'object') return;
+  const o = node as Record<string, unknown>;
+  for (const [k, v] of Object.entries(o)) {
+    if (v === from) o[k] = to;
+    else if (typeof v !== 'string') moveMediaRefs(v, from, to, font);
+    else if (font && v.includes(uploadedFamily(from))) o[k] = v.split(uploadedFamily(from)).join(uploadedFamily(to));
+  }
+}
+
 /**
  * Put a new file in place of a game file (one that went missing, or one to swap), keeping its id so
  * every tile, slide and sound that uses it is fixed at once. The new file must be the same kind. It takes the new
- * file's name, unless `keepName` (a missing file found again under its own name).
+ * file's name, unless `keepName` (a missing file found again under its own name). With `copy` (another game kept here
+ * shares the file), the new bytes get an id of their own and this game's uses move to it, so that game keeps the old file.
  */
-export async function replaceMediaFile(game: Game, id: string, file: File, keepName = false): Promise<MediaRef> {
+export async function replaceMediaFile(game: Game, id: string, file: File, keepName = false, copy = false): Promise<MediaRef> {
   const ref = game.media.find((m) => m.id === id);
   if (!ref) throw new Error('That file is no longer in the game.');
   const { mime, kind, blob } = await checkedFile(file, file.name);
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
-  await putMedia(id, blob.type ? blob : new Blob([blob], { type: mime }));
+  const to = copy ? newId() : id;
+  await putMedia(to, blob.type ? blob : new Blob([blob], { type: mime }));
+  // (The file's own id too.)
+  if (to !== id) moveMediaRefs(game, id, to, ref.kind === 'font');
   // A file the user renamed keeps the name they gave it (the new file's name is its own name now).
   if (ref.file !== undefined) ref.file = file.name;
-  else if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== id).map((m) => m.name), file.name);
+  else if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== to).map((m) => m.name), file.name);
   if (ref.file === ref.name) delete ref.file;
   ref.mime = mime;
   ref.size = blob.size;

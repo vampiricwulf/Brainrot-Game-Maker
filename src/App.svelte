@@ -8,6 +8,7 @@
     dropStraySteps,
     loadEditor,
     rescueDraft,
+    rescuePlay,
     loadPlay,
     applyRoomSettings,
     loadRoom,
@@ -15,6 +16,7 @@
     saveEditor,
     savePlay,
     testStorage,
+    unstored,
     usePlayerStorage,
     watchWrites,
     type SavedPlay,
@@ -41,6 +43,7 @@
   import { newLive } from './lib/live';
   import { clone } from './lib/ops';
   import { sameGame } from './lib/samegame';
+  import { sameContent } from './lib/roundcopy';
   import Editor from './editor/Editor.svelte';
   import ContextMenu from './lib/ContextMenu.svelte';
   import AskDialog from './lib/AskDialog.svelte';
@@ -164,10 +167,11 @@
     let held = new Set<string>();
     if (editor.draft) {
       // The undo history goes on from before the reload, unless bringing the draft up to date changed it (its steps
-      // wouldn't fit it any more).
+      // wouldn't fit it any more). Key order aside: a theme preset puts the theme's `source` after its clue font, and
+      // migrateGame puts it back in its usual place. (Compared with a copy: migrateGame changes parts of the draft.)
       const plain = JSON.stringify(editor.draft);
       const game = migrateGame(editor.draft);
-      const saved = editor.history && JSON.stringify(game) === plain ? editor.history : undefined;
+      const saved = editor.history && (JSON.stringify(game) === plain || sameContent(game, JSON.parse(plain))) ? editor.history : undefined;
       app.game = game;
       if (editor.rescued && !saved) {
         arriving({ kind: 'rescued', label: `“${game.title}” as it was when the page closed` });
@@ -296,7 +300,13 @@
     }
     if (app.storageOk) {
       const full = err instanceof DOMException && err.name === 'QuotaExceededError';
-      const then = playerOnly ? 'a refresh restarts the game' : 'use Save to keep this game';
+      // (Save writes the game, not the game in progress: its scores are only in this window.)
+      const playing = app.screen === 'play' && !app.pregame && !app.test;
+      const then = playing
+        ? "the game in progress isn't being saved: don't close or reload this window until it works again"
+        : playerOnly
+          ? 'a refresh restarts the game'
+          : 'use Save to keep this game';
       toast(`${full ? 'Storage is full, so autosave stopped' : 'Autosave stopped working'}: ${then}`, 8000);
     }
     app.storageOk = false;
@@ -307,10 +317,14 @@
     return () => clearInterval(id);
   });
 
-  // Closing the tab while nothing can be autosaved loses the changes since the last Save: the browser asks first.
+  // Closing the tab while nothing can be autosaved loses the changes since the last Save, or the game in progress (being
+  // played, or kept to resume when its last write failed and waits to be tried again): the browser asks first.
   onMount(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      if (!editing || app.storageOk || !hasWork(app.game) || savedSinceChange()) return;
+      const playing = app.screen === 'play' && !app.pregame && !app.test;
+      const playLost = mayPlay() && (unstored('play') || (playing && !app.storageOk));
+      const editLost = editing && !app.storageOk && hasWork(app.game) && !savedSinceChange();
+      if (!playLost && !editLost) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -419,6 +433,10 @@
         rescueDraft(watch.value(), rescueHistory());
         saveEditorSoon();
       }
+      // The game in progress too: its write waits a moment for more host clicks, so the last one may not be stored yet.
+      const { playGame, session } = app;
+      if (loaded && mayPlay() && app.screen === 'play' && !app.pregame && !app.test && session && playWatch && playWatched === playGame)
+        rescuePlay(playWatch.value(), $state.snapshot(session), !!app.live.cover);
       saveEditorSoon.flush();
       savePlaySoon.flush();
     };

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addMyTheme, changeMyTheme, loadMyThemes, toSaved, withMyTheme, type MyTheme } from './mytheme';
 import { migrateGame, newGame } from './model';
+import { sameContent } from './roundcopy';
 import { presetTheme, type Theme } from './theme';
 import { compactTheme, themeFileText } from './themefile';
 import { readSource, referenceLook, sameLook, themeOrigin, withPreset } from './themesource';
@@ -10,6 +11,16 @@ const mine = (id: string, name: string, theme: Theme): MyTheme => ({ id, name, t
 const party = mine('m1', 'Party night', { ...presetTheme('classic'), value: '#ff0000', tileRadius: 20 });
 
 describe('where a game’s theme came from', () => {
+  it('a preset put on over a clue font comes back from migrateGame with its keys in another order, the same otherwise', () => {
+    const g = newGame();
+    g.theme = { ...withPreset({ ...g.theme, clueFont: "'Oswald', sans-serif" }, 'dark'), source: { kind: 'preset', id: 'dark' } };
+    const plain = JSON.stringify(g);
+    const back = migrateGame(JSON.parse(plain));
+    // (Comparing the text dropped the undo history at a reload: App.svelte and Editor.svelte compare what's in it.)
+    expect(JSON.stringify(back)).not.toBe(plain);
+    expect(sameContent(back, JSON.parse(plain))).toBe(true);
+  });
+
   it('a preset put on: that preset, until something changes', () => {
     const t: Theme = { ...withPreset(presetTheme('dark'), 'neon'), source: { kind: 'preset', id: 'neon' } };
     expect(themeOrigin(t, [party])).toMatchObject({ kind: 'preset', id: 'neon', name: 'Brainrot Neon', edited: false });

@@ -280,6 +280,12 @@ try {
   assert((await imageWidth()) === 80, 'Ctrl+Y the new one again');
 
   // ---------- The history survives a reload (and so do the files it can bring back) ----------
+  // (With a theme preset put on over a clue font: the theme's keys come back in another order.)
+  await page.getByRole('button', { name: '🎨 Theme' }).click();
+  await page.getByRole('combobox', { name: 'Clue text font' }).selectOption({ label: 'Oswald (board)' });
+  await page.locator('.preset', { hasText: 'Dark' }).click();
+  await page.locator('.preset.on', { hasText: 'Dark' }).waitFor();
+  await page.getByRole('button', { name: /🖼 Media/ }).click();
   await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
   const steps = await historyTab.innerText();
   await reload();

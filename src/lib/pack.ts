@@ -44,13 +44,26 @@ export async function buildPack(game: Game, onProgress?: PackProgress): Promise<
   return { blob, missing };
 }
 
-/** Save the game as a .brainrot pack. Returns the media that couldn't be included and where it was saved. */
-export async function savePack(game: Game, onProgress?: PackProgress): Promise<{ missing: string[]; where: string; file: string }> {
+/**
+ * Save the game as a .brainrot pack. Returns the media that couldn't be included, where it was saved, and how big the
+ * pack is (see MAX_PACK_READ).
+ */
+export async function savePack(game: Game, onProgress?: PackProgress): Promise<{ missing: string[]; where: string; file: string; bytes: number }> {
   const { blob, missing } = await buildPack(game, onProgress);
   const name = `${safeFilename(game.title)}.brainrot`;
   const saved = await saveFile(name, blob, game.id);
-  return { missing, where: savedWhere(saved, name), file: savedName(saved, name) };
+  return { missing, where: savedWhere(saved, name), file: savedName(saved, name), bytes: blob.size };
 }
+
+/**
+ * The size from which a pack can't be opened: the browser reads it into memory in one piece, and Chromium can't read a
+ * file of 2^31 - 1 bytes (just over 2 GB) or more that way. Saving one still works.
+ */
+export const MAX_PACK_READ = 2 ** 31 - 1;
+
+/** Said when a pack is whole but too big to open (see MAX_PACK_READ). */
+export const TOO_BIG_PACK =
+  "This game pack is over 2 GB: more than a browser can open in one piece (the file itself is likely fine). Ask for a smaller copy, its big videos moved to 🌐 links or trimmed.";
 
 /** Said when a game file (or an exported one) didn't arrive whole. */
 export const CUT_OFF = "This file is incomplete: it probably didn't finish downloading or uploading. Ask for it again.";
@@ -66,6 +79,8 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
   } catch {
     // A zip starts with "PK": one that won't open is cut off (or damaged), not some other kind of file.
     const zipStart = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
+    // ...unless it's too big to read: that one is whole (only said once reading it failed, so it never stops one opening).
+    if (zipStart && file.size >= MAX_PACK_READ) throw new Error(TOO_BIG_PACK);
     throw new Error(zipStart ? CUT_OFF : 'This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
   }
   const json = zip.file('game.json');
@@ -73,11 +88,20 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
   // A damaged game.json is a damaged file: nothing in it can be trusted.
   const text = await intact(json);
   if (!text) throw new Error(CUT_OFF);
-  const game = migrateGame(parseGame(new TextDecoder().decode(text)));
+  const parsed = parseGame(new TextDecoder().decode(text));
+  // Each file is in the zip under its name as packed: migrateGame may rename one whose name another file has too
+  // ("view" → "view-k3f9x2", in a pack from before names were kept apart), and a name with no dot is its own
+  // extension. So files are looked up by their names from before it (which changes the game it's given).
+  const packedAt = new Map(
+    (Array.isArray(parsed.media) ? parsed.media : [])
+      .filter((r) => r && typeof r.id === 'string' && typeof r.name === 'string')
+      .map((r) => [r.id, mediaPath(r)] as const),
+  );
+  const game = migrateGame(parsed);
   const files = game.media.filter((ref) => !ref.url);
   for (const [i, ref] of files.entries()) {
     onProgress?.(i, files.length);
-    const entry = zip.file(mediaPath(ref));
+    const entry = zip.file(packedAt.get(ref.id) ?? mediaPath(ref));
     if (!entry) continue;
     // A damaged media file is left out, so the game opens with it listed as missing (the checklist says so), not broken.
     const data = await intact(entry);

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { addMediaFile, getBlob, keepLinkCopy, mediaUrls, pruneMedia, registerBlob, relinkMissing, replaceMediaFile, restoreStash, stashMedia } from './media.svelte';
 import { newGame } from './model';
+import { uploadedFamily } from './fonts';
 import { app } from './app.svelte';
 import { saveEditor, watchWrites } from './persist';
 import type { SavedHistory } from './history.svelte';
@@ -100,6 +101,27 @@ describe('missing files found again, and copies of links saved', () => {
     // Replace…: the new file's name is its own name now; the name given stays.
     await replaceMediaFile(game, 'ren', new File(['abcd'], 'other.mp3', { type: 'audio/mpeg' }));
     expect([game.media[0].name, game.media[0].file]).toEqual(['Theme song.mp3', 'other.mp3']);
+  });
+
+  it('Replace… with `copy` (a kept game shares the file): the new file gets an id of its own, and this game moves to it', async () => {
+    const game = newGame();
+    const old = new Blob(['old'], { type: 'image/png' });
+    registerBlob('logo', old);
+    registerBlob('fontfile1', new Blob(['ttf']));
+    game.media.push({ id: 'logo', name: 'logo.png', mime: 'image/png', size: 3, kind: 'image' });
+    game.media.push({ id: 'fontfile1', name: 'Fun.ttf', mime: 'font/ttf', size: 3, kind: 'font' });
+    game.theme.banner = 'logo';
+    game.theme.clueFont = `'${uploadedFamily('fontfile1')}', sans-serif`;
+    const ref = await replaceMediaFile(game, 'logo', new File(['newer'], 'wide.png', { type: 'image/png' }), false, true);
+    expect(ref.id).not.toBe('logo');
+    expect([game.media[0], game.theme.banner]).toEqual([ref, ref.id]);
+    expect(ref).toMatchObject({ name: 'wide.png', size: 5 });
+    expect(await getBlob(ref.id)!.text()).toBe('newer');
+    // The kept game's file is as it was.
+    expect(getBlob('logo')).toBe(old);
+    // An uploaded font is named by its family in the font lists too.
+    const font = await replaceMediaFile(game, 'fontfile1', new File(['otf2'], 'Fun.otf', { type: 'font/otf' }), false, true);
+    expect(game.theme.clueFont).toBe(`'${uploadedFamily(font.id)}', sans-serif`);
   });
 
   it('a copy of a link becomes the file (same id); nothing happens once it is no longer a link', async () => {

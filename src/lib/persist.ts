@@ -222,20 +222,75 @@ export function usePlayerStorage(gameId: string, exported?: string | null): void
   playKey = `${PLAY_KEY}:player:${gameId}${exported ? `:${exported}` : ''}`;
 }
 
-export const loadPlay = () => safe(() => get<SavedPlay>(playKey));
+/**
+ * The game in progress written to localStorage as the page goes away, as RESCUE_KEY is for the draft: its IndexedDB
+ * write waits a moment for more host clicks, and a reload right after one would lose it. One for each playKey.
+ */
+const playRescueKey = () => `jb.playRescue:${playKey}`;
+/** When this page last wrote that copy (0: never, so a copy an earlier page left is older than any write now). */
+let playRescuedAt = 0;
+function dropPlayRescue(): void {
+  try {
+    localStorage.removeItem(playRescueKey());
+  } catch {
+    // Storage off: there's no copy either.
+  }
+}
+/**
+ * The page is going away: a copy of the game in progress that's written at once (call it before starting the last
+ * IndexedDB write, see rescueDraft). Too big for localStorage with its game: the session alone (the stored game is used).
+ */
+export function rescuePlay(game: Game, session: Session, cover = false): void {
+  const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}) };
+  try {
+    localStorage.setItem(playRescueKey(), JSON.stringify({ ...base, game } satisfies SavedPlay));
+  } catch {
+    try {
+      localStorage.setItem(playRescueKey(), JSON.stringify(base));
+    } catch {
+      dropPlayRescue();
+    }
+  }
+}
+
+/** The game in progress: the stored one, or the copy written as the page went away when it's newer (see rescuePlay). */
+export async function loadPlay(): Promise<SavedPlay | undefined> {
+  const stored = await safe(() => get<SavedPlay>(playKey));
+  let r: Partial<SavedPlay> | null = null;
+  try {
+    r = JSON.parse(localStorage.getItem(playRescueKey()) ?? 'null');
+  } catch {
+    // None, or not readable.
+  }
+  if (r?.session && typeof r.savedAt === 'number' && !(stored && stored.savedAt >= r.savedAt)) {
+    // (Only its session fitted: its game is the stored one, when that's the same game.)
+    const game = r.game ?? (stored?.game.id === r.session.gameId ? stored.game : undefined);
+    if (game) return { game, session: r.session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}) };
+  }
+  // (Out of date: it would only take room the draft's rescue copy may need.)
+  if (r) dropPlayRescue();
+  return stored;
+}
 export const savePlay = (game: Game, session: Session, cover = false) =>
-  write('play', () => set(playKey, { game, session, savedAt: Date.now(), ...(cover ? { cover } : {}) } satisfies SavedPlay));
+  write('play', async () => {
+    const savedAt = Date.now();
+    await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}) } satisfies SavedPlay);
+    // Written: a rescue copy from before this write is out of date.
+    if (playRescuedAt <= savedAt) dropPlayRescue();
+  });
 /**
  * A player-only file's file added during its game (a drawing, a file dropped on the stage): kept with its saved game,
  * each one written once (see storePlayFiles), and deleted with it.
  */
 export const playFileKey = (id: string) => `${playKey}:file:${id}`;
-export const clearPlay = () =>
-  safe(async () => {
+export const clearPlay = () => {
+  dropPlayRescue();
+  return safe(async () => {
     await del(playKey);
     const files = playFileKey('');
     await delMany((await keys()).filter((k) => typeof k === 'string' && k.startsWith(files)));
   });
+};
 
 /**
  * Phone buzzers: the room the pre-game screen opened, kept on its own (nothing else is saved before Start game), so a
