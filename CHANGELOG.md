@@ -33,6 +33,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Clue editor: a question or answer typed again after its text box was deleted comes back on top of the pictures, in the theme's clue font and colour; a 🌐 Link download that stops because its box closed says so; on a theme with dark slide text, a text box's Color shows the colour the words are drawn in, and white can be picked; "Move to the slide's…" on a locked item says it skipped it. (56551cb)
 - In the Final and the tiebreaker, "Use this style elsewhere … in this round" styles only their own slides (it restyled every board clue). (56551cb, d213ca8)
 - Image editor: a caption font just picked shows once it loads (Apply waits for it); Ctrl+Z and Ctrl+Y work while a slider, colour or list has the focus; Remove crop and Reset all set the crop shape back to Free. (56551cb)
+- Player files: a drawing or file added during play comes back after a reload or Resume game; the same file open in a second tab waits, paused, with Play here instead (both tabs overwrote the saved game); resuming in one window no longer closes another page's audience window; the start screen shows the audience window's line and warns when it's closed by accident; ⬇ Download as .brainrot shows its progress and ignores extra clicks; the buzzer-room line names the button that goes back into the room. (3ace03b, 4b3d8c8)
+- In a browser that blocks site data, the builder opens its editor (it said the game was open in another tab, with no way out), and player files still play there, saying they can't save progress. (4b3d8c8)
 
 ## 2026-10-05
 

@@ -26,7 +26,7 @@
   import { openPack } from './lib/pack';
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
-  import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia } from './lib/media.svelte';
+  import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia, storePlayFiles } from './lib/media.svelte';
   import { claimEditor, watchEditor } from './lib/editorlock';
   import { hasWork } from './lib/recent';
   import { validate } from './lib/validate';
@@ -89,8 +89,24 @@
   });
   /** This copy is the one that edits and autosaves the game. */
   let editing = false;
+  /**
+   * A player-only file: this tab is the one that plays and saves its game (it holds that game's lock). Never `editing`,
+   * which would autosave its game over the builder's draft.
+   */
+  let playsHere = false;
   /** Set just before reloading to take over editing from another tab. */
   const TAKE_KEY = 'brainrot.takeEditor';
+  /** "Edit here instead" was pressed just before this reload (read once). */
+  function takeAsked(): boolean {
+    try {
+      const take = sessionStorage.getItem(TAKE_KEY) === '1';
+      sessionStorage.removeItem(TAKE_KEY);
+      return take;
+    } catch {
+      /* no session storage: wait to be asked */
+      return false;
+    }
+  }
 
   /** A saved game in progress, converted if it was saved by an older version. */
   function resumed(play: SavedPlay): SavedPlay {
@@ -113,6 +129,15 @@
         app.game = await openPack(await unpackEmbedded(embedded, info.cut), (done, total) => (unpacked = { done, total }));
         document.title = app.game.title;
         usePlayerStorage(app.game.id, info.exported);
+        // Files added from now on (a drawing during play) are kept with its saved game; its own files never are.
+        storePlayFiles();
+        // One tab plays its saved game at a time (two would overwrite each other's): another one opened waits, paused.
+        if (!(await claimEditor(takeAsked(), stopEditing, `brainrot-play:${app.game.id}:${info.exported ?? ''}`))) {
+          paused = true;
+          loaded = true;
+          return;
+        }
+        playsHere = true;
         app.storageOk = await testStorage();
         const play = await loadPlay();
         if (play) app.resumable = resumed(play);
@@ -124,14 +149,7 @@
       return;
     }
     holdOpenLock();
-    let take = false;
-    try {
-      take = sessionStorage.getItem(TAKE_KEY) === '1';
-      sessionStorage.removeItem(TAKE_KEY);
-    } catch {
-      /* no session storage: wait to be asked */
-    }
-    if (!(await claimEditor(take, stopEditing))) {
+    if (!(await claimEditor(takeAsked(), stopEditing))) {
       paused = true;
       loaded = true;
       return;
@@ -229,16 +247,18 @@
   }
 
   /**
-   * Another tab takes over editing: write the last changes, then leave the autosave alone. A game being played here
-   * is written too and left (the other tab resumes it): only one tab plays and saves it.
+   * Another tab takes over editing (or, in a player-only file, playing): write the last changes, then leave the
+   * autosave alone. A game being played here is written too and left (the other tab resumes it): only one tab plays and
+   * saves it.
    */
   async function stopEditing(): Promise<void> {
-    if (!editing) return;
+    if (!editing && !playsHere) return;
     if (watch) commit();
     const { playGame, session } = app;
     const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
-    await Promise.all([saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover)]);
+    await Promise.all([editing && saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover)]);
     editing = false;
+    playsHere = false;
     paused = true;
     // The phones stay in the room: the tab taking over picks it up again.
     if (kept.room || (app.screen === 'play' && app.session?.remote)) leaveRoom();
@@ -307,8 +327,8 @@
   // (The game as of the last step while a change is still being made: the draft never holds a change its history lacks.)
   const saveEditorNow = () => saveEditor(() => (watch && editing ? { draft: settledGame() ?? watch.value(), ...toSave(newId()) } : null));
   const saveEditorSoon = debounce(saveEditorNow, 500);
-  /** This copy may write the game in play: it edits (holds the lock), or it's a player-only file (which has no other). */
-  const mayPlay = () => editing || playerOnly;
+  /** This copy may write the game in play: it edits (holds the lock), or it's the player-only file's tab that plays it. */
+  const mayPlay = () => editing || playsHere;
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
   const savePlaySoon = debounce((session: Session, cover?: boolean) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover), 300);
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
@@ -767,10 +787,20 @@
 {:else if paused && app.screen === 'editor'}
   <div class="loading">
     <div class="card" role="alert">
-      {#if otherClosed}
+      {#if otherClosed && playerOnly}
+        <h1>The other tab was closed</h1>
+        <p class="muted">Its game is saved. Nothing else is playing this game now.</p>
+        <button class="primary" onclick={editHere}>Play here</button>
+      {:else if otherClosed}
         <h1>The other tab was closed</h1>
         <p class="muted">Its changes are saved. Nothing else is editing this game now.</p>
         <button class="primary" onclick={editHere}>Edit here</button>
+      {:else if playerOnly}
+        <!-- (The same file opened twice: one tab plays and saves its game at a time.) -->
+        <h1>This game is open in another tab</h1>
+        <p class="muted">Playing here is paused, so the two tabs don't overwrite each other's game.</p>
+        <button class="primary" onclick={editHere}>Play here instead</button>
+        <p class="muted small">The other tab saves its game first, then pauses.</p>
       {:else}
         <h1>This game is open in another tab</h1>
         <p class="muted">Editing here is paused, so the two tabs don't overwrite each other's changes.</p>
@@ -780,8 +810,13 @@
     </div>
   </div>
 {:else if playerOnly && app.screen === 'editor'}
-  {@render statusBar(false)}
-  <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
+  <!-- As the editor: the status bar on top, the start screen in the rest (scrolling there in a short window, not the page). -->
+  <div class="player-screen">
+    {@render statusBar(false)}
+    <div class="player-slot">
+      <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
+    </div>
+  </div>
 {:else if app.screen === 'editor'}
   <!-- The editor fills the window (the page itself never scrolls): the status bar stays on top of it. -->
   <div class="editor-screen">
@@ -811,21 +846,24 @@
 <!--
   One compact line over the editor for what's still going on between games: the buzzer room left open, the game kept to
   resume (or a finished one's results) and the audience window. `resume`: with the kept game (the player-only start
-  screen shows its own).
+  screen shows its own); the room and the audience window show on both.
 -->
 {#snippet statusBar(resume: boolean)}
   {@const saved = resume && app.resumable && (!resumeHidden || resuming) ? app.resumable : null}
   {@const room = kept.room}
-  {@const showAudience = resume && (audience.open || audience.lost)}
+  {@const showAudience = audience.open || audience.lost}
   {#if room || saved || showAudience}
     <div class="status-bar" class:asking={!!resuming && !!saved} role="region" aria-label="Status">
       {#if room}
         {@const n = Array.isArray(room.players) ? room.players.length : 0}
         {@const other = room.gameId !== app.game.id}
+        <!-- (The player-only start screen has no ▶ Play while a game is kept: Resume game goes into the room; a finished
+             game's View results doesn't, its New game then ▶ Play does.) -->
+        {@const via = playerOnly && app.resumable ? (app.resumable.session.phase === 'end' ? 'New game, then ▶ Play,' : 'Resume game') : '▶ Play'}
         <span class="item room-bar" role="status">
           <span class="what" title="Phones in the room are told you're setting up">
             📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} player${n === 1 ? '' : 's'})` : ''}.
-            <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : '▶ Play goes back into it.'}</span>
+            <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : `${via} goes back into it.`}</span>
           </span>
           <button class="small ghost" onclick={() => closeKeptRoom()}>✕ Close the room</button>
         </span>
@@ -910,6 +948,16 @@
   .editor-slot {
     flex: 1;
     min-height: 0;
+  }
+  .player-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .player-slot {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
   }
   .status-bar {
     flex: none;

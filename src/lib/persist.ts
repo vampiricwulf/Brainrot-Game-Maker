@@ -225,7 +225,17 @@ export function usePlayerStorage(gameId: string, exported?: string | null): void
 export const loadPlay = () => safe(() => get<SavedPlay>(playKey));
 export const savePlay = (game: Game, session: Session, cover = false) =>
   write('play', () => set(playKey, { game, session, savedAt: Date.now(), ...(cover ? { cover } : {}) } satisfies SavedPlay));
-export const clearPlay = () => safe(() => del(playKey));
+/**
+ * A player-only file's file added during its game (a drawing, a file dropped on the stage): kept with its saved game,
+ * each one written once (see storePlayFiles), and deleted with it.
+ */
+export const playFileKey = (id: string) => `${playKey}:file:${id}`;
+export const clearPlay = () =>
+  safe(async () => {
+    await del(playKey);
+    const files = playFileKey('');
+    await delMany((await keys()).filter((k) => typeof k === 'string' && k.startsWith(files)));
+  });
 
 /**
  * Phone buzzers: the room the pre-game screen opened, kept on its own (nothing else is saved before Start game), so a
