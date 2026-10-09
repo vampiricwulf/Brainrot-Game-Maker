@@ -1,8 +1,8 @@
 <!--
   The slide tabs of a clue that isn't on a board (the tiebreaker, a Final): its question slides in the order they show,
   then the answer, with ＋ Add slide and, with several, ◀ Earlier / Later ▶ / ⧉ Duplicate / 🗑 Delete slide. On a tab:
-  ←/→ (Home/End) open the slide beside it; on a question slide's tab Alt+←/→ move it, Ctrl+D duplicates it, Delete
-  deletes it. Each change is one named step.
+  ←/→ (Home/End) open the slide beside it; on a question slide's tab Ctrl+D duplicates it (even the only one), and with
+  several Alt+←/→ move it, Delete deletes it. Each change is one named step.
 -->
 <script module lang="ts">
   /** What tells a slide apart, so the slide editor starts afresh on another one (the first one has no id). */
@@ -78,15 +78,20 @@
       if (e.key === 'Home') return open(0);
       if (e.key === 'End') return open(plain ? n - 1 : n);
     }
+    if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      // (Even the only slide; never the browser's Bookmark this page, on the Answer tab either.)
+      e.preventDefault();
+      if (side === 'q') {
+        duplicateSlide();
+        focusTab();
+      }
+      return;
+    }
     if (side === 'a' || n < 2) return;
     if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault();
       const d = e.key === 'ArrowLeft' ? -1 : 1;
       if (at + d >= 0 && at + d < n) moveSlide(d);
-      focusTab();
-    } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
-      e.preventDefault();
-      duplicateSlide();
       focusTab();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) {
       e.preventDefault();

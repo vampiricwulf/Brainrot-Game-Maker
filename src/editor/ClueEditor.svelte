@@ -3,10 +3,10 @@
   import { modal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { take } from '../lib/nav.svelte';
+  import { take, type Place, type RoundPart, type Side } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { addClueSlide, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
-  import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, questionSlides, type ClueType, setSlideText, slideText, type BoardRound, type TextEl } from '../lib/model';
+  import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, questionSlides, type ClueType, setSlideText, slideText, type BoardRound, type ExtraSlide, type Slide, type TextEl } from '../lib/model';
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -58,9 +58,27 @@
     return `q${slideNo.get(qslide)}`;
   });
 
-  /** A change to the question slides as one named step; the slide it returns opens. */
+  /** The clue at its question slide `s` (the first one has no id) or at its answer: where a slide change shows. */
+  function slidePart(s: Slide | undefined, sd: Side = 'q'): RoundPart {
+    return { kind: 'clue', category: cat.id, clue: clue.id, side: sd, slide: sd === 'q' ? (s as Partial<ExtraSlide> | undefined)?.id : undefined };
+  }
+  /**
+   * A change to the question slides as one named step; the slide it returns opens. Undone, the slide open before shows
+   * again (an undo brings the slides back with their ids); redone, the one it opened.
+   */
   function slides(label: string, fn: () => number, notify = false): void {
-    const to = record(label, fn, notify ? { notify: true } : undefined);
+    const undoPlace: Place = { tab: 'round', round: round.id, part: side === 'a' ? slidePart(undefined, 'a') : slidePart(qslide) };
+    const place = { tab: 'round' as const, round: round.id, part: slidePart(qslide) };
+    const to = record(
+      label,
+      () => {
+        const i = fn();
+        // (Filled in once it's made: the history reads the place after.)
+        place.part = slidePart(questionSlides(clue)[i]);
+        return i;
+      },
+      { place, undoPlace, notify },
+    );
     side = 'q';
     qi = to;
   }
@@ -85,7 +103,8 @@
   const focusTab = () => tick().then(() => tablist?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
   /**
    * On a tab: ←/→ (Home/End) open the slide beside it (the first, the last), the answer last. On a question slide's
-   * tab, when there are several: Alt+←/→ move it (like Alt+↑/↓ on a list's rows), Ctrl+D duplicates it, Delete deletes it.
+   * tab, Ctrl+D duplicates it (even the only one), and when there are several: Alt+←/→ move it (like Alt+↑/↓ on a
+   * list's rows), Delete deletes it.
    */
   function tabKey(e: KeyboardEvent): void {
     const n = qslides.length;
@@ -104,16 +123,21 @@
       if (e.key === 'Home') return open(0);
       if (e.key === 'End') return open(n);
     }
+    if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      // (Never the browser's Bookmark this page, on the Answer tab either.)
+      e.preventDefault();
+      if (side === 'q') {
+        slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
+        focusTab();
+      }
+      return;
+    }
     if (side === 'a' || n < 2) return;
     if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       // (Not the next clue, as Alt+arrows are elsewhere in the clue.)
       e.preventDefault();
       const d = e.key === 'ArrowLeft' ? -1 : 1;
       if (at + d >= 0 && at + d < n) moveSlide(d);
-      focusTab();
-    } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
-      e.preventDefault();
-      slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
       focusTab();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) {
       e.preventDefault();
@@ -138,11 +162,16 @@
     if (sel.value !== NEW) return void (c[key] = sel.value || undefined);
     const game = app.game;
     const item = kind === 'wheel' ? newTool('wheel') : newTool('dice');
-    record(`Added ${kind} “${item.name}”`, () => {
-      if ('segments' in item) game.wheels.push(item);
-      else game.dice.push(item);
-      c[key] = item.id;
-    });
+    record(
+      `Added ${kind} “${item.name}”`,
+      () => {
+        if ('segments' in item) game.wheels.push(item);
+        else game.dice.push(item);
+        c[key] = item.id;
+      },
+      // (Undone or redone, it shows on the clue it was made from, not on the Wheels & Dice tab.)
+      { place: { tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: c.id } } },
+    );
     tool = { kind, id: item.id };
   }
 

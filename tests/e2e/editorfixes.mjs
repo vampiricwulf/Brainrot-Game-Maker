@@ -208,10 +208,55 @@ try {
   await page.getByRole('button', { name: '✎ Edit wheel' }).click();
   await pop.getByRole('button', { name: 'Done' }).click();
   await page.getByLabel('Type').selectOption('dice');
-  await page.getByLabel('Which dice').selectOption({ label: '🎲 2d6' });
+  // ＋ Add dice… undone, and redone, stays on the clue it was made from (not the Wheels & Dice tab).
+  const clueBox = page.getByRole('dialog', { name: 'Edit clue' });
+  const whichDice = page.getByLabel('Which dice');
+  const diceShows = (t) => whichDice.locator('option:checked', { hasText: t }).waitFor({ state: 'attached', timeout: 3000 }).then(() => true, () => false);
+  const diceWas = await whichDice.evaluate((s) => s.selectedOptions[0].text);
+  await whichDice.selectOption({ label: '＋ Add dice…' });
+  const newDice = page.getByRole('dialog', { name: 'Dice' });
+  await newDice.waitFor();
+  await page.keyboard.press('Escape');
+  await newDice.waitFor({ state: 'detached' });
+  const diceMade = await whichDice.evaluate((s) => s.selectedOptions[0].text);
+  await clueBox.locator('header .value').click();
+  await page.keyboard.press('Control+z');
+  assert((await diceShows(diceWas)) && (await clueBox.isVisible()), `Ctrl+Z of ＋ Add dice… keeps the clue open (back on ${diceWas})`);
+  await page.keyboard.press('Control+y');
+  assert((await diceShows(diceMade)) && (await clueBox.isVisible()), `and so does Ctrl+Y (on ${diceMade} again)`);
+  // (Undone again: the board game's ＋ Add dice… below makes the game's first dice.)
+  await page.keyboard.press('Control+z');
+  await diceShows(diceWas);
+  await whichDice.selectOption({ label: '🎲 2d6' });
   await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForTimeout(800);
   assert(!(await page.locator('nav .problem').allInnerTexts()).some((l) => l.includes('wheel/dice')), 'a tile with standard dice is not a problem');
+  // The board's tiles say what the clue editor and the checklist do: a dice tile with its dice warns of nothing (its
+  // question is optional), a wheel tile with no wheel says so, and a tile's name says its type and what its badges show.
+  const diceTile = page.locator('.tile').nth(2);
+  const tileLabel = (t) => t.getAttribute('aria-label');
+  assert((await diceTile.locator('.missing').count()) === 0 && /, dice tile: no question$/.test(await tileLabel(diceTile)), `a dice tile with its dice warns of nothing (${await tileLabel(diceTile)})`);
+  const wheelTile = page.locator('.tile').nth(3);
+  await wheelTile.click();
+  await page.getByLabel('Type').selectOption('wheel');
+  await page.getByPlaceholder('Type the question…').fill('Spin it');
+  await page.getByRole('button', { name: 'Done' }).click();
+  assert(
+    (await wheelTile.locator('.missing').allInnerTexts()).join() === 'No wheel chosen' && /, wheel tile: Spin it, no wheel chosen$/.test(await tileLabel(wheelTile)),
+    `a wheel tile with no wheel says so (${await tileLabel(wheelTile)})`,
+  );
+  const everyoneTile = page.locator('.tile').nth(4);
+  await everyoneTile.click();
+  await page.getByLabel('Type').selectOption('standard');
+  await page.getByLabel(/Everyone answers/).check();
+  await page.getByLabel('Tile shows').fill('MYSTERY');
+  await page.getByRole('button', { name: 'Done' }).click();
+  assert(
+    (await everyoneTile.locator('.dd', { hasText: '✍' }).count()) === 1 && (await everyoneTile.innerText()).includes('“MYSTERY”') && (await tileLabel(everyoneTile)).includes(', everyone answers, tile shows “MYSTERY”: '),
+    `a ✍ Everyone answers tile shows ✍ and what the tile shows (${await tileLabel(everyoneTile)})`,
+  );
+  const ddTile = page.locator('.tile', { has: page.locator('.dd', { hasText: 'DD' }) }).first();
+  assert((await tileLabel(ddTile)).includes(', Daily Double: '), `a Daily Double's name says so (${await tileLabel(ddTile)})`);
   await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
   assert(await page.getByRole('button', { name: 'Spicy Wheel' }).isVisible(), 'and the wheel made there is in Wheels & Dice');
   // A slice's weight: named after its slice, and never 0 or less (the slice would drop off the wheel).

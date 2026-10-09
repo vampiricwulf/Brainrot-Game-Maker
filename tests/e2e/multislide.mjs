@@ -50,12 +50,29 @@ try {
   }
   /** Click away from the text fields (Ctrl+Z in a field with typing of its own undoes the typing first). */
   const away = () => dialog.locator('header .value').click();
+  /** The slide tab that's open comes to be this one within a few seconds. */
+  const opens = (name) => tabs.locator('[role="tab"][aria-selected="true"]', { hasText: name }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+  // Ctrl+D, and whether the page kept it from the browser (which would bookmark the page).
+  await page.evaluate(() => window.addEventListener('keydown', (e) => e.key.toLowerCase() === 'd' && (window.lastD = e.defaultPrevented)));
+  const ctrlD = async () => {
+    await page.evaluate(() => (window.lastD = undefined));
+    await page.keyboard.press('Control+d');
+    return page.evaluate(() => window.lastD === true);
+  };
 
   // One slide: the plain tabs, a quiet ＋ Add slide, no slide tools.
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', 'Answer slide (hidden until revealed)']), 'a clue starts with its one question slide and the answer');
   assert((await dialog.getByRole('button', { name: '🗑 Delete slide' }).count()) === 0, 'no slide tools on a one-slide clue');
   await q.fill('This started as a lead-in');
   await dialog.locator('[data-field="a"]').fill('Skibidi Toilet');
+  // Ctrl+D on the only question slide's tab duplicates it too; on the Answer tab it does nothing. Neither bookmarks the page.
+  await tabs.getByRole('tab', { name: 'Answer slide (hidden until revealed)' }).click();
+  assert((await ctrlD()) && (await tabs.getByRole('tab').count()) === 2, 'Ctrl+D on the Answer tab does nothing (nor the browser’s Bookmark this page)');
+  await tabs.getByRole('tab', { name: 'Question slide' }).click();
+  assert((await ctrlD()) && JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer']), 'Ctrl+D on the only question slide’s tab duplicates it');
+  await away();
+  await undo();
+  assert((await opens('Question slide')) && (await q.inputValue()) === 'This started as a lead-in', 'Ctrl+Z takes the copy back, the slide it was made from open');
 
   await addSlide.click();
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer']), '＋ Add slide makes Question 1 · Question 2 · Answer');
@@ -82,19 +99,21 @@ try {
   assert((await q.inputValue()) === 'It is a YouTube series', 'the copy opens, with the slide’s text');
   await away();
   await undo();
-  assert((await tabs.getByRole('tab').count()) === 4, 'Ctrl+Z takes the copy back');
+  assert((await tabs.getByRole('tab').count()) === 4 && (await opens('Question 2')), 'Ctrl+Z takes the copy back, the slide it was copied from open');
   await tabs.getByRole('tab', { name: 'Question 3' }).click();
   await dialog.getByRole('button', { name: 'Move slide earlier' }).click();
   assert((await q.inputValue()) === 'Toilets with heads' && (await tabs.getByRole('tab', { name: 'Question 2' }).getAttribute('aria-selected')) === 'true', '◀ moves the slide earlier (it stays open)');
   await away();
   await undo();
-  await tabs.getByRole('tab', { name: 'Question 3' }).click();
-  assert((await q.inputValue()) === 'Toilets with heads', 'Ctrl+Z puts it back in its place');
+  assert((await opens('Question 3')) && (await q.inputValue()) === 'Toilets with heads', 'Ctrl+Z puts it back in its place, and shows it there');
   await dialog.getByRole('button', { name: '🗑 Delete slide' }).click();
   assert((await tabs.getByRole('tab').count()) === 3, '🗑 Delete slide takes it out');
+  // (Another slide opened before the undo: the undo shows the one it brought back.)
+  await tabs.getByRole('tab', { name: 'Question 1' }).click();
   await away();
   await undo();
   assert((await tabs.getByRole('tab').count()) === 4, 'Ctrl+Z brings the deleted slide back');
+  assert((await opens('Question 3')) && (await q.inputValue()) === 'Toilets with heads', 'and opens it');
   await redo();
   assert((await tabs.getByRole('tab').count()) === 3, 'Ctrl+Y deletes it again');
   await undo();

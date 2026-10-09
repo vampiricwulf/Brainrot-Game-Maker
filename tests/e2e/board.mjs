@@ -32,6 +32,8 @@ const undoTitle = () => header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).ge
 const tile = (cat, row) => page.locator(`[data-tile="${cat},${row}"]`);
 const tileText = (cat, row) => tile(cat, row).innerText();
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('data-tile') ?? document.activeElement?.getAttribute('aria-label'));
+/** The focus comes to this tile ("cat,row") within a few seconds. */
+const focusComes = (t) => page.waitForFunction((t) => document.activeElement?.getAttribute('data-tile') === t, t, { timeout: 3000 }).then(() => true, () => false);
 const catNames = () => page.locator('.cat textarea').evaluateAll((els) => els.map((e) => e.value));
 const tabs = page.locator('nav > button.round-tab');
 const roundNames = async () => (await tabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
@@ -120,6 +122,7 @@ try {
   await dragBy(page, tile(0, 0), tile(3, 2));
   assert((await tileText(3, 2)).includes('Who is Pepe?') && (await tileText(0, 0)).includes('No question yet'), 'dragging a tile onto another swaps them');
   assert((await undoTitle()).startsWith('Undo: Swapped Category 1 $200 and Category 4 $600'), `one named step (${await undoTitle()})`);
+  assert(await focusComes('3,2'), `the focus goes with the tile dragged (${await focused()})`);
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
   assert((await tileText(0, 0)).includes('Who is Pepe?') && !(await tileText(3, 2)).includes('Who is Pepe?'), 'Ctrl+Z swaps them back');
@@ -187,6 +190,13 @@ try {
   await tile(0, 1).click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Delete row 2/ }).click();
   assert((await values()) === '200,400,600,800,1000' && (await notice.innerText()).startsWith('Deleted row 2'), 'Delete row, with a note');
+  // From a tile's menu, the keys stay on the board: on the tile now in its place, and on the tile moved with its row.
+  assert(await focusComes('0,1'), `after Delete row from a tile's menu, the focus is on the tile now in its place (${await focused()})`);
+  await tile(0, 0).click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: /Move row down/ }).click();
+  assert((await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'), `after Move row down from a tile's menu, the focus goes with the tile (${await focused()})`);
+  await key('ArrowUp');
+  assert((await focused()) === '0,0', 'and the arrows go on from there');
   assert(!dialogs.length, 'nothing asked first');
 
   // ---------- ED-15: round tabs ----------
@@ -240,6 +250,13 @@ try {
   await page.getByRole('button', { name: '🗑 Delete slide' }).click();
   await page.getByRole('tab', { name: 'Question slide' }).waitFor();
   assert(await slideShows('Best meme of 2020?'), '🗑 Delete slide leaves the first question slide as it was');
+  // Ctrl+D on its only question slide's tab duplicates it too, as on a clue's.
+  await page.getByRole('tab', { name: 'Question slide' }).click();
+  await page.keyboard.press('Control+d');
+  await page.getByRole('tab', { name: 'Question 2' }).waitFor({ timeout: 3000 });
+  assert((await undoTitle()).startsWith('Undo: Duplicated Final question slide 1'), `Ctrl+D on the Final's only question slide's tab duplicates it (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  await page.getByRole('tab', { name: 'Question slide' }).waitFor({ timeout: 3000 });
   // A key on a round's tab is the tab's alone, even with a slide item selected.
   await page.getByRole('tab', { name: /Question slide/ }).click();
   await page.locator('.canvas .hit').first().click();
