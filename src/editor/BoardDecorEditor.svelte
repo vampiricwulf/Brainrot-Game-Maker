@@ -16,6 +16,7 @@
   import { align, bounds, centreOn, clampOnto, restack, type Pt } from '../lib/layers';
   import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
   import { freeOffset } from '../lib/editing';
+  import { copyIsTheBrowsers } from '../lib/undokeys';
   import { boardRounds, MAX_PLAYERS, mostPlayers, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
@@ -279,7 +280,6 @@
     if (skipped) toast(`Skipped ${skipped} item${skipped === 1 ? '' : 's'}: board images are pictures only`);
     if (!pics.length) return;
     const copies: BoardDecor[] = pics.map((x) => ({ ...clone(x), id: newId(), clickThrough: true }));
-    adoptMedia(game, elementMediaIds(copies));
     if (at) centreOn(copies, at);
     else {
       const k = freeOffset(copies, decor);
@@ -290,7 +290,9 @@
     }
     const z = topZ();
     copies.forEach((c, i) => (c.zIndex = z + i));
+    // (Their files from another game come in the same step: one Ctrl+Z takes them out too.)
     edit(() => {
+      adoptMedia(game, elementMediaIds(copies));
       items().push(...copies);
       selected = copies.map((c) => c.id);
     });
@@ -300,14 +302,15 @@
   const busy = (e: Event) => !!(editingImage || picking || menu) || typing(e);
 
   function oncopy(e: ClipboardEvent): void {
-    if (busy(e) || !selected.length) return;
+    // (Not text selected with the mouse: that's what Ctrl+C copies.)
+    if (busy(e) || !selected.length || copyIsTheBrowsers(document.activeElement, window.getSelection())) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     toast(`Copied ${copied(e.clipboardData)}`);
   }
 
   function oncut(e: ClipboardEvent): void {
-    if (busy(e) || !selected.length) return;
+    if (busy(e) || !selected.length || copyIsTheBrowsers(document.activeElement, window.getSelection())) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     cut(e.clipboardData);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import { BIG_FILE, isGameFile, parseGame, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
+import { BIG_FILE, GAME_FILES, isGameFile, OTHER_GAME_FILES, parseGame, readTextFile, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
 import { base64Length, MAX_HTML_CHARS, MAX_PACK_CHARS, TOO_BIG_TO_OPEN, tooBigForHtml } from './export';
 import { openGameFile } from './pack';
 import { jeopardyGame } from './testgame';
@@ -119,12 +119,30 @@ describe('opening game files', () => {
     expect(isGameFile('notes.txt') || isGameFile('photo.png.bak')).toBe(false);
     // A pack zipped by hand opens when dropped, as through Browse….
     expect(isGameFile('Quiz.zip')).toBe(true);
+    // Open… and Import rounds… list the same game files, .htm pages too (a theme file holds no rounds).
+    expect(OTHER_GAME_FILES.split(',')).toEqual(GAME_FILES.split(',').filter((t) => t !== '.brainrot-theme'));
+    expect(GAME_FILES.split(',')).toContain('.htm');
   });
 
   it('says an exported game too long to read is too big, instead of failing to read it', async () => {
     const huge = { name: 'Huge.html', size: MAX_HTML_CHARS + 1, type: 'text/html', slice: () => new Blob(['<!']) } as unknown as File;
     Object.setPrototypeOf(huge, File.prototype);
     await expect(openGameFile(huge)).rejects.toThrow(TOO_BIG_TO_OPEN);
+  });
+});
+
+describe('reading a CSV or text file', () => {
+  it('reads UTF-8, UTF-16 by its BOM, and Excel’s Windows-1252 CSV', async () => {
+    const words = 'This Pokémon is yellow,She sang “Halo”,Who is Beyoncé?';
+    expect(await readTextFile(new Blob([words]))).toBe(words);
+    expect(await readTextFile(new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), words]))).toBe(words);
+    const utf16 = new Uint8Array(2 + words.length * 2);
+    utf16.set([0xff, 0xfe]);
+    for (let i = 0; i < words.length; i++) utf16.set([words.charCodeAt(i) & 0xff, words.charCodeAt(i) >> 8], 2 + i * 2);
+    expect(await readTextFile(new Blob([utf16]))).toBe(words);
+    // (As Excel's "CSV (Comma delimited)" saves it on Windows: é = E9, “ = 93, ” = 94.)
+    const ansi = new Uint8Array([...'Pok'].map((c) => c.charCodeAt(0)).concat(0xe9, 0x2c, 0x93, 0x48, 0x94));
+    expect(await readTextFile(new Blob([ansi]))).toBe('Poké,“H”');
   });
 });
 

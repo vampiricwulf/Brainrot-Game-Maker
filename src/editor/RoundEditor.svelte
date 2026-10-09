@@ -342,6 +342,7 @@
 
   /** Several lines pasted on a category's name (a column copied from a spreadsheet): its clues, top down. One step. */
   function catNamePaste(e: ClipboardEvent, ci: number): void {
+    const box = e.currentTarget as HTMLTextAreaElement;
     const text = e.clipboardData?.getData('text/plain') ?? '';
     if (!/\n./.test(text.trim())) return;
     // A two-line name (Shift+Enter makes one), copied from another category: just pasted as the name, not two clues.
@@ -349,9 +350,21 @@
     if (lines.length <= 2 && !/[\t]/.test(text)) return;
     const cat = round.categories[ci];
     const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
-    const r = step(null, () => pasteColumn(round, ci, text), { notify: true, place });
+    const r = step(
+      null,
+      () => {
+        const r = pasteColumn(round, ci, text);
+        // (Named as the toast says, not "Renamed category …" or "6 changes".)
+        if (r) nameStep(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”`);
+        return r;
+      },
+      { notify: true, place },
+    );
     if (!r) return;
     e.preventDefault();
+    // The name box changed under the caret (a name line renamed it): as if just focused it has no typing of its own, so
+    // Ctrl+Z undoes this step, not the browser's own undo of the last field typed in (see createFieldTracker).
+    box.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
     toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
   }
 

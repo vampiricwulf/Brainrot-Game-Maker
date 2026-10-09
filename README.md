@@ -43,9 +43,10 @@ on a board takes a sheet pasted from Google Sheets or Excel, and **Find** (`Ctrl
 ## Round modes
 
 A game is a list of rounds, and each round has a mode. You can reorder, duplicate or delete any round. **Copy round**
-(a round tab's right-click menu) and **📋 Paste round**, or **📂 Import rounds…** (from a .brainrot file), bring a round from
-another game with the worlds, wheels, dice, stats, items, shops and files it uses. Where this game already has one of
-those from another copy of the same game but it differs, the other version comes in as a copy and this game's stays.
+(a round tab's right-click menu) and **📋 Paste round**, or **📂 Import rounds…** (from a .brainrot file, or the web page a
+game was exported as), bring a round from another game with the worlds, wheels, dice, stats, items, shops and files it
+uses. Where this game already has one of those from another copy of the same game but it differs, the other version
+comes in as a copy and this game's stays.
 
 | Mode | What it is |
 |---|---|

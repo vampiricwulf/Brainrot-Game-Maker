@@ -4,7 +4,7 @@ import { toast } from '../lib/app.svelte';
 import { tell } from '../lib/ask.svelte';
 import { clipboard } from '../lib/clipboard.svelte';
 import { clueSlides, followClueText } from '../lib/cluetext';
-import { pickFile } from '../lib/fileio';
+import { OTHER_GAME_FILES, pickFile } from '../lib/fileio';
 import { nameStep, step } from '../lib/history.svelte';
 import { ROUND_MODES } from '../lib/modes';
 import { roundName, type Game } from '../lib/model';
@@ -84,12 +84,13 @@ export function copiedFiles(source: Game, refs: readonly { id: string; name: str
 }
 
 /**
- * Ask for a .brainrot (or .json) game and open it to take things from. Its files are stored, except where this browser
- * already has the same file; one with the id of a file here but other bytes (another copy of this game, changed since)
- * comes in under a new id (see copiedFiles). Null when cancelled or it can't be read.
+ * Ask for another game (a .brainrot or .json, the web page it was exported as, or a backup the desktop app kept) and
+ * open it to take things from. Its files are stored, except where this browser already has the same file; one with the
+ * id of a file here but other bytes (another copy of this game, changed since) comes in under a new id (see
+ * copiedFiles). Null when cancelled or it can't be read.
  */
 export async function pickOtherGame(): Promise<Game | null> {
-  const file = await pickFile('.brainrot,.jbr,.zip,.json,application/json,application/zip');
+  const file = await pickFile(OTHER_GAME_FILES);
   if (!file) return null;
   try {
     const read = await readGameFile(file);
@@ -118,7 +119,7 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
     ...TEMPLATES.map((t) => ({ label: `${ROUND_MODES[t.mode].icon} ${t.label}`, hint: t.hint, onclick: () => shown(addTemplate(game, t)) })),
     ...(sample ? [{ label: '🎁 The sample game', hint: sampleHint, onclick: sample }] : []),
     { sep: true },
-    { label: '📂 Import rounds…', hint: 'From another game’s .brainrot file, with their worlds, wheels, items and files', onclick: importRounds },
+    { label: '📂 Import rounds…', hint: 'From another game’s .brainrot file (or its exported web page), with their worlds, wheels, items and files', onclick: importRounds },
     {
       label: b ? `📋 Paste round “${bundleName(b)}”` : '📋 Paste round',
       hint: b ? undefined : 'Copy a round first (right-click its tab)',

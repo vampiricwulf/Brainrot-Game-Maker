@@ -13,7 +13,7 @@
   import { untrack } from 'svelte';
   import { modal } from '../lib/modal';
   import { applyPlan, cluesFromTable, parseTable, planImport, previewText } from '../lib/clueimport';
-  import { pickFile } from '../lib/fileio';
+  import { pickFile, readTextFile } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
   import { categoryLabel, formatPoints, roundName, slidesOfClue, type BoardRound } from '../lib/model';
   import { followClueText } from '../lib/cluetext';
@@ -40,7 +40,7 @@
   async function chooseFile(): Promise<void> {
     const file = await pickFile('.csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain');
     if (!file) return;
-    text = await file.text();
+    text = await readTextFile(file);
     from = file.name;
   }
 

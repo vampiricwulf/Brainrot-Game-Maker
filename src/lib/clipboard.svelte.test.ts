@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { adoptUsedBy, clipboard, copyElements, holdUsedBy, pastingGone, toolHere } from './clipboard.svelte';
-import { newClue, newGame, newTextEl, type Game } from './model';
+import { adoptUsedBy, clipboard, copyElements, holdMedia, holdUsedBy, pastingGone, toolHere } from './clipboard.svelte';
+import { newClue, newGame, newId, newTextEl, type Game, type ItemDef, type Shop } from './model';
+import { newScreen } from './rpg';
+import { newStatField } from './toolset';
 import { newDice, newWheel } from './tools';
 
 /** A game with a wheel whose slice shows a picture, and a dice preset. */
@@ -51,6 +53,39 @@ describe('copying a wheel or dice clue into another game', () => {
     adoptUsedBy(b, newClue());
     expect(b.wheels).toEqual([]);
     expect(toolHere(b, 'nope')).toBe(false);
+  });
+});
+
+describe('copying an RPG screen into another game', () => {
+  it('brings the items, shops and stats its objects use, and the ones those use, once', () => {
+    const a = newGame();
+    const hp = newStatField('HP');
+    const gold = { ...newStatField('Gold'), currency: true };
+    const potion: ItemDef = { id: newId(), name: 'Potion', icon: 'm2', stackable: true, onUse: [{ id: newId(), do: 'stat', field: hp.id, op: 'add', amount: 3 }] };
+    const shop: Shop = { id: newId(), name: 'Shop', currency: gold.id, stock: [{ item: potion.id, qty: null }] };
+    a.statFields = [newStatField('Unused'), hp, gold];
+    a.items = [{ id: newId(), name: 'Sword', stackable: false }, potion];
+    a.shops = [shop];
+    a.media.push({ id: 'm2', name: 'potion.png', mime: 'image/png', size: 10, kind: 'image' });
+    const screen = newScreen(0, 0, 'Forest');
+    const npc = newTextEl('Shopkeeper');
+    npc.role = { class: 'npc', actions: [{ id: newId(), do: 'shop', shop: shop.id }] };
+    screen.slide.elements.push(npc);
+    clipboard.items = [];
+    clipboard.shops = [];
+    clipboard.statFields = [];
+    clipboard.media = [];
+    holdUsedBy(a, screen);
+    // (Something else copied since keeps them, and the files they show.)
+    holdMedia(a);
+    expect(clipboard.media.map((m) => m.id)).toEqual(['m2']);
+    const b = newGame();
+    adoptUsedBy(b, screen);
+    adoptUsedBy(b, screen);
+    expect(b.shops?.map((x) => x.name)).toEqual(['Shop']);
+    expect(b.items?.map((x) => x.name)).toEqual(['Potion']);
+    expect(b.statFields?.map((x) => x.name).sort()).toEqual(['Gold', 'HP']);
+    expect(b.media.map((m) => m.id)).toEqual(['m2']);
   });
 });
 

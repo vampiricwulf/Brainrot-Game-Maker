@@ -189,11 +189,11 @@
         const m = world.maps.find((x) => x.screens.length);
         if (m) a.to = { map: m.id, screen: m.screens[0].id };
       }
-      // (From another game: its stats, items, shops and wheels are other ones.)
-      if (a.do === 'stat' && !numbers.some((f) => f.id === a.field)) a.field = numbers[0]?.id ?? '';
-      if (a.do === 'item' && !game.items?.some((x) => x.id === a.item)) a.item = game.items?.[0]?.id ?? '';
-      if (a.do === 'shop' && !game.shops?.some((x) => x.id === a.shop)) a.shop = game.shops?.[0]?.id ?? '';
-      // (Wheels copied with them come along.)
+      // (From another game: the stats, items, shops and wheels copied with them come along, see adoptUsedBy. Any other
+      // is picked again here.)
+      if (a.do === 'stat' && !numbers.some((f) => f.id === a.field) && !clipboard.statFields.some((f) => f.id === a.field && f.type === 'number')) a.field = numbers[0]?.id ?? '';
+      if (a.do === 'item' && !game.items?.some((x) => x.id === a.item) && !clipboard.items.some((x) => x.id === a.item)) a.item = game.items?.[0]?.id ?? '';
+      if (a.do === 'shop' && !game.shops?.some((x) => x.id === a.shop) && !clipboard.shops.some((x) => x.id === a.shop)) a.shop = game.shops?.[0]?.id ?? '';
       if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !toolHere(game, a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
       if (a.do === 'wheel' && a.also) a.also = a.also.filter((id) => id === PLAYER_WHEEL || toolHere(game, id));
     }

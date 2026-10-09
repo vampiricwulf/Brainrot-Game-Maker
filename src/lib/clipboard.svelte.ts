@@ -61,11 +61,15 @@ export const clipboard = $state<{
   /** The wheels and dice the copied clue, screen and buttons use (a wheel or dice clue, a Spin button…), for the same. */
   wheels: WheelPreset[];
   dice: DicePreset[];
+  /** And the items, shops and stats (a Give item button, a shopkeeper, a stat it changes), and those that they use. */
+  items: ItemDef[];
+  shops: Shop[];
+  statFields: StatField[];
   /** Written to the system clipboard with a copy, so a paste can tell whether something newer was copied since. */
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, screen: null, clue: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], token: '', text: '' });
+}>({ elements: [], slide: null, screen: null, clue: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], items: [], shops: [], statFields: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
@@ -74,6 +78,11 @@ const OLD_CLIP_TYPE = 'application/x-jeopardy-slide-items';
 
 /** Each id once (the first one wins). */
 const once = <T extends { id: string }>(list: T[]): T[] => list.filter((x, i) => list.findIndex((y) => y.id === x.id) === i);
+
+/** What a copied thing can use of its game besides files: it goes along with it, so it works in another game too. */
+const USED = ['wheels', 'dice', 'items', 'shops', 'statFields'] as const;
+type Used = (typeof USED)[number];
+const listOf = (from: Partial<Record<Used, { id: string }[]>>, k: Used): { id: string }[] => from[k] ?? [];
 
 /** The files of `refs` that something copied shows (pictures, sounds, music, fonts: anywhere in it). */
 export function mediaShownBy(x: unknown, refs: readonly MediaRef[]): MediaRef[] {
@@ -93,33 +102,46 @@ export function holdMedia(game: Game): void {
   const ids = new Set([...elementMediaIds(clipboard.elements), ...(s ? elementMediaIds(s.elements, s.background) : [])]);
   const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
   // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
-  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, clipboard.wheels, clipboard.dice, clipboard.round], clipboard.media)];
+  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, ...USED.map((k) => clipboard[k]), clipboard.round], clipboard.media)];
   clipboard.media = clone(once(all));
 }
 
 /**
- * Copying a clue, a screen or buttons (`x`): keep the wheels and dice of this game it uses, and the files it and they
- * show, so it pastes into another game with them.
+ * Copying a clue, a screen or buttons (`x`): keep the wheels, dice, items, shops and stats of this game it uses, and the
+ * files it and they show, so it pastes into another game with them.
  */
 export function holdUsedBy(game: Game, x: unknown): void {
-  const json = JSON.stringify(x ?? null);
-  clipboard.wheels = clone(once([...game.wheels.filter((w) => json.includes(w.id)), ...clipboard.wheels]));
-  clipboard.dice = clone(once([...game.dice.filter((d) => json.includes(d.id)), ...clipboard.dice]));
-  clipboard.media = clone(once([...clipboard.media, ...mediaShownBy([x, clipboard.wheels, clipboard.dice], game.media)]));
+  // Until nothing more comes in: an item's buttons point at stats, shops and other items, a shop at items and its
+  // currency, a wheel's slices at items and other wheels… (as a copied round's, see bundleRound).
+  const pick = (json: string) => USED.map((k) => listOf(game, k).filter((t) => json.includes(t.id)));
+  let found = pick(JSON.stringify(x ?? null));
+  for (let n = -1; n !== found.flat().length; ) {
+    n = found.flat().length;
+    found = pick(JSON.stringify([x, found]));
+  }
+  USED.forEach((k, i) => ((clipboard as Record<Used, { id: string }[]>)[k] = clone(once([...found[i], ...listOf(clipboard, k)]))));
+  clipboard.media = clone(once([...clipboard.media, ...mediaShownBy([x, ...USED.map((k) => clipboard[k])], game.media)]));
 }
 
 /** A wheel or dice id the pasted thing can use here: this game's, or one that comes along with it (adoptUsedBy). */
 export const toolHere = (game: Game, id: string | undefined): boolean =>
   !!id && [...game.wheels, ...game.dice, ...clipboard.wheels, ...clipboard.dice].some((t) => t.id === id);
 
-/** Pasting `x` (held with holdUsedBy) in another game: add the wheels, dice and files it uses that this game doesn't have. */
+/**
+ * Pasting `x` (held with holdUsedBy) in another game: add the wheels, dice, items, shops, stats and files it uses (and
+ * those use) that this game doesn't have.
+ */
 export function adoptUsedBy(game: Game, x: unknown): void {
-  const json = JSON.stringify(x ?? null);
-  const wheels = clipboard.wheels.filter((w) => json.includes(w.id) && !game.wheels.some((y) => y.id === w.id));
-  const dice = clipboard.dice.filter((d) => json.includes(d.id) && !game.dice.some((y) => y.id === d.id));
-  game.wheels.push(...clone(wheels));
-  game.dice.push(...clone(dice));
-  for (const m of mediaShownBy([x, wheels, dice], clipboard.media))
+  const missing = (json: string) => USED.map((k) => listOf(clipboard, k).filter((t) => json.includes(t.id) && !listOf(game, k).some((y) => y.id === t.id)));
+  let add = missing(JSON.stringify(x ?? null));
+  for (let n = -1; n !== add.flat().length; ) {
+    n = add.flat().length;
+    add = missing(JSON.stringify([x, add]));
+  }
+  USED.forEach((k, i) => {
+    if (add[i].length) (game as Record<Used, { id: string }[]>)[k] = [...listOf(game, k), ...clone(add[i])];
+  });
+  for (const m of mediaShownBy([x, add], clipboard.media))
     if (!game.media.some((y) => y.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((y) => y.name), m.name) });
 }
 

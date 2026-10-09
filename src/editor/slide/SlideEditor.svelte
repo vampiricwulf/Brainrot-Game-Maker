@@ -29,6 +29,7 @@
   import type { FitResult } from '../../lib/autofit';
   import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingGone, pastingOurs } from '../../lib/clipboard.svelte';
   import { announce } from '../../lib/announce';
+  import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
   import { warnIfUnplayable } from '../../lib/mediadrop';
@@ -605,9 +606,10 @@
     if (!clipboard.slide) return;
     const s = clone(clipboard.slide);
     for (const e of s.elements) e.id = newId();
-    adoptMedia(game, elementMediaIds(s.elements, s.background));
-    adoptUsedBy(game, s);
+    // (Its files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too.)
     undoApi.step('Pasted a slide', () => {
+      adoptMedia(game, elementMediaIds(s.elements, s.background));
+      adoptUsedBy(game, s);
       slide.background = s.background;
       slide.elements = s.elements;
       selected = [];
@@ -818,7 +820,8 @@
   }
 
   function oncopy(e: ClipboardEvent): void {
-    if (!inCharge() || typing(e) || previewing || !selected.length) return;
+    // (Not text selected with the mouse, in the dialog's header or a note: that's what Ctrl+C copies.)
+    if (!inCharge() || typing(e) || previewing || !selected.length || copyIsTheBrowsers(document.activeElement, window.getSelection())) return;
     e.preventDefault();
     toast(`Copied ${copied(e.clipboardData)}`);
   }
@@ -833,7 +836,7 @@
   }
 
   function oncut(e: ClipboardEvent): void {
-    if (!inCharge() || typing(e) || previewing || !selected.length) return;
+    if (!inCharge() || typing(e) || previewing || !selected.length || copyIsTheBrowsers(document.activeElement, window.getSelection())) return;
     e.preventDefault();
     cut(e.clipboardData);
   }
@@ -844,8 +847,6 @@
     const copies = clipboard.elements.map((x) => ({ ...clone(x), id: newId() }));
     // (Copied from the board images: their board-only settings stay behind.)
     for (const c of copies) for (const key of ['behind', 'clickThrough'] as const) delete (c as Record<string, unknown>)[key];
-    adoptMedia(game, elementMediaIds(copies));
-    adoptUsedBy(game, copies);
     if (at) centreOn(copies, at);
     else {
       // Copies that would land exactly on an existing item (pasting onto the same slide) shift down-right.
@@ -858,7 +859,10 @@
     // On top, stacked among themselves as they were copied (a caption stays over its picture).
     const z = topZ();
     copies.sort((a, b) => a.zIndex - b.zIndex).forEach((c, i) => (c.zIndex = z + i));
+    // (Their files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too.)
     undoApi.step(`Pasted ${named(copies)}`, () => {
+      adoptMedia(game, elementMediaIds(copies));
+      adoptUsedBy(game, copies);
       slide.elements.push(...copies);
       selected = copies.map((c) => c.id);
     });

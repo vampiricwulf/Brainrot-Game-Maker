@@ -26,6 +26,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Tiebreaker: N runs its main button (next slide, the answer, then Back to results), and the ? key list has a Tiebreaker clue section; it names who's tied, asks for the winner, says when points given there settled the tie, and the first N with no winner picked warns before leaving. (352b56e, 72030e2)
 - Slide dots on stream turn into a count ("3 / 45") past 20 slides, so they stay on the stage. (352b56e)
 - Board games: a backward count (a wheel's "Back 2") labels its buttons "◀ Back 2" / "▶ Forward 2"; the fork's "which way?" buttons scroll into view, and in one window the hint says to click the space on the stage. (19d795b, 5549121)
+- Open… lists exported .htm pages too, and Import rounds… and Use a theme from another game can pick an exported web page (.html/.htm) or a desktop backup (.brainrot.bak), from the same list of game files as Open…. (31a4e27, 83c0198)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -78,6 +79,9 @@ in plain words for the people who make and host games. Anything committed but no
 - A tiebreaker ticked on but left empty is on the checklist (its line opens the empty box), and the end screen offers it only once it has a question. (352b56e)
 - Resume with my edits keeps the slide that was on screen, even when slides before it were added or taken out or it became the first. Slides rounds' host notes keep their line breaks. (352b56e, 72030e2)
 - Board games: with the controls hidden (H), D then Enter moves the player (D rolled again); a spent roll stays spent after Previous/Next turn or picking another name and back; Ctrl+Z of any move puts its count back, but not into the next board round; with one space a turn, Enter after the move says so; a landing "Back 3" keeps a Start bonus passed that turn; 12 tokens in one zone wrap instead of running off the board. (19d795b, 5549121)
+- Import clues: a quote that starts a cell is kept unless it closes at the cell's end ('"I'll be back" was said…'), and a quote never closed no longer swallows the rows after it; a sheet that writes each category name once (merged cells or blanks below) gives its rows that category; Choose file… and the items' Import CSV… read Excel's Windows CSVs and UTF-16, so é, “ ” and – no longer come in as �. (fb51ab5)
+- Ctrl+Z right after a column pasted on a category name undoes the paste (it undid a name typed in another category). (17a77fc)
+- Pasting from another game: slide items, a whole slide and board images come in as one undo step with their files; a screen, slide items or buttons bring the items, shops and stats they use (a pasted Potion pick-up no longer reads "Deleted item", and a Give item, Shop or Stat button keeps its target); Ctrl+Z or Ctrl+Y of such a paste stays where it was pasted. Ctrl+C with words selected in the slide editor copies the words. (aa2fb87, 2357927, 96ecb6c)
 
 ## 2026-10-08
 

@@ -38,13 +38,28 @@ export function parseTable(text: string, sep?: ',' | ';' | '\t'): string[][] {
   let row: string[] = [];
   let cell = '';
   let quoted = false;
+  // A quote opens a quoted cell only when its closing quote ends the cell: '"Thriller" is by him', or a quote never
+  // closed, is the cell's own text (a spreadsheet's copy quotes only cells with a line break).
+  const closes = (i: number): boolean => {
+    for (let j = i + 1; j < text.length; j++) {
+      if (text[j] !== '"') continue;
+      if (text[j + 1] === '"') {
+        j++;
+        continue;
+      }
+      let k = j + 1;
+      while (text[k] === ' ') k++;
+      return k >= text.length || text[k] === sep || text[k] === '\n' || text[k] === '\r';
+    }
+    return false;
+  };
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (quoted) {
       if (ch === '"' && text[i + 1] === '"') (cell += '"'), i++;
       else if (ch === '"') quoted = false;
       else cell += ch;
-    } else if (ch === '"' && !cell.trim()) quoted = true;
+    } else if (ch === '"' && !cell.trim() && closes(i)) quoted = true;
     else if (ch === sep) row.push(cell), (cell = '');
     else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && text[i + 1] === '\n') i++;
@@ -97,10 +112,14 @@ function guessColumns(cells: string[]): Partial<Record<Col, number>> {
 export function cluesFromTable(rows: string[][], fallbackCategory = ''): ImportedClue[] {
   const head = rows[0] ? headerOf(rows[0]) : null;
   const out: ImportedClue[] = [];
+  // A category written once over its block (merged cells, or left blank below it): the rows under it are its own.
+  let last = '';
   for (const r of head ? rows.slice(1) : rows) {
     const cols = head ?? guessColumns(r);
     const at = (k: Col) => (cols[k] === undefined ? '' : (r[cols[k]!] ?? ''));
-    const clue = { category: at('category') || fallbackCategory, value: parseValue(at('value')), question: at('question'), answer: at('answer') };
+    if (cols.category !== undefined && at('category')) last = at('category');
+    const category = (cols.category !== undefined ? at('category') || last : '') || fallbackCategory;
+    const clue = { category, value: parseValue(at('value')), question: at('question'), answer: at('answer') };
     if (clue.question || clue.answer) out.push(clue);
   }
   return out;

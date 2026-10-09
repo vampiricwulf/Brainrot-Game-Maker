@@ -7,12 +7,14 @@
 // turn that settles on level, and the History's names for line-ups, restacks, duplicates and pastes. Also: the text Color
 // box on Pastel (and ↺ Theme colour), Ctrl+I in the Text field (and Ctrl+Z after it), Ctrl+Z on an image editor slider, a
 // new crop starting Free, a caption's font drawn once it loads, and Ctrl+V of items or a picture in the clue's Question
-// box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide).
+// box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide). Ctrl+C with
+// words selected with the mouse copies them, not the selected item; items pasted into another game bring their file in
+// the same step.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, answerReplace } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -448,6 +450,15 @@ try {
   await page.keyboard.press('Control+d');
   assert((await undoTitle()).startsWith('Undo: Duplicated shape “Rectangle”'), `Ctrl+D is “Duplicated shape “Rectangle”” (${await undoTitle()})`);
   await page.keyboard.press('Control+z');
+  // With the item selected, a word selected with the mouse (in the clue's header) is what Ctrl+C copies.
+  await click(1750, 550);
+  await clue.locator('header .hint.keys').dblclick({ position: { x: 4, y: 6 } });
+  await page.evaluate(() => {
+    window.addEventListener('copy', (e) => (window.__copied = { taken: e.defaultPrevented, words: String(window.getSelection()).trim() }), { once: true });
+  });
+  await page.keyboard.press('Control+c');
+  const copiedWords = await (await page.waitForFunction(() => window.__copied, null, { timeout: 3000 })).jsonValue();
+  assert(!copiedWords.taken && !!copiedWords.words, `Ctrl+C with a word selected copies the word, not the selected item (${JSON.stringify(copiedWords)})`);
   await click(1750, 550);
   await page.keyboard.press('Control+c');
   await page.keyboard.press('Control+v');
@@ -557,6 +568,26 @@ try {
   await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
   const restored = (await drawn())[0];
   assert(restored.y === 90 && restored.h === 900, 'one Ctrl+Z takes the picture away and puts the text back as it was');
+
+  // ---------- A picture pasted into another game: its file comes in the same step (one Ctrl+Z takes both away) ----------
+  await page.keyboard.press('Control+y');
+  await canvas.locator('.slide .el img').waitFor();
+  const face = (await drawn()).find((e) => e.img);
+  await click(face.x + face.w / 2, face.y + face.h / 2);
+  await page.keyboard.press('Control+c');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(page);
+  await addClassicRounds(page);
+  await page.locator('.grid .tile').first().click();
+  await clue.waitFor();
+  await canvas.focus();
+  await page.keyboard.press('Control+v');
+  await canvas.locator('.slide .el img').waitFor();
+  assert((await mediaCount()) === 1 && (await undoTitle()).startsWith('Undo: Pasted image'), `a picture pasted from another game brings its file (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
+  assert((await mediaCount()) === 0, `one Ctrl+Z takes the picture and its file away (${await undoTitle()})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSlide editor E2E passed.');
