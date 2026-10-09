@@ -203,7 +203,12 @@
       cues = cuesAfter(cues, c);
     });
   });
-  const cueDone = (nonce: string) => (cues = cues.filter((c) => c.nonce !== nonce));
+  // A cue whose file doesn't load here (an online link that stopped working) plays its built-in sound instead.
+  let failed = $state<string[]>([]);
+  function cueDone(nonce: string): void {
+    cues = cues.filter((c) => c.nonce !== nonce);
+    failed = failed.filter((n) => n !== nonce);
+  }
   /** A cue's sound at its volume (🔊 Sounds). */
   function loudness(node: HTMLMediaElement, v: number) {
     node.volume = v;
@@ -669,9 +674,15 @@
 <!-- Game sound cues: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
 {#if role !== 'mirror'}
   {#each cues as c (c.nonce)}
-    {@const url = soundUrl(c.media) ?? soundUrl(c.fallback)}
+    {@const url = failed.includes(c.nonce) ? soundUrl(c.fallback) : (soundUrl(c.media) ?? soundUrl(c.fallback))}
     {#if url}
-      <audio use:loudness={c.volume ?? 1} use:autoPlay={url} use:holdWhile={!!live.cover} onended={() => cueDone(c.nonce)}></audio>
+      <audio
+        use:loudness={c.volume ?? 1}
+        use:autoPlay={url}
+        use:holdWhile={!!live.cover}
+        onended={() => cueDone(c.nonce)}
+        onerror={() => c.fallback && !failed.includes(c.nonce) && (failed = [...failed, c.nonce])}
+      ></audio>
     {/if}
   {/each}
 {/if}

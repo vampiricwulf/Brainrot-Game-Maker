@@ -52,7 +52,7 @@
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
-  import { playCue } from './cues';
+  import { cueHere, playCue } from './cues';
   import { watchSinks } from '../lib/audioout.svelte';
   import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
@@ -1240,7 +1240,9 @@
     amount = c?.value ?? null;
     app.live.timer = null;
     app.live.overlay = null;
-    playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen');
+    // The round intro's music (a whole theme song, maybe) stops once a tile opens, so it doesn't play under the clues.
+    const intro = cueHere(game, 'roundIntro');
+    playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen', !!intro && app.live.sound?.media === intro);
     if (session.dd) return;
     if (c?.clue.type === 'wheel') {
       const w = game.wheels.find((x) => x.id === c.clue.wheelId);
@@ -1480,7 +1482,8 @@
     app.live.timer = null;
     selected = [];
     amount = null;
-    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
+    // (A new round's intro stops whatever is still playing, the last round's intro too.)
+    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro', true);
     winnerCue();
     boardFocus();
   }
@@ -1594,12 +1597,13 @@
     app.live.timer = null;
     if (session.phase === 'final' && session.finalStep === 'question') {
       startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
-      playCue(app.live, game, 'finalThink');
+      // (The think music stops the Final's intro, if it's still going.)
+      playCue(app.live, game, 'finalThink', true);
     }
     if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
     winnerCue();
     // A Final in the middle of the game went on to the next round.
-    if (session.phase !== 'final' && session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
+    if (session.phase !== 'final' && session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro', true);
   }
 
   /**
@@ -1709,7 +1713,7 @@
         if (session.finalStep === 'question') {
           app.live.timer = null;
           startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
-          playCue(app.live, game, 'finalThink');
+          playCue(app.live, game, 'finalThink', true);
         } else if (session.finalStep === 'answer') app.live.sound = null;
       }
       return t;
@@ -2031,7 +2035,7 @@
     // A game can open with a Final or an RPG round: those start through goToRound (only a title card).
     if (!isBoard(game.rounds[0])) goToRound(session, game, 0);
     else startIntro(session, game);
-    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro');
+    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro', true);
   }
 
   // ---------- Pre-game ----------

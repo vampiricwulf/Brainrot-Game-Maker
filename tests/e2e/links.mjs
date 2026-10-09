@@ -257,6 +257,14 @@ assert((await card('frog1.png').getByText('Saved from litter.catbox.moe').count(
 assert((await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1, 'the live link shows its site instead of a size');
 assert((await card('Google Drive picture').getByText('🌐 lh3.googleusercontent.com').count()) === 1, 'so does the Drive picture');
 assert((await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await page.getByText(/3 more play from the internet/).count()) === 1, 'the total counts stored files only');
+// A link to a file the game already has (the same bytes) adds nothing, and says which file it reused.
+await page.locator('.library .link').getByLabel('Paste a link').fill('https://litter.catbox.moe/frog2.png');
+await page.locator('.library .link').getByLabel('Paste a link').press('Enter');
+await page.locator('.toast', { hasText: 'That file is already in your game as “frog1.png”, so it was reused.' }).waitFor();
+assert(
+  (await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await card('frog2.png').count()) === 0,
+  'a link to a file already in the game adds nothing, and the toast says it reused that file (not "Stored in your game")',
+);
 await card('beep1.wav').getByRole('button', { name: 'Check link' }).click();
 await card('beep1.wav').getByText('✓ The link works').waitFor();
 assert(true, 'Check link plays the link to see that it works');

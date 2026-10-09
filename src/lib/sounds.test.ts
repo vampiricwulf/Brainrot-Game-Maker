@@ -25,6 +25,17 @@ describe('cueMedia', () => {
     expect(cueFileMissing({ audio: {}, media }, 'right')).toBe(false);
   });
 
+  it('plays the built-in sound in place of an online link that has expired', () => {
+    const link = (expiresAt: number, url?: string) => [{ id: 'm1', name: 'intro.mp3', kind: 'audio', url, source: 'https://x.test/intro.mp3', expiresAt }] as never;
+    const past = Date.now() - 60_000;
+    const later = Date.now() + 3_600_000;
+    expect(cueMedia({ audio: { roundIntro: 'm1' }, media: link(past, 'https://x.test/intro.mp3') }, 'roundIntro', () => true)).toBe(BUILTIN + 'roundIntro');
+    expect(cueFileMissing({ audio: { roundIntro: 'm1' }, media: link(past, 'https://x.test/intro.mp3') }, 'roundIntro', () => true)).toBe(true);
+    // Not yet expired, or a copy saved from that link (no live link to expire): it plays.
+    expect(cueMedia({ audio: { roundIntro: 'm1' }, media: link(later, 'https://x.test/intro.mp3') }, 'roundIntro', () => true)).toBe('m1');
+    expect(cueMedia({ audio: { roundIntro: 'm1' }, media: link(past) }, 'roundIntro', () => true)).toBe('m1');
+  });
+
   it('plays at full volume unless a volume is set', () => {
     expect(cueVolume({}, 'right')).toBe(1);
     expect(cueVolume({ soundVolume: { right: 0.4 } }, 'right')).toBe(0.4);

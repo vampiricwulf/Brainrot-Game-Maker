@@ -410,8 +410,11 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
     if (want && kind !== want) throw wrongKind(kind, want);
     const cant = unplayable(file.mime);
     if (cant) throw cant;
+    // The same file already in the game (added from disk, or from another link): that one is used, and nothing is added.
+    const had = new Set(game.media.map((m) => m.id));
     const ref = await addMediaFile(game, file.blob, file.name, extra);
-    return { ref, saved: true, message: linkMessages.saved(link), warn: false, link };
+    const message = had.has(ref.id) ? `That file is already in your game as “${ref.name}”, so it was reused.` : linkMessages.saved(link);
+    return { ref, saved: true, message, warn: false, link };
   } catch (e) {
     if (isAbort(e) || e instanceof LinkError) throw e;
     failure = explain(e, link);
