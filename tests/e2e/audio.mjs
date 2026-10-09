@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, nameGame, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, nameGame, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -684,7 +684,7 @@ try {
     await context.close();
   }
 
-  // ---------- 5. A round intro whose online link stopped working: its preview says so, and the built-in sound plays ----------
+  // ---------- 5. A round intro (and a dice roll) whose online link stopped working: its preview says so, and the built-in sound plays ----------
   {
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
     await context.addInitScript(() => {
@@ -711,6 +711,17 @@ try {
     await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/intro.wav');
     await page.locator('.picker').getByLabel('Paste a link').press('Enter');
     await page.locator('.sound', { hasText: 'Round intro' }).getByText('🔊 intro.wav').waitFor();
+    // The dice too (their sound goes with the roll on screen, not through the stream's list of cues).
+    await page.getByRole('button', { name: 'Choose file for Dice roll' }).click();
+    await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/dice.wav');
+    await page.locator('.picker').getByLabel('Paste a link').press('Enter');
+    await page.locator('.sound', { hasText: 'Dice roll' }).getByText('🔊 dice.wav').waitFor();
+    // (For 5b: this game, its links and all.)
+    const [exported] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
+    ]);
+    const deadLinkGame = JSON.parse(readFileSync(await exported.path(), 'utf8'));
     gone = true;
     const preview = page.getByRole('button', { name: 'Preview Round intro' });
     await preview.click();
@@ -724,8 +735,35 @@ try {
       (await page.evaluate(() => window.__plays)).includes('https://files.catbox.moe/intro.wav'),
       'at Start the round intro tries its link, and once that fails the built-in sound plays in its place',
     );
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    await page.locator('.board .tile').first().waitFor();
+    await page.keyboard.press('d');
+    await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#dice')));
+    const plays = await page.evaluate(() => window.__plays);
+    const tried = plays.indexOf('https://files.catbox.moe/dice.wav');
+    assert(tried !== -1 && tried < plays.findIndex((s) => s.endsWith('#dice')), 'a dice roll tries its sound’s link, and once that fails the built-in dice sound plays');
     await context.close();
+
+    // ---------- 5b. A link the site says has expired: its row says so (not "missing"), and 🔗 Find file… stores the file in its place ----------
+    const ref = deadLinkGame.media.find((m) => m.name === 'intro.wav');
+    ref.expiresAt = Date.now() - 60_000;
+    const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const b = watch(await fresh.newPage(), 'expired link');
+    await b.goto(fileUrl);
+    await openGameFile(b, { name: 'Expired link.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(deadLinkGame)) });
+    await b.getByRole('button', { name: '🔊 Sounds' }).click();
+    const row = b.locator('.sound', { hasText: 'Round intro' });
+    await row.getByText('⚠ intro.wav’s link expired: plays the built-in sound (add the file again)').waitFor();
+    const [fc] = await Promise.all([b.waitForEvent('filechooser'), row.getByRole('button', { name: '🔗 Find file…' }).click()]);
+    await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(2) });
+    await row.locator('.file', { hasText: '🔊 intro.wav' }).waitFor();
+    assert((await row.locator('.missing').count()) === 0, 'an expired link’s row says its link expired, and 🔗 Find file… puts the file in the link’s place');
+    await fresh.close();
   }
+
+  /** Whether the intro's own file (not a built-in sound, whose link ends in #its-name) is playing in this window. */
+  const introPlaying = (want) =>
+    [...document.querySelectorAll('audio')].some((a) => a.src.startsWith('blob:') && !a.src.includes('#') && !a.paused && !a.ended) === want;
 
   // ---------- 6. A long round intro (a theme song) stops when a tile opens: it doesn't play on under the clues ----------
   {
@@ -740,17 +778,35 @@ try {
     });
     const page = watch(await context.newPage(), 'long intro');
     await toPregame(page, fileUrl, { introSound: true, introSeconds: 30 });
-    /** Whether the intro's own file (not a built-in sound, whose link ends in #its-name) is playing in this window. */
-    const introPlaying = (want) =>
-      [...document.querySelectorAll('audio')].some((a) => a.src.startsWith('blob:') && !a.src.includes('#') && !a.paused && !a.ended) === want;
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.waitForFunction(introPlaying, true);
     await page.getByRole('button', { name: 'Skip intro' }).click();
     await page.locator('.board .tile').first().waitFor();
     assert(await page.evaluate(introPlaying, true), 'a 30 s round intro plays on over the board once the title card is skipped');
+    // Points given on the board before the first tile: their sound plays over the intro, which still stops at the tile.
+    await page.keyboard.press('1');
+    await page.locator('.panel .award').getByLabel('Amount').fill('100');
+    await page.locator('.panel .award').getByLabel('Amount').press('Enter');
+    await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));
+    assert(await page.evaluate(introPlaying, true), 'points given on the board play their sound, and the intro goes on');
     await page.locator('.board .tile').first().click();
     await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#tileOpen')));
     assert(await page.evaluate(introPlaying, false), 'opening a tile stops it (the tile-open sound plays on its own)');
+    await context.close();
+  }
+
+  // ---------- 7. 🔇 Stop sounds stops a round intro that goes on (an RPG or slides round has no tile to stop it) ----------
+  {
+    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const page = watch(await context.newPage(), 'stop sounds');
+    await toPregame(page, fileUrl, { introSound: true, introSeconds: 30 });
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.waitForFunction(introPlaying, true);
+    const stop = page.getByRole('button', { name: '🔇 Stop sounds' });
+    await stop.click();
+    await page.waitForFunction(introPlaying, false);
+    await stop.waitFor({ state: 'detached' });
+    assert(true, 'the host panel’s 🔇 Stop sounds (there while a round intro may play) stops it, and then goes away');
     await context.close();
   }
 

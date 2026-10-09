@@ -1,4 +1,4 @@
-<!-- Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6). -->
+<!-- Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), and 🔇 Stop sounds while a round intro may play. -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { anchored } from '../../lib/anchored';
@@ -9,7 +9,18 @@
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
 
-  let { game, session, onrolloff }: { game: Game; session: Session; onrolloff: (ids: string[], sides: number) => void } = $props();
+  let {
+    game,
+    session,
+    onrolloff,
+    onstopsounds,
+  }: {
+    game: Game;
+    session: Session;
+    onrolloff: (ids: string[], sides: number) => void;
+    /** 🔇 Stop sounds: shown while the round intro's music may still be playing (it goes on until a tile opens). */
+    onstopsounds?: () => void;
+  } = $props();
   let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
   let custom = $state('');
   let quickList = $state('');
@@ -200,6 +211,9 @@
     {/if}
   </div>
   <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="S">📊 Scores</button>
+  {#if onstopsounds}
+    <button onclick={() => ((menu = null), onstopsounds())} title="Stop the game's sounds on stream, like the round intro's music (Shift+M)">🔇 Stop sounds</button>
+  {/if}
 </div>
 
 {#if menu}<div class="backdrop" onclick={() => (menu = null)} role="presentation"></div>{/if}

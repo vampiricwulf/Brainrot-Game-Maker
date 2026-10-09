@@ -6,6 +6,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { pickFile } from '../lib/fileio';
   import { attachBlobSwap, stepAsync } from '../lib/history.svelte';
+  import { linkLifetime } from '../lib/links';
   import { ACCEPT, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import { CUES, cueFileMissing, cueVolume, hasBuiltin, type CueKey } from '../lib/sounds';
@@ -31,7 +32,10 @@
     audio[key] = id;
     setOn(key, true);
   }
-  /** A missing file picked again: every place that uses it gets it back (as 🖼 Media's 🔗 Replace file…). Undo takes it out. */
+  /**
+   * A missing file picked again (or the file of a link that expired, stored in the game in its place): every place that
+   * uses it gets it back, as 🖼 Media's 🔗 Replace file…. Undo takes it out.
+   */
   async function findFile(id: string): Promise<void> {
     const f = await pickFile(ACCEPT.audio);
     if (!f) return;
@@ -100,6 +104,7 @@
     {@const off = isOff(key)}
     {@const builtin = hasBuiltin(key)}
     {@const missing = cueFileMissing(app.game, key, loaded)}
+    {@const ref = v ? app.game.media.find((m) => m.id === v) : undefined}
     {@const vol = cueVolume(app.game, key)}
     <div class="sound" class:off>
       {#if builtin}
@@ -116,9 +121,17 @@
       {#if off}
         <span class="muted small">Off{#if v} <span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
       {:else if v && missing}
-        <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : 'plays nothing'}</span>
-        {#if app.game.media.some((m) => m.id === v && !m.url)}
-          <button class="small primary" onclick={() => findFile(v)} title="Pick the file again: every place it's used gets it back">🔗 Find file…</button>
+        <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it. -->
+        {#if ref?.url && linkLifetime(ref) === 'expired'}
+          <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {builtin ? 'plays the built-in sound' : 'plays nothing'} (add the file again)</span>
+        {:else}
+          <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : 'plays nothing'}</span>
+        {/if}
+        <!-- (Not for a file deleted from the game: there's nothing left to put it back in.) -->
+        {#if ref}
+          <button class="small primary" onclick={() => findFile(v)}
+            title={ref.url ? 'Pick the file on this computer: the game keeps it in place of the link, everywhere it’s used' : "Pick the file again: every place it's used gets it back"}
+            >🔗 Find file…</button>
         {/if}
       {:else if v}
         <span class="file" title={nameOf(v)}>🔊 {nameOf(v)}</span>

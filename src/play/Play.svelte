@@ -52,7 +52,8 @@
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
-  import { cueHere, playCue } from './cues';
+  import { playCue } from './cues';
+  import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
   import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
@@ -626,6 +627,23 @@
   /** The winner fanfare, once the end screen has its winner (not while a tie for first is still to settle). */
   function winnerCue(): void {
     if (session.phase === 'end' && winnerKnown(session)) playCue(app.live, game, 'winner');
+  }
+
+  /**
+   * The round intro's cue while its music may still be playing (a whole theme song, maybe): the first tile opened stops
+   * it, whatever played in between, as does 🔇 Stop sounds. (Not the built-in sound: it's short, and ends by itself.)
+   */
+  let introNonce = $state<string | undefined>();
+  /** The round intro's sound, with the title card: it stops whatever is still playing (the last round's intro too). */
+  function introCue(): void {
+    playCue(app.live, game, 'roundIntro', true);
+    const s = app.live.sound;
+    introNonce = s && !s.media.startsWith(BUILTIN) ? s.nonce : undefined;
+  }
+  /** 🔇 Stop sounds (Shift+M): every game sound playing on stream stops (a round intro that goes on, say). */
+  function stopSounds(): void {
+    app.live.sound = null;
+    introNonce = undefined;
   }
 
   function reasonNow(): string {
@@ -1241,8 +1259,8 @@
     app.live.timer = null;
     app.live.overlay = null;
     // The round intro's music (a whole theme song, maybe) stops once a tile opens, so it doesn't play under the clues.
-    const intro = cueHere(game, 'roundIntro');
-    playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen', !!intro && app.live.sound?.media === intro);
+    playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen', !!introNonce);
+    introNonce = undefined;
     if (session.dd) return;
     if (c?.clue.type === 'wheel') {
       const w = game.wheels.find((x) => x.id === c.clue.wheelId);
@@ -1482,8 +1500,7 @@
     app.live.timer = null;
     selected = [];
     amount = null;
-    // (A new round's intro stops whatever is still playing, the last round's intro too.)
-    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro', true);
+    if (session.intro?.stage === 'title') introCue();
     winnerCue();
     boardFocus();
   }
@@ -1603,7 +1620,7 @@
     if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
     winnerCue();
     // A Final in the middle of the game went on to the next round.
-    if (session.phase !== 'final' && session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro', true);
+    if (session.phase !== 'final' && session.intro?.stage === 'title') introCue();
   }
 
   /**
@@ -2035,7 +2052,7 @@
     // A game can open with a Final or an RPG round: those start through goToRound (only a title card).
     if (!isBoard(game.rounds[0])) goToRound(session, game, 0);
     else startIntro(session, game);
-    if (session.intro?.stage === 'title') playCue(app.live, game, 'roundIntro', true);
+    if (session.intro?.stage === 'title') introCue();
   }
 
   // ---------- Pre-game ----------
@@ -2799,6 +2816,11 @@
         break;
       }
       case 'm': {
+        // Shift+M: 🔇 Stop sounds (the game's own sounds, not the slide's media).
+        if (e.shiftKey) {
+          stopSounds();
+          break;
+        }
         const m = firstMedia();
         if (m) mediaCommand({ el: m[0], op: 'muted', value: !m[1].muted });
         break;
@@ -3292,7 +3314,7 @@
           {/if}
         {/snippet}
         {#snippet tools()}
-          <ToolLauncher {game} {session} onrolloff={rolloff} />
+          <ToolLauncher {game} {session} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} />
         {/snippet}
       </HostPanel>
     {/if}

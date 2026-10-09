@@ -2,7 +2,8 @@
   The sounds that go with what's on screen, in the window that plays the game's sound: dice rattling, a wheel ticking
   as its slices pass the pointer and its landing, and a board game's token stepping from space to space. They're timed
   from the same timestamps as the animations, so they match the picture in every window. Also the short cues for what
-  the host does (an RPG step, a pick-up, coins: live.blip), over any other sound. None under ⏸ Cover. Draws nothing.
+  the host does (an RPG step, a pick-up, coins: live.blip), over any other sound. None under ⏸ Cover. A file that
+  doesn't load here (an online link that stopped working) plays the built-in sound, as the other cues do. Draws nothing.
 -->
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
@@ -10,7 +11,7 @@
   import { HOP_MS } from '../lib/boardgame';
   import type { Live } from '../lib/live';
   import type { Game, Session } from '../lib/model';
-  import { cueVolume, tickTimes, type CueKey } from '../lib/sounds';
+  import { BUILTIN, cueVolume, hasBuiltin, tickTimes, type CueKey } from '../lib/sounds';
   import { cueHere, soundUrl } from './cues';
 
   let { game, session, live }: { game: Game; session: Session; live: Live } = $props();
@@ -20,14 +21,28 @@
 
   /** A few players per sound, reused: wheel ticks come fast. */
   const pools = new Map<string, { els: HTMLAudioElement[]; next: number }>();
+  /** Files that didn't load here (an online link that stopped working): their cues play the built-in sound instead. */
+  const dead = new Set<string>();
   function play(key: CueKey, report = false): void {
     // ⏸ Cover: viewers see only the cover card, and hear nothing new under it (a step, coins, a roll the host makes).
     if (live.cover) return;
-    const url = soundUrl(cueHere(game, key));
+    const main = soundUrl(cueHere(game, key));
+    const builtin = hasBuiltin(key) ? soundUrl(BUILTIN + key) : undefined;
+    const url = main && dead.has(main) ? builtin : main;
     if (!url) return;
     let pool = pools.get(url);
     if (!pool) pools.set(url, (pool = { els: [], next: 0 }));
-    if (pool.els.length < 4) pool.els.push(new Audio(url));
+    if (pool.els.length < 4) {
+      const el = new Audio(url);
+      // The first time a file fails, this sound plays as the built-in one, and so does every one after it.
+      if (builtin && url !== builtin)
+        el.onerror = () => {
+          if (dead.has(url)) return;
+          dead.add(url);
+          play(key, report);
+        };
+      pool.els.push(el);
+    }
     const el = pool.els[pool.next++ % pool.els.length];
     el.currentTime = 0;
     el.volume = cueVolume(game, key);

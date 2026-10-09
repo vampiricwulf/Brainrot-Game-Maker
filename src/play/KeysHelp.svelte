@@ -44,6 +44,7 @@
         ['Space', 'Play / pause the slide’s video or audio'],
         ['← / →', 'Seek the media back / forward 5 s'],
         ['M', 'Mute / unmute the media'],
+        ['Shift+M', 'Stop the game’s sounds on stream (a round intro’s music that goes on, say)'],
         ['Y', 'Open YouTube / online media in its own window'],
       ],
     },

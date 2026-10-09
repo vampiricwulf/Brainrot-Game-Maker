@@ -191,24 +191,26 @@
   // the cover nothing new plays, and what's playing waits.
   let heard = '';
   let cues = $state<SoundCue[]>([]);
+  // A cue whose file doesn't load here (an online link that stopped working) plays its built-in sound instead.
+  let failed = $state<string[]>([]);
+  /** The cues playing now: a failed one that's gone (ended, cut off by another, or stopped) is forgotten. */
+  function setCues(next: SoundCue[]): void {
+    cues = next;
+    if (failed.length) failed = failed.filter((n) => next.some((c) => c.nonce === n));
+  }
   $effect(() => {
     const c = live.sound;
     untrack(() => {
-      if (!c) return void (cues.length && (cues = []));
+      if (!c) return void (cues.length && setCues([]));
       if (c.nonce === heard) return;
       heard = c.nonce;
       // (The host's silent copy keeps none: they'd all play at once if the audience window closed.)
-      if (role === 'mirror') return void (cues.length && (cues = []));
-      if ((c.at && Date.now() - c.at >= 4000) || live.cover) return void (c.cut && (cues = []));
-      cues = cuesAfter(cues, c);
+      if (role === 'mirror') return void (cues.length && setCues([]));
+      if ((c.at && Date.now() - c.at >= 4000) || live.cover) return void (c.cut && setCues([]));
+      setCues(cuesAfter(cues, c));
     });
   });
-  // A cue whose file doesn't load here (an online link that stopped working) plays its built-in sound instead.
-  let failed = $state<string[]>([]);
-  function cueDone(nonce: string): void {
-    cues = cues.filter((c) => c.nonce !== nonce);
-    failed = failed.filter((n) => n !== nonce);
-  }
+  const cueDone = (nonce: string) => setCues(cues.filter((c) => c.nonce !== nonce));
   /** A cue's sound at its volume (🔊 Sounds). */
   function loudness(node: HTMLMediaElement, v: number) {
     node.volume = v;
