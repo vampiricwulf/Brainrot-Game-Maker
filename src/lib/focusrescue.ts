@@ -7,6 +7,10 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 const usable = (el: HTMLElement) =>
   !el.matches(':disabled') && !el.closest('[inert]') && el.getClientRects().length > 0 && el.getAttribute('aria-hidden') !== 'true';
 
+let moving = false;
+/** True while the rescue itself moves the focus (in that focusin): a guess at the nearest control, not one chosen. */
+export const rescuing = (): boolean => moving;
+
 export function focusRescue(root: HTMLElement) {
   /** What had the keys last, and the elements around it (nearest first). */
   let last: HTMLElement | null = null;
@@ -27,7 +31,11 @@ export function focusRescue(root: HTMLElement) {
       if (!p.isConnected) continue;
       // A button first: in a text box, keys mean something else (Esc there closes the clue being edited).
       const to = [...p.querySelectorAll<HTMLElement>('button')].find(usable) ?? [...p.querySelectorAll<HTMLElement>(FOCUSABLE)].find(usable);
-      if (to) return void to.focus();
+      if (!to) continue;
+      moving = true;
+      to.focus();
+      moving = false;
+      return;
     }
   };
   const later = () => {

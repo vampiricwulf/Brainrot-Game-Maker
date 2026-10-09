@@ -206,28 +206,111 @@ try {
   assert((await names.count()) === before, 'and its Undo brings them back');
 
   await page.getByRole('button', { name: 'Start game ▶' }).click();
+  // The whole page changed: screen readers are told, and the keys are on the panel (not on <body>).
+  const said = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
+  await page.waitForFunction(() => /Untitled Game has started/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert((await focused()) !== 'BODY', `starting the game says so, and puts the keys on the panel (${await focused()})`);
   await page.getByRole('button', { name: 'Skip intro' }).click();
   assert((await page.getByRole('main').getByRole('heading', { level: 1, name: 'Untitled Game' }).count()) === 1, 'the stage and host panel are the main part, under a heading with the game’s title');
   await page.locator('.board .tile').first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
+  // The status line is read without its glyphs (⏱ is the timer's, not words).
+  await page.waitForFunction(() => /Answer hidden/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(!(await said()).includes('⏱'), `the status line is read without the timer's ⏱ (“${await said()}”)`);
   // Screen readers hear an award from the page's polite live region (on the page all along, not mounted with its words).
   const region = page.locator('#live-region');
   assert((await region.getAttribute('data-live')) === 'polite', 'the page has a polite live region');
   await page.keyboard.press('1');
+  // (Who's selected, before Enter awards them.)
+  await page.waitForFunction(() => /Selected: Player 1/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(true, 'pressing a player’s number says who is selected');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => /Player 1 \+\$200, now \$200/.test(document.getElementById('live-region')?.dataset.said ?? ''), null, { timeout: 3000 });
   assert(true, `the live region announces the award (“${await region.getAttribute('data-said')}”)`);
   await page.keyboard.press('Escape');
+  // A button the keys come back to (a window closed with Esc) is pressed by Enter, as one reached with Tab is (Enter
+  // isn't an award there, as it is after a click).
+  const rulesBtn = page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true });
+  const rulesDlg = page.getByRole('dialog', { name: 'Game rules' });
+  await rulesBtn.focus();
+  await page.keyboard.press('Enter');
+  await rulesDlg.waitFor();
+  await page.keyboard.press('Escape');
+  await rulesDlg.waitFor({ state: 'detached' });
+  assert(await rulesBtn.evaluate((b) => b === document.activeElement), 'Esc on ⚖ Game rules gives the keys back to ⚖ Rules');
+  await page.keyboard.press('Enter');
+  await rulesDlg.waitFor();
+  assert(true, 'and Enter there opens it again (not “Select a player first”)');
+  await page.keyboard.press('Escape');
+  await rulesDlg.waitFor({ state: 'detached' });
+  // Clicked with the mouse instead, Enter there still awards once Esc gives it the keys back.
+  const scoreOf = (i) => page.locator('.panel .p').nth(i).locator('.score').innerText();
+  const scoreNot = (i, was) => page.waitForFunction(([i, was]) => document.querySelectorAll('.panel .p .score')[i]?.textContent?.trim() !== was, [i, was]);
+  await page.locator('.board .tile:not(.used)').first().click();
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
+  let was = await scoreOf(0);
+  await rulesBtn.click();
+  await rulesDlg.waitFor();
+  await page.keyboard.press('Escape');
+  await rulesDlg.waitFor({ state: 'detached' });
+  assert(await rulesBtn.evaluate((b) => b === document.activeElement), '⚖ Rules clicked, then Esc: the keys are back on it');
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  await scoreNot(0, was);
+  assert((await rulesDlg.count()) === 0, 'and 1, Enter award Player 1 there (Enter doesn’t open ⚖ Game rules again)');
+  // ＋ Award reached with the keys: it turns off once pressed, and the keys go to a button near it, but 2, Enter still
+  // award (not ▦ Done ▶ board, which would close the clue).
+  const awardBtn = page.locator('.panel').getByRole('button', { name: /^＋ Award/ });
+  await page.keyboard.press('1');
+  await awardBtn.focus();
+  was = await scoreOf(0);
+  await page.keyboard.press('Enter');
+  await scoreNot(0, was);
+  await page.waitForFunction(() => {
+    const a = document.activeElement;
+    return !!a?.matches('.panel button:not(:disabled)') && !a.getAttribute('aria-label')?.startsWith('＋ Award');
+  });
+  was = await scoreOf(1);
+  await page.keyboard.press('2');
+  await page.keyboard.press('Enter');
+  await scoreNot(1, was);
+  assert((await page.locator('.board').count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
+  await page.keyboard.press('Escape');
+  await page.locator('.board').waitFor();
   await page.getByRole('button', { name: '👥 Players' }).click();
   const playersDlg = page.getByRole('dialog', { name: 'Players' });
+  const ariaFocused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? 'BODY');
+  const rowNames = () => playersDlg.locator('input.name').evaluateAll((els) => els.map((e) => e.value).join());
   await playersDlg.getByRole('button', { name: /^Remove / }).first().click();
   assert((await focused()) === 'Keep', 'removing a player mid-game asks with the focus on Keep');
   await playersDlg.getByRole('button', { name: 'Keep' }).click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Remove Player 1');
+  assert(true, 'Keep gives the keys back to that player’s −');
+  // ▼ with the keyboard: the keys stay on the moved row's arrow (the other one at the end), so Enter moves it again.
+  const unmoved = await rowNames();
+  await playersDlg.getByRole('button', { name: 'Move Player 1 down' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => /^Move Player 1 (down|up)$/.test(document.activeElement?.getAttribute('aria-label') ?? ''));
+  const once = await rowNames();
+  assert(once !== unmoved, `▼ moves the player, and the keys stay on their arrow (${await ariaFocused()})`);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction((was) => [...document.querySelectorAll('[role="dialog"] input.name')].map((e) => e.value).join() !== was, once);
+  assert(/^Move Player 1 (down|up)$/.test(await ariaFocused()), 'and a second Enter moves them again');
+  // Removed, the keys go to the next row's −; restored, to theirs.
+  await playersDlg.getByRole('button', { name: 'Remove Player 1' }).click();
+  await playersDlg.getByRole('button', { name: 'Remove', exact: true }).click();
+  await page.waitForFunction(() => !!document.activeElement?.matches('[role="dialog"] button.del, [role="dialog"] button.add'));
+  assert(true, `a player removed mid-game: the keys go on from the next row (${await focused()})`);
+  await playersDlg.getByRole('button', { name: '↩ Restore' }).click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Remove Player 1');
+  assert(true, 'and ↩ Restore puts them on that player’s −');
   await playersDlg.getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: /Exit/ }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await page.getByRole('button', { name: 'Resume game' }).waitFor();
+  await page.waitForFunction(() => document.activeElement?.matches('.editor button.play'));
+  assert(true, 'leaving the game puts the keys on ▶ Play (not on the page)');
   // (Discard on the line over the editor asks in the app.)
   await page.getByRole('button', { name: 'Discard', exact: true }).click();
   const ask = page.getByRole('alertdialog');

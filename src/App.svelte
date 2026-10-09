@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
   import {
     clearPlay,
@@ -737,6 +737,11 @@
     app.pregame = false;
     app.live = newLive();
     app.test = null;
+    // The keys go on from ▶ Play (not from <body>, where the next Tab starts at the top of the editor).
+    void tick().then(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      document.querySelector<HTMLElement>('.editor button.play')?.focus({ preventScroll: true });
+    });
   }
 
   /**

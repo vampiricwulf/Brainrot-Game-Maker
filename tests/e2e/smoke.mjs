@@ -883,17 +883,21 @@ await page.locator('.board').waitFor();
 assert(!(await isUsed(2)), 'Shift+Esc cancels a clue and keeps its tile playable');
 await page.getByRole('button', { name: /↶ Reopen Category 2/ }).waitFor();
 assert(true, 'the host panel offers to reopen the last tile closed');
-// Picking from "Reopen a tile…" gives the keys back: shortcuts work, and arrow keys don't reopen another tile.
-const reopenSel = page.locator('select[aria-label="Reopen a used tile"]');
-await reopenSel.focus();
+// "↶ Reopen a tile…" is a menu: the arrow keys look through it (nothing is put back until one is picked with Enter), and
+// the keys go back to its button after, where shortcuts work. (Focused after a key, as the keyboard would: Enter opens it.)
+const reopenBtn = page.getByRole('button', { name: /Reopen a tile/ });
+await reopenBtn.focus();
+await page.keyboard.press('Enter');
+await page.getByRole('menuitem', { name: 'Memes $200' }).waitFor();
 await page.keyboard.press('ArrowDown');
+await page.keyboard.press('ArrowUp');
+assert((await isUsed(0)) && (await isUsed(1)), 'looking through the reopen menu with the arrow keys puts nothing back');
+await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Memes $200');
+await page.keyboard.press('Enter');
 await page.waitForFunction(() => !document.querySelectorAll('.stage-box .board .tile')[0].classList.contains('used'));
-assert(await page.evaluate(() => document.activeElement?.tagName !== 'SELECT'), 'picking a tile to reopen takes focus off the list');
-await page.keyboard.press('ArrowDown');
-await page.waitForTimeout(200);
-assert(await isUsed(1), 'a later arrow key reopens nothing else');
+assert((await isUsed(1)) && (await reopenBtn.evaluate((b) => b === document.activeElement)), 'Enter puts the tile picked back, and only that one; the keys go back to ↶ Reopen a tile…');
 await page.keyboard.press('1');
-assert((await page.locator('.panel .p').nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the list');
+assert((await page.locator('.panel .p').nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the menu');
 await page.keyboard.press('1');
 await tile(0).click();
 await page.locator('.full').waitFor();

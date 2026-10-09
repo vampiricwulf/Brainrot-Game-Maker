@@ -21,6 +21,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Score plates: when they're too narrow for the points symbol, every plate on the bar drops it together ("1.2K | 800 | 2K", not "$1K | 800 | $2K"). (a75568f)
 - The 'Try a sample game' card and 'The sample game' menu item say what they add; the editor's key list says ? doesn't work while a window like the clue editor is open. (c94bbf1)
 - RPG action buttons and the log say where and what: "Go to Lake", "Reveal Hidden chest (Road)", "Hide …" (they said only Go there, Reveal, Hide). (3ba3958)
+- '↶ Reopen a tile…' is a menu: the arrow keys look through it and Enter picks (↓ on it put a tile back at once); ↓ in 'Go to round' asks before leaving the round. (4bcc729)
 
 ### Fixed
 - A game sound whose online link stopped working plays its built-in sound on stream instead of nothing (round cues, dice, wheel, board moves, RPG and shop sounds), and ▶ on 🔊 Sounds says when a sound won't play. (2e64d01, 29aadf5)
@@ -62,6 +63,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Clue editor: Undo of ＋ Add wheel… or ＋ Add dice… stays on the clue (it jumped to Wheels & Dice); Undo and Redo of a question slide added, moved or deleted open the slide it changed; Ctrl+D on an only question slide duplicates it (it opened the browser's bookmark dialog); History names ✍ Everyone answers being ticked or unticked. (dbefb23, 0577b3b)
 - RPG rounds: wearing two copies of the same item no longer freezes the play screen and stops autosave; a question pop-up shows its answer to the host before it's revealed; an item that would change nothing (a Potion at full HP, a set value already there, damage at the lowest) is kept and says so instead of being used up; the pad and maps don't move the party under the title card. (3ba3958, 9dfe2a6)
 - RPG rounds: arrival points, no-go areas and hotspots no longer offer a Reveal that did nothing; a pile's pick-up button names a player with room, and 'can't carry any more' keeps the card open; dragging a screen's dots on a map moves every party standing there. (3ba3958, 9dfe2a6)
+- Keyboard: Enter and Space press the button the keys come back to after a window closes, a row moves or a strip's Cancel, but not a button you clicked with the mouse, nor a nearby one after ＋ Award or 🎲 Roll while points are being given; ▲/▼ and Keep, Remove and ↩ Restore in 👥 Players keep the keys in the list; Stay or Cancel on the panel's question strip gives them back to the button that asked; starting, changing round and leaving a game put them on the board, the main button or ▶ Play. (4bcc729, 837c156)
+- Screen readers hear the Final's reveals (spotlight, wagers, judgments, 'press N again to finish'), who is selected, dice, wheel and roll-off results, RPG party moves and board-game turns, without the timer's ⏱ or stray marks read out; the hint after N with a player picked says Shift+Enter marks wrong (it said X); with the audience window open, 📜 Log opens beside the host's view instead of over the panel's buttons. (4bcc729, 837c156)
 
 ## 2026-10-08
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { focusRescue } from '../lib/focusrescue';
+  import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
   import { app, toast } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
@@ -1578,13 +1578,19 @@
 
   /**
    * Another round is up: the button pressed for it is gone (the round buttons are new for each round), so the keys go on
-   * from the new board's tile, not from the top of the page.
+   * from the new board's tile, not from the top of the page (nor the panel's first button, the timer's Start); with no
+   * tile to pick, from the panel's main button (a title card, a board game, a Final), else the round's own first one (an
+   * Adventure's, not a tool card's).
    */
   function boardFocus(): void {
     void tick().then(() => {
       const at = document.activeElement;
       if (at && at !== document.body && at.isConnected && !(at as HTMLButtonElement).disabled) return;
-      document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]')?.focus({ preventScroll: true });
+      (
+        document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]:not(:disabled)') ??
+        document.querySelector<HTMLElement>('.play .panel [data-next]:not(:disabled)') ??
+        document.querySelector<HTMLElement>('.play .panel .mode-host:not(.tools) button:not(:disabled)')
+      )?.focus({ preventScroll: true });
     });
   }
 
@@ -1706,12 +1712,21 @@
     if (f && cur && f.shown[cur] && !f.results[cur] && typeof f.wagers[cur] === 'number')
       return toast(`Mark ${playerName(session, cur)} right (C) or wrong (X) first`);
     const r = finalAdvance(session);
+    // (Screen readers hear who is spotlit and their wager: they're on the stage and in the rows, not the status line.)
+    const now = session.final?.current;
+    const wager = now ? session.final?.wagers[now] : undefined;
+    if (r === 'shown' && now)
+      announce(typeof wager === 'number' ? `${playerName(session, now)} wagered ${formatPoints(wager, sym)}` : `${playerName(session, now)}: no wager yet`);
+    else if (r === 'next' && now) announce(`Spotlight: ${playerName(session, now)}`);
     if (r === 'done') {
       // The final controls show "press N again to finish" while armed.
       if (finishArmed) {
         finalNextStep(session, game);
         finalStep();
-      } else finishArmed = true;
+      } else {
+        finishArmed = true;
+        announce(`Everyone is judged: press N again to ${game.rounds[session.currentRound + 1] ? 'go on' : 'finish'}`);
+      }
     } else if (r === 'waiting' && session.final?.current)
       toast(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
   }
@@ -1722,6 +1737,8 @@
     if (!finalJudge(session, game, id, right)) return toast(`Enter ${playerName(session, id)}’s wager first (in their row)`, 4000);
     finalShow(session, id);
     playCue(app.live, game, right ? 'right' : 'wrong');
+    // (Their new total, not ± the wager: with no negative scores a wrong answer can take less.)
+    announce(`${playerName(session, id)} ${right ? 'right' : 'wrong'}, now ${formatPoints(score(session, id), sym)}`);
   }
 
   /** C / X in the final reveal: judge the spotlit player. */
@@ -1971,7 +1988,7 @@
     const reveal: MenuEntry[] =
       session.phase === 'final' && session.finalStep === 'reveal' && f?.order.includes(id)
         ? [
-            { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => (f.current = id) },
+            { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => spotlight(id) },
             { label: 'Show wager', disabled: !!f.shown[id], onclick: () => finalShow(session, id) },
             { label: `✔ Right${f.current === id ? ' (C)' : ''}`, onclick: () => judge(id, true) },
             { label: `✘ Wrong${f.current === id ? ' (X)' : ''}`, onclick: () => judge(id, false) },
@@ -2039,13 +2056,18 @@
     return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
   }
 
-  /** A score plate on the stage during the Final reveals: spotlight that player (their wager stays hidden until N). */
+  /**
+   * A score plate on the stage (or its menu's 🔦 Spotlight) during the Final reveals: spotlight that player (their wager
+   * stays hidden until N).
+   */
   function spotlight(id: string): void {
     const f = session.final;
     if (!f || session.finalStep !== 'reveal') return;
     const round = currentFinal(session, game);
-    if (f.order.includes(id)) f.current = id;
-    else toast(`${playerName(session, id)} isn't playing ${round ? finalName(round) : 'this Final'}`);
+    if (f.order.includes(id)) {
+      f.current = id;
+      announce(`Spotlight: ${playerName(session, id)}`);
+    } else toast(`${playerName(session, id)} isn't playing ${round ? finalName(round) : 'this Final'}`);
   }
 
   /**
@@ -2131,6 +2153,10 @@
     if (!isBoard(game.rounds[0])) goToRound(session, game, 0);
     else startIntro(session, game);
     if (session.intro?.stage === 'title') introCue();
+    // The whole page changed (the status line only speaks up at its next change): screen readers are told, and the keys
+    // go on from the board's tile or the panel's main button, not from <body>.
+    announce(`${game.title.trim() || 'The game'} has started`);
+    boardFocus();
   }
 
   // ---------- Pre-game ----------
@@ -2502,6 +2528,8 @@
   /** Player whose ✕ was pressed in the Players dialog: it asks inline (a browser dialog would show on stream). */
   let removing = $state<string | null>(null);
   const removingPlayer = $derived(session.players.find((p) => p.id === removing));
+  /** The Players dialog (for the keys after a removal, a Keep or a Restore). */
+  let playersBox = $state<HTMLElement>();
 
   // A question from a card's action ("worth 100"): its value goes in the Amount box, as a tile's does when it opens.
   let popupNonce = '';
@@ -2520,6 +2548,7 @@
 
   function removeFromGame(id: string): void {
     removing = null;
+    const at = session.players.findIndex((p) => p.id === id);
     // Their sheet on stage: it goes too (viewers were left with a dimmed, empty stage). Under the scores too: S or Esc
     // would bring it back empty.
     const o = app.live.overlay;
@@ -2527,6 +2556,19 @@
     else if (o?.kind === 'scoreboard' && o.under?.kind === 'sheet' && o.under.playerId === id) o.under = undefined;
     removePlayer(session, id);
     selected = selected.filter((x) => x !== id);
+    // The keys go on from the next row's − (or ＋ Add player: the last one left can't be removed), as a removal before the
+    // game does, not from the page.
+    void tick().then(() => {
+      const dels = playersBox?.querySelectorAll<HTMLButtonElement>('.rows button.del:not(:disabled)');
+      (dels?.[Math.min(at, dels.length - 1)] ?? playersBox?.querySelector<HTMLButtonElement>('button.add'))?.focus();
+    });
+  }
+
+  /** Keep (or Esc) on "Remove …?": the keys go back to that player's −, where they were. */
+  function keepPlayer(): void {
+    const id = removing;
+    removing = null;
+    void tick().then(() => playersBox?.querySelector<HTMLElement>(`[data-place="player:${id}"] button.del`)?.focus());
   }
 
   // Each change in the Players dialog (a name or a color set, a player moved, added, removed or restored) is one
@@ -2563,7 +2605,7 @@
   function playersEsc(e: KeyboardEvent): void {
     e.preventDefault();
     if (e.target instanceof HTMLElement && e.target.matches('input, select')) e.target.blur();
-    else if (removing) removing = null;
+    else if (removing) keepPlayer();
     else closePlayers();
   }
 
@@ -2639,10 +2681,21 @@
     return true;
   }
 
-  // What Tab (or Shift+Tab) moved the focus to. (Not :focus-visible: browsers show a clicked button's focus too, once any
-  // key is pressed.) A Tab that moved nothing here (out to the browser's address bar) doesn't count for the next click.
+  // What the keyboard moved the focus to: with Tab (or Shift+Tab), or the app after a key (a window closed, ▲▼, a
+  // strip's Cancel), never the main button nor one clicked with the mouse (see onfocusin). (Not :focus-visible: browsers
+  // show a clicked button's focus too, once any key is pressed.) A Tab that moved nothing here (out to the browser's
+  // address bar) doesn't count for the next click.
   let tabbing = false;
+  /** The last thing the host used was the keyboard (not the mouse). */
+  let viaKeys = false;
+  /** The button the mouse last pressed (until Tab reaches it): Enter there awards, even once a window gives it back. */
+  let pointed: Element | null = null;
   let tabbedTo: EventTarget | null = null;
+
+  /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
+  function saySelected(): void {
+    announce(selected.length ? `Selected: ${nameList(selected.map((id) => playerName(session, id)))}` : 'No one selected');
+  }
 
   function onkey(e: KeyboardEvent): void {
     // The ? list hears this window's keys itself; Esc or ? from the audience window (no target here) closes it too.
@@ -2656,8 +2709,8 @@
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
     if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
-    // Enter or Space on a button reached with Tab presses it (a tile opens). On a button clicked with the mouse, Enter
-    // still awards.
+    // Enter or Space on a button reached with the keyboard (see tabbedTo) presses it (a tile opens). On a button clicked
+    // with the mouse, Enter still awards.
     if ((e.key === ' ' || e.key === 'Enter') && t && t.matches('button, [role="button"]') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
     if (e.key === '?') {
       showKeys = true;
@@ -2742,16 +2795,19 @@
         const id = session.players[n - 1]?.id;
         if (!id || !reveal.order.includes(id)) return;
         reveal.current = id;
+        announce(`Spotlight: ${playerName(session, id)}`);
       } else if (buzzing && !n) {
         // 0: reset the buzzers (nobody locked out, open for everyone). 1–9 pick a player by hand, over any phone's buzz.
         openBuzzers(true);
       } else if (!n) {
         // 0: everyone, or no one (a group award is 0, then Enter).
         selected = selected.length === session.players.length ? [] : session.players.map((p) => p.id);
+        saySelected();
       } else {
         const p = session.players[n - 1];
         if (!p) return;
         selected = selected.includes(p.id) ? selected.filter((x) => x !== p.id) : [...selected, p.id];
+        saySelected();
       }
       pickerPending = false;
       return;
@@ -2829,8 +2885,9 @@
           }
         }
         else if (session.phase === 'final' && session.finalStep === 'reveal') {
-          if (e.shiftKey) finalBack(session);
-          else finalRevealNext();
+          if (e.shiftKey) {
+            if (finalBack(session) && session.final?.current) announce(`Spotlight: ${playerName(session, session.final.current)}`);
+          } else finalRevealNext();
         } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
           // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
         } else if (session.phase === 'clue') {
@@ -2936,10 +2993,24 @@
 <svelte:window
   onkeydown={onkey}
   onpointermove={pointerMove}
-  onkeydowncapture={(e) => (tabbing = e.key === 'Tab')}
-  onpointerdowncapture={() => (tabbing = false)}
+  onkeydowncapture={(e) => {
+    tabbing = e.key === 'Tab';
+    viaKeys = true;
+  }}
+  onpointerdowncapture={(e) => {
+    tabbing = false;
+    viaKeys = false;
+    pointed = e.target instanceof Element ? e.target.closest('button, [role="button"]') : null;
+  }}
   onfocusin={(e) => {
-    tabbedTo = tabbing ? e.target : null;
+    const el = e.target instanceof Element ? e.target : null;
+    // The main button never counts, unless Tabbed to: "1, Enter" still awards with the keys on it. Nor does a button
+    // clicked with the mouse that the app gives the keys back to (its window closed with Esc). Nor, where Enter is a
+    // shortcut (awards, moves), the rescue's guess at the nearest button (the one with the keys turned off or went away):
+    // it may change the game (▦ Done ▶ board after ＋ Award, a player's chip after 🎲 Roll).
+    const guess = rescuing() && awardOpen(session);
+    if (tabbing && el === pointed) pointed = null;
+    tabbedTo = el && (tabbing || (viaKeys && !guess && el !== pointed && !el.matches('[data-next]'))) ? el : null;
     tabbing = false;
     fields.focusin(e);
   }}
@@ -3236,7 +3307,16 @@
   <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. The page's main part, named
        by the game's title (for screen readers). -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <main class="play" class:hidden={hideControls} class:side class:dual class:roomy={!dual && (showKeys || showPlayers || showRules || showLog || showSound)} oncontextmenu={playerMenuAt} use:focusRescue>
+  <main
+    class="play"
+    class:hidden={hideControls}
+    class:side
+    class:dual
+    class:logged={dual && showLog}
+    class:roomy={!dual && (showKeys || showPlayers || showRules || showLog || showSound)}
+    oncontextmenu={playerMenuAt}
+    use:focusRescue
+  >
     <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
@@ -3426,7 +3506,7 @@
       ondrop={commitRoster}
     >
       <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
-      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal>
+      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal bind:this={playersBox}>
         <div class="row"><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
         <p class="muted">Add, remove, rename or recolor {pregameTeams ? 'teams' : 'players'}. To change a score, click it in the host panel.</p>
         <PlayerList
@@ -3449,7 +3529,7 @@
               {#if n}{n === 1 ? 'The 1 person on it goes' : `The ${n} people on it go`} back to picking a team on their phone{n === 1 ? '' : 's'}.{/if}
             </span>
             <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
-            <button class="small" onclick={() => (removing = null)} use:takeFocus>Keep</button>
+            <button class="small" onclick={keepPlayer} use:takeFocus>Keep</button>
           </div>
         {/if}
         {#if session.removedPlayers?.length}
@@ -3461,7 +3541,11 @@
                 <button
                   class="small"
                   disabled={session.players.length >= game.settings.maxPlayers}
-                  onclick={() => restorePlayer(session, p.id)}>↩ Restore</button>
+                  onclick={() => {
+                    restorePlayer(session, p.id);
+                    // (This button goes with it: the keys go to their row's −.)
+                    void tick().then(() => playersBox?.querySelector<HTMLElement>(`[data-place="player:${p.id}"] button.del`)?.focus());
+                  }}>↩ Restore</button>
               </span>
             {/each}
           </div>
@@ -3779,6 +3863,11 @@
      the window, so its scrolling never cuts them off: see anchored.ts.) */
   .play:not(.dual) {
     overflow: hidden;
+  }
+  /* An audience window: the 📜 Log drawer sits beside the host's view, not over the panel's buttons (which the keys
+     still reach). As wide as the drawer (see ScoreLog). */
+  .play.dual.logged {
+    margin-right: min(460px, 100vw);
   }
   .play:not(.dual):not(.side) > :global(.panel) {
     overflow: auto;

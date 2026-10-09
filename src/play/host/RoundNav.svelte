@@ -67,12 +67,17 @@
     onprev();
   }
 
-  /** A round picked in Go to round: at once when this one is played out, else asked like Next round. */
-  function goto(i: number): void {
+  /**
+   * A round picked in Go to round: at once when this one is played out, else asked like Next round. Picked with the
+   * arrow keys (`keyed`: on a closed list, ↓ picks the next round while someone only looks through it), it always asks.
+   */
+  function goto(i: number, keyed = false): void {
     if (i === session.currentRound) return;
-    if (done) ongoto?.(i);
+    if (done && !keyed) ongoto?.(i);
     else ask(i);
   }
+  /** The last key on Go to round changed it by itself (not Enter or Space in its open list, nor Alt+↓ opening it). */
+  let keyed = false;
 
   function stop(): void {
     asking = null;
@@ -93,9 +98,12 @@
     lapse();
     const name = typeof what === 'number' ? roundName(game.rounds[what], what) : target;
     const r = round;
-    // Short, so it reads at a glance. A round picked in Go to round is named (it may not be the next one).
+    // Short, so it reads at a glance. A round picked in Go to round is named (it may not be the next one). (A board
+    // played out only asks for a round picked with the arrow keys.)
     const text = board
-      ? `${left} clue${left === 1 ? '' : 's'} left · ${what === 'next' ? 'go on?' : `go to ${name}?`}`
+      ? left
+        ? `${left} clue${left === 1 ? '' : 's'} left · ${what === 'next' ? 'go on?' : `go to ${name}?`}`
+        : `Go to ${name}?`
       : `Leave ${r ? roundName(r, session.currentRound) : 'this round'}${what === 'next' ? '' : ` for ${name}`}?`;
     setAsk({ text, ok: 'Yes', onok: yes, oncancel: stop });
   }
@@ -117,7 +125,15 @@
   {/if}
   {#if ongoto && game.rounds.length > 2}
     <!-- Rounds can be played out of order: jump to any of them. -->
-    <select class="pick" aria-label="Go to round" bind:this={picker} value={session.currentRound} onchange={(e) => goto(+e.currentTarget.value)}>
+    <select
+      class="pick"
+      aria-label="Go to round"
+      bind:this={picker}
+      value={session.currentRound}
+      onkeydown={(e) => (keyed = !e.altKey && !['Enter', ' ', 'Tab'].includes(e.key))}
+      onpointerdown={() => (keyed = false)}
+      onchange={(e) => goto(+e.currentTarget.value, keyed)}
+    >
       {#each game.rounds as r, i (r.id)}
         <option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>
       {/each}

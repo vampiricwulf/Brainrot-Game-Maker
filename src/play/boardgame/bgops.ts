@@ -8,6 +8,7 @@ import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
 import { parseDice } from '../../lib/tools';
 import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
+import { announce } from '../../lib/announce';
 
 /** The board-game round being played and its state (undefined outside one). */
 export function boardNow(game: Game, session: Session) {
@@ -102,7 +103,7 @@ export function decidingAction(a: Action): boolean {
 
 /**
  * Next (or with -1, the turn before). Returns what to tell the host when it isn't simply the next player's turn (someone
- * skipped, or a Roll again), else null.
+ * skipped, or a Roll again), else null (screen readers are still told whose turn it is).
  */
 export function turnNow(game: Game, session: Session, delta = 1): string | null {
   const { bs } = boardNow(game, session);
@@ -119,7 +120,9 @@ export function turnNow(game: Game, session: Session, delta = 1): string | null 
     // (Back to the turn before: its move and landing buttons come back with it.)
     if (!back) bs.last = undefined;
   });
-  return again || skips ? text : null;
+  if (again || skips) return text;
+  announce(text);
+  return null;
 }
 
 /** The name the round's movement dice roll under (a saved preset's, else what the round says: "2d6"). */

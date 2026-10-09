@@ -424,6 +424,9 @@ try {
   await page.locator('.panel .muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
   await page.waitForTimeout(300);
   assert((await cues(page, 'winner')) === winner + 1, 'the winner fanfare plays once the roll-off settles the tie');
+  // (Screen readers hear who won it: it's on the stage and in the tool's card, not the status line.)
+  await page.waitForFunction(() => / wins the game/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(true, 'the roll-off’s winner is said');
   await page.keyboard.press('Escape');
 
   // ---------- The scores window on the results: nobody lit as the picker (nobody picks) ----------

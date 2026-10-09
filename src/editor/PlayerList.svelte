@@ -9,6 +9,7 @@
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { newId, wholePoints } from '../lib/model';
   import { toast } from '../lib/app.svelte';
+  import { announce } from '../lib/announce';
   import { showMenu } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
   import { commit, joinTyping } from '../lib/history.svelte';
@@ -167,6 +168,18 @@
       players.splice(i, 1);
       players.splice(j, 0, p);
     });
+    announce(`${p.name || `${noun} ${i + 1}`} moved to ${j + 1} of ${players.length}`);
+  }
+
+  /** ▲▼: moving a row drops the focus, so it goes back to the moved row's same arrow (the other one at an end). */
+  function nudge(i: number, d: -1 | 1): void {
+    const id = players[i].id;
+    move(i, d);
+    void tick().then(() => {
+      const row = list?.querySelector(`[data-place="player:${id}"]`);
+      const same = row?.querySelector<HTMLButtonElement>(d < 0 ? 'button.up' : 'button.down');
+      (same && !same.disabled ? same : row?.querySelector<HTMLButtonElement>(d < 0 ? 'button.down' : 'button.up'))?.focus();
+    });
   }
 
   const rows = new DragOrder();
@@ -275,8 +288,8 @@
           aria-label="{p.name || `Player ${i + 1}`}'s start score"
         />
       {/if}
-      <button class="ghost tiny" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
-      <button class="ghost tiny" onclick={() => move(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
+      <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
+      <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
       <button
         class="ghost tiny del"
         class:danger={!inGame}

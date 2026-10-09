@@ -150,8 +150,9 @@ The rules can change mid-game too: **⚖ Rules** next to 👥 Players in the hos
 and are kept with the game), and at the most players 👥 Players offers **Raise Most players**.
 Every change can be undone with `Ctrl+Z`, including RPG and board game moves, items and live edits.
 Nothing pops up over the stage: questions for the host (a locked door, naming a new screen…) appear in the host panel.
-Screen readers hear what's going on: the host panel's status line, awards and scores, the buzz order and who is
-answering, and the app's notes are announced (politely, a burst of changes said once). The host's board is one Tab
+Screen readers hear what's going on: the host panel's status line, who is selected, awards and scores (the Final's
+reveals too), dice, wheel and roll-off results, RPG moves and board-game turns, the buzz order and who is answering,
+and the app's notes are announced (politely, a burst of changes said once). The host's board is one Tab
 stop: the arrow keys go from tile to tile. In Windows High Contrast, the selected players and pressed buttons are
 outlined.
 

@@ -186,6 +186,18 @@ try {
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Alice: Landed on'), 'Enter with nobody selected moves the rolled steps');
   await page.keyboard.press('n');
+  // 🎲 Roll reached with Tab, then Enter: it turns off while the dice roll and the keys go to a button near it (a
+  // player's chip), but Enter still moves once they land (it doesn't press that button).
+  const roll = page.locator('.panel [data-next]', { hasText: '🎲 Roll' });
+  await roll.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]') && document.activeElement.textContent?.includes('🎲 Roll'));
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'Player 2: Landed on' }).waitFor();
+  assert(true, `🎲 Roll pressed with Enter (Tab there): Enter moves once the dice land (the keys were on ${await page.evaluate(() => document.activeElement?.textContent?.trim())})`);
   await page.keyboard.press('Shift+N');
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Alice'), 'Shift+N goes back a turn');
 
@@ -275,14 +287,24 @@ try {
   assert((await rowBox.count()) === 0, 'Show wager puts the changed wager on screen, and the field goes');
   await page.keyboard.press('3');
   assert((await spot()) === order[2], '3 spotlights the third player in the reveal order');
+  // Screen readers hear the spotlight and the wager shown (on the stage and in the rows, not the status line).
+  const said = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
+  await page.waitForFunction((n) => (document.getElementById('live-region')?.dataset.said ?? '').includes(`Spotlight: ${n}`), order[2]);
+  await page.keyboard.press('n');
+  await page.waitForFunction((n) => (document.getElementById('live-region')?.dataset.said ?? '').includes(`${n} wagered $`), order[2]);
+  assert(true, `the spotlight and N's wager are said (“${await said()}”)`);
   await page.keyboard.press('Shift+N');
   assert((await spot()) === order[1], 'Shift+N spotlights the player before');
+  await page.waitForFunction((n) => (document.getElementById('live-region')?.dataset.said ?? '').includes(`Spotlight: ${n}`), order[1]);
+  assert(true, 'and says so');
   await page.locator('.stage-box .plate', { hasText: order[0] }).click();
   assert((await spot()) === order[0], 'clicking a score plate spotlights that player');
   await page.locator('.stage-box .plate', { hasText: order[0] }).click({ button: 'right' });
   await page.getByRole('menuitem', { name: /✔ Right/ }).click();
   await page.locator('.spot-result').waitFor();
   assert((await page.locator('.spot-result').innerText()).includes('CORRECT'), "a plate's right-click menu judges the player");
+  await page.waitForFunction((n) => (document.getElementById('live-region')?.dataset.said ?? '').includes(`${n} right, now $`), order[0]);
+  assert(true, `and the judgment is said, with the new score (“${await said()}”)`);
   assert(await page.getByRole('button', { name: '↶ Undo' }).isEnabled(), '↶ Undo is there in the reveals too');
   await page.getByRole('button', { name: '↶ Undo' }).click();
   await page.locator('.spot-result').waitFor({ state: 'detached' });
@@ -299,6 +321,19 @@ try {
   await aud.keyboard.press('2');
   await page.waitForFunction((name) => document.querySelector('.spot-name')?.textContent === name, order[1]);
   assert(true, 'number keys from the audience window move the spotlight');
+  // With the audience window the 📜 Log opens beside the host's view, not over the panel's buttons (the keys reach them).
+  await page.keyboard.press('l');
+  await page.locator('aside[aria-label="Log"]').waitFor();
+  const exitFree = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('.panel .fixed button')].find((x) => x.textContent?.includes('🚪 Exit'));
+    b?.scrollIntoView({ block: 'center' });
+    const r = b?.getBoundingClientRect();
+    const at = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!at && !!b?.contains(at);
+  });
+  assert(exitFree, 'with the audience window, the 📜 Log leaves 🚪 Exit in sight (it’s beside the panel, not over it)');
+  await page.keyboard.press('l');
+  await page.locator('aside[aria-label="Log"]').waitFor({ state: 'detached' });
   await aud.close();
 
   assert(!dialogs.length, 'no browser dialogs' + (dialogs.length ? ': ' + dialogs.join(' | ') : ''));

@@ -12,6 +12,7 @@ import { addStat, currencyFields, entryName, formatStat, giveItem, inventory, it
 import { addMediaFile } from '../../lib/media.svelte';
 import { app } from '../../lib/app.svelte';
 import { blip } from '../../lib/live';
+import { announce } from '../../lib/announce';
 import type { MenuEntry } from '../../lib/menustate.svelte';
 import { newAudioEl, newVideoEl } from '../../lib/model';
 
@@ -50,6 +51,10 @@ export function stepParty(game: Game, session: Session, dir: Dir8): string | nul
   logged(session, `${who} ${DIR_NAME[dir].toLowerCase()}`, () => (why = step(game, st, world, dir)));
   // A step, through a way that leads somewhere else, or no way at all.
   blip(app.live, why ? 'blocked' : st.lastMove?.dir === 'warp' ? 'doorway' : 'step');
+  // Where they are now, for screen readers (it shows on the stage and in the panel, not in the status line).
+  const at = why ? null : focusRef(st);
+  const here = at && findIn(world, at);
+  if (here) announce(`${who} moved to ${here.screen.name}`);
   return why;
 }
 

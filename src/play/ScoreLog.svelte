@@ -9,6 +9,7 @@
   import { timelineRows, type TimelineRow } from '../lib/timeline';
   import InlineAsk from './host/InlineAsk.svelte';
   import { onMount } from 'svelte';
+  import { announce } from '../lib/announce';
 
   let {
     game,
@@ -105,7 +106,8 @@
   // meanwhile, and closed, the keys go back to what opened it (📜 Log).
   let box = $state<HTMLElement>();
   onMount(() => {
-    if (!area) return;
+    // (With an audience window it opens beside the panel, which keeps the keys: screen readers are told where it is.)
+    if (!area) return void announce('Log open, after the host panel');
     const from = document.activeElement as HTMLElement | null;
     const panel = box?.parentElement?.querySelector<HTMLElement>('.panel');
     panel?.setAttribute('inert', '');

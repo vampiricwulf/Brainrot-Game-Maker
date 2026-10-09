@@ -22,6 +22,7 @@
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
   import { boardNow, moverResult } from '../boardgame/bgops';
   import { offerNext } from './slots.svelte';
+  import { announce } from '../../lib/announce';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
   const o = $derived(app.live.overlay);
@@ -112,6 +113,19 @@
       if (!f || f === document.body) document.querySelector<HTMLElement>('.panel [data-next]:not(:disabled)')?.focus({ preventScroll: true });
     });
   }
+
+  /** Who won the roll-off, once it's rolled: what it did (the board's picker, who goes first, the win, the answer order). */
+  const rolloffText = $derived.by(() => {
+    if (o?.kind !== 'rolloff' || busy) return '';
+    const name = (id: string) => session.players.find((p) => p.id === id)?.name ?? '?';
+    if (o.purpose === 'buzz') return `Answering order: ${o.ranking.map(name).join(', ')}`;
+    return `${name(o.winner)} ${o.purpose === 'tiebreak' ? 'wins the game' : session.phase === 'board' || session.phase === 'clue' ? 'picks first' : 'goes first'}`;
+  });
+  // Screen readers hear how it landed (on the stage and here, not in the status line), once it has.
+  const landedSaid = $derived(rolloffText || (resultText && !busy ? `Result: ${resultText}` : ''));
+  $effect(() => {
+    if (landedSaid) announce(landedSaid);
+  });
 
   /** The wheel landed on a "Spin again" slice: spinning again is the main button. */
   const again = $derived(o?.kind === 'wheel' && !!o.spin && o.result !== null && isRespin(o.segments[o.result]));
