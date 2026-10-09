@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerReplace, exportHtml, nameGame, openGameFile, png } from './helpers.mjs';
+import { answerReplace, exportHtml, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -38,6 +38,19 @@ const autosaved = header.getByText('✓ Autosaved');
 const historyCount = async () => Number((await page.getByRole('button', { name: /🕘 History/ }).innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
 const mediaWidth = () =>
   page.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
+/** How wide the picture stored for file `id` is (0: none stored). */
+const storedWidth = (id) =>
+  page.evaluate(
+    (id) =>
+      new Promise((res) => {
+        const req = indexedDB.open('keyval-store');
+        req.onsuccess = () => {
+          const g = req.result.transaction('keyval').objectStore('keyval').get(`media:${id}`);
+          g.onsuccess = () => (g.result ? createImageBitmap(g.result).then((b) => res(b.width)) : res(0));
+        };
+      }),
+    id,
+  );
 const storedKeys = () =>
   page.evaluate(
     () =>
@@ -180,9 +193,24 @@ try {
   // ---------- Open… checks the file before asking about this game ----------
   await page.locator('.cat textarea').first().fill('Not saved yet');
   await page.waitForTimeout(700);
+  // (What the editor shows while the file is read: a big pack takes a while.)
+  await page.evaluate(() => {
+    window.__opening = [];
+    const editor = document.querySelector('.editor');
+    new MutationObserver(() => window.__opening.push({ text: editor.querySelector('header').textContent, inert: editor.querySelector(':scope > .body').inert })).observe(editor, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributeFilter: ['inert'],
+    });
+  });
   await openGameFile(page, { name: 'Holiday photos.brainrot', mimeType: 'application/octet-stream', buffer: Buffer.from('not a game at all') });
   const notGame = page.getByRole('alertdialog').filter({ hasText: 'not a Brainrot Games Maker game pack' });
   await notGame.waitFor();
+  assert(
+    (await page.evaluate(() => window.__opening)).some((s) => s.text.includes('📂 Opening “Holiday photos.brainrot”…') && s.inert),
+    'while a game file is read, the header says it is opening it, and the game can’t be changed meanwhile',
+  );
   assert((await page.getByRole('dialog', { name: /^Open “/ }).count()) === 0, 'a file that isn’t a game says so, without asking Save first / Discard about the game open');
   await notGame.getByRole('button', { name: 'OK' }).click();
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Not saved yet', 'and the game open stays as it was');
@@ -235,8 +263,13 @@ try {
   const html = await exportHtml(page);
   const exported = resolve('test-results/datasafety-export.html');
   await html.saveAs(exported);
+  const cardId = () => page.locator('.card [data-media-name]').getAttribute('data-media-name');
+  const red = await cardId();
   const [replace] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace…' }).click()]);
   await replace.setFiles([{ name: 'blue.png', mimeType: 'image/png', buffer: png(0, 0, 255, 80, 40) }]);
+  // The games kept in Recent games have this file too (the same pack, opened again): they keep the old picture.
+  await page.waitForFunction((id) => document.querySelector('.card [data-media-name]')?.getAttribute('data-media-name') !== id, red);
+  assert((await storedWidth(red)) === 40 && (await storedWidth(await cardId())) === 80, 'Replace… on a file games in Recent games share gives this game the new one as a file of its own: theirs is unchanged');
   await page.waitForTimeout(800);
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
@@ -271,6 +304,35 @@ try {
   await big.getByText('This game is too big for this browser to open').waitFor();
   assert((await big.getByRole('button', { name: 'Open…' }).count()) === 0, 'an exported file whose game is too big to read says so, instead of opening the editor');
   await big.close();
+
+  // ---------- Storage full during a game: the game in progress isn't saved, so closing the tab asks first ----------
+  // (The game itself saved to a file first, wanting no Daily Doubles, which Start would place in it: only the game in
+  // progress is left to lose.)
+  await page.locator('nav button.round-tab').first().click();
+  await noDailyDoubles(page);
+  await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.getByRole('button', { name: 'Skip intro' }).click();
+  await page.locator('.board .tile').first().waitFor();
+  await page.evaluate(() => (window.__full = true));
+  await page.locator('.board .tile').first().click();
+  await page.getByText("Storage is full, so autosave stopped: the game in progress isn't being saved").waitFor();
+  assert((await page.locator('.panel .unsaved').innerText()) === '⚠ Not saving', 'storage full during a game: it says the game in progress isn’t being saved (not "use Save"), and the host panel keeps saying so');
+  const leaveGame = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
+  await page.close({ runBeforeUnload: true });
+  assert((await leaveGame) === 'beforeunload' && !page.isClosed(), 'closing the tab then asks first, though the game itself was saved');
+  // Discarded while still full: nothing is left to lose (its failed write goes with it).
+  await page.getByRole('button', { name: /Exit/ }).click();
+  const discard = page.getByRole('button', { name: 'Discard & leave', exact: true });
+  await discard.waitFor();
+  // (The ask ignores clicks for 400 ms after it shows: the second half of a double-click on Exit.)
+  await page.waitForTimeout(450);
+  await discard.click();
+  await page.locator('.toast', { hasText: 'Game discarded' }).waitFor();
+  const leaveEditor = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
+  await page.close({ runBeforeUnload: true });
+  assert((await leaveEditor) === 'closed', 'so closing the tab asks nothing once the game in progress is discarded');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('Data safety E2E passed.');

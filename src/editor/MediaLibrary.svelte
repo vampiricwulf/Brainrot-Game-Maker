@@ -12,6 +12,7 @@
   import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
   import { allEmbeds, allSlides, mediaUsage } from '../lib/usage';
   import { redoEdits } from '../lib/reedit';
+  import { recentMedia } from '../lib/recent';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
   import { embedName, embedOpenUrl, formatWhen, linkHost, linkLifetime } from '../lib/links';
@@ -197,10 +198,17 @@
   async function replaceWith(m: MediaRef, f: File): Promise<void> {
     try {
       let edited = { redone: 0, plain: 0 };
+      // A game kept in Recent games has this very file (an older copy of this game, opened again): it keeps the old one.
+      const kept = (await recentMedia()).includes(m.id);
       await stepAsync(`Replaced file “${m.name}” with “${f.name}”`, async () => {
-        const before = await stashMedia(m.id);
-        await replaceMediaFile(game, m.id, f);
-        attachBlobSwap({ id: m.id, before, after: await stashMedia(m.id) });
+        if (kept) {
+          // The new file gets an id of its own, and this game's uses move to it: Undo moves them back.
+          await replaceMediaFile(game, m.id, f, false, true);
+        } else {
+          const before = await stashMedia(m.id);
+          await replaceMediaFile(game, m.id, f);
+          attachBlobSwap({ id: m.id, before, after: await stashMedia(m.id) });
+        }
         // Pictures showing an edited copy of the old file get their edits again, on the new one.
         edited = await redoEdits(game, m.id);
       });
@@ -210,7 +218,7 @@
         : edited.plain
           ? ` (${n} edited picture${n === 1 ? '' : 's'}: ${edited.plain} show${edited.plain === 1 ? 's' : ''} it without the edits)`
           : ` (with the edits of ${n} edited picture${n === 1 ? '' : 's'} done again)`;
-      toast(`"${f.name}" is in place: everything that used this file shows it now${note}`);
+      toast(`"${f.name}" is in place: everything that used this file shows it now${note}${kept ? ' (the copy kept in Recent games still has the old one)' : ''}`);
     } catch (e) {
       toast((e as Error).message);
     }

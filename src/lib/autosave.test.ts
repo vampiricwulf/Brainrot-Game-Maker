@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { autosaveName, autosaveTag, planAutosave } from './autosave';
 import type { SaveEntry } from './desktop.svelte';
+import { MAX_PACK_READ } from './pack';
 
-const save = (name: string, modified: number, place: SaveEntry['place'] = 'app'): SaveEntry => ({ name, size: 1, modified, place });
+const save = (name: string, modified: number, place: SaveEntry['place'] = 'app', size = 1): SaveEntry => ({ name, size, modified, place });
 const game = { title: 'My Game!', id: '3F9A1C2B-0000-4000-8000-000000000000' };
 const slot = (n: number, g: { title: string; id: string } = game) => autosaveName(g, n);
 
@@ -43,6 +44,19 @@ describe('autosave slots', () => {
     const plan = planAutosave(game, saves, 2);
     expect(plan.name).toBe(slot(1));
     expect(plan.drop.map((s) => s.name)).toEqual([slot(3), slot(4)]);
+  });
+
+  it('too big to be opened again: go in a slot holding one of those, keeping the ones that still open', () => {
+    const saves = [save(slot(1), 100), save(slot(2), 50), save(slot(3), 200)];
+    // None too big yet: the oldest, as ever.
+    expect(planAutosave(game, saves, 3, true).name).toBe(slot(2));
+    saves[1] = save(slot(2), 300, 'app', MAX_PACK_READ);
+    expect(planAutosave(game, saves, 3, true).name).toBe(slot(2));
+    // (One that opens goes in the oldest slot, as ever: that's the too big one now.)
+    saves[1] = save(slot(2), 50, 'app', MAX_PACK_READ);
+    expect(planAutosave(game, saves, 3).name).toBe(slot(2));
+    // A slot whose newest copy opens isn't one of those.
+    expect(planAutosave(game, [...saves, save(slot(2), 400, 'documents')], 3, true).name).toBe(slot(1));
   });
 
   it('rotate in Documents too (where saves go when the app’s folder can’t be written)', () => {

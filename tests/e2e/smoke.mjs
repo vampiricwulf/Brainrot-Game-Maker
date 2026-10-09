@@ -1401,6 +1401,19 @@ await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
 await page.locator('.board').waitFor();
 assert((await scoreOf(0)) === '$200' && (await isUsed(0)), 'Exit, reload, Resume: scores and used tiles are kept');
+// A reload right after a host action keeps it too (its write waits a moment for more clicks: the page keeps a copy).
+const worth = Number((await tile(1).innerText()).replace(/\D/g, ''));
+await tile(1).click();
+await page.locator('.full').waitFor();
+await page.keyboard.press('1');
+await page.keyboard.press('Enter');
+await page.keyboard.press('Escape');
+await page.locator('.stage-box .board .tile.used').nth(1).waitFor();
+await page.reload();
+await page.getByRole('button', { name: 'Resume game' }).click();
+await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+await page.locator('.board').waitFor();
+assert((await scoreOf(0)) === `$${200 + worth}` && (await isUsed(1)), `a reload right after a host action keeps it ($${200 + worth})`);
 await exitGame();
 
 // Pack round trip: save the pack, start a new game, open it again (named .jbr, the old extension, which still opens).

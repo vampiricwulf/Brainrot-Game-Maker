@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { describe, expect, it, vi } from 'vitest';
-import { buildPack, CUT_OFF, readGameFile, storeFiles } from './pack';
+import { buildPack, CUT_OFF, MAX_PACK_READ, readGameFile, storeFiles, TOO_BIG_PACK } from './pack';
 import { buildZip } from './zipwrite';
 import { getBlob, registerBlob } from './media.svelte';
 import { newGame, newRound, type Game, type MediaRef } from './model';
@@ -100,6 +100,16 @@ describe('game packs', () => {
     expect(read.files.map(([id]) => id)).toEqual(['ok']);
   });
 
+  it('an older pack with two files of the same name with no extension opens with both', async () => {
+    const g = game();
+    // (Live Drive links were all named this before names were kept apart, and kept it once stored in the game.)
+    g.media = ['m_a', 'm_b'].map((id) => ({ ...pic(id), name: 'Google Drive picture' }));
+    const file = await packFile(g, { 'media/m_a.google drive picture': 'a', 'media/m_b.google drive picture': 'b' });
+    const read = await readGameFile(file);
+    expect(read.game.media[1].name).not.toBe('Google Drive picture');
+    expect(read.files.map(([id]) => id)).toEqual(['m_a', 'm_b']);
+  });
+
   it('a damaged game.json is a damaged file: "incomplete", not a game with junk in it', async () => {
     const g = game();
     const { blob } = await buildZip([{ name: 'game.json', data: new Blob([JSON.stringify(g)]) }]);
@@ -111,6 +121,16 @@ describe('game packs', () => {
     expect((await readGameFile(new File([JSON.stringify(g)], 'Packed.brainrot'))).game.title).toBe('Packed');
     const { blob } = await buildPack(g);
     expect((await readGameFile(new File([blob], 'Packed.json'))).game.title).toBe('Packed');
+  });
+
+  it('a pack too big to read says so, not that it is incomplete', async () => {
+    const { blob } = await buildPack(game());
+    const cut = (await blob.arrayBuffer()).slice(0, 40);
+    await expect(readGameFile(new File([cut], 'Packed.brainrot'))).rejects.toThrow(CUT_OFF);
+    // (As big as a browser can't read in one piece: it fails to read, whole or not.)
+    const big = new File([cut], 'Big.brainrot');
+    Object.defineProperty(big, 'size', { value: MAX_PACK_READ });
+    await expect(readGameFile(big)).rejects.toThrow(TOO_BIG_PACK);
   });
 
   it("this app's page cut off before its game is incomplete; another page has no game", async () => {

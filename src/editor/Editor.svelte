@@ -35,7 +35,7 @@
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
   import { GAME_FILES, isGameFile, pickFile, safeFilename, saveGameJson } from '../lib/fileio';
-  import { readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
+  import { MAX_PACK_READ, readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
   import { exportStandaloneHtml } from '../lib/export';
   import { buzzerBase } from '../lib/remote.svelte';
   import { formatBytes, loadGameMedia, mediaUrls, pruneMedia } from '../lib/media.svelte';
@@ -76,7 +76,7 @@
   import FindDialog from './FindDialog.svelte';
   import RoundImport from './RoundImport.svelte';
   import { clipboard } from '../lib/clipboard.svelte';
-  import { bundleName } from '../lib/roundcopy';
+  import { bundleName, sameContent } from '../lib/roundcopy';
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
@@ -492,10 +492,11 @@
       return void tell(`“${entry.title}” is no longer kept in this browser.`);
     }
     if (!(await mayReplace(`Reopen “${entry.title}”?`, 'Reopen'))) return;
-    // Brought up to date if an older version kept it; its history goes on only if that changed nothing.
+    // Brought up to date if an older version kept it; its history goes on only if that changed nothing but the order of
+    // keys (see App.svelte). (Compared with a copy: migrateGame changes parts of the game it's given.)
     const plain = JSON.stringify(kept.draft);
     const g = migrateGame(kept.draft);
-    const history = JSON.stringify(g) === plain ? kept.history : undefined;
+    const history = JSON.stringify(g) === plain || sameContent(g, JSON.parse(plain)) ? kept.history : undefined;
     if (!(await replaceGame(g, { kind: 'reopened', label: `Reopened “${g.title}”` }, history, entry.key))) return;
     await forgetRecent(entry.key);
     await loadGameMedia(g);
@@ -544,8 +545,20 @@
 
   async function openSave(s: SaveEntry): Promise<void> {
     saveList = null;
+    // (Read into memory in one piece, like any game file: one too big for that fails, after a long wait.)
+    if (s.size >= MAX_PACK_READ)
+      return void tell(`“${s.name}” is ${(s.size / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened (the file itself is likely fine). Open an older save or autosave of it instead.`);
+    if (opening) return void toast(`Still opening “${opening}”…`);
     try {
-      await openFile(await readSave(s));
+      // A big one takes a while to read: the header says so meanwhile, as for any game file.
+      opening = s.name;
+      let file: File;
+      try {
+        file = await readSave(s);
+      } finally {
+        opening = null;
+      }
+      await openFile(file);
     } catch (e) {
       void tell((e as Error).message);
     }
@@ -562,10 +575,15 @@
     }
   }
 
+  /** The game file Open… is reading (a big pack takes a while: the header says so), or null. */
+  let opening = $state<string | null>(null);
+
   async function openFile(file: File): Promise<void> {
     if (isThemeFile(file.name)) return openThemeFile(file);
+    if (opening) return void toast(`Still opening “${opening}”…`);
     let read: ReadGame;
     let opened: Game;
+    opening = file.name;
     try {
       // Read and checked first: a file that isn't a game asks nothing. Its files are stored once it replaces this game.
       read = await readGameFile(file);
@@ -582,6 +600,8 @@
       }
     } catch (e) {
       return void tell((e as Error).message);
+    } finally {
+      opening = null;
     }
     if (!(await mayReplace(`Open “${file.name}”?`, 'Open'))) return;
     if (await replaceGame(opened, { kind: 'opened', label: `Opened “${opened.title}”` }, undefined, undefined, read)) toast(`Opened “${opened.title}”`);
@@ -693,10 +713,15 @@
     // Changes made while the file is written aren't in it: the save is marked where the game was when it started.
     const point = savePoint();
     try {
-      const { missing, where, file } = await whileWriting(() => savePack($state.snapshot(game), packProgress));
+      const { missing, where, file, bytes } = await whileWriting(() => savePack($state.snapshot(game), packProgress));
       // The file it was written as: the desktop app may have picked another name ("Game (2).brainrot").
       mark('saved', `Saved “${file}”`, point);
-      if (missing.length) void tell(`${where}\n\nThese media files were missing and weren't included:\n${missing.join('\n')}`);
+      // Written whole, but too big to be opened again: said now, while the game is still here to make smaller.
+      const big =
+        bytes >= MAX_PACK_READ
+          ? `\n\nBut this pack is ${(bytes / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened again. Move big videos to 🌐 links (or trim them) and Save again.`
+          : '';
+      if (missing.length || big) void tell(`${where}${big}${missing.length ? `\n\nThese media files were missing and weren't included:\n${missing.join('\n')}` : ''}`);
       else toast(where);
       return true;
     } catch (e) {
@@ -793,13 +818,13 @@
 <svelte:window {onkeydown} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
 <svelte:document {ondrop} />
 
-<div class="editor" aria-busy={replacing}>
+<div class="editor" aria-busy={replacing || !!opening}>
   <header inert={replacing}>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
     <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
     <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
-    <button onclick={newFile}><span aria-hidden="true">📄</span> New</button>
-    <button onclick={open}><span aria-hidden="true">📂</span> Open…</button>
+    <button onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
+    <button onclick={open} disabled={!!opening}><span aria-hidden="true">📂</span> Open…</button>
     <button
       onclick={save}
       disabled={saving}
@@ -810,6 +835,9 @@
     <span class="spacer"></span>
     {#if exporting}
       <span class="muted autosave" role="status">⬇ Exporting the web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
+    {/if}
+    {#if opening}
+      <span class="muted autosave" role="status">📂 Opening “{opening}”…</span>
     {/if}
     {#if app.storageOk}
       <span
@@ -825,7 +853,7 @@
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, ℹ About'}>⋯</button>
-    <button class="primary play" onclick={onplay} disabled={!game.rounds.length} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
+    <button class="primary play" onclick={onplay} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
     <div class="data-notice" role="status">
@@ -886,7 +914,7 @@
   {/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
-  <div class="body" inert={replacing} use:focusRescue>
+  <div class="body" inert={replacing || !!opening} use:focusRescue>
     <nav aria-label="Editor">
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
