@@ -226,6 +226,11 @@
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
+  /**
+   * Single window, buzzer mode: the buzzers' row keeps its room (empty) where there are no buzzers, on the board and on a
+   * Daily Double's question, so the stage viewers see keeps one size.
+   */
+  const roomForBuzzers = $derived(!dual && buzzerOn(game.settings));
   /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const buzz = $derived(app.live.buzz);
@@ -261,6 +266,8 @@
   });
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
+  /** A wheel or dice tile's tool, in words. */
+  const toolName = $derived(info?.clue.type === 'dice' ? 'dice' : 'wheel');
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(ddWager ? null : slidePosition(session, game));
   /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
@@ -445,13 +452,18 @@
   const chipSlots = $derived(session.phase === 'board' || (session.phase === 'clue' && !!info));
 
   // ---------- The NEXT cell: one main button ----------
-  /** Buzzer mode: the buzzers are closed, nobody answering or picked. */
-  const buzzClosed = $derived(buzzing && buzz?.phase !== 'armed' && buzz?.phase !== 'answering' && !selected.length);
+  /**
+   * Buzzer mode: the buzzers are closed, nobody answering or picked. (Not while a wheel or dice tile's own tool is up:
+   * they're put away until its question shows.)
+   */
+  const buzzClosed = $derived(buzzing && buzz?.phase === 'closed' && !selected.length);
   /**
    * Someone got the open clue right (the buzzers closed on it, or a ✔ / ＋ Award on it, after a reload too): the answer
    * comes next, not the buzzers again (🔔 Open the buzzers stays a quiet button beside it).
    */
   const gotIt = $derived(session.phase === 'clue' && (!!buzz?.done || Object.values(marks).some((m) => m.right)));
+  /** Buzzer mode: every player has missed this clue (only ↺ Reset lets them buzz again): the answer comes next. */
+  const allMissed = $derived(buzzing && session.players.length > 0 && session.players.every((p) => buzz?.lockedOut.includes(p.id)));
   /** Someone is answering (picked, or the buzz): ＋ Award is the main button then, and the NEXT cell goes quiet. */
   // (Not while a Daily Double has question slides still to show: its player hasn't heard it all, Next slide ▶ is next.)
   const answering = $derived(session.phase === 'clue' && !ddWager && !!selected.length && canAward && !(session.dd && moreSlides));
@@ -466,7 +478,7 @@
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
       if (moreSlides && slidePos)
         return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
-      if (buzzClosed && !gotIt) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
+      if (buzzClosed && !gotIt && !allMissed) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
       if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
       return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: doneUnscored };
     }
@@ -572,7 +584,7 @@
       {:else}
         <span class="muted">Answer hidden</span>
       {/if}
-      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes: viewers can see them in this window">📝 {info.clue.hostNotes}</span>{/if}
+      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {info.clue.hostNotes}">📝 {info.clue.hostNotes}</span>{/if}
     {:else if session.phase === 'final'}
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
@@ -766,7 +778,7 @@
       {/if}
 
       {#if everyone && info}
-        <div class="mode-host"><AnswersHost {game} {session} clueId={info.clue.id} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
+        <div class="mode-host"><AnswersHost {game} {session} {dual} clueId={info.clue.id} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
       {/if}
 
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->
@@ -814,7 +826,7 @@
             <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
             {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
           {/if}
-          {#if buzzClosed && next?.run !== openBuzzers && !tieNames}
+          {#if buzzClosed && next?.run !== openBuzzers && !tieNames && !allMissed}
             <button onclick={openBuzzers} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           {/if}
           {#if !toolOnly && next?.run !== onreveal}
@@ -847,6 +859,11 @@
       {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
         <div class="row flow">{@render others()}</div>
       {/if}
+      <!-- Single window, buzzer mode: the buzzers' row (on clues, below) kept on the board too, empty, so the stage viewers
+           see keeps one size when a clue opens (and on a Daily Double's question, below). -->
+      {#if roomForBuzzers && session.phase === 'board'}
+        <div class="row buzzrow" aria-hidden="true"></div>
+      {/if}
 
       {#if showAward}
         {#if buzzing}
@@ -866,14 +883,27 @@
               {/if}
             {:else if buzzClosed && gotIt}
               <span class="muted hint">✔ Answered: reveal the answer, or 🔔 open the buzzers again</span>
+            {:else if buzzClosed && allMissed}
+              <span class="muted hint">Everyone missed: reveal the answer (↺ Reset lets them all buzz again)</span>
+            {:else if buzz?.phase === 'lobby' && !selected.length}
+              <!-- A wheel or dice tile's own tool is up: its question isn't on screen yet (or it has none: the tool is all). -->
+              <span class="muted hint"
+                >{toolOnly ? `Nothing to buzz on: this tile is just its ${toolName}` : `The buzzers wait for the question (after the ${toolName})`}</span
+              >
             {:else if buzzClosed}
               <span class="muted hint">Buzzers closed (number keys still pick)</span>
             {/if}
             {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
             {@render buzzExtra?.()}
             <span class="spacer"></span>
-            <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
+            <!-- (Not while they're put away for the tile's own tool: nobody can buzz yet.) -->
+            {#if buzz?.phase !== 'lobby'}
+              <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
+            {/if}
           </div>
+        {:else if roomForBuzzers && session.phase === 'clue' && session.dd?.stage === 'question'}
+          <!-- A Daily Double's question has no buzzers (its player answers): their row is kept, empty, as on the board. -->
+          <div class="row buzzrow" aria-hidden="true"></div>
         {/if}
         <div class="row award">
           <label class="check">
@@ -1314,10 +1344,17 @@
     font-weight: 700;
     color: var(--warn);
   }
+  /* One line, cut short (the whole note is in its tooltip): a long one doesn't push the row onto more lines, shrinking
+     the stage viewers see. (It takes the row's room, not the spacer's.) */
   .notes {
     background: var(--panel-2);
     padding: 2px 8px;
     border-radius: 6px;
+    flex: 100 1 0;
+    min-width: 8em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .covered {
     color: var(--warn);

@@ -42,6 +42,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Stream: an audience window left on the "Starting soon" card while you're in the editor follows every change (theme, banner, title…), and a picture, sound or font replaced in Media (or put back with Undo) changes there too, without reopening it. (b9abd3a)
 - Pastel and other light themes: the room code on stream, wagers, places and the Scores overlay's title are white on their dark boxes (purple was hard to read), and a category name over its picture gets an outline that suits its colour. (b9abd3a, 00bf68f)
 - 🎨 Theme: Undo and Redo of Clue text or a whole theme stay on the Theme page and name it (they opened the first clue); the page warns when the Clue text colour is hard to read on the tiles; an SVG banner or background comes in with an imported theme file; a wide banner's thumbnail keeps its buttons in the settings column. (b9abd3a, 00bf68f)
+- ✍ Everyone answers in a single window no longer shows the players' answers on stream: the host panel shows who has answered until the answer is up, then the words for judging; marking one answer right no longer stops the countdown for players still typing. (26266eb, 660f904)
+- Wheel and dice tiles with a question: the buzzers and phones wait until the tile's wheel or dice is closed; dice or a wheel over the question no longer hides it, restarts its countdown or clears who missed, and closing one over a revealed answer starts no countdown. (26266eb, 660f904)
+- Under the cover (K), a countdown started meanwhile waits, paused, until you uncover, and automatic category reveals wait too; Undo of a right answer brings back the countdown it stopped; in buzzer mode, once everyone has missed, the main button is 👁 Reveal answer (🔔 Open the buzzers did nothing). (26266eb)
+- Single window: the stage keeps its size when a clue opens with a long host note, in buzzer mode, and on a Daily Double's question. (26266eb, 660f904)
 
 ## 2026-10-08
 

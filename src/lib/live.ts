@@ -145,6 +145,11 @@ export interface Live {
   timer: TimerState | null;
   sound: SoundCue | null;
   overlay: Overlay | null;
+  /**
+   * A wheel or dice tile's own tool is up (the clue's id): its question waits for it to close, then its countdown starts.
+   * (Not set for a wheel or dice opened later over the clue.)
+   */
+  toolTile?: string;
   /** Panic button: the audience sees only the cover card. */
   cover?: boolean;
   /** The host is still on the pre-game screen: viewers see a "Starting soon" card (the board would give it away). */
@@ -205,6 +210,11 @@ export function toolOverlay(live: Live): Overlay | null {
   return o?.kind === 'scoreboard' ? (o.under ?? null) : o;
 }
 
+/** A wheel or dice tile's own tool is still on stage (under the scores too): its question isn't on screen yet. */
+export function tileToolUp(live: Live, clue: { id: string; type: string }): boolean {
+  return live.toolTile === clue.id && toolOverlay(live)?.kind === clue.type;
+}
+
 export function timerRemaining(t: TimerState, now = Date.now()): number {
   const run = t.startedAt === null ? 0 : (now - t.startedAt) / 1000;
   return Math.max(0, t.total - t.elapsed - run);
@@ -224,6 +234,12 @@ export function toggleTimer(live: Live): void {
     t.elapsed += (Date.now() - t.startedAt) / 1000;
     t.startedAt = null;
   }
+}
+
+/** A countdown taken off at `stoppedAt`, put back now with the time it had left then (still paused, if it was). */
+export function timerResumed(t: TimerState, stoppedAt: number, now = Date.now()): TimerState {
+  const ran = t.startedAt === null ? 0 : (stoppedAt - t.startedAt) / 1000;
+  return { ...t, elapsed: t.elapsed + ran, startedAt: t.startedAt === null ? null : now };
 }
 
 /**
