@@ -236,7 +236,12 @@ try {
   }, readFileSync(packPath).toString('base64'));
   await page.locator('.tile').first().dispatchEvent('drop', { dataTransfer: onTile });
   await answerReplace(page, 'Discard');
-  await page.waitForFunction((v) => document.querySelector('.cat textarea')?.value === v, packCat);
+  await page.locator('.toast', { hasText: 'Opened “Safe Game”' }).waitFor();
+  await page
+    .waitForFunction((v) => document.querySelector('.cat textarea')?.value === v, packCat, { timeout: 10000 })
+    .catch(async () => {
+      throw new Error(`the dropped game opened, but its first category reads “${await page.locator('.cat textarea').first().inputValue()}”, not “${packCat}”`);
+    });
   assert((await page.getByRole('dialog', { name: /Where the dropped picture goes/ }).count()) === 0, 'a game file dropped on a board tile opens, and isn’t taken for a picture');
 
   // ---------- Hand-edited games ----------
