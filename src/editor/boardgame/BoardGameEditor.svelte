@@ -26,7 +26,7 @@
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
   import SlideModal from '../rpg/SlideModal.svelte';
   import MediaPicker from '../slide/MediaPicker.svelte';
-  import { fittingFile, hasFiles, mediaDrop, useFile } from '../../lib/mediadrop';
+  import { fittingFile, hasFiles, isGameDrop, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import ToolPopup, { newTool } from '../tools/ToolPopup.svelte';
 
@@ -573,6 +573,8 @@
   }
   function fileDrop(e: DragEvent): void {
     fileOver = null;
+    // (A game or theme file goes on to the editor, which opens it.)
+    if (isGameDrop(e)) return;
     const file = fittingFile(Array.from(e.dataTransfer?.files ?? []), 'image');
     if (!hasFiles(e) || !file) return;
     e.preventDefault();

@@ -168,4 +168,18 @@ describe('rounds between games', () => {
     expect(id).not.toBe('font0001abc');
     expect(game.theme.boardFont).toBe(`'${uploadedFamily(id)}', sans-serif`);
   });
+  it('a round takes the uploaded fonts its text uses (named only by their family)', async () => {
+    const { uploadedFamily } = await import('./fonts');
+    const a = newGame();
+    a.media.push({ id: 'font0002xyz', name: 'Bebas.woff2', mime: 'font/woff2', size: 3, kind: 'font' }, { id: 'font0003unused', name: 'Other.woff2', mime: 'font/woff2', size: 3, kind: 'font' });
+    const r = newRound('Board', 1);
+    const el = r.categories[0].clues[0].questionSlide.elements[0];
+    if (el.kind === 'text') el.font = `'${uploadedFamily('font0002xyz')}', sans-serif`;
+    a.rounds.push(r);
+    const bundle = bundleRound(a, r);
+    expect(bundle.media.map((m) => m.id)).toEqual(['font0002xyz']);
+    const b = newGame();
+    addBundledRound(b, bundle);
+    expect(b.media.map((m) => m.id)).toEqual(['font0002xyz']);
+  });
 });

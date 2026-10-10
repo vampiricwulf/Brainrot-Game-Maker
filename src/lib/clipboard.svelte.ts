@@ -1,6 +1,7 @@
 // In-app clipboard for slide elements, whole slides, board clues, RPG screens, board-game spaces, sets of buttons and
 // whole rounds (works across slides, clues, maps, boards and games).
 // The board images editor shares the slide items, so pictures copy between boards and slides both ways.
+import { uploadedFamily } from './fonts';
 import { uniqueMediaName } from './medianame';
 import {
   newId,
@@ -87,7 +88,9 @@ const listOf = (from: Partial<Record<Used, { id: string }[]>>, k: Used): { id: s
 /** The files of `refs` that something copied shows (pictures, sounds, music, fonts: anywhere in it). */
 export function mediaShownBy(x: unknown, refs: readonly MediaRef[]): MediaRef[] {
   const json = JSON.stringify(x ?? null);
-  return refs.filter((m, i) => json.includes(m.id) && refs.findIndex((r) => r.id === m.id) === i);
+  // (Text names an uploaded font by its family, not its id.)
+  const shown = (m: MediaRef) => json.includes(m.id) || (m.kind === 'font' && json.includes(uploadedFamily(m.id)));
+  return refs.filter((m, i) => shown(m) && refs.findIndex((r) => r.id === m.id) === i);
 }
 
 /** The media files items show (and a slide's background picture). */
@@ -101,8 +104,10 @@ export function holdMedia(game: Game): void {
   const s = clipboard.slide;
   const ids = new Set([...elementMediaIds(clipboard.elements), ...(s ? elementMediaIds(s.elements, s.background) : [])]);
   const refs = [...game.media, ...clipboard.media].filter((m) => ids.has(m.id));
+  // (And the uploaded fonts their text uses.)
+  const fonts = mediaShownBy([clipboard.elements, s], [...game.media, ...clipboard.media]).filter((m) => m.kind === 'font');
   // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
-  const all = [...refs, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, ...USED.map((k) => clipboard[k]), clipboard.round], clipboard.media)];
+  const all = [...refs, ...fonts, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, ...USED.map((k) => clipboard[k]), clipboard.round], clipboard.media)];
   clipboard.media = clone(once(all));
 }
 

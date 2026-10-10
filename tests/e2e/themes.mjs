@@ -286,6 +286,17 @@ try {
   await imported.waitFor();
   assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'Open… with a theme file does the same (no “not a game” error)');
   await imported.getByRole('button', { name: 'Cancel' }).click();
+  // ...and one whose name ends in .json (renamed, or saved so by a browser): it's still a theme, not a broken game.
+  await page.locator('nav > button.round-tab').first().click();
+  const asJson = await page.evaluateHandle((text) => {
+    const d = new DataTransfer();
+    d.items.add(new File([text], 'Checkers.brainrot-theme.json', { type: 'application/json' }));
+    return d;
+  }, themeText);
+  await page.locator('nav').dispatchEvent('drop', { dataTransfer: asJson });
+  await imported.waitFor();
+  assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'a theme file named .json opens on the Theme page too');
+  await imported.getByRole('button', { name: 'Cancel' }).click();
 
   // ---------- 📋 Copy theme code / ⌨ Paste theme code… ----------
   await page.getByRole('button', { name: '📋 Copy theme code' }).click();

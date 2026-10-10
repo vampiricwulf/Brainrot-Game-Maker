@@ -5,11 +5,9 @@
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
-  import { isGameFile } from '../lib/fileio';
-  import { isThemeFile } from '../lib/themefile';
   import { flash } from '../lib/nav.svelte';
   import { uniqueMediaName } from '../lib/medianame';
-  import { hasFiles, warnIfUnplayable } from '../lib/mediadrop';
+  import { hasFiles, notMedia, warnIfUnplayable } from '../lib/mediadrop';
   import { allEmbeds, allSlides, mediaUsage } from '../lib/usage';
   import { redoEdits } from '../lib/reedit';
   import { recentMedia } from '../lib/recent';
@@ -256,8 +254,6 @@
     await addFiles(await pickFiles(`${ACCEPT.any},${ACCEPT.font}`, true));
   }
 
-  /** A game or theme file (an exported .html game, a .zip, a .bak backup, a .brainrot-theme…): the editor opens it. */
-  const notMedia = (f: File) => isGameFile(f.name) || isThemeFile(f.name);
   /** Files are being dragged over the page. */
   let dropping = $state(false);
   function over(e: DragEvent): void {

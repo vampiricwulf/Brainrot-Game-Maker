@@ -580,6 +580,11 @@
 
   async function openFile(file: File): Promise<void> {
     if (isThemeFile(file.name)) return openThemeFile(file);
+    // A theme file whose name ends in .json (renamed, or saved so by a browser): its "format" comes first in it.
+    if (/\.json$/i.test(file.name)) {
+      const head = await file.slice(0, 400).text().catch(() => '');
+      if (/"format"\s*:\s*"brainrot-theme"/.test(head)) return openThemeFile(file);
+    }
     if (opening) return void toast(`Still opening “${opening}”…`);
     let read: ReadGame;
     let opened: Game;

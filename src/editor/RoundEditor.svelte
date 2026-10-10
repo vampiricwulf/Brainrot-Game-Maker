@@ -35,6 +35,7 @@
   import { followClueText } from '../lib/cluetext';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls, slideImageSize } from '../lib/media.svelte';
+  import { isGameDrop } from '../lib/mediadrop';
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -419,6 +420,9 @@
       e.preventDefault();
       dropClue(tileDrag, p, e.ctrlKey || e.altKey);
       tileDragEnd();
+    } else if (isGameDrop(e)) {
+      // (A game or theme file goes on to the editor, which opens it.)
+      dropTarget = null;
     } else if (!empty && hasFiles(e)) {
       const files = dropped(e);
       const id = round.categories[p.cat]?.clues[p.row]?.id;
@@ -559,6 +563,8 @@
   }
 
   function catDropped(e: DragEvent, ci: number): void {
+    // (A game or theme file goes on to the editor, which opens it.)
+    if (!catDrag && isGameDrop(e)) return void (dropTarget = null);
     if (!catDrag) return void (hasFiles(e) && dropOnCategory(e, ci));
     e.preventDefault();
     const from = round.categories.findIndex((c) => c.id === catDrag);

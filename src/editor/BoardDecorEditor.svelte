@@ -10,7 +10,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
-  import { fileKind } from '../lib/mediadrop';
+  import { fileKind, isGameDrop } from '../lib/mediadrop';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
   import { align, bounds, centreOn, clampOnto, restack, type Pt } from '../lib/layers';
@@ -196,6 +196,8 @@
   }
 
   function ondrop(e: DragEvent): void {
+    // (A game or theme file goes on to the editor, which opens it.)
+    if (isGameDrop(e)) return;
     e.preventDefault();
     if (!e.dataTransfer?.files.length || !canvasEl) return;
     const r = (canvasEl.querySelector('.stage') as HTMLElement).getBoundingClientRect();

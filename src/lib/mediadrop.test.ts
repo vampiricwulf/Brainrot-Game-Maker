@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fileKind, fittingFile, kindWords, refusal } from './mediadrop';
+import { fileKind, fittingFile, isGameDrop, kindWords, notMedia, refusal } from './mediadrop';
 
 const f = (name: string, type = '') => new File(['x'], name, { type });
 
@@ -12,6 +12,13 @@ describe('media drops', () => {
     expect(fileKind(f('cat.png', 'image/png'))).toBe('image');
     expect(fileKind(f('song.mp3'))).toBe('audio');
     expect(fileKind(f('notes.txt', 'text/plain'))).toBeNull();
+  });
+  it('leaves a game or theme file to the editor, which opens it', () => {
+    expect(['Quiz.brainrot', 'Quiz.html', 'Quiz.zip', 'game.json', 'Neon.brainrot-theme'].every((n) => notMedia(f(n)))).toBe(true);
+    expect(notMedia(f('cat.png', 'image/png'))).toBe(false);
+    const drop = (...names: string[]) => ({ dataTransfer: { files: names.map((n) => f(n)) } }) as unknown as DragEvent;
+    expect(isGameDrop(drop('cat.png', 'Quiz.brainrot'))).toBe(true);
+    expect(isGameDrop(drop('cat.png'))).toBe(false);
   });
   it('says why a file is refused', () => {
     expect(refusal(f('cat.png', 'image/png'), 'image')).toBeNull();

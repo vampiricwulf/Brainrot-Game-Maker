@@ -157,7 +157,10 @@
               onclick={() => wheel(() => openWheel(app.live, session, w), true)}>✎</button>
           </div>
         {:else}
-          <div class="muted small">No saved wheels yet: make them in the editor's 🎡 tab, or use a ready-made or quick one.</div>
+          <!-- (A play-only page has no editor to make them in.) -->
+          <div class="muted small">
+            {app.playerOnly ? 'No saved wheels in this game: use a ready-made or quick one.' : "No saved wheels yet: make them in the editor's 🎡 tab, or use a ready-made or quick one."}
+          </div>
         {/each}
         <!-- Ready-made ones, spun as they are (✎ Edit wheel's Save as keeps one in the game). -->
         <select

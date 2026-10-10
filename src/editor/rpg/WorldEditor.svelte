@@ -49,7 +49,7 @@
     toggleSeam,
   } from '../../lib/worldedit';
   import MediaPicker from '../slide/MediaPicker.svelte';
-  import { mediaDrop } from '../../lib/mediadrop';
+  import { isGameDrop, mediaDrop } from '../../lib/mediadrop';
   import ScreenEditor from './ScreenEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
 
@@ -622,8 +622,10 @@
    * Several fill that cell and the next free ones. One step with the files.
    */
   function dropFiles(e: DragEvent, c: number, r: number): Promise<void> {
-    e.preventDefault();
     dropCell = null;
+    // (A game or theme file goes on to the editor, which opens it.)
+    if (isGameDrop(e)) return Promise.resolve();
+    e.preventDefault();
     const files = Array.from(e.dataTransfer?.files ?? []);
     const m = map;
     return stepAsync(null, async () => {

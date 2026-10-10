@@ -98,6 +98,9 @@ in plain words for the people who make and host games. Anything committed but no
 - View results after a reload reconnects the audience window that's still open, so score fixes on the results screen reach the stream. (c34a3e1)
 - Reloading mid-turn keeps a board game's rolled dice and an unconfirmed wheel or dice result (with the scoreboard over it too); a score card already confirmed or skipped stays dealt with, and confirming one no longer hides another with the same result. (c34a3e1, d094e48)
 - A round reached backwards (Go to round, ◀ Prev round) that viewers never saw plays its title card or intro, and a slides round reached that way starts on its first slide; the Final's title card has ◀ Prev round and Go to round, so a Final opened by mistake can be backed out of without showing its category. (c34a3e1, d094e48)
+- Import rounds…, Copy/Paste round and copied slide items bring the uploaded fonts their text uses, and ⬇ Export theme file on a My themes card includes the theme's uploaded fonts (or says which were left out). (009996a, a3553e1)
+- A game or theme file dropped on a slide, the board images canvas, a board tile, the RPG map or a board-game board opens, as it does elsewhere in the editor (it was refused as a picture). A .zip holding a game file, or a game pack unzipped and zipped again as a folder, opens whole; any other zip says to unzip it. A theme file ending in .json opens on 🎨 Theme. (009996a, a3553e1)
+- The exported play-only page no longer points the host to an editor it doesn't have. (009996a)
 
 ## 2026-10-08
 
