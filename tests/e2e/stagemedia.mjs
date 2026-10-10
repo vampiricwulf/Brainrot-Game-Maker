@@ -130,7 +130,8 @@ try {
   const audio = '.stage-box .full audio';
   const icon = page.locator('.stage-box .full button.icon');
   await page.locator(video).waitFor();
-  assert((await paused(page, video)) && (await paused(page, audio)), 'the clue opens with its video and sound stopped');
+  const stopped = { video: await paused(page, video), sound: await paused(page, audio) };
+  assert(stopped.video && stopped.sound, `the clue opens with its video and sound stopped (${JSON.stringify(stopped)})`);
   assert((await page.locator('.stage-box .full .missing').count()) === 0, 'one window (what the stream shows): no "Missing image" box for the missing picture');
 
   // One window.
