@@ -24,7 +24,7 @@ describe('round intros for every kind of round', () => {
     }
   });
 
-  it('only the first visit shows it, and not when going back', () => {
+  it('only the first visit shows it, and not when going back to it', () => {
     const { game, session } = setup();
     goToRound(session, game, 1);
     goToRound(session, game, 2);
@@ -32,10 +32,15 @@ describe('round intros for every kind of round', () => {
     expect(session.intro).toBeNull();
     goToRound(session, game, 2);
     expect(session.intro).toBeNull();
-    // Jumping back to a round never visited doesn't either (as for board rounds).
+    // Jumping back to a round never visited is its first visit: viewers haven't seen it (as for board rounds).
     goToRound(session, game, 3);
     goToRound(session, game, 0);
     expect(session.phase).toBe('board');
+    expect(session.intro).toEqual({ stage: 'title', revealed: 0 });
+    // A game saved before the rounds shown were kept: going back counts as seen, as it used to.
+    goToRound(session, game, 3);
+    delete session.introducedRounds;
+    goToRound(session, game, 1);
     expect(session.intro).toBeNull();
   });
 

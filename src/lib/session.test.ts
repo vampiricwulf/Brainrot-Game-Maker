@@ -517,6 +517,15 @@ describe('round navigation', () => {
     expect(session.intro).toBeNull();
   });
 
+  it('plays the intro of a round first reached backwards (Go to round past it, then back)', () => {
+    const { game, session } = twoRounds();
+    goToRound(session, game, 2);
+    goToRound(session, game, 1);
+    expect([session.phase, session.intro?.stage]).toEqual(['board', 'title']);
+    goToRound(session, game, 0);
+    expect(session.intro).toBeNull();
+  });
+
   it('goes back from Final to the board and returns with the wagers kept', () => {
     const { game, session, a, b } = twoRounds();
     goToRound(session, game, 1);

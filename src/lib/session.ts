@@ -495,7 +495,8 @@ function stashFinal(session: Session): void {
 
 /**
  * Move to round `index` (any mode); past the last round is the end screen. Only the first visit to a board
- * round plays its intro. A Final round picks up where it was left (wagers kept).
+ * round plays its intro (a round reached backwards, by Go to round or ◀ Prev round, too when viewers haven't seen it).
+ * A Final round picks up where it was left (wagers kept).
  */
 export function goToRound(session: Session, game: Game, index: number): void {
   session.currentClue = null;
@@ -513,11 +514,13 @@ export function goToRound(session: Session, game: Game, index: number): void {
   const changed = target !== session.currentRound || session.phase !== 'board';
   const backwards = target < session.currentRound;
   session.currentRound = target;
+  // Rounds already shown to viewers (a game saved before they were kept: going back counts as shown, as it used to).
+  const seen = session.introducedRounds;
+  const shown = (i: number) => (seen ? seen.includes(i) : backwards);
   if (isFinal(round) || isRpg(round) || isBoardGame(round)) {
     // The first visit shows the round's title card (going back to it doesn't).
-    const seen = session.introducedRounds ?? [];
-    const first = !backwards && !seen.includes(target);
-    if (first) session.introducedRounds = [...seen, target];
+    const first = !shown(target);
+    if (first) session.introducedRounds = [...(seen ?? []), target];
     session.intro = first && game.settings.roundIntro.titleCard ? { stage: 'title', revealed: 0 } : null;
   }
   if (isFinal(round)) {
@@ -535,17 +538,19 @@ export function goToRound(session: Session, game: Game, index: number): void {
     return;
   }
   if (isSlides(round)) {
-    // Its slides are the introduction: no title card. Coming back to it from the round after: its last slide.
+    // Its slides are the introduction: no title card. Coming back to it from the round after: its last slide (the
+    // first one when viewers haven't seen it).
     session.phase = 'slides';
     session.intro = null;
     const last = questionSlides(round).length - 1;
-    if (backwards && last > 0) session.slide = last;
+    if (backwards && last > 0 && shown(target)) session.slide = last;
+    if (!seen?.includes(target)) session.introducedRounds = [...(seen ?? []), target];
     return;
   }
   session.phase = 'board';
   // Only the first visit to a round plays its intro: going back (or returning) shows the board straight away.
   if (changed) {
-    if (backwards || session.introducedRounds?.includes(target)) session.intro = null;
+    if (shown(target)) session.intro = null;
     else startIntro(session, game);
   }
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearPlay, debounce, loadPlay, playUnsure, rescuePlay, retryWrites, savePlay, unstored, watchWrites, write } from './persist';
+import type { Overlay } from './live';
 import { newGame, type Session } from './model';
 
 vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -174,6 +175,26 @@ describe('the game in progress as the page goes away', () => {
     rescuePlay(game, at([100]));
     await clearPlay();
     expect(await loadPlay()).toBeUndefined();
+  });
+
+  it('a wheel or dice on screen is kept with the game in progress, in the stored write and in the copy', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const local = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => local.get(k) ?? null,
+      setItem: (k: string, v: string) => void local.set(k, v),
+      removeItem: (k: string) => void local.delete(k),
+    };
+    const game = newGame();
+    const session = { gameId: game.id, scoreLog: [] } as unknown as Session;
+    const dice: Overlay = { kind: 'dice', nonce: 'n1', name: 'd6', preset: { id: 'd6', name: 'd6', dice: [], showTotal: true }, roll: null, startedAt: 500, duration: 1000, mover: true };
+    vi.setSystemTime(1000);
+    await savePlay(game, session, false, dice);
+    expect((await loadPlay())?.overlay).toEqual(dice);
+    vi.setSystemTime(2000);
+    rescuePlay(game, session, false, { ...dice, nonce: 'n2' });
+    expect((await loadPlay())?.overlay).toEqual({ ...dice, nonce: 'n2' });
+    await clearPlay();
   });
 
   it('a copy it can’t use is left out (and dropped), never stopping the start', async () => {

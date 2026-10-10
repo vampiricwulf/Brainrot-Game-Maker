@@ -1,6 +1,7 @@
 // Hosting a Jeopardy-style game from the keyboard and on stream: the Daily Double's Enter, the countdown stopping, the
 // cover pausing what's under it, the 📜 Log in the host panel, score pops, the board's arrow keys, the Final's wagers
-// step and its ✔/✘ sounds, a tie for first, and Resume asking how the game is shown.
+// step and its ✔/✘ sounds, a tie for first, Resume asking how the game is shown, and View results after a reload
+// finding the audience window again.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -478,6 +479,19 @@ try {
   await page.locator('.panel .cover-toggle.on').waitFor();
   assert(true, 'resumed into the audience window, the cover still on');
   await shot('host-3-resumed');
+
+  // ---------- View results after a reload finds that audience window again (what's fixed there reaches the stream) ----------
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('k');
+  await aud.locator('.cover').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Finish game ▶' }).click();
+  await aud.locator('.end h1').waitFor();
+  await page.reload();
+  await page.getByRole('button', { name: 'View results' }).click();
+  await page.locator('.panel button', { hasText: '📺 Audience ●' }).waitFor();
+  await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
+  await aud.locator('.end h1').waitFor({ state: 'detached' });
+  assert(true, 'View results after a reload re-attaches the audience window: going back to the reveals leaves the results on stream');
 
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
   console.log('hosting: all passed');

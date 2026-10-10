@@ -41,7 +41,7 @@
   import ModeCards from './play/ModeCards.svelte';
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
   import { forgetGameParts } from './lib/toolset';
-  import { newLive } from './lib/live';
+  import { newLive, type Overlay } from './lib/live';
   import { clone } from './lib/ops';
   import { sameGame } from './lib/samegame';
   import { sameContent } from './lib/roundcopy';
@@ -273,7 +273,7 @@
     if (watch) commit();
     const { playGame, session } = app;
     const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
-    await Promise.all([editing && saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover)]);
+    await Promise.all([editing && saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover, keptOverlay())]);
     editing = false;
     playsHere = false;
     paused = true;
@@ -361,7 +361,18 @@
   /** This copy may write the game in play: it edits (holds the lock), or it's the player-only file's tab that plays it. */
   const mayPlay = () => editing || playsHere;
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
-  const savePlaySoon = debounce((session: Session, cover?: boolean) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover), 300);
+  const savePlaySoon = debounce(
+    (session: Session, cover?: boolean, overlay?: Overlay) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover, overlay),
+    300,
+  );
+  /**
+   * The wheel or dice on screen, kept with the game in progress: a board game's roll to move by, or a wheel's points not
+   * confirmed yet, come back after a reload (not rolled again on stream). Not one being edited.
+   */
+  function keptOverlay(): Overlay | undefined {
+    const o = app.live.overlay;
+    return o && (o.kind === 'wheel' || o.kind === 'dice') && !(o.kind === 'wheel' && o.editing) ? $state.snapshot(o) : undefined;
+  }
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
   let lastAutosaveAt = Date.now();
@@ -467,7 +478,7 @@
       const { playGame, session } = app;
       const inPlay = loaded && mayPlay() && app.screen === 'play' && !app.pregame && !app.test;
       if (inPlay && session && playWatch && playWatched === playGame && (savePlaySoon.pending() || playUnsure()))
-        rescuePlay(playWatch.value(), $state.snapshot(session), !!app.live.cover);
+        rescuePlay(playWatch.value(), $state.snapshot(session), !!app.live.cover, keptOverlay());
       saveEditorSoon.flush();
       savePlaySoon.flush();
     };
@@ -511,9 +522,11 @@
     const session = $state.snapshot(app.session);
     // (The cover too: a game picked up after a reload comes back covered if it was.)
     const cover = !!app.live.cover;
+    // (And a wheel or dice on screen.)
+    const overlay = keptOverlay();
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
     // (A ▶ Test this round is never written: the game kept to resume stays as it is.)
-    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover);
+    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover, overlay);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
@@ -627,8 +640,16 @@
     untrack(() => compareSoon());
   });
   function askResume(withEdits = false): void {
-    if (app.resumable?.session.phase === 'end') void resume(withEdits);
-    else resuming = { withEdits };
+    if (app.resumable?.session.phase === 'end') {
+      // A finished game asks nothing, but an audience window from before is found again (opening it by its name pings it),
+      // or the results fixed now never reach the stream.
+      if (prefs.display === 'audience') {
+        resuming = { withEdits };
+        return resumeIn(true);
+      }
+      return void resume(withEdits);
+    }
+    resuming = { withEdits };
   }
 
   /** Resume in the mode picked: the audience window opens now (from the click, or the browser blocks it). */
@@ -699,6 +720,8 @@
     app.live = newLive();
     // Left with the screen covered: it comes back covered (viewers never see the host's screen meanwhile).
     if (saved.cover) app.live.cover = true;
+    // A roll or spin that had landed comes back landed (its start is long past): not rolled again on stream.
+    if (saved.overlay?.kind === 'wheel' || saved.overlay?.kind === 'dice') app.live.overlay = saved.overlay;
     app.pregame = false;
     app.toast = '';
     app.screen = 'play';
@@ -769,6 +792,7 @@
           session: $state.snapshot(session),
           savedAt: Date.now(),
           ...(app.live.cover ? { cover: true } : {}),
+          ...(keptOverlay() ? { overlay: keptOverlay() } : {}),
         };
     }
     leavePlay();
