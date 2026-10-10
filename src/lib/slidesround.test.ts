@@ -47,6 +47,18 @@ describe('slides round', () => {
     expect(clueSlideIndex(s, intro)).toBe(2);
   });
 
+  it('reached backwards before viewers saw it (Go to round past it), it starts on its first slide', () => {
+    const { game, intro } = withIntro();
+    const s = newSession(game);
+    goToRound(s, game, 1);
+    goToRound(s, game, 0);
+    expect(slideText(shownQuestionSlide(s, intro))).toBe('Welcome');
+    // Seen now: back to it from the round after is its last slide.
+    goToRound(s, game, 1);
+    goToRound(s, game, 0);
+    expect(clueSlideIndex(s, intro)).toBe(2);
+  });
+
   it('as the last round, the end screen comes back to its last slide', () => {
     const { game, intro } = withIntro();
     game.rounds.push(game.rounds.shift()!);

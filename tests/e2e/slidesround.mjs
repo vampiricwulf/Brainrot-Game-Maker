@@ -6,7 +6,7 @@
 // notes keep their lines, the tiebreaker's notes show; in the tiebreaker N follows the main button (the answer, then
 // 🏁 Back to results, which warns first with a tied player picked and no winner given), points given there settle the
 // tie (the panel says so), and Ctrl+Z takes back that award there, then goes back to the Final's reveals for its last
-// judgment (not out of sight).
+// judgment (not out of sight), from the outro too.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -223,6 +223,17 @@ try {
     (await right(0)) === 'true' && (await right(1)) === 'false',
     'then Ctrl+Z goes back to the Final’s reveals (an outro after it), its last judgment taken back there; the tiebreaker is off stream',
   );
+  // The same from the outro itself: Bob judged again, on to the outro, and Ctrl+Z there goes back to the Final's reveals
+  // (not taking his judgment back out of sight).
+  await p2.locator('.fj .pl').nth(1).getByRole('button', { name: '✔ Right' }).click();
+  await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next: Outro ▶'));
+  await mainButton(p2).click();
+  await s2.locator('[data-slide="1"]').getByText('Thanks 1').waitFor();
+  await p2.locator('.panel .status').click();
+  await p2.keyboard.press('Control+z');
+  await p2.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+  await aud.locator('[data-slide="1"]', { hasText: 'Thanks 1' }).waitFor({ state: 'detached' });
+  assert((await right(0)) === 'true' && (await right(1)) === 'false', 'Ctrl+Z on the outro goes back to the Final’s reveals, its last judgment taken back there');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Slides round E2E passed.');

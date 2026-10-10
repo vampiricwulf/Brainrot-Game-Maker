@@ -94,6 +94,10 @@ in plain words for the people who make and host games. Anything committed but no
 - RPG screens: a new picture goes in the free space beside the screen's characters, doorways and item labels instead of moving a lone one and stretching it across the screen. Changing an object's class says what it threw away (its dialogue, shop, stats or buttons) and offers Undo. (074d854, ea63ad3)
 - RPG play: a character whose shop was deleted shows a greyed-out 🛒 Shop that says why, instead of putting a blank shop on stream. (074d854, ea63ad3)
 - An item's, wheel slice's or dice outcome's "Go to a screen" can pick screens from any world; item Use buttons say "Whoever uses it" (what they always did); Reveal and Hide buttons name objects as the Layers list does ("Ellipse", "chest.png"); 📊 Stats & Items says where per-player starting values come from; Ctrl+A on the RPG world map selects every screen. (074d854)
+- Ctrl+Z on a slides outro after the Final goes back to the Final's reveals before taking back one of its judgments, instead of quietly changing the winner while the outro stays on stream. (c34a3e1)
+- View results after a reload reconnects the audience window that's still open, so score fixes on the results screen reach the stream. (c34a3e1)
+- Reloading mid-turn keeps a board game's rolled dice and an unconfirmed wheel or dice result (with the scoreboard over it too); a score card already confirmed or skipped stays dealt with, and confirming one no longer hides another with the same result. (c34a3e1, d094e48)
+- A round reached backwards (Go to round, ◀ Prev round) that viewers never saw plays its title card or intro, and a slides round reached that way starts on its first slide; the Final's title card has ◀ Prev round and Go to round, so a Final opened by mistake can be backed out of without showing its category. (c34a3e1, d094e48)
 
 ## 2026-10-08
 

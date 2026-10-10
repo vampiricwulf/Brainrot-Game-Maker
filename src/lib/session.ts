@@ -495,7 +495,8 @@ function stashFinal(session: Session): void {
 
 /**
  * Move to round `index` (any mode); past the last round is the end screen. Only the first visit to a board
- * round plays its intro. A Final round picks up where it was left (wagers kept).
+ * round plays its intro (a round reached backwards, by Go to round or ◀ Prev round, too when viewers haven't seen it).
+ * A Final round picks up where it was left (wagers kept).
  */
 export function goToRound(session: Session, game: Game, index: number): void {
   session.currentClue = null;
@@ -513,11 +514,13 @@ export function goToRound(session: Session, game: Game, index: number): void {
   const changed = target !== session.currentRound || session.phase !== 'board';
   const backwards = target < session.currentRound;
   session.currentRound = target;
+  // Rounds already shown to viewers (a game saved before they were kept: going back counts as shown, as it used to).
+  const seen = session.introducedRounds;
+  const shown = (i: number) => (seen ? seen.includes(i) : backwards);
   if (isFinal(round) || isRpg(round) || isBoardGame(round)) {
     // The first visit shows the round's title card (going back to it doesn't).
-    const seen = session.introducedRounds ?? [];
-    const first = !backwards && !seen.includes(target);
-    if (first) session.introducedRounds = [...seen, target];
+    const first = !shown(target);
+    if (first) session.introducedRounds = [...(seen ?? []), target];
     session.intro = first && game.settings.roundIntro.titleCard ? { stage: 'title', revealed: 0 } : null;
   }
   if (isFinal(round)) {
@@ -535,17 +538,19 @@ export function goToRound(session: Session, game: Game, index: number): void {
     return;
   }
   if (isSlides(round)) {
-    // Its slides are the introduction: no title card. Coming back to it from the round after: its last slide.
+    // Its slides are the introduction: no title card. Coming back to it from the round after: its last slide (the
+    // first one when viewers haven't seen it).
     session.phase = 'slides';
     session.intro = null;
     const last = questionSlides(round).length - 1;
-    if (backwards && last > 0) session.slide = last;
+    if (backwards && last > 0 && shown(target)) session.slide = last;
+    if (!seen?.includes(target)) session.introducedRounds = [...(seen ?? []), target];
     return;
   }
   session.phase = 'board';
   // Only the first visit to a round plays its intro: going back (or returning) shows the board straight away.
   if (changed) {
-    if (backwards || session.introducedRounds?.includes(target)) session.intro = null;
+    if (shown(target)) session.intro = null;
     else startIntro(session, game);
   }
 }
@@ -1135,15 +1140,35 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
 /**
  * Bring a session saved before round modes (Jeopardy Builder) up to date with its converted game (migrateGame):
  * the Final is now a round (id FINAL_V1_ROUND_ID), so a session in the Final points at that round, its state
- * and score events are tagged with it. Newer sessions are returned as they are.
+ * and score events are tagged with it. The rounds already on screen are counted as introduced (seedIntroduced).
  */
 export function migrateSession(session: Session, game: Game): Session {
   finalStepFix(session);
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
-  if (finalIndex < 0) return session;
+  if (finalIndex < 0) return seedIntroduced(session, game);
   for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);
   if (session.final && !session.final.roundId) session.final.roundId = FINAL_V1_ROUND_ID;
   if (session.phase === 'final') session.currentRound = finalIndex;
+  seedIntroduced(session, game);
+  return session;
+}
+
+/**
+ * Rounds clearly already on screen count as introduced: a game saved before a round reached backwards was kept (going
+ * back counted as shown then) doesn't replay its title card or intro on stream. Those with points given, played tiles,
+ * a Final's or board game's state, and the round on screen.
+ */
+function seedIntroduced(session: Session, game: Game): Session {
+  const ids = new Set([session.final?.roundId, ...Object.keys(session.finals ?? {}), ...Object.keys(session.boardgames ?? {})]);
+  const shown = new Set([
+    ...(session.scoreLog ?? []).flatMap((e) => (typeof e.round === 'number' ? [e.round] : [])),
+    ...Object.keys(session.used ?? {}).flatMap((id) => findClueRef(game, id)?.round ?? []),
+    ...game.rounds.flatMap((r, i) => (ids.has(r.id) ? [i] : [])),
+  ]);
+  if (session.phase !== 'end' && session.phase !== 'tiebreaker') shown.add(session.currentRound);
+  const had = session.introducedRounds ?? [];
+  const added = [...shown].filter((i) => i >= 0 && i < game.rounds.length && !had.includes(i));
+  if (added.length) session.introducedRounds = [...had, ...added];
   return session;
 }
 

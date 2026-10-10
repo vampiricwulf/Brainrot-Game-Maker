@@ -1022,7 +1022,8 @@
   <!-- The tools, then the round's navigation (quiet; leaving a round asks), away from the main cell. -->
   <div class="row toolsrow">
     {@render tools?.()}
-    {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides'}
+    <!-- (A Final's title card too: a way back from it without putting its category on stream.) -->
+    {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides' || (session.phase === 'final' && session.intro?.stage === 'title')}
       <span class="spacer"></span>
       <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
       {#key session.currentRound}

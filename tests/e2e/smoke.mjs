@@ -1201,6 +1201,13 @@ await page.locator('.ac').waitFor({ state: 'detached' });
 await page.keyboard.press('Control+z');
 await scoresAre(unbankrupt);
 assert((await page.locator('.ac').count()) === 0, 'score effect is undoable like any score change, and a skipped card stays hidden through it');
+// And through a reload: the wheel comes back landed, its card still dealt with.
+await page.reload();
+await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
+await page.getByRole('button', { name: 'View results' }).click();
+await page.getByText('This was for (optional, goes in the roll log):').waitFor();
+await scoresAre(unbankrupt);
+assert((await page.locator('.ac').count()) === 0, 'after a reload the landed wheel is back and its skipped card stays hidden');
 await page.keyboard.press('Escape');
 
 // Dice: quick 2d6 shows a total.

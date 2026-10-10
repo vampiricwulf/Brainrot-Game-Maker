@@ -1,6 +1,7 @@
 // Autosave to IndexedDB (spec §5.8, §6.5): the editor draft with its undo history, and the in-progress play session.
 import { del, delMany, get, getMany, keys, set, setMany } from 'idb-keyval';
 import type { SavedHistory, StoredStep } from './history.svelte';
+import type { Overlay } from './live';
 import type { Game, GameSettings, Session } from './model';
 
 const DRAFT_KEY = 'editorDraft';
@@ -25,6 +26,8 @@ export interface SavedPlay {
   savedAt: number;
   /** The screen was covered (⏸ Cover): resuming covers it again. */
   cover?: boolean;
+  /** A wheel or dice on screen (a board game's roll to move by, a wheel's points not yet confirmed): resuming brings it back. */
+  overlay?: Overlay;
 }
 
 async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -243,8 +246,8 @@ function dropPlayRescue(): void {
  * The page is going away: a copy of the game in progress that's written at once (call it before starting the last
  * IndexedDB write, see rescueDraft). Too big for localStorage with its game: the session alone (the stored game is used).
  */
-export function rescuePlay(game: Game, session: Session, cover = false): void {
-  const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}) };
+export function rescuePlay(game: Game, session: Session, cover = false, overlay?: Overlay): void {
+  const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}) };
   try {
     localStorage.setItem(playRescueKey(), JSON.stringify({ ...base, game } satisfies SavedPlay));
   } catch {
@@ -265,7 +268,7 @@ export async function loadPlay(): Promise<SavedPlay | undefined> {
     if (r && session && typeof r.savedAt === 'number' && !(stored && stored.savedAt >= r.savedAt)) {
       // (Only its session fitted: its game is the stored one, when that's the same game.)
       const game = r.game && typeof r.game === 'object' ? r.game : stored?.game?.id === session.gameId ? stored.game : undefined;
-      if (game) return { game, session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}) };
+      if (game) return { game, session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}), ...(r.overlay ? { overlay: r.overlay } : {}) };
     }
     // (Out of date: it would only take room the draft's rescue copy may need.)
     if (r) dropPlayRescue();
@@ -281,7 +284,7 @@ let playGen = 0;
 let playWrites = 0;
 /** The game in progress may not be stored as it stands: a write of it is under way, or failed and waits to be tried again. */
 export const playUnsure = (): boolean => playWrites > 0 || failed.has('play');
-export const savePlay = (game: Game, session: Session, cover = false) => {
+export const savePlay = (game: Game, session: Session, cover = false, overlay?: Overlay) => {
   const gen = playGen;
   return write('play', async () => {
     // (Discarded or over since: it isn't written back.)
@@ -289,7 +292,7 @@ export const savePlay = (game: Game, session: Session, cover = false) => {
     const savedAt = Date.now();
     playWrites++;
     try {
-      await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}) } satisfies SavedPlay);
+      await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}) } satisfies SavedPlay);
     } catch (err) {
       // (Failed once it was cleared: there's nothing left to keep, so nothing to try again.)
       if (gen === playGen) throw err;

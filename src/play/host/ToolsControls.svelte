@@ -33,15 +33,16 @@
   });
   const busy = $derived(!!o && now < overlayDoneAt(o));
   /**
-   * Score cards dealt with, by card (spin or roll, and which wheel or die): skipped (true), or the score step they
-   * applied, so an Undo of it brings the card back (the points went to the wrong player).
+   * Score cards dealt with (kept on the overlay, see cardsDone): skipped, or the score step they applied, so an Undo of it
+   * brings the card back (the points went to the wrong player).
    */
-  let done = $state<Record<string, string | true>>({});
   const cardDone = (key: string): boolean => {
-    const d = done[key];
+    const d = o?.kind === 'wheel' || o?.kind === 'dice' ? o.cardsDone?.[key] : undefined;
     return d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone));
   };
-  const finish = (key: string) => (applied: boolean, batch?: string) => (done[key] = applied && batch ? batch : true);
+  const finish = (key: string) => (applied: boolean, batch?: string) => {
+    if (o?.kind === 'wheel' || o?.kind === 'dice') o.cardsDone = { ...o.cardsDone, [key]: applied && batch ? batch : true };
+  };
   /** The added wheel whose edit box is open (by its key). */
   let editExtra = $state<string | null>(null);
   const editedExtra = $derived(o?.kind === 'wheel' ? o.extra?.find((w) => w.key === editExtra) : undefined);

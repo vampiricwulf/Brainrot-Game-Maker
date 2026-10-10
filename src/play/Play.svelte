@@ -535,6 +535,8 @@
   });
   // An RPG round's question (a new screen's name…), its object card and a board game's space card are for that round
   // only, and so are a shop, a player's sheet, an object's pop-up, dice or a wheel on the stage: they don't follow into the next round.
+  // (Not as the game screen opens: dice or a wheel kept through a reload, see keptOverlay, stay up.)
+  let overlayRound = untrack(() => session.currentRound);
   $effect(() => {
     void session.currentRound;
     rpgAsk = null;
@@ -544,6 +546,8 @@
     untrack(() => {
       // ✎ Edit board is for the board on screen: another round starts without it.
       setEditing(false);
+      if (session.currentRound === overlayRound) return;
+      overlayRound = session.currentRound;
       const o = app.live.overlay;
       const gone = (k?: string) => k === 'shop' || k === 'sheet' || k === 'popup' || k === 'dice' || k === 'wheel';
       if (gone(o?.kind)) app.live.overlay = null;
@@ -1868,16 +1872,18 @@
   });
 
   /**
-   * On the results (or the tiebreaker clue opened from them), the next Undo belongs to the game's closing Final (one of its
+   * On the results (or the tiebreaker clue opened from them, or a slides outro after it), the next Undo belongs to the game's closing Final (one of its
    * judgments, or one of its steps, which only land in a Final on screen): back to its reveals first, so it's taken back
    * there (not out of sight, or not at all).
    */
   function undoIntoFinal(): void {
-    if (session.phase !== 'end' && session.phase !== 'tiebreaker') return;
+    if (session.phase !== 'end' && session.phase !== 'tiebreaker' && session.phase !== 'slides') return;
     // The closing Final: the last round, or the last one before a slides outro ("Thanks for watching").
     const fi = game.rounds.findIndex((r) => isFinal(r) && r.id === session.final?.roundId);
     const fin = game.rounds[fi];
     if (!isFinal(fin) || !game.rounds.slice(fi + 1).every(isSlides)) return;
+    // On a slides round: only the outro after that Final (not a slides round before it).
+    if (session.phase === 'slides' && session.currentRound <= fi) return;
     const next = nextUndo(session);
     // (Its steps by the Final step they kept, not by round: steps taken on the results are in the last round too.)
     const ofFinal =

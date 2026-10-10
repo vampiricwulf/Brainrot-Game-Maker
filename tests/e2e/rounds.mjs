@@ -143,8 +143,17 @@ try {
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);
   await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
-  await page.getByRole('button', { name: 'Start the round ▶' }).click();
-  await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
+  // Its title card, by mistake: ◀ Prev round goes back without starting it (its category never on stream).
+  await page.locator('.title-card .round-name').filter({ hasText: 'Final Jeopardy!' }).waitFor();
+  await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
+  await page.getByRole('button', { name: '◀ Prev round' }).click();
+  await page.locator('.stage-box .board').waitFor();
+  assert((await page.locator('.fj').count()) === 0, 'the Final’s title card has ◀ Prev round: back to Double Jeopardy! without starting the Final');
+  await page.waitForTimeout(450);
+  await picker.selectOption({ label: '🏆 Final Jeopardy!' });
+  await page.waitForTimeout(450);
+  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  // (Its title card was shown already: it opens on the round.)
   await page.locator('.fj').waitFor();
   assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('FINAL JEOPARDY!'), 'the round picker jumps straight to any round');
   // No "Lock category, take wagers" step: the category is up and the wager screen with it, who plays on the same screen.

@@ -517,6 +517,36 @@ describe('round navigation', () => {
     expect(session.intro).toBeNull();
   });
 
+  it('plays the intro of a round first reached backwards (Go to round past it, then back)', () => {
+    const { game, session } = twoRounds();
+    goToRound(session, game, 2);
+    goToRound(session, game, 1);
+    expect([session.phase, session.intro?.stage]).toEqual(['board', 'title']);
+    goToRound(session, game, 0);
+    expect(session.intro).toBeNull();
+  });
+
+  it('a game saved before rounds reached backwards were kept: the rounds clearly on screen count as shown', () => {
+    const { game, session, a } = twoRounds();
+    goToRound(session, game, 2);
+    goToRound(session, game, 1);
+    applyScore(session, game, [a], 400, 'x');
+    session.used[(game.rounds[1] as BoardRound).categories[0].clues[0].id] = true;
+    goToRound(session, game, 2);
+    // (Saved then: Double Jeopardy!, reached backwards, wasn't kept as shown.)
+    session.introducedRounds = [0, 2];
+    migrateSession(session, game);
+    expect(session.introducedRounds).toEqual([0, 2, 1]);
+    goToRound(session, game, 1);
+    expect(session.intro).toBeNull();
+    // Nothing on screen there: a round still counts as never shown.
+    const fresh = twoRounds();
+    goToRound(fresh.session, fresh.game, 2);
+    fresh.session.introducedRounds = [0, 2];
+    migrateSession(fresh.session, fresh.game);
+    expect(fresh.session.introducedRounds).toEqual([0, 2]);
+  });
+
   it('goes back from Final to the board and returns with the wagers kept', () => {
     const { game, session, a, b } = twoRounds();
     goToRound(session, game, 1);
