@@ -310,6 +310,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   font-size: 24px;
   z-index: 10;
 }
+#overlay-retry { padding: 0 28px; }
 
 /* Wagers: the player's own box in place of the buzzer. */
 #wager-form { width: 100%; max-width: 420px; gap: 10px; }

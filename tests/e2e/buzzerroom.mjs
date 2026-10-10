@@ -174,6 +174,10 @@ try {
   const dee = await phone('dee');
   await dee.goto(`${base}/${room.code}`);
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
+  // No name yet: the name screen itself says so (not the hidden seat list).
+  await dee.getByRole('button', { name: 'Ask to join' }).click();
+  await dee.locator('#new-err').getByText('Type your name first.').waitFor();
+  assert(await dee.getByLabel('Your name', { exact: true }).evaluate((el) => el === document.activeElement), '"Ask to join" with no name says to type one, on the name screen');
   await dee.getByLabel('Your name', { exact: true }).fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
@@ -229,6 +233,9 @@ try {
   const winnerName = 'Ann';
   await big(winner).getByText("You're answering!").waitFor();
   await small(winner).getByText(/^You were first by \d\.\d\d s$/).waitFor();
+  // The assertive alert is emptied once said, so a screen reader browsing later doesn't find a stale "You're answering!".
+  await winner.waitForFunction(() => document.getElementById('alert').textContent === '');
+  assert(true, 'the "You\'re answering!" alert is cleared after it has been said');
   await big(loser).getByText("You're 2nd").waitFor();
   assert(/^\d\.\d\d s behind Ann$/.test(await small(loser).innerText()), `"You were first by …" for Ann, "You're 2nd — ${await small(loser).innerText()}" for Dee`);
   await small(bob).getByText(`${winnerName} is answering`).waitFor();
@@ -479,6 +486,11 @@ try {
   ann.on('request', checking);
   annTap.blocked = true;
   annTap.drop();
+  // While away, the page behind the overlay is inert and the screen reader hears what the overlay says.
+  await ann.waitForFunction(
+    () => !document.getElementById('overlay').hidden && document.querySelector('main').inert && document.getElementById('live').textContent.startsWith(document.getElementById('overlay-text').textContent),
+  );
+  assert(true, 'reconnecting: the buzzer behind the overlay is inert and #live starts with the overlay text');
   for (let i = 0; i < 240 && !asked; i++) await sleep(250);
   ann.off('request', checking);
   annTap.blocked = false;
