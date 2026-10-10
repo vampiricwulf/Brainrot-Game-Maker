@@ -216,6 +216,10 @@ try {
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Not saved yet', 'and the game open stays as it was');
 
   // ---------- A game pack dropped as .zip opens ----------
+  // (The pack's own first category: the board shows it once the game has opened. The game open before has the same
+  // title, so that alone doesn't tell.)
+  const packCat = JSON.parse(await (await import('jszip')).default.loadAsync(readFileSync(packPath)).then((z) => z.file('game.json').async('text'))).rounds[0].categories[0].title;
+  const showsPack = () => page.waitForFunction((v) => document.querySelector('.cat textarea')?.value === v, packCat);
   const zipped = await page.evaluateHandle((b64) => {
     const dt = new DataTransfer();
     dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'Safe Game.zip', { type: 'application/zip' }));
@@ -223,10 +227,9 @@ try {
   }, readFileSync(packPath).toString('base64'));
   await page.locator('.body').dispatchEvent('drop', { dataTransfer: zipped });
   await answerReplace(page, 'Discard');
-  await page.getByText('Opened “Safe Game”').waitFor();
+  await showsPack();
   assert((await page.locator('input.title').inputValue()) === 'Safe Game', 'a game pack dropped on the editor as .zip opens, as Browse… takes it');
   // On a tile of the board (where a picture dropped goes on the clue), a game file opens too.
-  const packCat = await page.locator('.cat textarea').first().inputValue();
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
   const onTile = await page.evaluateHandle((b64) => {
@@ -236,12 +239,7 @@ try {
   }, readFileSync(packPath).toString('base64'));
   await page.locator('.tile').first().dispatchEvent('drop', { dataTransfer: onTile });
   await answerReplace(page, 'Discard');
-  await page.locator('.toast', { hasText: 'Opened “Safe Game”' }).waitFor();
-  await page
-    .waitForFunction((v) => document.querySelector('.cat textarea')?.value === v, packCat, { timeout: 10000 })
-    .catch(async () => {
-      throw new Error(`the dropped game opened, but its first category reads “${await page.locator('.cat textarea').first().inputValue()}”, not “${packCat}”`);
-    });
+  await showsPack();
   assert((await page.getByRole('dialog', { name: /Where the dropped picture goes/ }).count()) === 0, 'a game file dropped on a board tile opens, and isn’t taken for a picture');
 
   // ---------- Hand-edited games ----------
